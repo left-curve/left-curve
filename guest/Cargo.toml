@@ -1,0 +1,8 @@
+[package]
+name    = "guest"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest    = false

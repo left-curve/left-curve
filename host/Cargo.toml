@@ -1,0 +1,11 @@
+[package]
+name    = "host"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow = { workspace = true }
+wasmi  = { workspace = true }

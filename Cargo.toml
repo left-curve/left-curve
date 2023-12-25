@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["guest", "host"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+
+[workspace.dependencies]
+anyhow = "1"
+wasmi  = "0.31"
+
+[profile.release]
+codegen-units    = 1
+debug            = false
+debug-assertions = false
+incremental      = false
+lto              = true
+overflow-checks  = true
+opt-level        = 3
+panic            = "abort"
+rpath            = false
