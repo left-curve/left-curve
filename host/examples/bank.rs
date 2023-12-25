@@ -11,10 +11,17 @@ use {
 // and values as their bank balances (uint64 in big endian encoding).
 type HostState = BTreeMap<Vec<u8>, Vec<u8>>;
 
+// This is our initial host state before any calls
+const INITIAL_STATE: &[(&str, u64)] = &[
+    ("alice",   100),
+    ("bob",     50),
+    ("charlie", 123),
+];
+
 fn main() -> anyhow::Result<()> {
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../target/wasm32-unknown-unknown/debug/bank.wasm");
-    let data = [("alice", 100u64), ("bob", 50u64), ("charlie", 123u64)]
+    let data = INITIAL_STATE
         .into_iter()
         .map(|(name, balance)| (name.as_bytes().to_vec(), balance.to_be_bytes().to_vec()))
         .collect();
