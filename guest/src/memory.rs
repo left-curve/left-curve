@@ -44,6 +44,7 @@ impl Region {
 
     /// The reverse of `release_buffer`. Consume a pointer to a Region, return
     /// the vector data.
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn consume(ptr: *mut Region) -> Vec<u8> {
         assert!(!ptr.is_null(), "Region pointer is null");
 
