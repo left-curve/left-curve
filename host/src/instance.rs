@@ -7,12 +7,12 @@ use {
 
 /// Wraps around the wasmi Instance and a Store, providing some convenience
 /// methods.
-pub struct Instance<T = ()> {
+pub struct Instance<T> {
     pub instance: wasmi::Instance,
-    pub store:    Store<T>,
+    pub store: Store<T>,
 }
 
-impl Instance {
+impl<T> Instance<T> {
     pub fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
     where
         P: WasmParams,

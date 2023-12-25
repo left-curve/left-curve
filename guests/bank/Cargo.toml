@@ -1,8 +1,10 @@
 [package]
-name    = "guest"
+name    = "bank"
 version = { workspace = true }
 edition = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-doctest    = false
+
+[dependencies]
+sdk = { path = "../../sdk" }

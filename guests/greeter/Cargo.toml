@@ -1,8 +1,10 @@
 [package]
-name    = "host"
+name    = "greeter"
 version = { workspace = true }
 edition = { workspace = true }
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
-anyhow = { workspace = true }
-wasmi  = { workspace = true }
+sdk = { path = "../../sdk" }

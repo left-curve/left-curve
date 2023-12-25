@@ -42,6 +42,18 @@ impl Region {
         Box::into_raw(region)
     }
 
+    /// Similar to release_buffer, but instead of an owned value it takes a
+    /// reference to a byte slice.
+    pub fn build(data: &[u8]) -> *mut Self {
+        let region = Box::new(Self {
+            offset:   data.as_ptr() as usize,
+            capacity: data.len(),
+            length:   data.len(),
+        });
+
+        Box::into_raw(region)
+    }
+
     /// The reverse of `release_buffer`. Consume a pointer to a Region, return
     /// the vector data.
     #[allow(clippy::missing_safety_doc)]

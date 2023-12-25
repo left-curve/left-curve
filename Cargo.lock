@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "add"
+version = "0.0.0"
+
+[[package]]
 name = "anyhow"
 version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15,14 +19,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "bank"
+version = "0.0.0"
+dependencies = [
+ "sdk",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
-name = "guest"
+name = "greeter"
 version = "0.0.0"
+dependencies = [
+ "sdk",
+]
 
 [[package]]
 name = "host"
@@ -58,6 +72,10 @@ name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+
+[[package]]
+name = "sdk"
+version = "0.0.0"
 
 [[package]]
 name = "smallvec"

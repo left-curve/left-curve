@@ -1,4 +1,4 @@
-use crate::memory::Region;
+use sdk::Region;
 
 /// Read a string, and return string that reads "Hello {input}!".
 ///
@@ -18,4 +18,23 @@ pub extern "C" fn hello(region_addr: usize) -> usize {
     let greeting_bytes = greeting.into_bytes();
 
     Region::release_buffer(greeting_bytes) as usize
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn greeting() {
+        let name = "Larry".as_bytes().to_vec();
+        let ptr = Region::release_buffer(name);
+
+        let addr = hello(ptr as usize);
+        let bytes = unsafe { Region::consume(addr as *mut Region) };
+        let greeting = String::from_utf8(bytes).unwrap();
+
+        assert_eq!(greeting, "Hello Larry!");
+    }
 }

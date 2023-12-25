@@ -4,14 +4,16 @@ An demo on how to call Wasm modules, using Rust and [Wasmi](https://github.com/p
 
 ## How to use
 
-Build the Wasm binary:
+Build the Wasm binaries:
 
 ```bash
-cargo build --target wasm32-unknown-unknown -p guest
+cargo build --release --target wasm32-unknown-unknown -p add -p bank -p greeter
 ```
 
-The demos are presented as tests in `host/src/lib.rs`. To run these tests:
+The demos are presented as examples in `host/examples`. To run them:
 
 ```bash
-cargo test -p host
+cargo run -p host --example add
+cargo run -p host --example bank
+cargo run -p host --example greeter
 ```
