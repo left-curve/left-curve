@@ -28,38 +28,9 @@ fn main() -> anyhow::Result<()> {
     let mut instance = InstanceBuilder::<HostState>::default()
         .with_wasm_file(wasm_file)?
         .with_host_state(data)
-        .with_host_function("db_read", |mut caller: Caller<'_, HostState>, key_ptr: u32| -> u32 {
-            let memory = Memory::try_from(&caller).unwrap();
-            let key = memory.read_region(&caller, key_ptr).unwrap();
-            let Some(value) = caller.data().get(&key).cloned() else {
-                // return a zero pointer means the key doesn't exist
-                return 0;
-            };
-
-            // now we need to allocate a region in Wasm memory and put the value in
-            let alloc_fn = caller
-                .get_export("allocate")
-                .unwrap()
-                .into_func()
-                .unwrap()
-                .typed::<u32, u32>(&caller)
-                .unwrap();
-            let region_ptr = alloc_fn.call(&mut caller, value.capacity() as u32).unwrap();
-            memory.write_region(&mut caller, region_ptr, &value).unwrap();
-
-            region_ptr
-        })?
-        .with_host_function("db_write", |mut caller: Caller<'_, HostState>, key_ptr: u32, value_ptr: u32| {
-            let memory = Memory::try_from(&caller).unwrap();
-            let key = memory.read_region(&caller, key_ptr).unwrap();
-            let value = memory.read_region(&caller, value_ptr).unwrap();
-            caller.data_mut().insert(key, value);
-        })?
-        .with_host_function("db_remove", |mut caller: Caller<'_, HostState>, key_ptr: u32| {
-            let memory = Memory::try_from(&caller).unwrap();
-            let key = memory.read_region(&caller, key_ptr).unwrap();
-            caller.data_mut().remove(&key);
-        })?
+        .with_host_function("db_read", db_read)?
+        .with_host_function("db_write", db_write)?
+        .with_host_function("db_remove", db_remove)?
         .finalize()?;
 
     println!("alice sending 75 coins to dave...");
@@ -86,6 +57,41 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> u32 {
+    let memory = Memory::try_from(&caller).unwrap();
+    let key = memory.read_region(&caller, key_ptr).unwrap();
+    let Some(value) = caller.data().get(&key).cloned() else {
+        // return a zero pointer means the key doesn't exist
+        return 0;
+    };
+
+    // now we need to allocate a region in Wasm memory and put the value in
+    let alloc_fn = caller
+        .get_export("allocate")
+        .unwrap()
+        .into_func()
+        .unwrap()
+        .typed::<u32, u32>(&caller)
+        .unwrap();
+    let region_ptr = alloc_fn.call(&mut caller, value.capacity() as u32).unwrap();
+    memory.write_region(&mut caller, region_ptr, &value).unwrap();
+
+    region_ptr
+}
+
+fn db_write<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32, value_ptr: u32) {
+    let memory = Memory::try_from(&caller).unwrap();
+    let key = memory.read_region(&caller, key_ptr).unwrap();
+    let value = memory.read_region(&caller, value_ptr).unwrap();
+    caller.data_mut().insert(key, value);
+}
+
+fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) {
+    let memory = Memory::try_from(&caller).unwrap();
+    let key = memory.read_region(&caller, key_ptr).unwrap();
+    caller.data_mut().remove(&key);
 }
 
 fn call_send(
