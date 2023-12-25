@@ -1,12 +1,13 @@
 mod instance;
+mod memory;
 mod region;
 
-pub use crate::{instance::Instance, region::Region};
+pub use crate::{instance::Instance, memory::Memory, region::Region};
 
 use {
     anyhow::Context,
     std::{fs::File, path::Path},
-    wasmi::{Engine, Func, IntoFunc, Linker, Module, Store},
+    wasmi::{Engine, IntoFunc, Linker, Module, Store},
 };
 
 #[derive(Default)]
@@ -44,12 +45,8 @@ impl<HostState> InstanceBuilder<HostState> {
         name: &str,
         func: impl IntoFunc<HostState, Params, Results>,
     ) -> anyhow::Result<Self> {
-        let mut store = self.take_store()?;
         let mut linker = self.take_linker()?;
-
-        linker.define("env", name, Func::wrap(&mut store, func))?;
-
-        self.store = Some(store);
+        linker.func_wrap("env", name, func)?;
         self.linker = Some(linker);
 
         Ok(self)

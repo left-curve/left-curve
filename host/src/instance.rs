@@ -7,21 +7,28 @@ use {
 
 /// Wraps around the wasmi Instance and a Store, providing some convenience
 /// methods.
-pub struct Instance<T> {
+pub struct Instance<HostState> {
     pub instance: wasmi::Instance,
-    pub store: Store<T>,
+    pub store: Store<HostState>,
 }
 
-impl<T> Instance<T> {
+impl<HostState> Instance<HostState> {
     pub fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
     where
         P: WasmParams,
         R: WasmResults,
     {
+        // using get_types_func here probably has a bit of overhead over get_func
+        // which we may consider optimizing if this code is to be used in production
         self.instance
             .get_typed_func(&self.store, name)?
             .call(&mut self.store, params)
             .map_err(Into::into)
+    }
+
+    /// Consume the instance, return the host state.
+    pub fn recycle(self) -> HostState {
+        self.store.into_data()
     }
 
     pub fn read_region(&self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
