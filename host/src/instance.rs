@@ -9,7 +9,7 @@ use {
 /// methods.
 pub struct Instance<T = ()> {
     pub instance: wasmi::Instance,
-    pub store: Store<T>,
+    pub store:    Store<T>,
 }
 
 impl Instance {
