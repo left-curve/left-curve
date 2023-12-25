@@ -62,8 +62,10 @@ fn main() -> anyhow::Result<()> {
 fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
     let memory = Memory::try_from(&caller)?;
     let key = memory.read_region(&caller, key_ptr)?;
+
+    // read the value from host state
+    // if doesn't exist, we return a zero pointer
     let Some(value) = caller.data().get(&key).cloned() else {
-        // return a zero pointer means the key doesn't exist
         return Ok(0);
     };
 
@@ -89,6 +91,7 @@ fn db_write<'a>(
     let memory = Memory::try_from(&caller)?;
     let key = memory.read_region(&caller, key_ptr)?;
     let value = memory.read_region(&caller, value_ptr)?;
+
     caller.data_mut().insert(key, value);
 
     Ok(())
@@ -97,6 +100,7 @@ fn db_write<'a>(
 fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
     let memory = Memory::try_from(&caller)?;
     let key = memory.read_region(&caller, key_ptr)?;
+
     caller.data_mut().remove(&key);
 
     Ok(())
