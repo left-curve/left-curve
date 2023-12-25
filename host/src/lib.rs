@@ -1,8 +1,7 @@
 mod instance;
 mod memory;
-mod region;
 
-pub use crate::{instance::Instance, memory::Memory, region::Region};
+pub use crate::{instance::Instance, memory::{Memory, Region}};
 
 use {
     anyhow::Context,

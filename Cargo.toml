@@ -7,8 +7,9 @@ version = "0.0.0"
 edition = "2021"
 
 [workspace.dependencies]
-anyhow = "1"
-wasmi  = "0.31"
+anyhow    = "1"
+wasmi     = "0.31"
+thiserror = "1"
 
 [profile.release]
 codegen-units    = 1

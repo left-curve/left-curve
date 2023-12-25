@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     host::{Instance, InstanceBuilder, Memory},
     std::{collections::BTreeMap, env, path::PathBuf},
-    wasmi::Caller,
+    wasmi::{core::Trap, Caller},
 };
 
 // our host state is a generic key-value store.
@@ -59,12 +59,12 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> u32 {
-    let memory = Memory::try_from(&caller).unwrap();
-    let key = memory.read_region(&caller, key_ptr).unwrap();
+fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
+    let memory = Memory::try_from(&caller)?;
+    let key = memory.read_region(&caller, key_ptr)?;
     let Some(value) = caller.data().get(&key).cloned() else {
         // return a zero pointer means the key doesn't exist
-        return 0;
+        return Ok(0);
     };
 
     // now we need to allocate a region in Wasm memory and put the value in
@@ -78,20 +78,28 @@ fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> u32 {
     let region_ptr = alloc_fn.call(&mut caller, value.capacity() as u32).unwrap();
     memory.write_region(&mut caller, region_ptr, &value).unwrap();
 
-    region_ptr
+    Ok(region_ptr)
 }
 
-fn db_write<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32, value_ptr: u32) {
-    let memory = Memory::try_from(&caller).unwrap();
-    let key = memory.read_region(&caller, key_ptr).unwrap();
-    let value = memory.read_region(&caller, value_ptr).unwrap();
+fn db_write<'a>(
+    mut caller: Caller<'a, HostState>,
+    key_ptr:    u32,
+    value_ptr:  u32,
+) -> Result<(), Trap> {
+    let memory = Memory::try_from(&caller)?;
+    let key = memory.read_region(&caller, key_ptr)?;
+    let value = memory.read_region(&caller, value_ptr)?;
     caller.data_mut().insert(key, value);
+
+    Ok(())
 }
 
-fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) {
-    let memory = Memory::try_from(&caller).unwrap();
-    let key = memory.read_region(&caller, key_ptr).unwrap();
+fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
+    let memory = Memory::try_from(&caller)?;
+    let key = memory.read_region(&caller, key_ptr)?;
     caller.data_mut().remove(&key);
+
+    Ok(())
 }
 
 fn call_send(
