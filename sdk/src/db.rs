@@ -11,6 +11,7 @@ extern "C" {
 
 /// A zero-size convenience wrapper around the database imports. Provides more
 /// ergonomic functions.
+#[derive(Default)]
 pub struct Storage;
 
 impl Storage {
