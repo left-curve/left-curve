@@ -18,7 +18,7 @@ mod tests {
         let engine = Engine::default();
 
         // read wasm binary from file and create module
-        let mut file = File::open("../target/wasm32-unknown-unknown/release/guest.wasm")?;
+        let mut file = File::open("../target/wasm32-unknown-unknown/debug/guest.wasm")?;
         let module = Module::new(&engine, &mut file)?;
 
         // create store, and define import functions

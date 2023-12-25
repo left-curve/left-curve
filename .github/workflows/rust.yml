@@ -14,11 +14,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Build Wasm binary
+        run: cargo build --target wasm32-unknown-unknown -p guest
+        env:
+          RUST_BACKTRACE: 1
 
       - name: Run tests
-        run: >
-          cargo build --target wasm32-unknown-unknown -p guest &&
-          cargo test -p host
+        run: cargo test -p host
         env:
           RUST_BACKTRACE: 1
 
