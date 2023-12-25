@@ -7,7 +7,7 @@ An demo on how to call Wasm modules, using Rust and [Wasmi](https://github.com/p
 Build the Wasm binaries:
 
 ```bash
-cargo build --release --target wasm32-unknown-unknown -p add -p bank -p greeter
+cargo build --target wasm32-unknown-unknown -p add -p bank -p greeter
 ```
 
 The demos are presented as examples in `host/examples`. To run them:

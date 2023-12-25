@@ -1,10 +1,12 @@
-use host::setup_instance;
+use {
+    host::setup_instance,
+    std::{env, path::PathBuf},
+};
 
 fn main() -> anyhow::Result<()> {
-    let mut instance = setup_instance::<_, ()>(
-        "../../target/wasm32-unknown-unknown/release/add.wasm",
-        None,
-    )?;
+    let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
+        .join("../target/wasm32-unknown-unknown/debug/add.wasm");
+    let mut instance = setup_instance::<_, ()>(wasm_file, None)?;
 
     const A: u32 = 123;
     const B: u32 = 456;

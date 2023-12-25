@@ -3,8 +3,8 @@ name: Rust
 on: push
 
 jobs:
-  test:
-    name: Test
+  examples:
+    name: Examples
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -17,12 +17,22 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Build Wasm binary
-        run: cargo build --target wasm32-unknown-unknown -p guest
+        run: cargo build --target wasm32-unknown-unknown -p add -p bank -p greeter
         env:
           RUST_BACKTRACE: 1
 
-      - name: Run tests
-        run: cargo test -p host
+      - name: Run add example
+        run: cargo run -p host --example add
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Run greeter example
+        run: cargo run -p host --example greeter
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Run bank example
+        run: cargo run -p host --example bank
         env:
           RUST_BACKTRACE: 1
 
