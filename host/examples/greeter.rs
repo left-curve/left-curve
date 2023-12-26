@@ -1,5 +1,5 @@
 use {
-    host::InstanceBuilder,
+    host::HostBuilder,
     std::{env, path::PathBuf},
 };
 
@@ -8,7 +8,7 @@ const NAME: &str = "Larry";
 fn main() -> anyhow::Result<()> {
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../target/wasm32-unknown-unknown/debug/greeter.wasm");
-    let mut instance = InstanceBuilder::default()
+    let mut instance = HostBuilder::default()
         .with_wasm_file(wasm_file)?
         .with_host_state(())
         .finalize()?;

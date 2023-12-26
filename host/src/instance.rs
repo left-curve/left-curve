@@ -5,14 +5,14 @@ use {
 
 /// Wraps around the wasmi Instance and a Store, providing some convenience
 /// methods.
-pub struct Instance<HostState> {
+pub struct Host<HostState> {
     instance:  wasmi::Instance,
     store:     Store<HostState>,
     memory:    Memory,
     allocator: Allocator,
 }
 
-impl<HostState> Instance<HostState> {
+impl<HostState> Host<HostState> {
     pub fn new(instance: wasmi::Instance, store: Store<HostState>) -> anyhow::Result<Self> {
         Ok(Self {
             allocator: (&instance, &store).try_into()?,

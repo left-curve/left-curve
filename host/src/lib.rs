@@ -3,7 +3,7 @@ mod errors;
 mod instance;
 mod memory;
 
-pub use crate::{alloc::Allocator, errors::Error, instance::Instance, memory::{Memory, Region}};
+pub use crate::{alloc::Allocator, errors::Error, instance::Host, memory::{Memory, Region}};
 
 use {
     anyhow::Context,
@@ -12,14 +12,14 @@ use {
 };
 
 #[derive(Default)]
-pub struct InstanceBuilder<HostState> {
+pub struct HostBuilder<HostState> {
     engine: Engine,
     module: Option<Module>,
     store:  Option<Store<HostState>>,
     linker: Option<Linker<HostState>>,
 }
 
-impl<HostState> InstanceBuilder<HostState> {
+impl<HostState> HostBuilder<HostState> {
     pub fn new(engine: Engine) -> Self {
         Self {
             engine,
@@ -53,13 +53,13 @@ impl<HostState> InstanceBuilder<HostState> {
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> anyhow::Result<Instance<HostState>> {
+    pub fn finalize(mut self) -> anyhow::Result<Host<HostState>> {
         let module = self.take_module()?;
         let mut store = self.take_store()?;
         let linker = self.take_linker()?;
         let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
 
-        Instance::new(instance, store)
+        Host::new(instance, store)
     }
 
     fn take_module(&mut self) -> anyhow::Result<Module> {

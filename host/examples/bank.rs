@@ -1,6 +1,6 @@
 use {
     anyhow::anyhow,
-    host::{Allocator, Instance, InstanceBuilder, Memory},
+    host::{Allocator, Host, HostBuilder, Memory},
     std::{collections::BTreeMap, env, path::PathBuf},
     wasmi::{core::Trap, Caller},
 };
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         .into_iter()
         .map(|(name, balance)| (name.as_bytes().to_vec(), balance.to_be_bytes().to_vec()))
         .collect();
-    let mut instance = InstanceBuilder::<HostState>::default()
+    let mut instance = HostBuilder::<HostState>::default()
         .with_wasm_file(wasm_file)?
         .with_host_state(data)
         .with_host_function("db_read", db_read)?
@@ -101,7 +101,7 @@ fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), 
 }
 
 fn call_send(
-    instance: &mut Instance<HostState>,
+    instance: &mut Host<HostState>,
     from: &str,
     to: &str,
     amount: u64,
