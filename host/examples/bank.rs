@@ -99,12 +99,7 @@ fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), wasm
     Ok(())
 }
 
-fn call_send(
-    host:   &mut Host<HostState>,
-    from:   &str,
-    to:     &str,
-    amount: u64,
-) -> anyhow::Result<()> {
+fn call_send(host: &mut Host<HostState>, from: &str, to: &str, amount: u64) -> anyhow::Result<()> {
     // load sender into memory
     let from_ptr = host.write_to_memory(from.as_bytes())?;
 

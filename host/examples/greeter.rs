@@ -15,8 +15,6 @@ fn main() -> anyhow::Result<()> {
     let mut host = Host::new(&instance, &mut store);
 
     // allocate a region in the Wasm memory and put the name bytes into it
-    // let name_region_ptr = instance.call("allocate", name_bytes.capacity() as u32)?;
-    // instance.write_region(name_region_ptr, &name_bytes)?;
     let name_ptr = host.write_to_memory(NAME.as_bytes())?;
 
     // call the hello function

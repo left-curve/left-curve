@@ -121,7 +121,7 @@ impl<'a, HostState> Host<'a, HostState> {
             })
     }
 
-    fn get_typed_func<Params, Results>(&self, name: &str, ) -> Result<TypedFunc<Params, Results>>
+    fn get_typed_func<Params, Results>(&self, name: &str) -> Result<TypedFunc<Params, Results>>
     where
         Params: WasmParams,
         Results: WasmResults,
