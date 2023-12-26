@@ -1,31 +1,32 @@
-use crate::Error;
+use std::{mem, slice};
 
-/// Similar to sdk::Region
+#[repr(C)]
 pub struct Region {
     pub offset:   u32,
     pub capacity: u32,
     pub length:   u32,
 }
 
-// note that numbers are stored as little endian
 impl Region {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = vec![];
-        buf.extend_from_slice(&self.offset.to_le_bytes());
-        buf.extend_from_slice(&self.capacity.to_le_bytes());
-        buf.extend_from_slice(&self.length.to_le_bytes());
-        buf
+    pub const SIZE: usize = mem::size_of::<Region>();
+
+    pub fn as_bytes(&self) -> &[u8] {
+        let ptr = self as *const Self;
+        unsafe { slice::from_raw_parts(ptr as *const u8, Self::SIZE) }
     }
 
-    pub fn deserialize(buf: &[u8]) -> Result<Self, Error> {
-        if buf.len() != 12 {
-            return Err(Error::ParseRegion(buf.len()));
-        }
-
-        Ok(Self {
-            offset:   u32::from_le_bytes((&buf[0..4]).try_into().unwrap()),
-            capacity: u32::from_le_bytes((&buf[4..8]).try_into().unwrap()),
-            length:   u32::from_le_bytes((&buf[8..12]).try_into().unwrap()),
-        })
+    pub unsafe fn from_raw(buf: &[u8]) -> &Self {
+        assert_size(buf);
+        &*(buf.as_ptr() as *const Self)
     }
+
+    pub unsafe fn from_raw_mut(buf: &mut [u8]) -> &mut Self {
+        assert_size(buf);
+        &mut *(buf.as_mut_ptr() as *mut Region)
+    }
+}
+
+fn assert_size(buf: &[u8]) {
+    let len = buf.len();
+    assert_eq!(len, Region::SIZE, "Incorrect byte size: expecting {}, got {}", Region::SIZE, len);
 }

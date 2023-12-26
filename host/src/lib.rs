@@ -4,7 +4,7 @@ mod region;
 pub use {builder::InstanceBuilder, region::Region};
 
 use {
-    std::{cell::OnceCell, mem::size_of},
+    std::cell::OnceCell,
     wasmi::{
         core::HostError, errors::MemoryError, Caller, Extern, Instance, Memory, Store, TypedFunc,
         WasmParams, WasmResults,
@@ -68,8 +68,8 @@ impl<'a, HostState> Host<'a, HostState> {
     }
 
     pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Error> {
-        let buf = self.read_memory(region_ptr as usize, size_of::<Region>())?;
-        let region = Region::deserialize(&buf)?;
+        let buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
+        let region = unsafe { Region::from_raw(&buf) };
 
         self.read_memory(region.offset as usize, region.length as usize)
     }
@@ -79,8 +79,8 @@ impl<'a, HostState> Host<'a, HostState> {
         region_ptr: u32,
         data: &[u8],
     ) -> Result<(), Error> {
-        let buf = self.read_memory(region_ptr as usize, size_of::<Region>())?;
-        let mut region = Region::deserialize(&buf)?;
+        let mut buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
+        let region = unsafe { Region::from_raw_mut(&mut buf) };
         // don't forget to update the Region length
         region.length = data.len() as u32;
 
@@ -92,7 +92,7 @@ impl<'a, HostState> Host<'a, HostState> {
         }
 
         self.write_memory(region.offset as usize, data)?;
-        self.write_memory(region_ptr as usize, &region.serialize())
+        self.write_memory(region_ptr as usize, region.as_bytes())
     }
 
     fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>, Error> {
@@ -164,9 +164,6 @@ impl<'a, HostState> Host<'a, HostState> {
 pub enum Error {
     #[error(transparent)]
     Wasmi(#[from] wasmi::Error),
-
-    #[error("Failed to parse Region: expect 12 bytes, found {0}")]
-    ParseRegion(usize),
 
     #[error("Can't find memory in Wasm exports")]
     MemoryNotFound,
