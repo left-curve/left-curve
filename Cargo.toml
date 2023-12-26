@@ -8,7 +8,7 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow    = "1"
-wasmi     = "0.31"
+wasmi     = { git = "https://github.com/larry0x/wasmi", rev = "950d877" }
 thiserror = "1"
 
 [profile.release]

@@ -2,191 +2,68 @@ use {
     anyhow::Context,
     std::{cell::OnceCell, fs::File, mem::size_of, path::Path},
     wasmi::{
-        core::{HostError, Trap},
-        errors::MemoryError,
-        AsContext, AsContextMut, Caller, Engine, Instance, IntoFunc, Linker, Module, Store,
-        TypedFunc, WasmParams, WasmResults, Memory, StoreContext, StoreContextMut
+        core::HostError, errors::MemoryError, Caller, Engine, Extern, Instance, IntoFunc, Linker,
+        Memory, Module, Store, TypedFunc, WasmParams, WasmResults,
     },
 };
 
-// ----------------------------------- inner -----------------------------------
-
-enum HostInner<'a, HostState> {
-    Owned {
-        instance: Instance,
-        store:    Store<HostState>,
-    },
-    Ref(Caller<'a, HostState>),
-}
-
-impl<'a, HostState> AsContext for HostInner<'a, HostState> {
-    type UserState = HostState;
-
-    fn as_context(&self) -> StoreContext<HostState> {
-        match self {
-            HostInner::Owned { store, .. } => store.as_context(),
-            HostInner::Ref(caller) => caller.as_context(),
-        }
-    }
-}
-
-impl<'a, HostState> AsContextMut for HostInner<'a, HostState> {
-    fn as_context_mut(&mut self) -> StoreContextMut<HostState> {
-        match self {
-            HostInner::Owned { store, .. } => store.as_context_mut(),
-            HostInner::Ref(caller) => caller.as_context_mut(),
-        }
-    }
-}
-
-impl<'a, HostState> HostInner<'a, HostState> {
-    fn call<P, R>(&mut self, name: &str, params: P) -> Result<R, Trap>
-    where
-        P: WasmParams,
-        R: WasmResults,
-    {
-        let HostInner::Owned { instance, store } = self else {
-            unimplemented!();
-        };
-
-        instance
-            .get_typed_func(&store, name)
-            .map_err(Error::from)?
-            .call(store, params)
-    }
-
-    fn recycle(self) -> HostState {
-        let HostInner::Owned { store, .. } = self else {
-            unimplemented!();
-        };
-
-        store.into_data()
-    }
-
-    fn data(&self) -> &HostState {
-        match self {
-            HostInner::Owned { store, .. } => store.data(),
-            HostInner::Ref(caller) => caller.data(),
-        }
-    }
-
-    fn data_mut(&mut self) -> &mut HostState {
-        match self {
-            HostInner::Owned { store, .. } => store.data_mut(),
-            HostInner::Ref(caller) => caller.data_mut(),
-        }
-    }
-
-    fn memory(&self) -> Result<Memory, Error> {
-        match self {
-            HostInner::Owned { instance, store } => instance
-                .get_memory(store, "memory")
-                .ok_or(Error::FailedToObtainMemory),
-            HostInner::Ref(caller) => caller
-                .get_export("memory")
-                .ok_or(Error::ExportNotFound)?
-                .into_memory()
-                .ok_or(Error::ExportIsNotMemory),
-        }
-    }
-
-    fn alloc_fn(&self) -> Result<TypedFunc<u32, u32>, Error> {
-        match self {
-            HostInner::Owned { instance, store } => instance
-                .get_typed_func(store, "allocate"),
-            HostInner::Ref(caller) => caller
-                .get_export("allocate")
-                .ok_or(Error::ExportNotFound)?
-                .into_func()
-                .ok_or(Error::ExportIsNotFunc)?
-                .typed(caller)
-        }
-        .map_err(Into::into)
-    }
-
-    fn dealloc_fn(&self) -> Result<TypedFunc<u32, ()>, Error> {
-        match self {
-            HostInner::Owned { instance, store } => instance
-                .get_typed_func(store, "deallocate"),
-            HostInner::Ref(caller) => caller
-                .get_export("deallocate")
-                .ok_or(Error::ExportNotFound)?
-                .into_func()
-                .ok_or(Error::ExportIsNotFunc)?
-                .typed(caller)
-        }
-        .map_err(Into::into)
-    }
-}
-
-// ----------------------------------- host ------------------------------------
-
 pub struct Host<'a, HostState> {
-    inner:      HostInner<'a, HostState>,
+    caller:     Caller<'a, HostState>,
     memory:     OnceCell<Memory>,
     alloc_fn:   OnceCell<TypedFunc<u32, u32>>,
     dealloc_fn: OnceCell<TypedFunc<u32, ()>>,
 }
 
-impl<HostState> Host<'_, HostState> {
-    pub fn build_owned(
-        instance: Instance,
-        store:    Store<HostState>,
-    ) -> Result<Self, Error> {
-        Ok(Self {
-            inner:      HostInner::Owned { instance, store },
+impl<'a, HostState> From<Caller<'a, HostState>> for Host<'a, HostState> {
+    fn from(caller: Caller<'a, HostState>) -> Self {
+        Self {
+            caller,
             memory:     OnceCell::new(),
             alloc_fn:   OnceCell::new(),
             dealloc_fn: OnceCell::new(),
-        })
+        }
     }
 }
 
 impl<'a, HostState> Host<'a, HostState> {
-    pub fn build_ref(caller: Caller<'a, HostState>) -> Result<Self, Error> {
-        Ok(Self {
-            inner:      HostInner::Ref(caller),
+    pub fn new(instance: &Instance, store: &'a mut Store<HostState>) -> Self {
+        Self {
+            caller:     Caller::new(store, Some(instance)),
             memory:     OnceCell::new(),
             alloc_fn:   OnceCell::new(),
             dealloc_fn: OnceCell::new(),
-        })
-    }
-}
-
-impl<HostState> Host<'_, HostState> {
-    pub fn call<P, R>(&mut self, name: &str, params: P) -> Result<R, Trap>
-    where
-        P: WasmParams,
-        R: WasmResults,
-    {
-        self.inner.call(name, params)
-    }
-
-    pub fn recycle(self) -> HostState {
-        self.inner.recycle()
+        }
     }
 
     pub fn data(&self) -> &HostState {
-        self.inner.data()
+        self.caller.data()
     }
 
     pub fn data_mut(&mut self) -> &mut HostState {
-        self.inner.data_mut()
+        self.caller.data_mut()
     }
 
-    pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32, Trap> {
-        let region_ptr = self.alloc_fn().call(&mut self.inner, data.capacity() as u32)?;
+    pub fn call<Params, Results>(&mut self, name: &str, params: Params) -> Result<Results, Error>
+    where
+        Params:  WasmParams,
+        Results: WasmResults,
+    {
+        self.get_function(name)?.call(&mut self.caller, params).map_err(Into::into)
+    }
+
+    pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32, Error> {
+        let region_ptr = self.alloc_fn().call(&mut self.caller, data.capacity() as u32)?;
         self.write_region(region_ptr, &data)?;
         Ok(region_ptr)
     }
 
-    pub fn consume_region(&mut self, region_ptr: u32) -> Result<Vec<u8>, Trap> {
+    pub fn consume_region(&mut self, region_ptr: u32) -> Result<Vec<u8>, Error> {
         let data = self.read_region(region_ptr)?;
-        self.dealloc_fn().call(&mut self.inner, region_ptr)?;
+        self.dealloc_fn().call(&mut self.caller, region_ptr).map_err(Error::from)?;
         Ok(data)
     }
 
-    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Trap> {
+    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Error> {
         let buf = self.read_memory(region_ptr as usize, size_of::<Region>())?;
         let region = Region::deserialize(&buf)?;
 
@@ -197,7 +74,7 @@ impl<HostState> Host<'_, HostState> {
         &mut self,
         region_ptr: u32,
         data: &[u8],
-    ) -> Result<(), Trap> {
+    ) -> Result<(), Error> {
         let buf = self.read_memory(region_ptr as usize, size_of::<Region>())?;
         let mut region = Region::deserialize(&buf)?;
         // don't forget to update the Region length
@@ -207,62 +84,85 @@ impl<HostState> Host<'_, HostState> {
             return Err(Error::InsufficientRegion {
                 capacity: region.capacity,
                 length:   region.length,
-            }
-            .into());
+            });
         }
 
         self.write_memory(region.offset as usize, data)?;
         self.write_memory(region_ptr as usize, &region.serialize())
     }
 
-    fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>, Trap> {
+    fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0x8; length];
         self.memory()
-            .read(&self.inner, offset, &mut buf)
+            .read(&self.caller, offset, &mut buf)
             .map(|_| buf)
             .map_err(|reason| Error::ReadMemory {
                 offset,
                 length,
                 reason,
-            }
-            .into())
+            })
     }
 
-    fn write_memory(&mut self, offset: usize, data: &[u8]) -> Result<(), Trap> {
+    fn write_memory(&mut self, offset: usize, data: &[u8]) -> Result<(), Error> {
         self.memory()
-            .write(&mut self.inner, offset, data)
+            .write(&mut self.caller, offset, data)
             .map_err(|reason| Error::WriteMemory {
                 offset,
                 length: data.len(),
                 reason,
-            }
-            .into())
+            })
+    }
+
+    fn get_function<Params, Results>(&self, name: &str) -> Result<TypedFunc<Params, Results>, Error>
+    where
+        Params:  WasmParams,
+        Results: WasmResults,
+    {
+        self.caller
+            .get_export(name)
+            .and_then(Extern::into_func)
+            .ok_or(Error::FunctionNotFound)?
+            .typed(&self.caller)
+            .map_err(Into::into)
+    }
+
+    fn get_memory(&self) -> Result<Memory, Error> {
+        self.caller
+            .get_export("memory")
+            .and_then(Extern::into_memory)
+            .ok_or(Error::MemoryNotFound)
     }
 
     fn memory(&self) -> Memory {
-        *self.memory.get_or_init(|| self.inner.memory().unwrap())
+        *self.memory.get_or_init(|| self.get_memory().unwrap_or_else(|err| {
+            panic!("[Host]: Failed to get memory: {err}");
+        }))
     }
 
     fn alloc_fn(&self) -> TypedFunc<u32, u32> {
-        *self.alloc_fn.get_or_init(|| self.inner.alloc_fn().unwrap())
+        *self.alloc_fn.get_or_init(|| self.get_function("allocate").unwrap_or_else(|err| {
+            panic!("[Host]: Failed to get `allocate` function: {err}");
+        }))
     }
 
     fn dealloc_fn(&self) -> TypedFunc<u32, ()> {
-        *self.dealloc_fn.get_or_init(|| self.inner.dealloc_fn().unwrap())
+        *self.dealloc_fn.get_or_init(|| self.get_function("deallocate").unwrap_or_else(|err| {
+            panic!("[Host]: Failed to get `deallocate` function: {err}");
+        }))
     }
 }
 
 // ---------------------------------- builder ----------------------------------
 
 #[derive(Default)]
-pub struct HostBuilder<HostState> {
+pub struct InstanceBuilder<HostState> {
     engine: Engine,
     module: Option<Module>,
     store:  Option<Store<HostState>>,
     linker: Option<Linker<HostState>>,
 }
 
-impl<HostState> HostBuilder<HostState> {
+impl<HostState> InstanceBuilder<HostState> {
     pub fn new(engine: Engine) -> Self {
         Self {
             engine,
@@ -296,13 +196,13 @@ impl<HostState> HostBuilder<HostState> {
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> anyhow::Result<Host<'static, HostState>> {
+    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<HostState>)> {
         let module = self.take_module()?;
         let mut store = self.take_store()?;
         let linker = self.take_linker()?;
         let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
 
-        Host::build_owned(instance, store).map_err(Into::into)
+        Ok((instance, store))
     }
 
     fn take_module(&mut self) -> anyhow::Result<Module> {
@@ -358,17 +258,11 @@ pub enum Error {
     #[error(transparent)]
     Wasmi(#[from] wasmi::Error),
 
-    #[error("Failed to get memory from instance")]
-    FailedToObtainMemory,
+    #[error("Can't find memory in Wasm exports")]
+    MemoryNotFound,
 
-    #[error("Can't find the desired Wasm export")]
-    ExportNotFound,
-
-    #[error("Export is not a function")]
-    ExportIsNotFunc,
-
-    #[error("Export is not a memory")]
-    ExportIsNotMemory,
+    #[error("Can't find the given function in Wasm exports")]
+    FunctionNotFound,
 
     #[error("Failed to parse Region: expect 12 bytes, found {0}")]
     ParseRegion(usize),
@@ -396,5 +290,10 @@ pub enum Error {
     },
 }
 
-// important
+impl From<Error> for wasmi::Error {
+    fn from(err: Error) -> Self {
+        wasmi::Error::host(err)
+    }
+}
+
 impl HostError for Error {}

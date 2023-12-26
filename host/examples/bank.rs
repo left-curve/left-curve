@@ -1,8 +1,8 @@
 use {
     anyhow::anyhow,
-    host::{Host, HostBuilder},
+    host::{Host, InstanceBuilder},
     std::{collections::BTreeMap, env, path::PathBuf},
-    wasmi::{core::Trap, Caller},
+    wasmi::Caller,
 };
 
 // our host state is a generic key-value store.
@@ -25,22 +25,23 @@ fn main() -> anyhow::Result<()> {
         .into_iter()
         .map(|(name, balance)| (name.as_bytes().to_vec(), balance.to_be_bytes().to_vec()))
         .collect();
-    let mut instance = HostBuilder::<HostState>::default()
+    let (instance, mut store) = InstanceBuilder::<HostState>::default()
         .with_wasm_file(wasm_file)?
         .with_host_state(data)
         .with_host_function("db_read", db_read)?
         .with_host_function("db_write", db_write)?
         .with_host_function("db_remove", db_remove)?
         .finalize()?;
+    let mut host = Host::new(&instance, &mut store);
 
     println!("alice sending 75 coins to dave...");
-    call_send(&mut instance, "alice", "dave", 75)?;
+    call_send(&mut host, "alice", "dave", 75)?;
 
     println!("bob sending 50 coins to charlie...");
-    call_send(&mut instance, "bob", "charlie", 50)?;
+    call_send(&mut host, "bob", "charlie", 50)?;
 
     println!("charlie sending 69 coins to alice...");
-    call_send(&mut instance, "charlie", "alice", 69)?;
+    call_send(&mut host, "charlie", "alice", 69)?;
 
     // end state:
     // ----------
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     // charlie: 123 + 50 - 69 = 104
     // dave:    0   + 75      = 75
     println!("Host state after aforementioned transfers:");
-    for (name_bytes, balance_bytes) in instance.recycle() {
+    for (name_bytes, balance_bytes) in store.into_data() {
         let name = String::from_utf8(name_bytes)?;
         let balance = u64::from_be_bytes(balance_bytes.try_into()
             .map_err(|_| anyhow!("Failed to parse balance"))?);
@@ -59,8 +60,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
-    let mut host = Host::build_ref(caller)?;
+fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, wasmi::Error> {
+    let mut host = Host::from(caller);
     let key = host.read_region(key_ptr)?;
 
     // read the value from host state
@@ -76,11 +77,11 @@ fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap>
 }
 
 fn db_write<'a>(
-    caller: Caller<'a, HostState>,
-    key_ptr:    u32,
-    value_ptr:  u32,
-) -> Result<(), Trap> {
-    let mut host = Host::build_ref(caller)?;
+    caller:    Caller<'a, HostState>,
+    key_ptr:   u32,
+    value_ptr: u32,
+) -> Result<(), wasmi::Error> {
+    let mut host = Host::from(caller);
     let key = host.read_region(key_ptr)?;
     let value = host.read_region(value_ptr)?;
 
@@ -89,8 +90,8 @@ fn db_write<'a>(
     Ok(())
 }
 
-fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
-    let mut host = Host::build_ref(caller)?;
+fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), wasmi::Error> {
+    let mut host = Host::from(caller);
     let key = host.read_region(key_ptr)?;
 
     host.data_mut().remove(&key);
@@ -99,19 +100,19 @@ fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap
 }
 
 fn call_send(
-    instance: &mut Host<HostState>,
-    from: &str,
-    to: &str,
+    host:   &mut Host<HostState>,
+    from:   &str,
+    to:     &str,
     amount: u64,
 ) -> anyhow::Result<()> {
     // load sender into memory
-    let from_ptr = instance.release_buffer(from.as_bytes().to_vec())?;
+    let from_ptr = host.release_buffer(from.as_bytes().to_vec())?;
 
     // load receiver into memory
-    let to_ptr = instance.release_buffer(to.as_bytes().to_vec())?;
+    let to_ptr = host.release_buffer(to.as_bytes().to_vec())?;
 
     // call send function. this function has no return data
-    instance.call("send", (from_ptr, to_ptr, amount))?;
+    host.call("send", (from_ptr, to_ptr, amount))?;
 
     // no need to deallocate {from,to}_ptr, they were already freed in Wasm code
     // the send function doesn't have response data either, so we're done
