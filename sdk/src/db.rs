@@ -20,7 +20,8 @@ impl Storage {
     }
 
     pub fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let key_ptr = Region::build(key);
+        let key = Region::build(key);
+        let key_ptr = &*key as *const Region as u32;
 
         let value_ptr = unsafe { db_read(key_ptr as u32) };
         if value_ptr == 0 {
@@ -29,6 +30,10 @@ impl Storage {
         }
 
         unsafe { Some(Region::consume(value_ptr as *mut Region)) }
+        // NOTE: key_ptr goes out of scope here, so the Region is dropped.
+        // however, `key` is NOT dropped, since we're only working with a
+        // borrowed reference here.
+        // same case with `write` and `remove`.
     }
 
     // note: cosmwasm doesn't allow empty values:
@@ -36,14 +41,18 @@ impl Storage {
     // this is because its DB backend doesn't distinguish between an empty value
     // vs a non-existent value. but this isn't a problem for us.
     pub fn write(&mut self, key: &[u8], value: &[u8]) {
-        let key_ptr = Region::build(key);
-        let value_ptr = Region::build(value);
+        let key = Region::build(key);
+        let key_ptr = &*key as *const Region as u32;
+
+        let value = Region::build(value);
+        let value_ptr = &*value as *const Region as u32;
 
         unsafe { db_write(key_ptr as u32, value_ptr as u32) }
     }
 
     pub fn remove(&mut self, key: &[u8]) {
-        let key_ptr = Region::build(key);
+        let key = Region::build(key);
+        let key_ptr = &*key as *const Region as u32;
 
         unsafe { db_remove(key_ptr as u32) }
     }

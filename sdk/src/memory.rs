@@ -27,7 +27,25 @@ pub struct Region {
 }
 
 impl Region {
+    /// Build a Region describing an existing byte slice.
+    ///
+    /// IMPORTANT MEMORY SAFETY NOTE:
+    /// This function does NOT take ownership of `data`, therefore the host must
+    /// NOT call `deallocate` to free the memory.
+    pub fn build(data: &[u8]) -> Box<Region> {
+        Box::new(Self {
+            offset:   data.as_ptr() as usize,
+            capacity: data.len(),
+            length:   data.len(),
+        })
+    }
+
     /// Consume an existing vector data, returns a pointer to the Region.
+    ///
+    /// IMPORTANT MEMORY SAFETY NOTE:
+    /// The variable `data` is dropped, but the memory it takes is not freed.
+    /// The host MUST call the `deallocate` export to free the memory spaces
+    /// taken by _both_ the Region and the Vec.
     pub fn release_buffer(data: Vec<u8>) -> *mut Self {
         let region = Box::new(Self {
             offset:   data.as_ptr() as usize,
@@ -42,20 +60,10 @@ impl Region {
         Box::into_raw(region)
     }
 
-    /// Similar to release_buffer, but instead of an owned value it takes a
-    /// reference to a byte slice.
-    pub fn build(data: &[u8]) -> *mut Self {
-        let region = Box::new(Self {
-            offset:   data.as_ptr() as usize,
-            capacity: data.len(),
-            length:   data.len(),
-        });
-
-        Box::into_raw(region)
-    }
-
-    /// The reverse of `release_buffer`. Consume a pointer to a Region, return
-    /// the vector data.
+    /// Typically used by the guest to read data provide by the host.
+    ///
+    /// NOTE: memory space taken by the Region is freed; memory space referenced
+    /// by the Region has its ownership captured by the Vec.
     #[allow(clippy::missing_safety_doc)]
     pub unsafe fn consume(ptr: *mut Region) -> Vec<u8> {
         assert!(!ptr.is_null(), "Region pointer is null");
