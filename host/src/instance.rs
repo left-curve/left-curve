@@ -1,18 +1,27 @@
 use {
-    crate::Region,
-    anyhow::bail,
-    std::mem::size_of,
-    wasmi::{Memory, Store, WasmParams, WasmResults},
+    crate::{Allocator, Memory},
+    wasmi::{Store, WasmParams, WasmResults},
 };
 
 /// Wraps around the wasmi Instance and a Store, providing some convenience
 /// methods.
 pub struct Instance<HostState> {
-    pub instance: wasmi::Instance,
-    pub store: Store<HostState>,
+    instance:  wasmi::Instance,
+    store:     Store<HostState>,
+    memory:    Memory,
+    allocator: Allocator,
 }
 
 impl<HostState> Instance<HostState> {
+    pub fn new(instance: wasmi::Instance, store: Store<HostState>) -> anyhow::Result<Self> {
+        Ok(Self {
+            allocator: (&instance, &store).try_into()?,
+            memory:    (&instance, &store).try_into()?,
+            store,
+            instance,
+        })
+    }
+
     pub fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
     where
         P: WasmParams,
@@ -26,66 +35,20 @@ impl<HostState> Instance<HostState> {
             .map_err(Into::into)
     }
 
+    pub fn release_buffer(&mut self, data: Vec<u8>) -> anyhow::Result<u32> {
+        let region_ptr = self.allocator.allocate(&mut self.store, data.capacity())?;
+        self.memory.write_region(&mut self.store, region_ptr, &data)?;
+        Ok(region_ptr)
+    }
+
+    pub fn consume_region(&mut self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
+        let data = self.memory.read_region(&self.store, region_ptr)?;
+        self.allocator.deallocate(&mut self.store, region_ptr)?;
+        Ok(data)
+    }
+
     /// Consume the instance, return the host state.
     pub fn recycle(self) -> HostState {
         self.store.into_data()
-    }
-
-    pub fn read_region(&self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
-        let memory = self.memory();
-
-        let buf = self.read_memory(memory, region_ptr as usize, size_of::<Region>())?;
-        let region = Region::deserialize(&buf)?;
-
-        self.read_memory(memory, region.offset as usize, region.length as usize)
-    }
-
-    pub fn write_region(&mut self, region_ptr: u32, data: &[u8]) -> anyhow::Result<()> {
-        let memory = self.memory();
-
-        let buf = self.read_memory(memory, region_ptr as usize, size_of::<Region>())?;
-        let mut region = Region::deserialize(&buf)?;
-        // don't forget to update the Region length
-        region.length = data.len() as u32;
-
-        if region.length > region.capacity {
-            bail!(
-                "Region too small! Capacity: {}, attempting to write: {}",
-                region.capacity,
-                region.length,
-            );
-        }
-
-        self.write_memory(memory, region.offset as usize, data)?;
-        self.write_memory(memory, region_ptr as usize, &region.serialize())
-    }
-
-    fn read_memory(&self, memory: Memory, offset: usize, len: usize) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![0x8; len];
-        if let Err(err) = memory.read(&self.store, offset, &mut buf) {
-            bail!(
-                "Failed to read memory! offset: {}, length: {}, reason: {}",
-                offset,
-                len,
-                err,
-            );
-        }
-        Ok(buf)
-    }
-
-    fn write_memory(&mut self, memory: Memory, offset: usize, data: &[u8]) -> anyhow::Result<()> {
-        if let Err(err) = memory.write(&mut self.store, offset, data) {
-            bail!(
-                "Failed to write to Wasm memory! offset: {}, length: {}, reason: {}",
-                offset,
-                data.len(),
-                err,
-            );
-        }
-        Ok(())
-    }
-
-    fn memory(&self) -> Memory {
-        self.instance.get_memory(&self.store, "memory").expect("Memory not found")
     }
 }

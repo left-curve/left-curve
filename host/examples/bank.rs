@@ -1,6 +1,6 @@
 use {
     anyhow::anyhow,
-    host::{Instance, InstanceBuilder, Memory},
+    host::{Allocator, Instance, InstanceBuilder, Memory},
     std::{collections::BTreeMap, env, path::PathBuf},
     wasmi::{core::Trap, Caller},
 };
@@ -70,14 +70,8 @@ fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, T
     };
 
     // now we need to allocate a region in Wasm memory and put the value in
-    let alloc_fn = caller
-        .get_export("allocate")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .typed::<u32, u32>(&caller)
-        .unwrap();
-    let region_ptr = alloc_fn.call(&mut caller, value.capacity() as u32).unwrap();
+    let allocator = Allocator::try_from(&caller)?;
+    let region_ptr = allocator.allocate(&mut caller, value.capacity())?;
     memory.write_region(&mut caller, region_ptr, &value).unwrap();
 
     Ok(region_ptr)
@@ -113,17 +107,16 @@ fn call_send(
     amount: u64,
 ) -> anyhow::Result<()> {
     // load sender into memory
-    let from_ptr = instance.call("allocate", from.as_bytes().len() as u32)?;
-    instance.write_region(from_ptr, from.as_bytes())?;
+    let from_ptr = instance.release_buffer(from.as_bytes().to_vec())?;
 
     // load receiver into memory
-    let to_ptr = instance.call("allocate", to.as_bytes().len() as u32)?;
-    instance.write_region(to_ptr, to.as_bytes())?;
+    let to_ptr = instance.release_buffer(to.as_bytes().to_vec())?;
 
     // call send function. this function has no return data
     instance.call("send", (from_ptr, to_ptr, amount))?;
 
     // no need to deallocate {from,to}_ptr, they were already freed in Wasm code
+    // the send function doesn't have response data either, so we're done
 
     Ok(())
 }

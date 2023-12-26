@@ -1,9 +1,8 @@
 use {
+    crate::Error,
+    anyhow::Context,
     std::mem::size_of,
-    wasmi::{
-        core::{HostError, Trap},
-        AsContext, AsContextMut, Caller,
-    },
+    wasmi::{core::Trap, AsContext, AsContextMut, Caller, Instance, Store},
 };
 
 /// Parallel to sdk::Region
@@ -24,9 +23,9 @@ impl Region {
         buf
     }
 
-    pub fn deserialize(buf: &[u8]) -> Result<Self, MemoryError> {
+    pub fn deserialize(buf: &[u8]) -> Result<Self, Error> {
         if buf.len() != 12 {
-            return Err(MemoryError::ParseRegion(buf.len()));
+            return Err(Error::ParseRegion(buf.len()));
         }
 
         Ok(Self {
@@ -43,20 +42,35 @@ pub struct Memory {
     inner: wasmi::Memory,
 }
 
+impl<T> TryFrom<(&Instance, &Store<T>)> for Memory {
+    type Error = anyhow::Error;
+
+    fn try_from((instance, store): (&Instance, &Store<T>)) -> anyhow::Result<Self> {
+        instance
+            .get_memory(store, "memory")
+            .map(Self::new)
+            .context("Failed to get memory from instance")
+    }
+}
+
 impl<'a, T> TryFrom<&Caller<'a, T>> for Memory {
     type Error = Trap;
 
     fn try_from(caller: &Caller<'a, T>) -> Result<Self, Trap> {
         caller
             .get_export("memory")
-            .ok_or(MemoryError::NoMemoryExport)?
+            .ok_or(Error::ExportNotFound)?
             .into_memory()
-            .map(|inner| Self { inner })
-            .ok_or(MemoryError::ExportIsNotMemory.into())
+            .map(Self::new)
+            .ok_or(Error::ExportIsNotMemory.into())
     }
 }
 
 impl Memory {
+    pub fn new(inner: wasmi::Memory) -> Self {
+        Self { inner }
+    }
+
     pub fn read_region(&self, ctx: impl AsContext, region_ptr: u32) -> Result<Vec<u8>, Trap> {
         let buf = self.read(&ctx, region_ptr as usize, size_of::<Region>())?;
         let region = Region::deserialize(&buf)?;
@@ -76,7 +90,7 @@ impl Memory {
         region.length = data.len() as u32;
 
         if region.length > region.capacity {
-            return Err(MemoryError::InsufficientRegion {
+            return Err(Error::InsufficientRegion {
                 capacity: region.capacity,
                 length:   region.length,
             }
@@ -92,7 +106,7 @@ impl Memory {
         self.inner
             .read(ctx, offset, &mut buf)
             .map(|_| buf)
-            .map_err(|reason| MemoryError::ReadMemory {
+            .map_err(|reason| Error::ReadMemory {
                 offset,
                 length,
                 reason,
@@ -103,7 +117,7 @@ impl Memory {
     fn write(&self, ctx: impl AsContextMut, offset: usize, data: &[u8]) -> Result<(), Trap> {
         self.inner
             .write(ctx, offset, data)
-            .map_err(|reason| MemoryError::WriteMemory {
+            .map_err(|reason| Error::WriteMemory {
                 offset,
                 length: data.len(),
                 reason,
@@ -111,38 +125,3 @@ impl Memory {
             .into())
     }
 }
-
-// we can't use anyhow::Error, but it doesn't implement wasi::core::HostError
-#[derive(Debug, thiserror::Error)]
-pub enum MemoryError {
-    #[error("Can't find an export named `memory`")]
-    NoMemoryExport,
-
-    #[error("Failed to cast the memory export to wasmi::Memory type")]
-    ExportIsNotMemory,
-
-    #[error("Failed to parse Region: expect 12 bytes, found {0}")]
-    ParseRegion(usize),
-
-    #[error("Region too small! capacity: {capacity}, attempting to write: {length}")]
-    InsufficientRegion { capacity: u32, length: u32 },
-
-    #[error("Failed to read memory! offset: {offset}, length: {length}, reason: {reason}")]
-    ReadMemory {
-        offset: usize,
-        length: usize,
-        reason: wasmi::errors::MemoryError,
-    },
-
-    #[error(
-        "Failed to write to Wasm memory! offset: {offset}, length: {length}, reason: {reason}"
-    )]
-    WriteMemory {
-        offset: usize,
-        length: usize,
-        reason: wasmi::errors::MemoryError,
-    },
-}
-
-// important
-impl HostError for MemoryError {}

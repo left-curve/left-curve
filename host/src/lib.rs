@@ -1,7 +1,9 @@
+mod alloc;
+mod errors;
 mod instance;
 mod memory;
 
-pub use crate::{instance::Instance, memory::{Memory, Region}};
+pub use crate::{alloc::Allocator, errors::Error, instance::Instance, memory::{Memory, Region}};
 
 use {
     anyhow::Context,
@@ -57,7 +59,7 @@ impl<HostState> InstanceBuilder<HostState> {
         let linker = self.take_linker()?;
         let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
 
-        Ok(Instance { instance, store })
+        Instance::new(instance, store)
     }
 
     fn take_module(&mut self) -> anyhow::Result<Module> {
