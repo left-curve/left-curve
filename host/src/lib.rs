@@ -80,7 +80,7 @@ impl<'a, HostState> HostInner<'a, HostState> {
     fn memory(&self) -> Result<Memory, Error> {
         match self {
             HostInner::Owned { instance, store } => instance
-                .get_memory(&store, "memory")
+                .get_memory(store, "memory")
                 .ok_or(Error::FailedToObtainMemory),
             HostInner::Ref(caller) => caller
                 .get_export("memory")
@@ -93,13 +93,13 @@ impl<'a, HostState> HostInner<'a, HostState> {
     fn alloc_fn(&self) -> Result<TypedFunc<u32, u32>, Error> {
         match self {
             HostInner::Owned { instance, store } => instance
-                .get_typed_func(&store, "allocate"),
+                .get_typed_func(store, "allocate"),
             HostInner::Ref(caller) => caller
                 .get_export("allocate")
                 .ok_or(Error::ExportNotFound)?
                 .into_func()
                 .ok_or(Error::ExportIsNotFunc)?
-                .typed(&caller)
+                .typed(caller)
         }
         .map_err(Into::into)
     }
@@ -107,13 +107,13 @@ impl<'a, HostState> HostInner<'a, HostState> {
     fn dealloc_fn(&self) -> Result<TypedFunc<u32, ()>, Error> {
         match self {
             HostInner::Owned { instance, store } => instance
-                .get_typed_func(&store, "deallocate"),
+                .get_typed_func(store, "deallocate"),
             HostInner::Ref(caller) => caller
                 .get_export("deallocate")
                 .ok_or(Error::ExportNotFound)?
                 .into_func()
                 .ok_or(Error::ExportIsNotFunc)?
-                .typed(&caller)
+                .typed(caller)
         }
         .map_err(Into::into)
     }
@@ -240,16 +240,15 @@ impl<HostState> Host<'_, HostState> {
     }
 
     fn memory(&self) -> Memory {
-        // memory should implement Copy but it doesn't for some reason
-        self.memory.get_or_init(|| self.inner.memory().unwrap()).clone()
+        *self.memory.get_or_init(|| self.inner.memory().unwrap())
     }
 
     fn alloc_fn(&self) -> TypedFunc<u32, u32> {
-        self.alloc_fn.get_or_init(|| self.inner.alloc_fn().unwrap()).clone()
+        *self.alloc_fn.get_or_init(|| self.inner.alloc_fn().unwrap())
     }
 
     fn dealloc_fn(&self) -> TypedFunc<u32, ()> {
-        self.dealloc_fn.get_or_init(|| self.inner.dealloc_fn().unwrap()).clone()
+        *self.dealloc_fn.get_or_init(|| self.inner.dealloc_fn().unwrap())
     }
 }
 
