@@ -42,6 +42,10 @@ impl Region {
 
     /// Consume an existing vector data, returns a pointer to the Region.
     ///
+    /// Pretty much the only use case for this is to return data to the host
+    /// at the very end of the call. For all other use cases, Region::build
+    /// probably should be used.
+    ///
     /// IMPORTANT MEMORY SAFETY NOTE:
     /// The variable `data` is dropped, but the memory it takes is not freed.
     /// The host MUST call the `deallocate` export to free the memory spaces

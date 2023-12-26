@@ -39,14 +39,17 @@ impl<'a, HostState> Host<'a, HostState> {
         }
     }
 
+    /// Get an immutable reference to the host state.
     pub fn data(&self) -> &HostState {
         self.caller.data()
     }
 
+    /// Get a mutable reference to the host state.
     pub fn data_mut(&mut self) -> &mut HostState {
         self.caller.data_mut()
     }
 
+    /// Call a function on the Wasm module.
     pub fn call<Params, Results>(&mut self, name: &str, params: Params) -> Result<Results>
     where
         Params:  WasmParams,
@@ -55,23 +58,28 @@ impl<'a, HostState> Host<'a, HostState> {
         self.get_typed_func(name)?.call(&mut self.caller, params).map_err(Into::into)
     }
 
-    pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32> {
-        let region_ptr = self.alloc_fn().call(&mut self.caller, data.capacity() as u32)?;
-        self.write_region(region_ptr, &data)?;
+    /// Reserve a region in Wasm memory and write the given data into it.
+    pub fn write_to_memory(&mut self, data: &[u8]) -> Result<u32> {
+        let region_ptr = self.alloc_fn().call(&mut self.caller, data.len() as u32)?;
+        self.write_region(region_ptr, data)?;
         Ok(region_ptr)
     }
 
-    pub fn consume_region(&mut self, region_ptr: u32) -> Result<Vec<u8>> {
-        let data = self.read_region(region_ptr)?;
-        self.dealloc_fn().call(&mut self.caller, region_ptr).map_err(Error::from)?;
-        Ok(data)
-    }
-
-    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>> {
+    /// Read data from a region in Wasm memory.
+    pub fn read_from_memory(&self, region_ptr: u32) -> Result<Vec<u8>> {
         let buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw(&buf) };
 
         self.read_memory(region.offset as usize, region.length as usize)
+    }
+
+    /// Read data from a region then deallocate it. This is used almost
+    /// exclusively for reading the response at the very end of the call.
+    /// For all other use cases, Host::read_from_memory probably should be used.
+    pub fn read_then_wipe(&mut self, region_ptr: u32) -> Result<Vec<u8>> {
+        let data = self.read_from_memory(region_ptr)?;
+        self.dealloc_fn().call(&mut self.caller, region_ptr)?;
+        Ok(data)
     }
 
     fn write_region(&mut self, region_ptr: u32, data: &[u8]) -> Result<()> {

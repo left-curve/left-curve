@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
 
 fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, wasmi::Error> {
     let mut host = Host::from(caller);
-    let key = host.read_region(key_ptr)?;
+    let key = host.read_from_memory(key_ptr)?;
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
@@ -71,7 +71,7 @@ fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, wasmi
     };
 
     // now we need to allocate a region in Wasm memory and put the value in
-    let value_ptr = host.release_buffer(value)?;
+    let value_ptr = host.write_to_memory(&value)?;
 
     Ok(value_ptr)
 }
@@ -82,8 +82,8 @@ fn db_write<'a>(
     value_ptr: u32,
 ) -> Result<(), wasmi::Error> {
     let mut host = Host::from(caller);
-    let key = host.read_region(key_ptr)?;
-    let value = host.read_region(value_ptr)?;
+    let key = host.read_from_memory(key_ptr)?;
+    let value = host.read_from_memory(value_ptr)?;
 
     host.data_mut().insert(key, value);
 
@@ -92,7 +92,7 @@ fn db_write<'a>(
 
 fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), wasmi::Error> {
     let mut host = Host::from(caller);
-    let key = host.read_region(key_ptr)?;
+    let key = host.read_from_memory(key_ptr)?;
 
     host.data_mut().remove(&key);
 
@@ -106,10 +106,10 @@ fn call_send(
     amount: u64,
 ) -> anyhow::Result<()> {
     // load sender into memory
-    let from_ptr = host.release_buffer(from.as_bytes().to_vec())?;
+    let from_ptr = host.write_to_memory(from.as_bytes())?;
 
     // load receiver into memory
-    let to_ptr = host.release_buffer(to.as_bytes().to_vec())?;
+    let to_ptr = host.write_to_memory(to.as_bytes())?;
 
     // call send function. this function has no return data
     host.call("send", (from_ptr, to_ptr, amount))?;
