@@ -7,3 +7,6 @@ edition = { workspace = true }
 anyhow    = { workspace = true }
 wasmi     = { workspace = true }
 thiserror = { workspace = true }
+
+[lints]
+workspace = true

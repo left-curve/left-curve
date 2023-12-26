@@ -21,7 +21,7 @@ impl Storage {
 
     pub fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let key = Region::build(key);
-        let key_ptr = &*key as *const Region as u32;
+        let key_ptr = &*key as *const Region;
 
         let value_ptr = unsafe { db_read(key_ptr as u32) };
         if value_ptr == 0 {
@@ -42,17 +42,17 @@ impl Storage {
     // vs a non-existent value. but this isn't a problem for us.
     pub fn write(&mut self, key: &[u8], value: &[u8]) {
         let key = Region::build(key);
-        let key_ptr = &*key as *const Region as u32;
+        let key_ptr = &*key as *const Region;
 
         let value = Region::build(value);
-        let value_ptr = &*value as *const Region as u32;
+        let value_ptr = &*value as *const Region;
 
         unsafe { db_write(key_ptr as u32, value_ptr as u32) }
     }
 
     pub fn remove(&mut self, key: &[u8]) {
         let key = Region::build(key);
-        let key_ptr = &*key as *const Region as u32;
+        let key_ptr = &*key as *const Region;
 
         unsafe { db_remove(key_ptr as u32) }
     }

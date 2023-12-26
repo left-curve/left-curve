@@ -11,6 +11,9 @@ anyhow    = "1"
 wasmi     = { git = "https://github.com/larry0x/wasmi", rev = "950d877" }
 thiserror = "1"
 
+[workspace.lints.clippy]
+missing_safety_doc = "allow"
+
 [profile.release]
 codegen-units    = 1
 debug            = false

@@ -64,7 +64,6 @@ impl Region {
     ///
     /// NOTE: memory space taken by the Region is freed; memory space referenced
     /// by the Region has its ownership captured by the Vec.
-    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn consume(ptr: *mut Region) -> Vec<u8> {
         assert!(!ptr.is_null(), "Region pointer is null");
 
