@@ -2,11 +2,11 @@ use crate::Region;
 
 // these are the method that the host must implement
 extern "C" {
-    fn db_read(key_ptr: u32) -> u32;
+    fn db_read(key_ptr: usize) -> usize;
 
-    fn db_write(key_ptr: u32, value_ptr: u32);
+    fn db_write(key_ptr: usize, value_ptr: usize);
 
-    fn db_remove(key_ptr: u32);
+    fn db_remove(key_ptr: usize);
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -23,7 +23,7 @@ impl Storage {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
-        let value_ptr = unsafe { db_read(key_ptr as u32) };
+        let value_ptr = unsafe { db_read(key_ptr as usize) };
         if value_ptr == 0 {
             // we interpret a zero pointer as meaning the key doesn't exist
             return None;
@@ -47,13 +47,13 @@ impl Storage {
         let value = Region::build(value);
         let value_ptr = &*value as *const Region;
 
-        unsafe { db_write(key_ptr as u32, value_ptr as u32) }
+        unsafe { db_write(key_ptr as usize, value_ptr as usize) }
     }
 
     pub fn remove(&mut self, key: &[u8]) {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
-        unsafe { db_remove(key_ptr as u32) }
+        unsafe { db_remove(key_ptr as usize) }
     }
 }
