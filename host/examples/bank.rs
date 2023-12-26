@@ -1,6 +1,6 @@
 use {
     anyhow::anyhow,
-    host::{Allocator, Host, HostBuilder, Memory},
+    host::{Host, HostBuilder},
     std::{collections::BTreeMap, env, path::PathBuf},
     wasmi::{core::Trap, Caller},
 };
@@ -59,43 +59,41 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn db_read<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
-    let memory = Memory::try_from(&caller)?;
-    let key = memory.read_region(&caller, key_ptr)?;
+fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
+    let mut host = Host::build_ref(caller)?;
+    let key = host.consume_region(key_ptr)?;
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
-    let Some(value) = caller.data().get(&key).cloned() else {
+    let Some(value) = host.data().get(&key).cloned() else {
         return Ok(0);
     };
 
     // now we need to allocate a region in Wasm memory and put the value in
-    let allocator = Allocator::try_from(&caller)?;
-    let region_ptr = allocator.allocate(&mut caller, value.capacity())?;
-    memory.write_region(&mut caller, region_ptr, &value).unwrap();
+    let value_ptr = host.release_buffer(value)?;
 
-    Ok(region_ptr)
+    Ok(value_ptr)
 }
 
 fn db_write<'a>(
-    mut caller: Caller<'a, HostState>,
+    caller: Caller<'a, HostState>,
     key_ptr:    u32,
     value_ptr:  u32,
 ) -> Result<(), Trap> {
-    let memory = Memory::try_from(&caller)?;
-    let key = memory.read_region(&caller, key_ptr)?;
-    let value = memory.read_region(&caller, value_ptr)?;
+    let mut host = Host::build_ref(caller)?;
+    let key = host.consume_region(key_ptr)?;
+    let value = host.consume_region(value_ptr)?;
 
-    caller.data_mut().insert(key, value);
+    host.data_mut().insert(key, value);
 
     Ok(())
 }
 
-fn db_remove<'a>(mut caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
-    let memory = Memory::try_from(&caller)?;
-    let key = memory.read_region(&caller, key_ptr)?;
+fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
+    let mut host = Host::build_ref(caller)?;
+    let key = host.consume_region(key_ptr)?;
 
-    caller.data_mut().remove(&key);
+    host.data_mut().remove(&key);
 
     Ok(())
 }
