@@ -1,9 +1,13 @@
+mod builder;
+mod region;
+
+pub use {builder::InstanceBuilder, region::Region};
+
 use {
-    anyhow::Context,
-    std::{cell::OnceCell, fs::File, mem::size_of, path::Path},
+    std::{cell::OnceCell, mem::size_of},
     wasmi::{
-        core::HostError, errors::MemoryError, Caller, Engine, Extern, Instance, IntoFunc, Linker,
-        Memory, Module, Store, TypedFunc, WasmParams, WasmResults,
+        core::HostError, errors::MemoryError, Caller, Extern, Instance, Memory, Store, TypedFunc,
+        WasmParams, WasmResults,
     },
 };
 
@@ -154,106 +158,6 @@ impl<'a, HostState> Host<'a, HostState> {
         }))
     }
 }
-
-// ---------------------------------- builder ----------------------------------
-
-#[derive(Default)]
-pub struct InstanceBuilder<HostState> {
-    engine: Engine,
-    module: Option<Module>,
-    store:  Option<Store<HostState>>,
-    linker: Option<Linker<HostState>>,
-}
-
-impl<HostState> InstanceBuilder<HostState> {
-    pub fn new(engine: Engine) -> Self {
-        Self {
-            engine,
-            module: None,
-            store:  None,
-            linker: None,
-        }
-    }
-
-    pub fn with_wasm_file(mut self, path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let mut file = File::open(path)?;
-        self.module = Some(Module::new(&self.engine, &mut file)?);
-        Ok(self)
-    }
-
-    pub fn with_host_state(mut self, data: HostState) -> Self {
-        self.store = Some(Store::new(&self.engine, data));
-        self.linker = Some(Linker::new(&self.engine));
-        self
-    }
-
-    pub fn with_host_function<Params, Results>(
-        mut self,
-        name: &str,
-        func: impl IntoFunc<HostState, Params, Results>,
-    ) -> anyhow::Result<Self> {
-        let mut linker = self.take_linker()?;
-        linker.func_wrap("env", name, func)?;
-        self.linker = Some(linker);
-
-        Ok(self)
-    }
-
-    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<HostState>)> {
-        let module = self.take_module()?;
-        let mut store = self.take_store()?;
-        let linker = self.take_linker()?;
-        let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
-
-        Ok((instance, store))
-    }
-
-    fn take_module(&mut self) -> anyhow::Result<Module> {
-        self.module.take().context("Module not yet initialized")
-    }
-
-    fn take_store(&mut self) -> anyhow::Result<Store<HostState>> {
-        self.store.take().context("Store not yet initialized")
-    }
-
-    fn take_linker(&mut self) -> anyhow::Result<Linker<HostState>> {
-        self.linker.take().context("Linker not yet initialized")
-    }
-}
-
-// ---------------------------------- region -----------------------------------
-
-/// Similar to sdk::Region
-struct Region {
-    pub offset:   u32,
-    pub capacity: u32,
-    pub length:   u32,
-}
-
-// note that numbers are stored as little endian
-impl Region {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = vec![];
-        buf.extend_from_slice(&self.offset.to_le_bytes());
-        buf.extend_from_slice(&self.capacity.to_le_bytes());
-        buf.extend_from_slice(&self.length.to_le_bytes());
-        buf
-    }
-
-    pub fn deserialize(buf: &[u8]) -> Result<Self, Error> {
-        if buf.len() != 12 {
-            return Err(Error::ParseRegion(buf.len()));
-        }
-
-        Ok(Self {
-            offset:   u32::from_le_bytes((&buf[0..4]).try_into().unwrap()),
-            capacity: u32::from_le_bytes((&buf[4..8]).try_into().unwrap()),
-            length:   u32::from_le_bytes((&buf[8..12]).try_into().unwrap()),
-        })
-    }
-}
-
-// ----------------------------------- error -----------------------------------
 
 // we can't use anyhow::Error, because it doesn't implement wasi::core::HostError
 #[derive(Debug, thiserror::Error)]
