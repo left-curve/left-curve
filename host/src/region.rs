@@ -1,6 +1,7 @@
 use std::{mem, slice};
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Region {
     pub offset:   u32,
     pub capacity: u32,

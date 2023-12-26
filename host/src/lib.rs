@@ -47,7 +47,7 @@ impl<'a, HostState> Host<'a, HostState> {
         self.caller.data_mut()
     }
 
-    pub fn call<Params, Results>(&mut self, name: &str, params: Params) -> Result<Results, Error>
+    pub fn call<Params, Results>(&mut self, name: &str, params: Params) -> Result<Results>
     where
         Params:  WasmParams,
         Results: WasmResults,
@@ -55,30 +55,26 @@ impl<'a, HostState> Host<'a, HostState> {
         self.get_typed_func(name)?.call(&mut self.caller, params).map_err(Into::into)
     }
 
-    pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32, Error> {
+    pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32> {
         let region_ptr = self.alloc_fn().call(&mut self.caller, data.capacity() as u32)?;
         self.write_region(region_ptr, &data)?;
         Ok(region_ptr)
     }
 
-    pub fn consume_region(&mut self, region_ptr: u32) -> Result<Vec<u8>, Error> {
+    pub fn consume_region(&mut self, region_ptr: u32) -> Result<Vec<u8>> {
         let data = self.read_region(region_ptr)?;
         self.dealloc_fn().call(&mut self.caller, region_ptr).map_err(Error::from)?;
         Ok(data)
     }
 
-    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Error> {
+    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>> {
         let buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw(&buf) };
 
         self.read_memory(region.offset as usize, region.length as usize)
     }
 
-    fn write_region(
-        &mut self,
-        region_ptr: u32,
-        data: &[u8],
-    ) -> Result<(), Error> {
+    fn write_region(&mut self, region_ptr: u32, data: &[u8]) -> Result<()> {
         let mut buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw_mut(&mut buf) };
         // don't forget to update the Region length
@@ -95,7 +91,7 @@ impl<'a, HostState> Host<'a, HostState> {
         self.write_memory(region_ptr as usize, region.as_bytes())
     }
 
-    fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>, Error> {
+    fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>> {
         let mut buf = vec![0x8; length];
         self.memory()
             .read(&self.caller, offset, &mut buf)
@@ -107,7 +103,7 @@ impl<'a, HostState> Host<'a, HostState> {
             })
     }
 
-    fn write_memory(&mut self, offset: usize, data: &[u8]) -> Result<(), Error> {
+    fn write_memory(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         self.memory()
             .write(&mut self.caller, offset, data)
             .map_err(|reason| Error::WriteMemory {
@@ -117,10 +113,7 @@ impl<'a, HostState> Host<'a, HostState> {
             })
     }
 
-    fn get_typed_func<Params, Results>(
-        &self,
-        name: &str,
-    ) -> Result<TypedFunc<Params, Results>, Error>
+    fn get_typed_func<Params, Results>(&self, name: &str, ) -> Result<TypedFunc<Params, Results>>
     where
         Params: WasmParams,
         Results: WasmResults,
@@ -133,7 +126,7 @@ impl<'a, HostState> Host<'a, HostState> {
             .map_err(Into::into)
     }
 
-    fn get_memory(&self) -> Result<Memory, Error> {
+    fn get_memory(&self) -> Result<Memory> {
         self.caller
             .get_export("memory")
             .and_then(Extern::into_memory)
@@ -199,3 +192,5 @@ impl From<Error> for wasmi::Error {
 }
 
 impl HostError for Error {}
+
+type Result<T> = std::result::Result<T, Error>;
