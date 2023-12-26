@@ -48,7 +48,7 @@ impl<'a, HostState> Host<'a, HostState> {
         Params:  WasmParams,
         Results: WasmResults,
     {
-        self.get_function(name)?.call(&mut self.caller, params).map_err(Into::into)
+        self.get_typed_func(name)?.call(&mut self.caller, params).map_err(Into::into)
     }
 
     pub fn release_buffer(&mut self, data: Vec<u8>) -> Result<u32, Error> {
@@ -113,9 +113,12 @@ impl<'a, HostState> Host<'a, HostState> {
             })
     }
 
-    fn get_function<Params, Results>(&self, name: &str) -> Result<TypedFunc<Params, Results>, Error>
+    fn get_typed_func<Params, Results>(
+        &self,
+        name: &str,
+    ) -> Result<TypedFunc<Params, Results>, Error>
     where
-        Params:  WasmParams,
+        Params: WasmParams,
         Results: WasmResults,
     {
         self.caller
@@ -140,13 +143,13 @@ impl<'a, HostState> Host<'a, HostState> {
     }
 
     fn alloc_fn(&self) -> TypedFunc<u32, u32> {
-        *self.alloc_fn.get_or_init(|| self.get_function("allocate").unwrap_or_else(|err| {
+        *self.alloc_fn.get_or_init(|| self.get_typed_func("allocate").unwrap_or_else(|err| {
             panic!("[Host]: Failed to get `allocate` function: {err}");
         }))
     }
 
     fn dealloc_fn(&self) -> TypedFunc<u32, ()> {
-        *self.dealloc_fn.get_or_init(|| self.get_function("deallocate").unwrap_or_else(|err| {
+        *self.dealloc_fn.get_or_init(|| self.get_typed_func("deallocate").unwrap_or_else(|err| {
             panic!("[Host]: Failed to get `deallocate` function: {err}");
         }))
     }
@@ -280,9 +283,7 @@ pub enum Error {
         reason: MemoryError,
     },
 
-    #[error(
-        "Failed to write to Wasm memory! offset: {offset}, length: {length}, reason: {reason}"
-    )]
+    #[error("Failed to write to Wasm memory! offset: {offset}, length: {length}, reason: {reason}")]
     WriteMemory {
         offset: usize,
         length: usize,
