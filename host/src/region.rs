@@ -16,11 +16,13 @@ impl Region {
         unsafe { slice::from_raw_parts(ptr as *const u8, Self::SIZE) }
     }
 
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn from_raw(buf: &[u8]) -> &Self {
         assert_size(buf);
         &*(buf.as_ptr() as *const Self)
     }
 
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn from_raw_mut(buf: &mut [u8]) -> &mut Self {
         assert_size(buf);
         &mut *(buf.as_mut_ptr() as *mut Region)
