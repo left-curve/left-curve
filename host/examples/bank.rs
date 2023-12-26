@@ -61,7 +61,7 @@ fn main() -> anyhow::Result<()> {
 
 fn db_read<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<u32, Trap> {
     let mut host = Host::build_ref(caller)?;
-    let key = host.consume_region(key_ptr)?;
+    let key = host.read_region(key_ptr)?;
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
@@ -81,8 +81,8 @@ fn db_write<'a>(
     value_ptr:  u32,
 ) -> Result<(), Trap> {
     let mut host = Host::build_ref(caller)?;
-    let key = host.consume_region(key_ptr)?;
-    let value = host.consume_region(value_ptr)?;
+    let key = host.read_region(key_ptr)?;
+    let value = host.read_region(value_ptr)?;
 
     host.data_mut().insert(key, value);
 
@@ -91,7 +91,7 @@ fn db_write<'a>(
 
 fn db_remove<'a>(caller: Caller<'a, HostState>, key_ptr: u32) -> Result<(), Trap> {
     let mut host = Host::build_ref(caller)?;
-    let key = host.consume_region(key_ptr)?;
+    let key = host.read_region(key_ptr)?;
 
     host.data_mut().remove(&key);
 

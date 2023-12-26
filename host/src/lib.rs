@@ -186,7 +186,7 @@ impl<HostState> Host<'_, HostState> {
         Ok(data)
     }
 
-    fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Trap> {
+    pub fn read_region(&self, region_ptr: u32) -> Result<Vec<u8>, Trap> {
         let buf = self.read_memory(region_ptr as usize, size_of::<Region>())?;
         let region = Region::deserialize(&buf)?;
 
