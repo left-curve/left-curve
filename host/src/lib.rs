@@ -55,7 +55,9 @@ impl<'a, HostState> Host<'a, HostState> {
         Params:  WasmParams,
         Results: WasmResults,
     {
-        self.get_typed_func(name)?.call(&mut self.caller, params).map_err(Into::into)
+        self.get_typed_func(name)?
+            .call(&mut self.caller, params)
+            .map_err(Into::into)
     }
 
     /// Reserve a region in Wasm memory and write the given data into it.
