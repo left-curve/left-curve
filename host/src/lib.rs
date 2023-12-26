@@ -165,14 +165,14 @@ pub enum Error {
     #[error(transparent)]
     Wasmi(#[from] wasmi::Error),
 
+    #[error("Failed to parse Region: expect 12 bytes, found {0}")]
+    ParseRegion(usize),
+
     #[error("Can't find memory in Wasm exports")]
     MemoryNotFound,
 
     #[error("Can't find the given function in Wasm exports")]
     FunctionNotFound,
-
-    #[error("Failed to parse Region: expect 12 bytes, found {0}")]
-    ParseRegion(usize),
 
     #[error("Region too small! capacity: {capacity}, attempting to write: {length}")]
     InsufficientRegion {
