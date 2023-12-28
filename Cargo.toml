@@ -7,12 +7,13 @@ version = "0.0.0"
 edition = "2021"
 
 [workspace.dependencies]
-anyhow    = "1"
+anyhow = "1"
+hex    = "0.4"
 # Our fork of wasmi is based off its v0.32.0-beta.2 release, with the following
 # changes:
-# - Make Caller::new function public. We need this to contruct vm::Host object
-wasmi     = { git = "https://github.com/cwsoftware123/wasmi", rev = "5f1d021" }
-thiserror = "1"
+# - Make Caller::new function public. We need this to contruct vm::Host object.
+# - Add an `anyhow` feature, which allows host functions to emit anyhow::Error.
+wasmi  = { git = "https://github.com/cwsoftware123/wasmi", rev = "e122dfa", features = ["anyhow"] }
 
 [profile.release]
 codegen-units    = 1

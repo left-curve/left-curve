@@ -4,11 +4,9 @@ mod region;
 pub use {builder::InstanceBuilder, region::Region};
 
 use {
+    anyhow::{anyhow, bail, Context},
     std::cell::OnceCell,
-    wasmi::{
-        core::HostError, errors::MemoryError, Caller, Extern, Instance, Memory, Store, TypedFunc,
-        WasmParams, WasmResults,
-    },
+    wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
 
 pub struct Host<'a, HostState> {
@@ -50,10 +48,10 @@ impl<'a, HostState> Host<'a, HostState> {
     }
 
     /// Call a function on the Wasm module.
-    pub fn call<Params, Results>(&mut self, name: &str, params: Params) -> Result<Results>
+    pub fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
     where
-        Params:  WasmParams,
-        Results: WasmResults,
+        P: WasmParams,
+        R: WasmResults,
     {
         self.get_typed_func(name)?
             .call(&mut self.caller, params)
@@ -61,14 +59,14 @@ impl<'a, HostState> Host<'a, HostState> {
     }
 
     /// Reserve a region in Wasm memory and write the given data into it.
-    pub fn write_to_memory(&mut self, data: &[u8]) -> Result<u32> {
+    pub fn write_to_memory(&mut self, data: &[u8]) -> anyhow::Result<u32> {
         let region_ptr = self.alloc_fn().call(&mut self.caller, data.len() as u32)?;
         self.write_region(region_ptr, data)?;
         Ok(region_ptr)
     }
 
     /// Read data from a region in Wasm memory.
-    pub fn read_from_memory(&self, region_ptr: u32) -> Result<Vec<u8>> {
+    pub fn read_from_memory(&self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
         let buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw(&buf) };
 
@@ -78,69 +76,73 @@ impl<'a, HostState> Host<'a, HostState> {
     /// Read data from a region then deallocate it. This is used almost
     /// exclusively for reading the response at the very end of the call.
     /// For all other use cases, Host::read_from_memory probably should be used.
-    pub fn read_then_wipe(&mut self, region_ptr: u32) -> Result<Vec<u8>> {
+    pub fn read_then_wipe(&mut self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
         let data = self.read_from_memory(region_ptr)?;
         self.dealloc_fn().call(&mut self.caller, region_ptr)?;
         Ok(data)
     }
 
-    fn write_region(&mut self, region_ptr: u32, data: &[u8]) -> Result<()> {
+    fn write_region(&mut self, region_ptr: u32, data: &[u8]) -> anyhow::Result<()> {
         let mut buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw_mut(&mut buf) };
         // don't forget to update the Region length
         region.length = data.len() as u32;
 
         if region.length > region.capacity {
-            return Err(Error::InsufficientRegion {
-                capacity: region.capacity,
-                length:   region.length,
-            });
+            bail!(
+                "Region is too small! offset: {}, capacity: {}, data: {}",
+                region.offset,
+                region.capacity,
+                hex::encode(data),
+            );
         }
 
         self.write_memory(region.offset as usize, data)?;
         self.write_memory(region_ptr as usize, region.as_bytes())
     }
 
-    fn read_memory(&self, offset: usize, length: usize) -> Result<Vec<u8>> {
+    fn read_memory(&self, offset: usize, length: usize) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![0x8; length];
         self.memory()
             .read(&self.caller, offset, &mut buf)
             .map(|_| buf)
-            .map_err(|reason| Error::ReadMemory {
+            .map_err(|reason| anyhow!(
+                "Failed to read from Wasm memory! offset: {}, length: {}, reason: {}",
                 offset,
                 length,
                 reason,
-            })
+            ))
     }
 
-    fn write_memory(&mut self, offset: usize, data: &[u8]) -> Result<()> {
+    fn write_memory(&mut self, offset: usize, data: &[u8]) -> anyhow::Result<()> {
         self.memory()
             .write(&mut self.caller, offset, data)
-            .map_err(|reason| Error::WriteMemory {
+            .map_err(|reason| anyhow!(
+                "Failed to write to Wasm memory! offset: {}, data: {}, reason: {}",
                 offset,
-                length: data.len(),
+                hex::encode(data),
                 reason,
-            })
+            ))
     }
 
-    fn get_typed_func<Params, Results>(&self, name: &str) -> Result<TypedFunc<Params, Results>>
+    fn get_typed_func<P, R>(&self, name: &str) -> anyhow::Result<TypedFunc<P, R>>
     where
-        Params: WasmParams,
-        Results: WasmResults,
+        P: WasmParams,
+        R: WasmResults,
     {
         self.caller
             .get_export(name)
             .and_then(Extern::into_func)
-            .ok_or(Error::FunctionNotFound)?
+            .with_context(|| format!("Can't find function `{name}` in Wasm exports"))?
             .typed(&self.caller)
             .map_err(Into::into)
     }
 
-    fn get_memory(&self) -> Result<Memory> {
+    fn get_memory(&self) -> anyhow::Result<Memory> {
         self.caller
             .get_export("memory")
             .and_then(Extern::into_memory)
-            .ok_or(Error::MemoryNotFound)
+            .context("Can't find memory in Wasm exports")
     }
 
     fn memory(&self) -> Memory {
@@ -161,46 +163,3 @@ impl<'a, HostState> Host<'a, HostState> {
         }))
     }
 }
-
-// we can't use anyhow::Error, because it doesn't implement wasi::core::HostError
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Wasmi(#[from] wasmi::Error),
-
-    #[error("Can't find memory in Wasm exports")]
-    MemoryNotFound,
-
-    #[error("Can't find the given function in Wasm exports")]
-    FunctionNotFound,
-
-    #[error("Region too small! capacity: {capacity}, attempting to write: {length}")]
-    InsufficientRegion {
-        capacity: u32,
-        length:   u32,
-    },
-
-    #[error("Failed to read memory! offset: {offset}, length: {length}, reason: {reason}")]
-    ReadMemory {
-        offset: usize,
-        length: usize,
-        reason: MemoryError,
-    },
-
-    #[error("Failed to write to Wasm memory! offset: {offset}, length: {length}, reason: {reason}")]
-    WriteMemory {
-        offset: usize,
-        length: usize,
-        reason: MemoryError,
-    },
-}
-
-impl From<Error> for wasmi::Error {
-    fn from(err: Error) -> Self {
-        wasmi::Error::host(err)
-    }
-}
-
-impl HostError for Error {}
-
-type Result<T> = std::result::Result<T, Error>;

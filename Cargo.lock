@@ -30,7 +30,7 @@ name = "cw-vm"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "thiserror",
+ "hex",
  "wasmi",
 ]
 
@@ -39,6 +39,12 @@ name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "indexmap-nostd"
@@ -126,26 +132,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "thiserror"
-version = "1.0.52"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83a48fd946b02c0a526b2e9481c8e2a17755e47039164a86c4070446e3a4614d"
-dependencies = [
- "thiserror-impl",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.52"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7fbe9b594d6568a6a1443250a7e67d80b74e1e96f6d1715e1e21cc1888291d3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -154,8 +140,9 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 [[package]]
 name = "wasmi"
 version = "0.32.0-beta.2"
-source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=e122dfa#e122dfabb671facab94a516ceff5226831b2a9a6"
 dependencies = [
+ "anyhow",
  "multi-stash",
  "num-derive",
  "num-traits",
@@ -169,13 +156,14 @@ dependencies = [
 [[package]]
 name = "wasmi_arena"
 version = "0.4.0"
-source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=e122dfa#e122dfabb671facab94a516ceff5226831b2a9a6"
 
 [[package]]
 name = "wasmi_core"
 version = "0.15.0"
-source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=e122dfa#e122dfabb671facab94a516ceff5226831b2a9a6"
 dependencies = [
+ "anyhow",
  "downcast-rs",
  "libm",
  "num-traits",
