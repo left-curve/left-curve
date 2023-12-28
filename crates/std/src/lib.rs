@@ -1,24 +1,32 @@
-mod context;
-mod db;
-#[cfg(target_arch = "wasm32")]
-mod exports;
+// -------------------------------- all targets --------------------------------
+
+mod deps;
 mod memory;
 mod result;
+mod storage;
 
 pub use {
     crate::{
-        context::ExecuteCtx,
-        db::{ExternalStorage, MockStorage, Storage},
+        deps::ExecuteCtx,
         memory::Region,
         result::{ContractResult, Response},
+        storage::{MockStorage, Storage},
     },
     cw_std_derive::{cw_serde, entry_point},
 };
 
-#[cfg(target_arch = "wasm32")]
-pub use crate::exports::do_execute;
+// ---------------------------- wasm32 target only -----------------------------
 
-// re-export, for use in macro expansions
+#[cfg(target_arch = "wasm32")]
+mod exports;
+#[cfg(target_arch = "wasm32")]
+mod imports;
+
+#[cfg(target_arch = "wasm32")]
+pub use crate::{exports::do_execute, imports::ExternalStorage};
+
+// -------------------------------- re-exports ---------------------------------
+
 pub mod __private {
     pub use serde;
 }
