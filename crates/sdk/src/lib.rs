@@ -1,14 +1,18 @@
 // -------------------------------- all targets --------------------------------
 
 mod deps;
+mod item;
 mod result;
+mod serde;
 mod testing;
 mod traits;
 
 pub use {
     crate::{
         deps::ExecuteCtx,
+        item::Item,
         result::{ContractResult, Response},
+        serde::{from_json, to_json},
         testing::MockStorage,
         traits::{Record, Storage},
     },

@@ -28,6 +28,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-sdk-derive",
+ "hex",
  "serde",
  "serde-json-wasm",
 ]
