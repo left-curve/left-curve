@@ -12,7 +12,7 @@ pub use {
         testing::MockStorage,
         traits::{Record, Storage},
     },
-    cw_std_derive::{cw_serde, entry_point},
+    cw_sdk_derive::{cw_serde, entry_point},
 };
 
 // ---------------------------- wasm32 target only -----------------------------

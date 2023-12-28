@@ -1,10 +1,10 @@
 [package]
-name    = "cw-std"
+name    = "cw-sdk"
 version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
-cw-std-derive   = { path = "./derive" }
+cw-sdk-derive   = { path = "./derive" }
 serde           = { workspace = true, features = ["derive"] }
 serde-json-wasm = { workspace = true }

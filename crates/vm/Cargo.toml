@@ -5,7 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
-cw-std          = { path = "../std" }
+cw-sdk          = { path = "../sdk" }
 hex             = { workspace = true }
 serde           = { workspace = true }
 serde-json-wasm = { workspace = true }

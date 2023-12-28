@@ -1,6 +1,6 @@
 use {
     crate::Host,
-    cw_std::ContractResult,
+    cw_sdk::ContractResult,
     serde::ser::Serialize,
 };
 

@@ -1,5 +1,5 @@
 [package]
-name    = "cw-std-derive"
+name    = "cw-sdk-derive"
 version = { workspace = true }
 edition = { workspace = true }
 

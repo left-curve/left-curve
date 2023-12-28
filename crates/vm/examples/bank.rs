@@ -1,7 +1,7 @@
 use {
     anyhow::anyhow,
     cw_bank::ExecuteMsg,
-    cw_std::{MockStorage, Storage},
+    cw_sdk::{MockStorage, Storage},
     cw_vm::{call_execute, db_read, db_remove, db_write, Host, InstanceBuilder},
     lazy_static::lazy_static,
     std::{env, path::PathBuf},

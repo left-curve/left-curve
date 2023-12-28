@@ -1,6 +1,6 @@
 use {
     anyhow::{bail, Context},
-    cw_std::{cw_serde, entry_point, ExecuteCtx, Response, Storage},
+    cw_sdk::{cw_serde, entry_point, ExecuteCtx, Response, Storage},
 };
 
 #[cw_serde]

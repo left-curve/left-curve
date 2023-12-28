@@ -8,4 +8,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 anyhow = { workspace = true }
-cw-std = { path = "../../crates/std" }
+cw-sdk = { path = "../../crates/sdk" }

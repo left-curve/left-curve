@@ -1,4 +1,4 @@
-use {crate::Host, cw_std::Storage, wasmi::Caller};
+use {crate::Host, cw_sdk::Storage, wasmi::Caller};
 
 pub fn db_read<T>(caller: Caller<'_, T>, key_ptr: u32) -> Result<u32, wasmi::Error>
 where
