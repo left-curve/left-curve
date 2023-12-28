@@ -1,8 +1,6 @@
 use {
     anyhow::{bail, Context},
-    cw_std::{ExecuteCtx, Response, Storage},
-    schemars::JsonSchema,
-    serde::{Deserialize, Serialize},
+    cw_std::{cw_serde, ExecuteCtx, Response, Storage},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -13,7 +11,7 @@ mod __wasm_export_execute {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub enum ExecuteMsg {
     Send {
         from:   String,

@@ -7,8 +7,5 @@ edition = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow          = { workspace = true }
-cw-std          = { path = "../../crates/std" }
-schemars        = { workspace = true }
-serde           = { workspace = true, features = ["derive"] }
-serde-json-wasm = { workspace = true }
+anyhow = { workspace = true }
+cw-std = { path = "../../crates/std" }

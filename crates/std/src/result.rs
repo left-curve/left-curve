@@ -1,9 +1,17 @@
-use {
-    serde::{Serialize, Deserialize},
-    schemars::JsonSchema,
-};
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+pub struct Response {
+    // TODO: add stuff
+}
+
+impl Response {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractResult {
     Ok(Response),
     Err(String),
@@ -18,14 +26,5 @@ where
             Result::Ok(resp) => Self::Ok(resp),
             Result::Err(err) => Self::Err(err.to_string()),
         }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct Response {}
-
-impl Response {
-    pub fn new() -> Self {
-        Self {}
     }
 }

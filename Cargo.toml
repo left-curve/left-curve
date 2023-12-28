@@ -10,9 +10,11 @@ edition = "2021"
 anyhow          = "1"
 hex             = "0.4"
 lazy_static     = "1"
-schemars        = "0.8"
+proc-macro2     = "1"
+quote           = "1"
 serde           = "1"
 serde-json-wasm = "1"
+syn             = "1"
 # Our fork of wasmi is based off its v0.32.0-beta.2 release, with the following
 # changes:
 # - Make Caller::new function public. We need this to contruct vm::Host object.
