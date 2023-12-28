@@ -141,6 +141,8 @@ impl<'a, HostState> Host<'a, HostState> {
             .context("Can't find memory in Wasm exports")
     }
 
+    // TODO: switch to OnceCell::get_or_try_init once it's stablized:
+    // https://github.com/rust-lang/rust/issues/109737
     fn memory(&self) -> Memory {
         *self.memory.get_or_init(|| self.get_memory().unwrap_or_else(|err| {
             panic!("[Host]: Failed to get memory: {err}");
