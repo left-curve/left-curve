@@ -1,65 +1,93 @@
-use cw_std::{Region, Storage};
+use {
+    anyhow::{bail, Context},
+    cw_std::{ExecuteCtx, Response, Storage},
+    schemars::JsonSchema,
+    serde::{Deserialize, Serialize},
+};
 
-#[no_mangle]
-pub extern "C" fn send(from_ptr: usize, to_ptr: usize, amount: u64) {
-    let mut balances = Balances::new(Storage::new());
-
-    let from = unsafe { Region::consume(from_ptr as *mut Region) };
-    balances.decrease(&from, amount);
-
-    let to = unsafe { Region::consume(to_ptr as *mut Region) };
-    balances.increase(&to, amount);
+#[cfg(target_arch = "wasm32")]
+mod __wasm_export_execute {
+    #[no_mangle]
+    extern "C" fn execute(msg_ptr: usize) -> usize {
+        cw_std::exports::do_execute(&super::execute, msg_ptr)
+    }
 }
 
-struct Balances {
-    store: Storage,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub enum ExecuteMsg {
+    Send {
+        from:   String,
+        to:     String,
+        amount: u64,
+    },
 }
 
-impl Balances {
-    pub fn new(store: Storage) -> Self {
-        Self {
-            store,
-        }
+pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    match msg {
+        ExecuteMsg::Send {
+            from,
+            to,
+            amount,
+        } => send(ctx.store, from, to, amount)
+    }
+}
+
+pub fn send(
+    store:  &mut dyn Storage,
+    from:   String,
+    to:     String,
+    amount: u64,
+) -> anyhow::Result<Response> {
+    Balance::decrease(store, &from, amount)?;
+    Balance::increase(store, &to, amount)?;
+
+    Ok(Response::new())
+}
+
+pub struct Balance;
+
+impl Balance {
+    pub fn increase(store: &mut dyn Storage, addr: &str, amount: u64) -> anyhow::Result<()> {
+        let balance_before = Self::get(store, addr)?;
+
+        let balance_after = balance_before
+            .checked_add(amount)
+            .with_context(|| format!("Excessive balance: {balance_before} + {amount} > u64::MAX"))?;
+
+        Self::set(store, addr, balance_after)
     }
 
-    pub fn increase(&mut self, address: &[u8], amount: u64) {
-        let mut balance = self.get(address);
+    pub fn decrease(store: &mut dyn Storage, addr: &str, amount: u64) -> anyhow::Result<()> {
+        let balance_before = Self::get(store, addr)?;
 
-        balance = balance.checked_add(amount).unwrap_or_else(|| {
-            panic!("Excessive balance: {balance} + {amount} > u64::MAX");
-        });
+        let balance_after = balance_before
+            .checked_sub(amount)
+            .with_context(|| format!("Insufficient balance: {balance_before} < {amount}"))?;
 
-        self.set(address, balance);
-    }
-
-    pub fn decrease(&mut self, address: &[u8], amount: u64) {
-        let mut balance = self.get(address);
-
-        balance = balance.checked_sub(amount).unwrap_or_else(|| {
-            panic!("Insufficient balance: {balance} < {amount}");
-        });
-
-        if balance > 0 {
-            self.set(address, balance);
+        if balance_after > 0 {
+            Self::set(store, addr, balance_after)
         } else {
-            self.store.remove(address);
+            Self::remove(store, addr)
         }
     }
 
-    fn get(&self, address: &[u8]) -> u64 {
-        self.store
-            .read(address)
-            .map(|bytes| {
-                let bytes: [u8; 8] = bytes.try_into().unwrap_or_else(|_| {
-                    panic!("Failed to parse balance into u64");
-                });
-
-                u64::from_be_bytes(bytes)
-            })
-            .unwrap_or(0)
+    fn get(store: &dyn Storage, addr: &str) -> anyhow::Result<u64> {
+        let Some(balance_bytes) = store.read(addr.as_bytes()) else {
+            return Ok(0);
+        };
+        let Ok(balance_bytes) = <[u8; 8]>::try_from(balance_bytes) else {
+            bail!("Failed to parse balance: expect 8 bytes");
+        };
+        Ok(u64::from_be_bytes(balance_bytes))
     }
 
-    fn set(&mut self, address: &[u8], balance: u64) {
-        self.store.write(address, &balance.to_be_bytes());
+    fn set(store: &mut dyn Storage, addr: &str, amount: u64) -> anyhow::Result<()> {
+        store.write(addr.as_bytes(), &amount.to_be_bytes());
+        Ok(())
+    }
+
+    fn remove(store: &mut dyn Storage, addr: &str) -> anyhow::Result<()> {
+        store.remove(addr.as_bytes());
+        Ok(())
     }
 }

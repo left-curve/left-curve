@@ -2,3 +2,9 @@
 name    = "cw-std"
 version = { workspace = true }
 edition = { workspace = true }
+
+[dependencies]
+anyhow          = { workspace = true }
+schemars        = { workspace = true }
+serde           = { workspace = true, features = ["derive"]}
+serde-json-wasm = { workspace = true }

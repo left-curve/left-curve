@@ -4,6 +4,13 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-hex    = { workspace = true }
-wasmi  = { workspace = true }
+anyhow          = { workspace = true }
+cw-std          = { path = "../std" }
+hex             = { workspace = true }
+serde           = { workspace = true }
+serde-json-wasm = { workspace = true }
+wasmi           = { workspace = true }
+
+[dev-dependencies]
+cw-bank     = { path = "../../contracts/bank" }
+lazy_static = { workspace = true }
