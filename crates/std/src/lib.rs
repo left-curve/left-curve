@@ -1,6 +1,7 @@
 mod context;
 mod db;
-pub mod exports;
+#[cfg(target_arch = "wasm32")]
+mod exports;
 mod memory;
 mod result;
 
@@ -11,8 +12,11 @@ pub use {
         memory::Region,
         result::{ContractResult, Response},
     },
-    cw_std_derive::cw_serde,
+    cw_std_derive::{cw_serde, entry_point},
 };
+
+#[cfg(target_arch = "wasm32")]
+pub use crate::exports::do_execute;
 
 // re-export, for use in macro expansions
 pub mod __private {

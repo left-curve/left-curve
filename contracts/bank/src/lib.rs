@@ -1,15 +1,7 @@
 use {
     anyhow::{bail, Context},
-    cw_std::{cw_serde, ExecuteCtx, Response, Storage},
+    cw_std::{cw_serde, entry_point, ExecuteCtx, Response, Storage},
 };
-
-#[cfg(target_arch = "wasm32")]
-mod __wasm_export_execute {
-    #[no_mangle]
-    extern "C" fn execute(msg_ptr: usize) -> usize {
-        cw_std::exports::do_execute(&super::execute, msg_ptr)
-    }
-}
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -20,6 +12,7 @@ pub enum ExecuteMsg {
     },
 }
 
+#[entry_point]
 pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Send {

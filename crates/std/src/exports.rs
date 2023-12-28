@@ -17,7 +17,7 @@ macro_rules! try_into_contract_result {
 
 pub fn do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
-    msg_ptr: usize,
+    msg_ptr:    usize,
 ) -> usize
 where
     M: DeserializeOwned,
