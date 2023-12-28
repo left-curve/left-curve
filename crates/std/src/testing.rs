@@ -1,6 +1,6 @@
 use {
-    crate::Storage,
-    std::collections::BTreeMap,
+    crate::{Record, Storage},
+    std::{collections::BTreeMap, ops::Bound},
 };
 
 /// An in-memory KV store for testing purpose.
@@ -17,5 +17,15 @@ impl Storage for MockStorage {
 
     fn remove(&mut self, key: &[u8]) {
         self.remove(key);
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let min = min.map_or(Bound::Unbounded, |x| Bound::Included(x.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |x| Bound::Excluded(x.to_vec()));
+        Box::new(self.range((min, max)).map(|(k, v)| (k.clone(), v.clone())))
     }
 }
