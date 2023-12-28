@@ -1,6 +1,6 @@
 use {crate::Host, cw_std::Storage, wasmi::Caller};
 
-pub fn db_read<'a, T>(caller: Caller<'a, T>, key_ptr: u32) -> Result<u32, wasmi::Error>
+pub fn db_read<T>(caller: Caller<'_, T>, key_ptr: u32) -> Result<u32, wasmi::Error>
 where
     T: Storage,
 {
@@ -19,11 +19,7 @@ where
     Ok(value_ptr)
 }
 
-pub fn db_write<'a, T>(
-    caller:    Caller<'a, T>,
-    key_ptr:   u32,
-    value_ptr: u32,
-) -> Result<(), wasmi::Error>
+pub fn db_write<T>(caller: Caller<'_, T>, key_ptr: u32, value_ptr: u32) -> Result<(), wasmi::Error>
 where
     T: Storage,
 {
@@ -36,7 +32,7 @@ where
     Ok(())
 }
 
-pub fn db_remove<'a, T>(caller: Caller<'a, T>, key_ptr: u32) -> Result<(), wasmi::Error>
+pub fn db_remove<T>(caller: Caller<'_, T>, key_ptr: u32) -> Result<(), wasmi::Error>
 where
     T: Storage,
 {
