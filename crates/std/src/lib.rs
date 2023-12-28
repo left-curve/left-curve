@@ -1,16 +1,16 @@
 // -------------------------------- all targets --------------------------------
 
 mod deps;
-mod memory;
 mod result;
-mod storage;
+mod testing;
+mod traits;
 
 pub use {
     crate::{
         deps::ExecuteCtx,
-        memory::Region,
         result::{ContractResult, Response},
-        storage::{MockStorage, Storage},
+        testing::MockStorage,
+        traits::Storage,
     },
     cw_std_derive::{cw_serde, entry_point},
 };
@@ -21,9 +21,11 @@ pub use {
 mod exports;
 #[cfg(target_arch = "wasm32")]
 mod imports;
+#[cfg(target_arch = "wasm32")]
+mod memory;
 
 #[cfg(target_arch = "wasm32")]
-pub use crate::{exports::do_execute, imports::ExternalStorage};
+pub use crate::{exports::do_execute, imports::ExternalStorage, memory::Region};
 
 // -------------------------------- re-exports ---------------------------------
 

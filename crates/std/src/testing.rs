@@ -1,12 +1,7 @@
-use std::collections::BTreeMap;
-
-pub trait Storage {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
-
-    fn write(&mut self, key: &[u8], value: &[u8]);
-
-    fn remove(&mut self, key: &[u8]);
-}
+use {
+    crate::Storage,
+    std::collections::BTreeMap,
+};
 
 /// An in-memory KV store for testing purpose.
 pub type MockStorage = BTreeMap<Vec<u8>, Vec<u8>>;
