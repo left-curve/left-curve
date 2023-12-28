@@ -19,18 +19,18 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             from,
             to,
             amount,
-        } => send(ctx.store, from, to, amount)
+        } => send(ctx, from, to, amount),
     }
 }
 
 pub fn send(
-    store:  &mut dyn Storage,
+    ctx:    ExecuteCtx,
     from:   String,
     to:     String,
     amount: u64,
 ) -> anyhow::Result<Response> {
-    Balance::decrease(store, &from, amount)?;
-    Balance::increase(store, &to, amount)?;
+    Balance::decrease(ctx.store, &from, amount)?;
+    Balance::increase(ctx.store, &to, amount)?;
 
     Ok(Response::new())
 }
