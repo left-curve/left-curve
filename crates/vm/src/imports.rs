@@ -7,6 +7,9 @@ where
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
 
+    // TODO: replace this with tracing debug
+    println!("db_read: key = {}", hex::encode(&key));
+
     // read the value from host state
     // if doesn't exist, we return a zero pointer
     let Some(value) = host.data().read(&key) else {
@@ -27,6 +30,9 @@ where
     let key = host.read_from_memory(key_ptr)?;
     let value = host.read_from_memory(value_ptr)?;
 
+    // TODO: replace this with tracing debug
+    println!("db_write: key = {}, value = {}", hex::encode(&key), hex::encode(&value));
+
     host.data_mut().write(&key, &value);
 
     Ok(())
@@ -38,6 +44,9 @@ where
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
+
+    // TODO: replace this with tracing debug
+    println!("db_remove: key = {}", hex::encode(&key));
 
     host.data_mut().remove(&key);
 

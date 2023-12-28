@@ -46,7 +46,7 @@ pub fn entry_point(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
         mod __wasm_export_{name} {{
             #[no_mangle]
             extern "C" fn {name}({typed_ptrs}) -> usize {{
-                cw_std::do_{name}(&super::{name}, {ptrs})
+                cw_sdk::do_{name}(&super::{name}, {ptrs})
             }}
         }}
     "##);

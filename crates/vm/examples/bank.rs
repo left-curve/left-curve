@@ -1,7 +1,6 @@
 use {
-    anyhow::anyhow,
     cw_bank::ExecuteMsg,
-    cw_sdk::{MockStorage, Storage},
+    cw_sdk::{from_json, Map, MockStorage},
     cw_vm::{call_execute, db_read, db_remove, db_write, Host, InstanceBuilder},
     lazy_static::lazy_static,
     std::{env, path::PathBuf},
@@ -10,12 +9,14 @@ use {
 lazy_static! {
     static ref INITIAL_STATE: MockStorage = {
         let mut store = MockStorage::default();
-        store.write(b"alice",   100u64.to_be_bytes().as_slice());
-        store.write(b"bob",      50u64.to_be_bytes().as_slice());
-        store.write(b"charlie", 123u64.to_be_bytes().as_slice());
+        BALANCES.save(&mut store, &"alice".into(),   &100).unwrap();
+        BALANCES.save(&mut store, &"bob".into(),     &50).unwrap();
+        BALANCES.save(&mut store, &"charlie".into(), &123).unwrap();
         store
     };
 }
+
+const BALANCES: Map<String, u64> = Map::new("b");
 
 fn main() -> anyhow::Result<()> {
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
@@ -41,10 +42,10 @@ fn main() -> anyhow::Result<()> {
     // charlie: 123 + 50 - 69 = 104
     // dave:    0   + 75      = 75
     println!("Host state after aforementioned transfers:");
-    for (name_bytes, balance_bytes) in store.into_data() {
-        let name = String::from_utf8(name_bytes)?;
-        let balance = u64::from_be_bytes(balance_bytes.try_into()
-            .map_err(|_| anyhow!("Failed to parse balance"))?);
+    // TODO: replace this with Map::range
+    for (k, v) in store.into_data() {
+        let name = String::from_utf8(k[3..].to_vec())?;
+        let balance: u64 = from_json(&v)?;
         println!("name = {name}, balance = {balance}");
     }
 

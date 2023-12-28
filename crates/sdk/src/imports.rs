@@ -51,4 +51,12 @@ impl Storage for ExternalStorage {
 
         unsafe { db_remove(key_ptr as usize) }
     }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+        todo!()
+    }
 }

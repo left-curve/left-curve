@@ -1,5 +1,5 @@
 use {
-    crate::{Record, Storage},
+    crate::Storage,
     std::{collections::BTreeMap, ops::Bound},
 };
 
@@ -23,7 +23,7 @@ impl Storage for MockStorage {
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         let min = min.map_or(Bound::Unbounded, |x| Bound::Included(x.to_vec()));
         let max = max.map_or(Bound::Unbounded, |x| Bound::Excluded(x.to_vec()));
         Box::new(self.range((min, max)).map(|(k, v)| (k.clone(), v.clone())))

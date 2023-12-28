@@ -10,8 +10,5 @@ pub trait Storage {
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
-    ) -> Box<dyn Iterator<Item = Record> + 'a>;
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
 }
-
-// (key, value)
-pub type Record = (Vec<u8>, Vec<u8>);

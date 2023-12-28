@@ -39,21 +39,26 @@ where
         from_json(&store
             .read(self.key)
             .with_context(|| format!(
-                "Data not found! type: {}, key: {}",
+                "[Item]: data not found! type: {}, key: {}",
                 type_name::<T>(),
                 hex::encode(self.key),
             ))?)
             .map_err(Into::into)
     }
 
-    pub fn update<A>(&self, store: &mut dyn Storage, action: A) -> anyhow::Result<T>
+    pub fn update<A>(&self, store: &mut dyn Storage, action: A) -> anyhow::Result<Option<T>>
     where
-        A: FnOnce(Option<T>) -> anyhow::Result<T>,
+        A: FnOnce(Option<T>) -> anyhow::Result<Option<T>>,
     {
-        let maybe_data = self.may_load(store)?;
-        let data = action(maybe_data)?;
-        self.save(store, &data)?;
-        Ok(data)
+        let maybe_data = action(self.may_load(store)?)?;
+
+        if let Some(data) = &maybe_data {
+            self.save(store, data)?;
+        } else {
+            self.remove(store);
+        }
+
+        Ok(maybe_data)
     }
 
     pub fn save(&self, store: &mut dyn Storage, data: &T) -> anyhow::Result<()> {

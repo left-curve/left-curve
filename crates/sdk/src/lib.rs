@@ -2,6 +2,8 @@
 
 mod deps;
 mod item;
+mod map;
+mod map_key;
 mod result;
 mod serde;
 mod testing;
@@ -11,10 +13,12 @@ pub use {
     crate::{
         deps::ExecuteCtx,
         item::Item,
+        map::Map,
+        map_key::{MapKey, RawKey},
         result::{ContractResult, Response},
         serde::{from_json, to_json},
         testing::MockStorage,
-        traits::{Record, Storage},
+        traits::Storage,
     },
     cw_sdk_derive::{cw_serde, entry_point},
 };
