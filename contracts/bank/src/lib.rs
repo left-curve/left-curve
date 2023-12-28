@@ -50,7 +50,7 @@ pub fn send(
     BALANCES.update(ctx.store, &to, |maybe_balance| {
         let balance = maybe_balance.unwrap_or(0);
         let Some(balance) = balance.checked_add(amount) else {
-            bail!("Excessive balance: {balance} + {amount} > u64::MAX")
+            bail!("Excessive balance: {balance} + {amount} > u64::MAX");
         };
 
         Ok(Some(balance))
