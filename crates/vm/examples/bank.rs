@@ -54,14 +54,11 @@ fn main() -> anyhow::Result<()> {
 fn call_send<T>(host: &mut Host<T>, from: &str, to: &str, amount: u64) -> anyhow::Result<()> {
     println!("Sending... from: {from}, to: {to}, amount: {amount}");
 
-    let res = call_execute(
-        host,
-        ExecuteMsg::Send {
-            from: from.into(),
-            to: to.into(),
-            amount,
-        },
-    )?;
+    let res = call_execute(host, ExecuteMsg::Send {
+        from: from.into(),
+        to:   to.into(),
+        amount,
+    })?;
 
     println!("Contract response: {res:?}");
 
