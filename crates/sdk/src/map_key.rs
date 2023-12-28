@@ -1,5 +1,6 @@
 use {
     anyhow::{bail, Context},
+    data_encoding::BASE64,
     std::mem,
 };
 
@@ -70,7 +71,7 @@ impl MapKey for () {
         if !bytes.is_empty() {
             bail!(
                 "Failed to deserialize into empty map key: expecting empty bytes, got {}",
-                hex::encode(bytes),
+                BASE64.encode(bytes),
             );
         }
 

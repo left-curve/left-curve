@@ -28,7 +28,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-sdk-derive",
- "hex",
+ "data-encoding",
  "serde",
  "serde-json-wasm",
 ]
@@ -49,7 +49,7 @@ dependencies = [
  "anyhow",
  "cw-bank",
  "cw-sdk",
- "hex",
+ "data-encoding",
  "lazy_static",
  "serde",
  "serde-json-wasm",
@@ -57,16 +57,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-encoding"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
-
-[[package]]
-name = "hex"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "indexmap-nostd"

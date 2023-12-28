@@ -1,5 +1,6 @@
 use {
     anyhow::Context,
+    data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
 };
@@ -9,7 +10,7 @@ where
     T: DeserializeOwned,
 {
     serde_json_wasm::from_slice(bytes.as_ref())
-        .with_context(|| format!("Failed to deserialize from json! data: {}", hex::encode(bytes),))
+        .with_context(|| format!("Failed to deserialize from json! data: {}", BASE64.encode(bytes.as_ref())))
 }
 
 pub fn to_json<T>(data: &T) -> anyhow::Result<Vec<u8>>

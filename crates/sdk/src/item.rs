@@ -1,6 +1,7 @@
 use {
     crate::{from_json, to_json, Storage},
     anyhow::Context,
+    data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, marker::PhantomData},
 };
@@ -41,7 +42,7 @@ where
             .with_context(|| format!(
                 "[Item]: data not found! type: {}, key: {}",
                 type_name::<T>(),
-                hex::encode(self.key),
+                BASE64.encode(self.key),
             ))?)
             .map_err(Into::into)
     }

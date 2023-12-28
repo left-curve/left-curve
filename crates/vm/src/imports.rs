@@ -1,4 +1,4 @@
-use {crate::Host, cw_sdk::Storage, wasmi::Caller};
+use {crate::Host, cw_sdk::Storage, data_encoding::BASE64, wasmi::Caller};
 
 pub fn db_read<T>(caller: Caller<'_, T>, key_ptr: u32) -> Result<u32, wasmi::Error>
 where
@@ -8,7 +8,7 @@ where
     let key = host.read_from_memory(key_ptr)?;
 
     // TODO: replace this with tracing debug
-    println!("db_read: key = {}", hex::encode(&key));
+    println!("db_read: key = {}", BASE64.encode(&key));
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
@@ -31,7 +31,7 @@ where
     let value = host.read_from_memory(value_ptr)?;
 
     // TODO: replace this with tracing debug
-    println!("db_write: key = {}, value = {}", hex::encode(&key), hex::encode(&value));
+    println!("db_write: key = {}, value = {}", BASE64.encode(&key), BASE64.encode(&value));
 
     host.data_mut().write(&key, &value);
 
@@ -46,7 +46,7 @@ where
     let key = host.read_from_memory(key_ptr)?;
 
     // TODO: replace this with tracing debug
-    println!("db_remove: key = {}", hex::encode(&key));
+    println!("db_remove: key = {}", BASE64.encode(&key));
 
     host.data_mut().remove(&key);
 

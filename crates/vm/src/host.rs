@@ -1,6 +1,7 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail, Context},
+    data_encoding::BASE64,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
@@ -89,7 +90,7 @@ impl<'a, HostState> Host<'a, HostState> {
                 "Region is too small! offset: {}, capacity: {}, data: {}",
                 region.offset,
                 region.capacity,
-                hex::encode(data),
+                BASE64.encode(data),
             );
         }
 
@@ -116,7 +117,7 @@ impl<'a, HostState> Host<'a, HostState> {
             .map_err(|reason| anyhow!(
                 "Failed to write to Wasm memory! offset: {}, data: {}, reason: {}",
                 offset,
-                hex::encode(data),
+                BASE64.encode(data),
                 reason,
             ))
     }

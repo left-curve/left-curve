@@ -1,6 +1,7 @@
 use {
     crate::{from_json, to_json, MapKey, Storage},
     anyhow::Context,
+    data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, marker::PhantomData},
 };
@@ -50,7 +51,7 @@ where
                 "[Map]: data not found! key type: {}, data type: {}, path: {}",
                 type_name::<K>(),
                 type_name::<T>(),
-                hex::encode(&path),
+                BASE64.encode(&path),
             ))?)
             .map_err(Into::into)
     }
