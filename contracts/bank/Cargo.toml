@@ -1,5 +1,5 @@
 [package]
-name    = "bank"
+name    = "cw-bank"
 version = { workspace = true }
 edition = { workspace = true }
 
@@ -7,4 +7,4 @@ edition = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-sdk = { path = "../../sdk" }
+cw-std = { path = "../../crates/std" }

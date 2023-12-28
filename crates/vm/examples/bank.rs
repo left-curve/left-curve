@@ -1,6 +1,6 @@
 use {
     anyhow::anyhow,
-    host::{Host, InstanceBuilder},
+    cw_vm::{Host, InstanceBuilder},
     std::{collections::BTreeMap, env, path::PathBuf},
     wasmi::Caller,
 };
@@ -20,7 +20,7 @@ const INITIAL_STATE: &[(&str, u64)] = &[
 
 fn main() -> anyhow::Result<()> {
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../target/wasm32-unknown-unknown/debug/bank.wasm");
+        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let data = INITIAL_STATE
         .into_iter()
         .map(|(name, balance)| (name.as_bytes().to_vec(), balance.to_be_bytes().to_vec()))

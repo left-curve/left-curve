@@ -3,10 +3,6 @@
 version = 3
 
 [[package]]
-name = "add"
-version = "0.0.0"
-
-[[package]]
 name = "anyhow"
 version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19,10 +15,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "bank"
+name = "cw-bank"
 version = "0.0.0"
 dependencies = [
- "sdk",
+ "cw-std",
+]
+
+[[package]]
+name = "cw-std"
+version = "0.0.0"
+
+[[package]]
+name = "cw-vm"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "thiserror",
+ "wasmi",
 ]
 
 [[package]]
@@ -30,22 +39,6 @@ name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
-
-[[package]]
-name = "greeter"
-version = "0.0.0"
-dependencies = [
- "sdk",
-]
-
-[[package]]
-name = "host"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "thiserror",
- "wasmi",
-]
 
 [[package]]
 name = "indexmap-nostd"
@@ -110,10 +103,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdk"
-version = "0.0.0"
-
-[[package]]
 name = "smallvec"
 version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -165,7 +154,7 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 [[package]]
 name = "wasmi"
 version = "0.32.0-beta.2"
-source = "git+https://github.com/larry0x/wasmi?rev=950d877#950d8773478194a410bc883742d0f6d504311e90"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
 dependencies = [
  "multi-stash",
  "num-derive",
@@ -180,12 +169,12 @@ dependencies = [
 [[package]]
 name = "wasmi_arena"
 version = "0.4.0"
-source = "git+https://github.com/larry0x/wasmi?rev=950d877#950d8773478194a410bc883742d0f6d504311e90"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
 
 [[package]]
 name = "wasmi_core"
 version = "0.15.0"
-source = "git+https://github.com/larry0x/wasmi?rev=950d877#950d8773478194a410bc883742d0f6d504311e90"
+source = "git+https://github.com/cwsoftware123/wasmi?rev=5f1d021#5f1d021f286fcfdef09af1d492a692cac82a79af"
 dependencies = [
  "downcast-rs",
  "libm",

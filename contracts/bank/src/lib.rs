@@ -1,4 +1,4 @@
-use sdk::{Region, Storage};
+use cw_std::{Region, Storage};
 
 #[no_mangle]
 pub extern "C" fn send(from_ptr: usize, to_ptr: usize, amount: u64) {
