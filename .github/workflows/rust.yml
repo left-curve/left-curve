@@ -17,17 +17,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Build Wasm binary
-        run: cargo build --target wasm32-unknown-unknown -p add -p bank -p greeter
-        env:
-          RUST_BACKTRACE: 1
-
-      - name: Run add example
-        run: cargo run -p host --example add
-        env:
-          RUST_BACKTRACE: 1
-
-      - name: Run greeter example
-        run: cargo run -p host --example greeter
+        run: cargo build --target wasm32-unknown-unknown -p cw-bank
         env:
           RUST_BACKTRACE: 1
 
