@@ -89,7 +89,7 @@ where
         self.no_prefix().range(store, min, max, order)
     }
 
-    pub fn clear(&self, store: &mut dyn Storage) {
-        self.no_prefix().clear(store)
+    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) {
+        self.no_prefix().clear(store, limit)
     }
 }

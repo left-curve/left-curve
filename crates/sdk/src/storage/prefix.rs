@@ -55,7 +55,7 @@ impl Prefix {
         Box::new(iter)
     }
 
-    pub fn clear(&self, _store: &mut dyn Storage) {
+    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) {
         todo!()
     }
 }
