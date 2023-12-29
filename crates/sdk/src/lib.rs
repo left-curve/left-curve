@@ -11,16 +11,16 @@ pub use crate::{
     storage::{Item, Map, MapKey, Path, PathBuf, Prefix, RawKey},
     testing::MockStorage,
     traits::{Order, Storage},
-    types::{ContractResult, ExecuteCtx, Response},
+    types::{Binary, ContractResult, ExecuteCtx, QueryCtx, Response},
 };
 
 // ---------------------------- wasm32 target only -----------------------------
 
-#[cfg(target_arch = "wasm32")]
+// #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-#[cfg(target_arch = "wasm32")]
-pub use crate::wasm::{do_execute, ExternalStorage, Region};
+// #[cfg(target_arch = "wasm32")]
+pub use crate::wasm::{do_execute, do_query, ExternalStorage, Region};
 
 // -------------------------------- re-exports ---------------------------------
 

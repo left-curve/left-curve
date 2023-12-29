@@ -86,7 +86,7 @@ where
 
     pub fn save(&self, store: &mut dyn Storage, data: &T) -> anyhow::Result<()> {
         let bytes = to_json(data)?;
-        store.write(self.storage_key, &bytes);
+        store.write(self.storage_key, bytes.as_ref());
         Ok(())
     }
 

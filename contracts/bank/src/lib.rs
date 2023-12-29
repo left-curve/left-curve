@@ -1,6 +1,6 @@
 use {
     anyhow::bail,
-    cw_sdk::{cw_serde, entry_point, ExecuteCtx, Map, Response},
+    cw_sdk::{cw_serde, entry_point, to_json, Binary, ExecuteCtx, Map, Response, QueryCtx},
 };
 
 // (address, denom) => balance
@@ -18,6 +18,14 @@ pub enum ExecuteMsg {
     },
 }
 
+#[cw_serde]
+pub enum QueryMsg {
+    Balance {
+        address: String,
+        denom:   String,
+    },
+}
+
 #[entry_point]
 pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
@@ -27,6 +35,16 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             amount,
         } => send(ctx, from, to, denom, amount),
+    }
+}
+
+#[entry_point]
+pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
+    match msg {
+        QueryMsg::Balance {
+            address,
+            denom,
+        } => to_json(&query_balance(ctx, address, denom)?),
     }
 }
 
@@ -63,4 +81,8 @@ pub fn send(
     })?;
 
     Ok(Response::new())
+}
+
+fn query_balance(ctx: QueryCtx, addr: String, denom: String) -> anyhow::Result<u64> {
+    BALANCES.may_load(ctx.store, (&addr, &denom)).map(|opt| opt.unwrap_or(0))
 }

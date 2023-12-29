@@ -1,5 +1,8 @@
 use {
-    crate::{ContractResult, ExecuteCtx, ExternalStorage, Region, Response},
+    crate::{
+        from_json, to_json, Binary, ContractResult, ExecuteCtx, ExternalStorage, QueryCtx, Region,
+        Response,
+    },
     serde::de::DeserializeOwned,
 };
 
@@ -44,20 +47,20 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_execute(execute_fn, &msg_bytes);
-    let res_bytes = serde_json_wasm::to_vec(&res).unwrap();
+    let res_bytes = to_json(&res).unwrap();
 
-    Region::release_buffer(res_bytes) as usize
+    Region::release_buffer(res_bytes.into()) as usize
 }
 
 fn _do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
     msg_bytes:  &[u8],
-) -> ContractResult
+) -> ContractResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
-    let msg = try_into_contract_result!(serde_json_wasm::from_slice(msg_bytes));
+    let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = ExecuteCtx {
         store: &mut ExternalStorage,
@@ -65,4 +68,38 @@ where
     };
 
     execute_fn(ctx, msg).into()
+}
+
+pub fn do_query<M, E>(
+    query_fn: &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
+    msg_ptr:  usize,
+) -> usize
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_query(query_fn, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_query<M, E>(
+    query_fn:  &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
+    msg_bytes: &[u8],
+) -> ContractResult<Binary>
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let msg = try_into_contract_result!(from_json(msg_bytes));
+
+    let ctx = QueryCtx {
+        store: &ExternalStorage,
+        // TODO: other fields...
+    };
+
+    query_fn(ctx, msg).into()
 }

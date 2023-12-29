@@ -1,8 +1,8 @@
 use {
-    cw_bank::ExecuteMsg,
-    cw_sdk::{Map, MockStorage, Order},
-    cw_vm::{call_execute, db_read, db_remove, db_write, Host, InstanceBuilder},
-    std::{env, ops::Bound, path::PathBuf},
+    cw_bank::{ExecuteMsg, QueryMsg},
+    cw_sdk::{Map, MockStorage},
+    cw_vm::{call_execute, call_query, db_read, db_remove, db_write, Host, InstanceBuilder},
+    std::{env, path::PathBuf},
 };
 
 const BALANCES: Map<(&str, &str), u64> = Map::new("b");
@@ -39,10 +39,6 @@ fn main() -> anyhow::Result<()> {
     call_send(&mut host, "bob", "charlie", "uatom", 50)?;
     call_send(&mut host, "charlie", "alice", "uatom", 69)?;
 
-    // consume the wasm store, recover the host state it contains
-    let state = store.into_data();
-    dbg!(state);
-
     // end state:
     // ----------
     // alice:   100 - 75 + 69 = 94
@@ -50,10 +46,15 @@ fn main() -> anyhow::Result<()> {
     // charlie: 123 + 50 - 69 = 104
     // dave:    0   + 75      = 75
     println!("Balances after the transfers:");
-    // for item in BALANCES.range(&state, Bound::Unbounded, Bound::Unbounded, Order::Ascending) {
-    //     let (name, balance) = item?;
-    //     println!("name = {name}, balance = {balance}");
-    // }
+    let query_res = call_query(&mut host, &QueryMsg::Balance {
+        address: "alice".into(),
+        denom:   "uatom".into(),
+    })?;
+    dbg!(query_res);
+
+    // if we need the host state for other purposes, we can consume the wasm
+    // store here and take out the host state
+    let _host_state = store.into_data();
 
     Ok(())
 }

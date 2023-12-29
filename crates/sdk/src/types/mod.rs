@@ -1,7 +1,9 @@
+mod binary;
 mod context;
 mod response;
 
 pub use {
-    context::ExecuteCtx,
+    binary::Binary,
+    context::{ExecuteCtx, QueryCtx},
     response::{ContractResult, Response},
 };
