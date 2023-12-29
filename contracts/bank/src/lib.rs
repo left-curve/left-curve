@@ -1,6 +1,8 @@
 use {
     anyhow::bail,
-    cw_sdk::{cw_serde, entry_point, to_json, Binary, ExecuteCtx, Map, Response, QueryCtx},
+    cw_sdk::{
+        cw_serde, entry_point, to_json, Binary, ExecuteCtx, InstantiateCtx, Map, QueryCtx, Response,
+    },
 };
 
 // (address, denom) => balance
@@ -9,11 +11,23 @@ use {
 const BALANCES: Map<(&str, &str), u64> = Map::new("b");
 
 #[cw_serde]
+pub struct InstantiateMsg {
+    pub initial_balances: Vec<Balance>,
+}
+
+#[cw_serde]
+pub struct Balance {
+    pub address: String,
+    pub denom:   String,
+    pub amount:  u64,
+}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     Send {
-        from:   String,
-        to:     String,
-        denom:  String,
+        from: String,
+        to: String,
+        denom: String,
         amount: u64,
     },
 }
@@ -22,8 +36,17 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     Balance {
         address: String,
-        denom:   String,
+        denom: String,
     },
+}
+
+#[entry_point]
+pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    for b in msg.initial_balances {
+        BALANCES.save(ctx.store, (&b.address, &b.denom), &b.amount)?;
+    }
+
+    Ok(Response::new())
 }
 
 #[entry_point]
@@ -49,10 +72,10 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
 }
 
 pub fn send(
-    ctx:    ExecuteCtx,
-    from:   String,
-    to:     String,
-    denom:  String,
+    ctx: ExecuteCtx,
+    from: String,
+    to: String,
+    denom: String,
     amount: u64,
 ) -> anyhow::Result<Response> {
     // decrease the sender's balance
@@ -83,6 +106,11 @@ pub fn send(
     Ok(Response::new())
 }
 
-fn query_balance(ctx: QueryCtx, addr: String, denom: String) -> anyhow::Result<u64> {
-    BALANCES.may_load(ctx.store, (&addr, &denom)).map(|opt| opt.unwrap_or(0))
+fn query_balance(ctx: QueryCtx, address: String, denom: String) -> anyhow::Result<Balance> {
+    let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
+    Ok(Balance {
+        address,
+        denom,
+        amount: maybe_amount.unwrap_or(0),
+    })
 }

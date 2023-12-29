@@ -1,3 +1,5 @@
+use crate::InstantiateCtx;
+
 use {
     crate::{
         from_json, to_json, Binary, ContractResult, ExecuteCtx, ExternalStorage, QueryCtx, Region,
@@ -34,6 +36,40 @@ macro_rules! try_into_contract_result {
             },
         }
     };
+}
+
+pub fn do_instantiate<M, E>(
+    instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
+    msg_ptr:        usize,
+) -> usize
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_instantiate(instantiate_fn, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_instantiate<M, E>(
+    instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
+    msg_bytes:      &[u8],
+) -> ContractResult<Response>
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let msg = try_into_contract_result!(from_json(msg_bytes));
+
+    let ctx = InstantiateCtx {
+        store: &mut ExternalStorage,
+        // TODO: other fields...
+    };
+
+    instantiate_fn(ctx, msg).into()
 }
 
 pub fn do_execute<M, E>(

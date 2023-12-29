@@ -1,43 +1,36 @@
 use {
-    cw_bank::{ExecuteMsg, QueryMsg},
-    cw_sdk::{Map, MockStorage},
-    cw_vm::{call_execute, call_query, db_read, db_remove, db_write, Host, InstanceBuilder},
+    cw_bank::{Balance, InstantiateMsg, ExecuteMsg, QueryMsg},
+    cw_sdk::MockStorage,
+    cw_vm::{call_execute, call_instantiate, call_query, db_read, db_remove, db_write, Host, InstanceBuilder},
     std::{env, path::PathBuf},
 };
 
-const BALANCES: Map<(&str, &str), u64> = Map::new("b");
-
-const INITIAL_BALANCES: &[(&str, &str, u64)] = &[
+const BALANCES: [(&str, &str, u64); 4] = [
     ("alice",   "uatom", 100),
     ("alice",   "uosmo", 888),
     ("bob",     "uatom",  50),
     ("charlie", "uatom", 123),
 ];
 
-fn build_initial_state() -> anyhow::Result<MockStorage> {
-    let mut store = MockStorage::default();
-    for (name, denom, balance) in INITIAL_BALANCES {
-        BALANCES.save(&mut store, (name, denom), balance)?;
-    }
-    Ok(store)
-}
-
 fn main() -> anyhow::Result<()> {
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let (instance, mut store) = InstanceBuilder::default()
         .with_wasm_file(wasm_file)?
-        .with_host_state(build_initial_state()?)
+        .with_host_state(MockStorage::new())
         .with_host_function("db_read", db_read)?
         .with_host_function("db_write", db_write)?
         .with_host_function("db_remove", db_remove)?
         .finalize()?;
     let mut host = Host::new(&instance, &mut store);
 
+    // instantiate contract
+    instantiate(&mut host)?;
+
     // make three transfers
-    call_send(&mut host, "alice", "dave", "uatom", 75)?;
-    call_send(&mut host, "bob", "charlie", "uatom", 50)?;
-    call_send(&mut host, "charlie", "alice", "uatom", 69)?;
+    send(&mut host, "alice", "dave", "uatom", 75)?;
+    send(&mut host, "bob", "charlie", "uatom", 50)?;
+    send(&mut host, "charlie", "alice", "uatom", 69)?;
 
     // end state:
     // ----------
@@ -59,7 +52,25 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn call_send<T>(
+fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
+    println!("Instantiating contract...");
+
+    let mut initial_balances = vec![];
+    for (address, denom, amount) in BALANCES {
+        initial_balances.push(Balance {
+            address: address.into(),
+            denom:   denom.into(),
+            amount,
+        });
+    }
+    let res = call_instantiate(host, &InstantiateMsg { initial_balances })?;
+
+    println!("Contract response: {res:?}");
+
+    Ok(())
+}
+
+fn send<T>(
     host:   &mut Host<T>,
     from:   &str,
     to:     &str,

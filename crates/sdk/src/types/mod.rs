@@ -4,6 +4,6 @@ mod response;
 
 pub use {
     binary::Binary,
-    context::{ExecuteCtx, QueryCtx},
+    context::{ExecuteCtx, InstantiateCtx, QueryCtx},
     response::{ContractResult, Response},
 };
