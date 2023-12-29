@@ -1,42 +1,34 @@
 // -------------------------------- all targets --------------------------------
 
-mod deps;
-mod item;
-mod map;
-mod map_key;
-mod result;
 mod serde;
+mod storage;
 mod testing;
 mod traits;
+mod types;
 
-pub use {
-    crate::{
-        deps::ExecuteCtx,
-        item::Item,
-        map::Map,
-        map_key::{MapKey, RawKey},
-        result::{ContractResult, Response},
-        serde::{from_json, to_json},
-        testing::MockStorage,
-        traits::Storage,
-    },
-    cw_sdk_derive::{cw_serde, entry_point},
+pub use crate::{
+    serde::{from_json, to_json},
+    storage::{Item, Map, MapKey, Prefix, RawKey},
+    testing::MockStorage,
+    traits::{Order, Storage},
+    types::{ContractResult, ExecuteCtx, Response},
 };
 
 // ---------------------------- wasm32 target only -----------------------------
 
 #[cfg(target_arch = "wasm32")]
-mod exports;
-#[cfg(target_arch = "wasm32")]
-mod imports;
-#[cfg(target_arch = "wasm32")]
-mod memory;
+mod wasm;
 
 #[cfg(target_arch = "wasm32")]
-pub use crate::{exports::do_execute, imports::ExternalStorage, memory::Region};
+pub use crate::wasm::{do_execute, ExternalStorage, Region};
 
 // -------------------------------- re-exports ---------------------------------
 
+// macros
+pub use cw_sdk_derive::{cw_serde, entry_point};
+
+// dependencies used by the macros
+#[doc(hidden)]
 pub mod __private {
-    pub use serde;
+    pub use ::serde;
 }

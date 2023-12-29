@@ -50,7 +50,6 @@ dependencies = [
  "cw-bank",
  "cw-sdk",
  "data-encoding",
- "lazy_static",
  "serde",
  "serde-json-wasm",
  "wasmi",
@@ -73,12 +72,6 @@ name = "indexmap-nostd"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e04e2fd2b8188ea827b32ef11de88377086d690286ab35747ef7f9bf3ccb590"
-
-[[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libm"

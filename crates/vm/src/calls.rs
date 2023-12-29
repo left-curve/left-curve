@@ -4,12 +4,12 @@ use {
     serde::ser::Serialize,
 };
 
-pub fn call_execute<T, M>(host: &mut Host<T>, msg: M) -> anyhow::Result<ContractResult>
+pub fn call_execute<T, M>(host: &mut Host<T>, msg: &M) -> anyhow::Result<ContractResult>
 where
     M: Serialize,
 {
     // serialize message and load it into Wasm memory
-    let msg_bytes = serde_json_wasm::to_vec(&msg)?;
+    let msg_bytes = serde_json_wasm::to_vec(msg)?;
     let msg_ptr = host.write_to_memory(&msg_bytes)?;
 
     // call the execute function

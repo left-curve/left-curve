@@ -12,5 +12,4 @@ serde-json-wasm = { workspace = true }
 wasmi           = { workspace = true }
 
 [dev-dependencies]
-cw-bank     = { path = "../../contracts/bank" }
-lazy_static = { workspace = true }
+cw-bank = { path = "../../contracts/bank" }

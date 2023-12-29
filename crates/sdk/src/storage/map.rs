@@ -1,9 +1,9 @@
 use {
-    crate::{from_json, to_json, MapKey, Storage},
+    crate::{from_json, to_json, MapKey, Order, Storage},
     anyhow::Context,
     data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{any::type_name, marker::PhantomData},
+    std::{any::type_name, marker::PhantomData, ops::Bound},
 };
 
 pub struct Map<K, T> {
@@ -87,9 +87,10 @@ where
 
     pub fn range<'a>(
         &self,
-        store:       &dyn Storage,
-        start_after: Option<&K>,
-        limit:       Option<u32>,
+        store: &dyn Storage,
+        min:   Bound<&K>,
+        max:   Bound<&K>,
+        order: Order,
     ) -> Box<dyn Iterator<Item = anyhow::Result<(K, T)>> + 'a> {
         todo!()
     }
@@ -99,7 +100,6 @@ where
         store:       &dyn Storage,
         prefix:      &K::Prefix,
         start_after: Option<&K::Suffix>,
-        limit:       Option<u32>,
     ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Suffix, T)>> + 'a> {
         todo!()
     }
