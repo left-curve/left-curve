@@ -1,4 +1,4 @@
-use {anyhow::bail, std::mem};
+use {super::nested_namespaces_with_key, anyhow::bail, std::mem};
 
 pub enum RawKey<'a> {
     Owned(Vec<u8>),
@@ -15,11 +15,11 @@ impl<'a> RawKey<'a> {
         match self {
             RawKey::Owned(vec) => vec.len(),
             RawKey::Ref(slice) => slice.len(),
-            RawKey::Val8(_)    => 1,
-            RawKey::Val16(_)   => 2,
-            RawKey::Val32(_)   => 4,
-            RawKey::Val64(_)   => 8,
-            RawKey::Val128(_)  => 16,
+            RawKey::Val8(_) => 1,
+            RawKey::Val16(_) => 2,
+            RawKey::Val32(_) => 4,
+            RawKey::Val64(_) => 8,
+            RawKey::Val128(_) => 16,
         }
     }
 }
@@ -27,12 +27,12 @@ impl<'a> RawKey<'a> {
 impl<'a> AsRef<[u8]> for RawKey<'a> {
     fn as_ref(&self) -> &[u8] {
         match self {
-            RawKey::Owned(vec)    => vec,
-            RawKey::Ref(slice)    => slice,
-            RawKey::Val8(slice)   => slice,
-            RawKey::Val16(slice)  => slice,
-            RawKey::Val32(slice)  => slice,
-            RawKey::Val64(slice)  => slice,
+            RawKey::Owned(vec) => vec,
+            RawKey::Ref(slice) => slice,
+            RawKey::Val8(slice) => slice,
+            RawKey::Val16(slice) => slice,
+            RawKey::Val32(slice) => slice,
+            RawKey::Val64(slice) => slice,
             RawKey::Val128(slice) => slice,
         }
     }
@@ -50,7 +50,13 @@ pub trait MapKey: Sized {
     // for single keys, use ()
     type Suffix: MapKey;
 
-    fn serialize(&self) -> Vec<RawKey>;
+    fn raw_keys(&self) -> Vec<RawKey>;
+
+    fn serialize(&self) -> Vec<u8> {
+        let mut raw_keys = self.raw_keys();
+        let last_raw_key = raw_keys.pop();
+        nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
+    }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self>;
 }
@@ -59,7 +65,7 @@ impl MapKey for () {
     type Prefix = ();
     type Suffix = ();
 
-    fn serialize(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
     }
 
@@ -76,7 +82,7 @@ impl MapKey for Vec<u8> {
     type Prefix = ();
     type Suffix = ();
 
-    fn serialize(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_slice())]
     }
 
@@ -89,7 +95,7 @@ impl MapKey for String {
     type Prefix = ();
     type Suffix = ();
 
-    fn serialize(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_bytes())]
     }
 
@@ -104,7 +110,7 @@ macro_rules! map_integer_map_key {
             type Prefix = ();
             type Suffix = ();
 
-            fn serialize(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey> {
                 vec![RawKey::$v(self.to_be_bytes())]
             }
 
@@ -139,10 +145,10 @@ where
     type Prefix = A;
     type Suffix = B;
 
-    fn serialize(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = vec![];
-        keys.extend(self.0.serialize());
-        keys.extend(self.1.serialize());
+        keys.extend(self.0.raw_keys());
+        keys.extend(self.1.raw_keys());
         keys
     }
 

@@ -8,7 +8,7 @@ mod types;
 
 pub use crate::{
     serde::{from_json, to_json},
-    storage::{Item, Map, MapKey, Prefix, RawKey},
+    storage::{Item, Map, MapKey, Path, PathBuf, Prefix, RawKey},
     testing::MockStorage,
     traits::{Order, Storage},
     types::{ContractResult, ExecuteCtx, Response},
