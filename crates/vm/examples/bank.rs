@@ -5,18 +5,19 @@ use {
     std::{env, ops::Bound, path::PathBuf},
 };
 
-const BALANCES: Map<String, u64> = Map::new("b");
+const BALANCES: Map<(&str, &str), u64> = Map::new("b");
 
-const INITIAL_BALANCES: &[(&str, u64)] = &[
-    ("alice",   100),
-    ("bob",      50),
-    ("charlie", 123),
+const INITIAL_BALANCES: &[(&str, &str, u64)] = &[
+    ("alice",   "uatom", 100),
+    ("alice",   "uosmo", 888),
+    ("bob",     "uatom",  50),
+    ("charlie", "uatom", 123),
 ];
 
 fn build_initial_state() -> anyhow::Result<MockStorage> {
     let mut store = MockStorage::default();
-    for (name, balance) in INITIAL_BALANCES {
-        BALANCES.save(&mut store, &name.to_string(), balance)?;
+    for (name, denom, balance) in INITIAL_BALANCES {
+        BALANCES.save(&mut store, (name, denom), balance)?;
     }
     Ok(store)
 }
@@ -34,12 +35,13 @@ fn main() -> anyhow::Result<()> {
     let mut host = Host::new(&instance, &mut store);
 
     // make three transfers
-    call_send(&mut host, "alice", "dave", 75)?;
-    call_send(&mut host, "bob", "charlie", 50)?;
-    call_send(&mut host, "charlie", "alice", 69)?;
+    call_send(&mut host, "alice", "dave", "uatom", 75)?;
+    call_send(&mut host, "bob", "charlie", "uatom", 50)?;
+    call_send(&mut host, "charlie", "alice", "uatom", 69)?;
 
     // consume the wasm store, recover the host state it contains
     let state = store.into_data();
+    dbg!(state);
 
     // end state:
     // ----------
@@ -48,20 +50,27 @@ fn main() -> anyhow::Result<()> {
     // charlie: 123 + 50 - 69 = 104
     // dave:    0   + 75      = 75
     println!("Balances after the transfers:");
-    for item in BALANCES.range(&state, Bound::Unbounded, Bound::Unbounded, Order::Ascending) {
-        let (name, balance) = item?;
-        println!("name = {name}, balance = {balance}");
-    }
+    // for item in BALANCES.range(&state, Bound::Unbounded, Bound::Unbounded, Order::Ascending) {
+    //     let (name, balance) = item?;
+    //     println!("name = {name}, balance = {balance}");
+    // }
 
     Ok(())
 }
 
-fn call_send<T>(host: &mut Host<T>, from: &str, to: &str, amount: u64) -> anyhow::Result<()> {
-    println!("Sending... from: {from}, to: {to}, amount: {amount}");
+fn call_send<T>(
+    host:   &mut Host<T>,
+    from:   &str,
+    to:     &str,
+    denom:  &str,
+    amount: u64,
+) -> anyhow::Result<()> {
+    println!("Sending... from: {from}, to: {to}, denom: {denom}, amount: {amount}");
 
     let res = call_execute(host, &ExecuteMsg::Send {
-        from: from.into(),
-        to:   to.into(),
+        from:  from.into(),
+        to:    to.into(),
+        denom: denom.into(),
         amount,
     })?;
 

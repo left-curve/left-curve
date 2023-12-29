@@ -29,10 +29,10 @@ where
     pub fn range<'a>(
         &self,
         store: &'a dyn Storage,
-        min:   Bound<&K>,
-        max:   Bound<&K>,
+        min:   Bound<K>,
+        max:   Bound<K>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K, T)>> + 'a> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)

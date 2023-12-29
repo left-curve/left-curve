@@ -26,7 +26,7 @@ impl<K, T> Map<K, T>
 where
     K: MapKey,
 {
-    fn path(&self, key: &K) -> PathBuf<T> {
+    fn path(&self, key: K) -> PathBuf<T> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
@@ -36,7 +36,7 @@ where
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: &K::Prefix) -> Prefix<K::Suffix, T> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T> {
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 }
@@ -52,40 +52,40 @@ where
             .is_none()
     }
 
-    pub fn has(&self, store: &dyn Storage, k: &K) -> bool {
+    pub fn has(&self, store: &dyn Storage, k: K) -> bool {
         self.path(k).as_path().exists(store)
     }
 
-    pub fn may_load(&self, store: &dyn Storage, k: &K) -> anyhow::Result<Option<T>> {
+    pub fn may_load(&self, store: &dyn Storage, k: K) -> anyhow::Result<Option<T>> {
         self.path(k).as_path().may_load(store)
     }
 
-    pub fn load(&self, store: &dyn Storage, k: &K) -> anyhow::Result<T> {
+    pub fn load(&self, store: &dyn Storage, k: K) -> anyhow::Result<T> {
         self.path(k).as_path().load(store)
     }
 
-    pub fn update<A>(&self, store: &mut dyn Storage, k: &K, action: A) -> anyhow::Result<Option<T>>
+    pub fn update<A>(&self, store: &mut dyn Storage, k: K, action: A) -> anyhow::Result<Option<T>>
     where
         A: FnOnce(Option<T>) -> anyhow::Result<Option<T>>
     {
         self.path(k).as_path().update(store, action)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, k: &K, data: &T) -> anyhow::Result<()> {
+    pub fn save(&self, store: &mut dyn Storage, k: K, data: &T) -> anyhow::Result<()> {
         self.path(k).as_path().save(store, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage, k: &K) {
+    pub fn remove(&self, store: &mut dyn Storage, k: K) {
         self.path(k).as_path().remove(store)
     }
 
     pub fn range<'a>(
         &'a self,
         store: &'a dyn Storage,
-        min:   Bound<&K>,
-        max:   Bound<&K>,
+        min:   Bound<K>,
+        max:   Bound<K>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K, T)>> + 'a> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
         self.no_prefix().range(store, min, max, order)
     }
 

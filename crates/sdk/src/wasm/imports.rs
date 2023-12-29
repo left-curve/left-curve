@@ -1,4 +1,4 @@
-use crate::{Region, Storage};
+use crate::{Order, Region, Storage};
 
 // these are the method that the host must implement
 extern "C" {
@@ -56,8 +56,9 @@ impl Storage for ExternalStorage {
 
     fn scan<'a>(
         &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         todo!()
     }

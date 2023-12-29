@@ -43,12 +43,19 @@ impl<'a> AsRef<[u8]> for RawKey<'a> {
 // and faillable.
 pub trait MapKey: Sized {
     // for compound keys, the first element; e.g. for (A, B), A is the prefix.
-    // for single keys, use ()
+    // for single keys, use ().
     type Prefix: MapKey;
 
     // for compound keys, the elements minus the first one; e.g. for (A, B), B is the suffix.
-    // for single keys, use ()
+    // for single keys, use ().
     type Suffix: MapKey;
+
+    // the type the deserialize into, which may be different from the key itself.
+    // e.g. use &str as the key but deserializes into String.
+    //
+    // NOTE: the output must be an owned type. in comparison, the key itself is
+    // almost always a reference type or a copy-able type.
+    type Output: 'static;
 
     fn raw_keys(&self) -> Vec<RawKey>;
 
@@ -58,18 +65,19 @@ pub trait MapKey: Sized {
         nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self>;
+    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output>;
 }
 
 impl MapKey for () {
     type Prefix = ();
     type Suffix = ();
+    type Output = ();
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
+    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
         if !bytes.is_empty() {
             bail!("Expecting empty bytes");
         }
@@ -78,28 +86,31 @@ impl MapKey for () {
     }
 }
 
-impl MapKey for Vec<u8> {
+// TODO: create a Binary type and replace this with &Binary
+impl MapKey for &[u8] {
     type Prefix = ();
     type Suffix = ();
+    type Output = Vec<u8>;
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Ref(self.as_slice())]
+        vec![RawKey::Ref(self)]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
+    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
         Ok(bytes.to_vec())
     }
 }
 
-impl MapKey for String {
+impl MapKey for &str {
     type Prefix = ();
     type Suffix = ();
+    type Output = String;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_bytes())]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
+    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
         String::from_utf8(bytes.to_vec()).map_err(Into::into)
     }
 }
@@ -109,12 +120,13 @@ macro_rules! map_integer_map_key {
         $(impl MapKey for $t {
             type Prefix = ();
             type Suffix = ();
+            type Output = $t;
 
             fn raw_keys(&self) -> Vec<RawKey> {
                 vec![RawKey::$v(self.to_be_bytes())]
             }
 
-            fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
+            fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
                     bail!(
                         "Wrong number of bytes: expecting {}, got {}",
@@ -144,6 +156,7 @@ where
 {
     type Prefix = A;
     type Suffix = B;
+    type Output = (A::Output, B::Output);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = vec![];
@@ -152,7 +165,7 @@ where
         keys
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
+    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
         let (a_bytes, b_bytes) = split_one_key(bytes)?;
         let a = A::deserialize(a_bytes)?;
         let b = B::deserialize(b_bytes)?;
