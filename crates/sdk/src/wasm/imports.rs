@@ -7,6 +7,8 @@ extern "C" {
     fn db_write(key_ptr: usize, value_ptr: usize);
 
     fn db_remove(key_ptr: usize);
+
+    // TODO: add db_scan
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more

@@ -1,8 +1,4 @@
-use {
-    anyhow::{bail, Context},
-    data_encoding::BASE64,
-    std::mem,
-};
+use {anyhow::bail, std::mem};
 
 pub enum RawKey<'a> {
     Owned(Vec<u8>),
@@ -64,15 +60,12 @@ impl MapKey for () {
     type Suffix = ();
 
     fn serialize(&self) -> Vec<RawKey> {
-        vec![RawKey::Ref(&[])]
+        vec![]
     }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
         if !bytes.is_empty() {
-            bail!(
-                "Failed to deserialize into empty map key: expecting empty bytes, got {}",
-                BASE64.encode(bytes),
-            );
+            bail!("Expecting empty bytes");
         }
 
         Ok(())
@@ -101,8 +94,7 @@ impl MapKey for String {
     }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
-        String::from_utf8(bytes.to_vec())
-            .context("Failed to deserialize into String map key")
+        String::from_utf8(bytes.to_vec()).map_err(Into::into)
     }
 }
 
@@ -117,9 +109,15 @@ macro_rules! map_integer_map_key {
             }
 
             fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
-                <[u8; mem::size_of::<Self>()]>::try_from(bytes)
-                    .map(Self::from_be_bytes)
-                    .context("Failed to deserialize into $t map key")
+                let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
+                    bail!(
+                        "Wrong number of bytes: expecting {}, got {}",
+                        mem::size_of::<Self>(),
+                        bytes.len(),
+                    );
+                };
+
+                Ok(Self::from_be_bytes(bytes))
             }
         })*
     }

@@ -30,27 +30,24 @@ impl Storage for MockStorage {
 
     fn scan<'a>(
         &'a self,
-        min:   Bound<&[u8]>,
-        max:   Bound<&[u8]>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         // BTreeMap::range panics if
-        // 1. min > max, or
-        // 2. min == max and both are exclusive
-        // however in these cases we don't want to panic, we just return an
-        // empty iterator.
-        match (&min, &max) {
-            (Bound::Included(min) | Bound::Excluded(min), Bound::Included(max) | Bound::Excluded(max)) if min > max => {
+        // 1. start > end, or
+        // 2. start == end and both are exclusive
+        // for us, since we interpret min as inclusive and max as exclusive,
+        // only the 1st case apply. however, we don't want to panic, we just
+        // return an empty iterator.
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
                 return Box::new(iter::empty());
-            },
-            (Bound::Excluded(min), Bound::Excluded(max)) if min == max => {
-                return Box::new(iter::empty());
-            },
-            _ => {},
+            }
         }
 
-        let min = bound_to_vec(min);
-        let max = bound_to_vec(max);
+        let min = min.map_or(Bound::Unbounded, |min| Bound::Included(min.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |max| Bound::Excluded(max.to_vec()));
         let iter = self.data.range((min, max)).map(|(k, v)| (k.clone(), v.clone()));
 
         if order == Order::Ascending {
@@ -58,15 +55,5 @@ impl Storage for MockStorage {
         } else {
             Box::new(iter.rev())
         }
-    }
-}
-
-// TODO: replace with bound.map once stablized (seems like happening soon):
-// https://github.com/rust-lang/rust/issues/86026
-fn bound_to_vec(bound: Bound<&[u8]>) -> Bound<Vec<u8>> {
-    match bound {
-        Bound::Included(slice) => Bound::Included(slice.to_vec()),
-        Bound::Excluded(slice) => Bound::Excluded(slice.to_vec()),
-        Bound::Unbounded => Bound::Unbounded,
     }
 }

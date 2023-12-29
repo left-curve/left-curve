@@ -13,12 +13,12 @@ pub trait Storage {
 
     fn remove(&mut self, key: &[u8]);
 
-    // NOTE: unlike in cosmwasm, where min is always inclusive and max is always
-    // exclusive, here we allow both of them to be either inclusive or exclusive.
+    // minimum bound is always inclusive, maximum bound is always exclusive.
+    // if min > max, an empty iterator is to be returned.
     fn scan<'a>(
         &'a self,
-        min:   Bound<&[u8]>,
-        max:   Bound<&[u8]>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
 }
