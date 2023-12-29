@@ -42,6 +42,15 @@ pub(super) fn nested_namespaces_with_key(
     out
 }
 
+fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
+    let len = bytes.as_ref().len();
+    if len > 0xffff {
+        panic!("Can't encode length becayse byte slice is too long: {} > {}", len, u16::MAX);
+    }
+
+    (bytes.as_ref().len() as u16).to_be_bytes()
+}
+
 // NOTE: this doesn't work if the bytes are entirely 255.
 // in practice, the input bytes is a length-prefixed Map namespace. for the
 // bytes to be entirely 255, the namespace must be u16::MAX = 65535 byte long
@@ -64,22 +73,6 @@ pub(super) fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
 pub(super) fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes.push(0);
     bytes
-}
-
-pub(super) fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
-    let len = bytes.as_ref().len();
-    if len > 0xffff {
-        panic!("Can't encode length becayse byte slice is too long: {} > {}", len, u16::MAX);
-    }
-
-    (bytes.as_ref().len() as u16).to_be_bytes()
-}
-
-pub(super) fn prefix_length(bytes: &[u8]) -> Vec<u8> {
-    let mut vec = Vec::with_capacity(bytes.len() + 2);
-    vec.extend(encode_length(bytes));
-    vec.extend_from_slice(bytes);
-    vec
 }
 
 pub(super) fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {

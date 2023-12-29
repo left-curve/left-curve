@@ -1,4 +1,4 @@
-use {super::nested_namespaces_with_key, anyhow::bail, std::mem};
+use {super::{nested_namespaces_with_key, split_one_key}, anyhow::bail, std::mem};
 
 pub enum RawKey<'a> {
     Owned(Vec<u8>),
@@ -153,6 +153,9 @@ where
     }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
-        todo!()
+        let (a_bytes, b_bytes) = split_one_key(bytes)?;
+        let a = A::deserialize(a_bytes)?;
+        let b = B::deserialize(b_bytes)?;
+        Ok((a, b))
     }
 }
