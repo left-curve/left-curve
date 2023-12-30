@@ -17,7 +17,7 @@ where
     let res_ptr: u32 = host.call("instantiate", msg_ptr)?;
     let res_bytes = host.read_then_wipe(res_ptr)?;
 
-    from_json(&res_bytes)
+    from_json(res_bytes)
 
     // no need to deallocate msg_ptr, they were already freed in Wasm code.
     // the send function doesn't have response data either, so we're done.
@@ -33,7 +33,7 @@ where
     let res_ptr: u32 = host.call("execute", msg_ptr)?;
     let res_bytes = host.read_then_wipe(res_ptr)?;
 
-    from_json(&res_bytes)
+    from_json(res_bytes)
 }
 
 pub fn call_query<T, M>(host: &mut Host<T>, msg: &M) -> anyhow::Result<ContractResult<Binary>>
@@ -46,5 +46,5 @@ where
     let res_ptr: u32 = host.call("query", msg_ptr)?;
     let res_bytes = host.read_then_wipe(res_ptr)?;
 
-    from_json(&res_bytes)
+    from_json(res_bytes)
 }

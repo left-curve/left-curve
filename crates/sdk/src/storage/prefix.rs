@@ -54,7 +54,7 @@ where
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;
-            let data = from_json(&v)?;
+            let data = from_json(v)?;
             Ok((key, data))
         });
 

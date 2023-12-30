@@ -7,6 +7,7 @@ use {
 
 // not to be confused with cw_sdk::MockStorage
 #[derive(Default)]
+#[allow(clippy::type_complexity)]
 pub struct MockHostState {
     store:        MockStorage,
     iterators:    HashMap<u32, vec::IntoIter<(Vec<u8>, Vec<u8>)>>,

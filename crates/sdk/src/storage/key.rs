@@ -10,20 +10,6 @@ pub enum RawKey<'a> {
     Val128([u8; 16]),
 }
 
-impl<'a> RawKey<'a> {
-    pub fn len(&self) -> usize {
-        match self {
-            RawKey::Owned(vec) => vec.len(),
-            RawKey::Ref(slice) => slice.len(),
-            RawKey::Val8(_) => 1,
-            RawKey::Val16(_) => 2,
-            RawKey::Val32(_) => 4,
-            RawKey::Val64(_) => 8,
-            RawKey::Val128(_) => 16,
-        }
-    }
-}
-
 impl<'a> AsRef<[u8]> for RawKey<'a> {
     fn as_ref(&self) -> &[u8] {
         match self {

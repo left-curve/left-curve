@@ -97,8 +97,9 @@ impl Iterator for ExternalIterator {
     }
 }
 
-// this is the same as Region::build but the data is optional. also, it casts
-// the pointer to usize. if the data is None, return zero.
+// clippy has a false positive here. we have to take Option<&Box<Region>>,
+// not Option<&Region>
+#[allow(clippy::borrowed_box)]
 fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
     // a zero memory address tells the host that no data has been loaded into
     // memory. in case of db_scan, it means the bound is None.

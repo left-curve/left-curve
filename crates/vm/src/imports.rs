@@ -81,11 +81,8 @@ where
     );
 
     // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>
-    // this is a bit annoying
-    let min = min.as_ref().map(|vec| vec.as_slice());
-    let max = max.as_ref().map(|vec| vec.as_slice());
-
-    host.data_mut().scan(min, max, order).map_err(Into::into)
+    // `as_deref` works!
+    host.data_mut().scan(min.as_deref(), max.as_deref(), order).map_err(Into::into)
 }
 
 pub fn db_next<S>(caller: Caller<'_, S>, iterator_id: u32) -> Result<u32, wasmi::Error>

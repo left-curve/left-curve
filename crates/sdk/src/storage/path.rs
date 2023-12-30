@@ -47,24 +47,24 @@ where
     T: Serialize + DeserializeOwned,
 {
     pub fn exists(&self, store: &dyn Storage) -> bool {
-        store.read(&self.storage_key).is_some()
+        store.read(self.storage_key).is_some()
     }
 
     pub fn may_load(&self, store: &dyn Storage) -> anyhow::Result<Option<T>> {
         store
-            .read(&self.storage_key)
+            .read(self.storage_key)
             .map(from_json)
             .transpose()
             .map_err(Into::into)
     }
 
     pub fn load(&self, store: &dyn Storage) -> anyhow::Result<T> {
-        from_json(&store
-            .read(&self.storage_key)
+        from_json(store
+            .read(self.storage_key)
             .ok_or_else(|| anyhow!(
                 "[Path]: data not found! type: {}, storage key: {}",
                 type_name::<T>(),
-                BASE64.encode(&self.storage_key),
+                BASE64.encode(self.storage_key),
             ))?)
             .map_err(Into::into)
     }
