@@ -4,12 +4,14 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-anyhow          = { workspace = true }
-cw-sdk          = { path = "../sdk" }
-data-encoding   = { workspace = true }
-serde           = { workspace = true }
-serde-json-wasm = { workspace = true }
-wasmi           = { workspace = true }
+anyhow             = { workspace = true }
+cw-sdk             = { path = "../sdk" }
+data-encoding      = { workspace = true }
+serde              = { workspace = true }
+serde-json-wasm    = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+wasmi              = { workspace = true }
 
 [dev-dependencies]
 cw-bank = { path = "../../contracts/bank" }

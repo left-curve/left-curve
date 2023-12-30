@@ -6,6 +6,7 @@ use {
         Host, InstanceBuilder, MockHostState,
     },
     std::{env, path::PathBuf},
+    tracing::info,
 };
 
 const BALANCES: [(&str, &str, u64); 4] = [
@@ -16,6 +17,12 @@ const BALANCES: [(&str, &str, u64); 4] = [
 ];
 
 fn main() -> anyhow::Result<()> {
+    // set tracing to TRACE level, so that we can see logs of DB reads/writes
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
+
+    // incrase Wasm host instance
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let (instance, mut store) = InstanceBuilder::default()
@@ -53,7 +60,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    println!("Instantiating contract...");
+    info!("instantiating contract");
 
     let mut initial_balances = vec![];
     for (address, denom, amount) in BALANCES {
@@ -65,7 +72,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     }
     let res = call_instantiate(host, &InstantiateMsg { initial_balances })?;
 
-    println!("Contract response: {res:?}");
+    info!(?res, "instantiation successful");
 
     Ok(())
 }
@@ -77,7 +84,7 @@ fn send<T>(
     denom:  &str,
     amount: u64,
 ) -> anyhow::Result<()> {
-    println!("Sending... from: {from}, to: {to}, denom: {denom}, amount: {amount}");
+    info!(from, to, denom, amount, "sending");
 
     let res = call_execute(host, &ExecuteMsg::Send {
         from:  from.into(),
@@ -86,13 +93,13 @@ fn send<T>(
         amount,
     })?;
 
-    println!("Execute response: {res:?}");
+    info!(?res, "send successful");
 
     Ok(())
 }
 
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    println!("Query balances...");
+    info!("querying balances");
 
     let res_bytes = call_query(host, &QueryMsg::Balances {
         start_after: None,
@@ -102,7 +109,7 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
 
     let res: Vec<Balance> = from_json(&res_bytes)?;
 
-    println!("Query response: {res:?}");
+    info!(?res, "query successful");
 
     Ok(())
 }

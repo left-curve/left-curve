@@ -1,6 +1,7 @@
 use {
     crate::{Host, HostState},
     data_encoding::BASE64,
+    tracing::trace,
     wasmi::Caller,
 };
 
@@ -9,10 +10,9 @@ where
     S: HostState,
 {
     let mut host = Host::from(caller);
-    let key = host.read_from_memory(key_ptr)?;
 
-    // TODO: replace this with tracing debug
-    println!("db_read: key = {}", BASE64.encode(&key));
+    let key = host.read_from_memory(key_ptr)?;
+    trace!(key = ?BASE64.encode(&key), "db_read");
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
@@ -29,11 +29,10 @@ where
     S: HostState,
 {
     let mut host = Host::from(caller);
+
     let key = host.read_from_memory(key_ptr)?;
     let value = host.read_from_memory(value_ptr)?;
-
-    // TODO: replace this with tracing debug
-    println!("db_write: key = {}, value = {}", BASE64.encode(&key), BASE64.encode(&value));
+    trace!(key = ?BASE64.encode(&key), value = ?BASE64.encode(&value), "db_write");
 
     host.data_mut().write(&key, &value).map_err(Into::into)
 }
@@ -43,10 +42,9 @@ where
     S: HostState,
 {
     let mut host = Host::from(caller);
-    let key = host.read_from_memory(key_ptr)?;
 
-    // TODO: replace this with tracing debug
-    println!("db_remove: key = {}", BASE64.encode(&key));
+    let key = host.read_from_memory(key_ptr)?;
+    trace!(key = ?BASE64.encode(&key), "db_remove");
 
     host.data_mut().remove(&key).map_err(Into::into)
 }
@@ -74,11 +72,11 @@ where
     };
     let order = order.try_into()?;
 
-    // TODO: replace this with tracing debug
-    println!(
-        "db_scan: min = {:?}, max = {:?}, order = {order:?}",
-        min.as_ref().map(|bytes| BASE64.encode(bytes)),
-        max.as_ref().map(|bytes| BASE64.encode(bytes)),
+    trace!(
+        min = ?min.as_ref().map(|bytes| BASE64.encode(bytes)),
+        max = ?max.as_ref().map(|bytes| BASE64.encode(bytes)),
+        order = ?order,
+        "db_scan"
     );
 
     // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>
@@ -95,8 +93,7 @@ where
 {
     let mut host = Host::from(caller);
 
-    // TODO: replace this with tracing debug
-    println!("db_next: iterator_id = {iterator_id}");
+    trace!(iterator_id, "db_next");
 
     let Some(record) = host.data_mut().next(iterator_id)? else {
         // returning a zero memory address informs the Wasm module that the
