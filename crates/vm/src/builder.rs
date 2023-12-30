@@ -4,14 +4,14 @@ use {
     wasmi::{Engine, Instance, IntoFunc, Linker, Module, Store},
 };
 
-pub struct InstanceBuilder<HostState> {
+pub struct InstanceBuilder<S> {
     engine: Engine,
     module: Option<Module>,
-    store:  Option<Store<HostState>>,
-    linker: Option<Linker<HostState>>,
+    store:  Option<Store<S>>,
+    linker: Option<Linker<S>>,
 }
 
-impl<HostState> Default for InstanceBuilder<HostState> {
+impl<S> Default for InstanceBuilder<S> {
     fn default() -> Self {
         Self {
             engine: Engine::default(),
@@ -22,7 +22,7 @@ impl<HostState> Default for InstanceBuilder<HostState> {
     }
 }
 
-impl<HostState> InstanceBuilder<HostState> {
+impl<S> InstanceBuilder<S> {
     pub fn new(engine: Engine) -> Self {
         Self {
             engine,
@@ -38,7 +38,7 @@ impl<HostState> InstanceBuilder<HostState> {
         Ok(self)
     }
 
-    pub fn with_host_state(mut self, data: HostState) -> Self {
+    pub fn with_host_state(mut self, data: S) -> Self {
         self.store = Some(Store::new(&self.engine, data));
         self.linker = Some(Linker::new(&self.engine));
         self
@@ -47,7 +47,7 @@ impl<HostState> InstanceBuilder<HostState> {
     pub fn with_host_function<Params, Results>(
         mut self,
         name: &str,
-        func: impl IntoFunc<HostState, Params, Results>,
+        func: impl IntoFunc<S, Params, Results>,
     ) -> anyhow::Result<Self> {
         let mut linker = self.take_linker()?;
         linker.func_wrap("env", name, func)?;
@@ -56,7 +56,7 @@ impl<HostState> InstanceBuilder<HostState> {
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<HostState>)> {
+    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<S>)> {
         let module = self.take_module()?;
         let mut store = self.take_store()?;
         let linker = self.take_linker()?;
@@ -69,11 +69,11 @@ impl<HostState> InstanceBuilder<HostState> {
         self.module.take().context("Module not yet initialized")
     }
 
-    fn take_store(&mut self) -> anyhow::Result<Store<HostState>> {
+    fn take_store(&mut self) -> anyhow::Result<Store<S>> {
         self.store.take().context("Store not yet initialized")
     }
 
-    fn take_linker(&mut self) -> anyhow::Result<Linker<HostState>> {
+    fn take_linker(&mut self) -> anyhow::Result<Linker<S>> {
         self.linker.take().context("Linker not yet initialized")
     }
 }

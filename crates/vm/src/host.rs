@@ -6,15 +6,15 @@ use {
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
 
-pub struct Host<'a, HostState> {
-    caller:     Caller<'a, HostState>,
+pub struct Host<'a, S> {
+    caller:     Caller<'a, S>,
     memory:     OnceCell<Memory>,
     alloc_fn:   OnceCell<TypedFunc<u32, u32>>,
     dealloc_fn: OnceCell<TypedFunc<u32, ()>>,
 }
 
-impl<'a, HostState> From<Caller<'a, HostState>> for Host<'a, HostState> {
-    fn from(caller: Caller<'a, HostState>) -> Self {
+impl<'a, S> From<Caller<'a, S>> for Host<'a, S> {
+    fn from(caller: Caller<'a, S>) -> Self {
         Self {
             caller,
             memory:     OnceCell::new(),
@@ -24,8 +24,8 @@ impl<'a, HostState> From<Caller<'a, HostState>> for Host<'a, HostState> {
     }
 }
 
-impl<'a, HostState> Host<'a, HostState> {
-    pub fn new(instance: &Instance, store: &'a mut Store<HostState>) -> Self {
+impl<'a, S> Host<'a, S> {
+    pub fn new(instance: &Instance, store: &'a mut Store<S>) -> Self {
         Self {
             caller:     Caller::new(store, Some(instance)),
             memory:     OnceCell::new(),
@@ -35,12 +35,12 @@ impl<'a, HostState> Host<'a, HostState> {
     }
 
     /// Get an immutable reference to the host state.
-    pub fn data(&self) -> &HostState {
+    pub fn data(&self) -> &S {
         self.caller.data()
     }
 
     /// Get a mutable reference to the host state.
-    pub fn data_mut(&mut self) -> &mut HostState {
+    pub fn data_mut(&mut self) -> &mut S {
         self.caller.data_mut()
     }
 

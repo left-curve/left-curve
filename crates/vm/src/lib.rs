@@ -3,7 +3,8 @@ mod calls;
 mod host;
 mod imports;
 mod memory;
-mod storage;
+mod testing;
+mod traits;
 
 pub use {
     builder::InstanceBuilder,
@@ -11,5 +12,6 @@ pub use {
     host::Host,
     imports::{db_next, db_read, db_remove, db_scan, db_write},
     memory::Region,
-    storage::{BackendStorage, MockBackendStorage},
+    testing::MockHostState,
+    traits::HostState,
 };

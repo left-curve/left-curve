@@ -1,12 +1,12 @@
 use {
-    crate::{Host, BackendStorage},
+    crate::{Host, HostState},
     data_encoding::BASE64,
     wasmi::Caller,
 };
 
 pub fn db_read<S>(caller: Caller<'_, S>, key_ptr: u32) -> Result<u32, wasmi::Error>
 where
-    S: BackendStorage,
+    S: HostState,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -26,7 +26,7 @@ where
 
 pub fn db_write<S>(caller: Caller<'_, S>, key_ptr: u32, value_ptr: u32) -> Result<(), wasmi::Error>
 where
-    S: BackendStorage,
+    S: HostState,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -40,7 +40,7 @@ where
 
 pub fn db_remove<S>(caller: Caller<'_, S>, key_ptr: u32) -> Result<(), wasmi::Error>
 where
-    S: BackendStorage,
+    S: HostState,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -58,7 +58,7 @@ pub fn db_scan<S>(
     order:   i32,
 ) -> Result<u32, wasmi::Error>
 where
-    S: BackendStorage,
+    S: HostState,
 {
     let mut host = Host::from(caller);
 
@@ -91,7 +91,7 @@ where
 
 pub fn db_next<S>(caller: Caller<'_, S>, iterator_id: u32) -> Result<u32, wasmi::Error>
 where
-    S: BackendStorage,
+    S: HostState,
 {
     let mut host = Host::from(caller);
 
