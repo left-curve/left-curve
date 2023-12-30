@@ -115,8 +115,8 @@ impl MapKey for &str {
     }
 }
 
-macro_rules! map_integer_map_key {
-    (for $($t:ty, $v:tt),+ $(,)?) => {
+macro_rules! impl_integer_map_key {
+    ($($t:ty, $v:tt),+ $(,)?) => {
         $(impl MapKey for $t {
             type Prefix = ();
             type Suffix = ();
@@ -141,7 +141,7 @@ macro_rules! map_integer_map_key {
     }
 }
 
-map_integer_map_key!(for
+impl_integer_map_key!(
     i8,   Val8,   u8,   Val8,
     i16,  Val16,  u16,  Val16,
     i32,  Val32,  u32,  Val32,
