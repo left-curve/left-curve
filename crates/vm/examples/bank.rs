@@ -3,7 +3,7 @@ use {
     cw_sdk::from_json,
     cw_vm::{
         call_execute, call_instantiate, call_query, db_next, db_read, db_remove, db_scan, db_write,
-        Host, InstanceBuilder, MockHostState,
+        debug, Host, InstanceBuilder, MockHostState,
     },
     std::{env, path::PathBuf},
     tracing::info,
@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
         .with_host_function("db_remove", db_remove)?
         .with_host_function("db_scan", db_scan)?
         .with_host_function("db_next", db_next)?
+        .with_host_function("debug", debug)?
         .finalize()?;
     let mut host = Host::new(&instance, &mut store);
 

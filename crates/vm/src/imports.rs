@@ -1,7 +1,8 @@
 use {
     crate::{Host, HostState},
+    anyhow::anyhow,
     data_encoding::BASE64,
-    tracing::trace,
+    tracing::{debug, trace},
     wasmi::Caller,
 };
 
@@ -107,9 +108,20 @@ where
 // pack a KV pair into a single byte array in the following format:
 // key | value | len(key)
 // where len() is two bytes (u16 big endian)
+#[inline]
 fn encode_record((mut k, v): (Vec<u8>, Vec<u8>)) -> Vec<u8> {
     let key_len = k.len();
     k.extend(v);
     k.extend_from_slice(&(key_len as u16).to_be_bytes());
     k
+}
+
+pub fn debug<S>(caller: Caller<'_, S>, msg_ptr: u32) -> Result<(), wasmi::Error> {
+    let host = Host::from(caller);
+
+    let msg_bytes = host.read_from_memory(msg_ptr)?;
+    let msg = String::from_utf8(msg_bytes).map_err(|_| anyhow!("Invalid UTF8"))?;
+    debug!(msg, "contract debug");
+
+    Ok(())
 }

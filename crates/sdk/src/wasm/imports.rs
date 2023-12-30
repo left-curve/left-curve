@@ -1,4 +1,4 @@
-use crate::{Order, Region, Storage};
+use crate::{ExecuteCtx, InstantiateCtx, Order, QueryCtx, Region, Storage};
 
 // these are the method that the host must implement
 extern "C" {
@@ -10,7 +10,9 @@ extern "C" {
 
     fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> u32;
 
-    fn db_next(iterator_id: u32) -> u32;
+    fn db_next(iterator_id: u32) -> usize;
+
+    fn debug(msg_ptr: usize);
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -130,6 +132,26 @@ fn split_tail(mut data: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
 
     (data, value)
 }
+
+// implement a `debug` method for each context type
+macro_rules! impl_debug {
+    ($($t:ty),+ $(,)?) => {
+        $(impl<'a> $t {
+            pub fn debug(&self, msg: impl AsRef<str>) {
+                // TODO: add contract address & other info to the debug msg?
+                // TODO: ideally, only emit the debug message in debug build
+                // composing the debug message may consume resources (e.g. if
+                // using the format! macro), so we want to do nothing in release
+                let region = Region::build(msg.as_ref().as_bytes());
+                let ptr = &*region as *const Region;
+
+                unsafe { debug(ptr as usize) }
+            }
+        })*
+    };
+}
+
+impl_debug!(ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
 
 // ----------------------------------- tests -----------------------------------
 
