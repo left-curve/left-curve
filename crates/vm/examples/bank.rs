@@ -37,18 +37,17 @@ fn main() -> anyhow::Result<()> {
         .finalize()?;
     let mut host = Host::new(&instance, &mut store);
 
-    // instantiate contract, then make three transfers
+    // deploy the contract
     instantiate(&mut host)?;
+
+    // make some transfers
     send(&mut host, "alice", "dave", "uatom", 75)?;
+    send(&mut host, "alice", "larry", "uosmo", 420)?;
     send(&mut host, "bob", "charlie", "uatom", 50)?;
     send(&mut host, "charlie", "alice", "uatom", 69)?;
+    send(&mut host, "larry", "jake", "uosmo", 64)?;
 
-    // end state:
-    // ----------
-    // alice:   100 - 75 + 69 = 94
-    // bob:     50  - 50      = 0 (deleted from host state)
-    // charlie: 123 + 50 - 69 = 104
-    // dave:    0   + 75      = 75
+    // query and print out the balances
     query_balances(&mut host)?;
 
     // if we need the host state for other purposes, we can consume the wasm
