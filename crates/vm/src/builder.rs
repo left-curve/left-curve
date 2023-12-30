@@ -4,12 +4,22 @@ use {
     wasmi::{Engine, Instance, IntoFunc, Linker, Module, Store},
 };
 
-#[derive(Default)]
 pub struct InstanceBuilder<HostState> {
     engine: Engine,
     module: Option<Module>,
     store:  Option<Store<HostState>>,
     linker: Option<Linker<HostState>>,
+}
+
+impl<HostState> Default for InstanceBuilder<HostState> {
+    fn default() -> Self {
+        Self {
+            engine: Engine::default(),
+            module: None,
+            store:  None,
+            linker: None,
+        }
+    }
 }
 
 impl<HostState> InstanceBuilder<HostState> {

@@ -1,13 +1,12 @@
 use {
-    crate::{Host, HostState},
-    cw_sdk::Storage,
+    crate::{Host, BackendStorage},
     data_encoding::BASE64,
     wasmi::Caller,
 };
 
-pub fn db_read<S>(caller: Caller<'_, HostState<S>>, key_ptr: u32) -> Result<u32, wasmi::Error>
+pub fn db_read<S>(caller: Caller<'_, S>, key_ptr: u32) -> Result<u32, wasmi::Error>
 where
-    S: Storage,
+    S: BackendStorage,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -17,7 +16,7 @@ where
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
-    let Some(value) = host.data().kv.read(&key) else {
+    let Some(value) = host.data().read(&key)? else {
         return Ok(0);
     };
 
@@ -25,13 +24,9 @@ where
     host.write_to_memory(&value).map_err(Into::into)
 }
 
-pub fn db_write<S>(
-    caller:    Caller<'_, HostState<S>>,
-    key_ptr:   u32,
-    value_ptr: u32,
-) -> Result<(), wasmi::Error>
+pub fn db_write<S>(caller: Caller<'_, S>, key_ptr: u32, value_ptr: u32) -> Result<(), wasmi::Error>
 where
-    S: Storage,
+    S: BackendStorage,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -40,14 +35,12 @@ where
     // TODO: replace this with tracing debug
     println!("db_write: key = {}, value = {}", BASE64.encode(&key), BASE64.encode(&value));
 
-    host.data_mut().kv.write(&key, &value);
-
-    Ok(())
+    host.data_mut().write(&key, &value).map_err(Into::into)
 }
 
-pub fn db_remove<S>(caller: Caller<'_, HostState<S>>, key_ptr: u32) -> Result<(), wasmi::Error>
+pub fn db_remove<S>(caller: Caller<'_, S>, key_ptr: u32) -> Result<(), wasmi::Error>
 where
-    S: Storage,
+    S: BackendStorage,
 {
     let mut host = Host::from(caller);
     let key = host.read_from_memory(key_ptr)?;
@@ -55,19 +48,17 @@ where
     // TODO: replace this with tracing debug
     println!("db_remove: key = {}", BASE64.encode(&key));
 
-    host.data_mut().kv.remove(&key);
-
-    Ok(())
+    host.data_mut().remove(&key).map_err(Into::into)
 }
 
 pub fn db_scan<S>(
-    caller:  Caller<'_, HostState<S>>,
+    caller:  Caller<'_, S>,
     min_ptr: u32,
     max_ptr: u32,
     order:   i32,
 ) -> Result<u32, wasmi::Error>
 where
-    S: Storage,
+    S: BackendStorage,
 {
     let mut host = Host::from(caller);
 
@@ -95,39 +86,33 @@ where
     let min = min.as_ref().map(|vec| vec.as_slice());
     let max = max.as_ref().map(|vec| vec.as_slice());
 
-    Ok(host.data_mut().create_iterator(min, max, order))
+    host.data_mut().scan(min, max, order).map_err(Into::into)
 }
 
-pub fn db_next<S>(caller: Caller<'_, HostState<S>>, iterator_id: u32) -> Result<u32, wasmi::Error>
+pub fn db_next<S>(caller: Caller<'_, S>, iterator_id: u32) -> Result<u32, wasmi::Error>
 where
-    S: Storage,
+    S: BackendStorage,
 {
     let mut host = Host::from(caller);
 
     // TODO: replace this with tracing debug
     println!("db_next: iterator_id = {iterator_id}");
 
-    // if the iterator has reached the end, we
-    // - delete the iterator from host state;
-    // - return a zero memory address to signal to the Wasm module that no data
-    //   has been loaded into memory.
-    let iter = host.data_mut().get_iterator_mut(iterator_id);
-    let Some((key, value)) = iter.next() else {
-        host.data_mut().drop_iterator(iterator_id);
+    let Some(record) = host.data_mut().next(iterator_id)? else {
+        // returning a zero memory address informs the Wasm module that the
+        // iterator has reached its end, and no data is loaded into memory.
         return Ok(0);
     };
-    let data = encode_record(&key, &value);
 
-    host.write_to_memory(&data).map_err(Into::into)
+    host.write_to_memory(&encode_record(record)).map_err(Into::into)
 }
 
 // pack a KV pair into a single byte array in the following format:
 // key | value | len(key)
 // where len() is two bytes (u16 big endian)
-fn encode_record(k: &[u8], v: &[u8]) -> Vec<u8> {
-    let mut data = Vec::with_capacity(k.len() + v.len() + 2);
-    data.extend_from_slice(&k);
-    data.extend_from_slice(&v);
-    data.extend_from_slice(&(k.len() as u16).to_be_bytes());
-    data
+fn encode_record((mut k, v): (Vec<u8>, Vec<u8>)) -> Vec<u8> {
+    let key_len = k.len();
+    k.extend(v);
+    k.extend_from_slice(&(key_len as u16).to_be_bytes());
+    k
 }

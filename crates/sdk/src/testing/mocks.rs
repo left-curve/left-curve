@@ -46,8 +46,8 @@ impl Storage for MockStorage {
             }
         }
 
-        let min = min.map_or(Bound::Unbounded, |min| Bound::Included(min.to_vec()));
-        let max = max.map_or(Bound::Unbounded, |max| Bound::Excluded(max.to_vec()));
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
         let iter = self.data.range((min, max)).map(|(k, v)| (k.clone(), v.clone()));
 
         if order == Order::Ascending {

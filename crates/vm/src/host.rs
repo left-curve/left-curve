@@ -1,84 +1,20 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail, Context},
-    cw_sdk::{Order, Storage},
     data_encoding::BASE64,
-    std::{cell::OnceCell, collections::HashMap},
+    std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
 
-/// The state of the Wasm host. It includes a key-value store (which must
-/// implement the cw_sdk::Storage trait) and a registry of iterators.
-pub struct HostState<S> {
-    // we typically name this "store", but to avoid confusion with wasmi::Store,
-    // we call this "kv" here.
-    pub(crate) kv: S,
-
-    // iterators, indexed by iterator_id
-    pub(crate) iterators: HashMap<u32, Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>>>,
-
-    // the next time an iterator is created, the ID it will get.
-    // incremented by 1 upon each iterator creation.
-    pub(crate) next_iterator_id: u32,
-}
-
-impl<S> HostState<S> {
-    pub fn new(kv: S) -> Self {
-        Self {
-            kv,
-            iterators: HashMap::new(),
-            next_iterator_id: 0, // should we start from 0 or 1?
-        }
-    }
-}
-
-impl<S> HostState<S>
-where
-    S: Storage,
-{
-    /// Create a new iterator over the KV store, return the iterator_id.
-    pub fn create_iterator(&mut self, min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> u32 {
-        let iterator_id = self.next_iterator_id;
-        // TODO: do we need to handle the case where this overflows?
-        self.next_iterator_id += 1;
-
-        let iterator = self.kv.scan(min, max, order);
-        self.iterators.insert(iterator_id, iterator);
-
-        iterator_id
-    }
-
-    /// Get a mutable reference to the iterator specified by the given ID.
-    ///
-    /// NOTE: the iterator id must exist.
-    pub fn get_iterator_mut(
-        &mut self,
-        iterator_id: u32,
-    ) -> &mut Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)>> {
-        let maybe_iter = self.iterators.get_mut(&iterator_id);
-        debug_assert!(maybe_iter.is_some(), "Iterator with id {iterator_id} doesn't exist");
-        maybe_iter.unwrap()
-    }
-
-    /// Delete an iterator from the host state. Called by the host once
-    /// iteration has reached end.
-    ///
-    /// NOTE: the iterator id must exist.
-    pub fn drop_iterator(&mut self, iterator_id: u32) {
-        let maybe_iter = self.iterators.remove(&iterator_id);
-        debug_assert!(maybe_iter.is_some(), "Iterator with id {iterator_id} doesn't exist");
-    }
-}
-
-pub struct Host<'a, S> {
-    caller:     Caller<'a, HostState<S>>,
+pub struct Host<'a, HostState> {
+    caller:     Caller<'a, HostState>,
     memory:     OnceCell<Memory>,
     alloc_fn:   OnceCell<TypedFunc<u32, u32>>,
     dealloc_fn: OnceCell<TypedFunc<u32, ()>>,
 }
 
-impl<'a, S> From<Caller<'a, HostState<S>>> for Host<'a, S> {
-    fn from(caller: Caller<'a, HostState<S>>) -> Self {
+impl<'a, HostState> From<Caller<'a, HostState>> for Host<'a, HostState> {
+    fn from(caller: Caller<'a, HostState>) -> Self {
         Self {
             caller,
             memory:     OnceCell::new(),
@@ -88,8 +24,8 @@ impl<'a, S> From<Caller<'a, HostState<S>>> for Host<'a, S> {
     }
 }
 
-impl<'a, S> Host<'a, S> {
-    pub fn new(instance: &Instance, store: &'a mut Store<HostState<S>>) -> Self {
+impl<'a, HostState> Host<'a, HostState> {
+    pub fn new(instance: &Instance, store: &'a mut Store<HostState>) -> Self {
         Self {
             caller:     Caller::new(store, Some(instance)),
             memory:     OnceCell::new(),
@@ -99,12 +35,12 @@ impl<'a, S> Host<'a, S> {
     }
 
     /// Get an immutable reference to the host state.
-    pub fn data(&self) -> &HostState<S> {
+    pub fn data(&self) -> &HostState {
         self.caller.data()
     }
 
     /// Get a mutable reference to the host state.
-    pub fn data_mut(&mut self) -> &mut HostState<S> {
+    pub fn data_mut(&mut self) -> &mut HostState {
         self.caller.data_mut()
     }
 
