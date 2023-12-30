@@ -17,12 +17,12 @@ const BALANCES: [(&str, &str, u64); 4] = [
 ];
 
 fn main() -> anyhow::Result<()> {
-    // set tracing to TRACE level, so that we can see logs of DB reads/writes
+    // set tracing to TRACE level, so that we can see DB reads/writes logs
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::TRACE)
         .init();
 
-    // incrase Wasm host instance
+    // create Wasm host instance
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let (instance, mut store) = InstanceBuilder::default()
@@ -37,10 +37,8 @@ fn main() -> anyhow::Result<()> {
         .finalize()?;
     let mut host = Host::new(&instance, &mut store);
 
-    // instantiate contract
+    // instantiate contract, then make three transfers
     instantiate(&mut host)?;
-
-    // make three transfers
     send(&mut host, "alice", "dave", "uatom", 75)?;
     send(&mut host, "bob", "charlie", "uatom", 50)?;
     send(&mut host, "charlie", "alice", "uatom", 69)?;
