@@ -110,7 +110,7 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
 
     let res: Vec<Balance> = from_json(&res_bytes)?;
 
-    info!(?res, "query successful");
+    println!("{}", serde_json_wasm::to_string(&res)?);
 
     Ok(())
 }

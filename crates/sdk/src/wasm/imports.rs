@@ -64,13 +64,17 @@ impl Storage for ExternalStorage {
         max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        let min_ptr = build_optional_region(min);
-        let max_ptr = build_optional_region(max);
+        // IMPORTANT: we must to keep the Regions in scope until end of the func
+        // make sure to se `as_ref` so that the Regions don't get consumed
+        let min_region = min.map(Region::build);
+        let min_ptr = get_optional_region_ptr(min_region.as_ref());
+
+        let max_region = max.map(Region::build);
+        let max_ptr = get_optional_region_ptr(max_region.as_ref());
 
         let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
-        let iterator = ExternalIterator { iterator_id };
 
-        Box::new(iterator)
+        Box::new(ExternalIterator { iterator_id })
     }
 }
 
@@ -95,17 +99,14 @@ impl Iterator for ExternalIterator {
 
 // this is the same as Region::build but the data is optional. also, it casts
 // the pointer to usize. if the data is None, return zero.
-fn build_optional_region(maybe_data: Option<&[u8]>) -> usize {
+fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
     // a zero memory address tells the host that no data has been loaded into
     // memory. in case of db_scan, it means the bound is None.
-    let Some(data) = maybe_data else {
+    let Some(region) = maybe_region else {
         return 0;
     };
 
-    let region = Region::build(data);
-    let ptr = &*region as *const Region;
-
-    ptr as usize
+    (region.as_ref() as *const Region) as usize
 }
 
 // unlike storage keys in Map, where we prefix the length, like this:
@@ -120,6 +121,7 @@ fn build_optional_region(maybe_data: Option<&[u8]>) -> usize {
 // another difference from cosmwasm is we use 2 bytes (instead of 4) for the
 // length. this means the key cannot be more than u16::MAX = 65535 bytes long,
 // which is always true is practice (we set max key length in Item and Map).
+#[inline]
 fn split_tail(mut data: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
     // pop two bytes from the end, must both be Some
     let (Some(byte1), Some(byte2)) = (data.pop(), data.pop()) else {
