@@ -4,6 +4,6 @@ mod memory;
 
 pub use {
     exports::{do_execute, do_instantiate, do_query},
-    imports::ExternalStorage,
+    imports::{ExternalIterator, ExternalStorage},
     memory::Region,
 };

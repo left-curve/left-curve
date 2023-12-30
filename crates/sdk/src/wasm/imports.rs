@@ -8,7 +8,9 @@ extern "C" {
 
     fn db_remove(key_ptr: usize);
 
-    // TODO: add db_scan
+    fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> u32;
+
+    fn db_next(iterator_id: u32) -> u32;
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -60,6 +62,91 @@ impl Storage for ExternalStorage {
         max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
-        todo!()
+        let min_ptr = build_optional_region(min);
+        let max_ptr = build_optional_region(max);
+
+        let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
+        let iterator = ExternalIterator { iterator_id };
+
+        Box::new(iterator)
+    }
+}
+
+pub struct ExternalIterator {
+    iterator_id: u32,
+}
+
+impl Iterator for ExternalIterator {
+    type Item = (Vec<u8>, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ptr = unsafe { db_next(self.iterator_id) };
+
+        // the host returning a zero pointer means iteration has finished
+        if ptr == 0 {
+            return None;
+        }
+
+        unsafe { Some(split_tail(Region::consume(ptr as *mut Region))) }
+    }
+}
+
+// this is the same as Region::build but the data is optional. also, it casts
+// the pointer to usize. if the data is None, return zero.
+fn build_optional_region(maybe_data: Option<&[u8]>) -> usize {
+    // a zero memory address tells the host that no data has been loaded into
+    // memory. in case of db_scan, it means the bound is None.
+    let Some(data) = maybe_data else {
+        return 0;
+    };
+
+    let region = Region::build(data);
+    let ptr = &*region as *const Region;
+
+    ptr as usize
+}
+
+// unlike storage keys in Map, where we prefix the length, like this:
+// storage_key := len(namespace) | namespace | len(k1) | k1 | len(k2) | k2 | k3
+//
+// here, when the host loads the next value into Wasm memory, we do it like this:
+// data := key | value | len(key)
+//
+// this is because in this way, we can simply pop out the key without having to
+// allocate a new Vec.
+//
+// another difference from cosmwasm is we use 2 bytes (instead of 4) for the
+// length. this means the key cannot be more than u16::MAX = 65535 bytes long,
+// which is always true is practice (we set max key length in Item and Map).
+fn split_tail(mut data: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+    // pop two bytes from the end, must both be Some
+    let (Some(byte1), Some(byte2)) = (data.pop(), data.pop()) else {
+        panic!("[ExternalIterator]: can't read length suffix");
+    };
+
+    // note the order here between the two bytes
+    let key_len = u16::from_be_bytes([byte2, byte1]);
+    let value = data.split_off(key_len.into());
+
+    (data, value)
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn spliting_tail() {
+        let key = b"foobar";
+        let value = b"fuzzbuzz";
+
+        let mut data = Vec::with_capacity(key.len() + value.len() + 2);
+        data.extend_from_slice(key);
+        data.extend_from_slice(value);
+        data.extend_from_slice(&(key.len() as u16).to_be_bytes());
+
+        assert_eq!((key.to_vec(), value.to_vec()), split_tail(data))
     }
 }

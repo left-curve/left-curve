@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    anyhow::anyhow,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractResult<T> {
@@ -12,8 +15,17 @@ where
 {
     fn from(res: Result<T, E>) -> Self {
         match res {
-            Result::Ok(resp) => Self::Ok(resp),
+            Result::Ok(data) => Self::Ok(data),
             Result::Err(err) => Self::Err(err.to_string()),
+        }
+    }
+}
+
+impl<T> ContractResult<T> {
+    pub fn into_result(self) -> anyhow::Result<T> {
+        match self {
+            ContractResult::Ok(data) => Ok(data),
+            ContractResult::Err(err) => Err(anyhow!(err)),
         }
     }
 }
