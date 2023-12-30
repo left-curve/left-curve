@@ -12,6 +12,7 @@ use {
 // TODO: add an Uint128 type and replace balance (u64) with Uint128
 const BALANCES: Map<(&str, &str), u64> = Map::new("b");
 
+// how many items to return in a paginated query by default
 const DEFAULT_LIMIT: u32 = 30;
 
 #[cw_serde]
@@ -35,9 +36,9 @@ pub struct Coin {
 #[cw_serde]
 pub enum ExecuteMsg {
     Send {
-        from: String,
-        to: String,
-        denom: String,
+        from:   String,
+        to:     String,
+        denom:  String,
         amount: u64,
     },
 }
@@ -46,17 +47,15 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     Balance {
         address: String,
-        denom: String,
+        denom:   String,
     },
     Balances {
-        // (address, denom)
-        start_after: Option<(String, String)>,
+        start_after: Option<(String, String)>, // (address, denom)
         limit:       Option<u32>,
     },
     BalancesByUser {
         address:     String,
-        // denom
-        start_after: Option<String>,
+        start_after: Option<String>, // denom
         limit:       Option<u32>
     },
 }
@@ -160,7 +159,11 @@ pub fn query_balances(
         .take(limit.unwrap_or(DEFAULT_LIMIT) as usize)
         .map(|item| {
             let ((address, denom), amount) = item?;
-            Ok(Balance { address, denom, amount })
+            Ok(Balance {
+                address,
+                denom,
+                amount,
+            })
         })
         .collect()
 }
@@ -182,7 +185,10 @@ pub fn query_balances_by_user(
         .take(limit.unwrap_or(DEFAULT_LIMIT) as usize)
         .map(|item| {
             let (denom, amount) = item?;
-            Ok(Coin { denom, amount })
+            Ok(Coin {
+                denom,
+                amount,
+            })
         })
         .collect()
 }
