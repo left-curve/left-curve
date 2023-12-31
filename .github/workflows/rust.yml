@@ -3,6 +3,7 @@ name: Rust
 on: push
 
 jobs:
+  # TODO: this is temporary before we write comprehensive tests for cw-vm
   examples:
     name: Examples
     runs-on: ubuntu-latest
@@ -23,6 +24,23 @@ jobs:
 
       - name: Run bank example
         run: cargo run -p cw-vm --example bank
+        env:
+          RUST_BACKTRACE: 1
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Run tests
+        run: cargo test
         env:
           RUST_BACKTRACE: 1
 
