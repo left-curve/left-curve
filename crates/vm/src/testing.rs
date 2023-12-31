@@ -27,11 +27,21 @@ impl HostState for MockHostState {
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
         self.store.write(key, value);
+
+        // delete all existing iterators to avoid race conditions
+        // for more details on why do this, see the comments in HostState trait
+        //
+        // HashMap::clear deletes all entries but keeps the allocated memory.
+        // this is probably more performant than making a new HashMap in most cases
+        self.iterators.clear();
+
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         self.store.remove(key);
+        // delete all existing iterators, similar rationale as in `write`
+        self.iterators.clear();
         Ok(())
     }
 
