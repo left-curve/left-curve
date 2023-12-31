@@ -1,8 +1,8 @@
-use cw_sdk::Order;
+use cw_std::Order;
 
-// not to be confused with cw_sdk::Storage.
+// not to be confused with cw_std::Storage.
 //
-// compared with cw_sdk::Storage, this trait has the following differences:
+// compared with cw_std::Storage, this trait has the following differences:
 // - the methods are fallible
 // - iteration methods. the scan methods uses a mutable reference, returns an
 //   iterator_id instead of the actual iterator. use the next method to advance

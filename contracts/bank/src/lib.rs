@@ -1,5 +1,5 @@
 use {
-    cw_sdk::{
+    cw_std::{
         cw_serde, entry_point, to_json, Addr, Binary, ExecuteCtx, InstantiateCtx, Map, Order,
         QueryCtx, Response, Uint128,
     },

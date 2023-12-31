@@ -1,11 +1,11 @@
 use {
     crate::HostState,
     anyhow::{anyhow, bail},
-    cw_sdk::{MockStorage, Order, Storage},
+    cw_std::{MockStorage, Order, Storage},
     std::{collections::HashMap, vec},
 };
 
-// not to be confused with cw_sdk::MockStorage
+// not to be confused with cw_std::MockStorage
 #[derive(Default)]
 #[allow(clippy::type_complexity)]
 pub struct MockHostState {

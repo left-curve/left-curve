@@ -65,16 +65,24 @@ name = "cw-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "cw-sdk",
+ "cw-std",
 ]
 
 [[package]]
-name = "cw-sdk"
+name = "cw-state-machine"
+version = "0.0.0"
+dependencies = [
+ "cw-std",
+ "cw-vm",
+]
+
+[[package]]
+name = "cw-std"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "blake3",
- "cw-sdk-derive",
+ "cw-std-derive",
  "data-encoding",
  "hex",
  "serde",
@@ -82,7 +90,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-sdk-derive"
+name = "cw-std-derive"
 version = "0.0.0"
 dependencies = [
  "proc-macro2",
@@ -96,7 +104,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-bank",
- "cw-sdk",
+ "cw-std",
  "data-encoding",
  "serde",
  "serde-json-wasm",

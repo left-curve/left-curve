@@ -1,6 +1,6 @@
 use {
     crate::Host,
-    cw_sdk::{from_json, to_json, Binary, ContractResult, Response},
+    cw_std::{from_json, to_json, Binary, ContractResult, Response},
     serde::ser::Serialize,
 };
 
