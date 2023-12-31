@@ -22,7 +22,7 @@ jobs:
           RUST_BACKTRACE: 1
 
       - name: Run bank example
-        run: cargo run -p host --example bank
+        run: cargo run -p cw-vm --example bank
         env:
           RUST_BACKTRACE: 1
 
