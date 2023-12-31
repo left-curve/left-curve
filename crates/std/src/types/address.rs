@@ -9,6 +9,12 @@ use {
 // - in cosmwasm: 20 bytes, bech32 encoding, Addr is a wrapper of String
 // - in CWD: 32 bytes, hex encoding (lowercase, no checksum, with 0x prefix),
 //   Addr is a wrapper of [u8; 32]
+//
+// unlike in cosmwasm, where you need to use deps.api.addr_validate to verify an
+// address, in CWD, Addrs are verified at deserialization time. therefore it's
+// ok to use Addrs in APIs (i.e. messages and query responses).
+// haven't benchmarked the performance impact, by deserializing hex should be
+// much cheaper than bech32?
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr([u8; Self::LENGTH]);
 
