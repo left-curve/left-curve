@@ -1,9 +1,6 @@
 use {
     anyhow::anyhow,
-    serde::{
-        de::{self, Deserialize},
-        ser::{self, Serialize},
-    },
+    serde::{de, ser},
     std::fmt,
 };
 
@@ -13,65 +10,63 @@ use {
 /// Numbers beyond this range (uint64, uint128...) need to serialize as strings.
 /// https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Uint128 {
-    inner: u128,
-}
+pub struct Uint128(u128);
 
 impl Uint128 {
     pub const MAX: Self = Self::new(u128::MAX);
     pub const MIN: Self = Self::new(u128::MAX);
 
-    pub const fn new(inner: u128) -> Self {
-        Self { inner }
+    pub const fn new(value: u128) -> Self {
+        Self(value)
     }
 
-    pub fn into_inner(self) -> u128 {
-        self.inner
+    pub fn u128(self) -> u128 {
+        self.0
     }
 
     #[inline]
     pub const fn zero() -> Self {
-        Self { inner: 0 }
+        Self(0)
     }
 
     pub const fn is_zero(self) -> bool {
-        self.inner == 0
+        self.0 == 0
     }
 
     pub const fn to_be_bytes(self) -> [u8; 16] {
-        self.inner.to_be_bytes()
+        self.0.to_be_bytes()
     }
 
     pub const fn to_le_bytes(self) -> [u8; 16] {
-        self.inner.to_le_bytes()
+        self.0.to_le_bytes()
     }
 
     pub fn checked_add(self, other: Self) -> anyhow::Result<Self> {
-        self.inner
-            .checked_add(other.inner)
+        self.0
+            .checked_add(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128] addition overflow: {self} + {other} > Uint128::MAX"))
+            .ok_or_else(|| anyhow!("[Uint128]: addition overflow: {self} + {other} > Uint128::MAX"))
     }
 
     pub fn checked_sub(self, other: Self) -> anyhow::Result<Self> {
-        self.inner
-            .checked_sub(other.inner)
+        self.0
+            .checked_sub(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128] subtraction overflow: {self} - {other} < 0"))
+            .ok_or_else(|| anyhow!("[Uint128]: subtraction overflow: {self} - {other} < 0"))
     }
 
     pub fn checked_mul(self, other: Self) -> anyhow::Result<Self> {
-        self.inner
-            .checked_mul(other.inner)
+        self.0
+            .checked_mul(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128] multiplication overflow: {self} * {other} > Uint128::MAX"))
+            .ok_or_else(|| anyhow!("[Uint128]: multiplication overflow: {self} * {other} > Uint128::MAX"))
     }
 
     pub fn checked_div(self, other: Self) -> anyhow::Result<Self> {
-        self.inner
-            .checked_mul(other.inner)
+        self.0
+            .checked_mul(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128] division by zero: {self} / 0"))
+            .ok_or_else(|| anyhow!("[Uint128]: division by zero: {self} / 0"))
     }
 
     pub fn checked_multiply_ratio(self, _other: Self) -> anyhow::Result<Self> {
@@ -84,20 +79,20 @@ impl Uint128 {
 
 impl fmt::Display for Uint128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.inner.to_string())
+        f.write_str(&self.0.to_string())
     }
 }
 
-impl Serialize for Uint128 {
+impl ser::Serialize for Uint128 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&self.inner.to_string())
+        serializer.serialize_str(&self.0.to_string())
     }
 }
 
-impl<'de> Deserialize<'de> for Uint128 {
+impl<'de> de::Deserialize<'de> for Uint128 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,

@@ -1,9 +1,6 @@
 use {
     data_encoding::BASE64,
-    serde::{
-        de::{self, Deserialize},
-        ser::{self, Serialize},
-    },
+    serde::{de, ser},
     std::fmt,
 };
 
@@ -30,30 +27,26 @@ impl From<Binary> for Vec<u8> {
 
 impl fmt::Display for Binary {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", BASE64.encode(self.as_ref()))
+        write!(f, "{}", BASE64.encode(&self.0))
     }
 }
 
 impl fmt::Debug for Binary {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Binary(")?;
-        for byte in self.as_ref() {
-            write!(f, "{byte:02x}")?;
-        }
-        write!(f, ")")
+        write!(f, "Binary({})", BASE64.encode(&self.0))
     }
 }
 
-impl Serialize for Binary {
+impl ser::Serialize for Binary {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&BASE64.encode(self.as_ref()))
+        serializer.serialize_str(&BASE64.encode(&self.0))
     }
 }
 
-impl<'de> Deserialize<'de> for Binary {
+impl<'de> de::Deserialize<'de> for Binary {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
