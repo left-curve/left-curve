@@ -135,7 +135,7 @@ impl CachedIter {
         S: HostState + Peekable,
     {
         let pending_peek = btreemap_next_key(
-            &pending,
+            pending,
             self.pending_curr.as_ref(),
             self.pending_end.as_ref(),
             self.order,
@@ -198,18 +198,18 @@ fn btreemap_next_key<'a, K: Ord, V>(
 ) -> Option<(&'a K, &'a V)> {
     let bounds = match order {
         Order::Ascending => (
-            curr.map_or(Bound::Unbounded, |k| Bound::Excluded(k)),
-            end.map_or(Bound::Unbounded, |k| Bound::Excluded(k)),
+            curr.map_or(Bound::Unbounded, Bound::Excluded),
+            end.map_or(Bound::Unbounded, Bound::Excluded),
         ),
         Order::Descending => (
-            end.map_or(Bound::Unbounded, |k| Bound::Included(k)),
-            curr.map_or(Bound::Unbounded, |k| Bound::Excluded(k)),
+            end.map_or(Bound::Unbounded, Bound::Included),
+            curr.map_or(Bound::Unbounded, Bound::Excluded),
         ),
     };
 
     match order {
         Order::Ascending => map.range(bounds).next(),
-        Order::Descending => map.range(bounds).rev().next(),
+        Order::Descending => map.range(bounds).next_back(),
     }
 }
 
