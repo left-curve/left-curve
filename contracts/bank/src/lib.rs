@@ -104,10 +104,10 @@ pub fn send(
     amount: Uint128,
 ) -> anyhow::Result<Response> {
     // decrease the sender's balance
-    // if balance is reduced to zero, we delete it, to save disk space
     BALANCES.update(ctx.store, (&from, &denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(amount)?;
 
+        // if balance is reduced to zero, we delete it, to save disk space
         if balance > Uint128::zero() {
             Ok(Some(balance))
         } else {
