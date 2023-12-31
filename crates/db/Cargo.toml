@@ -1,0 +1,8 @@
+[package]
+name    = "cw-db"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+cw-std = { path = "../std" }
+cw-vm  = { path = "../vm" }
