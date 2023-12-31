@@ -1,6 +1,6 @@
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw_sdk::from_json,
+    cw_sdk::{from_json, Uint128},
     cw_vm::{
         call_execute, call_instantiate, call_query, db_next, db_read, db_remove, db_scan, db_write,
         debug, Host, InstanceBuilder, MockHostState,
@@ -9,7 +9,7 @@ use {
     tracing::info,
 };
 
-const BALANCES: [(&str, &str, u64); 4] = [
+const BALANCES: [(&str, &str, u128); 4] = [
     ("alice",   "uatom", 100),
     ("alice",   "uosmo", 888),
     ("bob",     "uatom",  50),
@@ -65,7 +65,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
         initial_balances.push(Balance {
             address: address.into(),
             denom:   denom.into(),
-            amount,
+            amount:  Uint128::new(amount),
         });
     }
     let res = call_instantiate(host, &InstantiateMsg { initial_balances })?;
@@ -80,15 +80,15 @@ fn send<T>(
     from:   &str,
     to:     &str,
     denom:  &str,
-    amount: u64,
+    amount: u128,
 ) -> anyhow::Result<()> {
     info!(from, to, denom, amount, "sending");
 
     let res = call_execute(host, &ExecuteMsg::Send {
-        from:  from.into(),
-        to:    to.into(),
-        denom: denom.into(),
-        amount,
+        from:   from.into(),
+        to:     to.into(),
+        denom:  denom.into(),
+        amount: Uint128::new(amount),
     })?;
 
     info!(?res, "send successful");

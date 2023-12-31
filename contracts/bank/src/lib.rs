@@ -1,8 +1,7 @@
 use {
-    anyhow::bail,
     cw_sdk::{
         cw_serde, entry_point, to_json, Binary, ExecuteCtx, InstantiateCtx, Map, Order, QueryCtx,
-        Response,
+        Response, Uint128,
     },
     std::ops::Bound,
 };
@@ -10,7 +9,7 @@ use {
 // (address, denom) => balance
 // TODO: add an Addr type and replace address (&str) with &Addr
 // TODO: add an Uint128 type and replace balance (u64) with Uint128
-const BALANCES: Map<(&str, &str), u64> = Map::new("b");
+const BALANCES: Map<(&str, &str), Uint128> = Map::new("b");
 
 // how many items to return in a paginated query by default
 const DEFAULT_LIMIT: u32 = 30;
@@ -24,13 +23,13 @@ pub struct InstantiateMsg {
 pub struct Balance {
     pub address: String,
     pub denom:   String,
-    pub amount:  u64,
+    pub amount:  Uint128,
 }
 
 #[cw_serde]
 pub struct Coin {
     pub denom:   String,
-    pub amount:  u64,
+    pub amount:  Uint128,
 }
 
 #[cw_serde]
@@ -39,7 +38,7 @@ pub enum ExecuteMsg {
         from:   String,
         to:     String,
         denom:  String,
-        amount: u64,
+        amount: Uint128,
     },
 }
 
@@ -105,17 +104,14 @@ pub fn send(
     from:   String,
     to:     String,
     denom:  String,
-    amount: u64,
+    amount: Uint128,
 ) -> anyhow::Result<Response> {
     // decrease the sender's balance
     // if balance is reduced to zero, we delete it, to save disk space
     BALANCES.update(ctx.store, (&from, &denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(0);
-        let Some(balance) = balance.checked_sub(amount) else {
-            bail!("Insufficient {denom} balance: {balance} < {amount}");
-        };
+        let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(amount)?;
 
-        if balance > 0 {
+        if balance > Uint128::zero() {
             Ok(Some(balance))
         } else {
             Ok(None)
@@ -124,12 +120,7 @@ pub fn send(
 
     // increase the receiver's balance
     BALANCES.update(ctx.store, (&to, &denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(0);
-        let Some(balance) = balance.checked_add(amount) else {
-            bail!("Excessive {denom} balance: {balance} + {amount} > u64::MAX");
-        };
-
-        Ok(Some(balance))
+        maybe_balance.unwrap_or_else(Uint128::zero).checked_add(amount).map(Some)
     })?;
 
     Ok(Response::new())
@@ -140,7 +131,7 @@ pub fn query_balance(ctx: QueryCtx, address: String, denom: String) -> anyhow::R
     Ok(Balance {
         address,
         denom,
-        amount: maybe_amount.unwrap_or(0),
+        amount: maybe_amount.unwrap_or_else(Uint128::zero),
     })
 }
 

@@ -11,10 +11,12 @@ pub use crate::{
     storage::{Item, Map, MapKey, Path, PathBuf, Prefix, RawKey},
     testing::MockStorage,
     traits::{Order, Storage},
-    types::{Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response},
+    types::{Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response, Uint128},
 };
 
 // ---------------------------- wasm32 target only -----------------------------
+// note: during development, it's helpful to comment out the target_arch tags,
+// otherwise rust-analyzer won't include these files.
 
 // #[cfg(target_arch = "wasm32")]
 mod wasm;
