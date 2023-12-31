@@ -13,5 +13,5 @@ pub use {
     imports::{db_next, db_read, db_remove, db_scan, db_write, debug},
     memory::Region,
     testing::MockHostState,
-    traits::HostState,
+    traits::{HostState, Peekable},
 };

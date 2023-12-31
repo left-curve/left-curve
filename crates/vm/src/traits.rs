@@ -44,7 +44,9 @@ pub trait HostState {
     /// IMPORTANT: Whereas this function takes a `&mut self`, it must NOT mutate
     /// the underlying KV data.
     fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>>;
+}
 
+pub trait Peekable: HostState {
     /// Return the next entry in an iterator, but don't actually advance it.
     /// We need this to implement cached store in cw-db.
     ///
