@@ -1,7 +1,7 @@
 use {
-    crate::{MapKey, Order, Storage, PathBuf, Prefix},
+    crate::{Bound, MapKey, Order, Storage, PathBuf, Prefix},
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{marker::PhantomData, ops::Bound},
+    std::marker::PhantomData,
 };
 
 pub struct Map<K, T> {
@@ -47,7 +47,7 @@ where
     T: Serialize + DeserializeOwned,
 {
     pub fn is_empty(&self, store: &dyn Storage) -> bool {
-        self.range(store, Bound::Unbounded, Bound::Unbounded, Order::Ascending)
+        self.range(store, None, None, Order::Ascending)
             .next()
             .is_none()
     }
@@ -82,8 +82,8 @@ where
     pub fn range<'a>(
         &'a self,
         store: &'a dyn Storage,
-        min:   Bound<K>,
-        max:   Bound<K>,
+        min:   Option<Bound<K>>,
+        max:   Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
         self.no_prefix().range(store, min, max, order)

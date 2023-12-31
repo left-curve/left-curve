@@ -1,8 +1,8 @@
 use {
     super::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
-    crate::{from_json, MapKey, Order, RawKey, Storage},
+    crate::{from_json, Bound, MapKey, Order, RawBound, RawKey, Storage},
     serde::de::DeserializeOwned,
-    std::{marker::PhantomData, ops::Bound},
+    std::marker::PhantomData,
 };
 
 pub struct Prefix<K, T> {
@@ -29,22 +29,22 @@ where
     pub fn range<'a>(
         &self,
         store: &'a dyn Storage,
-        min:   Bound<K>,
-        max:   Bound<K>,
+        min:   Option<Bound<K>>,
+        max:   Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
-        let min = match min {
-            Bound::Unbounded => self.prefix.to_vec(),
-            Bound::Included(k) => concat(&self.prefix, &k.serialize()),
-            Bound::Excluded(k) => extend_one_byte(concat(&self.prefix, &k.serialize())),
+        let min = match min.map(RawBound::from) {
+            None => self.prefix.to_vec(),
+            Some(RawBound::Inclusive(k)) => concat(&self.prefix, &k),
+            Some(RawBound::Exclusive(k)) => extend_one_byte(concat(&self.prefix, &k)),
         };
-        let max = match max {
-            Bound::Unbounded => increment_last_byte(self.prefix.to_vec()),
-            Bound::Included(k) => extend_one_byte(concat(&self.prefix, &k.serialize())),
-            Bound::Excluded(k) => concat(&self.prefix, &k.serialize()),
+        let max = match max.map(RawBound::from) {
+            None => increment_last_byte(self.prefix.to_vec()),
+            Some(RawBound::Inclusive(k)) => extend_one_byte(concat(&self.prefix, &k)),
+            Some(RawBound::Exclusive(k)) => concat(&self.prefix, &k),
         };
 
         // need to make a clone of self.prefix and move it into the closure,

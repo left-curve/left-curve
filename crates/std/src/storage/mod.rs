@@ -1,3 +1,4 @@
+mod bound;
 mod helpers;
 mod item;
 mod key;
@@ -6,6 +7,7 @@ mod path;
 mod prefix;
 
 pub use {
+    bound::{Bound, RawBound},
     item::Item,
     key::{MapKey, RawKey},
     map::Map,

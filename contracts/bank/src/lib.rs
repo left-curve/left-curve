@@ -1,9 +1,6 @@
-use {
-    cw_std::{
-        cw_serde, entry_point, to_json, Addr, Binary, ExecuteCtx, InstantiateCtx, Map, Order,
-        QueryCtx, Response, Uint128,
-    },
-    std::ops::Bound,
+use cw_std::{
+    cw_serde, entry_point, to_json, Addr, Binary, Bound, ExecuteCtx, InstantiateCtx, Map, Order,
+    QueryCtx, Response, Uint128,
 };
 
 // (address, denom) => balance
@@ -140,14 +137,12 @@ pub fn query_balances(
     start_after: Option<(Addr, String)>,
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Balance>> {
-    let min = match &start_after {
-        Some((addr, denom)) => Bound::Excluded((addr, denom.as_str())),
-        None => Bound::Unbounded,
-    };
+    let start = start_after.as_ref().map(|(addr, denom)| Bound::Exclusive((addr, denom.as_str())));
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
 
     BALANCES
-        .range(ctx.store, min, Bound::Unbounded, Order::Ascending)
-        .take(limit.unwrap_or(DEFAULT_LIMIT) as usize)
+        .range(ctx.store, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| {
             let ((address, denom), amount) = item?;
             Ok(Balance {
@@ -165,15 +160,13 @@ pub fn query_balances_by_user(
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Coin>> {
-    let min = match &start_after {
-        Some(denom) => Bound::Excluded(denom.as_str()),
-        None => Bound::Unbounded,
-    };
+    let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
 
     BALANCES
         .prefix(&address)
-        .range(ctx.store, min, Bound::Unbounded, Order::Ascending)
-        .take(limit.unwrap_or(DEFAULT_LIMIT) as usize)
+        .range(ctx.store, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| {
             let (denom, amount) = item?;
             Ok(Coin {
