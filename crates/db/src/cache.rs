@@ -221,6 +221,11 @@ fn btreemap_next_key<'a, K: Ord, V>(
 mod tests {
     use {super::*, cw_vm::MockHostState};
 
+    // illustration of this test case:
+    //
+    // base    : 1 2 _ 4 5 6 7 _
+    // pending :   D P _ _ P D 8  (P = put, D = delete)
+    // merged  : 1 _ 3 4 5 6 _ 8
     #[test]
     fn cached_iterator_works() -> anyhow::Result<()> {
         let mut base = MockHostState::new();
