@@ -21,12 +21,13 @@ pub enum Bound<K> {
     ExclusiveRaw(Vec<u8>),
 }
 
-impl<K> Bound<K>
-where
-    K: MapKey,
-{
-    pub fn into_raw_bound(self) -> RawBound {
-        self.into()
+impl<K> Bound<K> {
+    pub fn inclusive<T: Into<K>>(t: T) -> Self {
+        Self::Inclusive(t.into())
+    }
+
+    pub fn exclusive<T: Into<K>>(t: T) -> Self {
+        Self::Exclusive(t.into())
     }
 }
 
