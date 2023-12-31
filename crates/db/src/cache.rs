@@ -226,22 +226,29 @@ mod tests {
         base.write(&[2], &[2])?;
         base.write(&[4], &[4])?;
         base.write(&[5], &[5])?;
+        base.write(&[6], &[6])?;
+        base.write(&[7], &[7])?;
+
 
         let mut cached = Cached::new(base);
         cached.remove(&[2])?;
         cached.write(&[3], &[3])?;
-        cached.write(&[6], &[6])?;
+        cached.write(&[6], &[255])?;
+        cached.remove(&[7])?;
+        cached.write(&[8], &[8])?;
 
         let iterator_id = cached.scan(None, None, Order::Ascending)?;
         assert_eq!(cached.next(iterator_id)?, Some((vec![1], vec![1])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![3], vec![3])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![4], vec![4])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![5], vec![5])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![6])));
+        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![255])));
+        assert_eq!(cached.next(iterator_id)?, Some((vec![8], vec![8])));
         assert_eq!(cached.next(iterator_id)?, None);
 
         let iterator_id = cached.scan(None, None, Order::Descending)?;
-        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![6])));
+        assert_eq!(cached.next(iterator_id)?, Some((vec![8], vec![8])));
+        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![255])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![5], vec![5])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![4], vec![4])));
         assert_eq!(cached.next(iterator_id)?, Some((vec![3], vec![3])));
@@ -250,4 +257,6 @@ mod tests {
 
         Ok(())
     }
+
+    // TODO: add fuzz test
 }
