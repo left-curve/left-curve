@@ -5,7 +5,9 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
+blake3          = { workspace = true }
 cw-sdk-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
+hex             = { workspace = true }
 serde           = { workspace = true, features = ["derive"] }
 serde-json-wasm = { workspace = true }

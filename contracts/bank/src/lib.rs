@@ -1,7 +1,7 @@
 use {
     cw_sdk::{
-        cw_serde, entry_point, to_json, Binary, ExecuteCtx, InstantiateCtx, Map, Order, QueryCtx,
-        Response, Uint128,
+        cw_serde, entry_point, to_json, Addr, Binary, ExecuteCtx, InstantiateCtx, Map, Order,
+        QueryCtx, Response, Uint128,
     },
     std::ops::Bound,
 };
@@ -9,7 +9,7 @@ use {
 // (address, denom) => balance
 // TODO: add an Addr type and replace address (&str) with &Addr
 // TODO: add an Uint128 type and replace balance (u64) with Uint128
-const BALANCES: Map<(&str, &str), Uint128> = Map::new("b");
+const BALANCES: Map<(&Addr, &str), Uint128> = Map::new("b");
 
 // how many items to return in a paginated query by default
 const DEFAULT_LIMIT: u32 = 30;
@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub struct Balance {
-    pub address: String,
+    pub address: Addr,
     pub denom:   String,
     pub amount:  Uint128,
 }
@@ -35,8 +35,8 @@ pub struct Coin {
 #[cw_serde]
 pub enum ExecuteMsg {
     Send {
-        from:   String,
-        to:     String,
+        from:   Addr,
+        to:     Addr,
         denom:  String,
         amount: Uint128,
     },
@@ -45,15 +45,15 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum QueryMsg {
     Balance {
-        address: String,
+        address: Addr,
         denom:   String,
     },
     Balances {
-        start_after: Option<(String, String)>, // (address, denom)
+        start_after: Option<(Addr, String)>, // (address, denom)
         limit:       Option<u32>,
     },
     BalancesByUser {
-        address:     String,
+        address:     Addr,
         start_after: Option<String>, // denom
         limit:       Option<u32>
     },
@@ -101,8 +101,8 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
 
 pub fn send(
     ctx:    ExecuteCtx,
-    from:   String,
-    to:     String,
+    from:   Addr,
+    to:     Addr,
     denom:  String,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
@@ -126,7 +126,7 @@ pub fn send(
     Ok(Response::new())
 }
 
-pub fn query_balance(ctx: QueryCtx, address: String, denom: String) -> anyhow::Result<Balance> {
+pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> anyhow::Result<Balance> {
     let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
     Ok(Balance {
         address,
@@ -137,11 +137,11 @@ pub fn query_balance(ctx: QueryCtx, address: String, denom: String) -> anyhow::R
 
 pub fn query_balances(
     ctx:         QueryCtx,
-    start_after: Option<(String, String)>,
+    start_after: Option<(Addr, String)>,
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Balance>> {
     let min = match &start_after {
-        Some((addr, denom)) => Bound::Excluded((addr.as_str(), denom.as_str())),
+        Some((addr, denom)) => Bound::Excluded((addr, denom.as_str())),
         None => Bound::Unbounded,
     };
 
@@ -161,7 +161,7 @@ pub fn query_balances(
 
 pub fn query_balances_by_user(
     ctx:         QueryCtx,
-    address:     String,
+    address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Coin>> {

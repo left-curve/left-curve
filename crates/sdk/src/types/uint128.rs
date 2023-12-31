@@ -121,6 +121,6 @@ impl<'de> de::Visitor<'de> for Uint128Visitor {
     {
         v.parse::<u128>()
             .map(Uint128::new)
-            .map_err(|err| E::custom(format!("Failed to parse `{v}` into Uint128: {err}")))
+            .map_err(|err| E::custom(format!("[Uint128]: failed to parse from string `{v}`: {err}")))
     }
 }

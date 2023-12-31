@@ -11,7 +11,7 @@ pub use crate::{
     storage::{Item, Map, MapKey, Path, PathBuf, Prefix, RawKey},
     testing::MockStorage,
     traits::{Order, Storage},
-    types::{Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response, Uint128},
+    types::{Addr, Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response, Uint128},
 };
 
 // ---------------------------- wasm32 target only -----------------------------

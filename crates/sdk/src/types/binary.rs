@@ -7,7 +7,7 @@ use {
     std::fmt,
 };
 
-#[derive(Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Binary(Vec<u8>);
 
 impl AsRef<[u8]> for Binary {

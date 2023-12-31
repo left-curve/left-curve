@@ -8,7 +8,9 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow             = "1"
+blake3             = "1"
 data-encoding      = "2"
+hex                = "0.4"
 proc-macro2        = "1"
 quote              = "1"
 serde              = "1"
