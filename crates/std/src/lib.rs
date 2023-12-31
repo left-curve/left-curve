@@ -10,8 +10,10 @@ pub use crate::{
     serde::{from_json, to_json},
     storage::{Item, Map, MapKey, Path, PathBuf, Prefix, RawKey},
     testing::MockStorage,
-    traits::{Order, Storage},
-    types::{Addr, Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response, Uint128},
+    traits::{Bound, Order, Record, Storage},
+    types::{
+        Addr, Binary, ContractResult, ExecuteCtx, InstantiateCtx, QueryCtx, Response, Uint128,
+    },
 };
 
 // ---------------------------- wasm32 target only -----------------------------

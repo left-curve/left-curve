@@ -1,4 +1,4 @@
-use cw_std::Order;
+use cw_std::{Order, Record};
 
 // not to be confused with cw_std::Storage.
 //
@@ -41,7 +41,14 @@ pub trait HostState {
         order: Order,
     ) -> anyhow::Result<u32>;
 
-    /// Similar to `scan`, whereas this function takes a `&mut self`, it must
-    /// NOT mutate the underlying KV data.
-    fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<(Vec<u8>, Vec<u8>)>>;
+    /// IMPORTANT: Whereas this function takes a `&mut self`, it must NOT mutate
+    /// the underlying KV data.
+    fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>>;
+
+    /// Return the next entry in an iterator, but don't actually advance it.
+    /// We need this to implement cached store in cw-db.
+    ///
+    /// IMPORTANT: Whereas this function takes a `&mut self`, it must NOT mutate
+    /// the underlying KV data.
+    fn peek(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>>;
 }

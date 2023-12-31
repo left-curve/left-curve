@@ -1,6 +1,7 @@
 use {
     crate::{Host, HostState},
     anyhow::anyhow,
+    cw_std::Record,
     data_encoding::BASE64,
     tracing::{debug, trace},
     wasmi::Caller,
@@ -106,7 +107,7 @@ where
 // key | value | len(key)
 // where len() is two bytes (u16 big endian)
 #[inline]
-fn encode_record((mut k, v): (Vec<u8>, Vec<u8>)) -> Vec<u8> {
+fn encode_record((mut k, v): Record) -> Vec<u8> {
     let key_len = k.len();
     k.extend(v);
     k.extend_from_slice(&(key_len as u16).to_be_bytes());

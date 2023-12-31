@@ -1,8 +1,8 @@
 use {
     crate::HostState,
-    anyhow::{anyhow, bail},
-    cw_std::{MockStorage, Order, Storage},
-    std::{collections::HashMap, vec},
+    anyhow::anyhow,
+    cw_std::{MockStorage, Order, Record, Storage},
+    std::{collections::HashMap, iter::Peekable, vec},
 };
 
 // not to be confused with cw_std::MockStorage
@@ -10,13 +10,19 @@ use {
 #[allow(clippy::type_complexity)]
 pub struct MockHostState {
     store:        MockStorage,
-    iterators:    HashMap<u32, vec::IntoIter<(Vec<u8>, Vec<u8>)>>,
+    iterators:    HashMap<u32, Peekable<vec::IntoIter<Record>>>,
     next_iter_id: u32,
 }
 
 impl MockHostState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn get_iterator_mut(&mut self, id: u32) -> anyhow::Result<&mut Peekable<vec::IntoIter<Record>>> {
+        self.iterators
+            .get_mut(&id)
+            .ok_or_else(|| anyhow!("[MockHostState]: can't find iterator with id {id}"))
     }
 }
 
@@ -57,16 +63,16 @@ impl HostState for MockHostState {
         // for this mock, we clone all keys into memory
         // for production, we need to think of a more efficient approach
         let vec = self.store.scan(min, max, order).collect::<Vec<_>>();
-        self.iterators.insert(iterator_id, vec.into_iter());
+        self.iterators.insert(iterator_id, vec.into_iter().peekable());
 
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<(Vec<u8>, Vec<u8>)>> {
-        let Some(iter) = self.iterators.get_mut(&iterator_id) else {
-            bail!("[MockHostState]: can't find iterator with id {iterator_id}");
-        };
+    fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>> {
+        self.get_iterator_mut(iterator_id).map(|iter| iter.next())
+    }
 
-        Ok(iter.next())
+    fn peek(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>> {
+        self.get_iterator_mut(iterator_id).map(|iter| iter.peek().cloned())
     }
 }

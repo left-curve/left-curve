@@ -1,5 +1,5 @@
 use {
-    crate::{Order, Storage},
+    crate::{Order, Record, Storage},
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -33,7 +33,7 @@ impl Storage for MockStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // BTreeMap::range panics if
         // 1. start > end, or
         // 2. start == end and both are exclusive

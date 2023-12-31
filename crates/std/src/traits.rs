@@ -1,5 +1,24 @@
 use anyhow::anyhow;
 
+/// A shorthand for an owned KV pair.
+pub type Record = (Vec<u8>, Vec<u8>);
+
+/// Describe the limit for iteration.
+///
+/// Typically we use an Option<Bound<T>> in contracts, where T implements the
+/// MapKey trait.
+///
+/// Compared to std::ops::Bound, it removes the unbounded option (which is to be
+/// represented by a None), and introduce. the Raw variants. We don't use the
+/// std Bound because it typically requires more verbose code in contracts.
+pub enum Bound<T> {
+    Inclusive(T),
+    Exclusive(T),
+    InclusiveRaw(Vec<u8>),
+    ExclusiveRaw(Vec<u8>),
+}
+
+/// Describing iteration order.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Order {
     Ascending = 1,
@@ -40,5 +59,5 @@ pub trait Storage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a>;
+    ) -> Box<dyn Iterator<Item = Record> + 'a>;
 }

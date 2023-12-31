@@ -1,4 +1,4 @@
-use crate::{ExecuteCtx, InstantiateCtx, Order, QueryCtx, Region, Storage};
+use crate::{ExecuteCtx, InstantiateCtx, Order, QueryCtx, Record, Region, Storage};
 
 // these are the method that the host must implement
 extern "C" {
@@ -63,7 +63,7 @@ impl Storage for ExternalStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // IMPORTANT: we must to keep the Regions in scope until end of the func
         // make sure to se `as_ref` so that the Regions don't get consumed
         let min_region = min.map(Region::build);
@@ -83,7 +83,7 @@ pub struct ExternalIterator {
 }
 
 impl Iterator for ExternalIterator {
-    type Item = (Vec<u8>, Vec<u8>);
+    type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ptr = unsafe { db_next(self.iterator_id) };
@@ -123,7 +123,7 @@ fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
 // length. this means the key cannot be more than u16::MAX = 65535 bytes long,
 // which is always true is practice (we set max key length in Item and Map).
 #[inline]
-fn split_tail(mut data: Vec<u8>) -> (Vec<u8>, Vec<u8>) {
+fn split_tail(mut data: Vec<u8>) -> Record {
     // pop two bytes from the end, must both be Some
     let (Some(byte1), Some(byte2)) = (data.pop(), data.pop()) else {
         panic!("[ExternalIterator]: can't read length suffix");
