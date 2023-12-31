@@ -9,10 +9,12 @@ use {
     },
 };
 
+/// Adapted from cw-multi-test:
+/// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
 pub struct Cached<S> {
-    base: S,
-    pending: Batch,
-    iterators: HashMap<u32, CachedIter>,
+    base:         S,
+    pending:      Batch,
+    iterators:    HashMap<u32, CachedIter>,
     next_iter_id: u32,
 }
 
@@ -21,8 +23,8 @@ impl<S> Cached<S> {
     pub fn new(base: S) -> Self {
         Self {
             base,
-            pending: Batch::new(),
-            iterators: HashMap::new(),
+            pending:      Batch::new(),
+            iterators:    HashMap::new(),
             next_iter_id: 0,
         }
     }
