@@ -113,7 +113,7 @@ impl HostStateIter {
         }
 
         // TODO: can avoid cloning one of min & max here, depending on the order
-        let Some((k, v)) = store.range_next(self.min.clone(), self.max.clone(), self.order)? else {
+        let Some((k, v)) = store.range_next(self.min.as_ref(), self.max.as_ref(), self.order)? else {
             self.ended = true;
             return Ok(None);
         };

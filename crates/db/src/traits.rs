@@ -18,8 +18,8 @@ pub trait Storage {
     /// iterator, because we can't pass an iterator over the Rust<>Wasm FFI.
     fn range_next(
         &self,
-        min:   Bound<Vec<u8>>,
-        max:   Bound<Vec<u8>>,
+        min:   Bound<&Vec<u8>>,
+        max:   Bound<&Vec<u8>>,
         order: Order,
     ) -> anyhow::Result<Option<Record>>;
 
@@ -33,7 +33,7 @@ pub trait Storage {
                 Order::Ascending => (last, Bound::Unbounded),
                 Order::Descending => (Bound::Unbounded, last),
             };
-            if let Some(record) = self.range_next(min, max, order)? {
+            if let Some(record) = self.range_next(min.as_ref(), max.as_ref(), order)? {
                 records.push(record);
             } else {
                 break;

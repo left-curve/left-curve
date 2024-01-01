@@ -57,8 +57,8 @@ where
         &self,
         pending_key: Vec<u8>,
         pending_op:  Op,
-        min:         Bound<Vec<u8>>,
-        max:         Bound<Vec<u8>>,
+        min:         Bound<&Vec<u8>>,
+        max:         Bound<&Vec<u8>>,
         order:       Order,
     ) -> anyhow::Result<Option<Record>> {
         if let Op::Put(value) = pending_op {
@@ -66,8 +66,8 @@ where
         }
 
         match order {
-            Order::Ascending => self.range_next(Bound::Excluded(pending_key), max, order),
-            Order::Descending => self.range_next(min, Bound::Excluded(pending_key), order),
+            Order::Ascending => self.range_next(Bound::Excluded(&pending_key), max, order),
+            Order::Descending => self.range_next(min, Bound::Excluded(&pending_key), order),
         }
     }
 }
@@ -86,12 +86,12 @@ where
 
     fn range_next(
         &self,
-        min:   Bound<Vec<u8>>,
-        max:   Bound<Vec<u8>>,
+        min:   Bound<&Vec<u8>>,
+        max:   Bound<&Vec<u8>>,
         order: Order,
     ) -> anyhow::Result<Option<Record>> {
-        let base_peek = self.base.range_next(min.clone(), max.clone(), order)?;
-        let pending_peek = btreemap_range_next(&self.pending, min.clone(), max.clone(), order);
+        let base_peek = self.base.range_next(min, max, order)?;
+        let pending_peek = btreemap_range_next(&self.pending, min, max, order);
 
         match (base_peek, pending_peek) {
             (Some((base_key, base_value)), Some((pending_key, pending_op))) => {

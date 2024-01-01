@@ -27,8 +27,8 @@ impl Storage for MockStorage {
 
     fn range_next(
         &self,
-        min:   Bound<Vec<u8>>,
-        max:   Bound<Vec<u8>>,
+        min:   Bound<&Vec<u8>>,
+        max:   Bound<&Vec<u8>>,
         order: Order,
     ) -> anyhow::Result<Option<Record>> {
         Ok(btreemap_range_next(&self.data, min, max, order))
@@ -60,8 +60,8 @@ impl Committable for MockStorage {
 
 pub fn btreemap_range_next<K: Clone + Ord, V: Clone>(
     map:   &BTreeMap<K, V>,
-    min:   Bound<K>,
-    max:   Bound<K>,
+    min:   Bound<&K>,
+    max:   Bound<&K>,
     order: Order,
 ) -> Option<(K, V)> {
     let mut range = map.range((min, max));
