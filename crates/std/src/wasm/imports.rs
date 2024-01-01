@@ -34,17 +34,17 @@ extern "C" {
 pub struct ExternalStorage;
 
 impl Storage for ExternalStorage {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
         let value_ptr = unsafe { db_read(key_ptr as usize) };
         if value_ptr == 0 {
             // we interpret a zero pointer as meaning the key doesn't exist
-            return None;
+            return Ok(None);
         }
 
-        unsafe { Some(Region::consume(value_ptr as *mut Region)) }
+        unsafe { Ok(Some(Region::consume(value_ptr as *mut Region))) }
         // NOTE: key_ptr goes out of scope here, so the Region is dropped.
         // however, `key` is NOT dropped, since we're only working with a
         // borrowed reference here.
@@ -56,7 +56,7 @@ impl Storage for ExternalStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>> {
         // IMPORTANT: we must to keep the Regions in scope until end of the func
         // make sure to se `as_ref` so that the Regions don't get consumed
         let min_region = min.map(Region::build);
@@ -67,28 +67,32 @@ impl Storage for ExternalStorage {
 
         let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
 
-        Box::new(ExternalIterator { iterator_id })
+        Ok(Box::new(ExternalIterator { iterator_id }))
     }
 
     // note: cosmwasm doesn't allow empty values:
     // https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/packages/std/src/imports.rs#L111
     // this is because its DB backend doesn't distinguish between an empty value
     // vs a non-existent value. but this isn't a problem for us.
-    fn write(&mut self, key: &[u8], value: &[u8]) {
+    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
         let value = Region::build(value);
         let value_ptr = &*value as *const Region;
 
-        unsafe { db_write(key_ptr as usize, value_ptr as usize) }
+        unsafe { db_write(key_ptr as usize, value_ptr as usize); }
+
+        Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) {
+    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
-        unsafe { db_remove(key_ptr as usize) }
+        unsafe { db_remove(key_ptr as usize); }
+
+        Ok(())
     }
 }
 

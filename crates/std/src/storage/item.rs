@@ -26,7 +26,7 @@ impl<'a, T> Item<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn exists(&self, store: &dyn Storage) -> bool {
+    pub fn exists(&self, store: &dyn Storage) -> anyhow::Result<bool> {
         self.path().exists(store)
     }
 
@@ -49,7 +49,7 @@ where
         self.path().save(store, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage) {
+    pub fn remove(&self, store: &mut dyn Storage) -> anyhow::Result<()> {
         self.path().remove(store)
     }
 }

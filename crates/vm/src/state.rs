@@ -26,7 +26,7 @@ where
     S: Storage,
 {
     pub fn db_read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-        Ok(self.store.read(key))
+        self.store.read(key)
     }
 
     // create a new iterator with the given bounds (min is inclusive, max is
@@ -88,7 +88,7 @@ where
     }
 
     pub fn db_write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
-        self.store.write(key, value);
+        self.store.write(key, value)?;
 
         // IMPORTANT: delete all existing iterators whenever KV data is mutated.
         // see comments in db_scan for rationale.
@@ -98,7 +98,7 @@ where
     }
 
     pub fn db_remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
-        self.store.remove(key);
+        self.store.remove(key)?;
 
         // IMPORTANT: delete all existing iterators whenever KV data is mutated.
         self.iterators.clear();

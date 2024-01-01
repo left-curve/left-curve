@@ -31,7 +31,7 @@ impl TryFrom<i32> for Order {
 }
 
 pub trait Storage {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
+    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>>;
 
     // minimum bound is always inclusive, maximum bound is always exclusive.
     // if min > max, an empty iterator is to be returned.
@@ -40,9 +40,9 @@ pub trait Storage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a>;
+    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>>;
 
-    fn write(&mut self, key: &[u8], value: &[u8]);
+    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
 
-    fn remove(&mut self, key: &[u8]);
+    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
 }

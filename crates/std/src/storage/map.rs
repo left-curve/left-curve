@@ -46,13 +46,11 @@ where
     K: MapKey,
     T: Serialize + DeserializeOwned,
 {
-    pub fn is_empty(&self, store: &dyn Storage) -> bool {
-        self.range(store, None, None, Order::Ascending)
-            .next()
-            .is_none()
+    pub fn is_empty(&self, store: &dyn Storage) -> anyhow::Result<bool> {
+        self.range(store, None, None, Order::Ascending).map(|mut iter| iter.next().is_none())
     }
 
-    pub fn has(&self, store: &dyn Storage, k: K) -> bool {
+    pub fn has(&self, store: &dyn Storage, k: K) -> anyhow::Result<bool> {
         self.path(k).as_path().exists(store)
     }
 
@@ -75,21 +73,22 @@ where
         self.path(k).as_path().save(store, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage, k: K) {
+    pub fn remove(&self, store: &mut dyn Storage, k: K) -> anyhow::Result<()> {
         self.path(k).as_path().remove(store)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn range<'a>(
         &'a self,
         store: &'a dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
+    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a>> {
         self.no_prefix().range(store, min, max, order)
     }
 
-    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) {
+    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) -> anyhow::Result<()> {
         self.no_prefix().clear(store, limit)
     }
 }

@@ -141,7 +141,7 @@ pub fn query_balances(
     let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
 
     BALANCES
-        .range(ctx.store, start, None, Order::Ascending)
+        .range(ctx.store, start, None, Order::Ascending)?
         .take(limit)
         .map(|item| {
             let ((address, denom), amount) = item?;
@@ -165,7 +165,7 @@ pub fn query_balances_by_user(
 
     BALANCES
         .prefix(&address)
-        .range(ctx.store, start, None, Order::Ascending)
+        .range(ctx.store, start, None, Order::Ascending)?
         .take(limit)
         .map(|item| {
             let (denom, amount) = item?;

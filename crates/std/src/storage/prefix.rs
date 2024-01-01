@@ -26,13 +26,14 @@ where
     K: MapKey,
     T: DeserializeOwned,
 {
+    #[allow(clippy::type_complexity)]
     pub fn range<'a>(
         &self,
         store: &'a dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
+    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a>> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
@@ -50,7 +51,7 @@ where
         // need to make a clone of self.prefix and move it into the closure,
         // so that the iterator can live longer than &self.
         let prefix = self.prefix.clone();
-        let iter = store.scan(Some(&min), Some(&max), order).map(move |(k, v)| {
+        let iter = store.scan(Some(&min), Some(&max), order)?.map(move |(k, v)| {
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;
@@ -58,10 +59,10 @@ where
             Ok((key, data))
         });
 
-        Box::new(iter)
+        Ok(Box::new(iter))
     }
 
-    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) {
+    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> anyhow::Result<()> {
         todo!()
     }
 }

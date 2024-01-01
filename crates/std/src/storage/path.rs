@@ -46,13 +46,13 @@ impl<'a, T> Path<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn exists(&self, store: &dyn Storage) -> bool {
-        store.read(self.storage_key).is_some()
+    pub fn exists(&self, store: &dyn Storage) -> anyhow::Result<bool> {
+        store.read(self.storage_key).map(|value| value.is_some())
     }
 
     pub fn may_load(&self, store: &dyn Storage) -> anyhow::Result<Option<T>> {
         store
-            .read(self.storage_key)
+            .read(self.storage_key)?
             .map(from_json)
             .transpose()
             .map_err(Into::into)
@@ -60,7 +60,7 @@ where
 
     pub fn load(&self, store: &dyn Storage) -> anyhow::Result<T> {
         from_json(store
-            .read(self.storage_key)
+            .read(self.storage_key)?
             .ok_or_else(|| anyhow!(
                 "[Path]: data not found! type: {}, storage key: {}",
                 type_name::<T>(),
@@ -78,7 +78,7 @@ where
         if let Some(data) = &maybe_data {
             self.save(store, data)?;
         } else {
-            self.remove(store);
+            self.remove(store)?;
         }
 
         Ok(maybe_data)
@@ -86,11 +86,11 @@ where
 
     pub fn save(&self, store: &mut dyn Storage, data: &T) -> anyhow::Result<()> {
         let bytes = to_json(data)?;
-        store.write(self.storage_key, bytes.as_ref());
+        store.write(self.storage_key, bytes.as_ref())?;
         Ok(())
     }
 
-    pub fn remove(&self, store: &mut dyn Storage) {
+    pub fn remove(&self, store: &mut dyn Storage) -> anyhow::Result<()> {
         store.remove(self.storage_key)
     }
 }
