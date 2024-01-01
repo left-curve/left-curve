@@ -20,14 +20,6 @@ impl Storage for MockStorage {
         self.data.get(key).cloned()
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.data.insert(key.to_vec(), value.to_vec());
-    }
-
-    fn remove(&mut self, key: &[u8]) {
-        self.data.remove(key);
-    }
-
     fn scan<'a>(
         &'a self,
         min:   Option<&[u8]>,
@@ -55,5 +47,13 @@ impl Storage for MockStorage {
         } else {
             Box::new(iter.rev())
         }
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.data.insert(key.to_vec(), value.to_vec());
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.data.remove(key);
     }
 }

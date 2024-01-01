@@ -1,21 +1,14 @@
 use {
-    crate::{Batch, Committable, Op},
+    crate::{btreemap_range_next, Batch, Committable, Op, Storage},
     cw_std::{Order, Record},
-    cw_vm::{HostState, Peekable},
-    std::{
-        cmp::Ordering,
-        collections::{BTreeMap, HashMap},
-        ops::Bound,
-    },
+    std::{cmp::Ordering, ops::Bound},
 };
 
 /// Adapted from cw-multi-test:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
 pub struct Cached<S> {
-    base:         S,
-    pending:      Batch,
-    iterators:    HashMap<u32, CachedIter>,
-    next_iter_id: u32,
+    base:    S,
+    pending: Batch,
 }
 
 impl<S> Cached<S> {
@@ -23,9 +16,7 @@ impl<S> Cached<S> {
     pub fn new(base: S) -> Self {
         Self {
             base,
-            pending:      Batch::new(),
-            iterators:    HashMap::new(),
-            next_iter_id: 0,
+            pending: Batch::new(),
         }
     }
 
@@ -42,14 +33,48 @@ where
     /// Consume the cached store, write all ops to the underlying store, return
     /// the underlying store.
     pub fn commit(mut self) -> anyhow::Result<S> {
-        self.base.commit(self.pending)?;
+        self.base.apply(self.pending)?;
         Ok(self.base)
     }
 }
 
-impl<S> HostState for Cached<S>
+impl<S> Committable for Cached<S>
 where
-    S: HostState + Peekable,
+    S: Storage,
+{
+    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
+        // this merges the two batches, with the incoming batch taking precedence.
+        self.pending.extend(batch);
+        Ok(())
+    }
+}
+
+impl<S> Cached<S>
+where
+    S: Storage,
+{
+    fn take_pending(
+        &self,
+        pending_key: Vec<u8>,
+        pending_op:  Op,
+        min:         Bound<Vec<u8>>,
+        max:         Bound<Vec<u8>>,
+        order:       Order,
+    ) -> anyhow::Result<Option<Record>> {
+        if let Op::Put(value) = pending_op {
+            return Ok(Some((pending_key, value)));
+        }
+
+        match order {
+            Order::Ascending => self.range_next(Bound::Excluded(pending_key), max, order),
+            Order::Descending => self.range_next(min, Bound::Excluded(pending_key), order),
+        }
+    }
+}
+
+impl<S> Storage for Cached<S>
+where
+    S: Storage,
 {
     fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
         match self.pending.get(key) {
@@ -59,159 +84,40 @@ where
         }
     }
 
+    fn range_next(
+        &self,
+        min:   Bound<Vec<u8>>,
+        max:   Bound<Vec<u8>>,
+        order: Order,
+    ) -> anyhow::Result<Option<Record>> {
+        let base_peek = self.base.range_next(min.clone(), max.clone(), order)?;
+        let pending_peek = btreemap_range_next(&self.pending, min.clone(), max.clone(), order);
+
+        match (base_peek, pending_peek) {
+            (Some((base_key, base_value)), Some((pending_key, pending_op))) => {
+                match (base_key.cmp(&pending_key), order) {
+                    (Ordering::Less, Order::Ascending) | (Ordering::Greater, Order::Descending) => {
+                        Ok(Some((base_key, base_value)))
+                    },
+                    _ => self.take_pending(pending_key, pending_op, min, max, order),
+                }
+            },
+            (None, Some((pending_key, pending_op))) => {
+                self.take_pending(pending_key, pending_op, min, max, order)
+            },
+            (Some(base_record), None) => Ok(Some(base_record)),
+            (None, None) => Ok(None),
+        }
+    }
+
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
         self.pending.insert(key.to_vec(), Op::Put(value.to_vec()));
-
-        // whenever KV data is mutated, delete all existing iterators to avoid
-        // race conditions
-        self.iterators.clear();
-
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         self.pending.insert(key.to_vec(), Op::Delete);
-
-        // whenever KV data is mutated, delete all existing iterators to avoid
-        // race conditions
-        self.iterators.clear();
-
         Ok(())
-    }
-
-    fn scan(
-        &mut self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> anyhow::Result<u32> {
-        let iterator_id = self.next_iter_id;
-        self.next_iter_id += 1;
-
-        let base_iter_id = self.base.scan(min, max, order)?;
-        let iterator = CachedIter::new(base_iter_id, min, max, order);
-        self.iterators.insert(iterator_id, iterator);
-
-        Ok(iterator_id)
-    }
-
-    fn next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>> {
-        // let (iter, pending) = self.get_iter_and_batch_mut(iterator_id)?;
-        // iter.next(pending)
-        let iter = self.iterators.get_mut(&iterator_id).unwrap();
-        iter.next(&mut self.base, &self.pending)
-    }
-}
-
-struct CachedIter {
-    base_iter_id: u32,
-    pending_curr: Option<Vec<u8>>,
-    pending_end: Option<Vec<u8>>,
-    order: Order,
-}
-
-impl CachedIter {
-    pub fn new(base_iter_id: u32, min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> Self {
-        let (pending_curr, pending_end) = match order {
-            Order::Ascending => (min, max),
-            Order::Descending => (max, min),
-        };
-
-        Self {
-            base_iter_id,
-            pending_curr: pending_curr.map(|bytes| bytes.to_vec()),
-            pending_end: pending_end.map(|bytes| bytes.to_vec()),
-            order,
-        }
-    }
-
-    // we can't implement the actual Iterator trait, because CachedIter needs to
-    // hold a reference of the Batch, with which we run into lifetime issues...
-    //
-    // in this implementation, each `next` call involves walking the BTree, which
-    // isn't optimal, but I don't have a better idea for now.
-    //
-    // perhaps later we can do something with unsafe Rust...
-    pub fn next<S>(&mut self, base: &mut S, pending: &Batch) -> anyhow::Result<Option<Record>>
-    where
-        S: HostState + Peekable,
-    {
-        let pending_peek = btreemap_next_key(
-            pending,
-            self.pending_curr.as_ref(),
-            self.pending_end.as_ref(),
-            self.order,
-        );
-        let base_peek = base.peek(self.base_iter_id)?;
-
-        match (base_peek, pending_peek) {
-            // neither base and pending has reached end
-            (Some((base_key, _)), Some((pending_key, pending_op))) => {
-                let mut order = base_key.cmp(pending_key);
-                if self.order == Order::Descending {
-                    order = order.reverse();
-                }
-
-                match order {
-                    Ordering::Less => base.next(self.base_iter_id),
-                    Ordering::Equal => {
-                        base.next(self.base_iter_id)?;
-                        self.take_pending(base, pending, pending_key, pending_op)
-                    },
-                    Ordering::Greater => self.take_pending(base, pending, pending_key, pending_op),
-                }
-            },
-
-            // base has reached end, pending not --> advance pending
-            // but if pending is a Delete, then skip it
-            (None, Some((key, op))) => self.take_pending(base, pending, key, op),
-
-            // pending has reached end, base has not --> advance base
-            (Some(_), None) => base.next(self.base_iter_id),
-
-            // both have reached end --> simply return None
-            (None, None) => Ok(None),
-        }
-    }
-
-    fn take_pending<S>(
-        &mut self,
-        base: &mut S,
-        pending: &Batch,
-        key: &[u8],
-        op: &Op,
-    ) -> anyhow::Result<Option<Record>>
-    where
-        S: HostState + Peekable,
-    {
-        self.pending_curr = Some(key.to_vec());
-        match op {
-            Op::Put(value) => Ok(Some((key.to_vec(), value.to_vec()))),
-            Op::Delete => self.next(base, pending),
-        }
-    }
-}
-
-fn btreemap_next_key<'a, K: Ord, V>(
-    map: &'a BTreeMap<K, V>,
-    curr: Option<&K>,
-    end: Option<&K>,
-    order: Order,
-) -> Option<(&'a K, &'a V)> {
-    let bounds = match order {
-        Order::Ascending => (
-            curr.map_or(Bound::Unbounded, Bound::Excluded),
-            end.map_or(Bound::Unbounded, Bound::Excluded),
-        ),
-        Order::Descending => (
-            end.map_or(Bound::Unbounded, Bound::Included),
-            curr.map_or(Bound::Unbounded, Bound::Excluded),
-        ),
-    };
-
-    match order {
-        Order::Ascending => map.range(bounds).next(),
-        Order::Descending => map.range(bounds).next_back(),
     }
 }
 
@@ -219,23 +125,21 @@ fn btreemap_next_key<'a, K: Ord, V>(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_vm::MockHostState};
+    use {super::*, crate::MockStorage};
 
     // illustration of this test case:
     //
     // base    : 1 2 _ 4 5 6 7 _
     // pending :   D P _ _ P D 8  (P = put, D = delete)
     // merged  : 1 _ 3 4 5 6 _ 8
-    #[test]
-    fn cached_iterator_works() -> anyhow::Result<()> {
-        let mut base = MockHostState::new();
+    fn make_test_case() -> anyhow::Result<(Cached<MockStorage>, Vec<Record>)> {
+        let mut base = MockStorage::new();
         base.write(&[1], &[1])?;
         base.write(&[2], &[2])?;
         base.write(&[4], &[4])?;
         base.write(&[5], &[5])?;
         base.write(&[6], &[6])?;
         base.write(&[7], &[7])?;
-
 
         let mut cached = Cached::new(base);
         cached.remove(&[2])?;
@@ -244,23 +148,35 @@ mod tests {
         cached.remove(&[7])?;
         cached.write(&[8], &[8])?;
 
-        let iterator_id = cached.scan(None, None, Order::Ascending)?;
-        assert_eq!(cached.next(iterator_id)?, Some((vec![1], vec![1])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![3], vec![3])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![4], vec![4])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![5], vec![5])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![255])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![8], vec![8])));
-        assert_eq!(cached.next(iterator_id)?, None);
+        let merged = vec![
+            (vec![1], vec![1]),
+            (vec![3], vec![3]),
+            (vec![4], vec![4]),
+            (vec![5], vec![5]),
+            (vec![6], vec![255]),
+            (vec![8], vec![8]),
+        ];
 
-        let iterator_id = cached.scan(None, None, Order::Descending)?;
-        assert_eq!(cached.next(iterator_id)?, Some((vec![8], vec![8])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![6], vec![255])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![5], vec![5])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![4], vec![4])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![3], vec![3])));
-        assert_eq!(cached.next(iterator_id)?, Some((vec![1], vec![1])));
-        assert_eq!(cached.next(iterator_id)?, None);
+        Ok((cached, merged))
+    }
+
+    #[test]
+    fn iterator_works() -> anyhow::Result<()> {
+        let (cached, mut merged) = make_test_case()?;
+        assert_eq!(cached.to_vec(Order::Ascending)?, merged);
+
+        merged.reverse();
+        assert_eq!(cached.to_vec(Order::Descending)?, merged);
+
+        Ok(())
+    }
+
+    #[test]
+    fn commit_works() -> anyhow::Result<()> {
+        let (cached, merged) = make_test_case()?;
+
+        let base = cached.commit()?;
+        assert_eq!(base.to_vec(Order::Ascending)?, merged);
 
         Ok(())
     }

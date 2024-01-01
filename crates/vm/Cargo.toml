@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow             = { workspace = true }
+cw-db              = { path = "../db" }
 cw-std             = { path = "../std" }
 data-encoding      = { workspace = true }
 serde              = { workspace = true }

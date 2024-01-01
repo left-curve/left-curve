@@ -1,9 +1,10 @@
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw_db::MockStorage,
     cw_std::{from_json, Addr, Uint128},
     cw_vm::{
         call_execute, call_instantiate, call_query, db_next, db_read, db_remove, db_scan, db_write,
-        debug, Host, InstanceBuilder, MockHostState,
+        debug, Host, InstanceBuilder,
     },
     std::{env, path::PathBuf},
     tracing::info,
@@ -28,7 +29,7 @@ fn main() -> anyhow::Result<()> {
         .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let (instance, mut store) = InstanceBuilder::default()
         .with_wasm_file(wasm_file)?
-        .with_host_state(MockHostState::new())
+        .with_storage(MockStorage::new())
         .with_host_function("db_read", db_read)?
         .with_host_function("db_write", db_write)?
         .with_host_function("db_remove", db_remove)?

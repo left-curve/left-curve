@@ -51,6 +51,25 @@ impl Storage for ExternalStorage {
         // same case with `write` and `remove`.
     }
 
+    fn scan<'a>(
+        &'a self,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // IMPORTANT: we must to keep the Regions in scope until end of the func
+        // make sure to se `as_ref` so that the Regions don't get consumed
+        let min_region = min.map(Region::build);
+        let min_ptr = get_optional_region_ptr(min_region.as_ref());
+
+        let max_region = max.map(Region::build);
+        let max_ptr = get_optional_region_ptr(max_region.as_ref());
+
+        let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
+
+        Box::new(ExternalIterator { iterator_id })
+    }
+
     // note: cosmwasm doesn't allow empty values:
     // https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/packages/std/src/imports.rs#L111
     // this is because its DB backend doesn't distinguish between an empty value
@@ -70,25 +89,6 @@ impl Storage for ExternalStorage {
         let key_ptr = &*key as *const Region;
 
         unsafe { db_remove(key_ptr as usize) }
-    }
-
-    fn scan<'a>(
-        &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // IMPORTANT: we must to keep the Regions in scope until end of the func
-        // make sure to se `as_ref` so that the Regions don't get consumed
-        let min_region = min.map(Region::build);
-        let min_ptr = get_optional_region_ptr(min_region.as_ref());
-
-        let max_region = max.map(Region::build);
-        let max_ptr = get_optional_region_ptr(max_region.as_ref());
-
-        let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
-
-        Box::new(ExternalIterator { iterator_id })
     }
 }
 

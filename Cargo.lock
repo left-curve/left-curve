@@ -74,7 +74,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-std",
- "cw-vm",
 ]
 
 [[package]]
@@ -113,6 +112,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-bank",
+ "cw-db",
  "cw-std",
  "data-encoding",
  "serde",
