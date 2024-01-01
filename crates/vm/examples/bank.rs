@@ -50,6 +50,13 @@ fn main() -> anyhow::Result<()> {
     send(&mut host, Addr::mock(5), Addr::mock(6), "uosmo", 64)?;
 
     // query and print out the balances
+    // should be:
+    // 0x1: 94 uatom, 468 uosmo
+    // 0x2: no balance, deleted from storage
+    // 0x3: 104 uatom
+    // 0x4: 75 uatom
+    // 0x5: 356 uosmo
+    // 0x6: 64 uosmo
     query_balances(&mut host)?;
 
     // if we need the host state for other purposes, we can consume the wasm
