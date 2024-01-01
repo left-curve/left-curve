@@ -1,22 +1,36 @@
 use crate::{ExecuteCtx, InstantiateCtx, Order, QueryCtx, Record, Region, Storage};
 
-// these are the method that the host must implement
+// these are the method that the host must implement.
 extern "C" {
+    // database operations.
+    //
+    // note that these methods are not fallible. the reason is that if a DB op
+    // indeed fails, the host should have thrown an error and kill the execution.
+    // from the Wasm module's perspective, if a response is received, the DB op
+    // must have succeeded.
+    //
+    // read ops (no state mutation):
     fn db_read(key_ptr: usize) -> usize;
-
-    fn db_write(key_ptr: usize, value_ptr: usize);
-
-    fn db_remove(key_ptr: usize);
-
     fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> u32;
-
     fn db_next(iterator_id: u32) -> usize;
 
+    // write ops (mutate the state):
+    fn db_write(key_ptr: usize, value_ptr: usize);
+    fn db_remove(key_ptr: usize);
+
+    // print a debug message to the client's CLI output. the client must have
+    // set tracing level to DEBUG to see it.
     fn debug(msg_ptr: usize);
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
 /// ergonomic functions.
+///
+/// For entry points where state mutation is allowed (such as instantiate and
+/// execute) a mutable reference of ExternalStorage is included in the context.
+/// For entry points where state mutation isn't allowed (such as query), an
+/// immutable reference is included. This prevents the contract from calling
+/// the write/remove methods. Of course, the host must also set safeguards!
 pub struct ExternalStorage;
 
 impl Storage for ExternalStorage {
