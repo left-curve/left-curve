@@ -1,8 +1,7 @@
 use {
     crate::{Host, HostState},
     anyhow::anyhow,
-    cw_db::Storage,
-    cw_std::Record,
+    cw_std::{Record, Storage},
     data_encoding::BASE64,
     tracing::{debug, trace},
     wasmi::Caller,

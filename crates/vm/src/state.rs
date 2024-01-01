@@ -1,14 +1,13 @@
 use {
     anyhow::anyhow,
-    cw_db::Storage,
-    cw_std::{Order, Record},
-    std::{collections::HashMap, ops::Bound},
+    cw_std::{Order, Record, Storage},
+    std::collections::HashMap,
 };
 
 // wraps a cw_vm::Storage, and implements the necessary Wasm import functions.
 pub struct HostState<S> {
     store:        S,
-    iterators:    HashMap<u32, HostStateIter>,
+    iterators:    HashMap<u32, Box<dyn Iterator<Item = Record>>>,
     next_iter_id: u32,
 }
 
@@ -27,7 +26,7 @@ where
     S: Storage,
 {
     pub fn db_read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-        self.store.read(key)
+        Ok(self.store.read(key))
     }
 
     // create a new iterator with the given bounds (min is inclusive, max is
@@ -46,8 +45,35 @@ where
         // u32::MAX as many iterators without exceeding the gas limit...
         self.next_iter_id += 1;
 
-        let iterator = HostStateIter::new(min, max, order);
-        self.iterators.insert(iterator_id, iterator);
+        let iter = self.store.scan(min, max, order);
+        // use unsafe rust to ignore lifetime check here. this is really tricky...
+        // let me try explain:
+        //
+        // the iter above, has &'1 lifetime, where '1 is the lifetime of the
+        // &mut self in the function signature.
+        // this means, this iterator goes out of scope right at the end of this
+        // function. this doesn't work with our use case. we need to save the
+        // iterator, can call `next` on it later.
+        //
+        // therefore, we use std::mem::transmute here to turn the '1 iterator
+        // into a 'static iterator (thanks ChatGPT for suggesting this.)
+        //
+        // let's think about if this is safe. the lifetime here safeguards two
+        // things:
+        // 1. the iterator references data in the Storage instance that this
+        //    HostState holds. therefore the iterator must not live longer than
+        //    the HostState.
+        //    this is perfectly fine. the HostState is dropped at the end of the
+        //    wasm execution, with all iterators dropped at the same time.
+        // 2. the iterator holds an immutable reference to the Storage instance.
+        //    this means until the iterator is dropped, data in the Storage can't
+        //    be mutated.
+        //    we make sure of this in db_{write,remove} function. whenever data
+        //    is mutated, we delete all existing iterators.
+        //
+        // so overall this should be safe.
+        let iter_static = unsafe { std::mem::transmute(iter) };
+        self.iterators.insert(iterator_id, iter_static);
 
         Ok(iterator_id)
     }
@@ -57,72 +83,27 @@ where
     pub fn db_next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or_else(|| anyhow!("[HostState]: iterator not found with id `{iterator_id}`"))?
-            .next(&self.store)
+            .ok_or_else(|| anyhow!("[HostState]: iterator not found with id `{iterator_id}`"))
+            .map(|iter| iter.next())
     }
 
     pub fn db_write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
-        self.store.write(key, value)?;
+        self.store.write(key, value);
 
-        // IMPORTANT NOTE: to avoid race conditions, mutating the KV store data
-        // results in all existing iterators being dropped!
-        //
-        // think of this this way: each iterator essentially holds an immutable
-        // reference to the KV store (or a read lock if you like to think about
-        // multithreading). before all iterators are dropped (or locks unlocked),
-        // we should NOT be able to mutate the KV store. in pure Rust this would
-        // be a compile time error. however we're working with Rust<>Wasm FFI so
-        // the compiler can't help us here. we need to implement mechanisms
-        // ourselves to prevent this race condition.
+        // IMPORTANT: delete all existing iterators whenever KV data is mutated.
+        // see comments in db_scan for rationale.
         self.iterators.clear();
 
         Ok(())
     }
 
     pub fn db_remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
-        self.store.remove(key)?;
+        self.store.remove(key);
 
-        // delete all existing iterators, same rationale as in `write`
+        // IMPORTANT: delete all existing iterators whenever KV data is mutated.
         self.iterators.clear();
 
         Ok(())
-    }
-}
-
-struct HostStateIter {
-    min:   Bound<Vec<u8>>,
-    max:   Bound<Vec<u8>>,
-    order: Order,
-    ended: bool,
-}
-
-impl HostStateIter {
-    pub fn new(min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> Self {
-        // min is inclusive, max is exclusive
-        Self {
-            min: min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec())),
-            max: max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec())),
-            order,
-            ended: false,
-        }
-    }
-
-    pub fn next<S: Storage>(&mut self, store: &S) -> anyhow::Result<Option<Record>> {
-        if self.ended {
-            return Ok(None);
-        }
-
-        let Some((k, v)) = store.range_next(self.min.as_ref(), self.max.as_ref(), self.order)? else {
-            self.ended = true;
-            return Ok(None);
-        };
-
-        match self.order {
-            Order::Ascending => self.min = Bound::Excluded(k.clone()),
-            Order::Descending => self.max = Bound::Excluded(k.clone()),
-        }
-
-        Ok(Some((k, v)))
     }
 }
 
@@ -130,7 +111,7 @@ impl HostStateIter {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_db::MockStorage, cw_std::Order};
+    use {super::*, cw_std::{MockStorage, Order}};
 
     #[test]
     fn host_state_iterator_works() -> anyhow::Result<()> {

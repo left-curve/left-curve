@@ -1,7 +1,6 @@
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw_db::MockStorage,
-    cw_std::{from_json, Addr, Uint128},
+    cw_std::{from_json, Addr, MockStorage, Uint128},
     cw_vm::{
         call_execute, call_instantiate, call_query, db_next, db_read, db_remove, db_scan, db_write,
         debug, Host, InstanceBuilder,
