@@ -1,4 +1,5 @@
 use {
+    crate::Message,
     anyhow::anyhow,
     serde::{Deserialize, Serialize},
 };
@@ -32,11 +33,16 @@ impl<T> ContractResult<T> {
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Response {
-    // TODO: add stuff
+    msgs: Vec<Message>,
 }
 
 impl Response {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn add_message(mut self, msg: Message) -> Self {
+        self.msgs.push(msg);
+        self
     }
 }

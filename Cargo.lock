@@ -80,6 +80,7 @@ dependencies = [
 name = "cw-state-machine"
 version = "0.0.0"
 dependencies = [
+ "cw-db",
  "cw-std",
  "cw-vm",
 ]
