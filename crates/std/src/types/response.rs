@@ -5,6 +5,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
 pub enum ContractResult<T> {
     Ok(T),
     Err(String),
@@ -33,7 +34,7 @@ impl<T> ContractResult<T> {
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Response {
-    msgs: Vec<Message>,
+    pub msgs: Vec<Message>,
 }
 
 impl Response {
