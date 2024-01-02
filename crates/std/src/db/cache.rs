@@ -5,12 +5,12 @@ use {
 
 /// Adapted from cw-multi-test:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
-pub struct Cached<S> {
+pub struct CacheStore<S> {
     base:    S,
     pending: Batch,
 }
 
-impl<S> Cached<S> {
+impl<S> CacheStore<S> {
     /// Create a new cached store with an empty write batch.
     pub fn new(base: S) -> Self {
         Self {
@@ -25,7 +25,7 @@ impl<S> Cached<S> {
     }
 }
 
-impl<S> Committable for Cached<S> {
+impl<S> Committable for CacheStore<S> {
     fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
         // this merges the two batches, with the incoming batch taking precedence.
         self.pending.extend(batch);
@@ -33,7 +33,7 @@ impl<S> Committable for Cached<S> {
     }
 }
 
-impl<S: Committable> Cached<S> {
+impl<S: Committable> CacheStore<S> {
     /// Consume the cached store, write all ops to the underlying store, return
     /// the underlying store.
     pub fn commit(mut self) -> anyhow::Result<S> {
@@ -42,7 +42,7 @@ impl<S: Committable> Cached<S> {
     }
 }
 
-impl<S: Storage> Storage for Cached<S> {
+impl<S: Storage> Storage for CacheStore<S> {
     fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
         match self.pending.get(key) {
             Some(Op::Put(value)) => Ok(Some(value.clone())),
@@ -165,7 +165,7 @@ mod tests {
     // base    : 1 2 _ 4 5 6 7 _
     // pending :   D P _ _ P D 8  (P = put, D = delete)
     // merged  : 1 _ 3 4 5 6 _ 8
-    fn make_test_case() -> anyhow::Result<(Cached<MockStorage>, Vec<Record>)> {
+    fn make_test_case() -> anyhow::Result<(CacheStore<MockStorage>, Vec<Record>)> {
         let mut base = MockStorage::new();
         base.write(&[1], &[1])?;
         base.write(&[2], &[2])?;
@@ -174,7 +174,7 @@ mod tests {
         base.write(&[6], &[6])?;
         base.write(&[7], &[7])?;
 
-        let mut cached = Cached::new(base);
+        let mut cached = CacheStore::new(base);
         cached.remove(&[2])?;
         cached.write(&[3], &[3])?;
         cached.write(&[6], &[255])?;

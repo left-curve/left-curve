@@ -1,3 +1,3 @@
-pub struct Prefixed {
+pub struct PrefixStore {
     // TODO
 }

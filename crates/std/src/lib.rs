@@ -7,7 +7,7 @@ mod testing;
 mod types;
 
 pub use crate::{
-    db::{Batch, Cached, Committable, Op, Order, Prefixed, Record, Storage},
+    db::{Batch, CacheStore, Committable, Op, Order, PrefixStore, Record, Storage},
     serde::{from_json, to_json},
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     testing::MockStorage,

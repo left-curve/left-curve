@@ -4,8 +4,8 @@ mod traits;
 mod types;
 
 pub use {
-    cache::Cached,
-    prefix::Prefixed,
+    cache::CacheStore,
+    prefix::PrefixStore,
     traits::{Committable, Storage},
     types::{Batch, Op, Order, Record},
 };
