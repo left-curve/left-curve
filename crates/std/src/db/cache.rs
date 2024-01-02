@@ -132,7 +132,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match (self.base.peek(), self.pending.peek()) {
             (Some((base_key, _)), Some((pending_key, _))) => {
-                let ordering_raw = base_key.cmp(&pending_key);
+                let ordering_raw = base_key.cmp(pending_key);
                 let ordering = match self.order {
                     Order::Ascending => ordering_raw,
                     Order::Descending => ordering_raw.reverse(),
