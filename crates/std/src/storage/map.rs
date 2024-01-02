@@ -4,13 +4,13 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct Map<K, T> {
-    namespace:  &'static [u8],
+pub struct Map<'a, K, T> {
+    namespace:  &'a [u8],
     _key_type:  PhantomData<K>,
     _data_type: PhantomData<T>,
 }
 
-impl<K, T> Map<K, T> {
+impl<'a, K, T> Map<'a, K, T> {
     pub const fn new(namespace: &'static str) -> Self {
         // TODO: add a maximum length for namespace
         // see comments of increment_last_byte function for rationale
@@ -22,7 +22,7 @@ impl<K, T> Map<K, T> {
     }
 }
 
-impl<K, T> Map<K, T>
+impl<'a, K, T> Map<'a, K, T>
 where
     K: MapKey,
 {
@@ -41,7 +41,7 @@ where
     }
 }
 
-impl<K, T> Map<K, T>
+impl<'a, K, T> Map<'a, K, T>
 where
     K: MapKey,
     T: Serialize + DeserializeOwned,
@@ -78,13 +78,13 @@ where
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn range<'a>(
-        &'a self,
-        store: &'a dyn Storage,
+    pub fn range<'b>(
+        &self,
+        store: &'b dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a>> {
+    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'b>> {
         self.no_prefix().range(store, min, max, order)
     }
 
