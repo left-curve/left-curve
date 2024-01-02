@@ -4,10 +4,6 @@ use crate::{Batch, Op, Order, Record};
 pub trait Storage {
     fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>>;
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
-
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
-
     // minimum bound is always inclusive, maximum bound is always exclusive.
     // if min > max, an empty iterator is to be returned.
     //
@@ -22,6 +18,10 @@ pub trait Storage {
         order: Order,
     ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a>;
 
+    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
+
+    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
+
     /// Apply a batch of inserts or deletes all together.
     fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
         for (key, op) in batch {
@@ -35,6 +35,7 @@ pub trait Storage {
     }
 
     // collect KV data in the store into a vector. useful in tests.
+    #[cfg(test)]
     fn to_vec(&self, order: Order) -> anyhow::Result<Vec<Record>> {
         self.scan(None, None, order).collect()
     }
