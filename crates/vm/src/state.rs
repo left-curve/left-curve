@@ -19,6 +19,11 @@ impl<S> HostState<S> {
             next_iter_id: 0,
         }
     }
+
+    /// Consume self, return the owned instance of the storage.
+    pub fn disassemble(self) -> S {
+        self.store
+    }
 }
 
 impl<S> HostState<S>

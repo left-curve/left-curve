@@ -5,6 +5,10 @@ use {
     std::{fmt, str::FromStr},
 };
 
+pub fn hash(data: impl AsRef<[u8]>) -> Hash {
+    Hash(blake3::hash(data.as_ref()).into())
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(pub(crate) [u8; Self::LENGTH]);
 
@@ -18,9 +22,11 @@ impl Hash {
     ///
     /// Do not confuse length in terms of bytes and in terms of ASCII chars.
     pub const LENGTH: usize = blake3::OUT_LEN;
+}
 
-    pub fn as_slice(&self) -> &[u8; Self::LENGTH] {
-        &self.0
+impl AsRef<[u8]> for Hash {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_slice()
     }
 }
 

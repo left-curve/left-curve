@@ -7,13 +7,13 @@ mod testing;
 mod types;
 
 pub use crate::{
-    db::{Batch, CacheStore, Committable, Op, Order, PrefixStore, Record, Storage},
+    db::{Batch, CacheStore, Op, Order, PrefixStore, Record, Storage},
     serde::{from_json, to_json},
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     testing::MockStorage,
     types::{
-        Account, Addr, Binary, BlockInfo, Coin, ContractResult, ExecuteCtx, GenesisState, Hash,
-        InfoResponse, InstantiateCtx, Message, Query, QueryCtx, Response, Tx, Uint128,
+        hash, Account, Addr, Binary, BlockInfo, Coin, ContractResult, ExecuteCtx, GenesisState,
+        Hash, InfoResponse, InstantiateCtx, Message, Query, QueryCtx, Response, Tx, Uint128,
         WasmRawResponse, WasmSmartResponse,
     },
 };

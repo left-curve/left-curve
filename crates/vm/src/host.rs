@@ -1,7 +1,9 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail, Context},
+    cw_std::{from_json, to_json, Binary, ContractResult, Response},
     data_encoding::BASE64,
+    serde::ser::Serialize,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
@@ -34,18 +36,57 @@ impl<'a, S> Host<'a, S> {
         }
     }
 
+    /// Call the contract's `instantiate` entry point.
+    pub fn call_instantiate<M: Serialize>(
+        &mut self,
+        msg: &M,
+    ) -> anyhow::Result<ContractResult<Response>> {
+        let msg_bytes = to_json(msg)?;
+        let res_bytes = self.call_entry_point_raw("instantiate", &msg_bytes)?;
+        from_json(res_bytes)
+    }
+
+    /// Call the contract's `execute` entry point.
+    pub fn call_execute<M: Serialize>(
+        &mut self,
+        msg: &M,
+    ) -> anyhow::Result<ContractResult<Response>> {
+        let msg_bytes = to_json(msg)?;
+        let res_bytes = self.call_entry_point_raw("execute", &msg_bytes)?;
+        from_json(res_bytes)
+    }
+
+    /// Call the contract's `query` entry point.
+    pub fn call_query<M: Serialize>(&mut self, msg: &M) -> anyhow::Result<ContractResult<Binary>> {
+        let msg_bytes = to_json(msg)?;
+        let res_bytes = self.call_entry_point_raw("query", &msg_bytes)?;
+        from_json(res_bytes)
+    }
+
+    /// Call the contract's specified entry point, that takes exactly one input
+    /// and returns one output.
+    pub fn call_entry_point_raw(
+        &mut self,
+        name: &str,
+        msg:  impl AsRef<[u8]>,
+    ) -> anyhow::Result<Vec<u8>> {
+        let msg_ptr = self.write_to_memory(msg.as_ref())?;
+        let res_ptr: u32 = self.call(name, msg_ptr)?;
+        self.read_then_wipe(res_ptr)
+    }
+
     /// Get an immutable reference to the host state.
-    pub fn data(&self) -> &S {
+    pub(crate) fn data(&self) -> &S {
         self.caller.data()
     }
 
     /// Get a mutable reference to the host state.
-    pub fn data_mut(&mut self) -> &mut S {
+    pub(crate) fn data_mut(&mut self) -> &mut S {
         self.caller.data_mut()
     }
 
     /// Call a function on the Wasm module.
-    pub fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
+    pub(crate) fn call<P, R>(&mut self, name: &str, params: P) -> anyhow::Result<R>
     where
         P: WasmParams,
         R: WasmResults,
@@ -56,14 +97,14 @@ impl<'a, S> Host<'a, S> {
     }
 
     /// Reserve a region in Wasm memory and write the given data into it.
-    pub fn write_to_memory(&mut self, data: &[u8]) -> anyhow::Result<u32> {
+    pub(crate) fn write_to_memory(&mut self, data: &[u8]) -> anyhow::Result<u32> {
         let region_ptr = self.alloc_fn().call(&mut self.caller, data.len() as u32)?;
         self.write_region(region_ptr, data)?;
         Ok(region_ptr)
     }
 
     /// Read data from a region in Wasm memory.
-    pub fn read_from_memory(&self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn read_from_memory(&self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
         let buf = self.read_memory(region_ptr as usize, Region::SIZE)?;
         let region = unsafe { Region::from_raw(&buf) };
 
@@ -73,7 +114,7 @@ impl<'a, S> Host<'a, S> {
     /// Read data from a region then deallocate it. This is used almost
     /// exclusively for reading the response at the very end of the call.
     /// For all other use cases, Host::read_from_memory probably should be used.
-    pub fn read_then_wipe(&mut self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn read_then_wipe(&mut self, region_ptr: u32) -> anyhow::Result<Vec<u8>> {
         let data = self.read_from_memory(region_ptr)?;
         self.dealloc_fn().call(&mut self.caller, region_ptr)?;
         Ok(data)

@@ -1,10 +1,7 @@
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{from_json, Addr, MockStorage, Uint128},
-    cw_vm::{
-        call_execute, call_instantiate, call_query, db_next, db_read, db_remove, db_scan, db_write,
-        debug, Host, InstanceBuilder,
-    },
+    cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
     std::{env, path::PathBuf},
     tracing::info,
 };
@@ -76,7 +73,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
             amount,
         });
     }
-    let res = call_instantiate(host, &InstantiateMsg { initial_balances })?;
+    let res = host.call_instantiate(&InstantiateMsg { initial_balances })?;
 
     info!(?res, "instantiation successful");
 
@@ -92,7 +89,7 @@ fn send<T>(
 ) -> anyhow::Result<()> {
     info!(?from, ?to, denom, amount, "sending");
 
-    let res = call_execute(host, &ExecuteMsg::Send {
+    let res = host.call_execute(&ExecuteMsg::Send {
         from,
         to,
         denom:  denom.into(),
@@ -107,7 +104,7 @@ fn send<T>(
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     info!("querying balances");
 
-    let res_bytes = call_query(host, &QueryMsg::Balances {
+    let res_bytes = host.call_query(&QueryMsg::Balances {
         start_after: None,
         limit:       None,
     })?

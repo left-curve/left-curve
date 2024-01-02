@@ -1,5 +1,5 @@
 use {
-    crate::{Order, Record, Batch, Committable, Op, Storage},
+    crate::{Order, Record, Batch, Op, Storage},
     std::{cmp::Ordering, iter, iter::Peekable, ops::Bound},
 };
 
@@ -11,30 +11,22 @@ pub struct CacheStore<S> {
 }
 
 impl<S> CacheStore<S> {
-    /// Create a new cached store with an empty write batch.
-    pub fn new(base: S) -> Self {
+    /// Create a new cached store with an optional write batch.
+    pub fn new(base: S, pending: Option<Batch>) -> Self {
         Self {
             base,
-            pending: Batch::new(),
+            pending: pending.unwrap_or_default(),
         }
     }
 
-    /// Comsume self, discard the uncommitted batch, return the underlying store.
-    pub fn recycle(self) -> S {
-        self.base
+    /// Comsume self, return the underlying store and the uncommitted batch.
+    pub fn disassemble(self) -> (S, Batch) {
+        (self.base, self.pending)
     }
 }
 
-impl<S> Committable for CacheStore<S> {
-    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
-        // this merges the two batches, with the incoming batch taking precedence.
-        self.pending.extend(batch);
-        Ok(())
-    }
-}
-
-impl<S: Committable> CacheStore<S> {
-    /// Consume the cached store, write all ops to the underlying store, return
+impl<S: Storage> CacheStore<S> {
+    /// Consume self, apply the pending changes to the underlying store, return
     /// the underlying store.
     pub fn commit(mut self) -> anyhow::Result<S> {
         self.base.apply(self.pending)?;
@@ -83,6 +75,12 @@ impl<S: Storage> Storage for CacheStore<S> {
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         self.pending.insert(key.to_vec(), Op::Delete);
+        Ok(())
+    }
+
+    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
+        // this merges the two batches, with the incoming batch taking precedence.
+        self.pending.extend(batch);
         Ok(())
     }
 }
@@ -174,7 +172,7 @@ mod tests {
         base.write(&[6], &[6])?;
         base.write(&[7], &[7])?;
 
-        let mut cached = CacheStore::new(base);
+        let mut cached = CacheStore::new(base, None);
         cached.remove(&[2])?;
         cached.write(&[3], &[3])?;
         cached.write(&[6], &[255])?;
@@ -194,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn iterator_works() -> anyhow::Result<()> {
+    fn merged_iterator_works() -> anyhow::Result<()> {
         let (cached, mut merged) = make_test_case()?;
         assert_eq!(cached.to_vec(Order::Ascending)?, merged);
 
@@ -205,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn commit_works() -> anyhow::Result<()> {
+    fn apply_works() -> anyhow::Result<()> {
         let (cached, merged) = make_test_case()?;
 
         let base = cached.commit()?;

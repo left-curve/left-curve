@@ -1,7 +1,7 @@
 use {
     crate::HostState,
     anyhow::Context,
-    std::{fs::File, path::Path},
+    std::{fs::File, io::Cursor, path::Path},
     wasmi::{Engine, Instance, IntoFunc, Linker, Module, Store},
 };
 
@@ -36,6 +36,11 @@ impl<S> InstanceBuilder<S> {
     pub fn with_wasm_file(mut self, path: impl AsRef<Path>) -> anyhow::Result<Self> {
         let mut file = File::open(path)?;
         self.module = Some(Module::new(&self.engine, &mut file)?);
+        Ok(self)
+    }
+
+    pub fn with_wasm_bytes(mut self, bytes: impl AsRef<[u8]>) -> anyhow::Result<Self> {
+        self.module = Some(Module::new(&self.engine, Cursor::new(bytes))?);
         Ok(self)
     }
 

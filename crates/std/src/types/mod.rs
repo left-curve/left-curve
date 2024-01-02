@@ -14,7 +14,7 @@ pub use {
     binary::Binary,
     coin::Coin,
     context::{ExecuteCtx, InstantiateCtx, QueryCtx},
-    hash::Hash,
+    hash::{hash, Hash},
     response::{ContractResult, Response},
     tx::{Message, Query, Tx},
     uint128::Uint128,

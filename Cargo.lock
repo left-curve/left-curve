@@ -67,6 +67,7 @@ dependencies = [
  "anyhow",
  "cw-std",
  "cw-vm",
+ "wasmi",
 ]
 
 [[package]]

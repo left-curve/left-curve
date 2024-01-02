@@ -1,4 +1,4 @@
-use crate::{Batch, Order, Record};
+use crate::{Batch, Op, Order, Record};
 
 /// Describing a KV store that supports read, write, and iteration.
 pub trait Storage {
@@ -13,18 +13,24 @@ pub trait Storage {
         order: Order,
     ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>>;
 
+    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
+
+    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
+
     // collect KV data in the store into a vector. useful in tests.
     fn to_vec(&self, order: Order) -> anyhow::Result<Vec<Record>> {
         self.scan(None, None, order).map(|iter| iter.collect())
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
-
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
-}
-
-/// Describing a KV store that can atomically write a batch of ops.
-pub trait Committable {
-    /// Apply a batch of DB ops atomically.
-    fn apply(&mut self, batch: Batch) -> anyhow::Result<()>;
+    /// Apply a batch of inserts or deletes all together.
+    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
+        for (key, op) in batch {
+            if let Op::Put(value) = op {
+                self.write(&key, &value)?;
+            } else {
+                self.remove(&key)?;
+            }
+        }
+        Ok(())
+    }
 }

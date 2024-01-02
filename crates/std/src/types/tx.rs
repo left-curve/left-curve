@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Coin},
+    crate::{Addr, Binary, Coin, Hash},
     serde::{Deserialize, Serialize},
 };
 
@@ -13,8 +13,15 @@ pub struct Tx {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename = "snake_case")]
 pub enum Message {
-    Instantiate {
+    StoreCode {
         wasm_byte_code: Binary,
+    },
+    Instantiate {
+        code_hash: Hash,
+        msg:       Binary,
+        salt:      Binary,
+        funds:     Vec<Coin>,
+        admin:     Option<Addr>,
     },
     Execute {
         contract: Addr,

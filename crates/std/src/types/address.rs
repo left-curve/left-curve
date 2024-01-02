@@ -1,5 +1,5 @@
 use {
-    crate::{Hash, MapKey, RawKey},
+    crate::{Binary, Hash, MapKey, RawKey},
     serde::{Deserialize, Serialize},
     std::{fmt, str::FromStr},
 };
@@ -18,6 +18,18 @@ use {
 pub struct Addr(Hash);
 
 impl Addr {
+    pub fn new(hash: Hash) -> Self {
+        Self(hash)
+    }
+
+    /// Compute a contract address
+    pub fn compute(code_hash: &Hash, salt: &Binary) -> Self {
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(code_hash.as_ref());
+        hasher.update(salt.as_ref());
+        Self(Hash(hasher.finalize().into()))
+    }
+
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {
         let mut bytes = [0u8; Hash::LENGTH];
@@ -48,7 +60,7 @@ impl MapKey for &Addr {
     type Output = Addr;
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Ref(self.0.as_slice())]
+        vec![RawKey::Ref(self.0.as_ref())]
     }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
@@ -58,12 +70,12 @@ impl MapKey for &Addr {
 
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Hash::PREFIX, hex::encode(self.0.as_slice()))
+        write!(f, "{}{}", Hash::PREFIX, hex::encode(self.0.as_ref()))
     }
 }
 
 impl fmt::Debug for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Addr({}{})", Hash::PREFIX, hex::encode(self.0.as_slice()))
+        write!(f, "Addr({}{})", Hash::PREFIX, hex::encode(self.0.as_ref()))
     }
 }

@@ -6,6 +6,6 @@ mod types;
 pub use {
     cache::CacheStore,
     prefix::PrefixStore,
-    traits::{Committable, Storage},
+    traits::Storage,
     types::{Batch, Op, Order, Record},
 };
