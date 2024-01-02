@@ -1,9 +1,7 @@
-use crate::InstantiateCtx;
-
 use {
     crate::{
-        from_json, to_json, Binary, ContractResult, ExecuteCtx, ExternalStorage, QueryCtx, Region,
-        Response,
+        from_json, to_json, Binary, ContractResult, ExecuteCtx, ExternalStorage, InstantiateCtx,
+        QueryCtx, Region, Response,
     },
     serde::de::DeserializeOwned,
 };
