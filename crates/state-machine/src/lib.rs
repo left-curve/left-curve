@@ -1,6 +1,5 @@
 use {
-    cw_db::MockStorage,
-    cw_std::{Account, Addr, Binary, Hash},
+    cw_std::{Account, Addr, Binary, Hash, MockStorage},
     std::collections::HashMap,
 };
 

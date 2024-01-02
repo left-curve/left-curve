@@ -58,16 +58,4 @@ impl Committable for MockStorage {
     }
 }
 
-pub fn btreemap_range_next<K: Clone + Ord, V: Clone>(
-    map:   &BTreeMap<K, V>,
-    min:   Bound<&K>,
-    max:   Bound<&K>,
-    order: Order,
-) -> Option<(K, V)> {
-    let mut range = map.range((min, max));
-    let record = match order {
-        Order::Ascending => range.next(),
-        Order::Descending => range.next_back(),
-    };
-    record.map(|(k, v)| (k.clone(), v.clone()))
-}
+

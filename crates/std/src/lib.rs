@@ -10,7 +10,7 @@ pub use crate::{
     serde::{from_json, to_json},
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     testing::MockStorage,
-    traits::{Order, Record, Storage},
+    traits::{Batch, Committable, Op, Order, Record, Storage},
     types::{
         Account, Addr, Binary, Coin, ContractResult, ExecuteCtx, Hash, InstantiateCtx, Message,
         Query, QueryCtx, Response, Tx, Uint128,

@@ -1,5 +1,5 @@
 use {
-    crate::{Order, Record, Storage},
+    crate::{Batch, Committable, Op, Order, Record, Storage},
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -56,6 +56,19 @@ impl Storage for MockStorage {
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         self.data.remove(key);
+        Ok(())
+    }
+}
+
+impl Committable for MockStorage {
+    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
+        for (key, op) in batch {
+            if let Op::Put(value) = op {
+                self.write(&key, &value)?;
+            } else {
+                self.remove(&key)?;
+            }
+        }
         Ok(())
     }
 }

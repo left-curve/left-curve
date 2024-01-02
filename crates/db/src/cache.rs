@@ -1,7 +1,6 @@
 use {
-    crate::{btreemap_range_next, Batch, Committable, Op, Storage},
-    cw_std::{Order, Record},
-    std::{cmp::Ordering, ops::Bound},
+    cw_std::{Order, Record, Batch, Committable, Op, Storage},
+    std::{cmp::Ordering, iter, iter::Peekable, ops::Bound},
 };
 
 /// Adapted from cw-multi-test:
@@ -26,10 +25,15 @@ impl<S> Cached<S> {
     }
 }
 
-impl<S> Cached<S>
-where
-    S: Committable,
-{
+impl<S> Committable for Cached<S> {
+    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
+        // this merges the two batches, with the incoming batch taking precedence.
+        self.pending.extend(batch);
+        Ok(())
+    }
+}
+
+impl<S: Committable> Cached<S> {
     /// Consume the cached store, write all ops to the underlying store, return
     /// the underlying store.
     pub fn commit(mut self) -> anyhow::Result<S> {
@@ -38,44 +42,7 @@ where
     }
 }
 
-impl<S> Committable for Cached<S>
-where
-    S: Storage,
-{
-    fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
-        // this merges the two batches, with the incoming batch taking precedence.
-        self.pending.extend(batch);
-        Ok(())
-    }
-}
-
-impl<S> Cached<S>
-where
-    S: Storage,
-{
-    fn take_pending(
-        &self,
-        pending_key: Vec<u8>,
-        pending_op:  Op,
-        min:         Bound<&Vec<u8>>,
-        max:         Bound<&Vec<u8>>,
-        order:       Order,
-    ) -> anyhow::Result<Option<Record>> {
-        if let Op::Put(value) = pending_op {
-            return Ok(Some((pending_key, value)));
-        }
-
-        match order {
-            Order::Ascending => self.range_next(Bound::Excluded(&pending_key), max, order),
-            Order::Descending => self.range_next(min, Bound::Excluded(&pending_key), order),
-        }
-    }
-}
-
-impl<S> Storage for Cached<S>
-where
-    S: Storage,
-{
+impl<S: Storage> Storage for Cached<S> {
     fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
         match self.pending.get(key) {
             Some(Op::Put(value)) => Ok(Some(value.clone())),
@@ -84,30 +51,29 @@ where
         }
     }
 
-    fn range_next(
-        &self,
-        min:   Bound<&Vec<u8>>,
-        max:   Bound<&Vec<u8>>,
+    fn scan<'a>(
+        &'a self,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<Option<Record>> {
-        let base_peek = self.base.range_next(min, max, order)?;
-        let pending_peek = btreemap_range_next(&self.pending, min, max, order);
-
-        match (base_peek, pending_peek) {
-            (Some((base_key, base_value)), Some((pending_key, pending_op))) => {
-                match (base_key.cmp(&pending_key), order) {
-                    (Ordering::Less, Order::Ascending) | (Ordering::Greater, Order::Descending) => {
-                        Ok(Some((base_key, base_value)))
-                    },
-                    _ => self.take_pending(pending_key, pending_op, min, max, order),
-                }
-            },
-            (None, Some((pending_key, pending_op))) => {
-                self.take_pending(pending_key, pending_op, min, max, order)
-            },
-            (Some(base_record), None) => Ok(Some(base_record)),
-            (None, None) => Ok(None),
+    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>> {
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
+                return Ok(Box::new(iter::empty()));
+            }
         }
+
+        let base = self.base.scan(min, max, order)?;
+
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+        let pending_raw = self.pending.range((min, max));
+        let pending: Box<dyn Iterator<Item = _>> = match order {
+            Order::Ascending => Box::new(pending_raw),
+            Order::Descending => Box::new(pending_raw.rev()),
+        };
+
+        Ok(Box::new(MergedIter::new(base, pending, order)))
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
@@ -121,11 +87,78 @@ where
     }
 }
 
+struct MergedIter<'a, B, P>
+where
+    B: Iterator<Item = Record>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+{
+    base:    Peekable<B>,
+    pending: Peekable<P>,
+    order:   Order,
+}
+
+impl<'a, B, P> MergedIter<'a, B, P>
+where
+    B: Iterator<Item = Record>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+{
+    pub fn new(base: B, pending: P, order: Order) -> Self {
+        Self {
+            base:    base.peekable(),
+            pending: pending.peekable(),
+            order,
+        }
+    }
+
+    fn take_pending(&mut self) -> Option<Record> {
+        let Some((key, op)) = self.pending.next() else {
+            return None;
+        };
+
+        match op {
+            Op::Put(value) => Some((key.clone(), value.clone())),
+            Op::Delete => self.next(),
+        }
+    }
+}
+
+impl<'a, B, P> Iterator for MergedIter<'a, B, P>
+where
+    B: Iterator<Item = Record>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+{
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.base.peek(), self.pending.peek()) {
+            (Some((base_key, _)), Some((pending_key, _))) => {
+                let ordering_raw = base_key.cmp(&pending_key);
+                let ordering = match self.order {
+                    Order::Ascending => ordering_raw,
+                    Order::Descending => ordering_raw.reverse(),
+                };
+
+                match ordering {
+                    Ordering::Less => self.base.next(),
+                    Ordering::Equal => {
+                        self.base.next();
+                        self.take_pending()
+                    },
+                    Ordering::Greater => self.take_pending(),
+                }
+            }
+            (None, Some(_)) => self.take_pending(),
+            (Some(_), None) => self.base.next(),
+            (None, None) => None,
+        }
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::MockStorage};
+    use {super::*, cw_std::MockStorage};
 
     // illustration of this test case:
     //
