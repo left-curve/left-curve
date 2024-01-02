@@ -1,16 +1,16 @@
 // -------------------------------- all targets --------------------------------
 
+mod db;
 mod serde;
 mod storage;
 mod testing;
-mod traits;
 mod types;
 
 pub use crate::{
+    db::{Batch, Cached, Committable, Op, Order, Prefixed, Record, Storage},
     serde::{from_json, to_json},
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     testing::MockStorage,
-    traits::{Batch, Committable, Op, Order, Record, Storage},
     types::{
         Account, Addr, Binary, Coin, ContractResult, ExecuteCtx, Hash, InstantiateCtx, Message,
         Query, QueryCtx, Response, Tx, Uint128,

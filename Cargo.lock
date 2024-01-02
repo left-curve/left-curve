@@ -69,18 +69,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-db"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "cw-std",
-]
-
-[[package]]
 name = "cw-state-machine"
 version = "0.0.0"
 dependencies = [
- "cw-db",
  "cw-std",
  "cw-vm",
 ]
@@ -113,7 +104,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-bank",
- "cw-db",
  "cw-std",
  "data-encoding",
  "serde",
