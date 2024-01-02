@@ -1,5 +1,5 @@
-mod account;
 mod address;
+mod app;
 mod binary;
 mod coin;
 mod context;
@@ -9,8 +9,8 @@ mod tx;
 mod uint128;
 
 pub use {
-    account::Account,
     address::Addr,
+    app::{Account, BlockInfo, GenesisState, InfoResponse, WasmRawResponse, WasmSmartResponse},
     binary::Binary,
     coin::Coin,
     context::{ExecuteCtx, InstantiateCtx, QueryCtx},
