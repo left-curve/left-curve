@@ -51,7 +51,8 @@ where
         // need to make a clone of self.prefix and move it into the closure,
         // so that the iterator can live longer than &self.
         let prefix = self.prefix.clone();
-        let iter = store.scan(Some(&min), Some(&max), order)?.map(move |(k, v)| {
+        let iter = store.scan(Some(&min), Some(&max), order).map(move |item| {
+            let (k, v) = item?;
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;

@@ -1,7 +1,17 @@
 use {
     crate::{Order, Record, Batch, Op, Storage},
+    anyhow::anyhow,
     std::{cmp::Ordering, iter, iter::Peekable, ops::Bound},
 };
+
+macro_rules! open {
+    ($item:ident) => {
+        match $item {
+            Ok((k, v)) => (k, v),
+            Err(err) => return Some(Err(anyhow!("{err}"))),
+        }
+    };
+}
 
 /// Adapted from cw-multi-test:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
@@ -48,14 +58,14 @@ impl<S: Storage> Storage for CacheStore<S> {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a> {
         if let (Some(min), Some(max)) = (min, max) {
             if min > max {
-                return Ok(Box::new(iter::empty()));
+                return Box::new(iter::empty());
             }
         }
 
-        let base = self.base.scan(min, max, order)?;
+        let base = self.base.scan(min, max, order);
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
         let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
@@ -65,7 +75,7 @@ impl<S: Storage> Storage for CacheStore<S> {
             Order::Descending => Box::new(pending_raw.rev()),
         };
 
-        Ok(Box::new(MergedIter::new(base, pending, order)))
+        Box::new(MergedIter::new(base, pending, order))
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
@@ -87,8 +97,8 @@ impl<S: Storage> Storage for CacheStore<S> {
 
 struct MergedIter<'a, B, P>
 where
-    B: Iterator<Item = Record>,
-    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+    B: Iterator<Item = anyhow::Result<Record>>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
     base:    Peekable<B>,
     pending: Peekable<P>,
@@ -97,8 +107,8 @@ where
 
 impl<'a, B, P> MergedIter<'a, B, P>
 where
-    B: Iterator<Item = Record>,
-    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+    B: Iterator<Item = anyhow::Result<Record>>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
     pub fn new(base: B, pending: P, order: Order) -> Self {
         Self {
@@ -108,13 +118,13 @@ where
         }
     }
 
-    fn take_pending(&mut self) -> Option<Record> {
+    fn take_pending(&mut self) -> Option<anyhow::Result<Record>> {
         let Some((key, op)) = self.pending.next() else {
             return None;
         };
 
         match op {
-            Op::Put(value) => Some((key.clone(), value.clone())),
+            Op::Put(value) => Some(Ok((key.clone(), value.clone()))),
             Op::Delete => self.next(),
         }
     }
@@ -122,14 +132,16 @@ where
 
 impl<'a, B, P> Iterator for MergedIter<'a, B, P>
 where
-    B: Iterator<Item = Record>,
-    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>
+    B: Iterator<Item = anyhow::Result<Record>>,
+    P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
-    type Item = Record;
+    type Item = anyhow::Result<Record>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.base.peek(), self.pending.peek()) {
-            (Some((base_key, _)), Some((pending_key, _))) => {
+            (Some(base_item), Some((pending_key, _))) => {
+                let (base_key, _) = open!(base_item);
+
                 let ordering_raw = base_key.cmp(pending_key);
                 let ordering = match self.order {
                     Order::Ascending => ordering_raw,

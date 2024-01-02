@@ -11,16 +11,11 @@ pub trait Storage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>>;
+    ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a>;
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
-
-    // collect KV data in the store into a vector. useful in tests.
-    fn to_vec(&self, order: Order) -> anyhow::Result<Vec<Record>> {
-        self.scan(None, None, order).map(|iter| iter.collect())
-    }
 
     /// Apply a batch of inserts or deletes all together.
     fn apply(&mut self, batch: Batch) -> anyhow::Result<()> {
@@ -32,5 +27,10 @@ pub trait Storage {
             }
         }
         Ok(())
+    }
+
+    // collect KV data in the store into a vector. useful in tests.
+    fn to_vec(&self, order: Order) -> anyhow::Result<Vec<Record>> {
+        self.scan(None, None, order).collect()
     }
 }

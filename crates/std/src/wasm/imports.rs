@@ -56,7 +56,7 @@ impl Storage for ExternalStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = Record> + 'a>> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a> {
         // IMPORTANT: we must to keep the Regions in scope until end of the func
         // make sure to se `as_ref` so that the Regions don't get consumed
         let min_region = min.map(Region::build);
@@ -67,7 +67,7 @@ impl Storage for ExternalStorage {
 
         let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
 
-        Ok(Box::new(ExternalIterator { iterator_id }))
+        Box::new(ExternalIterator { iterator_id })
     }
 
     // note: cosmwasm doesn't allow empty values:
@@ -101,7 +101,7 @@ pub struct ExternalIterator {
 }
 
 impl Iterator for ExternalIterator {
-    type Item = Record;
+    type Item = anyhow::Result<Record>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ptr = unsafe { db_next(self.iterator_id) };
@@ -111,7 +111,7 @@ impl Iterator for ExternalIterator {
             return None;
         }
 
-        unsafe { Some(split_tail(Region::consume(ptr as *mut Region))) }
+        unsafe { Some(Ok(split_tail(Region::consume(ptr as *mut Region)))) }
     }
 }
 

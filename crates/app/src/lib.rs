@@ -1,10 +1,12 @@
 use {
     anyhow::{anyhow, ensure},
     cw_std::{
-        hash, Account, Addr, Binary, BlockInfo, GenesisState, Hash, Item, Map, MockStorage, Query,
-        Storage, Tx, Batch, Message, CacheStore, from_json, ContractResult, Response
+        from_json, hash, Account, Addr, Batch, Binary, BlockInfo, CacheStore, ContractResult,
+        GenesisState, Hash, Item, Map, Message, MockStorage, Query, Response, Storage, Tx,
     },
-    cw_vm::{InstanceBuilder, db_next, db_read,db_remove,db_scan,db_write,debug, Host, HostState},
+    cw_vm::{
+        db_next, db_read, db_remove, db_scan, db_write, debug, Host, HostState, InstanceBuilder,
+    },
     std::collections::HashMap,
     wasmi::{Instance, Store},
 };

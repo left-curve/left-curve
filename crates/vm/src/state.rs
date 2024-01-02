@@ -7,7 +7,7 @@ use {
 // wraps a cw_vm::Storage, and implements the necessary Wasm import functions.
 pub struct HostState<S> {
     store:        S,
-    iterators:    HashMap<u32, Box<dyn Iterator<Item = Record>>>,
+    iterators:    HashMap<u32, Box<dyn Iterator<Item = anyhow::Result<Record>>>>,
     next_iter_id: u32,
 }
 
@@ -81,7 +81,7 @@ where
         //    is mutated, we delete all existing iterators.
         //
         // so overall this should be safe.
-        let iter = self.store.scan(min, max, order)?;
+        let iter = self.store.scan(min, max, order);
         let iter_static = unsafe { mem::transmute(iter) };
         self.iterators.insert(iterator_id, iter_static);
 
@@ -91,10 +91,12 @@ where
     // IMPORTANT NOTE: whereas this method takes a `&mut self`, it must NOT
     // mutate the underlying KV store data!
     pub fn db_next(&mut self, iterator_id: u32) -> anyhow::Result<Option<Record>> {
-        self.iterators
+        self
+            .iterators
             .get_mut(&iterator_id)
-            .ok_or_else(|| anyhow!("[HostState]: iterator not found with id `{iterator_id}`"))
-            .map(|iter| iter.next())
+            .ok_or_else(|| anyhow!("[HostState]: iterator not found with id `{iterator_id}`"))?
+            .next()
+            .transpose()
     }
 
     pub fn db_write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
