@@ -61,19 +61,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 
 [[package]]
+name = "cw-app"
+version = "0.0.0"
+dependencies = [
+ "cw-std",
+ "cw-vm",
+]
+
+[[package]]
 name = "cw-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-std",
-]
-
-[[package]]
-name = "cw-state-machine"
-version = "0.0.0"
-dependencies = [
- "cw-std",
- "cw-vm",
 ]
 
 [[package]]

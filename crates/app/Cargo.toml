@@ -1,5 +1,5 @@
 [package]
-name    = "cw-state-machine"
+name    = "cw-app"
 version = { workspace = true }
 edition = { workspace = true }
 

@@ -8,7 +8,7 @@ pub struct Block {
     pub timestamp: u64,
 }
 
-pub struct StateMachine {
+pub struct App {
     // TODO: these should be prefixed stored
     pub contract_stores: HashMap<Addr, MockStorage>,
 
@@ -22,7 +22,7 @@ pub struct StateMachine {
     pub accounts:             HashMap<Addr, Account>,
 }
 
-impl StateMachine {
+impl App {
     pub fn new_mock() -> Self {
         Self {
             contract_stores:      HashMap::new(),
