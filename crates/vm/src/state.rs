@@ -1,7 +1,7 @@
 use {
     anyhow::anyhow,
     cw_std::{Order, Record, Storage},
-    std::collections::HashMap,
+    std::{collections::HashMap, mem},
 };
 
 // wraps a cw_vm::Storage, and implements the necessary Wasm import functions.
@@ -40,17 +40,17 @@ where
         max:   Option<&[u8]>,
         order: Order,
     ) -> anyhow::Result<u32> {
-        let iterator_id = self.next_iter_id;
         // need to handle overflow here? no one will realistically create
         // u32::MAX as many iterators without exceeding the gas limit...
+        let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
-        let iter = self.store.scan(min, max, order);
         // use unsafe rust to ignore lifetime check here. this is really tricky...
         // let me try explain:
         //
         // the iter above, has &'1 lifetime, where '1 is the lifetime of the
         // &mut self in the function signature.
+        //
         // this means, this iterator goes out of scope right at the end of this
         // function. this doesn't work with our use case. we need to save the
         // iterator, can call `next` on it later.
@@ -60,19 +60,24 @@ where
         //
         // let's think about if this is safe. the lifetime here safeguards two
         // things:
+        //
         // 1. the iterator references data in the Storage instance that this
         //    HostState holds. therefore the iterator must not live longer than
         //    the HostState.
+        //
         //    this is perfectly fine. the HostState is dropped at the end of the
         //    wasm execution, with all iterators dropped at the same time.
+        //
         // 2. the iterator holds an immutable reference to the Storage instance.
         //    this means until the iterator is dropped, data in the Storage can't
         //    be mutated.
+        //
         //    we make sure of this in db_{write,remove} function. whenever data
         //    is mutated, we delete all existing iterators.
         //
         // so overall this should be safe.
-        let iter_static = unsafe { std::mem::transmute(iter) };
+        let iter = self.store.scan(min, max, order)?;
+        let iter_static = unsafe { mem::transmute(iter) };
         self.iterators.insert(iterator_id, iter_static);
 
         Ok(iterator_id)
