@@ -1,8 +1,9 @@
 use {
     anyhow::{anyhow, ensure},
     cw_std::{
-        hash, to_json, Account, Addr, Batch, Binary, BlockInfo, CacheStore, Coin, GenesisState,
-        Hash, InfoResponse, Item, Map, Message, Query, Storage, Tx,
+        hash, to_json, Account, AccountResponse, Addr, Batch, Binary, BlockInfo, Bound, CacheStore,
+        Coin, GenesisState, Hash, InfoResponse, Item, Map, Message, Order, Query, Storage, Tx,
+        WasmSmartResponse,
     },
     cw_vm::{
         db_next, db_read, db_remove, db_scan, db_write, debug, Host, HostState, InstanceBuilder,
@@ -14,6 +15,8 @@ const CHAIN_ID:             Item<String>        = Item::new("cid");
 const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
 const CODES:                Map<&Hash, Binary>  = Map::new("c");
 const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
+
+const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 pub struct App<S> {
     store:         Option<S>,
@@ -275,6 +278,13 @@ fn execute<S: Storage + 'static>(
 fn query<S: Storage + 'static>(store: S, req: Query) -> (anyhow::Result<Binary>, S) {
     match req {
         Query::Info {} => (query_info(&store), store),
+        Query::Account {
+            address,
+        } => (query_account(&store, address), store),
+        Query::Accounts {
+            start_after,
+            limit,
+        } => (query_accounts(&store, start_after, limit), store),
         Query::WasmRaw {
             contract,
             key,
@@ -287,11 +297,39 @@ fn query<S: Storage + 'static>(store: S, req: Query) -> (anyhow::Result<Binary>,
 }
 
 fn query_info(store: &dyn Storage) -> anyhow::Result<Binary> {
-    let res = InfoResponse {
+    let resp = InfoResponse {
         chain_id: CHAIN_ID.load(store)?,
         last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
     };
-    to_json(&res)
+    to_json(&resp)
+}
+
+fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<Binary> {
+    let account = ACCOUNTS.load(store, &address)?;
+    let resp = AccountResponse {
+        address,
+        code_hash: account.code_hash,
+        admin:     account.admin,
+    };
+    to_json(&resp)
+}
+
+fn query_accounts(store: &dyn Storage, start_after: Option<Addr>, limit: Option<u32>) -> anyhow::Result<Binary> {
+    let start = start_after.as_ref().map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+    let resp = ACCOUNTS
+        .range(store, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|item| {
+            let (address, account) = item?;
+            Ok(AccountResponse {
+                address,
+                code_hash: account.code_hash,
+                admin:     account.admin,
+            })
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    to_json(&resp)
 }
 
 fn query_wasm_raw(
@@ -324,15 +362,20 @@ fn query_wasm_smart<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call query
-    let resp = match host.call_query(msg) {
-        Ok(resp) => resp,
+    let data = match host.call_query(msg) {
+        Ok(data) => data,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
             return (Err(err), store);
         },
     };
 
-    (Ok(resp), wasm_store.into_data().disassemble())
+    let query_res = WasmSmartResponse {
+        contract,
+        data,
+    };
+
+    (to_json(&query_res), wasm_store.into_data().disassemble())
 }
 
 fn must_build_wasm_instance<S: Storage + 'static>(

@@ -10,12 +10,12 @@ mod uint128;
 
 pub use {
     address::Addr,
-    app::{Account, BlockInfo, GenesisState, InfoResponse, WasmRawResponse, WasmSmartResponse},
+    app::{Account, BlockInfo, GenesisState},
     binary::Binary,
     coin::Coin,
     context::{ExecuteCtx, InstantiateCtx, QueryCtx},
     hash::{hash, Hash},
     response::{ContractResult, Response},
-    tx::{Message, Query, Tx},
+    tx::{AccountResponse, InfoResponse, Message, Query, Tx, WasmRawResponse, WasmSmartResponse},
     uint128::Uint128,
 };

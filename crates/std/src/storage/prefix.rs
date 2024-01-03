@@ -33,7 +33,7 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a>> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
@@ -60,7 +60,7 @@ where
             Ok((key, data))
         });
 
-        Ok(Box::new(iter))
+        Box::new(iter)
     }
 
     pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> anyhow::Result<()> {

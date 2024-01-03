@@ -46,8 +46,8 @@ where
     K: MapKey,
     T: Serialize + DeserializeOwned,
 {
-    pub fn is_empty(&self, store: &dyn Storage) -> anyhow::Result<bool> {
-        self.range(store, None, None, Order::Ascending).map(|mut iter| iter.next().is_none())
+    pub fn is_empty(&self, store: &dyn Storage) -> bool {
+        self.range(store, None, None, Order::Ascending).next().is_none()
     }
 
     pub fn has(&self, store: &dyn Storage, k: K) -> anyhow::Result<bool> {
@@ -84,7 +84,7 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'b>> {
+    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'b> {
         self.no_prefix().range(store, min, max, order)
     }
 

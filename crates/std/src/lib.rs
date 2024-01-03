@@ -12,9 +12,9 @@ pub use crate::{
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     testing::MockStorage,
     types::{
-        hash, Account, Addr, Binary, BlockInfo, Coin, ContractResult, ExecuteCtx, GenesisState,
-        Hash, InfoResponse, InstantiateCtx, Message, Query, QueryCtx, Response, Tx, Uint128,
-        WasmRawResponse, WasmSmartResponse,
+        hash, Account, AccountResponse, Addr, Binary, BlockInfo, Coin, ContractResult, ExecuteCtx,
+        GenesisState, Hash, InfoResponse, InstantiateCtx, Message, Query, QueryCtx, Response, Tx,
+        Uint128, WasmRawResponse, WasmSmartResponse,
     },
 };
 

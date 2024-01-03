@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Hash, Message},
+    crate::{Addr, Hash, Message},
     serde::{Deserialize, Serialize},
 };
 
@@ -19,23 +19,4 @@ pub struct BlockInfo {
 pub struct GenesisState {
     pub chain_id: String,
     pub msgs:     Vec<Message>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InfoResponse {
-    pub chain_id:             String,
-    pub last_finalized_block: BlockInfo,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct WasmRawResponse {
-    pub contract: Addr,
-    pub key:      Binary,
-    pub value:    Option<Binary>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct WasmSmartResponse {
-    pub contract: Addr,
-    pub data:     Binary,
 }

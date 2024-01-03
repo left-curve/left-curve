@@ -2,7 +2,8 @@ use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{
-        hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx, Uint128,
+        from_json, hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx,
+        Uint128, WasmSmartResponse,
     },
     std::{env, fs::File, io::Read, path::PathBuf},
     tracing::info,
@@ -79,6 +80,14 @@ fn main() -> anyhow::Result<()> {
     let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
     println!("{res_str}");
 
+    info!("querying accounts");
+    let res_bytes = app.query(Query::Accounts {
+        start_after: None,
+        limit: None,
+    })?;
+    let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
+    println!("{res_str}");
+
     info!("querying balances");
     let res_bytes = app.query(Query::WasmSmart {
         contract: contract_addr,
@@ -87,7 +96,8 @@ fn main() -> anyhow::Result<()> {
             limit: None,
         })?,
     })?;
-    let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
+    let res: WasmSmartResponse = from_json(&res_bytes)?;
+    let res_str = String::from_utf8(res.data.as_ref().to_vec())?;
     println!("{res_str}");
 
     Ok(())
