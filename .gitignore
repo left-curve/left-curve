@@ -1,6 +1,9 @@
 # rust
 target/
 
+# contract build artifacts
+artifacts/
+
 # editors
 .idea/
 .vscode/
