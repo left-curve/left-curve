@@ -63,4 +63,4 @@ jobs:
           components: clippy
 
       - name: Run clippy
-        run: cargo clippy --tests -- -D warnings
+        run: cargo clippy --tests --examples -- -D warnings
