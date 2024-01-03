@@ -340,7 +340,7 @@ fn must_build_wasm_instance<S: Storage + 'static>(
     wasm_byte_code: impl AsRef<[u8]>,
 ) -> (Instance, Store<HostState<S>>) {
     build_wasm_instance(store, wasm_byte_code)
-        .unwrap_or_else(|err| panic!("Fatal error! Failed to build wasm host: {err}"))
+        .unwrap_or_else(|err| panic!("Fatal error! Failed to build wasm instance: {err}"))
 }
 
 fn build_wasm_instance<S: Storage + 'static>(
