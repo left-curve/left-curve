@@ -119,10 +119,7 @@ where
     }
 
     fn take_pending(&mut self) -> Option<anyhow::Result<Record>> {
-        let Some((key, op)) = self.pending.next() else {
-            return None;
-        };
-
+        let (key, op) = self.pending.next()?;
         match op {
             Op::Put(value) => Some(Ok((key.clone(), value.clone()))),
             Op::Delete => self.next(),
