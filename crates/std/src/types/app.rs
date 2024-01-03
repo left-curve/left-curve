@@ -17,7 +17,8 @@ pub struct BlockInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct GenesisState {
-    pub msgs: Vec<Message>,
+    pub chain_id: String,
+    pub msgs:     Vec<Message>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

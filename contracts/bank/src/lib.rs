@@ -59,6 +59,7 @@ pub enum QueryMsg {
 #[entry_point]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     for b in msg.initial_balances {
+        // TODO: dedup
         BALANCES.save(ctx.store, (&b.address, &b.denom), &b.amount)?;
     }
 

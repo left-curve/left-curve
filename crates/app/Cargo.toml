@@ -4,7 +4,12 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-cw-std = { path = "../std" }
-cw-vm  = { path = "../vm" }
-wasmi  = { workspace = true }
+anyhow             = { workspace = true }
+cw-std             = { path = "../std" }
+cw-vm              = { path = "../vm" }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+wasmi              = { workspace = true }
+
+[dev-dependencies]
+cw-bank = { path = "../../contracts/bank" }

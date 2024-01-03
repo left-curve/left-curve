@@ -1,38 +1,34 @@
+use cw_std::to_json;
+
 use {
     anyhow::{anyhow, ensure},
     cw_std::{
         from_json, hash, Account, Addr, Batch, Binary, BlockInfo, CacheStore, ContractResult,
-        GenesisState, Hash, Item, Map, Message, MockStorage, Query, Response, Storage, Tx,
+        GenesisState, Hash, Item, Map, Message, Query, Response, Storage, Tx, Coin, InfoResponse,
     },
     cw_vm::{
         db_next, db_read, db_remove, db_scan, db_write, debug, Host, HostState, InstanceBuilder,
     },
-    std::collections::HashMap,
     wasmi::{Instance, Store},
 };
 
-const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("lfb");
-const CODES: Map<&Hash, Binary> = Map::new("c");
-const ACCOUNTS: Map<&Addr, Account> = Map::new("a");
+const CHAIN_ID:             Item<String>        = Item::new("cid");
+const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
+const CODES:                Map<&Hash, Binary>  = Map::new("c");
+const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
 
 pub struct App<S> {
-    chain_id:      String,
     store:         Option<S>,
     pending:       Option<Batch>,
     current_block: Option<BlockInfo>,
-
-    // TODO: these should be a prefixed store based on self.store
-    contract_stores: HashMap<Addr, MockStorage>,
 }
 
 impl<S> App<S> {
-    pub fn new(chain_id: impl Into<String>, store: S) -> Self {
+    pub fn new(store: S) -> Self {
         Self {
-            chain_id:        chain_id.into(),
-            store:           Some(store),
-            pending:         None,
-            current_block:   None,
-            contract_stores: HashMap::new(),
+            store:         Some(store),
+            pending:       None,
+            current_block: None,
         }
     }
 
@@ -71,16 +67,27 @@ impl<S> App<S>
 where
     S: Storage + 'static,
 {
-    pub fn init_chain(&mut self, _genesis_state: GenesisState) -> anyhow::Result<()> {
-        todo!()
+    pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
+        let mut store = self.take_store()?;
+
+        CHAIN_ID.save(&mut store, &genesis_state.chain_id)?;
+
+        debug_assert!(genesis_state.msgs.is_empty(), "UNIMPLEMENTED: genesis msg is not supported yet");
+
+        self.put_store(store)
     }
 
     pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> anyhow::Result<()> {
         let store = self.take_store()?;
+
+        // TODO: check block height and time is valid
+        // height must be that of the last finalized block + 1
+        // time must be greater than that of the last finalized block
+
         let mut cached = CacheStore::new(store, self.pending.take());
 
         for tx in txs {
-            cached = self.run_tx(cached, tx)?;
+            cached = run_tx(cached, tx)?;
         }
 
         let (store, pending) = cached.disassemble();
@@ -105,12 +112,20 @@ where
         self.put_store(store)
     }
 
-    pub fn query(&self, _req: Query) -> anyhow::Result<Binary> {
-        todo!()
+    pub fn query(&mut self, req: Query) -> anyhow::Result<Binary> {
+        let store = self.take_store()?;
+
+        // perform the query
+        let (res, store) = query(store, req);
+
+        // put the store back
+        self.put_store(store)?;
+
+        res
     }
 }
 
-fn run_tx<S>(mut store: S, tx: Tx) -> anyhow::Result<S>
+fn run_tx<S>(store: S, tx: Tx) -> anyhow::Result<S>
 where
     S: Storage + 'static,
 {
@@ -149,81 +164,231 @@ where
     match msg {
         Message::StoreCode {
             wasm_byte_code,
-        } => {
-            let hash = hash(&wasm_byte_code);
-            let exists = CODES.has(&store, &hash)?;
-            ensure!(!exists, "Please don't upload the same code twice");
-
-            CODES.save(&mut store, &hash, &wasm_byte_code)?;
-
-            Ok(())
-        },
+        } => (store_code(&mut store, &wasm_byte_code), store),
         Message::Instantiate {
             code_hash,
             msg,
             salt,
             funds,
             admin,
-        } => {
-            ensure!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
-
-            // load wasm code
-            let wasm_byte_code = CODES.load(&store, &code_hash)?;
-
-            // compute contract address
-            let address = Addr::compute(&code_hash, &salt);
-
-            // create wasm host
-            let (instance, mut wasm_store) = build_wasm_host(store, &wasm_byte_code)?;
-            let mut host = Host::new(&instance, &mut wasm_store);
-
-            // call instantiate
-            let res_bytes = host.call_entry_point_raw("instantiate", msg)?;
-            let res: ContractResult<Response> = from_json(&res_bytes)?;
-            let resp = res.into_result()?;
-
-            ensure!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
-
-            // save account info
-            let mut store = wasm_store.into_data().disassemble();
-            let account = Account {
-                code_hash,
-                admin,
-            };
-            ACCOUNTS.save(&mut store, &address, &account)?;
-
-            Ok(())
-        },
+        } => instantiate(store, code_hash, msg, salt, funds, admin),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => {
-            ensure!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
-
-            // load contract info
-            let account = ACCOUNTS.load(&store, &contract)?;
-
-            // load wasm code
-            let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
-
-            // create wasm host
-            let (instance, mut wasm_store) = build_wasm_host(store, &wasm_byte_code)?;
-            let mut host = Host::new(&instance, &mut wasm_store);
-
-            // call execute
-            let res_bytes = host.call_entry_point_raw("execute", msg)?;
-            let res: ContractResult<Response> = from_json(&res_bytes)?;
-            let resp = res.into_result()?;
-
-            ensure!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
-
-            Ok(())
-        },
+        } => execute(store, contract, msg, funds),
     }
 }
 
-fn build_wasm_host<S: Storage + 'static>(
+fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<()> {
+    // TODO: static check, ensure wasm code has necessary imports/exports
+    let hash = hash(&wasm_byte_code);
+    let exists = CODES.has(store, &hash)?;
+    ensure!(!exists, "Do not upload the same code twice");
+
+    CODES.save(store, &hash, wasm_byte_code)
+}
+
+fn instantiate<S: Storage + 'static>(
+    store:     S,
+    code_hash: Hash,
+    msg:       Binary,
+    salt:      Binary,
+    funds:     Vec<Coin>,
+    admin:     Option<Addr>,
+) -> (anyhow::Result<()>, S) {
+    debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
+
+    // load wasm code
+    let wasm_byte_code = match CODES.load(&store, &code_hash) {
+        Ok(wasm_byte_code) => wasm_byte_code,
+        Err(err) => return (Err(err), store),
+    };
+
+    // compute contract address
+    let address = Addr::compute(&code_hash, &salt);
+
+    // create wasm host
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let mut host = Host::new(&instance, &mut wasm_store);
+
+    // call instantiate
+    let res_bytes = match host.call_entry_point_raw("instantiate", msg) {
+        Ok(res_bytes) => res_bytes,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let res: ContractResult<Response> = match from_json(&res_bytes) {
+        Ok(res) => res,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let resp = match res.into_result() {
+        Ok(resp) => resp,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+
+    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+
+    // save account info
+    let mut store = wasm_store.into_data().disassemble();
+    let account = Account {
+        code_hash,
+        admin,
+    };
+    match ACCOUNTS.save(&mut store, &address, &account) {
+        Ok(()) => (),
+        Err(err) => return (Err(err), store),
+    }
+
+    (Ok(()), store)
+}
+
+fn execute<S: Storage + 'static>(
+    store:     S,
+    contract:  Addr,
+    msg:       Binary,
+    funds:     Vec<Coin>,
+) -> (anyhow::Result<()>, S) {
+    debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
+
+    // load contract info
+    let account = match ACCOUNTS.load(&store, &contract) {
+        Ok(account) => account,
+        Err(err) => return (Err(err), store),
+    };
+
+    // load wasm code
+    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
+        Ok(wasm_byte_code) => wasm_byte_code,
+        Err(err) => return (Err(err), store),
+    };
+
+    // create wasm host
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let mut host = Host::new(&instance, &mut wasm_store);
+
+    // call execute
+    let res_bytes = match host.call_entry_point_raw("execute", msg) {
+        Ok(res_bytes) => res_bytes,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let res: ContractResult<Response> = match from_json(&res_bytes) {
+        Ok(res) => res,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let resp = match res.into_result() {
+        Ok(resp) => resp,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+
+    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+
+    (Ok(()), wasm_store.into_data().disassemble())
+}
+
+fn query<S: Storage + 'static>(store: S, req: Query) -> (anyhow::Result<Binary>, S) {
+    match req {
+        Query::Info {} => (query_info(&store), store),
+        Query::WasmRaw {
+            contract,
+            key,
+        } => (query_wasm_raw(&store, contract, key), store),
+        Query::WasmSmart {
+            contract,
+            msg
+        } => query_wasm_smart(store, contract, msg),
+    }
+}
+
+fn query_info(store: &dyn Storage) -> anyhow::Result<Binary> {
+    let res = InfoResponse {
+        chain_id: CHAIN_ID.load(store)?,
+        last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
+    };
+    to_json(&res)
+}
+
+fn query_wasm_raw(
+    _store:    &dyn Storage,
+    _contract: Addr,
+    _key:      Binary,
+) -> anyhow::Result<Binary> {
+    todo!()
+}
+
+fn query_wasm_smart<S: Storage + 'static>(
+    store:    S,
+    contract: Addr,
+    msg:      Binary,
+) -> (anyhow::Result<Binary>, S) {
+    // load contract info
+    let account = match ACCOUNTS.load(&store, &contract) {
+        Ok(account) => account,
+        Err(err) => return (Err(err), store),
+    };
+
+    // load wasm code
+    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
+        Ok(wasm_byte_code) => wasm_byte_code,
+        Err(err) => return (Err(err), store),
+    };
+
+    // create wasm host
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let mut host = Host::new(&instance, &mut wasm_store);
+
+    // call query
+    let res_bytes = match host.call_entry_point_raw("query", msg) {
+        Ok(res_bytes) => res_bytes,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let res: ContractResult<Binary> = match from_json(&res_bytes) {
+        Ok(res) => res,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+    let resp = match res.into_result() {
+        Ok(resp) => resp,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+
+    (Ok(resp), wasm_store.into_data().disassemble())
+}
+
+fn must_build_wasm_instance<S: Storage + 'static>(
+    store: S,
+    wasm_byte_code: impl AsRef<[u8]>,
+) -> (Instance, Store<HostState<S>>) {
+    build_wasm_instance(store, wasm_byte_code)
+        .unwrap_or_else(|err| panic!("Fatal error! Failed to build wasm host: {err}"))
+}
+
+fn build_wasm_instance<S: Storage + 'static>(
     store: S,
     wasm_byte_code: impl AsRef<[u8]>,
 ) -> anyhow::Result<(Instance, Store<HostState<S>>)> {

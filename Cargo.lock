@@ -65,8 +65,11 @@ name = "cw-app"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cw-bank",
  "cw-std",
  "cw-vm",
+ "tracing",
+ "tracing-subscriber",
  "wasmi",
 ]
 
