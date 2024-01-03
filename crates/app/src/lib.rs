@@ -182,7 +182,7 @@ where
 
 fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<()> {
     // TODO: static check, ensure wasm code has necessary imports/exports
-    let hash = hash(&wasm_byte_code);
+    let hash = hash(wasm_byte_code);
     let exists = CODES.has(store, &hash)?;
     ensure!(!exists, "Do not upload the same code twice");
 
@@ -209,7 +209,7 @@ fn instantiate<S: Storage + 'static>(
     let address = Addr::compute(&code_hash, &salt);
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call instantiate
@@ -220,7 +220,7 @@ fn instantiate<S: Storage + 'static>(
             return (Err(err), store);
         },
     };
-    let res: ContractResult<Response> = match from_json(&res_bytes) {
+    let res: ContractResult<Response> = match from_json(res_bytes) {
         Ok(res) => res,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
@@ -272,7 +272,7 @@ fn execute<S: Storage + 'static>(
     };
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call execute
@@ -283,7 +283,7 @@ fn execute<S: Storage + 'static>(
             return (Err(err), store);
         },
     };
-    let res: ContractResult<Response> = match from_json(&res_bytes) {
+    let res: ContractResult<Response> = match from_json(res_bytes) {
         Ok(res) => res,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
@@ -351,7 +351,7 @@ fn query_wasm_smart<S: Storage + 'static>(
     };
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, &wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call query
@@ -362,7 +362,7 @@ fn query_wasm_smart<S: Storage + 'static>(
             return (Err(err), store);
         },
     };
-    let res: ContractResult<Binary> = match from_json(&res_bytes) {
+    let res: ContractResult<Binary> = match from_json(res_bytes) {
         Ok(res) => res,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
