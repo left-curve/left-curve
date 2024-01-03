@@ -119,6 +119,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cwd"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-app",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

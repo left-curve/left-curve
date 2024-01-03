@@ -1,0 +1,8 @@
+[package]
+name    = "cwd"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+cw-app = { path = "../../crates/app" }
