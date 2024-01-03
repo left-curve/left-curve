@@ -1,10 +1,8 @@
-use cw_std::to_json;
-
 use {
     anyhow::{anyhow, ensure},
     cw_std::{
-        from_json, hash, Account, Addr, Batch, Binary, BlockInfo, CacheStore, ContractResult,
-        GenesisState, Hash, Item, Map, Message, Query, Response, Storage, Tx, Coin, InfoResponse,
+        hash, to_json, Account, Addr, Batch, Binary, BlockInfo, CacheStore, Coin, GenesisState,
+        Hash, InfoResponse, Item, Map, Message, Query, Storage, Tx,
     },
     cw_vm::{
         db_next, db_read, db_remove, db_scan, db_write, debug, Host, HostState, InstanceBuilder,
@@ -213,21 +211,7 @@ fn instantiate<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call instantiate
-    let res_bytes = match host.call_entry_point_raw("instantiate", msg) {
-        Ok(res_bytes) => res_bytes,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let res: ContractResult<Response> = match from_json(res_bytes) {
-        Ok(res) => res,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let resp = match res.into_result() {
+    let resp = match host.call_instantiate(msg) {
         Ok(resp) => resp,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
@@ -243,9 +227,8 @@ fn instantiate<S: Storage + 'static>(
         code_hash,
         admin,
     };
-    match ACCOUNTS.save(&mut store, &address, &account) {
-        Ok(()) => (),
-        Err(err) => return (Err(err), store),
+    if let Err(err) = ACCOUNTS.save(&mut store, &address, &account) {
+        return (Err(err), store);
     }
 
     (Ok(()), store)
@@ -276,21 +259,7 @@ fn execute<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call execute
-    let res_bytes = match host.call_entry_point_raw("execute", msg) {
-        Ok(res_bytes) => res_bytes,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let res: ContractResult<Response> = match from_json(res_bytes) {
-        Ok(res) => res,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let resp = match res.into_result() {
+    let resp = match host.call_execute(msg) {
         Ok(resp) => resp,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
@@ -355,21 +324,7 @@ fn query_wasm_smart<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call query
-    let res_bytes = match host.call_entry_point_raw("query", msg) {
-        Ok(res_bytes) => res_bytes,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let res: ContractResult<Binary> = match from_json(res_bytes) {
-        Ok(res) => res,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-    let resp = match res.into_result() {
+    let resp = match host.call_query(msg) {
         Ok(resp) => resp,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();

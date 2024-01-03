@@ -1,9 +1,8 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail, Context},
-    cw_std::{from_json, to_json, Binary, ContractResult, Response},
+    cw_std::{from_json, Binary, ContractResult, Response},
     data_encoding::BASE64,
-    serde::ser::Serialize,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
 };
@@ -36,36 +35,27 @@ impl<'a, S> Host<'a, S> {
         }
     }
 
-    /// Call the contract's `instantiate` entry point.
-    pub fn call_instantiate<M: Serialize>(
-        &mut self,
-        msg: &M,
-    ) -> anyhow::Result<ContractResult<Response>> {
-        let msg_bytes = to_json(msg)?;
-        let res_bytes = self.call_entry_point_raw("instantiate", &msg_bytes)?;
-        from_json(res_bytes)
+    pub fn call_instantiate(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Response> {
+        let res_bytes = self.call_entry_point_raw("instantiate", msg.as_ref())?;
+        let res: ContractResult<Response> = from_json(res_bytes)?;
+        res.into_result()
     }
 
-    /// Call the contract's `execute` entry point.
-    pub fn call_execute<M: Serialize>(
-        &mut self,
-        msg: &M,
-    ) -> anyhow::Result<ContractResult<Response>> {
-        let msg_bytes = to_json(msg)?;
-        let res_bytes = self.call_entry_point_raw("execute", &msg_bytes)?;
-        from_json(res_bytes)
+    pub fn call_execute(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Response> {
+        let res_bytes = self.call_entry_point_raw("execute", msg.as_ref())?;
+        let res: ContractResult<Response> = from_json(res_bytes)?;
+        res.into_result()
     }
 
-    /// Call the contract's `query` entry point.
-    pub fn call_query<M: Serialize>(&mut self, msg: &M) -> anyhow::Result<ContractResult<Binary>> {
-        let msg_bytes = to_json(msg)?;
-        let res_bytes = self.call_entry_point_raw("query", &msg_bytes)?;
-        from_json(res_bytes)
+    pub fn call_query(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Binary> {
+        let res_bytes = self.call_entry_point_raw("query", msg.as_ref())?;
+        let res: ContractResult<Binary> = from_json(res_bytes)?;
+        res.into_result()
     }
 
     /// Call the contract's specified entry point, that takes exactly one input
     /// and returns one output.
-    pub fn call_entry_point_raw(
+    fn call_entry_point_raw(
         &mut self,
         name: &str,
         msg:  impl AsRef<[u8]>,

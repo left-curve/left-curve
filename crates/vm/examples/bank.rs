@@ -1,3 +1,5 @@
+use cw_std::to_json;
+
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{from_json, Addr, MockStorage, Uint128},
@@ -73,7 +75,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
             amount,
         });
     }
-    let res = host.call_instantiate(&InstantiateMsg { initial_balances })?;
+    let res = host.call_instantiate(to_json(&InstantiateMsg { initial_balances })?)?;
 
     info!(?res, "instantiation successful");
 
@@ -89,12 +91,12 @@ fn send<T>(
 ) -> anyhow::Result<()> {
     info!(?from, ?to, denom, amount, "sending");
 
-    let res = host.call_execute(&ExecuteMsg::Send {
+    let res = host.call_execute(to_json(&ExecuteMsg::Send {
         from,
         to,
         denom:  denom.into(),
         amount: Uint128::new(amount),
-    })?;
+    })?)?;
 
     info!(?res, "send successful");
 
@@ -104,11 +106,10 @@ fn send<T>(
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     info!("querying balances");
 
-    let res_bytes = host.call_query(&QueryMsg::Balances {
+    let res_bytes = host.call_query(to_json(&QueryMsg::Balances {
         start_after: None,
         limit:       None,
-    })?
-    .into_result()?;
+    })?)?;
 
     let res: Vec<Balance> = from_json(&res_bytes)?;
 
