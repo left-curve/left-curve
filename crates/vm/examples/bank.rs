@@ -111,7 +111,7 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
         limit:       None,
     })?)?;
 
-    let res: Vec<Balance> = from_json(&res_bytes)?;
+    let res: Vec<Balance> = from_json(res_bytes)?;
 
     println!("{}", serde_json_wasm::to_string(&res)?);
 

@@ -96,7 +96,7 @@ fn main() -> anyhow::Result<()> {
             limit: None,
         })?,
     })?;
-    let res: WasmSmartResponse = from_json(&res_bytes)?;
+    let res: WasmSmartResponse = from_json(res_bytes)?;
     let res_str = String::from_utf8(res.data.as_ref().to_vec())?;
     println!("{res_str}");
 
