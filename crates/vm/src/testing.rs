@@ -4,6 +4,7 @@ use {
     cw_std::{Order, Record},
     std::{
         collections::{BTreeMap, HashMap},
+        iter::Peekable,
         ops::Bound,
         vec,
     },
@@ -19,6 +20,12 @@ pub struct MockStorage {
 impl MockStorage {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn get_iterator_mut(&mut self, iterator_id: i32) -> anyhow::Result<&mut MockIter> {
+        self.iterators
+            .get_mut(&iterator_id)
+            .ok_or_else(|| anyhow!("[MockStorage]: can't find iterator with id {iterator_id}"))
     }
 }
 
@@ -43,10 +50,11 @@ impl Storage for MockStorage {
     }
 
     fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
-        self.iterators
-            .get_mut(&iterator_id)
-            .ok_or_else(|| anyhow!("[MockStorage]: can't find iterator with id {iterator_id}"))
-            .map(|iterator| iterator.next())
+        self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
+    }
+
+    fn peek(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
+        self.get_iterator_mut(iterator_id).map(|iterator| iterator.peek())
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
@@ -62,7 +70,7 @@ impl Storage for MockStorage {
 
 #[derive(Debug, Clone)]
 struct MockIter {
-    records: vec::IntoIter<Record>,
+    records: Peekable<vec::IntoIter<Record>>,
 }
 
 impl MockIter {
@@ -72,7 +80,7 @@ impl MockIter {
         if let (Some(min), Some(max)) = (min, max) {
             if min > max {
                 return Self {
-                    records: Vec::new().into_iter(),
+                    records: Vec::new().into_iter().peekable(),
                 };
             }
         }
@@ -93,8 +101,12 @@ impl MockIter {
         }
 
         Self {
-            records: records.into_iter(),
+            records: records.into_iter().peekable(),
         }
+    }
+
+    pub fn peek(&mut self) -> Option<Record> {
+        self.records.peek().map(|(k, v)| (k.clone(), v.clone()))
     }
 }
 

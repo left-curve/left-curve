@@ -35,9 +35,15 @@ pub trait Storage {
 
     /// Advance the iterator with the given ID.
     ///
-    /// IMPORTANT: Same as `scan`, we are given a `&mut self`, but we MUST NOT
-    /// change the underlying KV data.
+    /// IMPORTANT: Same as `scan`, despite we are given a `&mut self`,
+    /// we MUST NOT change the underlying KV data.
     fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>>;
+
+    /// See the next item in the iterator without advanding it.
+    ///
+    /// IMPORTANT: Same as `scan` and `next`, despite we are given a `&mut self`,
+    /// we MUST NOT change the underlying KV data.
+    fn peek(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>>;
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
 
