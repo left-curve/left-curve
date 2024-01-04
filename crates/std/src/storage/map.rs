@@ -50,7 +50,7 @@ where
         self.range(store, None, None, Order::Ascending).next().is_none()
     }
 
-    pub fn has(&self, store: &dyn Storage, k: K) -> anyhow::Result<bool> {
+    pub fn has(&self, store: &dyn Storage, k: K) -> bool {
         self.path(k).as_path().exists(store)
     }
 
@@ -73,7 +73,7 @@ where
         self.path(k).as_path().save(store, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage, k: K) -> anyhow::Result<()> {
+    pub fn remove(&self, store: &mut dyn Storage, k: K) {
         self.path(k).as_path().remove(store)
     }
 

@@ -1,9 +1,9 @@
-use cw_std::to_json;
-
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw_std::{from_json, Addr, MockStorage, Uint128},
-    cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
+    cw_std::{from_json, to_json, Addr, Uint128},
+    cw_vm::{
+        db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder, MockStorage,
+    },
     std::{env, path::PathBuf},
     tracing::info,
 };

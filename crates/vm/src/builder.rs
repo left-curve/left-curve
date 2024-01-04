@@ -1,5 +1,4 @@
 use {
-    crate::HostState,
     anyhow::Context,
     std::{fs::File, io::Cursor, path::Path},
     wasmi::{Engine, Instance, IntoFunc, Linker, Module, Store},
@@ -8,8 +7,8 @@ use {
 pub struct InstanceBuilder<S> {
     engine: Engine,
     module: Option<Module>,
-    store:  Option<Store<HostState<S>>>,
-    linker: Option<Linker<HostState<S>>>,
+    store:  Option<Store<S>>,
+    linker: Option<Linker<S>>,
 }
 
 impl<S> Default for InstanceBuilder<S> {
@@ -45,7 +44,7 @@ impl<S> InstanceBuilder<S> {
     }
 
     pub fn with_storage(mut self, store: S) -> Self {
-        self.store = Some(Store::new(&self.engine, HostState::new(store)));
+        self.store = Some(Store::new(&self.engine, store));
         self.linker = Some(Linker::new(&self.engine));
         self
     }
@@ -53,7 +52,7 @@ impl<S> InstanceBuilder<S> {
     pub fn with_host_function<Params, Results>(
         mut self,
         name: &str,
-        func: impl IntoFunc<HostState<S>, Params, Results>,
+        func: impl IntoFunc<S, Params, Results>,
     ) -> anyhow::Result<Self> {
         let mut linker = self.take_linker()?;
         linker.func_wrap("env", name, func)?;
@@ -62,7 +61,7 @@ impl<S> InstanceBuilder<S> {
         Ok(self)
     }
 
-    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<HostState<S>>)> {
+    pub fn finalize(mut self) -> anyhow::Result<(Instance, Store<S>)> {
         let module = self.take_module()?;
         let mut store = self.take_store()?;
         let linker = self.take_linker()?;
@@ -75,11 +74,11 @@ impl<S> InstanceBuilder<S> {
         self.module.take().context("Module not yet initialized")
     }
 
-    fn take_store(&mut self) -> anyhow::Result<Store<HostState<S>>> {
+    fn take_store(&mut self) -> anyhow::Result<Store<S>> {
         self.store.take().context("Store not yet initialized")
     }
 
-    fn take_linker(&mut self) -> anyhow::Result<Linker<HostState<S>>> {
+    fn take_linker(&mut self) -> anyhow::Result<Linker<S>> {
         self.linker.take().context("Linker not yet initialized")
     }
 }

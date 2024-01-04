@@ -5,6 +5,7 @@ mod key;
 mod map;
 mod path;
 mod prefix;
+mod traits;
 
 pub use {
     bound::{Bound, RawBound},
@@ -13,6 +14,7 @@ pub use {
     map::Map,
     path::{Path, PathBuf},
     prefix::Prefix,
+    traits::{Order, Record, Storage},
 };
 
 use helpers::*;

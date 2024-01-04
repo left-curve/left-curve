@@ -34,17 +34,17 @@ extern "C" {
 pub struct ExternalStorage;
 
 impl Storage for ExternalStorage {
-    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
         let value_ptr = unsafe { db_read(key_ptr as usize) };
         if value_ptr == 0 {
             // we interpret a zero pointer as meaning the key doesn't exist
-            return Ok(None);
+            return None;
         }
 
-        unsafe { Ok(Some(Region::consume(value_ptr as *mut Region))) }
+        unsafe { Some(Region::consume(value_ptr as *mut Region)) }
         // NOTE: key_ptr goes out of scope here, so the Region is dropped.
         // however, `key` is NOT dropped, since we're only working with a
         // borrowed reference here.
@@ -56,7 +56,7 @@ impl Storage for ExternalStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // IMPORTANT: we must to keep the Regions in scope until end of the func
         // make sure to se `as_ref` so that the Regions don't get consumed
         let min_region = min.map(Region::build);
@@ -74,25 +74,21 @@ impl Storage for ExternalStorage {
     // https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/packages/std/src/imports.rs#L111
     // this is because its DB backend doesn't distinguish between an empty value
     // vs a non-existent value. but this isn't a problem for us.
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
         let value = Region::build(value);
         let value_ptr = &*value as *const Region;
 
-        unsafe { db_write(key_ptr as usize, value_ptr as usize); }
-
-        Ok(())
+        unsafe { db_write(key_ptr as usize, value_ptr as usize) }
     }
 
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
+    fn remove(&mut self, key: &[u8]) {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
 
-        unsafe { db_remove(key_ptr as usize); }
-
-        Ok(())
+        unsafe { db_remove(key_ptr as usize) }
     }
 }
 
@@ -101,7 +97,7 @@ pub struct ExternalIterator {
 }
 
 impl Iterator for ExternalIterator {
-    type Item = anyhow::Result<Record>;
+    type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ptr = unsafe { db_next(self.iterator_id) };
@@ -111,7 +107,7 @@ impl Iterator for ExternalIterator {
             return None;
         }
 
-        unsafe { Some(Ok(split_tail(Region::consume(ptr as *mut Region)))) }
+        unsafe { Some(split_tail(Region::consume(ptr as *mut Region))) }
     }
 }
 

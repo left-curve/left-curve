@@ -16,8 +16,8 @@ impl MockStorage {
 }
 
 impl Storage for MockStorage {
-    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
-        Ok(self.data.get(key).cloned())
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.data.get(key).cloned()
     }
 
     fn scan<'a>(
@@ -25,7 +25,7 @@ impl Storage for MockStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<Record>> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // BTreeMap::range panics if
         // 1. start > end, or
         // 2. start == end and both are exclusive
@@ -40,7 +40,7 @@ impl Storage for MockStorage {
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
         let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
-        let iter = self.data.range((min, max)).map(|(k, v)| Ok((k.clone(), v.clone())));
+        let iter = self.data.range((min, max)).map(|(k, v)| (k.clone(), v.clone()));
 
         if order == Order::Ascending {
             Box::new(iter)
@@ -49,13 +49,11 @@ impl Storage for MockStorage {
         }
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) {
         self.data.insert(key.to_vec(), value.to_vec());
-        Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
+    fn remove(&mut self, key: &[u8]) {
         self.data.remove(key);
-        Ok(())
     }
 }

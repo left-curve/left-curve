@@ -1,14 +1,14 @@
 use {
-    crate::{Host, HostState},
+    crate::{Host, Storage},
     anyhow::anyhow,
-    cw_std::{Record, Storage},
+    cw_std::Record,
     data_encoding::BASE64,
     tracing::{debug, trace},
     wasmi::Caller,
 };
 
 pub fn db_read<S: Storage>(
-    caller:  Caller<'_, HostState<S>>,
+    caller:  Caller<'_, S>,
     key_ptr: u32,
 ) -> Result<u32, wasmi::Error>
 {
@@ -19,7 +19,7 @@ pub fn db_read<S: Storage>(
 
     // read the value from host state
     // if doesn't exist, we return a zero pointer
-    let Some(value) = host.data().db_read(&key)? else {
+    let Some(value) = host.data().read(&key)? else {
         return Ok(0);
     };
 
@@ -28,11 +28,11 @@ pub fn db_read<S: Storage>(
 }
 
 pub fn db_scan<S: Storage>(
-    caller:  Caller<'_, HostState<S>>,
+    caller:  Caller<'_, S>,
     min_ptr: u32,
     max_ptr: u32,
     order:   i32,
-) -> Result<u32, wasmi::Error>
+) -> Result<i32, wasmi::Error>
 {
     let mut host = Host::from(caller);
 
@@ -57,19 +57,19 @@ pub fn db_scan<S: Storage>(
 
     // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>
     // `as_deref` works!
-    host.data_mut().db_scan(min.as_deref(), max.as_deref(), order).map_err(Into::into)
+    host.data_mut().scan(min.as_deref(), max.as_deref(), order).map_err(Into::into)
 }
 
 pub fn db_next<S: Storage>(
-    caller:      Caller<'_, HostState<S>>,
-    iterator_id: u32,
+    caller:      Caller<'_, S>,
+    iterator_id: i32,
 ) -> Result<u32, wasmi::Error>
 {
     let mut host = Host::from(caller);
 
     trace!(iterator_id, "db_next");
 
-    let Some(record) = host.data_mut().db_next(iterator_id)? else {
+    let Some(record) = host.data_mut().next(iterator_id)? else {
         // returning a zero memory address informs the Wasm module that the
         // iterator has reached its end, and no data is loaded into memory.
         return Ok(0);
@@ -79,7 +79,7 @@ pub fn db_next<S: Storage>(
 }
 
 pub fn db_write<S: Storage>(
-    caller:    Caller<'_, HostState<S>>,
+    caller:    Caller<'_, S>,
     key_ptr:   u32,
     value_ptr: u32,
 ) -> Result<(), wasmi::Error>
@@ -90,11 +90,11 @@ pub fn db_write<S: Storage>(
     let value = host.read_from_memory(value_ptr)?;
     trace!(key = ?BASE64.encode(&key), value = ?BASE64.encode(&value), "db_write");
 
-    host.data_mut().db_write(&key, &value).map_err(Into::into)
+    host.data_mut().write(&key, &value).map_err(Into::into)
 }
 
 pub fn db_remove<S: Storage>(
-    caller:  Caller<'_, HostState<S>>,
+    caller:  Caller<'_, S>,
     key_ptr: u32,
 ) -> Result<(), wasmi::Error>
 {
@@ -103,7 +103,7 @@ pub fn db_remove<S: Storage>(
     let key = host.read_from_memory(key_ptr)?;
     trace!(key = ?BASE64.encode(&key), "db_remove");
 
-    host.data_mut().db_remove(&key).map_err(Into::into)
+    host.data_mut().remove(&key).map_err(Into::into)
 }
 
 // pack a KV pair into a single byte array in the following format:
