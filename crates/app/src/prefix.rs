@@ -1,9 +1,7 @@
-use cw_std::storage_utils::trim;
-
 use {
     anyhow::anyhow,
     cw_std::{
-        storage_utils::{concat, increment_last_byte},
+        storage_utils::{concat, increment_last_byte, trim},
         Order, Record, Storage,
     },
     cw_vm::Storage as BackendStorage,
