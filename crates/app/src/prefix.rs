@@ -117,9 +117,7 @@ impl Iter {
     }
 
     pub fn next(&mut self, store: &dyn Storage) -> Option<Record> {
-        let Some((k, v)) = store.scan(Some(&self.min), Some(&self.max), self.order).next() else {
-            return None;
-        };
+        let (k, v) = store.scan(Some(&self.min), Some(&self.max), self.order).next()?;
 
         if self.order == Order::Ascending {
             self.min = increment_last_byte(k.clone());

@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
             limit: None,
         })?,
     })?;
-    let balances: Vec<Balance> = from_json(&resp.as_wasm_smart().data)?;
+    let balances: Vec<Balance> = from_json(resp.as_wasm_smart().data)?;
     println!("{}", serde_json::to_string_pretty(&balances)?);
 
     Ok(())
