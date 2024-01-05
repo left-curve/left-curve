@@ -4,12 +4,13 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-anyhow             = { workspace = true }
-cw-std             = { path = "../std", features = ["storage-utils"] }
-cw-vm              = { path = "../vm" }
-tracing            = { workspace = true }
-tracing-subscriber = { workspace = true }
-wasmi              = { workspace = true }
+anyhow  = { workspace = true }
+cw-std  = { path = "../std", features = ["storage-utils"] }
+cw-vm   = { path = "../vm" }
+tracing = { workspace = true }
+wasmi   = { workspace = true }
 
 [dev-dependencies]
-cw-bank = { path = "../../contracts/bank" }
+cw-bank            = { path = "../../contracts/bank" }
+serde_json         = { workspace = true }
+tracing-subscriber = { workspace = true }

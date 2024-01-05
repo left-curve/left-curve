@@ -1,3 +1,5 @@
+use cw_std::from_json;
+
 use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -75,14 +77,14 @@ fn main() -> anyhow::Result<()> {
 
     println!("querying chain info");
     let resp = app.query(Query::Info {})?;
-    println!("{resp:?}");
+    println!("{}", serde_json::to_string_pretty(&resp)?);
 
     println!("querying accounts");
     let resp = app.query(Query::Accounts {
         start_after: None,
         limit: None,
     })?;
-    println!("{resp:?}");
+    println!("{}", serde_json::to_string_pretty(&resp)?);
 
     println!("querying balances");
     let resp = app.query(Query::WasmSmart {
@@ -92,7 +94,8 @@ fn main() -> anyhow::Result<()> {
             limit: None,
         })?,
     })?;
-    println!("{resp:?}");
+    let balances: Vec<Balance> = from_json(&resp.as_wasm_smart().data)?;
+    println!("{}", serde_json::to_string_pretty(&balances)?);
 
     Ok(())
 }

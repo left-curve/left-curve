@@ -69,3 +69,41 @@ pub enum QueryResponse {
     WasmRaw(WasmRawResponse),
     WasmSmart(WasmSmartResponse),
 }
+
+// TODO: can we use a macro to implement these?
+impl QueryResponse {
+    pub fn as_info(self) -> InfoResponse {
+        let Self::Info(resp) = self else {
+            panic!("QueryResponse is not Info");
+        };
+        resp
+    }
+
+    pub fn as_account(self) -> AccountResponse {
+        let Self::Account(resp) = self else {
+            panic!("QueryResponse is not Account");
+        };
+        resp
+    }
+
+    pub fn as_accounts(self) -> Vec<AccountResponse> {
+        let Self::Accounts(resp) = self else {
+            panic!("QueryResponse is not Accounts");
+        };
+        resp
+    }
+
+    pub fn as_wasm_raw(self) -> WasmRawResponse {
+        let Self::WasmRaw(resp) = self else {
+            panic!("QueryResponse is not WasmRaw");
+        };
+        resp
+    }
+
+    pub fn as_wasm_smart(self) -> WasmSmartResponse {
+        let Self::WasmSmart(resp) = self else {
+            panic!("QueryResponse is not WasmSmart");
+        };
+        resp
+    }
+}

@@ -76,7 +76,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     }
     let res = host.call_instantiate(to_json(&InstantiateMsg { initial_balances })?)?;
 
-    println!("instantiation successful! res={res:?}");
+    println!("instantiation successful! res={}", serde_json::to_string(&res)?);
 
     Ok(())
 }
@@ -97,7 +97,7 @@ fn send<T>(
         amount: Uint128::new(amount),
     })?)?;
 
-    println!("send successful! res={res:?}");
+    println!("send successful! res={}", serde_json::to_string(&res)?);
 
     Ok(())
 }
@@ -112,7 +112,7 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
 
     let res: Vec<Balance> = from_json(res_bytes)?;
 
-    println!("{}", serde_json_wasm::to_string(&res)?);
+    println!("{}", serde_json::to_string_pretty(&res)?);
 
     Ok(())
 }
