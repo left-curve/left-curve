@@ -2,12 +2,14 @@ use {
     crate::Storage,
     anyhow::anyhow,
     cw_std::{Order, Record},
+    data_encoding::BASE64,
     std::{
         collections::{BTreeMap, HashMap},
         iter::Peekable,
         ops::Bound,
         vec,
     },
+    tracing::trace,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -31,6 +33,7 @@ impl MockStorage {
 
 impl Storage for MockStorage {
     fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
+        trace!(key = ?BASE64.encode(key), "db_read");
         Ok(self.data.get(key).cloned())
     }
 
@@ -40,6 +43,13 @@ impl Storage for MockStorage {
         max:   Option<&[u8]>,
         order: Order,
     ) -> anyhow::Result<i32> {
+        trace!(
+            min = ?min.map(|bz| BASE64.encode(bz)),
+            max = ?max.map(|bz| BASE64.encode(bz)),
+            ?order,
+            "db_scan",
+        );
+
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
@@ -50,22 +60,31 @@ impl Storage for MockStorage {
     }
 
     fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
+        trace!(iterator_id, "db_next");
         self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
+        trace!(key = ?BASE64.encode(key), value = ?BASE64.encode(value), "db_write");
+
         self.data.insert(key.to_vec(), value.to_vec());
+
         // whenever KV data is mutated, delete all existing iterators to avoid
         // race conditions.
         self.iterators.clear();
+
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
+        trace!(key = ?BASE64.encode(key), "db_remove");
+
         self.data.remove(key);
+
         // whenever KV data is mutated, delete all existing iterators to avoid
         // race conditions.
         self.iterators.clear();
+
         Ok(())
     }
 }

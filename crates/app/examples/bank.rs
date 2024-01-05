@@ -6,7 +6,6 @@ use {
         Uint128, WasmSmartResponse,
     },
     std::{env, fs::File, io::Read, path::PathBuf},
-    tracing::info,
 };
 
 // (address, denom, amount)
@@ -21,29 +20,28 @@ fn main() -> anyhow::Result<()> {
     // set tracing to TRACE level, so that we can see DB reads/writes logs
     tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
 
-    info!("creating app");
+    println!("creating app");
     let mut app = App::new(MockStorage::new());
 
-    info!("reading wasm byte code from file");
+    println!("reading wasm byte code from file");
     let wasm_file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
         .join("../../artifacts/cw_bank-aarch64.wasm");
-    println!("wasm_file_path: {wasm_file_path:?}");
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
-    info!("computing bank contract address");
+    println!("computing bank contract address");
     let code_hash = hash(&wasm_byte_code);
     let salt = b"cw-bank".to_vec().into();
     let contract_addr = Addr::compute(&code_hash, &salt);
 
-    info!("initialize chain");
+    println!("initialize chain");
     app.init_chain(GenesisState {
         chain_id: "dev-1".into(),
         msgs:     vec![],
     })?;
 
-    info!("uploading code and instantiating contract");
+    println!("uploading code and instantiating contract");
     let block = mock_block_info(1, 1);
     let txs = vec![mock_tx(0, vec![
         Message::StoreCode {
@@ -62,7 +60,7 @@ fn main() -> anyhow::Result<()> {
     app.finalize_block(block, txs)?;
     app.commit()?;
 
-    info!("making transfers");
+    println!("making transfers");
     let block = mock_block_info(2, 2);
     let txs = vec![
         mock_tx(1, vec![
@@ -76,12 +74,12 @@ fn main() -> anyhow::Result<()> {
     app.finalize_block(block, txs)?;
     app.commit()?;
 
-    info!("querying chain info");
+    println!("querying chain info");
     let res_bytes = app.query(Query::Info {})?;
     let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
     println!("{res_str}");
 
-    info!("querying accounts");
+    println!("querying accounts");
     let res_bytes = app.query(Query::Accounts {
         start_after: None,
         limit: None,
@@ -89,7 +87,7 @@ fn main() -> anyhow::Result<()> {
     let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
     println!("{res_str}");
 
-    info!("querying balances");
+    println!("querying balances");
     let res_bytes = app.query(Query::WasmSmart {
         contract: contract_addr,
         msg: to_json(&QueryMsg::Balances {

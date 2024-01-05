@@ -5,7 +5,6 @@ use {
         db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder, MockStorage,
     },
     std::{env, path::PathBuf},
-    tracing::info,
 };
 
 // (address, denom, amount)
@@ -65,7 +64,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    info!("instantiating contract");
+    println!("instantiating contract");
 
     let mut initial_balances = vec![];
     for (address, denom, amount) in BALANCES {
@@ -77,7 +76,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     }
     let res = host.call_instantiate(to_json(&InstantiateMsg { initial_balances })?)?;
 
-    info!(?res, "instantiation successful");
+    println!("instantiation successful! res={res:?}");
 
     Ok(())
 }
@@ -89,7 +88,7 @@ fn send<T>(
     denom:  &str,
     amount: u128,
 ) -> anyhow::Result<()> {
-    info!(?from, ?to, denom, amount, "sending");
+    println!("sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
     let res = host.call_execute(to_json(&ExecuteMsg::Send {
         from,
@@ -98,13 +97,13 @@ fn send<T>(
         amount: Uint128::new(amount),
     })?)?;
 
-    info!(?res, "send successful");
+    println!("send successful! res={res:?}");
 
     Ok(())
 }
 
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    info!("querying balances");
+    println!("querying balances");
 
     let res_bytes = host.call_query(to_json(&QueryMsg::Balances {
         start_after: None,
