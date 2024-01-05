@@ -59,11 +59,17 @@ impl Storage for MockStorage {
 
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
         self.data.insert(key.to_vec(), value.to_vec());
+        // whenever KV data is mutated, delete all existing iterators to avoid
+        // race conditions.
+        self.iterators.clear();
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
         self.data.remove(key);
+        // whenever KV data is mutated, delete all existing iterators to avoid
+        // race conditions.
+        self.iterators.clear();
         Ok(())
     }
 }
