@@ -1,3 +1,8 @@
+//! How to run this example:
+//!
+//! $ just optimize
+//! $ cargo run -p cw-vm --example bank
+
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{from_json, to_json, Addr, Uint128},
@@ -22,10 +27,15 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     // create Wasm host instance
-    let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
+    let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
+    let wasm_file_path = {
+        #[cfg(target_arch = "aarch64")]
+        { artifacts_dir.join("cw_bank-aarch64.wasm") }
+        #[cfg(not(target_arch = "aarch64"))]
+        { artifacts_dir.join("cw_bank.wasm") }
+    };
     let (instance, mut store) = InstanceBuilder::default()
-        .with_wasm_file(wasm_file)?
+        .with_wasm_file(wasm_file_path)?
         .with_storage(MockStorage::new())
         .with_host_function("db_read", db_read)?
         .with_host_function("db_write", db_write)?

@@ -1,3 +1,8 @@
+//! How to run this example:
+//!
+//! $ just optimize
+//! $ cargo run -p cw-app --example bank
+
 use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -24,8 +29,13 @@ fn main() -> anyhow::Result<()> {
     let mut app = App::new(MockStorage::new());
 
     println!("reading wasm byte code from file");
-    let wasm_file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
+    let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
+    let wasm_file_path = {
+        #[cfg(target_arch = "aarch64")]
+        { artifacts_dir.join("cw_bank-aarch64.wasm") }
+        #[cfg(not(target_arch = "aarch64"))]
+        { artifacts_dir.join("cw_bank.wasm") }
+    };
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;
