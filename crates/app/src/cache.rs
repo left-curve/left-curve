@@ -1,5 +1,3 @@
-// TODO: a lot of repetitive code in this file. try refactoring.
-
 use {
     crate::{Batch, Flush, Op},
     cw_std::{Order, Record, Storage},
@@ -199,23 +197,13 @@ mod tests {
     }
 
     #[test]
-    fn std_iterator_works() {
+    fn iterator_works() {
         let (cached, mut merged) = make_test_case();
         assert_eq!(collect_records(&cached, Order::Ascending), merged);
 
         merged.reverse();
         assert_eq!(collect_records(&cached, Order::Descending), merged);
     }
-
-    // #[test]
-    // fn apply_works() -> anyhow::Result<()> {
-    //     let (cached, merged) = make_test_case()?;
-
-    //     let base = cached.commit()?;
-    //     assert_eq!(base.to_vec(Order::Ascending)?, merged);
-
-    //     Ok(())
-    // }
 
     // TODO: add fuzz test
 }
