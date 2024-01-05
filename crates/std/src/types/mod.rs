@@ -4,6 +4,7 @@ mod binary;
 mod coin;
 mod context;
 mod hash;
+mod query;
 mod response;
 mod tx;
 mod uint128;
@@ -15,7 +16,10 @@ pub use {
     coin::Coin,
     context::{ExecuteCtx, InstantiateCtx, QueryCtx},
     hash::{hash, Hash},
+    query::{
+        AccountResponse, InfoResponse, Query, QueryResponse, WasmRawResponse, WasmSmartResponse,
+    },
     response::{ContractResult, Response},
-    tx::{AccountResponse, InfoResponse, Message, Query, Tx, WasmRawResponse, WasmSmartResponse, QueryResponse},
+    tx::{Message, Tx},
     uint128::Uint128,
 };
