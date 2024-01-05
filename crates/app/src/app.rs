@@ -29,9 +29,9 @@ use {
     crate::{Batch, CacheStore, Flush, PrefixStore},
     anyhow::{anyhow, ensure},
     cw_std::{
-        hash, to_json, Account, AccountResponse, Addr, Binary, BlockInfo, Bound, Coin,
-        GenesisState, Hash, InfoResponse, Item, Map, Message, Order, Query, Storage, Tx,
-        WasmSmartResponse,
+        hash, Account, AccountResponse, Addr, Binary, BlockInfo, Bound, Coin, GenesisState, Hash,
+        InfoResponse, Item, Map, Message, Order, Query, QueryResponse, Storage, Tx,
+        WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
     wasmi::{Instance, Store},
@@ -142,7 +142,7 @@ where
         self.put_store(store)
     }
 
-    pub fn query(&mut self, req: Query) -> anyhow::Result<Binary> {
+    pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
         let store = self.take_store()?;
 
         // perform the query
@@ -304,53 +304,55 @@ fn execute<S: Storage + 'static>(
     (Ok(()), wasm_store.into_data().disassemble())
 }
 
-fn query<S: Storage + 'static>(store: S, req: Query) -> (anyhow::Result<Binary>, S) {
+fn query<S: Storage + 'static>(store: S, req: Query) -> (anyhow::Result<QueryResponse>, S) {
     match req {
-        Query::Info {} => (query_info(&store), store),
+        Query::Info {} => (query_info(&store).map(QueryResponse::Info), store),
         Query::Account {
             address,
-        } => (query_account(&store, address), store),
+        } => (query_account(&store, address).map(QueryResponse::Account), store),
         Query::Accounts {
             start_after,
             limit,
-        } => (query_accounts(&store, start_after, limit), store),
+        } => (query_accounts(&store, start_after, limit).map(QueryResponse::Accounts), store),
         Query::WasmRaw {
             contract,
             key,
-        } => (query_wasm_raw(&store, contract, key), store),
+        } => (query_wasm_raw(&store, contract, key).map(QueryResponse::WasmRaw), store),
         Query::WasmSmart {
             contract,
             msg
-        } => query_wasm_smart(store, contract, msg),
+        } => {
+            let (resp, store) = query_wasm_smart(store, contract, msg);
+            (resp.map(QueryResponse::WasmSmart), store)
+        },
     }
 }
 
-fn query_info(store: &dyn Storage) -> anyhow::Result<Binary> {
-    let resp = InfoResponse {
+fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
+    Ok(InfoResponse {
         chain_id: CHAIN_ID.load(store)?,
         last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
-    };
-    to_json(&resp)
+    })
 }
 
-fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<Binary> {
+fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<AccountResponse> {
     let account = ACCOUNTS.load(store, &address)?;
-    let resp = AccountResponse {
+    Ok(AccountResponse {
         address,
         code_hash: account.code_hash,
         admin:     account.admin,
-    };
-    to_json(&resp)
+    })
 }
 
 fn query_accounts(
     store:       &dyn Storage,
     start_after: Option<Addr>,
     limit:       Option<u32>,
-) -> anyhow::Result<Binary> {
+) -> anyhow::Result<Vec<AccountResponse>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-    let resp = ACCOUNTS
+
+    ACCOUNTS
         .range(store, start, None, Order::Ascending)
         .take(limit as usize)
         .map(|item| {
@@ -361,15 +363,14 @@ fn query_accounts(
                 admin:     account.admin,
             })
         })
-        .collect::<anyhow::Result<Vec<_>>>()?;
-    to_json(&resp)
+        .collect()
 }
 
 fn query_wasm_raw(
     _store:    &dyn Storage,
     _contract: Addr,
     _key:      Binary,
-) -> anyhow::Result<Binary> {
+) -> anyhow::Result<WasmRawResponse> {
     todo!()
 }
 
@@ -377,7 +378,7 @@ fn query_wasm_smart<S: Storage + 'static>(
     store:    S,
     contract: Addr,
     msg:      Binary,
-) -> (anyhow::Result<Binary>, S) {
+) -> (anyhow::Result<WasmSmartResponse>, S) {
     // load contract info
     let account = match ACCOUNTS.load(&store, &contract) {
         Ok(account) => account,
@@ -408,7 +409,7 @@ fn query_wasm_smart<S: Storage + 'static>(
         data,
     };
 
-    (to_json(&query_res), wasm_store.into_data().disassemble())
+    (Ok(query_res), wasm_store.into_data().disassemble())
 }
 
 fn must_build_wasm_instance<S: Storage + 'static>(

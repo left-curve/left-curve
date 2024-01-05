@@ -2,8 +2,7 @@ use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{
-        from_json, hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx,
-        Uint128, WasmSmartResponse,
+        hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx, Uint128,
     },
     std::{env, fs::File, io::Read, path::PathBuf},
 };
@@ -75,29 +74,25 @@ fn main() -> anyhow::Result<()> {
     app.commit()?;
 
     println!("querying chain info");
-    let res_bytes = app.query(Query::Info {})?;
-    let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
-    println!("{res_str}");
+    let resp = app.query(Query::Info {})?;
+    println!("{resp:?}");
 
     println!("querying accounts");
-    let res_bytes = app.query(Query::Accounts {
+    let resp = app.query(Query::Accounts {
         start_after: None,
         limit: None,
     })?;
-    let res_str = String::from_utf8(res_bytes.as_ref().to_vec())?;
-    println!("{res_str}");
+    println!("{resp:?}");
 
     println!("querying balances");
-    let res_bytes = app.query(Query::WasmSmart {
+    let resp = app.query(Query::WasmSmart {
         contract: contract_addr,
         msg: to_json(&QueryMsg::Balances {
             start_after: None,
             limit: None,
         })?,
     })?;
-    let res: WasmSmartResponse = from_json(res_bytes)?;
-    let res_str = String::from_utf8(res.data.as_ref().to_vec())?;
-    println!("{res_str}");
+    println!("{resp:?}");
 
     Ok(())
 }

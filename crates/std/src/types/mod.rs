@@ -16,6 +16,6 @@ pub use {
     context::{ExecuteCtx, InstantiateCtx, QueryCtx},
     hash::{hash, Hash},
     response::{ContractResult, Response},
-    tx::{AccountResponse, InfoResponse, Message, Query, Tx, WasmRawResponse, WasmSmartResponse},
+    tx::{AccountResponse, InfoResponse, Message, Query, Tx, WasmRawResponse, WasmSmartResponse, QueryResponse},
     uint128::Uint128,
 };

@@ -62,6 +62,16 @@ pub enum Query {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
+pub enum QueryResponse {
+    Info(InfoResponse),
+    Account(AccountResponse),
+    Accounts(Vec<AccountResponse>),
+    WasmRaw(WasmRawResponse),
+    WasmSmart(WasmSmartResponse),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
     pub chain_id:             String,
     pub last_finalized_block: BlockInfo,
