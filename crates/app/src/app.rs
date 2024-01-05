@@ -343,7 +343,11 @@ fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<Binary> {
     to_json(&resp)
 }
 
-fn query_accounts(store: &dyn Storage, start_after: Option<Addr>, limit: Option<u32>) -> anyhow::Result<Binary> {
+fn query_accounts(
+    store:       &dyn Storage,
+    start_after: Option<Addr>,
+    limit:       Option<u32>,
+) -> anyhow::Result<Binary> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
     let resp = ACCOUNTS
