@@ -1,10 +1,9 @@
-use cw_std::from_json;
-
 use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{
-        hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx, Uint128,
+        from_json, hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx,
+        Uint128,
     },
     std::{env, fs::File, io::Read, path::PathBuf},
 };
@@ -26,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("reading wasm byte code from file");
     let wasm_file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../artifacts/cw_bank-aarch64.wasm");
+        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;

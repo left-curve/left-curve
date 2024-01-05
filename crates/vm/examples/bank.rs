@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     // create Wasm host instance
     let wasm_file = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../artifacts/cw_bank-aarch64.wasm");
+        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
     let (instance, mut store) = InstanceBuilder::default()
         .with_wasm_file(wasm_file)?
         .with_storage(MockStorage::new())
