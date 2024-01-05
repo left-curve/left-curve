@@ -1,7 +1,11 @@
 mod app;
-mod db;
+mod cache;
+mod prefix;
+mod traits;
 
 pub use crate::{
     app::App,
-    db::{CacheStore, Op, PrefixStore, WriteBatch},
+    cache::CacheStore,
+    prefix::PrefixStore,
+    traits::{Batch, Flush, Op},
 };

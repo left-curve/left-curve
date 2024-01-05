@@ -18,6 +18,14 @@ pub use crate::{
     },
 };
 
+#[cfg(feature = "storage-utils")]
+pub mod storage_utils {
+    pub use crate::storage::{
+        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
+        split_one_key, trim,
+    };
+}
+
 // ---------------------------- wasm32 target only -----------------------------
 // note: during development, it's helpful to comment out the target_arch tags,
 // otherwise rust-analyzer won't include these files.

@@ -1,5 +1,5 @@
 use {
-    super::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
+    super::utils::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
     crate::{from_json, Bound, MapKey, Order, RawBound, RawKey, Storage},
     serde::de::DeserializeOwned,
     std::marker::PhantomData,

@@ -1,16 +1,9 @@
 // TODO: a lot of repetitive code in this file. try refactoring.
 
 use {
-    anyhow::anyhow,
+    crate::{Batch, Flush, Op},
     cw_std::{Order, Record, Storage},
-    cw_vm::{Batch, Op, Storage as BackendStorage},
-    std::{
-        cmp::Ordering,
-        collections::{BTreeMap, HashMap},
-        iter,
-        iter::Peekable,
-        ops::Bound,
-    },
+    std::{cmp::Ordering, iter, iter::Peekable, ops::Bound},
 };
 
 /// Adapted from cw-multi-test:
@@ -39,11 +32,18 @@ impl<S> CacheStore<S> {
     }
 }
 
-impl<S: BackendStorage> CacheStore<S> {
+impl<S> Flush for CacheStore<S> {
+    fn flush(&mut self, batch: Batch) -> anyhow::Result<()> {
+        self.pending.extend(batch);
+        Ok(())
+    }
+}
+
+impl<S: Flush> CacheStore<S> {
     /// Consume self, apply the pending changes to the underlying store, return
     /// the underlying store.
-    pub fn commit(mut self) -> anyhow::Result<S> {
-        self.base.write_batch(self.pending)?;
+    pub fn flush(mut self) -> anyhow::Result<S> {
+        self.base.flush(self.pending)?;
         Ok(self.base)
     }
 }
@@ -63,8 +63,22 @@ impl<S: Storage> Storage for CacheStore<S> {
         max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
+                return Box::new(iter::empty());
+            }
+        }
+
         let base = self.base.scan(min, max, order);
-        let pending = build_btreemap_range(&self.pending, min, max, order);
+
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+        let pending_raw = self.pending.range((min, max));
+        let pending: Box<dyn Iterator<Item = _>> = match order {
+            Order::Ascending => Box::new(pending_raw),
+            Order::Descending => Box::new(pending_raw.rev()),
+        };
+
         Box::new(Merged::new(base, pending, order))
     }
 
@@ -138,27 +152,6 @@ where
             (Some(_), None) => self.base.next(),
             (None, None) => None,
         }
-    }
-}
-
-fn build_btreemap_range<'a>(
-    map:   &'a BTreeMap<Vec<u8>, Op>,
-    min:   Option<&[u8]>,
-    max:   Option<&[u8]>,
-    order: Order,
-) -> Box<dyn Iterator<Item = (&'a Vec<u8>, &'a Op)> + 'a> {
-    if let (Some(min), Some(max)) = (min, max) {
-        if min > max {
-            return Box::new(iter::empty());
-        }
-    }
-
-    let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
-    let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
-    let pending_raw = map.range((min, max));
-    match order {
-        Order::Ascending => Box::new(pending_raw),
-        Order::Descending => Box::new(pending_raw.rev()),
     }
 }
 

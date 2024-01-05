@@ -1,5 +1,5 @@
 mod bound;
-mod helpers;
+mod utils;
 mod item;
 mod key;
 mod map;
@@ -17,4 +17,5 @@ pub use {
     traits::{Order, Record, Storage},
 };
 
-use helpers::*;
+#[cfg(feature = "storage-utils")]
+pub use utils::*;

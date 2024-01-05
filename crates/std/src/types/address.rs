@@ -38,6 +38,12 @@ impl Addr {
     }
 }
 
+impl AsRef<[u8]> for Addr {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl TryFrom<&[u8]> for Addr {
     type Error = anyhow::Error;
 

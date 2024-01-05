@@ -1,4 +1,8 @@
-use {super::{nested_namespaces_with_key, split_one_key}, anyhow::bail, std::mem};
+use {
+    super::utils::{nested_namespaces_with_key, split_one_key},
+    anyhow::bail,
+    std::mem,
+};
 
 pub enum RawKey<'a> {
     Owned(Vec<u8>),

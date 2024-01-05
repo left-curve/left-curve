@@ -1,5 +1,5 @@
 use {
-    super::nested_namespaces_with_key,
+    super::utils::nested_namespaces_with_key,
     crate::{from_json, to_json, RawKey, Storage},
     anyhow::anyhow,
     data_encoding::BASE64,

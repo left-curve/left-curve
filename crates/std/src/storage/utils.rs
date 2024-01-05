@@ -11,7 +11,7 @@ use crate::RawKey;
 ///
 /// Panics if any key's length exceeds u16::MAX (because we need to put the
 /// length into 2 bytes)
-pub(super) fn nested_namespaces_with_key(
+pub fn nested_namespaces_with_key(
     maybe_namespace: Option<&[u8]>,
     prefixes:        &[RawKey],
     maybe_key:       Option<&RawKey>,
@@ -42,7 +42,7 @@ pub(super) fn nested_namespaces_with_key(
     out
 }
 
-fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
+pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
     let len = bytes.as_ref().len();
     if len > 0xffff {
         panic!("Can't encode length becayse byte slice is too long: {} > {}", len, u16::MAX);
@@ -57,8 +57,8 @@ fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
 // (so that the two prefixed length bytes are [255, 255]).
 // we can prevent this by introducing a max length for the namespace.
 // assert this max length at compile time when the user calls Map::new.
-pub(super) fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
-    debug_assert!(bytes.iter().any(|x| *x != u8::MAX), "[Map]: Namespace is entirely 255");
+pub fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
+    debug_assert!(bytes.iter().any(|x| *x != u8::MAX), "bytes are entirely 255");
     for byte in bytes.iter_mut().rev() {
         if *byte == u8::MAX {
             *byte = 0;
@@ -70,22 +70,23 @@ pub(super) fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes
 }
 
-pub(super) fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
+pub fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes.push(0);
     bytes
 }
 
-pub(super) fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
-    let mut out = namespace.to_vec();
+pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(namespace.len() + key.len());
+    out.extend_from_slice(namespace);
     out.extend_from_slice(key);
     out
 }
 
-pub(super) fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
+pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     key[namespace.len()..].to_vec()
 }
 
-pub(super) fn split_one_key(bytes: &[u8]) -> anyhow::Result<(&[u8], &[u8])> {
+pub fn split_one_key(bytes: &[u8]) -> anyhow::Result<(&[u8], &[u8])> {
     let (len_bytes, bytes) = bytes.split_at(2);
     let len = u16::from_be_bytes(len_bytes.try_into()?);
     Ok(bytes.split_at(len as usize))

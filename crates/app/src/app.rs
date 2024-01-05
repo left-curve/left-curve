@@ -1,21 +1,50 @@
+//! The lifecycle of `S`:
+//!
+//! App takes a generic S which implements the Storage trait. For production,
+//! this should be a wrapper around a RocksDB instance. For testing, this should
+//! be cw_std::MockStorage.
+//!
+//! When finalize_block is called, this is wrapped in CacheStore<S>.
+//! We then loop through the txs in the block.
+//!
+//! For each tx, it is wrapped again: CacheStore<CacheStore<S>>.
+//! We then loop through the messages in the tx.
+//!
+//! When processing the msg, if calling a Wasm instance is involved, it is
+//! wrapped again: PrefixStore<CacheStore<CacheStore<S>>>.
+//!
+//! Whether a message is successful or not, we unwrap the PrefixStore and return
+//! the underlying: CacheStore<CacheStore<S>>.
+//!
+//! If all messages are successful, we commit the pending ops. If any message
+//! fails, we discard the pending ops. Either way, the cache is unwrapped:
+//! CacheStore<S>.
+//!
+//! Back to the scope of finalize_block. After all txs have been processed, we
+//! disassamble the cache store, and keep the S and pending batch in memory.
+//!
+//! When commit is called, we flush the pending ops into S.
+
 use {
+    crate::{Batch, CacheStore, Flush, PrefixStore},
     anyhow::{anyhow, ensure},
     cw_std::{
-        hash, to_json, Account, AccountResponse, Addr, Batch, Binary, BlockInfo, Bound, CacheStore,
-        Coin, GenesisState, Hash, InfoResponse, Item, Map, Message, Order, Query, Storage, Tx,
+        hash, to_json, Account, AccountResponse, Addr, Binary, BlockInfo, Bound, Coin,
+        GenesisState, Hash, InfoResponse, Item, Map, Message, Order, Query, Storage, Tx,
         WasmSmartResponse,
     },
-    cw_vm::{
-        db_next, db_read, db_remove, db_scan, db_write, debug, Host, HostState, InstanceBuilder,
-    },
+    cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
     wasmi::{Instance, Store},
 };
 
+// storage types
 const CHAIN_ID:             Item<String>        = Item::new("cid");
 const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
 const CODES:                Map<&Hash, Binary>  = Map::new("c");
 const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
+const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
+// pagination parameters
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 pub struct App<S> {
@@ -66,7 +95,7 @@ impl<S> App<S> {
 
 impl<S> App<S>
 where
-    S: Storage + 'static,
+    S: Storage + Flush + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
         let mut store = self.take_store()?;
@@ -104,7 +133,7 @@ where
         let current_block = self.take_current_block()?;
 
         // apply the DB ops effected by txs in this block
-        store.apply(pending)?;
+        store.flush(pending)?;
 
         // update the last finalized block info
         LAST_FINALIZED_BLOCK.save(&mut store, &current_block)?;
@@ -128,7 +157,7 @@ where
 
 fn run_tx<S>(store: S, tx: Tx) -> anyhow::Result<S>
 where
-    S: Storage + 'static,
+    S: Storage + Flush + 'static,
 {
     // TODO: authenticate txs
 
@@ -149,7 +178,7 @@ where
     }
 
     // all messages succeeded. commit the state changes
-    cached.commit()
+    cached.flush()
 }
 
 // take an owned mutable Storage value and execute a message on it. return
@@ -184,7 +213,7 @@ where
 fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<()> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let hash = hash(wasm_byte_code);
-    let exists = CODES.has(store, &hash)?;
+    let exists = CODES.has(store, &hash);
     ensure!(!exists, "Do not upload the same code twice");
 
     CODES.save(store, &hash, wasm_byte_code)
@@ -207,10 +236,10 @@ fn instantiate<S: Storage + 'static>(
     };
 
     // compute contract address
-    let address = Addr::compute(&code_hash, &salt);
+    let contract = Addr::compute(&code_hash, &salt);
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &contract, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call instantiate
@@ -230,7 +259,7 @@ fn instantiate<S: Storage + 'static>(
         code_hash,
         admin,
     };
-    if let Err(err) = ACCOUNTS.save(&mut store, &address, &account) {
+    if let Err(err) = ACCOUNTS.save(&mut store, &contract, &account) {
         return (Err(err), store);
     }
 
@@ -258,7 +287,7 @@ fn execute<S: Storage + 'static>(
     };
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &contract, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call execute
@@ -358,7 +387,7 @@ fn query_wasm_smart<S: Storage + 'static>(
     };
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &contract, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call query
@@ -380,19 +409,21 @@ fn query_wasm_smart<S: Storage + 'static>(
 
 fn must_build_wasm_instance<S: Storage + 'static>(
     store: S,
-    wasm_byte_code: impl AsRef<[u8]>,
-) -> (Instance, Store<HostState<S>>) {
-    build_wasm_instance(store, wasm_byte_code)
+    addr:  &Addr,
+    wasm:  impl AsRef<[u8]>,
+) -> (Instance, Store<PrefixStore<S>>) {
+    build_wasm_instance(store, addr, wasm)
         .unwrap_or_else(|err| panic!("Fatal error! Failed to build wasm instance: {err}"))
 }
 
 fn build_wasm_instance<S: Storage + 'static>(
     store: S,
-    wasm_byte_code: impl AsRef<[u8]>,
-) -> anyhow::Result<(Instance, Store<HostState<S>>)> {
+    addr:  &Addr,
+    wasm:  impl AsRef<[u8]>,
+) -> anyhow::Result<(Instance, Store<PrefixStore<S>>)> {
     InstanceBuilder::default()
-        .with_wasm_bytes(wasm_byte_code)?
-        .with_storage(store)
+        .with_wasm_bytes(wasm)?
+        .with_storage(PrefixStore::new(store, &[CONTRACT_NAMESPACE, addr.as_ref()]))
         .with_host_function("db_read", db_read)?
         .with_host_function("db_write", db_write)?
         .with_host_function("db_remove", db_remove)?

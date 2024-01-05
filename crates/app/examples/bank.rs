@@ -26,7 +26,8 @@ fn main() -> anyhow::Result<()> {
 
     info!("reading wasm byte code from file");
     let wasm_file_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
-        .join("../../target/wasm32-unknown-unknown/debug/cw_bank.wasm");
+        .join("../../artifacts/cw_bank-aarch64.wasm");
+    println!("wasm_file_path: {wasm_file_path:?}");
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;

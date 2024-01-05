@@ -2,8 +2,7 @@ use {
     crate::{Host, Storage},
     anyhow::anyhow,
     cw_std::Record,
-    data_encoding::BASE64,
-    tracing::{debug, trace},
+    tracing::debug,
     wasmi::Caller,
 };
 
@@ -15,8 +14,6 @@ pub fn db_read<S: Storage>(
     let mut host = Host::from(caller);
 
     let key = host.read_from_memory(key_ptr)?;
-    trace!(key = ?BASE64.encode(&key), "db_read");
-
     // read the value from host state
     // if doesn't exist, we return a zero pointer
     let Some(value) = host.data().read(&key)? else {
@@ -48,13 +45,6 @@ pub fn db_scan<S: Storage>(
     };
     let order = order.try_into()?;
 
-    trace!(
-        min = ?min.as_ref().map(|bytes| BASE64.encode(bytes)),
-        max = ?max.as_ref().map(|bytes| BASE64.encode(bytes)),
-        order = ?order,
-        "db_scan"
-    );
-
     // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>
     // `as_deref` works!
     host.data_mut().scan(min.as_deref(), max.as_deref(), order).map_err(Into::into)
@@ -66,8 +56,6 @@ pub fn db_next<S: Storage>(
 ) -> Result<u32, wasmi::Error>
 {
     let mut host = Host::from(caller);
-
-    trace!(iterator_id, "db_next");
 
     let Some(record) = host.data_mut().next(iterator_id)? else {
         // returning a zero memory address informs the Wasm module that the
@@ -88,7 +76,6 @@ pub fn db_write<S: Storage>(
 
     let key = host.read_from_memory(key_ptr)?;
     let value = host.read_from_memory(value_ptr)?;
-    trace!(key = ?BASE64.encode(&key), value = ?BASE64.encode(&value), "db_write");
 
     host.data_mut().write(&key, &value).map_err(Into::into)
 }
@@ -101,7 +88,6 @@ pub fn db_remove<S: Storage>(
     let mut host = Host::from(caller);
 
     let key = host.read_from_memory(key_ptr)?;
-    trace!(key = ?BASE64.encode(&key), "db_remove");
 
     host.data_mut().remove(&key).map_err(Into::into)
 }

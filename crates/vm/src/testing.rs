@@ -53,10 +53,6 @@ impl Storage for MockStorage {
         self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
     }
 
-    fn peek(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
-        self.get_iterator_mut(iterator_id).map(|iterator| iterator.peek())
-    }
-
     fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
         self.data.insert(key.to_vec(), value.to_vec());
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -109,10 +105,6 @@ impl MockIter {
         Self {
             records: records.into_iter().peekable(),
         }
-    }
-
-    pub fn peek(&mut self) -> Option<Record> {
-        self.records.peek().map(|(k, v)| (k.clone(), v.clone()))
     }
 }
 
