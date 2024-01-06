@@ -7,9 +7,10 @@ use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{
-        from_json, hash, to_json, Addr, BlockInfo, GenesisState, Message, MockStorage, Query, Tx,
-        Uint128,
+        from_json, hash, to_json, Addr, BlockInfo, Coin, GenesisState, Message, MockStorage, Query,
+        Storage, Tx, Uint128,
     },
+    serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},
 };
 
@@ -72,39 +73,64 @@ fn main() -> anyhow::Result<()> {
 
     println!("making transfers");
     let block = mock_block_info(2, 2);
-    let txs = vec![
-        mock_tx(1, vec![
-            send_msg(&contract_addr, 1, 4, "uatom", 75)?,
-            send_msg(&contract_addr, 1, 5, "uosmo", 420)?,
-        ]),
-        mock_tx(2, vec![send_msg(&contract_addr, 2, 3, "uatom", 50)?]),
-        mock_tx(3, vec![send_msg(&contract_addr, 3, 1, "uatom", 69)?]),
-        mock_tx(5, vec![send_msg(&contract_addr, 5, 6, "uosmo", 64)?]),
-    ];
+    let mut txs = vec![];
+    txs.push(mock_tx(1, vec![
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(1, 4, "uatom", 75))?,
+            funds:    vec![],
+        },
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(1, 5, "uosmo", 420))?,
+            funds:    vec![],
+        },
+    ]));
+    txs.push(mock_tx(2, vec![
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(2, 3, "uatom", 50))?,
+            funds:    vec![],
+        },
+    ]));
+    txs.push(mock_tx(3, vec![
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(3, 1, "uatom", 69))?,
+            funds:    vec![],
+        },
+    ]));
+    txs.push(mock_tx(2, vec![
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(5, 6, "uosmo", 64))?,
+            funds:    vec![],
+        },
+    ]));
     app.finalize_block(block, txs)?;
     app.commit()?;
 
     println!("querying chain info");
-    let resp = app.query(Query::Info {})?;
-    println!("{}", serde_json::to_string_pretty(&resp)?);
+    query(&mut app, Query::Info {})?;
 
     println!("querying accounts");
-    let resp = app.query(Query::Accounts {
+    query(&mut app, Query::Accounts {
         start_after: None,
-        limit: None,
+        limit:       None,
     })?;
-    println!("{}", serde_json::to_string_pretty(&resp)?);
 
     println!("querying balances");
-    let resp = app.query(Query::WasmSmart {
-        contract: contract_addr,
-        msg: to_json(&QueryMsg::Balances {
-            start_after: None,
-            limit: None,
-        })?,
+    query_wasm_smart::<_, _, Vec<Balance>>(&mut app, &contract_addr, &QueryMsg::Balances {
+        start_after: None,
+        limit:       None,
     })?;
-    let balances: Vec<Balance> = from_json(resp.as_wasm_smart().data)?;
-    println!("{}", serde_json::to_string_pretty(&balances)?);
+
+    println!("querying balances of a specific user (0x1)");
+    query_wasm_smart::<_, _, Vec<Coin>>(&mut app, &contract_addr, &QueryMsg::BalancesByUser {
+        address:     Addr::mock(1),
+        start_after: None,
+        limit:       None,
+    })?;
 
     Ok(())
 }
@@ -124,25 +150,6 @@ fn mock_tx(sender_idx: u8, msgs: Vec<Message>) -> Tx {
     }
 }
 
-fn send_msg(
-    contract: &Addr,
-    from_idx: u8,
-    to_idx:   u8,
-    denom:    &str,
-    amount:   u128,
-) -> anyhow::Result<Message> {
-    Ok(Message::Execute {
-        contract: contract.clone(),
-        msg: to_json(&ExecuteMsg::Send {
-            from:   Addr::mock(from_idx),
-            to:     Addr::mock(to_idx),
-            denom:  denom.into(),
-            amount: Uint128::new(amount),
-        })?,
-        funds: vec![],
-    })
-}
-
 fn initial_balances() -> Vec<Balance> {
     let mut balances = vec![];
     for (address, denom, amount) in INITIAL_BALANCES {
@@ -153,4 +160,37 @@ fn initial_balances() -> Vec<Balance> {
         });
     }
     balances
+}
+
+fn send_msg(from_idx: u8, to_idx: u8, denom: &str, amount: u128) -> ExecuteMsg {
+    ExecuteMsg::Send {
+        from: Addr::mock(from_idx),
+        to: Addr::mock(to_idx),
+        denom: denom.into(),
+        amount: Uint128::new(amount),
+    }
+}
+
+fn query<S>(app: &mut App<S>, req: Query) -> anyhow::Result<()>
+where
+    S: Storage + 'static,
+{
+    let resp = app.query(req)?;
+    println!("{}", serde_json::to_string_pretty(&resp)?);
+    Ok(())
+}
+
+fn query_wasm_smart<S, M, T>(app: &mut App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
+where
+    S: Storage + 'static,
+    M: Serialize,
+    T: Serialize + DeserializeOwned,
+{
+    let resp = app.query(Query::WasmSmart {
+        contract: contract.clone(),
+        msg: to_json(msg)?,
+    })?;
+    let resp: T = from_json(resp.as_wasm_smart().data)?;
+    println!("{}", serde_json::to_string_pretty(&resp)?);
+    Ok(())
 }

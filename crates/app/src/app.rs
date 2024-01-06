@@ -95,7 +95,7 @@ impl<S> App<S> {
 
 impl<S> App<S>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
         let mut store = self.take_store()?;
@@ -127,6 +127,23 @@ where
         self.put_current_block(block)
     }
 
+    pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
+        let store = self.take_store()?;
+
+        // perform the query
+        let (res, store) = query(store, req);
+
+        // put the store back
+        self.put_store(store)?;
+
+        res
+    }
+}
+
+impl<S> App<S>
+where
+    S: Storage + Flush + 'static,
+{
     pub fn commit(&mut self) -> anyhow::Result<()> {
         let mut store = self.take_store()?;
         let pending = self.take_pending()?;
@@ -140,18 +157,6 @@ where
 
         // put the store back
         self.put_store(store)
-    }
-
-    pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
-        let store = self.take_store()?;
-
-        // perform the query
-        let (res, store) = query(store, req);
-
-        // put the store back
-        self.put_store(store)?;
-
-        res
     }
 }
 

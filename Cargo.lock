@@ -68,6 +68,7 @@ dependencies = [
  "cw-bank",
  "cw-std",
  "cw-vm",
+ "serde",
  "serde_json",
  "tracing",
  "tracing-subscriber",

@@ -1,6 +1,6 @@
 use cw_std::{
-    cw_serde, entry_point, to_json, Addr, Binary, Bound, ExecuteCtx, InstantiateCtx, Map, Order,
-    QueryCtx, Response, Uint128,
+    cw_serde, entry_point, to_json, Addr, Binary, Bound, Coin, ExecuteCtx, InstantiateCtx, Map,
+    Order, QueryCtx, Response, Uint128,
 };
 
 // (address, denom) => balance
@@ -19,12 +19,6 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub struct Balance {
     pub address: Addr,
-    pub denom:   String,
-    pub amount:  Uint128,
-}
-
-#[cw_serde]
-pub struct Coin {
     pub denom:   String,
     pub amount:  Uint128,
 }
