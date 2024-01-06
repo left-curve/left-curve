@@ -23,8 +23,7 @@ const INITIAL_BALANCES: [(Addr, &str, Uint128); 4] = [
 ];
 
 fn main() -> anyhow::Result<()> {
-    // set tracing to TRACE level, so that we can see DB reads/writes logs
-    tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
     let mut app = App::new(MockStorage::new());

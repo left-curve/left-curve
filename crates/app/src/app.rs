@@ -34,6 +34,7 @@ use {
         WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
+    tracing::{debug, info},
     wasmi::{Instance, Store},
 };
 
@@ -98,6 +99,12 @@ where
     S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
+        info!(
+            chain_id = genesis_state.chain_id,
+            gen_msgs = genesis_state.msgs.len(),
+            "Initializing chain",
+        );
+
         let mut store = self.take_store()?;
 
         CHAIN_ID.save(&mut store, &genesis_state.chain_id)?;
@@ -108,6 +115,13 @@ where
     }
 
     pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> anyhow::Result<()> {
+        info!(
+            height    = block.height,
+            timestamp = block.timestamp,
+            num_txs   = txs.len(),
+            "Finalizing block",
+        );
+
         let store = self.take_store()?;
 
         // TODO: check block height and time is valid
@@ -116,7 +130,9 @@ where
 
         let mut cached = CacheStore::new(store, self.pending.take());
 
-        for tx in txs {
+        for (idx, tx) in txs.into_iter().enumerate() {
+            // TODO: add txhash to the debug print?
+            debug!(idx, "Processing tx");
             cached = run_tx(cached, tx)?;
         }
 
@@ -128,6 +144,8 @@ where
     }
 
     pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
+        debug!(req = ?serde_json_wasm::to_string(&req)?, "Processing query");
+
         let store = self.take_store()?;
 
         // perform the query
@@ -145,6 +163,8 @@ where
     S: Storage + Flush + 'static,
 {
     pub fn commit(&mut self) -> anyhow::Result<()> {
+        info!("Committing state changes");
+
         let mut store = self.take_store()?;
         let pending = self.take_pending()?;
         let current_block = self.take_current_block()?;
@@ -171,7 +191,9 @@ where
     let mut result;
     let mut cached = CacheStore::new(store, None);
 
-    for msg in tx.msgs {
+    for (idx, msg) in tx.msgs.into_iter().enumerate() {
+        debug!(idx, "Processing msg");
+
         (result, cached) = run_msg(cached, msg);
 
         // if any one of the msgs fails, the entire tx fails.
@@ -218,8 +240,10 @@ where
 fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<()> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let hash = hash(wasm_byte_code);
+
     let exists = CODES.has(store, &hash);
     ensure!(!exists, "Do not upload the same code twice");
+    info!(?hash, "Stored code");
 
     CODES.save(store, &hash, wasm_byte_code)
 }
@@ -241,10 +265,10 @@ fn instantiate<S: Storage + 'static>(
     };
 
     // compute contract address
-    let contract = Addr::compute(&code_hash, &salt);
+    let address = Addr::compute(&code_hash, &salt);
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, &contract, wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, &address, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call instantiate
@@ -260,13 +284,17 @@ fn instantiate<S: Storage + 'static>(
 
     // save account info
     let mut store = wasm_store.into_data().disassemble();
+    // TODO: we need to do some cloning here because the tracing output later...
+    // can this be avoided?
     let account = Account {
-        code_hash,
-        admin,
+        code_hash: code_hash.clone(),
+        admin:     admin.clone(),
     };
-    if let Err(err) = ACCOUNTS.save(&mut store, &contract, &account) {
+    if let Err(err) = ACCOUNTS.save(&mut store, &address, &account) {
         return (Err(err), store);
     }
+
+    info!(?address, ?code_hash, ?admin, "Instantiated contract");
 
     (Ok(()), store)
 }
@@ -297,8 +325,12 @@ fn execute<S: Storage + 'static>(
 
     // call execute
     let resp = match host.call_execute(msg) {
-        Ok(resp) => resp,
+        Ok(resp) => {
+            debug!(?contract, "Executed contract");
+            resp
+        },
         Err(err) => {
+            debug!(?contract, ?err, "Failed to execute contract");
             let store = wasm_store.into_data().disassemble();
             return (Err(err), store);
         },
