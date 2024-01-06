@@ -215,9 +215,9 @@ fn initial_balances() -> Vec<Balance> {
 
 fn send_msg(from_idx: u8, to_idx: u8, denom: &str, amount: u128) -> ExecuteMsg {
     ExecuteMsg::Send {
-        from: Addr::mock(from_idx),
-        to: Addr::mock(to_idx),
-        denom: denom.into(),
+        from:   Addr::mock(from_idx),
+        to:     Addr::mock(to_idx),
+        denom:  denom.into(),
         amount: Uint128::new(amount),
     }
 }
