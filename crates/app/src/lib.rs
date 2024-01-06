@@ -1,11 +1,10 @@
+mod abci;
 mod app;
-mod cache;
-mod prefix;
-mod traits;
+mod db;
+mod wasm;
 
 pub use crate::{
+    abci::ABCIApp,
     app::App,
-    cache::CacheStore,
-    prefix::PrefixStore,
-    traits::{Batch, Flush, Op},
+    db::{Batch, Flush, Op, CacheStore, PrefixStore},
 };

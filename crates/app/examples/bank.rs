@@ -23,7 +23,7 @@ const INITIAL_BALANCES: [(Addr, &str, Uint128); 4] = [
 ];
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     println!("🤖 Creating app");
     let mut app = App::new(MockStorage::new());
