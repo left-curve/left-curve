@@ -177,7 +177,7 @@ fn _execute<S: Storage + 'static>(
     let (instance, mut wasm_store) = must_build_wasm_instance(
         store,
         CONTRACT_NAMESPACE,
-        &contract,
+        contract,
         wasm_byte_code,
     );
     let mut host = Host::new(&instance, &mut wasm_store);

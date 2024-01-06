@@ -72,8 +72,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("🤖 Making transfers");
     let block = mock_block_info(2, 2);
-    let mut txs = vec![];
-    txs.push(mock_tx(1, vec![
+    let mut txs = vec![mock_tx(1, vec![
         Message::Execute {
             contract: contract_addr.clone(),
             msg:      to_json(&send_msg(1, 4, "uatom", 75))?,
@@ -84,7 +83,7 @@ fn main() -> anyhow::Result<()> {
             msg:      to_json(&send_msg(1, 5, "uosmo", 420))?,
             funds:    vec![],
         },
-    ]));
+    ])];
     txs.push(mock_tx(2, vec![
         Message::Execute {
             contract: contract_addr.clone(),
@@ -111,13 +110,12 @@ fn main() -> anyhow::Result<()> {
 
     println!("😈 Intentionally making some failed txs");
     let block = mock_block_info(3, 3);
-    let mut txs = vec![];
     // uploading the same code twice - fail
-    txs.push(mock_tx(0, vec![
+    let mut txs = vec![mock_tx(0, vec![
         Message::StoreCode {
             wasm_byte_code: wasm_byte_code.into(),
         },
-    ]));
+    ])];
     // instantiate a contract with an non-existent code hash - fail
     txs.push(mock_tx(0, vec![
         Message::Instantiate {
