@@ -70,11 +70,13 @@ fn main() -> anyhow::Result<()> {
     // store here and take out the host state
     let _host_state = store.into_data();
 
+    println!("✅ Done!");
+
     Ok(())
 }
 
 fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    println!("instantiating contract");
+    println!("🤖 Instantiating contract");
 
     let mut initial_balances = vec![];
     for (address, denom, amount) in BALANCES {
@@ -86,7 +88,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     }
     let res = host.call_instantiate(to_json(&InstantiateMsg { initial_balances })?)?;
 
-    println!("instantiation successful! res={}", serde_json::to_string(&res)?);
+    println!("✅ Instantiation successful! res={}", serde_json::to_string(&res)?);
 
     Ok(())
 }
@@ -98,7 +100,7 @@ fn send<T>(
     denom:  &str,
     amount: u128,
 ) -> anyhow::Result<()> {
-    println!("sending... from={from:?} to={to:?} denom={denom} amount={amount}");
+    println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
     let res = host.call_execute(to_json(&ExecuteMsg::Send {
         from,
@@ -107,13 +109,13 @@ fn send<T>(
         amount: Uint128::new(amount),
     })?)?;
 
-    println!("send successful! res={}", serde_json::to_string(&res)?);
+    println!("✅ Send successful! res={}", serde_json::to_string(&res)?);
 
     Ok(())
 }
 
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
-    println!("querying balances");
+    println!("🤖 Querying balances");
 
     let res_bytes = host.call_query(to_json(&QueryMsg::Balances {
         start_after: None,

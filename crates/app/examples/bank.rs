@@ -26,10 +26,10 @@ fn main() -> anyhow::Result<()> {
     // set tracing to TRACE level, so that we can see DB reads/writes logs
     tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
 
-    println!("creating app");
+    println!("🤖 Creating app");
     let mut app = App::new(MockStorage::new());
 
-    println!("reading wasm byte code from file");
+    println!("🤖 Reading wasm byte code from file");
     let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
     let wasm_file_path = {
         #[cfg(target_arch = "aarch64")]
@@ -41,18 +41,18 @@ fn main() -> anyhow::Result<()> {
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
-    println!("computing bank contract address");
+    println!("🤖 Computing bank contract address");
     let code_hash = hash(&wasm_byte_code);
     let salt = b"cw-bank".to_vec().into();
     let contract_addr = Addr::compute(&code_hash, &salt);
 
-    println!("initialize chain");
+    println!("🤖 Initialize chain");
     app.init_chain(GenesisState {
         chain_id: "dev-1".into(),
         msgs:     vec![],
     })?;
 
-    println!("uploading code and instantiating contract");
+    println!("🤖 Uploading code and instantiating contract");
     let block = mock_block_info(1, 1);
     let txs = vec![mock_tx(0, vec![
         Message::StoreCode {
@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
     app.finalize_block(block, txs)?;
     app.commit()?;
 
-    println!("making transfers");
+    println!("🤖 Making transfers");
     let block = mock_block_info(2, 2);
     let mut txs = vec![];
     txs.push(mock_tx(1, vec![
@@ -110,27 +110,29 @@ fn main() -> anyhow::Result<()> {
     app.finalize_block(block, txs)?;
     app.commit()?;
 
-    println!("querying chain info");
+    println!("🤖 Querying chain info");
     query(&mut app, Query::Info {})?;
 
-    println!("querying accounts");
+    println!("🤖 Querying accounts");
     query(&mut app, Query::Accounts {
         start_after: None,
         limit:       None,
     })?;
 
-    println!("querying balances");
+    println!("🤖 Querying balances");
     query_wasm_smart::<_, _, Vec<Balance>>(&mut app, &contract_addr, &QueryMsg::Balances {
         start_after: None,
         limit:       None,
     })?;
 
-    println!("querying balances of a specific user (0x1)");
+    println!("🤖 Querying balances of a specific user (0x1)");
     query_wasm_smart::<_, _, Vec<Coin>>(&mut app, &contract_addr, &QueryMsg::BalancesByUser {
         address:     Addr::mock(1),
         start_after: None,
         limit:       None,
     })?;
+
+    println!("✅ Done!");
 
     Ok(())
 }
