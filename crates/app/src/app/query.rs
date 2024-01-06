@@ -2,8 +2,8 @@ use {
     super::{ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
     crate::wasm::must_build_wasm_instance,
     cw_std::{
-        AccountResponse, Addr, Binary, Bound, InfoResponse, Order, Query, QueryResponse, Storage,
-        WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, Binary, Bound, Hash, InfoResponse, Order, Query, QueryResponse,
+        Storage, WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::Host,
 };
@@ -16,6 +16,13 @@ where
 {
     match req {
         Query::Info {} => (query_info(&store).map(QueryResponse::Info), store),
+        Query::Code {
+            hash,
+        } => (query_code(&store, hash).map(QueryResponse::Code), store),
+        Query::Codes {
+            start_after,
+            limit,
+        } => (query_codes(&store, start_after, limit).map(QueryResponse::Codes), store),
         Query::Account {
             address,
         } => (query_account(&store, address).map(QueryResponse::Account), store),
@@ -42,6 +49,24 @@ fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
         chain_id: CHAIN_ID.load(store)?,
         last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
     })
+}
+
+fn query_code(store: &dyn Storage, hash: Hash) -> anyhow::Result<Binary> {
+    CODES.load(store, &hash)
+}
+
+fn query_codes(
+    store:       &dyn Storage,
+    start_after: Option<Hash>,
+    limit:       Option<u32>,
+) -> anyhow::Result<Vec<Hash>> {
+    let start = start_after.as_ref().map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    CODES
+        .keys(store, start, None, Order::Ascending)
+        .take(limit as usize)
+        .collect()
 }
 
 fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<AccountResponse> {

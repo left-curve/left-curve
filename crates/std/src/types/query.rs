@@ -9,6 +9,19 @@ pub enum Query {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: InfoResponse
     Info {},
+    /// A single Wasm byte code.
+    /// Returns: Binary
+    Code {
+        hash: Hash,
+    },
+    /// Enumerate metadata of all codes.
+    /// Note: to limit the size of return data, we only return the hashes.
+    /// To download the actual Wasm byte code, use Query::Code.
+    /// Returns: Vec<Hash>
+    Codes {
+        start_after: Option<Hash>,
+        limit:       Option<u32>,
+    },
     /// Metadata of a single account.
     /// Returns: AccountResponse
     Account {
@@ -64,6 +77,8 @@ pub struct WasmSmartResponse {
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),
+    Code(Binary),
+    Codes(Vec<Hash>),
     Account(AccountResponse),
     Accounts(Vec<AccountResponse>),
     WasmRaw(WasmRawResponse),
@@ -77,6 +92,20 @@ impl QueryResponse {
             panic!("QueryResponse is not Info");
         };
         resp
+    }
+
+    pub fn as_code(self) -> Binary {
+        let Self::Code(wasm_byte_code) = self else {
+            panic!("QueryResponse is not Code");
+        };
+        wasm_byte_code
+    }
+
+    pub fn as_codes(self) -> Vec<Hash> {
+        let Self::Codes(hashes) = self else {
+            panic!("QueryResponse is not Codes");
+        };
+        hashes
     }
 
     pub fn as_account(self) -> AccountResponse {

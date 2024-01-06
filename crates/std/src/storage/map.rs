@@ -88,6 +88,16 @@ where
         self.no_prefix().range(store, min, max, order)
     }
 
+    pub fn keys<'b>(
+        &self,
+        store: &'b dyn Storage,
+        min:   Option<Bound<K>>,
+        max:   Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = anyhow::Result<K::Output>> + 'b> {
+        self.no_prefix().keys(store, min, max, order)
+    }
+
     pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) -> anyhow::Result<()> {
         self.no_prefix().clear(store, limit)
     }

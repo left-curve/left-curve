@@ -162,6 +162,12 @@ fn main() -> anyhow::Result<()> {
     println!("🤖 Querying chain info");
     query(&mut app, Query::Info {})?;
 
+    println!("🤖 Querying codes");
+    query(&mut app, Query::Codes {
+        start_after: None,
+        limit:       None,
+    })?;
+
     println!("🤖 Querying accounts");
     query(&mut app, Query::Accounts {
         start_after: None,

@@ -37,16 +37,7 @@ where
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
-        let min = match min.map(RawBound::from) {
-            None => self.prefix.to_vec(),
-            Some(RawBound::Inclusive(k)) => concat(&self.prefix, &k),
-            Some(RawBound::Exclusive(k)) => extend_one_byte(concat(&self.prefix, &k)),
-        };
-        let max = match max.map(RawBound::from) {
-            None => increment_last_byte(self.prefix.to_vec()),
-            Some(RawBound::Inclusive(k)) => extend_one_byte(concat(&self.prefix, &k)),
-            Some(RawBound::Exclusive(k)) => concat(&self.prefix, &k),
-        };
+        let (min, max) = range_bounds(&self.prefix, min, max);
 
         // need to make a clone of self.prefix and move it into the closure,
         // so that the iterator can live longer than &self.
@@ -62,7 +53,45 @@ where
         Box::new(iter)
     }
 
+    pub fn keys<'a>(
+        &self,
+        store: &'a dyn Storage,
+        min:   Option<Bound<K>>,
+        max:   Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = anyhow::Result<K::Output>> + 'a> {
+        let (min, max) = range_bounds(&self.prefix, min, max);
+        let prefix = self.prefix.clone();
+        // TODO: this is really inefficient because the host needs to load both
+        // the key and value into Wasm memory
+        let iter = store.scan(Some(&min), Some(&max), order).map(move |(k, _)| {
+            debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
+            let key_bytes = trim(&prefix, &k);
+            K::deserialize(&key_bytes)
+        });
+        Box::new(iter)
+    }
+
     pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> anyhow::Result<()> {
         todo!()
     }
+}
+
+fn range_bounds<K: MapKey>(
+    prefix: &[u8],
+    min:    Option<Bound<K>>,
+    max:    Option<Bound<K>>,
+) -> (Vec<u8>, Vec<u8>) {
+    let min = match min.map(RawBound::from) {
+        None => prefix.to_vec(),
+        Some(RawBound::Inclusive(k)) => concat(&prefix, &k),
+        Some(RawBound::Exclusive(k)) => extend_one_byte(concat(&prefix, &k)),
+    };
+    let max = match max.map(RawBound::from) {
+        None => increment_last_byte(prefix.to_vec()),
+        Some(RawBound::Inclusive(k)) => extend_one_byte(concat(&prefix, &k)),
+        Some(RawBound::Exclusive(k)) => concat(&prefix, &k),
+    };
+
+    (min, max)
 }
