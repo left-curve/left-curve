@@ -70,29 +70,24 @@ where
     S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
-        info!(
-            chain_id = genesis_state.chain_id,
-            gen_msgs = genesis_state.msgs.len(),
-            "initializing chain",
-        );
-
         let mut store = self.take_store()?;
 
         CHAIN_ID.save(&mut store, &genesis_state.chain_id)?;
 
         debug_assert!(genesis_state.msgs.is_empty(), "UNIMPLEMENTED: genesis msg is not supported yet");
 
-        self.put_store(store)
+        self.put_store(store)?;
+
+        info!(
+            chain_id = genesis_state.chain_id,
+            gen_msgs = genesis_state.msgs.len(),
+            "initialized chain",
+        );
+
+        Ok(())
     }
 
     pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> anyhow::Result<()> {
-        info!(
-            height    = block.height,
-            timestamp = block.timestamp,
-            num_txs   = txs.len(),
-            "finalizing block",
-        );
-
         let store = self.take_store()?;
 
         // TODO: check block height and time is valid
@@ -111,12 +106,14 @@ where
 
         self.put_store(store)?;
         self.put_pending(pending)?;
-        self.put_current_block(block)
+        self.put_current_block(block.clone())?;
+
+        info!(height = block.height, timestamp = block.timestamp, "finalized block");
+
+        Ok(())
     }
 
     pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
-        debug!(req = ?serde_json_wasm::to_string(&req)?, "processing query");
-
         let store = self.take_store()?;
 
         // perform the query
@@ -134,8 +131,6 @@ where
     S: Storage + Flush + 'static,
 {
     pub fn commit(&mut self) -> anyhow::Result<()> {
-        info!("committing state changes");
-
         let mut store = self.take_store()?;
         let pending = self.take_pending()?;
         let current_block = self.take_current_block()?;
@@ -147,7 +142,11 @@ where
         LAST_FINALIZED_BLOCK.save(&mut store, &current_block)?;
 
         // put the store back
-        self.put_store(store)
+        self.put_store(store)?;
+
+        info!(height = current_block.height, "committed state deltas");
+
+        Ok(())
     }
 }
 
