@@ -11,7 +11,7 @@ pub struct Tx {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Message {
     StoreCode {
         wasm_byte_code: Binary,

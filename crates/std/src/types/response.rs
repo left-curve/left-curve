@@ -5,7 +5,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ContractResult<T> {
     Ok(T),
     Err(String),

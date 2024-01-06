@@ -4,7 +4,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Query {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: InfoResponse
@@ -61,7 +61,7 @@ pub struct WasmSmartResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),
     Account(AccountResponse),
