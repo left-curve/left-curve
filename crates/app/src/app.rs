@@ -34,7 +34,7 @@ use {
         WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::{db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder},
-    tracing::{debug, info},
+    tracing::{debug, error, info},
     wasmi::{Instance, Store},
 };
 
@@ -102,7 +102,7 @@ where
         info!(
             chain_id = genesis_state.chain_id,
             gen_msgs = genesis_state.msgs.len(),
-            "Initializing chain",
+            "initializing chain",
         );
 
         let mut store = self.take_store()?;
@@ -119,7 +119,7 @@ where
             height    = block.height,
             timestamp = block.timestamp,
             num_txs   = txs.len(),
-            "Finalizing block",
+            "finalizing block",
         );
 
         let store = self.take_store()?;
@@ -132,7 +132,7 @@ where
 
         for (idx, tx) in txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print?
-            debug!(idx, "Processing tx");
+            debug!(idx, "processing tx");
             cached = run_tx(cached, tx)?;
         }
 
@@ -144,7 +144,7 @@ where
     }
 
     pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
-        debug!(req = ?serde_json_wasm::to_string(&req)?, "Processing query");
+        debug!(req = ?serde_json_wasm::to_string(&req)?, "processing query");
 
         let store = self.take_store()?;
 
@@ -163,7 +163,7 @@ where
     S: Storage + Flush + 'static,
 {
     pub fn commit(&mut self) -> anyhow::Result<()> {
-        info!("Committing state changes");
+        info!("committing state changes");
 
         let mut store = self.take_store()?;
         let pending = self.take_pending()?;
@@ -192,7 +192,7 @@ where
     let mut cached = CacheStore::new(store, None);
 
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
-        debug!(idx, "Processing msg");
+        debug!(idx, "processing msg");
 
         (result, cached) = run_msg(cached, msg);
 
@@ -221,31 +221,63 @@ where
     match msg {
         Message::StoreCode {
             wasm_byte_code,
-        } => (store_code(&mut store, &wasm_byte_code), store),
+        } => {
+            match store_code(&mut store, &wasm_byte_code) {
+                Ok(hash) => info!(hash = hash.to_string(), "stored code"),
+                Err(err) => error!(?err, "failed to store code"),
+            };
+            (Ok(()), store)
+        },
         Message::Instantiate {
             code_hash,
             msg,
             salt,
             funds,
             admin,
-        } => instantiate(store, code_hash, msg, salt, funds, admin),
+        } => {
+            let (result, store) = instantiate(store, code_hash, msg, salt, funds, admin);
+            match result {
+                Ok(report) => info!(
+                    address   = report.address.to_string(),
+                    code_hash = report.code_hash.to_string(),
+                    admin     = ?report.admin,
+                    "instantiated contract",
+                ),
+                Err(err) => error!(?err, "failed to instantiate contract"),
+            }
+            (Ok(()), store)
+        },
         Message::Execute {
             contract,
             msg,
             funds,
-        } => execute(store, contract, msg, funds),
+        } => {
+            let (result, store) = execute(store, &contract, msg, funds);
+            match result {
+                Ok(_) => info!(contract = contract.to_string(), "executed contract"),
+                Err(err) => error!(?err, "failed to execute contract"),
+            }
+            (Ok(()), store)
+        },
     }
 }
 
-fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<()> {
+fn store_code<S: Storage>(store: &mut S, wasm_byte_code: &Binary) -> anyhow::Result<Hash> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let hash = hash(wasm_byte_code);
 
     let exists = CODES.has(store, &hash);
     ensure!(!exists, "Do not upload the same code twice");
-    info!(?hash, "Stored code");
 
-    CODES.save(store, &hash, wasm_byte_code)
+    CODES.save(store, &hash, wasm_byte_code)?;
+
+    Ok(hash)
+}
+
+struct InstantiateReport {
+    pub address:   Addr,
+    pub code_hash: Hash,
+    pub admin:     Option<Addr>,
 }
 
 fn instantiate<S: Storage + 'static>(
@@ -255,7 +287,7 @@ fn instantiate<S: Storage + 'static>(
     salt:      Binary,
     funds:     Vec<Coin>,
     admin:     Option<Addr>,
-) -> (anyhow::Result<()>, S) {
+) -> (anyhow::Result<InstantiateReport>, S) {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
 
     // load wasm code
@@ -284,31 +316,33 @@ fn instantiate<S: Storage + 'static>(
 
     // save account info
     let mut store = wasm_store.into_data().disassemble();
-    // TODO: we need to do some cloning here because the tracing output later...
-    // can this be avoided?
     let account = Account {
-        code_hash: code_hash.clone(),
-        admin:     admin.clone(),
+        code_hash,
+        admin,
     };
     if let Err(err) = ACCOUNTS.save(&mut store, &address, &account) {
         return (Err(err), store);
     }
 
-    info!(?address, ?code_hash, ?admin, "Instantiated contract");
+    let report = InstantiateReport {
+        address,
+        code_hash: account.code_hash,
+        admin:     account.admin,
+    };
 
-    (Ok(()), store)
+    (Ok(report), store)
 }
 
 fn execute<S: Storage + 'static>(
     store:     S,
-    contract:  Addr,
+    contract:  &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
 ) -> (anyhow::Result<()>, S) {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
 
     // load contract info
-    let account = match ACCOUNTS.load(&store, &contract) {
+    let account = match ACCOUNTS.load(&store, contract) {
         Ok(account) => account,
         Err(err) => return (Err(err), store),
     };
@@ -320,17 +354,13 @@ fn execute<S: Storage + 'static>(
     };
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(store, &contract, wasm_byte_code);
+    let (instance, mut wasm_store) = must_build_wasm_instance(store, contract, wasm_byte_code);
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call execute
     let resp = match host.call_execute(msg) {
-        Ok(resp) => {
-            debug!(?contract, "Executed contract");
-            resp
-        },
+        Ok(resp) => resp,
         Err(err) => {
-            debug!(?contract, ?err, "Failed to execute contract");
             let store = wasm_store.into_data().disassemble();
             return (Err(err), store);
         },
