@@ -6,10 +6,6 @@ use {
 
 /// Adapted from cw-multi-test:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
-///
-/// We implement both Storage and BackendStorage trait for CacheStore, so that
-/// it can be used in both host functions (db_read/write/scan...) and with our
-/// storage primitives (Item, Map, IndexedMap...)
 pub struct CacheStore<S> {
     base:    S,
     pending: Batch,
