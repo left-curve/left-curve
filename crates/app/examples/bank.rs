@@ -55,17 +55,17 @@ fn main() -> anyhow::Result<()> {
     let block = mock_block_info(1, 1);
     let txs = vec![mock_tx(0, vec![
         Message::StoreCode {
-            wasm_byte_code: wasm_byte_code.into(),
+            wasm_byte_code: wasm_byte_code.clone().into(),
         },
         Message::Instantiate {
-            code_hash,
+            code_hash: code_hash.clone(),
             msg: to_json(&InstantiateMsg {
                 initial_balances: initial_balances(),
             })?,
-            salt,
+            salt:  salt.clone(),
             funds: vec![],
             admin: None,
-        }
+        },
     ])];
     app.finalize_block(block, txs)?;
     app.commit()?;
@@ -103,6 +103,58 @@ fn main() -> anyhow::Result<()> {
         Message::Execute {
             contract: contract_addr.clone(),
             msg:      to_json(&send_msg(5, 6, "uosmo", 64))?,
+            funds:    vec![],
+        },
+    ]));
+    app.finalize_block(block, txs)?;
+    app.commit()?;
+
+    println!("😈 Intentionally making some failed txs");
+    let block = mock_block_info(3, 3);
+    let mut txs = vec![];
+    // uploading the same code twice - fail
+    txs.push(mock_tx(0, vec![
+        Message::StoreCode {
+            wasm_byte_code: wasm_byte_code.into(),
+        },
+    ]));
+    // instantiate a contract with an non-existent code hash - fail
+    txs.push(mock_tx(0, vec![
+        Message::Instantiate {
+            code_hash: hash("haha"),
+            msg: to_json(&InstantiateMsg {
+                initial_balances: vec![],
+            })?,
+            salt:  salt.clone(),
+            funds: vec![],
+            admin: None,
+        },
+    ]));
+    // instantiate a contract that would have the same address - fail
+    txs.push(mock_tx(0, vec![
+        Message::Instantiate {
+            code_hash,
+            msg: to_json(&InstantiateMsg {
+                initial_balances: vec![],
+            })?,
+            salt,
+            funds: vec![],
+            admin: None,
+        },
+    ]));
+    // execute a non-existent contract - fail
+    txs.push(mock_tx(0, vec![
+        Message::Execute {
+            contract: Addr::mock(123),
+            msg:      to_json(&send_msg(1, 4, "uatom", 75))?,
+            funds:    vec![],
+        },
+    ]));
+    // send more coins than balance - fail
+    txs.push(mock_tx(0, vec![
+        Message::Execute {
+            contract: contract_addr.clone(),
+            msg:      to_json(&send_msg(1, 4, "uatom", 999999999))?,
             funds:    vec![],
         },
     ]));

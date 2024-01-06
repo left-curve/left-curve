@@ -1,9 +1,9 @@
 use {
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     super::{CODES, ACCOUNTS, CONTRACT_NAMESPACE},
     crate::wasm::must_build_wasm_instance,
     cw_std::{Message, Storage, Binary, Hash, hash, Addr, Coin, Account},
-    tracing::{info, error},
+    tracing::{info, warn},
     cw_vm::Host,
 };
 
@@ -39,7 +39,7 @@ fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resul
             Ok(())
         },
         Err(err) => {
-            error!(?err, "failed to store code");
+            warn!(err = err.to_string(), "failed to store code");
             Err(err)
         },
     }
@@ -49,8 +49,7 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resu
     // TODO: static check, ensure wasm code has necessary imports/exports
     let code_hash = hash(wasm_byte_code);
 
-    let exists = CODES.has(store, &code_hash);
-    ensure!(!exists, "Do not upload the same code twice");
+    ensure!(!CODES.has(store, &code_hash), "code with hash `{code_hash}` already exists");
 
     CODES.save(store, &code_hash, wasm_byte_code)?;
 
@@ -73,7 +72,7 @@ fn instantiate<S: Storage + 'static>(
             (Ok(()), store)
         },
         (Err(err), store) => {
-            error!(?err, "failed to instantiate contract");
+            warn!(err = err.to_string(), "failed to instantiate contract");
             (Err(err), store)
         },
     }
@@ -97,6 +96,9 @@ fn _instantiate<S: Storage + 'static>(
 
     // compute contract address
     let address = Addr::compute(&code_hash, &salt);
+    if ACCOUNTS.has(&store, &address) {
+        return (Err(anyhow!("account with the address `{address}` already exists")), store);
+    }
 
     // create wasm host
     let (instance, mut wasm_store) = must_build_wasm_instance(
@@ -145,7 +147,7 @@ fn execute<S: Storage + 'static>(
             (Ok(()), store)
         },
         (Err(err), store) => {
-            error!(?err, "failed to execute contract");
+            warn!(err = err.to_string(), "failed to execute contract");
             (Err(err), store)
         },
     }
