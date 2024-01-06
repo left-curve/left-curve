@@ -84,13 +84,13 @@ fn range_bounds<K: MapKey>(
 ) -> (Vec<u8>, Vec<u8>) {
     let min = match min.map(RawBound::from) {
         None => prefix.to_vec(),
-        Some(RawBound::Inclusive(k)) => concat(&prefix, &k),
-        Some(RawBound::Exclusive(k)) => extend_one_byte(concat(&prefix, &k)),
+        Some(RawBound::Inclusive(k)) => concat(prefix, &k),
+        Some(RawBound::Exclusive(k)) => extend_one_byte(concat(prefix, &k)),
     };
     let max = match max.map(RawBound::from) {
         None => increment_last_byte(prefix.to_vec()),
-        Some(RawBound::Inclusive(k)) => extend_one_byte(concat(&prefix, &k)),
-        Some(RawBound::Exclusive(k)) => concat(&prefix, &k),
+        Some(RawBound::Inclusive(k)) => extend_one_byte(concat(prefix, &k)),
+        Some(RawBound::Exclusive(k)) => concat(prefix, &k),
     };
 
     (min, max)
