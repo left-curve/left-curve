@@ -75,33 +75,33 @@ fn main() -> anyhow::Result<()> {
     let mut txs = vec![mock_tx(1, vec![
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(1, 4, "uatom", 75))?,
+            msg:      to_json(&send_msg(4, "uatom", 75))?,
             funds:    vec![],
         },
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(1, 5, "uosmo", 420))?,
+            msg:      to_json(&send_msg(5, "uosmo", 420))?,
             funds:    vec![],
         },
     ])];
     txs.push(mock_tx(2, vec![
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(2, 3, "uatom", 50))?,
+            msg:      to_json(&send_msg(3, "uatom", 50))?,
             funds:    vec![],
         },
     ]));
     txs.push(mock_tx(3, vec![
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(3, 1, "uatom", 69))?,
+            msg:      to_json(&send_msg(1, "uatom", 69))?,
             funds:    vec![],
         },
     ]));
     txs.push(mock_tx(2, vec![
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(5, 6, "uosmo", 64))?,
+            msg:      to_json(&send_msg(6, "uosmo", 64))?,
             funds:    vec![],
         },
     ]));
@@ -144,15 +144,15 @@ fn main() -> anyhow::Result<()> {
     txs.push(mock_tx(0, vec![
         Message::Execute {
             contract: Addr::mock(123),
-            msg:      to_json(&send_msg(1, 4, "uatom", 75))?,
+            msg:      to_json(&send_msg(4, "uatom", 75))?,
             funds:    vec![],
         },
     ]));
     // send more coins than balance - fail
-    txs.push(mock_tx(0, vec![
+    txs.push(mock_tx(1, vec![
         Message::Execute {
             contract: contract_addr.clone(),
-            msg:      to_json(&send_msg(1, 4, "uatom", 999999999))?,
+            msg:      to_json(&send_msg(4, "uatom", 999999999))?,
             funds:    vec![],
         },
     ]));
@@ -219,9 +219,8 @@ fn initial_balances() -> Vec<Balance> {
     balances
 }
 
-fn send_msg(from_idx: u8, to_idx: u8, denom: &str, amount: u128) -> ExecuteMsg {
+fn send_msg(to_idx: u8, denom: &str, amount: u128) -> ExecuteMsg {
     ExecuteMsg::Send {
-        from:   Addr::mock(from_idx),
         to:     Addr::mock(to_idx),
         denom:  denom.into(),
         amount: Uint128::new(amount),

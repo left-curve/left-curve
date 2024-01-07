@@ -26,7 +26,6 @@ pub struct Balance {
 #[cw_serde]
 pub enum ExecuteMsg {
     Send {
-        from:   Addr,
         to:     Addr,
         denom:  String,
         amount: Uint128,
@@ -64,11 +63,10 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
 pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Send {
-            from,
             to,
             denom,
             amount,
-        } => send(ctx, from, to, denom, amount),
+        } => send(ctx, to, denom, amount),
     }
 }
 
@@ -93,13 +91,12 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
 
 pub fn send(
     ctx:    ExecuteCtx,
-    from:   Addr,
     to:     Addr,
     denom:  String,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
     // decrease the sender's balance
-    BALANCES.update(ctx.store, (&from, &denom), |maybe_balance| {
+    BALANCES.update(ctx.store, (&ctx.sender, &denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(amount)?;
 
         // if balance is reduced to zero, we delete it, to save disk space

@@ -86,9 +86,13 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
             amount,
         });
     }
-    let res = host.call_instantiate(&mock_context(), to_json(&InstantiateMsg {
-        initial_balances,
-    })?)?;
+
+    let res = host.call_instantiate(
+        &mock_context(Some(Addr::mock(0))),
+        to_json(&InstantiateMsg {
+            initial_balances,
+        })?,
+    )?;
 
     println!("✅ Instantiation successful! res={}", serde_json::to_string(&res)?);
 
@@ -104,12 +108,14 @@ fn send<T>(
 ) -> anyhow::Result<()> {
     println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
-    let res = host.call_execute(&mock_context(), to_json(&ExecuteMsg::Send {
-        from,
-        to,
-        denom:  denom.into(),
-        amount: Uint128::new(amount),
-    })?)?;
+    let res = host.call_execute(
+        &mock_context(Some(from)),
+        to_json(&ExecuteMsg::Send {
+            to,
+            denom: denom.into(),
+            amount: Uint128::new(amount),
+        })?,
+    )?;
 
     println!("✅ Send successful! res={}", serde_json::to_string(&res)?);
 
@@ -119,10 +125,13 @@ fn send<T>(
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     println!("🤖 Querying balances");
 
-    let res_bytes = host.call_query(&mock_context(), to_json(&QueryMsg::Balances {
-        start_after: None,
-        limit:       None,
-    })?)?;
+    let res_bytes = host.call_query(
+        &mock_context(None),
+        to_json(&QueryMsg::Balances {
+            start_after: None,
+            limit:       None,
+        })?,
+    )?;
 
     let res: Vec<Balance> = from_json(res_bytes)?;
 
@@ -133,10 +142,10 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
 
 // for this example, we don't use a context that resembles a real blockchain.
 // see the example in cw-app instead.
-fn mock_context() -> Context {
+fn mock_context(sender: Option<Addr>) -> Context {
     Context {
         block_height:    0,
         block_timestamp: 0,
-        sender:          None,
+        sender,
     }
 }
