@@ -1,7 +1,7 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail},
-    cw_std::{from_json, to_json, Binary, Context, ContractResult, Response},
+    cw_std::{from_json, to_json, Binary, Context, ContractResult, Response, Tx},
     data_encoding::BASE64,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
@@ -33,6 +33,13 @@ impl<'a, S> Host<'a, S> {
             alloc_fn:   OnceCell::new(),
             dealloc_fn: OnceCell::new(),
         }
+    }
+
+    pub fn call_before_tx(&mut self, ctx: &Context, tx: &Tx) -> anyhow::Result<Response> {
+        let tx_bytes = to_json(tx)?;
+        let res_bytes = self.call_entry_point_raw("before_tx", ctx, tx_bytes)?;
+        let res: ContractResult<Response> = from_json(res_bytes)?;
+        res.into_result()
     }
 
     pub fn call_instantiate(

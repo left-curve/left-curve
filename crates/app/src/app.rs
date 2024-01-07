@@ -1,5 +1,8 @@
 use {
-    crate::{execute::process_msg, query::process_query},
+    crate::{
+        execute::{authenticate_tx, process_msg},
+        query::process_query,
+    },
     anyhow::{anyhow, ensure},
     cw_db::{Batch, CacheStore, Flush},
     cw_std::{
@@ -172,12 +175,17 @@ fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> anyhow::Result<S>
 where
     S: Storage + Flush + 'static,
 {
-    // TODO: authenticate txs
-
     // create cached store for this tx
     // if execution fails, state changes won't be committed
-    let mut result;
     let mut cached = CacheStore::new(store, None);
+    let mut result;
+
+    // authenticate tx by calling the sender account's `before_tx` entry point
+    (result, cached) = authenticate_tx(cached, block, &tx);
+    if result.is_err() {
+        let (store, _) = cached.disassemble();
+        return Ok(store);
+    }
 
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
         debug!(idx, "processing msg");
@@ -191,6 +199,8 @@ where
             return Ok(store);
         }
     }
+
+    // TODO: add `after_tx` hook?
 
     // all messages succeeded. commit the state changes
     cached.flush()

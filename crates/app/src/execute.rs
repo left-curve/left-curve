@@ -4,9 +4,9 @@ use {
         wasm::must_build_wasm_instance,
     },
     anyhow::{anyhow, ensure},
-    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
+    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage, Tx},
     cw_vm::Host,
-    tracing::{info, warn},
+    tracing::{debug, info, warn},
 };
 
 pub fn process_msg<S: Storage + 'static>(
@@ -32,6 +32,74 @@ pub fn process_msg<S: Storage + 'static>(
             funds,
         } => execute(store, block, sender, &contract, msg, funds),
     }
+}
+
+// --------------------------------- before tx ---------------------------------
+
+pub fn authenticate_tx<S: Storage + 'static>(
+    store: S,
+    block: &BlockInfo,
+    tx:    &Tx,
+) -> (anyhow::Result<()>, S) {
+    match _authenticate_tx(store, block, tx) {
+        (Ok(()), store) => {
+            // TODO: add txhash here?
+            debug!(sender = tx.sender.to_string(), "tx authenticated");
+            (Ok(()), store)
+        },
+        (Err(err), store) => {
+            warn!(sender = tx.sender.to_string(), "failed to authenticate tx");
+            (Err(err), store)
+        },
+    }
+}
+
+fn _authenticate_tx<S: Storage + 'static>(
+    store: S,
+    block: &BlockInfo,
+    tx:    &Tx,
+) -> (anyhow::Result<()>, S) {
+    // TODO: a lot of duplicate code here. refactor & remove
+
+    // load contract info
+    let account = match ACCOUNTS.load(&store, &tx.sender) {
+        Ok(account) => account,
+        Err(err) => return (Err(err), store),
+    };
+
+    // load wasm code
+    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
+        Ok(wasm_byte_code) => wasm_byte_code,
+        Err(err) => return (Err(err), store),
+    };
+
+    // create wasm host
+    let (instance, mut wasm_store) = must_build_wasm_instance(
+        store,
+        CONTRACT_NAMESPACE,
+        &tx.sender,
+        wasm_byte_code,
+    );
+    let mut host = Host::new(&instance, &mut wasm_store);
+
+    // call `before_tx` entry point
+    let ctx = Context {
+        block:    block.clone(),
+        contract: tx.sender.clone(),
+        sender:   None,
+        simulate: None,
+    };
+    let resp = match host.call_before_tx(&ctx, tx) {
+        Ok(resp) => resp,
+        Err(err) => {
+            let store = wasm_store.into_data().disassemble();
+            return (Err(err), store);
+        },
+    };
+
+    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+
+    (Ok(()), wasm_store.into_data().disassemble())
 }
 
 // -------------------------------- store code ---------------------------------
