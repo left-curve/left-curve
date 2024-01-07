@@ -3,7 +3,7 @@ use {
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
-/// NOTE: This function takes the BLAKE3 hash of the message.
+/// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> anyhow::Result<()> {
     let msg = Identity256::from_bytes(msg_hash)?;
     let sig = Signature::from_bytes(sig.into())?;
