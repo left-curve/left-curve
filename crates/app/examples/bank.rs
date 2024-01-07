@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
             funds:    vec![],
         },
     ]));
-    txs.push(mock_tx(2, vec![
+    txs.push(mock_tx(5, vec![
         Message::Execute {
             contract: contract_addr.clone(),
             msg:      to_json(&send_msg(6, "uosmo", 64))?,
