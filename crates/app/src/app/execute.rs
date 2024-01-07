@@ -60,6 +60,7 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resu
 
 // -------------------------------- instantiate --------------------------------
 
+#[allow(clippy::too_many_arguments)]
 fn instantiate<S: Storage + 'static>(
     store:     S,
     block:     &BlockInfo,
@@ -82,6 +83,7 @@ fn instantiate<S: Storage + 'static>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn _instantiate<S: Storage + 'static>(
     store:     S,
     block:     &BlockInfo,
