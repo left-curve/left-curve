@@ -46,9 +46,11 @@ pub fn process_query<S: Storage + 'static>(
 }
 
 fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
+    let block = LAST_FINALIZED_BLOCK.load(store)?;
     Ok(InfoResponse {
-        chain_id: CHAIN_ID.load(store)?,
-        last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
+        chain_id:        CHAIN_ID.load(store)?,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
     })
 }
 
