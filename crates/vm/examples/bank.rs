@@ -3,13 +3,12 @@
 //! $ just optimize
 //! $ cargo run -p cw-vm --example bank
 
-use cw_std::BlockInfo;
-
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw_std::{from_json, to_json, Addr, Context, Uint128},
+    cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
     cw_vm::{
-        db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder, MockStorage,
+        db_next, db_read, db_remove, db_scan, db_write, debug, secp256k1_verify, secp256r1_verify,
+        Host, InstanceBuilder, MockStorage,
     },
     std::{env, path::PathBuf},
 };
@@ -45,6 +44,8 @@ fn main() -> anyhow::Result<()> {
         .with_host_function("db_scan", db_scan)?
         .with_host_function("db_next", db_next)?
         .with_host_function("debug", debug)?
+        .with_host_function("secp256k1_verify", secp256k1_verify)?
+        .with_host_function("secp256r1_verify", secp256r1_verify)?
         .finalize()?;
     let mut host = Host::new(&instance, &mut store);
 

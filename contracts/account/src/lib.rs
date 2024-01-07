@@ -1,13 +1,13 @@
 use {
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, ensure},
     cw_std::{
-        cw_serde, entry_point, to_json, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx, Item,
-        QueryCtx, Response, Tx,
+        cw_serde, entry_point, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
+        Item, Message, QueryCtx, Response, Tx,
     },
 };
 
 const PUBKEY:   Item<PubKey> = Item::new("pk");
-const SEQUENCE: Item<u64>    = Item::new("seq");
+const SEQUENCE: Item<u32>    = Item::new("seq");
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -31,13 +31,46 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct StateResponse {
     pubkey:   PubKey,
-    sequence: u64,
+    sequence: u32,
 }
 
 #[cw_serde]
 pub enum PubKey {
     Secp256k1(Binary),
     Secp256r1(Binary),
+}
+
+/// Given details of a transaction, produce a bytes that the sender needs to
+/// sign (hashed).
+///
+/// The bytes are defined as:
+///
+/// ```plain
+/// bytes := blake3(json(msgs) | sender_addr | chain_id | sequence)
+/// ```
+///
+/// where:
+/// - `sender_addr` is a 32 bytes address of the sender;
+/// - `chain_id` is the chain ID in UTF-8 encoding;
+/// - `sequence` is the sender account's sequence in 32-bit big endian encoding.
+///
+/// TODO: json here is ambiguous, i.e. what padding and linebreak character to
+/// use, the order of fields... elaborate it.
+///
+/// TODO: is it efficient to do hashing in the contract? maybe move this to the
+/// host??
+pub fn sign_bytes(
+    msgs:     &[Message],
+    sender:   &Addr,
+    chain_id: &str,
+    sequence: u32,
+) -> anyhow::Result<[u8; blake3::OUT_LEN]> {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(to_json(&msgs)?.as_ref());
+    hasher.update(sender.as_ref());
+    hasher.update(chain_id.as_bytes());
+    hasher.update(&sequence.to_be_bytes());
+    Ok(hasher.finalize().into())
 }
 
 #[entry_point]
@@ -53,22 +86,20 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let mut sequence = SEQUENCE.load(ctx.store)?;
 
     // prepare the hash that is expected to have been signed
-    // msg_hash := blake3(json(tx) | utf8(chain_id) | bigendian(sequence))
-    let tx_bytes = to_json(&tx)?;
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(tx_bytes.as_ref());
-    hasher.update(ctx.block.chain_id.as_bytes());
-    hasher.update(&sequence.to_be_bytes());
+    let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.block.chain_id, sequence)?;
+
+    // the tx must include a signature
+    let sig = tx.credential.ok_or(anyhow!("signature not found"))?;
 
     // verify the signature
     // skip if it's simulate mode
     if !ctx.simulate {
-        match pubkey {
+        match &pubkey {
             PubKey::Secp256k1(bytes) => {
-                todo!()
+                ctx.secp256k1_verify(msg_hash, sig.as_ref(), bytes.as_ref())?;
             },
             PubKey::Secp256r1(bytes) => {
-                todo!()
+                ctx.secp256r1_verify(msg_hash, sig.as_ref(), bytes.as_ref())?;
             },
         }
     }

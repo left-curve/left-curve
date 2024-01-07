@@ -1,7 +1,7 @@
 use {
     crate::PrefixStore,
     cw_std::{Addr, Storage},
-    cw_vm::{db_read, db_write, db_remove, db_scan, db_next, debug, InstanceBuilder},
+    cw_vm::{db_read, db_write, db_remove, db_scan, db_next, debug, InstanceBuilder, secp256k1_verify, secp256r1_verify},
     wasmi::{Instance, Store},
 };
 
@@ -30,5 +30,7 @@ fn build_wasm_instance<S: Storage + 'static>(
         .with_host_function("db_write", db_write)?
         .with_host_function("db_remove", db_remove)?
         .with_host_function("debug", debug)?
+        .with_host_function("secp256k1_verify", secp256k1_verify)?
+        .with_host_function("secp256r1_verify", secp256r1_verify)?
         .finalize()
 }

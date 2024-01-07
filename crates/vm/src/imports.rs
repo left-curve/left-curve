@@ -112,3 +112,39 @@ pub fn debug<S>(caller: Caller<'_, S>, msg_ptr: u32) -> Result<(), wasmi::Error>
 
     Ok(())
 }
+
+pub fn secp256k1_verify<S>(
+    caller:       Caller<'_, S>,
+    msg_hash_ptr: u32,
+    sig_ptr:      u32,
+    pk_ptr:       u32,
+) -> Result<i32, wasmi::Error> {
+    let host = Host::from(caller);
+
+    let msg_hash = host.read_from_memory(msg_hash_ptr)?;
+    let sig = host.read_from_memory(sig_ptr)?;
+    let pk = host.read_from_memory(pk_ptr)?;
+
+    match cw_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
+        Ok(()) => Ok(0),
+        Err(_) => Ok(1),
+    }
+}
+
+pub fn secp256r1_verify<S>(
+    caller:       Caller<'_, S>,
+    msg_hash_ptr: u32,
+    sig_ptr:      u32,
+    pk_ptr:       u32,
+) -> Result<i32, wasmi::Error> {
+    let host = Host::from(caller);
+
+    let msg_hash = host.read_from_memory(msg_hash_ptr)?;
+    let sig = host.read_from_memory(sig_ptr)?;
+    let pk = host.read_from_memory(pk_ptr)?;
+
+    match cw_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
+        Ok(()) => Ok(0),
+        Err(_) => Ok(1),
+    }
+}

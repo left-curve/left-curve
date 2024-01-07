@@ -1,6 +1,10 @@
-use crate::{ExecuteCtx, InstantiateCtx, Order, QueryCtx, Record, Region, Storage};
+use {
+    crate::{BeforeTxCtx, ExecuteCtx, InstantiateCtx, Order, QueryCtx, Record, Region, Storage},
+    anyhow::anyhow,
+};
 
 // these are the method that the host must implement.
+// we use usize to denote memory addresses, and i32 to denote other data.
 extern "C" {
     // database operations.
     //
@@ -11,8 +15,8 @@ extern "C" {
     //
     // read ops (no state mutation):
     fn db_read(key_ptr: usize) -> usize;
-    fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> u32;
-    fn db_next(iterator_id: u32) -> usize;
+    fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> i32;
+    fn db_next(iterator_id: i32) -> usize;
 
     // write ops (mutate the state):
     fn db_write(key_ptr: usize, value_ptr: usize);
@@ -21,6 +25,11 @@ extern "C" {
     // print a debug message to the client's CLI output. the client must have
     // set tracing level to DEBUG to see it.
     fn debug(msg_ptr: usize);
+
+    // crypto methods
+    // return value of 0 means ok; any value other than 0 means error.
+    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -93,7 +102,7 @@ impl Storage for ExternalStorage {
 }
 
 pub struct ExternalIterator {
-    iterator_id: u32,
+    iterator_id: i32,
 }
 
 impl Iterator for ExternalIterator {
@@ -164,11 +173,67 @@ macro_rules! impl_debug {
 
                 unsafe { debug(ptr as usize) }
             }
+
+            /// NOTE: This function takes the hash of the message, not the prehash.
+            pub fn secp256k1_verify(
+                &self,
+                msg_hash: impl AsRef<[u8]>,
+                sig:      impl AsRef<[u8]>,
+                pk:       impl AsRef<[u8]>,
+            ) -> anyhow::Result<()> {
+                let msg_hash_region = Region::build(msg_hash.as_ref());
+                let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+                let sig_region = Region::build(sig.as_ref());
+                let sig_ptr = &*sig_region as *const Region;
+
+                let pk_region = Region::build(pk.as_ref());
+                let pk_ptr = &*pk_region as *const Region;
+
+                let return_value = unsafe {
+                    secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
+                };
+
+                if return_value == 0 {
+                    Ok(())
+                } else {
+                    // TODO: more useful error codes
+                    Err(anyhow!("signature verification failed"))
+                }
+            }
+
+            /// NOTE: This function takes the hash of the message, not the prehash.
+            pub fn secp256r1_verify(
+                &self,
+                msg_hash: impl AsRef<[u8]>,
+                sig:      impl AsRef<[u8]>,
+                pk:       impl AsRef<[u8]>,
+            ) -> anyhow::Result<()> {
+                let msg_hash_region = Region::build(msg_hash.as_ref());
+                let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+                let sig_region = Region::build(sig.as_ref());
+                let sig_ptr = &*sig_region as *const Region;
+
+                let pk_region = Region::build(pk.as_ref());
+                let pk_ptr = &*pk_region as *const Region;
+
+                let return_value = unsafe {
+                    secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
+                };
+
+                if return_value == 0 {
+                    Ok(())
+                } else {
+                    // TODO: more useful error codes
+                    Err(anyhow!("signature verification failed"))
+                }
+            }
         })*
     };
 }
 
-impl_debug!(ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
+impl_debug!(BeforeTxCtx<'a>, ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
 
 // ----------------------------------- tests -----------------------------------
 

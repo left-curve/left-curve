@@ -192,6 +192,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-bank",
+ "cw-crypto",
  "cw-std",
  "data-encoding",
  "serde",
