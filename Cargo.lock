@@ -133,6 +133,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-bank",
+ "cw-db",
  "cw-std",
  "cw-vm",
  "serde",
@@ -161,6 +162,15 @@ dependencies = [
  "k256",
  "p256",
  "rand",
+]
+
+[[package]]
+name = "cw-db"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-std",
+ "cw-vm",
 ]
 
 [[package]]

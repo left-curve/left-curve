@@ -1,6 +1,8 @@
 use {
-    super::{ACCOUNTS, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
-    crate::wasm::must_build_wasm_instance,
+    crate::{
+        app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+        wasm::must_build_wasm_instance,
+    },
     cw_std::{
         AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order, Query,
         QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,

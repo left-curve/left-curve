@@ -5,7 +5,8 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
-cw-std          = { path = "../std", features = ["storage-utils"] }
+cw-db           = { path = "../db" }
+cw-std          = { path = "../std" }
 cw-vm           = { path = "../vm" }
 serde-json-wasm = { workspace = true }
 tracing         = { workspace = true }

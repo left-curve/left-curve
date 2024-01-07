@@ -1,22 +1,18 @@
-mod execute;
-mod query;
-
 use {
-    crate::{Batch, CacheStore, Flush},
+    crate::{execute::process_msg, query::process_query},
     anyhow::{anyhow, ensure},
+    cw_db::{Batch, CacheStore, Flush},
     cw_std::{
         Account, Addr, Binary, BlockInfo, GenesisState, Hash, Item, Map, Query, QueryResponse,
         Storage, Tx,
     },
-    execute::process_msg,
-    query::process_query,
     tracing::{debug, info},
 };
 
-const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
-const CODES:                Map<&Hash, Binary>  = Map::new("c");
-const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
-const CONTRACT_NAMESPACE:   &[u8]               = b"w";
+pub(crate) const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
+pub(crate) const CODES:                Map<&Hash, Binary>  = Map::new("c");
+pub(crate) const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
+pub(crate) const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
 pub struct App<S> {
     store:         Option<S>,

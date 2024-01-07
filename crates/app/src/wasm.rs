@@ -1,7 +1,10 @@
 use {
-    crate::PrefixStore,
+    cw_db::PrefixStore,
     cw_std::{Addr, Storage},
-    cw_vm::{db_read, db_write, db_remove, db_scan, db_next, debug, InstanceBuilder, secp256k1_verify, secp256r1_verify},
+    cw_vm::{
+        db_next, db_read, db_remove, db_scan, db_write, debug, secp256k1_verify, secp256r1_verify,
+        InstanceBuilder,
+    },
     wasmi::{Instance, Store},
 };
 

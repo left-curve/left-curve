@@ -1,6 +1,8 @@
 use {
-    super::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
-    crate::wasm::must_build_wasm_instance,
+    crate::{
+        app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
+        wasm::must_build_wasm_instance,
+    },
     anyhow::{anyhow, ensure},
     cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
     cw_vm::Host,
