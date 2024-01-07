@@ -1,16 +1,18 @@
 use {
-    anyhow::{anyhow, ensure},
-    super::{CODES, ACCOUNTS, CONTRACT_NAMESPACE},
+    super::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
     crate::wasm::must_build_wasm_instance,
-    cw_std::{Message, Storage, Binary, Hash, hash, Addr, Coin, Account},
-    tracing::{info, warn},
+    anyhow::{anyhow, ensure},
+    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
     cw_vm::Host,
+    tracing::{info, warn},
 };
 
-pub fn process_msg<S>(mut store: S, msg: Message) -> (anyhow::Result<()>, S)
-where
-    S: Storage + 'static,
-{
+pub fn process_msg<S: Storage + 'static>(
+    mut store: S,
+    block:     &BlockInfo,
+    sender:    &Addr,
+    msg:       Message,
+) -> (anyhow::Result<()>, S) {
     match msg {
         Message::StoreCode {
             wasm_byte_code,
@@ -21,12 +23,12 @@ where
             salt,
             funds,
             admin,
-        } => instantiate(store, code_hash, msg, salt, funds, admin),
+        } => instantiate(store, block, sender, code_hash, msg, salt, funds, admin),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => execute(store, &contract, msg, funds),
+        } => execute(store, block, sender, &contract, msg, funds),
     }
 }
 
@@ -60,13 +62,15 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resu
 
 fn instantiate<S: Storage + 'static>(
     store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
     code_hash: Hash,
     msg:       Binary,
     salt:      Binary,
     funds:     Vec<Coin>,
     admin:     Option<Addr>,
 ) -> (anyhow::Result<()>, S) {
-    match _instantiate(store, code_hash, msg, salt, funds, admin) {
+    match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
         (Ok(address), store) => {
             info!(address = address.to_string(), "instantiated contract");
             (Ok(()), store)
@@ -80,6 +84,8 @@ fn instantiate<S: Storage + 'static>(
 
 fn _instantiate<S: Storage + 'static>(
     store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
     code_hash: Hash,
     msg:       Binary,
     salt:      Binary,
@@ -110,7 +116,12 @@ fn _instantiate<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call instantiate
-    let resp = match host.call_instantiate(msg) {
+    let ctx = Context {
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        sender:          Some(sender.clone()),
+    };
+    let resp = match host.call_instantiate(&ctx, msg) {
         Ok(resp) => resp,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();
@@ -137,11 +148,13 @@ fn _instantiate<S: Storage + 'static>(
 
 fn execute<S: Storage + 'static>(
     store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
     contract:  &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
 ) -> (anyhow::Result<()>, S) {
-    match _execute(store, contract, msg, funds) {
+    match _execute(store, block, sender, contract, msg, funds) {
         (Ok(()), store) => {
             info!(contract = contract.to_string(), "executed contract");
             (Ok(()), store)
@@ -155,6 +168,8 @@ fn execute<S: Storage + 'static>(
 
 fn _execute<S: Storage + 'static>(
     store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
     contract:  &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
@@ -183,7 +198,12 @@ fn _execute<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call execute
-    let resp = match host.call_execute(msg) {
+    let ctx = Context {
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        sender:          Some(sender.clone()),
+    };
+    let resp = match host.call_execute(&ctx, msg) {
         Ok(resp) => resp,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();

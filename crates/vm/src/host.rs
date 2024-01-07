@@ -1,7 +1,7 @@
 use {
     crate::Region,
-    anyhow::{anyhow, bail, Context},
-    cw_std::{from_json, Binary, ContractResult, Response},
+    anyhow::{anyhow, bail},
+    cw_std::{from_json, to_json, Binary, Context, ContractResult, Response},
     data_encoding::BASE64,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
@@ -35,20 +35,32 @@ impl<'a, S> Host<'a, S> {
         }
     }
 
-    pub fn call_instantiate(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Response> {
-        let res_bytes = self.call_entry_point_raw("instantiate", msg.as_ref())?;
+    pub fn call_instantiate(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> anyhow::Result<Response> {
+        let res_bytes = self.call_entry_point_raw("instantiate", ctx, msg)?;
         let res: ContractResult<Response> = from_json(res_bytes)?;
         res.into_result()
     }
 
-    pub fn call_execute(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Response> {
-        let res_bytes = self.call_entry_point_raw("execute", msg.as_ref())?;
+    pub fn call_execute(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> anyhow::Result<Response> {
+        let res_bytes = self.call_entry_point_raw("execute", ctx, msg)?;
         let res: ContractResult<Response> = from_json(res_bytes)?;
         res.into_result()
     }
 
-    pub fn call_query(&mut self, msg: impl AsRef<[u8]>) -> anyhow::Result<Binary> {
-        let res_bytes = self.call_entry_point_raw("query", msg.as_ref())?;
+    pub fn call_query(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> anyhow::Result<Binary> {
+        let res_bytes = self.call_entry_point_raw("query", ctx, msg)?;
         let res: ContractResult<Binary> = from_json(res_bytes)?;
         res.into_result()
     }
@@ -58,10 +70,12 @@ impl<'a, S> Host<'a, S> {
     fn call_entry_point_raw(
         &mut self,
         name: &str,
+        ctx:  &Context,
         msg:  impl AsRef<[u8]>,
     ) -> anyhow::Result<Vec<u8>> {
+        let ctx_ptr = self.write_to_memory(to_json(ctx)?.as_ref())?;
         let msg_ptr = self.write_to_memory(msg.as_ref())?;
-        let res_ptr: u32 = self.call(name, msg_ptr)?;
+        let res_ptr: u32 = self.call(name, (ctx_ptr, msg_ptr))?;
         self.read_then_wipe(res_ptr)
     }
 
@@ -161,7 +175,7 @@ impl<'a, S> Host<'a, S> {
         self.caller
             .get_export(name)
             .and_then(Extern::into_func)
-            .with_context(|| format!("Can't find function `{name}` in Wasm exports"))?
+            .ok_or_else(|| anyhow!("Can't find function `{name}` in Wasm exports"))?
             .typed(&self.caller)
             .map_err(Into::into)
     }
@@ -170,7 +184,7 @@ impl<'a, S> Host<'a, S> {
         self.caller
             .get_export("memory")
             .and_then(Extern::into_memory)
-            .context("Can't find memory in Wasm exports")
+            .ok_or(anyhow!("Can't find memory in Wasm exports"))
     }
 
     // TODO: switch to OnceCell::get_or_try_init once it's stablized:

@@ -99,7 +99,7 @@ where
         for (idx, tx) in txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print
             debug!(idx, "processing tx");
-            cached = run_tx(cached, tx)?;
+            cached = run_tx(cached, &block, tx)?;
         }
 
         let (store, pending) = cached.disassemble();
@@ -114,10 +114,13 @@ where
     }
 
     pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
+        // note: when doing query, we use the state from the last finalized block,
+        // do not include uncommitted changes from the current block.
         let store = self.take_store()?;
+        let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
         // perform the query
-        let (res, store) = process_query(store, req);
+        let (res, store) = process_query(store, &block, req);
 
         // put the store back
         self.put_store(store)?;
@@ -150,7 +153,7 @@ where
     }
 }
 
-fn run_tx<S>(store: S, tx: Tx) -> anyhow::Result<S>
+fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> anyhow::Result<S>
 where
     S: Storage + Flush + 'static,
 {
@@ -164,7 +167,7 @@ where
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
         debug!(idx, "processing msg");
 
-        (result, cached) = process_msg(cached, msg);
+        (result, cached) = process_msg(cached, block, &tx.sender, msg);
 
         // if any one of the msgs fails, the entire tx fails.
         // discard uncommitted changes and return the underlying store

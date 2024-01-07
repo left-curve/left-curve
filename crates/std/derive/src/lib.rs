@@ -32,11 +32,10 @@ pub fn entry_point(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
     let cloned = item.clone();
     let function = parse_macro_input!(cloned as ItemFn);
     let name = function.sig.ident.to_string();
-    // the 1st argument is `ctx`, the rest are region pointers
-    let args = function.sig.inputs.len() - 1;
+    let args = function.sig.inputs.len();
 
     // e.g. "ptr0: usize, ptr1: usize, ptr2: usize, "
-    let typed_ptrs = (0..args).fold(String::new(), |acc, i| format!("{acc}ptr{i}: usize", ));
+    let typed_ptrs = (0..args).fold(String::new(), |acc, i| format!("{acc}ptr{i}: usize, "));
     // e.g. "ptr0, ptr1, ptr2, "
     let ptrs = (0..args).fold(String::new(), |acc, i| format!("{acc}ptr{i}, "));
 

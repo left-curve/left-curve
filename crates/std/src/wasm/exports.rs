@@ -1,7 +1,7 @@
 use {
     crate::{
-        from_json, to_json, Binary, ContractResult, ExecuteCtx, ExternalStorage, InstantiateCtx,
-        QueryCtx, Region, Response,
+        from_json, to_json, Binary, Context, ContractResult, ExecuteCtx, ExternalStorage,
+        InstantiateCtx, QueryCtx, Region, Response,
     },
     serde::de::DeserializeOwned,
 };
@@ -38,15 +38,17 @@ macro_rules! try_into_contract_result {
 
 pub fn do_instantiate<M, E>(
     instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
+    ctx_ptr:        usize,
     msg_ptr:        usize,
 ) -> usize
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_instantiate(instantiate_fn, &msg_bytes);
+    let res = _do_instantiate(instantiate_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
@@ -54,17 +56,21 @@ where
 
 fn _do_instantiate<M, E>(
     instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
+    ctx_bytes:      &[u8],
     msg_bytes:      &[u8],
 ) -> ContractResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = InstantiateCtx {
-        store: &mut ExternalStorage,
-        // TODO: other fields...
+        store:           &mut ExternalStorage,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        sender:          ctx.sender.expect("host failed to provide a sender"),
     };
 
     instantiate_fn(ctx, msg).into()
@@ -72,15 +78,17 @@ where
 
 pub fn do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
+    ctx_ptr:    usize,
     msg_ptr:    usize,
 ) -> usize
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_execute(execute_fn, &msg_bytes);
+    let res = _do_execute(execute_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
@@ -88,17 +96,21 @@ where
 
 fn _do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
+    ctx_bytes:  &[u8],
     msg_bytes:  &[u8],
 ) -> ContractResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = ExecuteCtx {
-        store: &mut ExternalStorage,
-        // TODO: other fields...
+        store:           &mut ExternalStorage,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        sender:          ctx.sender.expect("host failed to provide a sender"),
     };
 
     execute_fn(ctx, msg).into()
@@ -106,15 +118,17 @@ where
 
 pub fn do_query<M, E>(
     query_fn: &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
+    ctx_ptr:  usize,
     msg_ptr:  usize,
 ) -> usize
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_query(query_fn, &msg_bytes);
+    let res = _do_query(query_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
@@ -122,17 +136,20 @@ where
 
 fn _do_query<M, E>(
     query_fn:  &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
+    ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> ContractResult<Binary>
 where
     M: DeserializeOwned,
     E: ToString,
 {
+    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = QueryCtx {
-        store: &ExternalStorage,
-        // TODO: other fields...
+        store:           &ExternalStorage,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
     };
 
     query_fn(ctx, msg).into()

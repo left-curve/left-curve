@@ -2,18 +2,19 @@ use {
     super::{ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
     crate::wasm::must_build_wasm_instance,
     cw_std::{
-        AccountResponse, Addr, Binary, Bound, Hash, InfoResponse, Order, Query, QueryResponse,
-        Storage, WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order, Query,
+        QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::Host,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn process_query<S>(store: S, req: Query) -> (anyhow::Result<QueryResponse>, S)
-where
-    S: Storage + 'static,
-{
+pub fn process_query<S: Storage + 'static>(
+    store: S,
+    block: &BlockInfo,
+    req:   Query,
+) -> (anyhow::Result<QueryResponse>, S) {
     match req {
         Query::Info {} => (query_info(&store).map(QueryResponse::Info), store),
         Query::Code {
@@ -38,7 +39,7 @@ where
             contract,
             msg
         } => {
-            let (resp, store) = query_wasm_smart(store, contract, msg);
+            let (resp, store) = query_wasm_smart(store, block, contract, msg);
             (resp.map(QueryResponse::WasmSmart), store)
         },
     }
@@ -110,6 +111,7 @@ fn query_wasm_raw(
 
 fn query_wasm_smart<S: Storage + 'static>(
     store:    S,
+    block:    &BlockInfo,
     contract: Addr,
     msg:      Binary,
 ) -> (anyhow::Result<WasmSmartResponse>, S) {
@@ -135,7 +137,12 @@ fn query_wasm_smart<S: Storage + 'static>(
     let mut host = Host::new(&instance, &mut wasm_store);
 
     // call query
-    let data = match host.call_query(msg) {
+    let ctx = Context {
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        sender:          None,
+    };
+    let data = match host.call_query(&ctx, msg) {
         Ok(data) => data,
         Err(err) => {
             let store = wasm_store.into_data().disassemble();

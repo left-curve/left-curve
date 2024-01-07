@@ -5,7 +5,7 @@
 
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
-    cw_std::{from_json, to_json, Addr, Uint128},
+    cw_std::{from_json, to_json, Addr, Context, Uint128},
     cw_vm::{
         db_next, db_read, db_remove, db_scan, db_write, debug, Host, InstanceBuilder, MockStorage,
     },
@@ -86,7 +86,9 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
             amount,
         });
     }
-    let res = host.call_instantiate(to_json(&InstantiateMsg { initial_balances })?)?;
+    let res = host.call_instantiate(&mock_context(), to_json(&InstantiateMsg {
+        initial_balances,
+    })?)?;
 
     println!("✅ Instantiation successful! res={}", serde_json::to_string(&res)?);
 
@@ -102,7 +104,7 @@ fn send<T>(
 ) -> anyhow::Result<()> {
     println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
-    let res = host.call_execute(to_json(&ExecuteMsg::Send {
+    let res = host.call_execute(&mock_context(), to_json(&ExecuteMsg::Send {
         from,
         to,
         denom:  denom.into(),
@@ -117,7 +119,7 @@ fn send<T>(
 fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     println!("🤖 Querying balances");
 
-    let res_bytes = host.call_query(to_json(&QueryMsg::Balances {
+    let res_bytes = host.call_query(&mock_context(), to_json(&QueryMsg::Balances {
         start_after: None,
         limit:       None,
     })?)?;
@@ -127,4 +129,14 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     println!("{}", serde_json::to_string_pretty(&res)?);
 
     Ok(())
+}
+
+// for this example, we don't use a context that resembles a real blockchain.
+// see the example in cw-app instead.
+fn mock_context() -> Context {
+    Context {
+        block_height:    0,
+        block_timestamp: 0,
+        sender:          None,
+    }
 }

@@ -18,6 +18,9 @@ pub use crate::{
     },
 };
 
+// TODO: put this under an optional feature
+pub use crate::types::Context;
+
 #[cfg(feature = "storage-utils")]
 pub mod storage_utils {
     pub use crate::storage::{
