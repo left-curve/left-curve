@@ -74,6 +74,12 @@ impl MapKey for &Addr {
     }
 }
 
+impl From<Addr> for String {
+    fn from(addr: Addr) -> Self {
+        addr.to_string()
+    }
+}
+
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{}", Hash::PREFIX, hex::encode(self.0.as_ref()))

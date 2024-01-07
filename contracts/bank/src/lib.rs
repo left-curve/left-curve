@@ -89,16 +89,10 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     }
 }
 
-pub fn send(
-    ctx:    ExecuteCtx,
-    to:     Addr,
-    denom:  String,
-    amount: Uint128,
-) -> anyhow::Result<Response> {
+pub fn send(ctx: ExecuteCtx, to: Addr, denom: String, amount: Uint128) -> anyhow::Result<Response> {
     // decrease the sender's balance
     BALANCES.update(ctx.store, (&ctx.sender, &denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(amount)?;
-
         // if balance is reduced to zero, we delete it, to save disk space
         if balance > Uint128::zero() {
             Ok(Some(balance))
@@ -112,7 +106,12 @@ pub fn send(
         maybe_balance.unwrap_or_else(Uint128::zero).checked_add(amount).map(Some)
     })?;
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("method", "send")
+        .add_attribute("from", ctx.sender)
+        .add_attribute("to", to)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
 }
 
 pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> anyhow::Result<Balance> {

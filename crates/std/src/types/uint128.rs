@@ -77,6 +77,12 @@ impl Uint128 {
 
 // TODO: implement Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign
 
+impl From<Uint128> for String {
+    fn from(value: Uint128) -> Self {
+        value.to_string()
+    }
+}
+
 impl fmt::Display for Uint128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0.to_string())
