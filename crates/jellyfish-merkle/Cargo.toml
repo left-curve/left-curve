@@ -1,0 +1,6 @@
+[package]
+name    = "cw-jellyfish-merkle"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
