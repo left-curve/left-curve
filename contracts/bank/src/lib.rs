@@ -9,7 +9,7 @@ use cw_std::{
 const BALANCES: Map<(&Addr, &str), Uint128> = Map::new("b");
 
 // how many items to return in a paginated query by default
-const DEFAULT_LIMIT: u32 = 30;
+const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -34,14 +34,20 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
+    /// Query the balance of a specific user and denom.
+    /// Returns: Balance
     Balance {
         address: Addr,
         denom:   String,
     },
+    /// Enumerate balances of all users and all denoms.
+    /// Returns: Vec<Balance>
     Balances {
         start_after: Option<(Addr, String)>, // (address, denom)
         limit:       Option<u32>,
     },
+    /// Enumerate balances of all denoms belonged to a specific user.
+    /// Returns: Vec<Coin>
     BalancesByUser {
         address:     Addr,
         start_after: Option<String>, // denom
@@ -129,7 +135,7 @@ pub fn query_balances(
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Balance>> {
     let start = start_after.as_ref().map(|(addr, denom)| Bound::Exclusive((addr, denom.as_str())));
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES
         .range(ctx.store, start, None, Order::Ascending)
@@ -152,7 +158,7 @@ pub fn query_balances_by_user(
     limit:       Option<u32>,
 ) -> anyhow::Result<Vec<Coin>> {
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES
         .prefix(&address)
