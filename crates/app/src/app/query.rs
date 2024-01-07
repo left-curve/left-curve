@@ -1,5 +1,5 @@
 use {
-    super::{ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    super::{ACCOUNTS, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
     crate::wasm::must_build_wasm_instance,
     cw_std::{
         AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order, Query,
@@ -48,7 +48,7 @@ pub fn process_query<S: Storage + 'static>(
 fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
     let block = LAST_FINALIZED_BLOCK.load(store)?;
     Ok(InfoResponse {
-        chain_id:        CHAIN_ID.load(store)?,
+        chain_id:        block.chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
     })
@@ -140,9 +140,9 @@ fn query_wasm_smart<S: Storage + 'static>(
 
     // call query
     let ctx = Context {
-        block_height:    block.height,
-        block_timestamp: block.timestamp,
-        sender:          None,
+        block:    block.clone(),
+        sender:   None,
+        simulate: None,
         contract,
     };
     let data = match host.call_query(&ctx, msg) {

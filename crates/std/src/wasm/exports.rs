@@ -67,11 +67,10 @@ where
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = InstantiateCtx {
-        store:           &mut ExternalStorage,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to provide a sender"),
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+        sender:   ctx.sender.expect("host failed to provide a sender"),
     };
 
     instantiate_fn(ctx, msg).into()
@@ -108,11 +107,10 @@ where
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = ExecuteCtx {
-        store:           &mut ExternalStorage,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to provide a sender"),
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+        sender:   ctx.sender.expect("host failed to provide a sender"),
     };
 
     execute_fn(ctx, msg).into()
@@ -149,10 +147,9 @@ where
     let msg = try_into_contract_result!(from_json(msg_bytes));
 
     let ctx = QueryCtx {
-        store:           &ExternalStorage,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        contract:        ctx.contract,
+        store:    &ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
     };
 
     query_fn(ctx, msg).into()

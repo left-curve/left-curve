@@ -3,6 +3,8 @@
 //! $ just optimize
 //! $ cargo run -p cw-vm --example bank
 
+use cw_std::BlockInfo;
+
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{from_json, to_json, Addr, Context, Uint128},
@@ -144,9 +146,13 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
 // see the example in cw-app instead.
 fn mock_context(sender: Option<Addr>) -> Context {
     Context {
-        block_height:    0,
-        block_timestamp: 0,
-        contract:        Addr::mock(0),
+        block: BlockInfo {
+            chain_id:  "dev-1".into(),
+            height:    0,
+            timestamp: 0,
+        },
+        contract: Addr::mock(0),
+        simulate: None,
         sender,
     }
 }

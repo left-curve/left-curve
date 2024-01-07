@@ -1,3 +1,5 @@
+use crate::BlockInfo;
+
 use {
     crate::{Addr, Storage},
     serde::{Deserialize, Serialize},
@@ -12,31 +14,35 @@ use {
 /// a transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
-    pub block_height:    u64,
-    pub block_timestamp: u64,
-    pub sender:          Option<Addr>,
-    pub contract:        Addr,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Option<Addr>,
+    pub simulate: Option<bool>,
+}
+
+pub struct BeforeTxCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub simulate: bool,
 }
 
 pub struct InstantiateCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
-    pub contract:        Addr,
-    pub sender:          Addr,
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Addr,
 }
 
 pub struct ExecuteCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
-    pub contract:        Addr,
-    pub sender:          Addr,
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Addr,
 }
 
 pub struct QueryCtx<'a> {
-    pub store:           &'a dyn Storage,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
-    pub contract:        Addr,
+    pub store:    &'a dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
 }

@@ -1,0 +1,12 @@
+[package]
+name    = "cw-account"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = { workspace = true }
+blake3 = { workspace = true }
+cw-std = { path = "../../crates/std" }

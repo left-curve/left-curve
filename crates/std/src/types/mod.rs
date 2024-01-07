@@ -14,7 +14,7 @@ pub use {
     app::{Account, BlockInfo, GenesisState},
     binary::Binary,
     coin::Coin,
-    context::{Context, ExecuteCtx, InstantiateCtx, QueryCtx},
+    context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx},
     hash::{hash, Hash},
     query::{
         AccountResponse, InfoResponse, Query, QueryResponse, WasmRawResponse, WasmSmartResponse,

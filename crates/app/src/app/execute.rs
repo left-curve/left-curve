@@ -121,10 +121,10 @@ fn _instantiate<S: Storage + 'static>(
 
     // call instantiate
     let ctx = Context {
-        block_height:    block.height,
-        block_timestamp: block.timestamp,
-        contract:        address,
-        sender:          Some(sender.clone()),
+        block:    block.clone(),
+        contract: address,
+        sender:   Some(sender.clone()),
+        simulate: None,
     };
     let resp = match host.call_instantiate(&ctx, msg) {
         Ok(resp) => resp,
@@ -204,10 +204,10 @@ fn _execute<S: Storage + 'static>(
 
     // call execute
     let ctx = Context {
-        block_height:    block.height,
-        block_timestamp: block.timestamp,
-        contract:        contract.clone(),
-        sender:          Some(sender.clone()),
+        block:    block.clone(),
+        contract: contract.clone(),
+        sender:   Some(sender.clone()),
+        simulate: None,
     };
     let resp = match host.call_execute(&ctx, msg) {
         Ok(resp) => resp,

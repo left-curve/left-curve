@@ -13,7 +13,6 @@ use {
     tracing::{debug, info},
 };
 
-const CHAIN_ID:             Item<String>        = Item::new("cid");
 const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
 const CODES:                Map<&Hash, Binary>  = Map::new("c");
 const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
@@ -70,19 +69,9 @@ where
     S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
-        let mut store = self.take_store()?;
-
-        CHAIN_ID.save(&mut store, &genesis_state.chain_id)?;
-
         debug_assert!(genesis_state.msgs.is_empty(), "UNIMPLEMENTED: genesis msg is not supported yet");
 
-        self.put_store(store)?;
-
-        info!(
-            chain_id = genesis_state.chain_id,
-            gen_msgs = genesis_state.msgs.len(),
-            "initialized chain",
-        );
+        info!(gen_msgs = genesis_state.msgs.len(), "initialized chain");
 
         Ok(())
     }

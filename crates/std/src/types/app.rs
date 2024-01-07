@@ -11,8 +11,9 @@ pub struct Account {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BlockInfo {
-    pub height:    u64,
-    pub timestamp: u64,
+    pub chain_id:  String,
+    pub height:    u64, // TODO: replace with Uint64?
+    pub timestamp: u64, // TODO: replace with Uint64?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

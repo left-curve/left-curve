@@ -194,6 +194,7 @@ fn main() -> anyhow::Result<()> {
 
 fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
+        chain_id: "dev-1".into(),
         height,
         timestamp,
     }
