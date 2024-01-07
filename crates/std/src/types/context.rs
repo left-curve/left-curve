@@ -15,12 +15,14 @@ pub struct Context {
     pub block_height:    u64,
     pub block_timestamp: u64,
     pub sender:          Option<Addr>,
+    pub contract:        Addr,
 }
 
 pub struct InstantiateCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub block_height:    u64,
     pub block_timestamp: u64,
+    pub contract:        Addr,
     pub sender:          Addr,
 }
 
@@ -28,6 +30,7 @@ pub struct ExecuteCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub block_height:    u64,
     pub block_timestamp: u64,
+    pub contract:        Addr,
     pub sender:          Addr,
 }
 
@@ -35,4 +38,5 @@ pub struct QueryCtx<'a> {
     pub store:           &'a dyn Storage,
     pub block_height:    u64,
     pub block_timestamp: u64,
+    pub contract:        Addr,
 }

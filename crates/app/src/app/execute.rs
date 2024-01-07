@@ -47,6 +47,7 @@ fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resul
     }
 }
 
+// return the hash of the code that is stored.
 fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Result<Hash> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let code_hash = hash(wasm_byte_code);
@@ -83,6 +84,7 @@ fn instantiate<S: Storage + 'static>(
     }
 }
 
+// return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
 fn _instantiate<S: Storage + 'static>(
     store:     S,
@@ -121,6 +123,7 @@ fn _instantiate<S: Storage + 'static>(
     let ctx = Context {
         block_height:    block.height,
         block_timestamp: block.timestamp,
+        contract:        address,
         sender:          Some(sender.clone()),
     };
     let resp = match host.call_instantiate(&ctx, msg) {
@@ -139,11 +142,11 @@ fn _instantiate<S: Storage + 'static>(
         code_hash,
         admin,
     };
-    if let Err(err) = ACCOUNTS.save(&mut store, &address, &account) {
+    if let Err(err) = ACCOUNTS.save(&mut store, &ctx.contract, &account) {
         return (Err(err), store);
     }
 
-    (Ok(address), store)
+    (Ok(ctx.contract), store)
 }
 
 // ---------------------------------- execute ----------------------------------
@@ -151,8 +154,8 @@ fn _instantiate<S: Storage + 'static>(
 fn execute<S: Storage + 'static>(
     store:     S,
     block:     &BlockInfo,
-    sender:    &Addr,
     contract:  &Addr,
+    sender:    &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
 ) -> (anyhow::Result<()>, S) {
@@ -171,8 +174,8 @@ fn execute<S: Storage + 'static>(
 fn _execute<S: Storage + 'static>(
     store:     S,
     block:     &BlockInfo,
-    sender:    &Addr,
     contract:  &Addr,
+    sender:    &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
 ) -> (anyhow::Result<()>, S) {
@@ -203,6 +206,7 @@ fn _execute<S: Storage + 'static>(
     let ctx = Context {
         block_height:    block.height,
         block_timestamp: block.timestamp,
+        contract:        contract.clone(),
         sender:          Some(sender.clone()),
     };
     let resp = match host.call_execute(&ctx, msg) {

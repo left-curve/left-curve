@@ -146,6 +146,7 @@ fn mock_context(sender: Option<Addr>) -> Context {
     Context {
         block_height:    0,
         block_timestamp: 0,
+        contract:        Addr::mock(0),
         sender,
     }
 }

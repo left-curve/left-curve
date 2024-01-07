@@ -143,6 +143,7 @@ fn query_wasm_smart<S: Storage + 'static>(
         block_height:    block.height,
         block_timestamp: block.timestamp,
         sender:          None,
+        contract,
     };
     let data = match host.call_query(&ctx, msg) {
         Ok(data) => data,
@@ -153,7 +154,7 @@ fn query_wasm_smart<S: Storage + 'static>(
     };
 
     let query_res = WasmSmartResponse {
-        contract,
+        contract: ctx.contract,
         data,
     };
 

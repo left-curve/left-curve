@@ -70,6 +70,7 @@ where
         store:           &mut ExternalStorage,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to provide a sender"),
     };
 
@@ -110,6 +111,7 @@ where
         store:           &mut ExternalStorage,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to provide a sender"),
     };
 
@@ -150,6 +152,7 @@ where
         store:           &ExternalStorage,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
     };
 
     query_fn(ctx, msg).into()
