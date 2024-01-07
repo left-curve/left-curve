@@ -7,6 +7,12 @@ use {
 #[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Binary(Vec<u8>);
 
+impl Binary {
+    pub fn empty() -> Self {
+        Self(vec![])
+    }
+}
+
 impl AsRef<[u8]> for Binary {
     fn as_ref(&self) -> &[u8] {
         self.0.as_slice()

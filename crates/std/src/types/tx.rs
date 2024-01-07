@@ -7,7 +7,7 @@ use {
 pub struct Tx {
     pub sender:     Addr,
     pub msgs:       Vec<Message>,
-    pub credential: Option<Binary>,
+    pub credential: Binary,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

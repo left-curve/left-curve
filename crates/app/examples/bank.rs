@@ -7,8 +7,8 @@ use {
     cw_app::App,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{
-        from_json, hash, to_json, Addr, BlockInfo, Coin, GenesisState, Message, MockStorage, Query,
-        Storage, Tx, Uint128,
+        from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, GenesisState, Message,
+        MockStorage, Query, Storage, Tx, Uint128,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -202,9 +202,9 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
 
 fn mock_tx(sender_idx: u8, msgs: Vec<Message>) -> Tx {
     Tx {
-        sender: Addr::mock(sender_idx),
+        sender:     Addr::mock(sender_idx),
+        credential: Binary::empty(),
         msgs,
-        credential: None,
     }
 }
 

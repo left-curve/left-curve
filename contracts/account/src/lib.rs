@@ -1,5 +1,5 @@
 use {
-    anyhow::{anyhow, ensure},
+    anyhow::ensure,
     cw_std::{
         cw_serde, entry_point, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
         Item, Message, QueryCtx, Response, Tx,
@@ -40,7 +40,7 @@ pub enum PubKey {
     Secp256r1(Binary),
 }
 
-/// Given details of a transaction, produce a bytes that the sender needs to
+/// Given details of a transaction, produce the bytes that the sender needs to
 /// sign (hashed).
 ///
 /// The bytes are defined as:
@@ -88,18 +88,15 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     // prepare the hash that is expected to have been signed
     let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.block.chain_id, sequence)?;
 
-    // the tx must include a signature
-    let sig = tx.credential.ok_or(anyhow!("signature not found"))?;
-
     // verify the signature
-    // skip if it's simulate mode
+    // skip if we are in simulate mode
     if !ctx.simulate {
         match &pubkey {
             PubKey::Secp256k1(bytes) => {
-                ctx.secp256k1_verify(msg_hash, sig.as_ref(), bytes.as_ref())?;
+                ctx.secp256k1_verify(msg_hash, tx.credential.as_ref(), bytes.as_ref())?;
             },
             PubKey::Secp256r1(bytes) => {
-                ctx.secp256r1_verify(msg_hash, sig.as_ref(), bytes.as_ref())?;
+                ctx.secp256r1_verify(msg_hash, tx.credential.as_ref(), bytes.as_ref())?;
             },
         }
     }
