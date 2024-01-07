@@ -6,7 +6,7 @@ use {
         Account, Addr, Binary, BlockInfo, GenesisState, Hash, Item, Map, Query, QueryResponse,
         Storage, Tx,
     },
-    tracing::{debug, info},
+    tracing::{debug, error, info},
 };
 
 pub(crate) const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
@@ -65,9 +65,39 @@ where
     S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
-        debug_assert!(genesis_state.msgs.is_empty(), "UNIMPLEMENTED: genesis msg is not supported yet");
+        // we don't use a cache here, because if a genesis message fails to
+        // execute, it's a fatal error, we should panic and reset.
+        let mut store = self.take_store()?;
 
-        info!(gen_msgs = genesis_state.msgs.len(), "initialized chain");
+        // TODO: find value for height and timestamp here
+        let block = BlockInfo {
+            chain_id:  genesis_state.chain_id.clone(),
+            height:    0,
+            timestamp: 0,
+        };
+
+        // not sure which address to use as genesis message sender. currently we
+        // just use an all-zero address.
+        // probably should make the sender Option in the contexts. None if it's
+        // in genesis.
+        let sender = Addr::mock(0);
+
+        let mut result;
+        for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
+            debug!(idx, "processing genesis message");
+
+            (result, store) = process_msg(store, &block, &sender, msg);
+
+            if result.is_err() {
+                error!("error processing genesis messages");
+                return result;
+            }
+        }
+
+        // put store back
+        self.put_store(store)?;
+
+        info!(chain_id = genesis_state.chain_id, "initialized chain");
 
         Ok(())
     }
