@@ -19,7 +19,7 @@ pub use {
     query::{
         AccountResponse, InfoResponse, Query, QueryResponse, WasmRawResponse, WasmSmartResponse,
     },
-    response::{ContractResult, Response},
+    response::{Attribute, ContractResult, Response},
     tx::{Message, Tx},
     uint128::Uint128,
 };
