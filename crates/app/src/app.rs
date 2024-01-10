@@ -97,10 +97,13 @@ where
             }
         }
 
+        // save the genesis block
+        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
+
         // put store back
         self.put_store(store)?;
 
-        info!(chain_id = genesis_state.chain_id, "initialized chain");
+        info!(chain_id = genesis_state.chain_id, "genesis complete");
 
         Ok(())
     }

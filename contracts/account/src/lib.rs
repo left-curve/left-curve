@@ -11,7 +11,7 @@ const SEQUENCE: Item<u32>    = Item::new("seq");
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pubkey: PubKey,
+    pub pubkey: PubKey,
 }
 
 #[cw_serde]
@@ -30,8 +30,8 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct StateResponse {
-    pubkey:   PubKey,
-    sequence: u32,
+    pub pubkey:   PubKey,
+    pub sequence: u32,
 }
 
 #[cw_serde]

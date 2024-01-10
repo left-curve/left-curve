@@ -22,9 +22,12 @@ impl Addr {
         Self(hash)
     }
 
-    /// Compute a contract address
-    pub fn compute(code_hash: &Hash, salt: &Binary) -> Self {
+    /// Compute a contract address as:
+    /// blake3(deployer_addr | code_hash | salt),
+    /// where | means byte concatenation.
+    pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &Binary) -> Self {
         let mut hasher = blake3::Hasher::new();
+        hasher.update(deployer.as_ref());
         hasher.update(code_hash.as_ref());
         hasher.update(salt.as_ref());
         Self(Hash(hasher.finalize().into()))

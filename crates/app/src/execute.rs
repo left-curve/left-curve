@@ -175,7 +175,7 @@ fn _instantiate<S: Storage + 'static>(
     };
 
     // compute contract address
-    let address = Addr::compute(&code_hash, &salt);
+    let address = Addr::compute(sender, &code_hash, &salt);
     if ACCOUNTS.has(&store, &address) {
         return (Err(anyhow!("account with the address `{address}` already exists")), store);
     }

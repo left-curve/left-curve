@@ -132,10 +132,13 @@ name = "cw-app"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cw-account",
  "cw-bank",
  "cw-db",
  "cw-std",
  "cw-vm",
+ "k256",
+ "rand",
  "serde",
  "serde-json-wasm",
  "serde_json",

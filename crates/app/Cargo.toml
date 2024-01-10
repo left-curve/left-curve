@@ -13,7 +13,10 @@ tracing         = { workspace = true }
 wasmi           = { workspace = true }
 
 [dev-dependencies]
+cw-account         = { path = "../../contracts/account" }
 cw-bank            = { path = "../../contracts/bank" }
+k256               = { workspace = true }
+rand               = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
 tracing-subscriber = { workspace = true }
