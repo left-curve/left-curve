@@ -7,12 +7,13 @@ use {
     cw_db::{Batch, CacheStore, Flush},
     cw_std::{
         Account, Addr, Binary, BlockInfo, GenesisState, Hash, Item, Map, Query, QueryResponse,
-        Storage, Tx,
+        Storage, Tx, Config,
     },
     tracing::{debug, error, info},
 };
 
-pub(crate) const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("lfb");
+pub(crate) const CONFIG:               Item<Config>        = Item::new("config");
+pub(crate) const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("last_finalized_block");
 pub(crate) const CODES:                Map<&Hash, Binary>  = Map::new("c");
 pub(crate) const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
 pub(crate) const CONTRACT_NAMESPACE:   &[u8]               = b"w";
@@ -71,6 +72,9 @@ where
         // we don't use a cache here, because if a genesis message fails to
         // execute, it's a fatal error, we should panic and reset.
         let mut store = self.take_store()?;
+
+        // save the config first. some genesis messages may need it
+        CONFIG.save(&mut store, &genesis_state.config)?;
 
         // TODO: find value for height and timestamp here
         let block = BlockInfo {

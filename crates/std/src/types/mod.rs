@@ -11,7 +11,7 @@ mod uint128;
 
 pub use {
     address::Addr,
-    app::{Account, BlockInfo, GenesisState},
+    app::{Account, BlockInfo, Config, GenesisState},
     binary::Binary,
     coin::Coin,
     context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx},

@@ -1,6 +1,6 @@
 use {
     crate::{
-        app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+        app::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
         wasm::must_build_wasm_instance,
     },
     cw_std::{
@@ -48,11 +48,9 @@ pub fn process_query<S: Storage + 'static>(
 }
 
 fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
-    let block = LAST_FINALIZED_BLOCK.load(store)?;
     Ok(InfoResponse {
-        chain_id:        block.chain_id,
-        block_height:    block.height,
-        block_timestamp: block.timestamp,
+        config:               CONFIG.load(store)?,
+        last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
     })
 }
 

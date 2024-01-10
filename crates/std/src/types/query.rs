@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Hash},
+    crate::{Addr, Binary, BlockInfo, Config, Hash},
     serde::{Deserialize, Serialize},
 };
 
@@ -49,9 +49,8 @@ pub enum Query {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
-    pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub config:               Config,
+    pub last_finalized_block: BlockInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

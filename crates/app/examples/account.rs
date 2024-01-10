@@ -3,14 +3,15 @@
 //! $ just optimize
 //! $ cargo run -p cw-app --example account
 
-use cw_account::ExecuteMsg;
-
 use {
-    cw_account::{sign_bytes, InstantiateMsg, PubKey, QueryMsg, StateResponse},
+    cw_account::{sign_bytes, ExecuteMsg, InstantiateMsg, PubKey, QueryMsg, StateResponse},
     cw_app::App,
     cw_crypto::Identity256,
-    cw_std::{from_json, hash, to_json, Addr, GenesisState, Message, MockStorage, Query, Storage, Tx, BlockInfo},
-    k256::ecdsa::{SigningKey, VerifyingKey, signature::DigestSigner, Signature},
+    cw_std::{
+        from_json, hash, to_json, Addr, BlockInfo, Config, GenesisState, Message, MockStorage,
+        Query, Storage, Tx,
+    },
+    k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -54,6 +55,10 @@ fn main() -> anyhow::Result<()> {
     println!("🤖 Genesis chain, instantiate accounts 1");
     app.init_chain(GenesisState {
         chain_id: "dev-1".to_string(),
+        config: Config {
+            // we don't need a bank contract for this demo
+            bank: Addr::mock(0),
+        },
         msgs: vec![
             Message::StoreCode {
                 wasm_byte_code: wasm_byte_code.into(),
@@ -176,6 +181,7 @@ fn new_tx<S: Storage + 'static>(
     let chain_id = app
         .query(Query::Info {})?
         .as_info()
+        .last_finalized_block
         .chain_id;
 
     // query account sequence
