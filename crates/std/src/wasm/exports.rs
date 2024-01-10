@@ -1,10 +1,11 @@
 use {
     crate::{
-        from_json, to_json, Binary, Context, ContractResult, ExecuteCtx, ExternalStorage,
-        InstantiateCtx, QueryCtx, Region, Response,
+        from_json, to_json, BeforeTxCtx, Binary, Context, ContractResult, ExecuteCtx,
+        ExternalStorage, InstantiateCtx, QueryCtx, Region, Response, Tx,
     },
     serde::de::DeserializeOwned,
 };
+
 
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was
@@ -74,6 +75,44 @@ where
     };
 
     instantiate_fn(ctx, msg).into()
+}
+
+pub fn do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_ptr:      usize,
+    tx_ptr:       usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
+
+    let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_bytes:    &[u8],
+    tx_bytes:     &[u8],
+) -> ContractResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
+    let tx = try_into_contract_result!(from_json(tx_bytes));
+
+    let ctx = BeforeTxCtx {
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+        simulate: ctx.simulate.expect("host failed to specify whether it's simulation mode"),
+    };
+
+    before_tx_fn(ctx, tx).into()
 }
 
 pub fn do_execute<M, E>(

@@ -134,6 +134,7 @@ dependencies = [
  "anyhow",
  "cw-account",
  "cw-bank",
+ "cw-crypto",
  "cw-db",
  "cw-std",
  "cw-vm",

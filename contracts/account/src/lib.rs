@@ -81,6 +81,7 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
     Ok(Response::new())
 }
 
+#[entry_point]
 pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let pubkey = PUBKEY.load(ctx.store)?;
     let mut sequence = SEQUENCE.load(ctx.store)?;

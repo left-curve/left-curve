@@ -15,6 +15,7 @@ wasmi           = { workspace = true }
 [dev-dependencies]
 cw-account         = { path = "../../contracts/account" }
 cw-bank            = { path = "../../contracts/bank" }
+cw-crypto          = { path = "../../crates/crypto" }
 k256               = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }

@@ -48,7 +48,7 @@ pub fn authenticate_tx<S: Storage + 'static>(
             (Ok(()), store)
         },
         (Err(err), store) => {
-            warn!(sender = tx.sender.to_string(), "failed to authenticate tx");
+            warn!(err = err.to_string(), "failed to authenticate tx");
             (Err(err), store)
         },
     }
