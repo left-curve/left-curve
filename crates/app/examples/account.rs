@@ -9,13 +9,13 @@ use {
     cw_crypto::Identity256,
     cw_std::{from_json, hash, to_json, Addr, GenesisState, Message, MockStorage, Query, Storage, Tx, BlockInfo},
     k256::ecdsa::{SigningKey, VerifyingKey, signature::DigestSigner, Signature},
-    rand::rngs::OsRng,
+    rand::{rngs::StdRng, SeedableRng},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},
 };
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
     let mut app = App::new(MockStorage::new());
@@ -33,9 +33,10 @@ fn main() -> anyhow::Result<()> {
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
     println!("🤖 Generate two random secp256k1 key pairs");
-    let sk1 = SigningKey::random(&mut OsRng);
+    let mut rng = StdRng::seed_from_u64(42);
+    let sk1 = SigningKey::random(&mut rng);
     let vk1 = VerifyingKey::from(&sk1);
-    let sk2 = SigningKey::random(&mut OsRng);
+    let sk2 = SigningKey::random(&mut rng);
     let vk2 = VerifyingKey::from(&sk2);
 
     println!("🤖 Computing account addresses");
