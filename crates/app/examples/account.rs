@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
         ],
     })?;
 
-    println!("🤖 Account 1 sends a tx, creating account 2");
+    println!("🤖 Account 1 sends a tx to create account 2");
     let block = mock_block_info(1, 1);
     let tx = new_tx(&mut app, &address1, &sk1, vec![
         Message::Instantiate {

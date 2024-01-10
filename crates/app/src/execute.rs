@@ -87,7 +87,7 @@ fn _authenticate_tx<S: Storage + 'static>(
         block:    block.clone(),
         contract: tx.sender.clone(),
         sender:   None,
-        simulate: None,
+        simulate: Some(false),
     };
     let resp = match host.call_before_tx(&ctx, tx) {
         Ok(resp) => resp,
