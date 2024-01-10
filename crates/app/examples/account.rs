@@ -3,6 +3,8 @@
 //! $ just optimize
 //! $ cargo run -p cw-app --example account
 
+use cw_account::ExecuteMsg;
+
 use {
     cw_account::{sign_bytes, InstantiateMsg, PubKey, QueryMsg, StateResponse},
     cw_app::App,
@@ -32,12 +34,14 @@ fn main() -> anyhow::Result<()> {
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
-    println!("🤖 Generate two random secp256k1 key pairs");
+    println!("🤖 Generate three random secp256k1 key pairs");
     let mut rng = StdRng::seed_from_u64(42);
     let sk1 = SigningKey::random(&mut rng);
     let vk1 = VerifyingKey::from(&sk1);
     let sk2 = SigningKey::random(&mut rng);
     let vk2 = VerifyingKey::from(&sk2);
+    let sk3 = SigningKey::random(&mut rng);
+    let vk3 = VerifyingKey::from(&sk3);
 
     println!("🤖 Computing account addresses");
     let code_hash = hash(&wasm_byte_code);
@@ -78,6 +82,54 @@ fn main() -> anyhow::Result<()> {
             funds: vec![],
             admin: Some(address2.clone()),
         },
+    ])?;
+    app.finalize_block(block, vec![tx])?;
+    app.commit()?;
+
+    println!("🤖 Account 1 updates its public key - should work");
+    let block = mock_block_info(2, 2);
+    let tx = new_tx(&mut app, &address1, &sk1, vec![
+        Message::Execute {
+            contract: address1.clone(),
+            msg: to_json(&ExecuteMsg::UpdateKey {
+                new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
+            })?,
+            funds: vec![],
+        }
+    ])?;
+    app.finalize_block(block, vec![tx])?;
+    app.commit()?;
+
+    println!("🤖 Account 1 attempts to update public key with outdated signature - should fail");
+    // we've already updated key to sk3, but we still try to sign with sk1 here.
+    // this should fail authentication. account1's sequence shouldn't be
+    // incremented (should be 2).
+    let block = mock_block_info(2, 2);
+    let tx = new_tx(&mut app, &address1, &sk1, vec![
+        Message::Execute {
+            contract: address1.clone(),
+            msg: to_json(&ExecuteMsg::UpdateKey {
+                new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
+            })?,
+            funds: vec![],
+        }
+    ])?;
+    app.finalize_block(block, vec![tx])?;
+    app.commit()?;
+
+    println!("🤖 Account 2 attempts to update account 1's public key - should fail");
+    // only the account itself can update its own key. this should pass
+    // authentication, but the execute call should fail. account2's sequence
+    // number should be incremented (to 1).
+    let block = mock_block_info(2, 2);
+    let tx = new_tx(&mut app, &address2, &sk2, vec![
+        Message::Execute {
+            contract: address1.clone(),
+            msg: to_json(&ExecuteMsg::UpdateKey {
+                new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
+            })?,
+            funds: vec![],
+        }
     ])?;
     app.finalize_block(block, vec![tx])?;
     app.commit()?;
