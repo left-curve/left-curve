@@ -1,7 +1,7 @@
 use {
     crate::{Batch, Flush, Op},
     cw_std::{Order, Record, Storage},
-    std::{cmp::Ordering, iter, iter::Peekable, ops::Bound},
+    std::{cmp::Ordering, iter, iter::Peekable, mem, ops::Bound},
 };
 
 /// Adapted from cw-multi-test:
@@ -28,17 +28,28 @@ impl<S> CacheStore<S> {
 
 impl<S> Flush for CacheStore<S> {
     fn flush(&mut self, batch: Batch) -> anyhow::Result<()> {
+        // if we do a.extend(b), while a and b have common keys, the values in b
+        // are chosen. this is exactly what we want.
         self.pending.extend(batch);
         Ok(())
     }
 }
 
+// TODO: the naming of these two methods are confusing, but I don't have a better idea
 impl<S: Flush> CacheStore<S> {
     /// Consume self, apply the pending changes to the underlying store, return
     /// the underlying store.
-    pub fn flush(mut self) -> anyhow::Result<S> {
+    pub fn flush_to_base(mut self) -> anyhow::Result<S> {
         self.base.flush(self.pending)?;
         Ok(self.base)
+    }
+
+    /// Similar to `flush_to_base`, but without consuming self. `self.pending`
+    /// is replaced with an empty batch.
+    pub fn flush(&mut self) -> anyhow::Result<()> {
+        let pending = mem::take(&mut self.pending);
+        self.base.flush(pending)?;
+        Ok(())
     }
 }
 

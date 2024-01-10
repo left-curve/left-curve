@@ -179,25 +179,31 @@ where
     S: Storage + Flush + 'static,
 {
     // create cached store for this tx
-    // if execution fails, state changes won't be committed
     let mut cached = CacheStore::new(store, None);
     let mut result;
 
-    // authenticate tx by calling the sender account's `before_tx` entry point
+    // first, authenticate the tx by calling the sender account's `before_tx`
+    // entry point.
     (result, cached) = authenticate_tx(cached, block, &tx);
     if result.is_err() {
         let (store, _) = cached.disassemble();
         return Ok(store);
     }
 
+    // update the account state. as long as authentication succeeds, regardless
+    // of whether the message are successful, we update account state. if auth
+    // fails, we don't update account state.
+    cached.flush()?;
+
+    // now that the tx is authenticated, we loop through the messages and
+    // execute them one by one
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
         debug!(idx, "processing msg");
 
         (result, cached) = process_msg(cached, block, &tx.sender, msg);
-
-        // if any one of the msgs fails, the entire tx fails.
-        // discard uncommitted changes and return the underlying store
         if result.is_err() {
+            // if any one of the msgs fails, the entire tx fails.
+            // discard uncommitted changes and return the underlying store.
             let (store, _) = cached.disassemble();
             return Ok(store);
         }
@@ -206,5 +212,5 @@ where
     // TODO: add `after_tx` hook?
 
     // all messages succeeded. commit the state changes
-    cached.flush()
+    cached.flush_to_base()
 }
