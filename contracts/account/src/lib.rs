@@ -4,6 +4,7 @@ use {
         cw_serde, entry_point, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
         Item, Message, QueryCtx, Response, Tx,
     },
+    sha2::{Digest, Sha256},
 };
 
 const PUBKEY:   Item<PubKey> = Item::new("pk");
@@ -64,8 +65,8 @@ pub fn sign_bytes(
     sender:   &Addr,
     chain_id: &str,
     sequence: u32,
-) -> anyhow::Result<[u8; blake3::OUT_LEN]> {
-    let mut hasher = blake3::Hasher::new();
+) -> anyhow::Result<[u8; 32]> {
+    let mut hasher = Sha256::new();
     hasher.update(to_json(&msgs)?.as_ref());
     hasher.update(sender.as_ref());
     hasher.update(chain_id.as_bytes());

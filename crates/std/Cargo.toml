@@ -9,10 +9,10 @@ storage-utils = []
 
 [dependencies]
 anyhow          = { workspace = true }
-blake3          = { workspace = true }
 cw-std-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
 hex             = { workspace = true }
 serde           = { workspace = true, features = ["derive"] }
 serde-json-wasm = { workspace = true }
+sha2            = { workspace = true }
 tracing         = { workspace = true }

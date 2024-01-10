@@ -5,10 +5,10 @@ edition = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
-blake3 = { workspace = true }
 digest = { workspace = true }
 k256   = { workspace = true }
 p256   = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }
+sha2 = { workspace = true }

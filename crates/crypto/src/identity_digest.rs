@@ -9,9 +9,15 @@ use {
 /// an Identity256.
 #[cfg(test)]
 pub(crate) fn hash(data: &[u8]) -> Identity256 {
-    let mut digest = Identity256::default();
-    digest.update(blake3::hash(data).as_bytes());
-    digest
+    use digest::Digest;
+
+    let mut hasher = sha2::Sha256::new();
+    // I don't fully understand why it's necessary to use this syntax instead of
+    // hasher.update(data)
+    Digest::update(&mut hasher, data);
+    let bytes = hasher.finalize();
+
+    Identity256 { bytes }
 }
 
 /// To utilize the `signature::DigestVerifier::verify_digest` method, the digest

@@ -2,11 +2,14 @@ use {
     crate::{MapKey, RawKey},
     anyhow::bail,
     serde::{de, ser},
+    sha2::{Digest, Sha256},
     std::{fmt, str::FromStr},
 };
 
 pub fn hash(data: impl AsRef<[u8]>) -> Hash {
-    Hash(blake3::hash(data.as_ref()).into())
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_ref());
+    Hash(hasher.finalize().into())
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -18,10 +21,10 @@ impl Hash {
 
     /// The length (number of bytes) of hashes.
     ///
-    /// In CWD, we use BLAKE3 hash everywhere, of which the length is 32 bytes.
+    /// In CWD, we use SHA-256 hash everywhere, of which the length is 32 bytes.
     ///
     /// Do not confuse length in terms of bytes and in terms of ASCII chars.
-    pub const LENGTH: usize = blake3::OUT_LEN;
+    pub const LENGTH: usize = 32;
 }
 
 impl AsRef<[u8]> for Hash {

@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
     let salt2 = b"account-2".to_vec().into();
     // note: we use a zeroed-out address as sender during genesis
     let address1 = Addr::compute(&Addr::mock(0), &code_hash, &salt1);
-    let address2 = Addr::compute(&Addr::mock(0), &code_hash, &salt2);
+    let address2 = Addr::compute(&address1, &code_hash, &salt2);
 
     println!("🤖 Genesis chain, instantiate accounts 1");
     app.init_chain(GenesisState {
@@ -97,8 +97,10 @@ fn main() -> anyhow::Result<()> {
         limit:       None,
     })?;
 
-    println!("🤖 Querying account states");
+    println!("🤖 Querying account 1 state");
     query_wasm_smart::<_, _, StateResponse>(&mut app, &address1, &QueryMsg::State {})?;
+
+    println!("🤖 Querying account 2 state");
     query_wasm_smart::<_, _, StateResponse>(&mut app, &address2, &QueryMsg::State {})?;
 
     Ok(())

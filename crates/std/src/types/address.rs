@@ -1,6 +1,7 @@
 use {
     crate::{Binary, Hash, MapKey, RawKey},
     serde::{Deserialize, Serialize},
+    sha2::{Digest, Sha256},
     std::{fmt, str::FromStr},
 };
 
@@ -26,7 +27,7 @@ impl Addr {
     /// blake3(deployer_addr | code_hash | salt),
     /// where | means byte concatenation.
     pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &Binary) -> Self {
-        let mut hasher = blake3::Hasher::new();
+        let mut hasher = Sha256::new();
         hasher.update(deployer.as_ref());
         hasher.update(code_hash.as_ref());
         hasher.update(salt.as_ref());
