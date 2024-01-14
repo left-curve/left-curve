@@ -6,8 +6,8 @@ use {
     anyhow::{anyhow, ensure},
     cw_db::{Batch, CacheStore, Flush},
     cw_std::{
-        Account, Addr, Binary, BlockInfo, GenesisState, Hash, Item, Map, Query, QueryResponse,
-        Storage, Tx, Config,
+        Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
+        QueryResponse, Storage, Tx,
     },
     tracing::{debug, error, info},
 };
@@ -138,7 +138,7 @@ where
         Ok(())
     }
 
-    pub fn query(&mut self, req: Query) -> anyhow::Result<QueryResponse> {
+    pub fn query(&mut self, req: QueryRequest) -> anyhow::Result<QueryResponse> {
         // note: when doing query, we use the state from the last finalized block,
         // do not include uncommitted changes from the current block.
         let store = self.take_store()?;

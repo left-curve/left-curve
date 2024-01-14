@@ -13,8 +13,8 @@ pub use crate::{
     testing::MockStorage,
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BeforeTxCtx, Binary, BlockInfo, Coin,
-        Config, ContractResult, ExecuteCtx, GenesisState, Hash, InfoResponse, InstantiateCtx,
-        Message, Query, QueryCtx, QueryResponse, Response, Tx, Uint128, WasmRawResponse,
+        Config, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx,
+        Message, QueryCtx, QueryRequest, QueryResponse, Response, Tx, Uint128, WasmRawResponse,
         WasmSmartResponse,
     },
 };

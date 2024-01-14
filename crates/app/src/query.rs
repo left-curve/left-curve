@@ -4,8 +4,8 @@ use {
         wasm::must_build_wasm_instance,
     },
     cw_std::{
-        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order, Query,
-        QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order,
+        QueryRequest, QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::Host,
 };
@@ -15,29 +15,29 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 pub fn process_query<S: Storage + 'static>(
     store: S,
     block: &BlockInfo,
-    req:   Query,
+    req:   QueryRequest,
 ) -> (anyhow::Result<QueryResponse>, S) {
     match req {
-        Query::Info {} => (query_info(&store).map(QueryResponse::Info), store),
-        Query::Code {
+        QueryRequest::Info {} => (query_info(&store).map(QueryResponse::Info), store),
+        QueryRequest::Code {
             hash,
         } => (query_code(&store, hash).map(QueryResponse::Code), store),
-        Query::Codes {
+        QueryRequest::Codes {
             start_after,
             limit,
         } => (query_codes(&store, start_after, limit).map(QueryResponse::Codes), store),
-        Query::Account {
+        QueryRequest::Account {
             address,
         } => (query_account(&store, address).map(QueryResponse::Account), store),
-        Query::Accounts {
+        QueryRequest::Accounts {
             start_after,
             limit,
         } => (query_accounts(&store, start_after, limit).map(QueryResponse::Accounts), store),
-        Query::WasmRaw {
+        QueryRequest::WasmRaw {
             contract,
             key,
         } => (query_wasm_raw(&store, contract, key).map(QueryResponse::WasmRaw), store),
-        Query::WasmSmart {
+        QueryRequest::WasmSmart {
             contract,
             msg
         } => {

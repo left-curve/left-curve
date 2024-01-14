@@ -1,6 +1,6 @@
 use {
     crate::{
-        from_json, to_json, BeforeTxCtx, Binary, Context, ContractResult, ExecuteCtx,
+        from_json, to_json, BeforeTxCtx, Binary, Context, GenericResult, ExecuteCtx,
         ExternalStorage, InstantiateCtx, QueryCtx, Region, Response, Tx,
     },
     serde::de::DeserializeOwned,
@@ -26,12 +26,12 @@ extern "C" fn deallocate(region_addr: usize) {
 }
 
 // TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
-macro_rules! try_into_contract_result {
+macro_rules! try_into_generic_result {
     ($expr:expr) => {
         match $expr {
             Ok(val) => val,
             Err(err) => {
-                return ContractResult::Err(err.to_string());
+                return GenericResult::Err(err.to_string());
             },
         }
     };
@@ -59,13 +59,13 @@ fn _do_instantiate<M, E>(
     instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
     ctx_bytes:      &[u8],
     msg_bytes:      &[u8],
-) -> ContractResult<Response>
+) -> GenericResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
-    let msg = try_into_contract_result!(from_json(msg_bytes));
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = InstantiateCtx {
         store:    &mut ExternalStorage,
@@ -98,12 +98,12 @@ fn _do_before_tx<E>(
     before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
     ctx_bytes:    &[u8],
     tx_bytes:     &[u8],
-) -> ContractResult<Response>
+) -> GenericResult<Response>
 where
     E: ToString,
 {
-    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
-    let tx = try_into_contract_result!(from_json(tx_bytes));
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let tx = try_into_generic_result!(from_json(tx_bytes));
 
     let ctx = BeforeTxCtx {
         store:    &mut ExternalStorage,
@@ -137,13 +137,13 @@ fn _do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
     ctx_bytes:  &[u8],
     msg_bytes:  &[u8],
-) -> ContractResult<Response>
+) -> GenericResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
-    let msg = try_into_contract_result!(from_json(msg_bytes));
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = ExecuteCtx {
         store:    &mut ExternalStorage,
@@ -177,13 +177,13 @@ fn _do_query<M, E>(
     query_fn:  &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
-) -> ContractResult<Binary>
+) -> GenericResult<Binary>
 where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_contract_result!(from_json(ctx_bytes));
-    let msg = try_into_contract_result!(from_json(msg_bytes));
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = QueryCtx {
         store:    &ExternalStorage,

@@ -1,6 +1,11 @@
 use {
-    crate::{BeforeTxCtx, ExecuteCtx, InstantiateCtx, Order, QueryCtx, Record, Region, Storage},
+    crate::{
+        from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, ExecuteCtx,
+        GenericResult, Hash, InfoResponse, InstantiateCtx, Order, QueryCtx, QueryRequest,
+        QueryResponse, Record, Region, Storage,
+    },
     anyhow::anyhow,
+    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 // these are the method that the host must implement.
@@ -30,6 +35,10 @@ extern "C" {
     // return value of 0 means ok; any value other than 0 means error.
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+
+    // send a query request to the chain.
+    // not to be confused with the query export.
+    fn query_chain(req: usize) -> usize;
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -159,8 +168,8 @@ fn split_tail(mut data: Vec<u8>) -> Record {
     (data, value)
 }
 
-// implement a `debug` method for each context type
-macro_rules! impl_debug {
+// implement debug, query, and crypto methods for each context type
+macro_rules! impl_methods {
     ($($t:ty),+ $(,)?) => {
         $(impl<'a> $t {
             pub fn debug(&self, msg: impl AsRef<str>) {
@@ -229,11 +238,81 @@ macro_rules! impl_debug {
                     Err(anyhow!("signature verification failed"))
                 }
             }
+
+            pub fn query(&self, req: &QueryRequest) -> anyhow::Result<QueryResponse> {
+                let req_bytes = to_json(req)?;
+                let req_region = Region::build(req_bytes.as_ref());
+                let req_ptr = &*req_region as *const Region;
+
+                let res_ptr = unsafe { query_chain(req_ptr as usize) };
+                let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
+                let res: GenericResult<QueryResponse> = from_json(&res_bytes)?;
+
+                res.into_result()
+            }
+
+            pub fn query_info(&self) -> anyhow::Result<InfoResponse> {
+                self.query(&QueryRequest::Info {}).map(|res| res.as_info())
+            }
+
+            pub fn query_code(&self, hash: Hash) -> anyhow::Result<Binary> {
+                self.query(&QueryRequest::Code { hash }).map(|res| res.as_code())
+            }
+
+            pub fn query_codes(
+                &self,
+                start_after: Option<Hash>,
+                limit:       Option<u32>,
+            ) -> anyhow::Result<Vec<Hash>> {
+                self.query(&QueryRequest::Codes { start_after, limit }).map(|res| res.as_codes())
+            }
+
+            pub fn query_account(&self, address: Addr) -> anyhow::Result<Account> {
+                self.query(&QueryRequest::Account { address }).map(|res| {
+                    let account_res = res.as_account();
+                    Account {
+                        code_hash: account_res.code_hash,
+                        admin:     account_res.admin,
+                    }
+                })
+            }
+
+            pub fn query_accounts(
+                &self,
+                start_after: Option<Addr>,
+                limit: Option<u32>,
+            ) -> anyhow::Result<Vec<AccountResponse>> {
+                self.query(&QueryRequest::Accounts { start_after, limit })
+                    .map(|res| res.as_accounts())
+            }
+
+            pub fn query_wasm_raw(
+                &self,
+                contract: Addr,
+                key:      Binary,
+            ) -> anyhow::Result<Option<Binary>> {
+                self.query(&QueryRequest::WasmRaw { contract, key })
+                    .map(|res| res.as_wasm_raw().value)
+            }
+
+            pub fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
+                &self,
+                contract: Addr,
+                msg:      &M,
+            ) -> anyhow::Result<R> {
+                from_json(self
+                    .query(&QueryRequest::WasmSmart {
+                        contract,
+                        msg: to_json(msg)?,
+                    })?
+                    .as_wasm_smart()
+                    .data)
+            }
         })*
     };
 }
 
-impl_debug!(BeforeTxCtx<'a>, ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
+impl_methods!(BeforeTxCtx<'a>, ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
 
 // ----------------------------------- tests -----------------------------------
 

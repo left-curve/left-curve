@@ -9,7 +9,7 @@ use {
     cw_crypto::Identity256,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Config, GenesisState, Message, MockStorage,
-        Query, Storage, Tx,
+        QueryRequest, Storage, Tx,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -140,16 +140,16 @@ fn main() -> anyhow::Result<()> {
     app.commit()?;
 
     println!("🤖 Querying chain info");
-    query(&mut app, Query::Info {})?;
+    query(&mut app, QueryRequest::Info {})?;
 
     println!("🤖 Querying codes");
-    query(&mut app, Query::Codes {
+    query(&mut app, QueryRequest::Codes {
         start_after: None,
         limit:       None,
     })?;
 
     println!("🤖 Querying accounts");
-    query(&mut app, Query::Accounts {
+    query(&mut app, QueryRequest::Accounts {
         start_after: None,
         limit:       None,
     })?;
@@ -179,14 +179,14 @@ fn new_tx<S: Storage + 'static>(
 ) -> anyhow::Result<Tx> {
     // query chain_id
     let chain_id = app
-        .query(Query::Info {})?
+        .query(QueryRequest::Info {})?
         .as_info()
         .last_finalized_block
         .chain_id;
 
     // query account sequence
     let sequence = from_json::<StateResponse>(app
-        .query(Query::WasmSmart {
+        .query(QueryRequest::WasmSmart {
             contract: sender.clone(),
             msg: to_json(&QueryMsg::State {})?,
         })?
@@ -213,7 +213,7 @@ fn new_tx<S: Storage + 'static>(
     Ok(tx)
 }
 
-fn query<S>(app: &mut App<S>, req: Query) -> anyhow::Result<()>
+fn query<S>(app: &mut App<S>, req: QueryRequest) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
@@ -228,7 +228,7 @@ where
     M: Serialize,
     T: Serialize + DeserializeOwned,
 {
-    let resp = app.query(Query::WasmSmart {
+    let resp = app.query(QueryRequest::WasmSmart {
         contract: contract.clone(),
         msg: to_json(msg)?,
     })?;

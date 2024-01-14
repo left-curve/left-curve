@@ -1,7 +1,7 @@
 use {
     crate::Region,
     anyhow::{anyhow, bail},
-    cw_std::{from_json, to_json, Binary, Context, ContractResult, Response, Tx},
+    cw_std::{from_json, to_json, Binary, Context, GenericResult, Response, Tx},
     data_encoding::BASE64,
     std::cell::OnceCell,
     wasmi::{Caller, Extern, Instance, Memory, Store, TypedFunc, WasmParams, WasmResults},
@@ -38,7 +38,7 @@ impl<'a, S> Host<'a, S> {
     pub fn call_before_tx(&mut self, ctx: &Context, tx: &Tx) -> anyhow::Result<Response> {
         let tx_bytes = to_json(tx)?;
         let res_bytes = self.call_entry_point_raw("before_tx", ctx, tx_bytes)?;
-        let res: ContractResult<Response> = from_json(res_bytes)?;
+        let res: GenericResult<Response> = from_json(res_bytes)?;
         res.into_result()
     }
 
@@ -48,7 +48,7 @@ impl<'a, S> Host<'a, S> {
         msg: impl AsRef<[u8]>,
     ) -> anyhow::Result<Response> {
         let res_bytes = self.call_entry_point_raw("instantiate", ctx, msg)?;
-        let res: ContractResult<Response> = from_json(res_bytes)?;
+        let res: GenericResult<Response> = from_json(res_bytes)?;
         res.into_result()
     }
 
@@ -58,7 +58,7 @@ impl<'a, S> Host<'a, S> {
         msg: impl AsRef<[u8]>,
     ) -> anyhow::Result<Response> {
         let res_bytes = self.call_entry_point_raw("execute", ctx, msg)?;
-        let res: ContractResult<Response> = from_json(res_bytes)?;
+        let res: GenericResult<Response> = from_json(res_bytes)?;
         res.into_result()
     }
 
@@ -68,7 +68,7 @@ impl<'a, S> Host<'a, S> {
         msg: impl AsRef<[u8]>,
     ) -> anyhow::Result<Binary> {
         let res_bytes = self.call_entry_point_raw("query", ctx, msg)?;
-        let res: ContractResult<Binary> = from_json(res_bytes)?;
+        let res: GenericResult<Binary> = from_json(res_bytes)?;
         res.into_result()
     }
 

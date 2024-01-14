@@ -6,6 +6,7 @@ mod context;
 mod hash;
 mod query;
 mod response;
+mod result;
 mod tx;
 mod uint128;
 
@@ -17,9 +18,11 @@ pub use {
     context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx},
     hash::{hash, Hash},
     query::{
-        AccountResponse, InfoResponse, Query, QueryResponse, WasmRawResponse, WasmSmartResponse,
+        AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
+        WasmSmartResponse,
     },
-    response::{Attribute, ContractResult, Response},
+    response::{Attribute, Response},
+    result::GenericResult,
     tx::{Message, Tx},
     uint128::Uint128,
 };

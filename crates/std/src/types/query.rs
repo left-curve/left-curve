@@ -5,7 +5,7 @@ use {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum Query {
+pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: InfoResponse
     Info {},
