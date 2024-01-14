@@ -1,4 +1,6 @@
 use {
+    crate::{Batch, Flush},
+    anyhow::anyhow,
     cw_std::{storage_utils::increment_last_byte, Order, Record, Storage},
     std::{
         cell::{Ref, RefCell},
@@ -24,7 +26,22 @@ impl<S> SharedStore<S> {
             store: Rc::clone(&self.store),
         }
     }
+
+    /// Disassemble the shared store and return the underlying store.
+    /// Fails if there are currently more than one strong reference to it.
+    pub fn disassemble(self) -> anyhow::Result<S> {
+        Rc::try_unwrap(self.store)
+            .map(|cell| cell.into_inner())
+            .map_err(|_| anyhow!("failed to disassemble SharedStore"))
+    }
 }
+
+impl<S: Flush> Flush for SharedStore<S> {
+    fn flush(&mut self, batch: Batch) -> anyhow::Result<()> {
+        self.store.borrow_mut().flush(batch)
+    }
+}
+
 
 impl<S: Storage> Storage for SharedStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
