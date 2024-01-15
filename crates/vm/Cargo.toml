@@ -10,7 +10,7 @@ data-encoding = { workspace = true }
 serde         = { workspace = true }
 thiserror     = { workspace = true }
 tracing       = { workspace = true }
-wasmer        = { workspace = true }
+wasmer        = { workspace = true, features = ["singlepass"] }
 
 [dev-dependencies]
 anyhow             = { workspace = true }

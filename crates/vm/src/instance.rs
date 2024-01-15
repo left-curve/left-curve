@@ -4,7 +4,7 @@ use {
         secp256r1_verify, write_to_memory, Environment, Storage, VmError, VmResult,
     },
     cw_std::{from_json, to_json, Binary, Context, GenericResult, Response},
-    wasmer::{imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Store},
+    wasmer::{imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store},
 };
 
 pub struct Instance<S> {
@@ -16,7 +16,8 @@ pub struct Instance<S> {
 impl<S: Storage + 'static> Instance<S> {
     pub fn build_from_code(store: S, wasm_byte_code: &[u8]) -> VmResult<Self> {
         // create Wasm store
-        let mut wasm_store = Store::default();
+        // for now we use the singlepass compiler
+        let mut wasm_store = Store::new(Singlepass::default());
 
         // compile Wasm byte code into module
         let module = Module::new(&wasm_store, wasm_byte_code)?;
