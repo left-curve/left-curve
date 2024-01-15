@@ -4,15 +4,16 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-anyhow        = { workspace = true }
 cw-crypto     = { path = "../crypto" }
 cw-std        = { path = "../std" }
 data-encoding = { workspace = true }
 serde         = { workspace = true }
+thiserror     = { workspace = true }
 tracing       = { workspace = true }
-wasmi         = { workspace = true }
+wasmer        = { workspace = true }
 
 [dev-dependencies]
+anyhow             = { workspace = true }
 cw-bank            = { path = "../../contracts/bank" }
 serde_json         = { workspace = true }
 tracing-subscriber = { workspace = true }

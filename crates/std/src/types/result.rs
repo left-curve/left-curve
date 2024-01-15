@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow,
+    crate::{StdError, StdResult},
     serde::{Deserialize, Serialize},
 };
 
@@ -29,10 +29,10 @@ where
 }
 
 impl<T> GenericResult<T> {
-    pub fn into_result(self) -> anyhow::Result<T> {
+    pub fn into_std_result(self) -> StdResult<T> {
         match self {
             GenericResult::Ok(data) => Ok(data),
-            GenericResult::Err(err) => Err(anyhow!(err)),
+            GenericResult::Err(err) => Err(StdError::Generic(err)),
         }
     }
 }

@@ -93,6 +93,7 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
             limit,
         } => to_json(&query_balances_by_user(ctx, address, start_after, limit)?),
     }
+    .map_err(Into::into) // TODO: remove
 }
 
 pub fn send(ctx: ExecuteCtx, to: Addr, denom: String, amount: Uint128) -> anyhow::Result<Response> {

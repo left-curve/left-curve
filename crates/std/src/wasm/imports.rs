@@ -2,7 +2,7 @@ use {
     crate::{
         from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, ExecuteCtx,
         GenericResult, Hash, InfoResponse, InstantiateCtx, Order, QueryCtx, QueryRequest,
-        QueryResponse, Record, Region, Storage,
+        QueryResponse, Record, Region, StdResult, Storage,
     },
     anyhow::anyhow,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -239,7 +239,7 @@ macro_rules! impl_methods {
                 }
             }
 
-            pub fn query(&self, req: &QueryRequest) -> anyhow::Result<QueryResponse> {
+            pub fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
                 let req_bytes = to_json(req)?;
                 let req_region = Region::build(req_bytes.as_ref());
                 let req_ptr = &*req_region as *const Region;
@@ -248,14 +248,14 @@ macro_rules! impl_methods {
                 let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
                 let res: GenericResult<QueryResponse> = from_json(&res_bytes)?;
 
-                res.into_result()
+                res.into_std_result()
             }
 
-            pub fn query_info(&self) -> anyhow::Result<InfoResponse> {
+            pub fn query_info(&self) -> StdResult<InfoResponse> {
                 self.query(&QueryRequest::Info {}).map(|res| res.as_info())
             }
 
-            pub fn query_code(&self, hash: Hash) -> anyhow::Result<Binary> {
+            pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
                 self.query(&QueryRequest::Code { hash }).map(|res| res.as_code())
             }
 
@@ -263,11 +263,11 @@ macro_rules! impl_methods {
                 &self,
                 start_after: Option<Hash>,
                 limit:       Option<u32>,
-            ) -> anyhow::Result<Vec<Hash>> {
+            ) -> StdResult<Vec<Hash>> {
                 self.query(&QueryRequest::Codes { start_after, limit }).map(|res| res.as_codes())
             }
 
-            pub fn query_account(&self, address: Addr) -> anyhow::Result<Account> {
+            pub fn query_account(&self, address: Addr) -> StdResult<Account> {
                 self.query(&QueryRequest::Account { address }).map(|res| {
                     let account_res = res.as_account();
                     Account {
@@ -281,7 +281,7 @@ macro_rules! impl_methods {
                 &self,
                 start_after: Option<Addr>,
                 limit: Option<u32>,
-            ) -> anyhow::Result<Vec<AccountResponse>> {
+            ) -> StdResult<Vec<AccountResponse>> {
                 self.query(&QueryRequest::Accounts { start_after, limit })
                     .map(|res| res.as_accounts())
             }
@@ -290,7 +290,7 @@ macro_rules! impl_methods {
                 &self,
                 contract: Addr,
                 key:      Binary,
-            ) -> anyhow::Result<Option<Binary>> {
+            ) -> StdResult<Option<Binary>> {
                 self.query(&QueryRequest::WasmRaw { contract, key })
                     .map(|res| res.as_wasm_raw().value)
             }
@@ -299,7 +299,7 @@ macro_rules! impl_methods {
                 &self,
                 contract: Addr,
                 msg:      &M,
-            ) -> anyhow::Result<R> {
+            ) -> StdResult<R> {
                 from_json(self
                     .query(&QueryRequest::WasmSmart {
                         contract,

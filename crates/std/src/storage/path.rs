@@ -1,6 +1,6 @@
 use {
     super::utils::nested_namespaces_with_key,
-    crate::{from_json, to_json, RawKey, Storage},
+    crate::{from_json, to_json, RawKey, StdResult, Storage},
     anyhow::anyhow,
     data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -50,7 +50,7 @@ where
         store.read(self.storage_key).is_some()
     }
 
-    pub fn may_load(&self, store: &dyn Storage) -> anyhow::Result<Option<T>> {
+    pub fn may_load(&self, store: &dyn Storage) -> StdResult<Option<T>> {
         store.read(self.storage_key).map(from_json).transpose()
     }
 

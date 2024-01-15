@@ -1,5 +1,5 @@
 use {
-    crate::{Bound, MapKey, Order, Storage, PathBuf, Prefix},
+    crate::{Bound, MapKey, Order, PathBuf, Prefix, StdResult, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::marker::PhantomData,
 };
@@ -54,7 +54,7 @@ where
         self.path(k).as_path().exists(store)
     }
 
-    pub fn may_load(&self, store: &dyn Storage, k: K) -> anyhow::Result<Option<T>> {
+    pub fn may_load(&self, store: &dyn Storage, k: K) -> StdResult<Option<T>> {
         self.path(k).as_path().may_load(store)
     }
 

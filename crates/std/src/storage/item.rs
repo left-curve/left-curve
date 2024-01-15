@@ -1,5 +1,5 @@
 use {
-    crate::{Path, Storage},
+    crate::{Path, StdResult, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::marker::PhantomData,
 };
@@ -30,7 +30,7 @@ where
         self.path().exists(store)
     }
 
-    pub fn may_load(&self, store: &dyn Storage) -> anyhow::Result<Option<T>> {
+    pub fn may_load(&self, store: &dyn Storage) -> StdResult<Option<T>> {
         self.path().may_load(store)
     }
 

@@ -21,14 +21,10 @@ serde_json         = "1"
 serde-json-wasm    = "1"
 sha2               = "0.10"
 syn                = "1"
+thiserror          = "1"
 tracing            = "0.1"
 tracing-subscriber = "0.3"
-
-# Our fork of wasmi is based off its v0.32.0-beta.2 release, with the following
-# changes:
-# - Make Caller::new function public. We need this to contruct vm::Host object.
-# - Add an `anyhow` feature, which allows host functions to emit anyhow::Error.
-wasmi = { git = "https://github.com/cwsoftware123/wasmi", rev = "e122dfa", features = ["anyhow"] }
+wasmer             = "4"
 
 [profile.release]
 codegen-units    = 1

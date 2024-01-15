@@ -1,11 +1,13 @@
 // -------------------------------- all targets --------------------------------
 
+mod error;
 mod serde;
 mod storage;
 mod testing;
 mod types;
 
 pub use crate::{
+    error::{StdError, StdResult},
     serde::{from_json, to_json},
     storage::{
         Bound, Item, Map, MapKey, Order, Path, PathBuf, Prefix, RawBound, RawKey, Record, Storage,

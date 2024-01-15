@@ -1,6 +1,5 @@
 use {
-    crate::Storage,
-    anyhow::anyhow,
+    crate::{Storage, VmError, VmResult},
     cw_std::{Order, Record},
     data_encoding::BASE64,
     std::{
@@ -24,15 +23,15 @@ impl MockStorage {
         Self::default()
     }
 
-    fn get_iterator_mut(&mut self, iterator_id: i32) -> anyhow::Result<&mut MockIter> {
+    fn get_iterator_mut(&mut self, iterator_id: i32) -> VmResult<&mut MockIter> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or_else(|| anyhow!("[MockStorage]: can't find iterator with id {iterator_id}"))
+            .ok_or_else(|| VmError::IteratorNotFound { iterator_id })
     }
 }
 
 impl Storage for MockStorage {
-    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
+    fn read(&self, key: &[u8]) -> VmResult<Option<Vec<u8>>> {
         trace!(key = ?BASE64.encode(key), "db_read");
         Ok(self.data.get(key).cloned())
     }
@@ -42,7 +41,7 @@ impl Storage for MockStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<i32> {
+    ) -> VmResult<i32> {
         trace!(
             min = ?min.map(|bz| BASE64.encode(bz)),
             max = ?max.map(|bz| BASE64.encode(bz)),
@@ -59,12 +58,12 @@ impl Storage for MockStorage {
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
+    fn next(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
         trace!(iterator_id, "db_next");
         self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) -> VmResult<()> {
         trace!(key = ?BASE64.encode(key), value = ?BASE64.encode(value), "db_write");
 
         self.data.insert(key.to_vec(), value.to_vec());
@@ -76,7 +75,7 @@ impl Storage for MockStorage {
         Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
+    fn remove(&mut self, key: &[u8]) -> VmResult<()> {
         trace!(key = ?BASE64.encode(key), "db_remove");
 
         self.data.remove(key);
@@ -142,7 +141,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn host_state_iterator_works() -> anyhow::Result<()> {
+    fn iterator_works() -> anyhow::Result<()> {
         let mut store = MockStorage::new();
         store.write(&[1], &[1])?;
         store.write(&[2], &[2])?;

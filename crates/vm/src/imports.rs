@@ -1,129 +1,122 @@
 use {
-    crate::{Host, Storage},
-    anyhow::anyhow,
+    crate::{read_from_memory, write_to_memory, Environment, Storage, VmResult},
     cw_std::Record,
     tracing::debug,
-    wasmi::Caller,
+    wasmer::FunctionEnvMut,
 };
 
-pub fn db_read<S: Storage>(
-    caller:  Caller<'_, S>,
+pub fn db_read<S: Storage + 'static>(
+    mut fe:  FunctionEnvMut<Environment<S>>,
     key_ptr: u32,
-) -> Result<u32, wasmi::Error>
-{
-    let mut host = Host::from(caller);
+) -> VmResult<u32> {
+    let (env, mut wasm_store) = fe.data_and_store_mut();
 
-    let key = host.read_from_memory(key_ptr)?;
-    // read the value from host state
+    let key = read_from_memory(env, &wasm_store, key_ptr)?;
+    let maybe_value = env.with_store(|store| store.read(&key))?;
     // if doesn't exist, we return a zero pointer
-    let Some(value) = host.data().read(&key)? else {
+    let Some(value) = maybe_value else {
         return Ok(0);
     };
 
-    // now we need to allocate a region in Wasm memory and put the value in
-    host.write_to_memory(&value).map_err(Into::into)
+    write_to_memory(env, &mut wasm_store, &value)
 }
 
-pub fn db_scan<S: Storage>(
-    caller:  Caller<'_, S>,
+pub fn db_scan<S: Storage + 'static>(
+    mut fe:  FunctionEnvMut<Environment<S>>,
     min_ptr: u32,
     max_ptr: u32,
     order:   i32,
-) -> Result<i32, wasmi::Error>
+) -> VmResult<i32>
 {
-    let mut host = Host::from(caller);
+    let (env, wasm_store) = fe.data_and_store_mut();
 
     let min = if min_ptr != 0 {
-        Some(host.read_from_memory(min_ptr)?)
+        Some(read_from_memory(env, &wasm_store, min_ptr)?)
     } else {
         None
     };
     let max = if max_ptr != 0 {
-        Some(host.read_from_memory(max_ptr)?)
+        Some(read_from_memory(env, &wasm_store, max_ptr)?)
     } else {
         None
     };
-    let order = order.try_into()?;
+    // TODO: do not use unwrap here
+    let order = order.try_into().unwrap();
 
-    // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>
-    // `as_deref` works!
-    host.data_mut().scan(min.as_deref(), max.as_deref(), order).map_err(Into::into)
+    // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>. `as_deref` works!
+    env.with_store_mut(|store| store.scan(min.as_deref(), max.as_deref(), order))
 }
 
-pub fn db_next<S: Storage>(
-    caller:      Caller<'_, S>,
+pub fn db_next<S: Storage + 'static>(
+    mut fe:      FunctionEnvMut<Environment<S>>,
     iterator_id: i32,
-) -> Result<u32, wasmi::Error>
+) -> VmResult<u32>
 {
-    let mut host = Host::from(caller);
+    // pack a KV pair into a single byte array in the following format:
+    // key | value | len(key)
+    // where len() is two bytes (u16 big endian)
+    #[inline]
+    fn encode_record((mut k, v): Record) -> Vec<u8> {
+        let key_len = k.len();
+        k.extend(v);
+        k.extend_from_slice(&(key_len as u16).to_be_bytes());
+        k
+    }
 
-    let Some(record) = host.data_mut().next(iterator_id)? else {
+    let (env, mut wasm_store) = fe.data_and_store_mut();
+
+    let Some(record) = env.with_store_mut(|store| store.next(iterator_id))? else {
         // returning a zero memory address informs the Wasm module that the
         // iterator has reached its end, and no data is loaded into memory.
         return Ok(0);
     };
 
-    host.write_to_memory(&encode_record(record)).map_err(Into::into)
+    write_to_memory(env, &mut wasm_store, &encode_record(record))
 }
 
-pub fn db_write<S: Storage>(
-    caller:    Caller<'_, S>,
+pub fn db_write<S: Storage + 'static>(
+    mut fe:    FunctionEnvMut<Environment<S>>,
     key_ptr:   u32,
     value_ptr: u32,
-) -> Result<(), wasmi::Error>
+) -> VmResult<()>
 {
-    let mut host = Host::from(caller);
+    let (env, wasm_store) = fe.data_and_store_mut();
 
-    let key = host.read_from_memory(key_ptr)?;
-    let value = host.read_from_memory(value_ptr)?;
+    let key = read_from_memory(env, &wasm_store, key_ptr)?;
+    let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
-    host.data_mut().write(&key, &value).map_err(Into::into)
+    env.with_store_mut(|store| store.write(&key, &value))
 }
 
-pub fn db_remove<S: Storage>(
-    caller:  Caller<'_, S>,
-    key_ptr: u32,
-) -> Result<(), wasmi::Error>
-{
-    let mut host = Host::from(caller);
+pub fn db_remove<S: Storage + 'static>(mut fe: FunctionEnvMut<Environment<S>>, key_ptr: u32) -> VmResult<()> {
+    let (env, wasm_store) = fe.data_and_store_mut();
 
-    let key = host.read_from_memory(key_ptr)?;
+    let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    host.data_mut().remove(&key).map_err(Into::into)
+    env.with_store_mut(|store| store.remove(&key))
 }
 
-// pack a KV pair into a single byte array in the following format:
-// key | value | len(key)
-// where len() is two bytes (u16 big endian)
-#[inline]
-fn encode_record((mut k, v): Record) -> Vec<u8> {
-    let key_len = k.len();
-    k.extend(v);
-    k.extend_from_slice(&(key_len as u16).to_be_bytes());
-    k
-}
+pub fn debug<S: 'static>(mut fe: FunctionEnvMut<Environment<S>>, msg_ptr: u32) -> VmResult<()> {
+    let (env, wasm_store) = fe.data_and_store_mut();
 
-pub fn debug<S>(caller: Caller<'_, S>, msg_ptr: u32) -> Result<(), wasmi::Error> {
-    let host = Host::from(caller);
-
-    let msg_bytes = host.read_from_memory(msg_ptr)?;
-    let msg = String::from_utf8(msg_bytes).map_err(|_| anyhow!("Invalid UTF8"))?;
+    let msg_bytes = read_from_memory(env, &wasm_store, msg_ptr)?;
+    let msg = String::from_utf8(msg_bytes)?;
     debug!(msg, "contract debug");
 
     Ok(())
 }
 
-pub fn secp256k1_verify<S>(
-    caller:       Caller<'_, S>,
+pub fn secp256k1_verify<S: 'static>(
+    mut fe: FunctionEnvMut<Environment<S>>,
     msg_hash_ptr: u32,
     sig_ptr:      u32,
     pk_ptr:       u32,
-) -> Result<i32, wasmi::Error> {
-    let host = Host::from(caller);
+) -> VmResult<i32> {
+    let (env, wasm_store) = fe.data_and_store_mut();
 
-    let msg_hash = host.read_from_memory(msg_hash_ptr)?;
-    let sig = host.read_from_memory(sig_ptr)?;
-    let pk = host.read_from_memory(pk_ptr)?;
+    let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
+    let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
+    let pk = read_from_memory(env, &wasm_store, pk_ptr)?;
 
     match cw_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -131,17 +124,17 @@ pub fn secp256k1_verify<S>(
     }
 }
 
-pub fn secp256r1_verify<S>(
-    caller:       Caller<'_, S>,
+pub fn secp256r1_verify<S: 'static>(
+    mut fe: FunctionEnvMut<Environment<S>>,
     msg_hash_ptr: u32,
     sig_ptr:      u32,
     pk_ptr:       u32,
-) -> Result<i32, wasmi::Error> {
-    let host = Host::from(caller);
+) -> VmResult<i32> {
+    let (env, wasm_store) = fe.data_and_store_mut();
 
-    let msg_hash = host.read_from_memory(msg_hash_ptr)?;
-    let sig = host.read_from_memory(sig_ptr)?;
-    let pk = host.read_from_memory(pk_ptr)?;
+    let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
+    let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
+    let pk = read_from_memory(env, &wasm_store, pk_ptr)?;
 
     match cw_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),

@@ -126,6 +126,7 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     match msg {
         QueryMsg::State {} => to_json(&query_state(ctx)?),
     }
+    .map_err(Into::into) // TODO: remove
 }
 
 pub fn update_key(ctx: ExecuteCtx, new_pubkey: PubKey) -> anyhow::Result<Response> {

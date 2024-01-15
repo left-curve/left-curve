@@ -1,4 +1,7 @@
-use cw_std::{Order, Record};
+use {
+    crate::VmResult,
+    cw_std::{Order, Record},
+};
 
 /// Describing a KV store that supports read, write, and iteration.
 ///
@@ -11,9 +14,7 @@ use cw_std::{Order, Record};
 ///   ID. The reason for this is we can't pass an iterator object over the
 ///   Rust<>Wasm FFI; we can only pass IDs.
 pub trait Storage {
-    // TODO: define a VmError type instead of using anyhow
-
-    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>>;
+    fn read(&self, key: &[u8]) -> VmResult<Option<Vec<u8>>>;
 
     /// Create an iterator with the given bounds and order. Return an integer
     /// identifier of the itereator created.
@@ -26,20 +27,15 @@ pub trait Storage {
     /// the iterators in a HashMap inside the storage object, which needs to be
     /// updated. Despite given a mutable reference, this method MUST NOT change
     /// the underlying KV data.
-    fn scan(
-        &mut self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
-        order: Order,
-    ) -> anyhow::Result<i32>;
+    fn scan(&mut self, min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> VmResult<i32>;
 
     /// Advance the iterator with the given ID.
     ///
     /// IMPORTANT: Same as `scan`, despite we are given a `&mut self`,
     /// we MUST NOT change the underlying KV data.
-    fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>>;
+    fn next(&mut self, iterator_id: i32) -> VmResult<Option<Record>>;
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()>;
+    fn write(&mut self, key: &[u8], value: &[u8]) -> VmResult<()>;
 
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()>;
+    fn remove(&mut self, key: &[u8]) -> VmResult<()>;
 }

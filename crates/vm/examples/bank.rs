@@ -6,11 +6,8 @@
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
-    cw_vm::{
-        db_next, db_read, db_remove, db_scan, db_write, debug, secp256k1_verify, secp256r1_verify,
-        Host, InstanceBuilder, MockStorage,
-    },
-    std::{env, path::PathBuf},
+    cw_vm::{Instance, MockStorage, Storage},
+    std::{env, fs::File, io::Read, path::PathBuf},
 };
 
 // (address, denom, amount)
@@ -35,29 +32,22 @@ fn main() -> anyhow::Result<()> {
         #[cfg(not(target_arch = "aarch64"))]
         { artifacts_dir.join("cw_bank.wasm") }
     };
-    let (instance, mut store) = InstanceBuilder::default()
-        .with_wasm_file(wasm_file_path)?
-        .with_storage(MockStorage::new())
-        .with_host_function("db_read", db_read)?
-        .with_host_function("db_write", db_write)?
-        .with_host_function("db_remove", db_remove)?
-        .with_host_function("db_scan", db_scan)?
-        .with_host_function("db_next", db_next)?
-        .with_host_function("debug", debug)?
-        .with_host_function("secp256k1_verify", secp256k1_verify)?
-        .with_host_function("secp256r1_verify", secp256r1_verify)?
-        .finalize()?;
-    let mut host = Host::new(&instance, &mut store);
+    let mut wasm_file = File::open(wasm_file_path)?;
+    let mut wasm_byte_code = vec![];
+    wasm_file.read_to_end(&mut wasm_byte_code)?;
+
+    let store = MockStorage::new();
+    let mut instance = Instance::build_from_code(store, &wasm_byte_code)?;
 
     // deploy the contract
-    instantiate(&mut host)?;
+    instantiate(&mut instance)?;
 
     // make some transfers
-    send(&mut host, Addr::mock(1), Addr::mock(4), "uatom", 75)?;
-    send(&mut host, Addr::mock(1), Addr::mock(5), "uosmo", 420)?;
-    send(&mut host, Addr::mock(2), Addr::mock(3), "uatom", 50)?;
-    send(&mut host, Addr::mock(3), Addr::mock(1), "uatom", 69)?;
-    send(&mut host, Addr::mock(5), Addr::mock(6), "uosmo", 64)?;
+    send(&mut instance, Addr::mock(1), Addr::mock(4), "uatom", 75)?;
+    send(&mut instance, Addr::mock(1), Addr::mock(5), "uosmo", 420)?;
+    send(&mut instance, Addr::mock(2), Addr::mock(3), "uatom", 50)?;
+    send(&mut instance, Addr::mock(3), Addr::mock(1), "uatom", 69)?;
+    send(&mut instance, Addr::mock(5), Addr::mock(6), "uosmo", 64)?;
 
     // query and print out the balances
     // should be:
@@ -67,18 +57,18 @@ fn main() -> anyhow::Result<()> {
     // 0x4: 75 uatom
     // 0x5: 356 uosmo
     // 0x6: 64 uosmo
-    query_balances(&mut host)?;
+    query_balances(&mut instance)?;
 
-    // if we need the host state for other purposes, we can consume the wasm
-    // store here and take out the host state
-    let _host_state = store.into_data();
+    // if we need the host state for other purposes, we can consume the instance
+    // here and take out the store
+    let _store = instance.recycle();
 
     println!("✅ Done!");
 
     Ok(())
 }
 
-fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
+fn instantiate<S: Storage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
     println!("🤖 Instantiating contract");
 
     let mut initial_balances = vec![];
@@ -90,7 +80,7 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
         });
     }
 
-    let res = host.call_instantiate(
+    let res = instance.call_instantiate(
         &mock_context(Some(Addr::mock(0))),
         to_json(&InstantiateMsg {
             initial_balances,
@@ -102,16 +92,16 @@ fn instantiate<T>(host: &mut Host<T>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn send<T>(
-    host:   &mut Host<T>,
-    from:   Addr,
-    to:     Addr,
-    denom:  &str,
-    amount: u128,
+fn send<S: Storage + 'static>(
+    instance: &mut Instance<S>,
+    from:     Addr,
+    to:       Addr,
+    denom:    &str,
+    amount:   u128,
 ) -> anyhow::Result<()> {
     println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
-    let res = host.call_execute(
+    let res = instance.call_execute(
         &mock_context(Some(from)),
         to_json(&ExecuteMsg::Send {
             to,
@@ -125,10 +115,10 @@ fn send<T>(
     Ok(())
 }
 
-fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
+fn query_balances<S: Storage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
     println!("🤖 Querying balances");
 
-    let res_bytes = host.call_query(
+    let result = instance.call_query(
         &mock_context(None),
         to_json(&QueryMsg::Balances {
             start_after: None,
@@ -136,6 +126,7 @@ fn query_balances<T>(host: &mut Host<T>) -> anyhow::Result<()> {
         })?,
     )?;
 
+    let res_bytes = result.into_std_result()?;
     let res: Vec<Balance> = from_json(res_bytes)?;
 
     println!("{}", serde_json::to_string_pretty(&res)?);

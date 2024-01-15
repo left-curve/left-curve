@@ -10,7 +10,7 @@ cw-std          = { path = "../std" }
 cw-vm           = { path = "../vm" }
 serde-json-wasm = { workspace = true }
 tracing         = { workspace = true }
-wasmi           = { workspace = true }
+wasmer          = { workspace = true }
 
 [dev-dependencies]
 cw-account         = { path = "../../contracts/account" }
