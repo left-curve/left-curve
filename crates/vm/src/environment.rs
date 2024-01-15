@@ -9,6 +9,7 @@ use {
 };
 
 // TODO: add explaination on why these fields need to be Options
+#[derive(Default, Debug)]
 pub struct ContextData<S> {
     store:         Option<S>,
     wasm_instance: Option<NonNull<Instance>>,
@@ -23,6 +24,7 @@ impl<S> ContextData<S> {
     }
 }
 
+#[derive(Default, Debug)]
 pub struct Environment<S> {
     memory: Option<Memory>,
     data:   Arc<RwLock<ContextData<S>>>,

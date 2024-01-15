@@ -11,13 +11,10 @@ pub enum VmError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    Compile(#[from] CompileError),
+    FromUtf8(#[from] FromUtf8Error),
 
     #[error(transparent)]
     Export(#[from] ExportError),
-
-    #[error(transparent)]
-    Instantiation(#[from] InstantiationError),
 
     #[error(transparent)]
     MemoryAccess(#[from] MemoryAccessError),
@@ -25,8 +22,11 @@ pub enum VmError {
     #[error(transparent)]
     Runtime(#[from] RuntimeError),
 
-    #[error(transparent)]
-    FromUtf8(#[from] FromUtf8Error),
+    // the wasmer CompileError and InstantiateError are big (56 and 128 bytes,
+    // respectively). we get a clippy warning if we wrap them directly here in
+    // VmError (result_large_err). to avoid this we cast them to strings instead.
+    #[error("Failed to instantiate Wasm module: {0}")]
+    Instantiation(String),
 
     #[error("Memory is not set in Environment")]
     MemoryNotSet,
@@ -64,6 +64,18 @@ pub enum VmError {
     IteratorNotFound {
         iterator_id: i32,
     },
+}
+
+impl From<CompileError> for VmError {
+    fn from(err: CompileError) -> Self {
+        Self::Instantiation(err.to_string())
+    }
+}
+
+impl From<InstantiationError> for VmError {
+    fn from(err: InstantiationError) -> Self {
+        Self::Instantiation(err.to_string())
+    }
 }
 
 // required such that VmError can be used in import function signatures

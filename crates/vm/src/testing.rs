@@ -26,7 +26,7 @@ impl MockStorage {
     fn get_iterator_mut(&mut self, iterator_id: i32) -> VmResult<&mut MockIter> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or_else(|| VmError::IteratorNotFound { iterator_id })
+            .ok_or(VmError::IteratorNotFound { iterator_id })
     }
 }
 
