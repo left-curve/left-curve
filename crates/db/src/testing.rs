@@ -71,7 +71,7 @@ impl Storage for MockStorage {
 #[derive(Default, Debug, Clone)]
 pub struct MockBackendStorage {
     data:         BTreeMap<Vec<u8>, Vec<u8>>,
-    iterators:    HashMap<i32, MockIter>,
+    iterators:    HashMap<i32, MockBackendIter>,
     next_iter_id: i32,
 }
 
@@ -80,7 +80,7 @@ impl MockBackendStorage {
         Self::default()
     }
 
-    fn get_iterator_mut(&mut self, iterator_id: i32) -> DbResult<&mut MockIter> {
+    fn get_iterator_mut(&mut self, iterator_id: i32) -> DbResult<&mut MockBackendIter> {
         self.iterators
             .get_mut(&iterator_id)
             .ok_or(DbError::IteratorNotFound { iterator_id })
@@ -101,7 +101,7 @@ impl BackendStorage for MockBackendStorage {
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
-        let iterator = MockIter::new(&self.data, min, max, order);
+        let iterator = MockBackendIter::new(&self.data, min, max, order);
         self.iterators.insert(iterator_id, iterator);
 
         Ok(iterator_id)
@@ -133,12 +133,17 @@ impl BackendStorage for MockBackendStorage {
 }
 
 #[derive(Debug, Clone)]
-struct MockIter {
+struct MockBackendIter {
     records: Peekable<vec::IntoIter<Record>>,
 }
 
-impl MockIter {
-    pub fn new(data: &BTreeMap<Vec<u8>, Vec<u8>>, min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> Self {
+impl MockBackendIter {
+    pub fn new(
+        data:  &BTreeMap<Vec<u8>, Vec<u8>>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
+    ) -> Self {
         // if min > max, just make an empty iterator
         // BTreeMap would panic in this case
         if let (Some(min), Some(max)) = (min, max) {
@@ -170,7 +175,7 @@ impl MockIter {
     }
 }
 
-impl Iterator for MockIter {
+impl Iterator for MockBackendIter {
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {

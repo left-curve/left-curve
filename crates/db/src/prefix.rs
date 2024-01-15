@@ -1,5 +1,8 @@
 use {
-    crate::{concat, increment_last_byte, trim, BackendStorage, DbError, DbResult, Order, Record, Storage},
+    crate::{
+        concat, increment_last_byte, trim, BackendStorage, DbError, DbResult, Order, Record,
+        Storage,
+    },
     std::collections::HashMap,
 };
 
