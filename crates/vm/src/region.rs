@@ -1,6 +1,7 @@
-use std::{mem, slice};
-
-use wasmer::ValueType;
+use {
+    std::{mem, slice},
+    wasmer::ValueType,
+};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
