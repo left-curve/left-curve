@@ -138,10 +138,16 @@ impl<S> Environment<S> {
         name:       &str,
         args:       &[Value],
     ) -> VmResult<Box<[Value]>> {
-        self.with_wasm_instance(|wasm_instance| {
-            let func = wasm_instance.exports.get_function(name)?;
-            func.call(wasm_store, args).map_err(Into::into)
-        })
+        // note: calling with_wasm_instance creates a read lock on the
+        // ContextData. we must drop this lock before calling the function,
+        // otherwise we get a deadlock (calling require a write lock which has
+        // to wait for the previous read lock being dropped)
+        let func = self.with_wasm_instance(|wasm_instance| {
+            let f = wasm_instance.exports.get_function(name)?;
+            Ok(f.clone())
+        })?;
+
+        func.call(wasm_store, args).map_err(Into::into)
     }
 }
 
