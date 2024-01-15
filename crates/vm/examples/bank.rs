@@ -5,8 +5,9 @@
 
 use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw_db::{BackendStorage, MockBackendStorage},
     cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
-    cw_vm::{Instance, MockStorage, Storage},
+    cw_vm::Instance,
     std::{env, fs::File, io::Read, path::PathBuf},
 };
 
@@ -36,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     let mut wasm_byte_code = vec![];
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
-    let store = MockStorage::new();
+    let store = MockBackendStorage::new();
     let mut instance = Instance::build_from_code(store, &wasm_byte_code)?;
 
     // deploy the contract
@@ -68,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn instantiate<S: Storage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
+fn instantiate<S: BackendStorage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
     println!("🤖 Instantiating contract");
 
     let mut initial_balances = vec![];
@@ -92,7 +93,7 @@ fn instantiate<S: Storage + 'static>(instance: &mut Instance<S>) -> anyhow::Resu
     Ok(())
 }
 
-fn send<S: Storage + 'static>(
+fn send<S: BackendStorage + 'static>(
     instance: &mut Instance<S>,
     from:     Addr,
     to:       Addr,
@@ -115,7 +116,7 @@ fn send<S: Storage + 'static>(
     Ok(())
 }
 
-fn query_balances<S: Storage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
+fn query_balances<S: BackendStorage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
     println!("🤖 Querying balances");
 
     let result = instance.call_query(

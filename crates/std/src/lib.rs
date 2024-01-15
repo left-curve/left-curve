@@ -9,28 +9,14 @@ mod types;
 pub use crate::{
     error::{StdError, StdResult},
     serde::{from_json, to_json},
-    storage::{
-        Bound, Item, Map, MapKey, Order, Path, PathBuf, Prefix, RawBound, RawKey, Record, Storage,
-    },
-    testing::MockStorage,
+    storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BeforeTxCtx, Binary, BlockInfo, Coin,
-        Config, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx,
-        Message, QueryCtx, QueryRequest, QueryResponse, Response, Tx, Uint128, WasmRawResponse,
-        WasmSmartResponse,
+        Config, Context, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse,
+        InstantiateCtx, Message, QueryCtx, QueryRequest, QueryResponse, Response, Tx, Uint128,
+        WasmRawResponse, WasmSmartResponse,
     },
 };
-
-// TODO: put this under an optional feature
-pub use crate::types::Context;
-
-#[cfg(feature = "storage-utils")]
-pub mod storage_utils {
-    pub use crate::storage::{
-        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
-        split_one_key, trim,
-    };
-}
 
 // ---------------------------- wasm32 target only -----------------------------
 // note: during development, it's helpful to comment out the target_arch tags,
@@ -45,6 +31,9 @@ pub use crate::wasm::{
 };
 
 // -------------------------------- re-exports ---------------------------------
+
+// stuff from cw-db
+pub use cw_db::{Batch, Op, Order, Record, Storage};
 
 // macros
 pub use cw_std_derive::{cw_serde, entry_point};

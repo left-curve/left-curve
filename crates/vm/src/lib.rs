@@ -4,8 +4,6 @@ mod imports;
 mod instance;
 mod memory;
 mod region;
-mod testing;
-mod traits;
 
 pub use {
     environment::{ContextData, Environment},
@@ -16,6 +14,4 @@ pub use {
     instance::Instance,
     memory::{read_from_memory, read_then_wipe, write_to_memory},
     region::Region,
-    testing::MockStorage,
-    traits::Storage,
 };

@@ -1,7 +1,5 @@
 use {
-    crate::{Batch, Flush},
-    anyhow::anyhow,
-    cw_std::{storage_utils::increment_last_byte, Order, Record, Storage},
+    crate::{increment_last_byte, Batch, DbError, DbResult, Flush, Order, Record, Storage},
     std::{
         cell::{Ref, RefCell},
         rc::Rc,
@@ -29,15 +27,15 @@ impl<S> SharedStore<S> {
 
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
-    pub fn disassemble(self) -> anyhow::Result<S> {
+    pub fn disassemble(self) -> DbResult<S> {
         Rc::try_unwrap(self.store)
             .map(|cell| cell.into_inner())
-            .map_err(|_| anyhow!("failed to disassemble SharedStore"))
+            .map_err(|_| DbError::StillReferenced)
     }
 }
 
 impl<S: Flush> Flush for SharedStore<S> {
-    fn flush(&mut self, batch: Batch) -> anyhow::Result<()> {
+    fn flush(&mut self, batch: Batch) -> DbResult<()> {
         self.store.borrow_mut().flush(batch)
     }
 }
@@ -116,10 +114,11 @@ impl<'a, S> SharedIter<'a, S> {
 
 impl<'a, S: Storage> SharedIter<'a, S> {
     fn collect_next_batch(&mut self) {
-        let min = self.min.as_ref().map(|vec| vec.as_slice());
-        let max = self.max.as_ref().map(|vec| vec.as_slice());
-        let batch =
-            self.store.scan(min, max, self.order).take(Self::BATCH_SIZE).collect::<Vec<_>>();
+        let batch = self
+            .store
+            .scan(self.min.as_deref(), self.max.as_deref(), self.order)
+            .take(Self::BATCH_SIZE)
+            .collect::<Vec<_>>();
 
         // now we need to update the bounds
         if let Some((key, _)) = batch.iter().last() {
@@ -155,7 +154,7 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_std::MockStorage};
+    use {super::*, crate::MockStorage};
 
     fn mock_records(min: u32, max: u32, order: Order) -> Vec<Record> {
         let mut records = vec![];

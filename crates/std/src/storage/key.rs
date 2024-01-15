@@ -1,5 +1,5 @@
 use {
-    super::utils::{nested_namespaces_with_key, split_one_key},
+    cw_db::{nested_namespaces_with_key, split_one_key},
     anyhow::bail,
     std::mem,
 };
@@ -156,7 +156,7 @@ where
     }
 
     fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
-        let (a_bytes, b_bytes) = split_one_key(bytes)?;
+        let (a_bytes, b_bytes) = split_one_key(bytes);
         let a = A::deserialize(a_bytes)?;
         let b = B::deserialize(b_bytes)?;
         Ok((a, b))

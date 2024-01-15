@@ -1,5 +1,6 @@
 use {
     thiserror::Error,
+    cw_db::DbError,
     cw_std::StdError,
     std::string::FromUtf8Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
@@ -7,6 +8,9 @@ use {
 
 #[derive(Debug, Error)]
 pub enum VmError {
+    #[error(transparent)]
+    Db(#[from] DbError),
+
     #[error(transparent)]
     Std(#[from] StdError),
 
@@ -59,11 +63,6 @@ pub enum VmError {
 
     #[error("Unexpected return type: {0}")]
     ReturnType(&'static str),
-
-    #[error("Cannot find iterator with id `{iterator_id}`")]
-    IteratorNotFound {
-        iterator_id: i32,
-    },
 }
 
 impl From<CompileError> for VmError {

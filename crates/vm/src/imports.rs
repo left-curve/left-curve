@@ -1,11 +1,12 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Storage, VmResult},
+    crate::{read_from_memory, write_to_memory, Environment, VmResult},
+    cw_db::BackendStorage,
     cw_std::Record,
     tracing::debug,
     wasmer::FunctionEnvMut,
 };
 
-pub fn db_read<S: Storage + 'static>(
+pub fn db_read<S: BackendStorage + 'static>(
     mut fe:  FunctionEnvMut<Environment<S>>,
     key_ptr: u32,
 ) -> VmResult<u32> {
@@ -21,7 +22,7 @@ pub fn db_read<S: Storage + 'static>(
     write_to_memory(env, &mut wasm_store, &value)
 }
 
-pub fn db_scan<S: Storage + 'static>(
+pub fn db_scan<S: BackendStorage + 'static>(
     mut fe:  FunctionEnvMut<Environment<S>>,
     min_ptr: u32,
     max_ptr: u32,
@@ -47,7 +48,7 @@ pub fn db_scan<S: Storage + 'static>(
     env.with_store_mut(|store| store.scan(min.as_deref(), max.as_deref(), order))
 }
 
-pub fn db_next<S: Storage + 'static>(
+pub fn db_next<S: BackendStorage + 'static>(
     mut fe:      FunctionEnvMut<Environment<S>>,
     iterator_id: i32,
 ) -> VmResult<u32>
@@ -74,7 +75,7 @@ pub fn db_next<S: Storage + 'static>(
     write_to_memory(env, &mut wasm_store, &encode_record(record))
 }
 
-pub fn db_write<S: Storage + 'static>(
+pub fn db_write<S: BackendStorage + 'static>(
     mut fe:    FunctionEnvMut<Environment<S>>,
     key_ptr:   u32,
     value_ptr: u32,
@@ -88,7 +89,10 @@ pub fn db_write<S: Storage + 'static>(
     env.with_store_mut(|store| store.write(&key, &value))
 }
 
-pub fn db_remove<S: Storage + 'static>(mut fe: FunctionEnvMut<Environment<S>>, key_ptr: u32) -> VmResult<()> {
+pub fn db_remove<S: BackendStorage + 'static>(
+    mut fe:  FunctionEnvMut<Environment<S>>,
+    key_ptr: u32,
+) -> VmResult<()> {
     let (env, wasm_store) = fe.data_and_store_mut();
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;

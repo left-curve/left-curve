@@ -1,10 +1,5 @@
 use {
-    anyhow::anyhow,
-    cw_std::{
-        storage_utils::{concat, increment_last_byte, trim},
-        Order, Record, Storage,
-    },
-    cw_vm::Storage as BackendStorage,
+    crate::{concat, increment_last_byte, trim, BackendStorage, DbError, DbResult, Order, Record, Storage},
     std::collections::HashMap,
 };
 
@@ -41,7 +36,7 @@ impl<S> PrefixStore<S> {
 }
 
 impl<S: Storage> BackendStorage for PrefixStore<S> {
-    fn read(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
+    fn read(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>> {
         Ok(self.store.read(&concat(&self.namespace, key)))
     }
 
@@ -50,7 +45,7 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> anyhow::Result<i32> {
+    ) -> DbResult<i32> {
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
@@ -60,14 +55,14 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: i32) -> anyhow::Result<Option<Record>> {
+    fn next(&mut self, iterator_id: i32) -> DbResult<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
             .map(|iter| iter.next(&self.store))
-            .ok_or_else(|| anyhow!("[PrefixStore]: can't find iterator with id {iterator_id}"))
+            .ok_or(DbError::IteratorNotFound { iterator_id })
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> anyhow::Result<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) -> DbResult<()> {
         self.store.write(&concat(&self.namespace, key), value);
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -77,7 +72,7 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> anyhow::Result<()> {
+    fn remove(&mut self, key: &[u8]) -> DbResult<()> {
         self.store.remove(&concat(&self.namespace, key));
 
         // whenever KV data is mutated, delete all existing iterators to avoid

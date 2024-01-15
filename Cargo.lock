@@ -376,9 +376,7 @@ dependencies = [
 name = "cw-db"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "cw-std",
- "cw-vm",
+ "thiserror",
 ]
 
 [[package]]
@@ -390,6 +388,7 @@ name = "cw-std"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cw-db",
  "cw-std-derive",
  "data-encoding",
  "hex",
@@ -416,6 +415,7 @@ dependencies = [
  "anyhow",
  "cw-bank",
  "cw-crypto",
+ "cw-db",
  "cw-std",
  "data-encoding",
  "serde",

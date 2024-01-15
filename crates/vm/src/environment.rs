@@ -1,5 +1,6 @@
 use {
-    crate::{Storage, VmError, VmResult},
+    crate::{VmError, VmResult},
+    cw_db::BackendStorage,
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -47,30 +48,33 @@ impl<S> Environment<S> {
             .map(|mem| mem.view(wasm_store))
     }
 
-    pub fn with_context_data<C, T>(&self, callback: C) -> VmResult<T>
+    pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&ContextData<S>) -> VmResult<T>,
+        C: FnOnce(&ContextData<S>) -> Result<T, E>,
+        E: Into<VmError>,
     {
         let guard = self.data.read().map_err(|_| VmError::FailedReadLock)?;
-        callback(guard.borrow())
+        callback(guard.borrow()).map_err(Into::into)
     }
 
-    pub fn with_context_data_mut<C, T>(&mut self, callback: C) -> VmResult<T>
+    pub fn with_context_data_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&mut ContextData<S>) -> VmResult<T>,
+        C: FnOnce(&mut ContextData<S>) -> Result<T, E>,
+        E: Into<VmError>,
     {
         let mut guard = self.data.write().map_err(|_| VmError::FailedWriteLock)?;
-        callback(guard.borrow_mut())
+        callback(guard.borrow_mut()).map_err(Into::into)
     }
 
-    pub fn with_wasm_instance<C, T>(&self, callback: C) -> VmResult<T>
+    pub fn with_wasm_instance<C, T, E>(&self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&wasmer::Instance) -> VmResult<T>,
+        C: FnOnce(&wasmer::Instance) -> Result<T, E>,
+        E: Into<VmError>,
     {
         self.with_context_data(|ctx| {
             let instance_ptr = ctx.wasm_instance.ok_or(VmError::WasmerInstanceNotSet)?;
             let instance_ref = unsafe { instance_ptr.as_ref() };
-            callback(instance_ref)
+            callback(instance_ref).map_err(Into::into)
         })
     }
 
@@ -81,14 +85,14 @@ impl<S> Environment<S> {
     }
 
     pub fn set_store(&mut self, store: S) -> VmResult<()> {
-        self.with_context_data_mut(|ctx| {
+        self.with_context_data_mut(|ctx| -> VmResult<_> {
             ctx.store = Some(store);
             Ok(())
         })
     }
 
     pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) -> VmResult<()> {
-        self.with_context_data_mut(|ctx| {
+        self.with_context_data_mut(|ctx| -> VmResult<_> {
             ctx.wasm_instance = Some(NonNull::from(wasm_instance));
             Ok(())
         })
@@ -144,7 +148,7 @@ impl<S> Environment<S> {
         // ContextData. we must drop this lock before calling the function,
         // otherwise we get a deadlock (calling require a write lock which has
         // to wait for the previous read lock being dropped)
-        let func = self.with_wasm_instance(|wasm_instance| {
+        let func = self.with_wasm_instance(|wasm_instance| -> VmResult<_> {
             let f = wasm_instance.exports.get_function(name)?;
             Ok(f.clone())
         })?;
@@ -153,24 +157,26 @@ impl<S> Environment<S> {
     }
 }
 
-impl<S: Storage> Environment<S> {
-    pub fn with_store<C, T>(&self, callback: C) -> VmResult<T>
+impl<S: BackendStorage> Environment<S> {
+    pub fn with_store<C, T, E>(&self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&dyn Storage) -> VmResult<T>,
+        C: FnOnce(&dyn BackendStorage) -> Result<T, E>,
+        E: Into<VmError>,
     {
         self.with_context_data(|ctx| {
             let store = ctx.store.as_ref().ok_or(VmError::StoreNotSet)?;
-            callback(store)
+            callback(store).map_err(Into::into)
         })
     }
 
-    pub fn with_store_mut<C, T>(&mut self, callback: C) -> VmResult<T>
+    pub fn with_store_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&mut dyn Storage) -> VmResult<T>,
+        C: FnOnce(&mut dyn BackendStorage) -> Result<T, E>,
+        E: Into<VmError>,
     {
         self.with_context_data_mut(|ctx| {
             let store = ctx.store.as_mut().ok_or(VmError::StoreNotSet)?;
-            callback(store)
+            callback(store).map_err(Into::into)
         })
     }
 }

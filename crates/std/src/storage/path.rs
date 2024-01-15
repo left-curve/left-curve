@@ -1,6 +1,6 @@
 use {
-    super::utils::nested_namespaces_with_key,
     crate::{from_json, to_json, RawKey, StdResult, Storage},
+    cw_db::nested_namespaces_with_key,
     anyhow::anyhow,
     data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},

@@ -1,8 +1,9 @@
 use {
     crate::{
         db_next, db_read, db_remove, db_scan, db_write, debug, read_then_wipe, secp256k1_verify,
-        secp256r1_verify, write_to_memory, Environment, Storage, VmError, VmResult,
+        secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
+    cw_db::BackendStorage,
     cw_std::{from_json, to_json, Binary, Context, GenericResult, Response},
     wasmer::{imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store},
 };
@@ -13,7 +14,7 @@ pub struct Instance<S> {
     fe:             FunctionEnv<Environment<S>>,
 }
 
-impl<S: Storage + 'static> Instance<S> {
+impl<S: BackendStorage + 'static> Instance<S> {
     pub fn build_from_code(store: S, wasm_byte_code: &[u8]) -> VmResult<Self> {
         // create Wasm store
         // for now we use the singlepass compiler

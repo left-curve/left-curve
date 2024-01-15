@@ -1,5 +1,3 @@
-use crate::RawKey;
-
 /// Combine a namespace a one or more keys into a full byte path.
 ///
 /// The namespace and all keys other than the last one is prefixed with
@@ -13,8 +11,8 @@ use crate::RawKey;
 /// length into 2 bytes)
 pub fn nested_namespaces_with_key(
     maybe_namespace: Option<&[u8]>,
-    prefixes:        &[RawKey],
-    maybe_key:       Option<&RawKey>,
+    prefixes:        &[impl AsRef<[u8]>],
+    maybe_key:       Option<&impl AsRef<[u8]>>,
 ) -> Vec<u8> {
     let mut size = 0;
     if let Some(namespace) = maybe_namespace {
@@ -86,8 +84,10 @@ pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     key[namespace.len()..].to_vec()
 }
 
-pub fn split_one_key(bytes: &[u8]) -> anyhow::Result<(&[u8], &[u8])> {
+pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
+    // NOTE: this panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);
-    let len = u16::from_be_bytes(len_bytes.try_into()?);
-    Ok(bytes.split_at(len as usize))
+    // this unwrap can't fail since split at position 2
+    let len = u16::from_be_bytes(len_bytes.try_into().unwrap());
+    bytes.split_at(len as usize)
 }

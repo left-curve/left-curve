@@ -3,12 +3,9 @@ name    = "cw-std"
 version = { workspace = true }
 edition = { workspace = true }
 
-[features]
-default       = []
-storage-utils = []
-
 [dependencies]
 anyhow          = { workspace = true }
+cw-db           = { path = "../db" }
 cw-std-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
 hex             = { workspace = true }

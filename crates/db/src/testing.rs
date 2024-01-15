@@ -1,38 +1,94 @@
 use {
-    crate::{Storage, VmError, VmResult},
-    cw_std::{Order, Record},
-    data_encoding::BASE64,
+    crate::{BackendStorage, DbError, DbResult, Order, Record, Storage},
     std::{
         collections::{BTreeMap, HashMap},
+        iter,
         iter::Peekable,
         ops::Bound,
         vec,
     },
-    tracing::trace,
 };
 
+// ---------------------------------- storage ----------------------------------
+
+/// An in-memory KV store for testing purpose.
 #[derive(Default, Debug, Clone)]
 pub struct MockStorage {
-    data:         BTreeMap<Vec<u8>, Vec<u8>>,
-    iterators:    HashMap<i32, MockIter>,
-    next_iter_id: i32,
+    data: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl MockStorage {
     pub fn new() -> Self {
         Self::default()
     }
-
-    fn get_iterator_mut(&mut self, iterator_id: i32) -> VmResult<&mut MockIter> {
-        self.iterators
-            .get_mut(&iterator_id)
-            .ok_or(VmError::IteratorNotFound { iterator_id })
-    }
 }
 
 impl Storage for MockStorage {
-    fn read(&self, key: &[u8]) -> VmResult<Option<Vec<u8>>> {
-        trace!(key = ?BASE64.encode(key), "db_read");
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.data.get(key).cloned()
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // BTreeMap::range panics if
+        // 1. start > end, or
+        // 2. start == end and both are exclusive
+        // for us, since we interpret min as inclusive and max as exclusive,
+        // only the 1st case apply. however, we don't want to panic, we just
+        // return an empty iterator.
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
+                return Box::new(iter::empty());
+            }
+        }
+
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+        let iter = self.data.range((min, max)).map(|(k, v)| (k.clone(), v.clone()));
+
+        if order == Order::Ascending {
+            Box::new(iter)
+        } else {
+            Box::new(iter.rev())
+        }
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.data.insert(key.to_vec(), value.to_vec());
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.data.remove(key);
+    }
+}
+
+// ------------------------------ backend storage ------------------------------
+
+#[derive(Default, Debug, Clone)]
+pub struct MockBackendStorage {
+    data:         BTreeMap<Vec<u8>, Vec<u8>>,
+    iterators:    HashMap<i32, MockIter>,
+    next_iter_id: i32,
+}
+
+impl MockBackendStorage {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn get_iterator_mut(&mut self, iterator_id: i32) -> DbResult<&mut MockIter> {
+        self.iterators
+            .get_mut(&iterator_id)
+            .ok_or(DbError::IteratorNotFound { iterator_id })
+    }
+}
+
+impl BackendStorage for MockBackendStorage {
+    fn read(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>> {
         Ok(self.data.get(key).cloned())
     }
 
@@ -41,14 +97,7 @@ impl Storage for MockStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> VmResult<i32> {
-        trace!(
-            min = ?min.map(|bz| BASE64.encode(bz)),
-            max = ?max.map(|bz| BASE64.encode(bz)),
-            ?order,
-            "db_scan",
-        );
-
+    ) -> DbResult<i32> {
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
@@ -58,14 +107,11 @@ impl Storage for MockStorage {
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
-        trace!(iterator_id, "db_next");
+    fn next(&mut self, iterator_id: i32) -> DbResult<Option<Record>> {
         self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> VmResult<()> {
-        trace!(key = ?BASE64.encode(key), value = ?BASE64.encode(value), "db_write");
-
+    fn write(&mut self, key: &[u8], value: &[u8]) -> DbResult<()> {
         self.data.insert(key.to_vec(), value.to_vec());
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -75,9 +121,7 @@ impl Storage for MockStorage {
         Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> VmResult<()> {
-        trace!(key = ?BASE64.encode(key), "db_remove");
-
+    fn remove(&mut self, key: &[u8]) -> DbResult<()> {
         self.data.remove(key);
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -141,8 +185,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn iterator_works() -> anyhow::Result<()> {
-        let mut store = MockStorage::new();
+    fn backend_iterator_works() -> DbResult<()> {
+        let mut store = MockBackendStorage::new();
         store.write(&[1], &[1])?;
         store.write(&[2], &[2])?;
         store.write(&[3], &[3])?;

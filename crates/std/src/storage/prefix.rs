@@ -1,6 +1,6 @@
 use {
-    super::utils::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
     crate::{from_json, Bound, MapKey, Order, RawBound, RawKey, Storage},
+    cw_db::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
     serde::de::DeserializeOwned,
     std::marker::PhantomData,
 };
@@ -14,7 +14,7 @@ pub struct Prefix<K, T> {
 impl<K, T> Prefix<K, T> {
     pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
         Self {
-            prefix:       nested_namespaces_with_key(Some(namespace), prefixes, None),
+            prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
             _suffix_type: PhantomData,
             _data_type:   PhantomData,
         }
