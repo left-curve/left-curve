@@ -9,11 +9,11 @@ use {
     tracing::{debug, info},
 };
 
-pub(crate) const CONFIG:               Item<Config>        = Item::new("config");
-pub(crate) const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("last_finalized_block");
-pub(crate) const CODES:                Map<&Hash, Binary>  = Map::new("c");
-pub(crate) const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
-pub(crate) const CONTRACT_NAMESPACE:   &[u8]               = b"w";
+pub const CONFIG:               Item<Config>        = Item::new("config");
+pub const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("last_finalized_block");
+pub const CODES:                Map<&Hash, Binary>  = Map::new("c");
+pub const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
+pub const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
 pub struct App<S> {
     store:         SharedStore<S>,

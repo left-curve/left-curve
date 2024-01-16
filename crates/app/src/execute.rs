@@ -1,14 +1,14 @@
 use {
-    crate::app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
+    crate::{Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
     anyhow::ensure,
-    cw_db::PrefixStore,
+    cw_db::{PrefixStore, SharedStore},
     cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
 pub fn process_msg<S: Storage + 'static>(
-    mut store: S,
+    mut store: SharedStore<S>,
     block:     &BlockInfo,
     sender:    &Addr,
     msg:       Message,
@@ -63,7 +63,7 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resu
 
 #[allow(clippy::too_many_arguments)]
 fn instantiate<S: Storage + 'static>(
-    store:     S,
+    store:     SharedStore<S>,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -87,7 +87,7 @@ fn instantiate<S: Storage + 'static>(
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
 fn _instantiate<S: Storage + 'static>(
-    mut store: S,
+    mut store: SharedStore<S>,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -109,8 +109,9 @@ fn _instantiate<S: Storage + 'static>(
     })?;
 
     // create wasm host
-    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, address.as_ref()]);
-    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, address.as_ref()]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
 
     // call instantiate
     let ctx = Context {
@@ -129,7 +130,7 @@ fn _instantiate<S: Storage + 'static>(
 // ---------------------------------- execute ----------------------------------
 
 fn execute<S: Storage + 'static>(
-    store:     S,
+    store:     SharedStore<S>,
     block:     &BlockInfo,
     contract:  &Addr,
     sender:    &Addr,
@@ -149,7 +150,7 @@ fn execute<S: Storage + 'static>(
 }
 
 fn _execute<S: Storage + 'static>(
-    store:     S,
+    store:     SharedStore<S>,
     block:     &BlockInfo,
     contract:  &Addr,
     sender:    &Addr,
@@ -163,8 +164,9 @@ fn _execute<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
-    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
 
     // call execute
     let ctx = Context {

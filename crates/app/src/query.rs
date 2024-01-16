@@ -1,17 +1,39 @@
 use {
-    crate::app::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
-    cw_db::{BackendStorage, PrefixStore},
+    crate::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    cw_db::{BackendStorage, PrefixStore, SharedStore},
     cw_std::{
-        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order,
-        QueryRequest, QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, GenericResult, Hash,
+        InfoResponse, Order, QueryRequest, QueryResponse, Storage, WasmRawResponse,
+        WasmSmartResponse,
     },
-    cw_vm::Instance,
+    cw_vm::{BackendQuerier, Instance, VmResult},
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
+// ------------------------------ backend querier ------------------------------
+
+pub struct Querier<S> {
+    store: SharedStore<S>,
+    block: BlockInfo,
+}
+
+impl<S> Querier<S> {
+    pub fn new(store: SharedStore<S>, block: BlockInfo) -> Self {
+        Self { store, block }
+    }
+}
+
+impl<S: Storage + 'static> BackendQuerier for Querier<S> {
+    fn query_chain(&self, req: QueryRequest) -> VmResult<GenericResult<QueryResponse>> {
+        Ok(process_query(self.store.share(), &self.block, req).into())
+    }
+}
+
+// ------------------------------- process query -------------------------------
+
 pub fn process_query<S: Storage + 'static>(
-    store: S,
+    store: SharedStore<S>,
     block: &BlockInfo,
     req:   QueryRequest,
 ) -> anyhow::Result<QueryResponse> {
@@ -113,7 +135,7 @@ fn query_wasm_raw<S: Storage + 'static>(
 }
 
 fn query_wasm_smart<S: Storage + 'static>(
-    store:    S,
+    store:    SharedStore<S>,
     block:    &BlockInfo,
     contract: Addr,
     msg:      Binary,
@@ -123,8 +145,9 @@ fn query_wasm_smart<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
-    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
 
     // call query
     let ctx = Context {
