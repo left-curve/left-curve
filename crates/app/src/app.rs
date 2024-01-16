@@ -6,7 +6,7 @@ use {
         Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
         QueryResponse, Storage, Tx,
     },
-    tracing::{debug, error, info},
+    tracing::{debug, info},
 };
 
 pub(crate) const CONFIG:               Item<Config>        = Item::new("config");
@@ -79,10 +79,7 @@ where
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             debug!(idx, "processing genesis message");
-            if let Err(err) = process_msg(self.store.share(), &block, &sender, msg) {
-                error!(err = err.to_string(), "error processing genesis messages");
-                return Err(err);
-            }
+            process_msg(self.store.share(), &block, &sender, msg)?;
         }
 
         info!(chain_id = genesis_state.chain_id, "genesis complete");
