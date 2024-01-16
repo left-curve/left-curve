@@ -60,10 +60,6 @@ fn main() -> anyhow::Result<()> {
     // 0x6: 64 uosmo
     query_balances(&mut instance)?;
 
-    // if we need the host state for other purposes, we can consume the instance
-    // here and take out the store
-    let _store = instance.disassemble();
-
     println!("✅ Done!");
 
     Ok(())

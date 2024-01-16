@@ -1,6 +1,5 @@
 use {
     crate::{VmError, VmResult},
-    cw_db::BackendStorage,
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -12,14 +11,14 @@ use {
 // TODO: add explaination on why these fields need to be Options
 #[derive(Default, Debug)]
 pub struct ContextData<S> {
-    store:         Option<S>,
+    pub store:     S,
     wasm_instance: Option<NonNull<Instance>>,
 }
 
 impl<S> ContextData<S> {
-    pub fn new() -> Self {
+    pub fn new(store: S) -> Self {
         Self {
-            store:         None,
+            store,
             wasm_instance: None,
         }
     }
@@ -34,10 +33,10 @@ pub struct Environment<S> {
 unsafe impl<S> Send for Environment<S> {}
 
 impl<S> Environment<S> {
-    pub fn new() -> Self {
+    pub fn new(store: S) -> Self {
         Self {
             memory: None,
-            data:   Arc::new(RwLock::new(ContextData::new())),
+            data:   Arc::new(RwLock::new(ContextData::new(store))),
         }
     }
 
@@ -84,23 +83,10 @@ impl<S> Environment<S> {
         Ok(())
     }
 
-    pub fn set_store(&mut self, store: S) -> VmResult<()> {
-        self.with_context_data_mut(|ctx| -> VmResult<_> {
-            ctx.store = Some(store);
-            Ok(())
-        })
-    }
-
     pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) -> VmResult<()> {
         self.with_context_data_mut(|ctx| -> VmResult<_> {
             ctx.wasm_instance = Some(NonNull::from(wasm_instance));
             Ok(())
-        })
-    }
-
-    pub fn take_store(&mut self) -> VmResult<S> {
-        self.with_context_data_mut(|ctx| {
-            ctx.store.take().ok_or(VmError::StoreNotSet)
         })
     }
 
@@ -154,29 +140,5 @@ impl<S> Environment<S> {
         })?;
 
         func.call(wasm_store, args).map_err(Into::into)
-    }
-}
-
-impl<S: BackendStorage> Environment<S> {
-    pub fn with_store<C, T, E>(&self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&dyn BackendStorage) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        self.with_context_data(|ctx| {
-            let store = ctx.store.as_ref().ok_or(VmError::StoreNotSet)?;
-            callback(store).map_err(Into::into)
-        })
-    }
-
-    pub fn with_store_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&mut dyn BackendStorage) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        self.with_context_data_mut(|ctx| {
-            let store = ctx.store.as_mut().ok_or(VmError::StoreNotSet)?;
-            callback(store).map_err(Into::into)
-        })
     }
 }

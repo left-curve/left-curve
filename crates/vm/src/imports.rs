@@ -13,7 +13,7 @@ pub fn db_read<S: BackendStorage + 'static>(
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
-    let maybe_value = env.with_store(|store| store.read(&key))?;
+    let maybe_value = env.with_context_data(|ctx| ctx.store.read(&key))?;
     // if doesn't exist, we return a zero pointer
     let Some(value) = maybe_value else {
         return Ok(0);
@@ -45,7 +45,7 @@ pub fn db_scan<S: BackendStorage + 'static>(
     let order = order.try_into().unwrap();
 
     // need to cast the bounds from Option<Vec<u8>> to Option<&[u8]>. `as_deref` works!
-    env.with_store_mut(|store| store.scan(min.as_deref(), max.as_deref(), order))
+    env.with_context_data_mut(|ctx| ctx.store.scan(min.as_deref(), max.as_deref(), order))
 }
 
 pub fn db_next<S: BackendStorage + 'static>(
@@ -66,7 +66,7 @@ pub fn db_next<S: BackendStorage + 'static>(
 
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
-    let Some(record) = env.with_store_mut(|store| store.next(iterator_id))? else {
+    let Some(record) = env.with_context_data_mut(|ctx| ctx.store.next(iterator_id))? else {
         // returning a zero memory address informs the Wasm module that the
         // iterator has reached its end, and no data is loaded into memory.
         return Ok(0);
@@ -86,7 +86,7 @@ pub fn db_write<S: BackendStorage + 'static>(
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
     let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
-    env.with_store_mut(|store| store.write(&key, &value))
+    env.with_context_data_mut(|ctx| ctx.store.write(&key, &value))
 }
 
 pub fn db_remove<S: BackendStorage + 'static>(
@@ -97,7 +97,7 @@ pub fn db_remove<S: BackendStorage + 'static>(
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    env.with_store_mut(|store| store.remove(&key))
+    env.with_context_data_mut(|ctx| ctx.store.remove(&key))
 }
 
 pub fn debug<S: 'static>(mut fe: FunctionEnvMut<Environment<S>>, msg_ptr: u32) -> VmResult<()> {

@@ -25,7 +25,7 @@ impl<S: BackendStorage + 'static> Instance<S> {
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
-        let fe = FunctionEnv::new(&mut wasm_store, Environment::new());
+        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(store));
         let import_obj = imports! {
             "env" => {
                 "db_read" => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
@@ -46,7 +46,6 @@ impl<S: BackendStorage + 'static> Instance<S> {
         // set memory/store/instance in the env
         let env = fe.as_mut(&mut wasm_store);
         env.set_memory(&wasm_instance)?;
-        env.set_store(store)?;
         env.set_wasm_instance(wasm_instance.as_ref())?;
 
         Ok(Self {
@@ -54,12 +53,6 @@ impl<S: BackendStorage + 'static> Instance<S> {
             wasm_store,
             fe,
         })
-    }
-
-    pub fn disassemble(mut self) -> VmResult<S> {
-        let mut fe_mut = self.fe.into_mut(&mut self.wasm_store);
-        let (env, _) = fe_mut.data_and_store_mut();
-        env.take_store()
     }
 
     pub fn call_instantiate(
