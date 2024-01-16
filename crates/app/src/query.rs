@@ -1,13 +1,11 @@
 use {
-    crate::{
-        app::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
-        wasm::must_build_wasm_instance,
-    },
+    crate::app::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    cw_db::{BackendStorage, PrefixStore},
     cw_std::{
         AccountResponse, Addr, Binary, BlockInfo, Bound, Context, Hash, InfoResponse, Order,
         QueryRequest, QueryResponse, Storage, WasmRawResponse, WasmSmartResponse,
     },
-    cw_vm::Host,
+    cw_vm::Instance,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -16,34 +14,31 @@ pub fn process_query<S: Storage + 'static>(
     store: S,
     block: &BlockInfo,
     req:   QueryRequest,
-) -> (anyhow::Result<QueryResponse>, S) {
+) -> anyhow::Result<QueryResponse> {
     match req {
-        QueryRequest::Info {} => (query_info(&store).map(QueryResponse::Info), store),
+        QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
         QueryRequest::Code {
             hash,
-        } => (query_code(&store, hash).map(QueryResponse::Code), store),
+        } => query_code(&store, hash).map(QueryResponse::Code),
         QueryRequest::Codes {
             start_after,
             limit,
-        } => (query_codes(&store, start_after, limit).map(QueryResponse::Codes), store),
+        } => query_codes(&store, start_after, limit).map(QueryResponse::Codes),
         QueryRequest::Account {
             address,
-        } => (query_account(&store, address).map(QueryResponse::Account), store),
+        } => query_account(&store, address).map(QueryResponse::Account),
         QueryRequest::Accounts {
             start_after,
             limit,
-        } => (query_accounts(&store, start_after, limit).map(QueryResponse::Accounts), store),
+        } => query_accounts(&store, start_after, limit).map(QueryResponse::Accounts),
         QueryRequest::WasmRaw {
             contract,
             key,
-        } => (query_wasm_raw(&store, contract, key).map(QueryResponse::WasmRaw), store),
+        } => query_wasm_raw(store, contract, key).map(QueryResponse::WasmRaw),
         QueryRequest::WasmSmart {
             contract,
             msg
-        } => {
-            let (resp, store) = query_wasm_smart(store, block, contract, msg);
-            (resp.map(QueryResponse::WasmSmart), store)
-        },
+        } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
     }
 }
 
@@ -103,12 +98,18 @@ fn query_accounts(
         .collect()
 }
 
-fn query_wasm_raw(
-    _store:    &dyn Storage,
-    _contract: Addr,
-    _key:      Binary,
+fn query_wasm_raw<S: Storage + 'static>(
+    store:    S,
+    contract: Addr,
+    key:      Binary,
 ) -> anyhow::Result<WasmRawResponse> {
-    todo!()
+    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let value = substore.read(key.as_ref())?;
+    Ok(WasmRawResponse {
+        contract,
+        key,
+        value: value.map(Binary::from),
+    })
 }
 
 fn query_wasm_smart<S: Storage + 'static>(
@@ -116,27 +117,14 @@ fn query_wasm_smart<S: Storage + 'static>(
     block:    &BlockInfo,
     contract: Addr,
     msg:      Binary,
-) -> (anyhow::Result<WasmSmartResponse>, S) {
-    // load contract info
-    let account = match ACCOUNTS.load(&store, &contract) {
-        Ok(account) => account,
-        Err(err) => return (Err(err), store),
-    };
-
+) -> anyhow::Result<WasmSmartResponse> {
     // load wasm code
-    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
-        Ok(wasm_byte_code) => wasm_byte_code,
-        Err(err) => return (Err(err), store),
-    };
+    let account = ACCOUNTS.load(&store, &contract)?;
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(
-        store,
-        CONTRACT_NAMESPACE,
-        &contract,
-        wasm_byte_code,
-    );
-    let mut host = Host::new(&instance, &mut wasm_store);
+    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
 
     // call query
     let ctx = Context {
@@ -145,18 +133,10 @@ fn query_wasm_smart<S: Storage + 'static>(
         simulate: None,
         contract,
     };
-    let data = match host.call_query(&ctx, msg) {
-        Ok(data) => data,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
+    let data = instance.call_query(&ctx, msg)?.into_std_result()?;
 
-    let query_res = WasmSmartResponse {
+    Ok(WasmSmartResponse {
         contract: ctx.contract,
         data,
-    };
-
-    (Ok(query_res), wasm_store.into_data().disassemble())
+    })
 }

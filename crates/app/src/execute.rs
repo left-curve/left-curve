@@ -1,12 +1,10 @@
 use {
-    crate::{
-        app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
-        wasm::must_build_wasm_instance,
-    },
-    anyhow::{anyhow, ensure},
-    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage, Tx},
-    cw_vm::Host,
-    tracing::{debug, info, warn},
+    crate::app::{ACCOUNTS, CODES, CONTRACT_NAMESPACE},
+    anyhow::ensure,
+    cw_db::PrefixStore,
+    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
+    cw_vm::Instance,
+    tracing::{info, warn},
 };
 
 pub fn process_msg<S: Storage + 'static>(
@@ -14,11 +12,11 @@ pub fn process_msg<S: Storage + 'static>(
     block:     &BlockInfo,
     sender:    &Addr,
     msg:       Message,
-) -> (anyhow::Result<()>, S) {
+) -> anyhow::Result<()> {
     match msg {
         Message::StoreCode {
             wasm_byte_code,
-        } => (store_code(&mut store, &wasm_byte_code), store),
+        } => store_code(&mut store, &wasm_byte_code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -32,74 +30,6 @@ pub fn process_msg<S: Storage + 'static>(
             funds,
         } => execute(store, block, sender, &contract, msg, funds),
     }
-}
-
-// --------------------------------- before tx ---------------------------------
-
-pub fn authenticate_tx<S: Storage + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> (anyhow::Result<()>, S) {
-    match _authenticate_tx(store, block, tx) {
-        (Ok(()), store) => {
-            // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "tx authenticated");
-            (Ok(()), store)
-        },
-        (Err(err), store) => {
-            warn!(err = err.to_string(), "failed to authenticate tx");
-            (Err(err), store)
-        },
-    }
-}
-
-fn _authenticate_tx<S: Storage + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> (anyhow::Result<()>, S) {
-    // TODO: a lot of duplicate code here. refactor & remove
-
-    // load contract info
-    let account = match ACCOUNTS.load(&store, &tx.sender) {
-        Ok(account) => account,
-        Err(err) => return (Err(err), store),
-    };
-
-    // load wasm code
-    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
-        Ok(wasm_byte_code) => wasm_byte_code,
-        Err(err) => return (Err(err), store),
-    };
-
-    // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(
-        store,
-        CONTRACT_NAMESPACE,
-        &tx.sender,
-        wasm_byte_code,
-    );
-    let mut host = Host::new(&instance, &mut wasm_store);
-
-    // call `before_tx` entry point
-    let ctx = Context {
-        block:    block.clone(),
-        contract: tx.sender.clone(),
-        sender:   None,
-        simulate: Some(false),
-    };
-    let resp = match host.call_before_tx(&ctx, tx) {
-        Ok(resp) => resp,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
-
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
-
-    (Ok(()), wasm_store.into_data().disassemble())
 }
 
 // -------------------------------- store code ---------------------------------
@@ -141,15 +71,15 @@ fn instantiate<S: Storage + 'static>(
     salt:      Binary,
     funds:     Vec<Coin>,
     admin:     Option<Addr>,
-) -> (anyhow::Result<()>, S) {
+) -> anyhow::Result<()> {
     match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
-        (Ok(address), store) => {
+        Ok(address) => {
             info!(address = address.to_string(), "instantiated contract");
-            (Ok(()), store)
+            Ok(())
         },
-        (Err(err), store) => {
+        Err(err) => {
             warn!(err = err.to_string(), "failed to instantiate contract");
-            (Err(err), store)
+            Err(err)
         },
     }
 }
@@ -157,7 +87,7 @@ fn instantiate<S: Storage + 'static>(
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
 fn _instantiate<S: Storage + 'static>(
-    store:     S,
+    mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -165,29 +95,22 @@ fn _instantiate<S: Storage + 'static>(
     salt:      Binary,
     funds:     Vec<Coin>,
     admin:     Option<Addr>,
-) -> (anyhow::Result<Addr>, S) {
+) -> anyhow::Result<Addr> {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
 
     // load wasm code
-    let wasm_byte_code = match CODES.load(&store, &code_hash) {
-        Ok(wasm_byte_code) => wasm_byte_code,
-        Err(err) => return (Err(err), store),
-    };
+    let wasm_byte_code = CODES.load(&store, &code_hash)?;
 
-    // compute contract address
+    // compute contract address and save account info
     let address = Addr::compute(sender, &code_hash, &salt);
-    if ACCOUNTS.has(&store, &address) {
-        return (Err(anyhow!("account with the address `{address}` already exists")), store);
-    }
+    ACCOUNTS.update(&mut store, &address, |maybe_acct| {
+        ensure!(maybe_acct.is_none(), "account with the address `{address}` already exists");
+        Ok(Some(Account { code_hash, admin }))
+    })?;
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(
-        store,
-        CONTRACT_NAMESPACE,
-        &address,
-        wasm_byte_code,
-    );
-    let mut host = Host::new(&instance, &mut wasm_store);
+    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, address.as_ref()]);
+    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
 
     // call instantiate
     let ctx = Context {
@@ -196,27 +119,11 @@ fn _instantiate<S: Storage + 'static>(
         sender:   Some(sender.clone()),
         simulate: None,
     };
-    let resp = match host.call_instantiate(&ctx, msg) {
-        Ok(resp) => resp,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
+    let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    // save account info
-    let mut store = wasm_store.into_data().disassemble();
-    let account = Account {
-        code_hash,
-        admin,
-    };
-    if let Err(err) = ACCOUNTS.save(&mut store, &ctx.contract, &account) {
-        return (Err(err), store);
-    }
-
-    (Ok(ctx.contract), store)
+    Ok(ctx.contract)
 }
 
 // ---------------------------------- execute ----------------------------------
@@ -228,15 +135,15 @@ fn execute<S: Storage + 'static>(
     sender:    &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
-) -> (anyhow::Result<()>, S) {
+) -> anyhow::Result<()> {
     match _execute(store, block, sender, contract, msg, funds) {
-        (Ok(()), store) => {
+        Ok(()) => {
             info!(contract = contract.to_string(), "executed contract");
-            (Ok(()), store)
+            Ok(())
         },
-        (Err(err), store) => {
+        Err(err) => {
             warn!(err = err.to_string(), "failed to execute contract");
-            (Err(err), store)
+            Err(err)
         },
     }
 }
@@ -248,29 +155,16 @@ fn _execute<S: Storage + 'static>(
     sender:    &Addr,
     msg:       Binary,
     funds:     Vec<Coin>,
-) -> (anyhow::Result<()>, S) {
+) -> anyhow::Result<()> {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
 
-    // load contract info
-    let account = match ACCOUNTS.load(&store, contract) {
-        Ok(account) => account,
-        Err(err) => return (Err(err), store),
-    };
-
     // load wasm code
-    let wasm_byte_code = match CODES.load(&store, &account.code_hash) {
-        Ok(wasm_byte_code) => wasm_byte_code,
-        Err(err) => return (Err(err), store),
-    };
+    let account = ACCOUNTS.load(&store, contract)?;
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let (instance, mut wasm_store) = must_build_wasm_instance(
-        store,
-        CONTRACT_NAMESPACE,
-        contract,
-        wasm_byte_code,
-    );
-    let mut host = Host::new(&instance, &mut wasm_store);
+    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let mut instance = Instance::build_from_code(substore, wasm_byte_code.as_ref())?;
 
     // call execute
     let ctx = Context {
@@ -279,15 +173,9 @@ fn _execute<S: Storage + 'static>(
         sender:   Some(sender.clone()),
         simulate: None,
     };
-    let resp = match host.call_execute(&ctx, msg) {
-        Ok(resp) => resp,
-        Err(err) => {
-            let store = wasm_store.into_data().disassemble();
-            return (Err(err), store);
-        },
-    };
+    let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    (Ok(()), wasm_store.into_data().disassemble())
+    Ok(())
 }

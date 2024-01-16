@@ -4,7 +4,7 @@ use {
         secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
     cw_db::BackendStorage,
-    cw_std::{from_json, to_json, Binary, Context, GenericResult, Response},
+    cw_std::{from_json, to_json, Binary, Context, GenericResult, Response, Tx},
     wasmer::{imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store},
 };
 
@@ -56,7 +56,7 @@ impl<S: BackendStorage + 'static> Instance<S> {
         })
     }
 
-    pub fn recycle(mut self) -> VmResult<S> {
+    pub fn disassemble(mut self) -> VmResult<S> {
         let mut fe_mut = self.fe.into_mut(&mut self.wasm_store);
         let (env, _) = fe_mut.data_and_store_mut();
         env.take_store()
@@ -74,9 +74,9 @@ impl<S: BackendStorage + 'static> Instance<S> {
     pub fn call_before_tx(
         &mut self,
         ctx: &Context,
-        msg: impl AsRef<[u8]>,
+        tx:  &Tx,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("before_tx", ctx, msg)?;
+        let res_bytes = self.call_entry_point_raw("before_tx", ctx, to_json(tx)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 

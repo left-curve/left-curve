@@ -1,7 +1,6 @@
-mod abci;
 mod app;
+mod auth;
 mod execute;
 mod query;
-mod wasm;
 
-pub use crate::{abci::ABCIApp, app::App};
+pub use crate::app::App;

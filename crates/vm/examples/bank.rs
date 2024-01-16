@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
 
     // if we need the host state for other purposes, we can consume the instance
     // here and take out the store
-    let _store = instance.recycle();
+    let _store = instance.disassemble();
 
     println!("✅ Done!");
 

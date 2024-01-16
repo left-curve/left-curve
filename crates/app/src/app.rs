@@ -1,10 +1,7 @@
 use {
-    crate::{
-        execute::{authenticate_tx, process_msg},
-        query::process_query,
-    },
+    crate::{auth::authenticate_tx, execute::process_msg, query::process_query},
     anyhow::{anyhow, ensure},
-    cw_db::{Batch, CacheStore, Flush},
+    cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
         Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
         QueryResponse, Storage, Tx,
@@ -19,7 +16,7 @@ pub(crate) const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
 pub(crate) const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
 pub struct App<S> {
-    store:         Option<S>,
+    store:         SharedStore<S>,
     pending:       Option<Batch>,
     current_block: Option<BlockInfo>,
 }
@@ -27,14 +24,10 @@ pub struct App<S> {
 impl<S> App<S> {
     pub fn new(store: S) -> Self {
         Self {
-            store:         Some(store),
+            store:         SharedStore::new(store),
             pending:       None,
             current_block: None,
         }
-    }
-
-    fn take_store(&mut self) -> anyhow::Result<S> {
-        self.store.take().ok_or(anyhow!("[App]: store not found"))
     }
 
     fn take_pending(&mut self) -> anyhow::Result<Batch> {
@@ -43,12 +36,6 @@ impl<S> App<S> {
 
     fn take_current_block(&mut self) -> anyhow::Result<BlockInfo> {
         self.current_block.take().ok_or(anyhow!("[App]: current block info not found"))
-    }
-
-    fn put_store(&mut self, store: S) -> anyhow::Result<()> {
-        ensure!(self.store.is_none(), "[App]: store already exists");
-        self.store = Some(store);
-        Ok(())
     }
 
     fn put_pending(&mut self, pending: Batch) -> anyhow::Result<()> {
@@ -69,13 +56,6 @@ where
     S: Storage + 'static,
 {
     pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
-        // we don't use a cache here, because if a genesis message fails to
-        // execute, it's a fatal error, we should panic and reset.
-        let mut store = self.take_store()?;
-
-        // save the config first. some genesis messages may need it
-        CONFIG.save(&mut store, &genesis_state.config)?;
-
         // TODO: find value for height and timestamp here
         let block = BlockInfo {
             chain_id:  genesis_state.chain_id.clone(),
@@ -83,29 +63,27 @@ where
             timestamp: 0,
         };
 
+        // save the config and genesis block. some genesis messages may need it
+        CONFIG.save(&mut self.store, &genesis_state.config)?;
+        LAST_FINALIZED_BLOCK.save(&mut self.store, &block)?;
+
         // not sure which address to use as genesis message sender. currently we
         // just use an all-zero address.
         // probably should make the sender Option in the contexts. None if it's
         // in genesis.
         let sender = Addr::mock(0);
 
-        let mut result;
+        // loop through genesis messages and execute each one.
+        // it's expected that genesis messages should all successfully execute.
+        // if anyone fails, it's fatal error and we abort the genesis.
+        // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             debug!(idx, "processing genesis message");
-
-            (result, store) = process_msg(store, &block, &sender, msg);
-
-            if result.is_err() {
-                error!("error processing genesis messages");
-                return result;
+            if let Err(err) = process_msg(self.store.share(), &block, &sender, msg) {
+                error!(err = err.to_string(), "error processing genesis messages");
+                return Err(err);
             }
         }
-
-        // save the genesis block
-        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
-
-        // put store back
-        self.put_store(store)?;
 
         info!(chain_id = genesis_state.chain_id, "genesis complete");
 
@@ -113,23 +91,16 @@ where
     }
 
     pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> anyhow::Result<()> {
-        let store = self.take_store()?;
-
-        // TODO: check block height and time is valid
-        // height must be that of the last finalized block + 1
-        // time must be greater than that of the last finalized block
-
-        let mut cached = CacheStore::new(store, self.pending.take());
+        let cached = SharedStore::new(CacheStore::new(self.store.share(), self.pending.take()));
 
         for (idx, tx) in txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print
             debug!(idx, "processing tx");
-            cached = run_tx(cached, &block, tx)?;
+            run_tx(cached.share(), &block, tx)?;
         }
 
-        let (store, pending) = cached.disassemble();
+        let (_, pending) = cached.disassemble()?.disassemble();
 
-        self.put_store(store)?;
         self.put_pending(pending)?;
         self.put_current_block(block.clone())?;
 
@@ -141,16 +112,9 @@ where
     pub fn query(&mut self, req: QueryRequest) -> anyhow::Result<QueryResponse> {
         // note: when doing query, we use the state from the last finalized block,
         // do not include uncommitted changes from the current block.
-        let store = self.take_store()?;
-        let block = LAST_FINALIZED_BLOCK.load(&store)?;
+        let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
 
-        // perform the query
-        let (res, store) = process_query(store, &block, req);
-
-        // put the store back
-        self.put_store(store)?;
-
-        res
+        process_query(self.store.share(), &block, req)
     }
 }
 
@@ -158,19 +122,16 @@ impl<S> App<S>
 where
     S: Storage + Flush + 'static,
 {
+    // TODO: we need to think about what to do if the flush fails here...
     pub fn commit(&mut self) -> anyhow::Result<()> {
-        let mut store = self.take_store()?;
         let pending = self.take_pending()?;
         let current_block = self.take_current_block()?;
 
         // apply the DB ops effected by txs in this block
-        store.flush(pending)?;
+        self.store.flush(pending)?;
 
         // update the last finalized block info
-        LAST_FINALIZED_BLOCK.save(&mut store, &current_block)?;
-
-        // put the store back
-        self.put_store(store)?;
+        LAST_FINALIZED_BLOCK.save(&mut self.store, &current_block)?;
 
         info!(height = current_block.height, "committed state deltas");
 
@@ -178,43 +139,40 @@ where
     }
 }
 
-fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> anyhow::Result<S>
+fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> anyhow::Result<()>
 where
     S: Storage + Flush + 'static,
 {
     // create cached store for this tx
-    let mut cached = CacheStore::new(store, None);
-    let mut result;
+    let cached = SharedStore::new(CacheStore::new(store, None));
 
-    // first, authenticate the tx by calling the sender account's `before_tx`
-    // entry point.
-    (result, cached) = authenticate_tx(cached, block, &tx);
-    if result.is_err() {
-        let (store, _) = cached.disassemble();
-        return Ok(store);
+    // first, authenticate tx by calling the sender account's before_tx method
+    if authenticate_tx(cached.share(), block, &tx).is_err() {
+        // if authentication fails, abort, discard uncommitted changes
+        return Ok(());
     }
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
     // fails, we don't update account state.
-    cached.flush()?;
+    cached.borrow_mut().commit()?;
 
     // now that the tx is authenticated, we loop through the messages and
     // execute them one by one
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
         debug!(idx, "processing msg");
-
-        (result, cached) = process_msg(cached, block, &tx.sender, msg);
-        if result.is_err() {
+        if process_msg(cached.share(), block, &tx.sender, msg).is_err() {
             // if any one of the msgs fails, the entire tx fails.
-            // discard uncommitted changes and return the underlying store.
-            let (store, _) = cached.disassemble();
-            return Ok(store);
+            // abort, discard uncommitted changes (the changes from the before_tx
+            // call earlier are persisted)
+            return Ok(());
         }
     }
 
     // TODO: add `after_tx` hook?
 
     // all messages succeeded. commit the state changes
-    cached.flush_to_base()
+    cached.borrow_mut().commit()?;
+
+    Ok(())
 }

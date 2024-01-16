@@ -7,9 +7,10 @@ use {
     cw_account::{sign_bytes, ExecuteMsg, InstantiateMsg, PubKey, QueryMsg, StateResponse},
     cw_app::App,
     cw_crypto::Identity256,
+    cw_db::MockStorage,
     cw_std::{
-        from_json, hash, to_json, Addr, BlockInfo, Config, GenesisState, Message, MockStorage,
-        QueryRequest, Storage, Tx,
+        from_json, hash, to_json, Addr, BlockInfo, Config, GenesisState, Message, QueryRequest,
+        Storage, Tx,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},

@@ -1,5 +1,5 @@
 use {
-    crate::{BackendStorage, DbError, DbResult, Order, Record, Storage},
+    crate::{BackendStorage, Batch, DbError, DbResult, Flush, Op, Order, Record, Storage},
     std::{
         collections::{BTreeMap, HashMap},
         iter,
@@ -63,6 +63,19 @@ impl Storage for MockStorage {
 
     fn remove(&mut self, key: &[u8]) {
         self.data.remove(key);
+    }
+}
+
+impl Flush for MockStorage {
+    fn flush(&mut self, batch: Batch) -> DbResult<()> {
+        for (key, op) in batch {
+            if let Op::Put(value) = op {
+                self.write(&key, &value);
+            } else {
+                self.remove(&key);
+            }
+        }
+        Ok(())
     }
 }
 

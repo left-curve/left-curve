@@ -34,18 +34,17 @@ impl<S> Flush for CacheStore<S> {
     }
 }
 
-// TODO: the naming of these two methods are confusing, but I don't have a better idea
 impl<S: Flush> CacheStore<S> {
     /// Consume self, apply the pending changes to the underlying store, return
     /// the underlying store.
-    pub fn flush_to_base(mut self) -> DbResult<S> {
+    pub fn consume(mut self) -> DbResult<S> {
         self.base.flush(self.pending)?;
         Ok(self.base)
     }
 
-    /// Similar to `flush_to_base`, but without consuming self. `self.pending`
-    /// is replaced with an empty batch.
-    pub fn flush(&mut self) -> DbResult<()> {
+    /// Similar to `consume`, but without consuming self. `self.pending` is
+    /// replaced with an empty batch.
+    pub fn commit(&mut self) -> DbResult<()> {
         let pending = mem::take(&mut self.pending);
         self.base.flush(pending)?;
         Ok(())

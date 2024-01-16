@@ -1,7 +1,7 @@
 use {
     crate::{increment_last_byte, Batch, DbError, DbResult, Flush, Order, Record, Storage},
     std::{
-        cell::{Ref, RefCell},
+        cell::{Ref, RefCell, RefMut},
         rc::Rc,
         vec,
     },
@@ -25,6 +25,14 @@ impl<S> SharedStore<S> {
         }
     }
 
+    pub fn borrow(&self) -> Ref<S> {
+        self.store.borrow()
+    }
+
+    pub fn borrow_mut(&self) -> RefMut<S> {
+        self.store.borrow_mut()
+    }
+
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
     pub fn disassemble(self) -> DbResult<S> {
@@ -39,7 +47,6 @@ impl<S: Flush> Flush for SharedStore<S> {
         self.store.borrow_mut().flush(batch)
     }
 }
-
 
 impl<S: Storage> Storage for SharedStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
