@@ -7,7 +7,7 @@ use {
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_db::{BackendStorage, MockBackendStorage},
     cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
-    cw_vm::Instance,
+    cw_vm::{BackendQuerier, Instance, MockBackendQuerier},
     std::{env, fs::File, io::Read, path::PathBuf},
 };
 
@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     wasm_file.read_to_end(&mut wasm_byte_code)?;
 
     let store = MockBackendStorage::new();
-    let mut instance = Instance::build_from_code(store, &wasm_byte_code)?;
+    let mut instance = Instance::build_from_code(store, MockBackendQuerier, &wasm_byte_code)?;
 
     // deploy the contract
     instantiate(&mut instance)?;
@@ -65,7 +65,11 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn instantiate<S: BackendStorage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
+fn instantiate<S, Q>(instance: &mut Instance<S, Q>) -> anyhow::Result<()>
+where
+    S: BackendStorage + 'static,
+    Q: BackendQuerier + 'static,
+{
     println!("🤖 Instantiating contract");
 
     let mut initial_balances = vec![];
@@ -89,13 +93,17 @@ fn instantiate<S: BackendStorage + 'static>(instance: &mut Instance<S>) -> anyho
     Ok(())
 }
 
-fn send<S: BackendStorage + 'static>(
-    instance: &mut Instance<S>,
+fn send<S, Q>(
+    instance: &mut Instance<S, Q>,
     from:     Addr,
     to:       Addr,
     denom:    &str,
     amount:   u128,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    S: BackendStorage + 'static,
+    Q: BackendQuerier + 'static,
+{
     println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
     let res = instance.call_execute(
@@ -112,7 +120,11 @@ fn send<S: BackendStorage + 'static>(
     Ok(())
 }
 
-fn query_balances<S: BackendStorage + 'static>(instance: &mut Instance<S>) -> anyhow::Result<()> {
+fn query_balances<S, Q>(instance: &mut Instance<S, Q>) -> anyhow::Result<()>
+where
+    S: BackendStorage + 'static,
+    Q: BackendQuerier + 'static,
+{
     println!("🤖 Querying balances");
 
     let result = instance.call_query(

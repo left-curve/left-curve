@@ -1,21 +1,28 @@
 use {
     crate::{
-        db_next, db_read, db_remove, db_scan, db_write, debug, read_then_wipe, secp256k1_verify,
-        secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
+        db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
+        secp256k1_verify, secp256r1_verify, write_to_memory, BackendQuerier, Environment, VmError,
+        VmResult,
     },
     cw_db::BackendStorage,
     cw_std::{from_json, to_json, Binary, Context, GenericResult, Response, Tx},
-    wasmer::{imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store},
+    wasmer::{
+        imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
+    },
 };
 
-pub struct Instance<S> {
+pub struct Instance<S, Q> {
     _wasm_instance: Box<WasmerInstance>,
     wasm_store:     Store,
-    fe:             FunctionEnv<Environment<S>>,
+    fe:             FunctionEnv<Environment<S, Q>>,
 }
 
-impl<S: BackendStorage + 'static> Instance<S> {
-    pub fn build_from_code(store: S, wasm_byte_code: &[u8]) -> VmResult<Self> {
+impl<S, Q> Instance<S, Q>
+where
+    S: BackendStorage + 'static,
+    Q: BackendQuerier + 'static,
+{
+    pub fn build_from_code(store: S, querier: Q, wasm_byte_code: &[u8]) -> VmResult<Self> {
         // create Wasm store
         // for now we use the singlepass compiler
         let mut wasm_store = Store::new(Singlepass::default());
@@ -25,7 +32,7 @@ impl<S: BackendStorage + 'static> Instance<S> {
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
-        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(store));
+        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(store, querier));
         let import_obj = imports! {
             "env" => {
                 "db_read" => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
@@ -34,6 +41,7 @@ impl<S: BackendStorage + 'static> Instance<S> {
                 "db_write" => Function::new_typed_with_env(&mut wasm_store, &fe, db_write),
                 "db_remove" => Function::new_typed_with_env(&mut wasm_store, &fe, db_remove),
                 "debug" => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
+                "query_chain" => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
                 "secp256k1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
                 "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify)
             }

@@ -1,15 +1,19 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, VmResult},
+    crate::{read_from_memory, write_to_memory, BackendQuerier, Environment, VmResult},
     cw_db::BackendStorage,
-    cw_std::Record,
+    cw_std::{from_json, to_json, QueryRequest, Record},
     tracing::debug,
     wasmer::FunctionEnvMut,
 };
 
-pub fn db_read<S: BackendStorage + 'static>(
-    mut fe:  FunctionEnvMut<Environment<S>>,
+pub fn db_read<S, Q>(
+    mut fe:  FunctionEnvMut<Environment<S, Q>>,
     key_ptr: u32,
-) -> VmResult<u32> {
+) -> VmResult<u32>
+where
+    S: BackendStorage + 'static,
+    Q: 'static,
+{
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
@@ -22,12 +26,15 @@ pub fn db_read<S: BackendStorage + 'static>(
     write_to_memory(env, &mut wasm_store, &value)
 }
 
-pub fn db_scan<S: BackendStorage + 'static>(
-    mut fe:  FunctionEnvMut<Environment<S>>,
+pub fn db_scan<S, Q>(
+    mut fe:  FunctionEnvMut<Environment<S, Q>>,
     min_ptr: u32,
     max_ptr: u32,
     order:   i32,
 ) -> VmResult<i32>
+where
+    S: BackendStorage + 'static,
+    Q: 'static,
 {
     let (env, wasm_store) = fe.data_and_store_mut();
 
@@ -48,10 +55,13 @@ pub fn db_scan<S: BackendStorage + 'static>(
     env.with_context_data_mut(|ctx| ctx.store.scan(min.as_deref(), max.as_deref(), order))
 }
 
-pub fn db_next<S: BackendStorage + 'static>(
-    mut fe:      FunctionEnvMut<Environment<S>>,
+pub fn db_next<S, Q>(
+    mut fe:      FunctionEnvMut<Environment<S, Q>>,
     iterator_id: i32,
 ) -> VmResult<u32>
+where
+    S: BackendStorage + 'static,
+    Q: 'static,
 {
     // pack a KV pair into a single byte array in the following format:
     // key | value | len(key)
@@ -75,11 +85,14 @@ pub fn db_next<S: BackendStorage + 'static>(
     write_to_memory(env, &mut wasm_store, &encode_record(record))
 }
 
-pub fn db_write<S: BackendStorage + 'static>(
-    mut fe:    FunctionEnvMut<Environment<S>>,
+pub fn db_write<S, Q>(
+    mut fe:    FunctionEnvMut<Environment<S, Q>>,
     key_ptr:   u32,
     value_ptr: u32,
 ) -> VmResult<()>
+where
+    S: BackendStorage + 'static,
+    Q: 'static,
 {
     let (env, wasm_store) = fe.data_and_store_mut();
 
@@ -89,10 +102,14 @@ pub fn db_write<S: BackendStorage + 'static>(
     env.with_context_data_mut(|ctx| ctx.store.write(&key, &value))
 }
 
-pub fn db_remove<S: BackendStorage + 'static>(
-    mut fe:  FunctionEnvMut<Environment<S>>,
+pub fn db_remove<S, Q>(
+    mut fe:  FunctionEnvMut<Environment<S, Q>>,
     key_ptr: u32,
-) -> VmResult<()> {
+) -> VmResult<()>
+where
+    S: BackendStorage + 'static,
+    Q: 'static,
+{
     let (env, wasm_store) = fe.data_and_store_mut();
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
@@ -100,7 +117,11 @@ pub fn db_remove<S: BackendStorage + 'static>(
     env.with_context_data_mut(|ctx| ctx.store.remove(&key))
 }
 
-pub fn debug<S: 'static>(mut fe: FunctionEnvMut<Environment<S>>, msg_ptr: u32) -> VmResult<()> {
+pub fn debug<S, Q>(mut fe: FunctionEnvMut<Environment<S, Q>>, msg_ptr: u32) -> VmResult<()>
+where
+    S: 'static,
+    Q: 'static,
+{
     let (env, wasm_store) = fe.data_and_store_mut();
 
     let msg_bytes = read_from_memory(env, &wasm_store, msg_ptr)?;
@@ -110,12 +131,32 @@ pub fn debug<S: 'static>(mut fe: FunctionEnvMut<Environment<S>>, msg_ptr: u32) -
     Ok(())
 }
 
-pub fn secp256k1_verify<S: 'static>(
-    mut fe: FunctionEnvMut<Environment<S>>,
+pub fn query_chain<S, Q>(mut fe: FunctionEnvMut<Environment<S, Q>>, req_ptr: u32) -> VmResult<u32>
+where
+    S: 'static,
+    Q: BackendQuerier + 'static,
+{
+    let (env, mut wasm_store) = fe.data_and_store_mut();
+
+    let req_bytes = read_from_memory(env, &wasm_store, req_ptr)?;
+    let req: QueryRequest = from_json(&req_bytes)?;
+
+    let res = env.with_context_data(|ctx| ctx.querier.query_chain(req))?;
+    let res_bytes = to_json(&res)?;
+
+    write_to_memory(env, &mut wasm_store, res_bytes.as_ref())
+}
+
+pub fn secp256k1_verify<S, Q>(
+    mut fe: FunctionEnvMut<Environment<S, Q>>,
     msg_hash_ptr: u32,
     sig_ptr:      u32,
     pk_ptr:       u32,
-) -> VmResult<i32> {
+) -> VmResult<i32>
+where
+    S: 'static,
+    Q: 'static,
+{
     let (env, wasm_store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
@@ -128,12 +169,16 @@ pub fn secp256k1_verify<S: 'static>(
     }
 }
 
-pub fn secp256r1_verify<S: 'static>(
-    mut fe: FunctionEnvMut<Environment<S>>,
+pub fn secp256r1_verify<S, Q>(
+    mut fe: FunctionEnvMut<Environment<S, Q>>,
     msg_hash_ptr: u32,
     sig_ptr:      u32,
     pk_ptr:       u32,
-) -> VmResult<i32> {
+) -> VmResult<i32>
+where
+    S: 'static,
+    Q: 'static,
+{
     let (env, wasm_store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;

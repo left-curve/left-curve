@@ -4,8 +4,8 @@ use {
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
 
-pub fn read_from_memory<S>(
-    env:        &mut Environment<S>,
+pub fn read_from_memory<S, Q>(
+    env:        &mut Environment<S, Q>,
     wasm_store: &impl AsStoreRef,
     region_ptr: u32,
 ) -> VmResult<Vec<u8>> {
@@ -21,8 +21,8 @@ pub fn read_from_memory<S>(
     Ok(buf)
 }
 
-pub fn read_then_wipe<S>(
-    env:        &mut Environment<S>,
+pub fn read_then_wipe<S, Q>(
+    env:        &mut Environment<S, Q>,
     wasm_store: &mut impl AsStoreMut,
     region_ptr: u32,
 ) -> VmResult<Vec<u8>> {
@@ -31,8 +31,8 @@ pub fn read_then_wipe<S>(
     Ok(data)
 }
 
-pub fn write_to_memory<S>(
-    env:        &mut Environment<S>,
+pub fn write_to_memory<S, Q>(
+    env:        &mut Environment<S, Q>,
     wasm_store: &mut impl AsStoreMut,
     data:       &[u8],
 ) -> VmResult<u32> {

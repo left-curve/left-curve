@@ -1,5 +1,6 @@
 use {
     crate::{VmError, VmResult},
+    cw_std::{GenericResult, QueryRequest, QueryResponse},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -8,35 +9,41 @@ use {
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
 
+pub trait BackendQuerier {
+    fn query_chain(&self, req: QueryRequest) -> VmResult<GenericResult<QueryResponse>>;
+}
+
 // TODO: add explaination on why these fields need to be Options
 #[derive(Default, Debug)]
-pub struct ContextData<S> {
+pub struct ContextData<S, Q> {
     pub store:     S,
+    pub querier:   Q,
     wasm_instance: Option<NonNull<Instance>>,
 }
 
-impl<S> ContextData<S> {
-    pub fn new(store: S) -> Self {
+impl<S, Q> ContextData<S, Q> {
+    pub fn new(store: S, querier: Q) -> Self {
         Self {
             store,
+            querier,
             wasm_instance: None,
         }
     }
 }
 
 #[derive(Default, Debug)]
-pub struct Environment<S> {
+pub struct Environment<S, Q> {
     memory: Option<Memory>,
-    data:   Arc<RwLock<ContextData<S>>>,
+    data:   Arc<RwLock<ContextData<S, Q>>>,
 }
 
-unsafe impl<S> Send for Environment<S> {}
+unsafe impl<S, Q> Send for Environment<S, Q> {}
 
-impl<S> Environment<S> {
-    pub fn new(store: S) -> Self {
+impl<S, Q> Environment<S, Q> {
+    pub fn new(store: S, querier: Q) -> Self {
         Self {
             memory: None,
-            data:   Arc::new(RwLock::new(ContextData::new(store))),
+            data:   Arc::new(RwLock::new(ContextData::new(store, querier))),
         }
     }
 
@@ -49,7 +56,7 @@ impl<S> Environment<S> {
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&ContextData<S>) -> Result<T, E>,
+        C: FnOnce(&ContextData<S, Q>) -> Result<T, E>,
         E: Into<VmError>,
     {
         let guard = self.data.read().map_err(|_| VmError::FailedReadLock)?;
@@ -58,7 +65,7 @@ impl<S> Environment<S> {
 
     pub fn with_context_data_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&mut ContextData<S>) -> Result<T, E>,
+        C: FnOnce(&mut ContextData<S, Q>) -> Result<T, E>,
         E: Into<VmError>,
     {
         let mut guard = self.data.write().map_err(|_| VmError::FailedWriteLock)?;
