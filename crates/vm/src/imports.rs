@@ -139,7 +139,7 @@ where
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let req_bytes = read_from_memory(env, &wasm_store, req_ptr)?;
-    let req: QueryRequest = from_json(&req_bytes)?;
+    let req: QueryRequest = from_json(req_bytes)?;
 
     let res = env.with_context_data(|ctx| ctx.querier.query_chain(req))?;
     let res_bytes = to_json(&res)?;
