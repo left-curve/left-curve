@@ -14,7 +14,6 @@ pub trait BackendQuerier {
 }
 
 // TODO: add explaination on why these fields need to be Options
-#[derive(Default, Debug)]
 pub struct ContextData<S, Q> {
     pub store:     S,
     pub querier:   Q,
@@ -31,7 +30,6 @@ impl<S, Q> ContextData<S, Q> {
     }
 }
 
-#[derive(Default, Debug)]
 pub struct Environment<S, Q> {
     memory: Option<Memory>,
     data:   Arc<RwLock<ContextData<S, Q>>>,
