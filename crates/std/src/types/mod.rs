@@ -3,6 +3,7 @@ mod app;
 mod binary;
 mod coin;
 mod context;
+mod empty;
 mod hash;
 mod query;
 mod response;
@@ -16,6 +17,7 @@ pub use {
     binary::Binary,
     coin::Coin,
     context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx},
+    empty::Empty,
     hash::{hash, Hash},
     query::{
         AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
