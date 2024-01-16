@@ -70,7 +70,7 @@ pub fn sign_bytes(
     hasher.update(to_json(&msgs)?.as_ref());
     hasher.update(sender.as_ref());
     hasher.update(chain_id.as_bytes());
-    hasher.update(&sequence.to_be_bytes());
+    hasher.update(sequence.to_be_bytes());
     Ok(hasher.finalize().into())
 }
 
