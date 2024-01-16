@@ -1,0 +1,11 @@
+[package]
+name    = "cw-mock-querier"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = { workspace = true }
+cw-std = { path = "../../../crates/std" }
