@@ -108,7 +108,7 @@ where
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, to_json(ctx)?.as_ref())?;
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
         let msg_ptr = write_to_memory(env, &mut wasm_store, msg.as_ref())?;
         let res_ptr: u32 = env
             .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), msg_ptr.into()])?

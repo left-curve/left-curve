@@ -32,9 +32,9 @@ impl Addr {
     /// where | means byte concatenation.
     pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &Binary) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(deployer.as_ref());
-        hasher.update(code_hash.as_ref());
-        hasher.update(salt.as_ref());
+        hasher.update(deployer);
+        hasher.update(code_hash);
+        hasher.update(salt);
         Self(Hash(hasher.finalize().into()))
     }
 
@@ -110,12 +110,12 @@ impl From<Addr> for String {
 
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Hash::PREFIX, hex::encode(self.0.as_ref()))
+        write!(f, "{}{}", Hash::PREFIX, hex::encode(&self.0))
     }
 }
 
 impl fmt::Debug for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Addr({}{})", Hash::PREFIX, hex::encode(self.0.as_ref()))
+        write!(f, "Addr({}{})", Hash::PREFIX, hex::encode(&self.0))
     }
 }

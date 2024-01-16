@@ -144,7 +144,7 @@ where
     let res = env.with_context_data(|ctx| ctx.querier.query_chain(req))?;
     let res_bytes = to_json(&res)?;
 
-    write_to_memory(env, &mut wasm_store, res_bytes.as_ref())
+    write_to_memory(env, &mut wasm_store, &res_bytes)
 }
 
 pub fn secp256k1_verify<S, Q>(

@@ -241,7 +241,7 @@ macro_rules! impl_methods {
 
             pub fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
                 let req_bytes = to_json(req)?;
-                let req_region = Region::build(req_bytes.as_ref());
+                let req_region = Region::build(&req_bytes);
                 let req_ptr = &*req_region as *const Region;
 
                 let res_ptr = unsafe { query_chain(req_ptr as usize) };

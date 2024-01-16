@@ -67,8 +67,8 @@ pub fn sign_bytes(
     sequence: u32,
 ) -> anyhow::Result<[u8; 32]> {
     let mut hasher = Sha256::new();
-    hasher.update(to_json(&msgs)?.as_ref());
-    hasher.update(sender.as_ref());
+    hasher.update(&to_json(&msgs)?);
+    hasher.update(sender);
     hasher.update(chain_id.as_bytes());
     hasher.update(sequence.to_be_bytes());
     Ok(hasher.finalize().into())
@@ -95,10 +95,10 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     if !ctx.simulate {
         match &pubkey {
             PubKey::Secp256k1(bytes) => {
-                ctx.secp256k1_verify(msg_hash, tx.credential.as_ref(), bytes.as_ref())?;
+                ctx.secp256k1_verify(msg_hash, &tx.credential, bytes)?;
             },
             PubKey::Secp256r1(bytes) => {
-                ctx.secp256r1_verify(msg_hash, tx.credential.as_ref(), bytes.as_ref())?;
+                ctx.secp256r1_verify(msg_hash, &tx.credential, bytes)?;
             },
         }
     }

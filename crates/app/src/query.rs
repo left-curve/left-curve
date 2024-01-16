@@ -125,8 +125,8 @@ fn query_wasm_raw<S: Storage + 'static>(
     contract: Addr,
     key:      Binary,
 ) -> anyhow::Result<WasmRawResponse> {
-    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, contract.as_ref()]);
-    let value = substore.read(key.as_ref())?;
+    let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, &contract]);
+    let value = substore.read(&key)?;
     Ok(WasmRawResponse {
         contract,
         key,
@@ -145,9 +145,9 @@ fn query_wasm_smart<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &contract]);
     let querier = Querier::new(store, block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call query
     let ctx = Context {

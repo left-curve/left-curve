@@ -109,9 +109,9 @@ fn _instantiate<S: Storage + 'static>(
     })?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, address.as_ref()]);
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &address]);
     let querier = Querier::new(store, block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call instantiate
     let ctx = Context {
@@ -164,9 +164,9 @@ fn _execute<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, contract.as_ref()]);
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &contract]);
     let querier = Querier::new(store, block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, wasm_byte_code.as_ref())?;
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call execute
     let ctx = Context {
