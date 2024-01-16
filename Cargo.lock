@@ -340,6 +340,7 @@ dependencies = [
  "cw-bank",
  "cw-crypto",
  "cw-db",
+ "cw-mock-querier",
  "cw-std",
  "cw-vm",
  "k256",
@@ -387,7 +388,6 @@ version = "0.0.0"
 name = "cw-mock-querier"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "cw-std",
 ]
 

@@ -16,6 +16,7 @@ wasmer          = { workspace = true }
 cw-account         = { path = "../../contracts/account" }
 cw-bank            = { path = "../../contracts/bank" }
 cw-crypto          = { path = "../../crates/crypto" }
+cw-mock-querier    = { path = "../../contracts/mocks/querier" }
 k256               = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }
