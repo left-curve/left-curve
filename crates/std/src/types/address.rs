@@ -2,7 +2,11 @@ use {
     crate::{Binary, Hash, MapKey, RawKey},
     serde::{Deserialize, Serialize},
     sha2::{Digest, Sha256},
-    std::{fmt, str::FromStr},
+    std::{
+        fmt,
+        ops::{Deref, DerefMut},
+        str::FromStr,
+    },
 };
 
 // comparing addresses in cosmwasm vs in CWD
@@ -44,7 +48,27 @@ impl Addr {
 
 impl AsRef<[u8]> for Addr {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+        &self.0
+    }
+}
+
+impl AsMut<[u8]> for Addr {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
+impl Deref for Addr {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Addr {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

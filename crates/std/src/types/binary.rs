@@ -1,7 +1,10 @@
 use {
     data_encoding::BASE64,
     serde::{de, ser},
-    std::fmt,
+    std::{
+        fmt,
+        ops::{Deref, DerefMut},
+    },
 };
 
 #[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -16,6 +19,26 @@ impl Binary {
 impl AsRef<[u8]> for Binary {
     fn as_ref(&self) -> &[u8] {
         self.0.as_slice()
+    }
+}
+
+impl AsMut<[u8]> for Binary {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut_slice()
+    }
+}
+
+impl Deref for Binary {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl DerefMut for Binary {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.as_mut_slice()
     }
 }
 

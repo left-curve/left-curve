@@ -3,7 +3,11 @@ use {
     anyhow::bail,
     serde::{de, ser},
     sha2::{Digest, Sha256},
-    std::{fmt, str::FromStr},
+    std::{
+        fmt,
+        ops::{Deref, DerefMut},
+        str::FromStr,
+    },
 };
 
 pub fn hash(data: impl AsRef<[u8]>) -> Hash {
@@ -29,7 +33,27 @@ impl Hash {
 
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_slice()
+        &self.0
+    }
+}
+
+impl AsMut<[u8]> for Hash {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
+impl Deref for Hash {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Hash {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
