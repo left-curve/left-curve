@@ -31,14 +31,14 @@ extern "C" {
     // set tracing level to DEBUG to see it.
     fn debug(msg_ptr: usize);
 
+    // send a query request to the chain.
+    // not to be confused with the query export.
+    fn query_chain(req: usize) -> usize;
+
     // crypto methods
     // return value of 0 means ok; any value other than 0 means error.
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-
-    // send a query request to the chain.
-    // not to be confused with the query export.
-    fn query_chain(req: usize) -> usize;
 }
 
 /// A zero-size convenience wrapper around the database imports. Provides more
@@ -280,7 +280,7 @@ macro_rules! impl_methods {
             pub fn query_accounts(
                 &self,
                 start_after: Option<Addr>,
-                limit: Option<u32>,
+                limit:       Option<u32>,
             ) -> StdResult<Vec<AccountResponse>> {
                 self.query(&QueryRequest::Accounts { start_after, limit })
                     .map(|res| res.as_accounts())
