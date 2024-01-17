@@ -15,6 +15,7 @@ wasmer        = { workspace = true, features = ["singlepass"] }
 
 [dev-dependencies]
 anyhow             = { workspace = true }
+cfg-if             = { workspace = true }
 cw-bank            = { path = "../../contracts/bank" }
 serde_json         = { workspace = true }
 tracing-subscriber = { workspace = true }

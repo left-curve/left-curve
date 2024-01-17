@@ -14,6 +14,7 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow             = "1"
+cfg-if             = "1"
 data-encoding      = "2"
 digest             = "0.10"
 hex                = "0.4"

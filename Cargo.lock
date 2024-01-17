@@ -336,6 +336,7 @@ name = "cw-app"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "cw-account",
  "cw-bank",
  "cw-crypto",
@@ -421,6 +422,7 @@ name = "cw-vm"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "cw-bank",
  "cw-crypto",
  "cw-db",

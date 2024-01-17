@@ -1,4 +1,5 @@
 use {
+    cfg_if::cfg_if,
     cw_app::App,
     cw_db::MockStorage,
     cw_mock_querier::QueryMsg,
@@ -14,13 +15,16 @@ fn main() -> anyhow::Result<()> {
     let mut app = App::new(MockStorage::new());
 
     println!("🤖 Reading wasm byte code from file");
-    let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
-    let wasm_file_path = {
-        #[cfg(target_arch = "aarch64")]
-        { artifacts_dir.join("cw_mock_querier-aarch64.wasm") }
-        #[cfg(not(target_arch = "aarch64"))]
-        { artifacts_dir.join("cw_mock_querier.wasm") }
-    };
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
+    let wasm_file_path = manifest_dir.join({
+        cfg_if! {
+            if #[cfg(target_arch = "aarch64")] {
+                "../../artifacts/cw_mock_querier-aarch64.wasm"
+            } else {
+                "../../artifacts/cw_mock_querier.wasm"
+            }
+        }
+    });
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
     wasm_file.read_to_end(&mut wasm_byte_code)?;

@@ -4,6 +4,7 @@
 //! $ cargo run -p cw-vm --example bank
 
 use {
+    cfg_if::cfg_if,
     cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
     cw_db::{BackendStorage, MockBackendStorage},
     cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
@@ -26,13 +27,16 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     // create Wasm host instance
-    let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
-    let wasm_file_path = {
-        #[cfg(target_arch = "aarch64")]
-        { artifacts_dir.join("cw_bank-aarch64.wasm") }
-        #[cfg(not(target_arch = "aarch64"))]
-        { artifacts_dir.join("cw_bank.wasm") }
-    };
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
+    let wasm_file_path = manifest_dir.join({
+        cfg_if! {
+            if #[cfg(target_arch = "aarch64")] {
+                "../../artifacts/cw_bank-aarch64.wasm"
+            } else {
+                "../../artifacts/cw_bank.wasm"
+            }
+        }
+    });
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = vec![];
     wasm_file.read_to_end(&mut wasm_byte_code)?;

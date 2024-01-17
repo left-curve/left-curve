@@ -13,6 +13,7 @@ tracing         = { workspace = true }
 wasmer          = { workspace = true }
 
 [dev-dependencies]
+cfg-if             = { workspace = true }
 cw-account         = { path = "../../contracts/account" }
 cw-bank            = { path = "../../contracts/bank" }
 cw-crypto          = { path = "../../crates/crypto" }
