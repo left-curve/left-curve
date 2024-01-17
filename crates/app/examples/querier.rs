@@ -17,9 +17,9 @@ fn main() -> anyhow::Result<()> {
     let artifacts_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
     let wasm_file_path = {
         #[cfg(target_arch = "aarch64")]
-        { artifacts_dir.join("cw_account-aarch64.wasm") }
+        { artifacts_dir.join("cw_mock_querier-aarch64.wasm") }
         #[cfg(not(target_arch = "aarch64"))]
-        { artifacts_dir.join("cw_account.wasm") }
+        { artifacts_dir.join("cw_mock_querier.wasm") }
     };
     let mut wasm_file = File::open(wasm_file_path)?;
     let mut wasm_byte_code = Vec::new();
@@ -54,6 +54,22 @@ fn main() -> anyhow::Result<()> {
     println!("🤖 Querying chain info...");
     query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
         request: QueryRequest::Info {},
+    })?;
+
+    println!("🤖 Querying codes...");
+    query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
+        request: QueryRequest::Codes {
+            start_after: None,
+            limit:       None,
+        },
+    })?;
+
+    println!("🤖 Querying accounts...");
+    query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
+        request: QueryRequest::Accounts {
+            start_after: None,
+            limit:       None,
+        },
     })?;
 
     Ok(())
