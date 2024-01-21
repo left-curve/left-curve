@@ -105,23 +105,26 @@ impl Coins {
     // instead.
 }
 
+impl From<Coins> for Vec<Coin> {
+    fn from(coins: Coins) -> Self {
+        coins.into_iter().collect()
+    }
+}
+
 impl TryFrom<Vec<Coin>> for Coins {
     type Error = StdError;
 
     fn try_from(coins: Vec<Coin>) -> Result<Self, Self::Error> {
         let mut map = BTreeMap::new();
         for coin in coins {
+            if coin.amount.is_zero() {
+                return Err(StdError::zero_coin_amount(coin.denom));
+            }
             if map.insert(coin.denom, coin.amount).is_some() {
                 return Err(StdError::DuplicateDenom);
             }
         }
         Ok(Self(map))
-    }
-}
-
-impl From<Coins> for Vec<Coin> {
-    fn from(coins: Coins) -> Self {
-        coins.into_iter().collect()
     }
 }
 

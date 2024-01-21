@@ -15,6 +15,11 @@ pub enum StdError {
     #[error("Duplicate denom detected in coins")]
     DuplicateDenom,
 
+    #[error("Zero amount for denom `{denom}` detected in coins")]
+    ZeroAmount {
+        denom: String,
+    },
+
     #[error("Cannot find denom `{denom}` in coins")]
     DenomNotFound {
         denom: String,
@@ -79,6 +84,10 @@ pub enum StdError {
 }
 
 impl StdError {
+    pub fn zero_coin_amount(denom: String) -> Self {
+        Self::ZeroAmount { denom }
+    }
+
     pub fn data_not_found<T>(key: &[u8]) -> Self {
         Self::DataNotFound {
             ty:  type_name::<T>(),
