@@ -193,7 +193,7 @@ impl fmt::Display for Coins {
 
 impl fmt::Debug for Coins {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Coins({})", self.to_string())
+        write!(f, "Coins({self})")
     }
 }
 
