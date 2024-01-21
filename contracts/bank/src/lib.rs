@@ -1,8 +1,8 @@
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Binary, Bound, Coin, Coins,
-        ExecuteCtx, InstantiateCtx, Map, Order, QueryCtx, Response, TransferCtx, TransferMsg,
+        cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins,
+        InstantiateCtx, Map, Order, QueryCtx, Response, StdResult, TransferCtx, TransferMsg,
         Uint128,
     },
     std::collections::{HashMap, HashSet},
@@ -26,16 +26,6 @@ pub struct InstantiateMsg {
 pub struct Balance {
     pub address: Addr,
     pub coins:   Coins,
-}
-
-#[cw_serde]
-pub enum ExecuteMsg {
-    // TODO
-}
-
-#[cw_serde]
-pub enum QueryMsg {
-    // TODO
 }
 
 #[entry_point]
@@ -82,10 +72,10 @@ fn increment_supply(
 }
 
 #[entry_point]
-pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> anyhow::Result<Response> {
+pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         // decrease the sender's balance
-        BALANCES.update(ctx.store, (&msg.from, &coin.denom), |maybe_balance| {
+        BALANCES.update(ctx.store, (&msg.from, &coin.denom), |maybe_balance| -> StdResult<_> {
             let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(*coin.amount)?;
             // if balance is reduced to zero, we delete it, to save disk space
             if balance > Uint128::zero() {
@@ -109,7 +99,7 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> anyhow::Result<Response> 
 }
 
 #[entry_point]
-pub fn bank_query(ctx: QueryCtx, msg: BankQuery) -> anyhow::Result<BankQueryResponse> {
+pub fn bank_query(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance {
             address,
@@ -130,7 +120,7 @@ pub fn bank_query(ctx: QueryCtx, msg: BankQuery) -> anyhow::Result<BankQueryResp
     }
 }
 
-pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> anyhow::Result<Coin> {
+pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> StdResult<Coin> {
     let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
     Ok(Coin {
         denom,
@@ -143,22 +133,17 @@ pub fn query_balances(
     address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> anyhow::Result<Coins> {
+) -> StdResult<Coins> {
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    BALANCES
+    Coins::unchecked(&mut BALANCES
         .prefix(&address)
         .range(ctx.store, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            let (denom, amount) = item?;
-            Ok(Coin { denom, amount })
-        })
-        .collect()
+        .take(limit))
 }
 
-pub fn query_supply(ctx: QueryCtx, denom: String) -> anyhow::Result<Coin> {
+pub fn query_supply(ctx: QueryCtx, denom: String) -> StdResult<Coin> {
     let maybe_supply = SUPPLIES.may_load(ctx.store, &denom)?;
     Ok(Coin {
         denom,
@@ -170,26 +155,11 @@ pub fn query_supplies(
     ctx:         QueryCtx,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> anyhow::Result<Coins> {
+) -> StdResult<Coins> {
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    SUPPLIES
+    Coins::unchecked(&mut SUPPLIES
         .range(ctx.store, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            let (denom, amount) = item?;
-            Ok(Coin { denom, amount })
-        })
-        .collect()
-}
-
-#[entry_point]
-pub fn execute(_ctx: ExecuteCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
-    todo!()
-}
-
-#[entry_point]
-pub fn query(_ctx: QueryCtx, _msg: QueryMsg) -> anyhow::Result<Binary> {
-    todo!()
+        .take(limit))
 }

@@ -51,6 +51,16 @@ impl Coins {
         Self(BTreeMap::new())
     }
 
+    /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
+    /// without checking for duplicate denoms or zero amounts.
+    /// This is solely intended for use in implementing the bank contract,
+    /// where we know for sure there's no such illegal cases.
+    pub fn unchecked<E>(
+        iter: &mut dyn Iterator<Item = Result<(String, Uint128), E>>,
+    ) -> Result<Self, E> {
+        iter.collect::<Result<_, E>>().map(Self)
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
