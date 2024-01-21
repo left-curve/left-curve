@@ -111,12 +111,12 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_bank_query(
+    pub fn call_query_bank(
         &mut self,
         ctx: &Context,
         msg: &BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
-        let res_bytes = self.call_entry_point_raw("bank_query", ctx, to_json(msg)?)?;
+        let res_bytes = self.call_entry_point_raw("query_bank", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 

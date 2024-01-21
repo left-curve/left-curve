@@ -103,7 +103,7 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[entry_point]
-pub fn bank_query(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
+pub fn query_bank(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance {
             address,

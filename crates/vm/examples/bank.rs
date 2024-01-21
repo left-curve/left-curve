@@ -160,7 +160,7 @@ where
         let address = Addr::mock(idx);
 
         let coins = instance
-            .call_bank_query(
+            .call_query_bank(
                 &mock_context(None),
                 &BankQuery::Balances {
                     address:     address.clone(),

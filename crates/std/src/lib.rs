@@ -28,7 +28,7 @@ mod wasm;
 
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
-    do_bank_query, do_before_tx, do_execute, do_instantiate, do_query, do_transfer,
+    do_query_bank, do_before_tx, do_execute, do_instantiate, do_query, do_transfer,
     ExternalIterator, ExternalStorage, Region,
 };
 
