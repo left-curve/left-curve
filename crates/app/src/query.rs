@@ -2,9 +2,9 @@ use {
     crate::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
     cw_db::{BackendStorage, PrefixStore, SharedStore},
     cw_std::{
-        AccountResponse, Addr, Binary, BlockInfo, Bound, Context, GenericResult, Hash,
-        InfoResponse, Order, QueryRequest, QueryResponse, Storage, WasmRawResponse,
-        WasmSmartResponse,
+        AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
+        Context, GenericResult, Hash, InfoResponse, Order, QueryRequest, QueryResponse, StdResult,
+        Storage, WasmRawResponse, WasmSmartResponse,
     },
     cw_vm::{BackendQuerier, Instance, VmResult},
 };
@@ -39,6 +39,22 @@ pub fn process_query<S: Storage + 'static>(
 ) -> anyhow::Result<QueryResponse> {
     match req {
         QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
+        QueryRequest::Balance {
+            address,
+            denom,
+        } => query_balance(store, block, address, denom).map(QueryResponse::Balance),
+        QueryRequest::Balances {
+            address,
+            start_after,
+            limit,
+        } => query_balances(store, block, address, start_after, limit).map(QueryResponse::Balances),
+        QueryRequest::Supply {
+            denom,
+        } => query_supply(store, block, denom).map(QueryResponse::Supply),
+        QueryRequest::Supplies {
+            start_after,
+            limit,
+        } => query_supplies(store, block, start_after, limit).map(QueryResponse::Supplies),
         QueryRequest::Code {
             hash,
         } => query_code(&store, hash).map(QueryResponse::Code),
@@ -71,8 +87,73 @@ fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
     })
 }
 
+fn query_balance<S: Storage + 'static>(
+    store:   SharedStore<S>,
+    block:   &BlockInfo,
+    address: Addr,
+    denom:   String,
+) -> anyhow::Result<Coin> {
+    _query_bank(store, block, &BankQuery::Balance { address, denom })
+        .map(|res| res.as_balance())
+}
+
+fn query_balances<S: Storage + 'static>(
+    store:       SharedStore<S>,
+    block:       &BlockInfo,
+    address:     Addr,
+    start_after: Option<String>,
+    limit:       Option<u32>,
+) -> anyhow::Result<Coins> {
+    _query_bank(store, block, &BankQuery::Balances { address, start_after, limit })
+        .map(|res| res.as_balances())
+}
+
+fn query_supply<S: Storage + 'static>(
+    store: SharedStore<S>,
+    block: &BlockInfo,
+    denom: String,
+) -> anyhow::Result<Coin> {
+    _query_bank(store, block, &BankQuery::Supply { denom })
+        .map(|res| res.as_supply())
+}
+
+fn query_supplies<S: Storage + 'static>(
+    store:       SharedStore<S>,
+    block:       &BlockInfo,
+    start_after: Option<String>,
+    limit:       Option<u32>,
+) -> anyhow::Result<Coins> {
+    _query_bank(store, block, &BankQuery::Supplies { start_after, limit })
+        .map(|res| res.as_supplies())
+}
+
+fn _query_bank<S: Storage + 'static>(
+    store: SharedStore<S>,
+    block: &BlockInfo,
+    msg:   &BankQuery,
+) -> anyhow::Result<BankQueryResponse> {
+    // load wasm code
+    let cfg = CONFIG.load(&store)?;
+    let account = ACCOUNTS.load(&store, &cfg.bank)?;
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
+
+    // create wasm host
+    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &cfg.bank]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+
+    // call query
+    let ctx = Context {
+        block:    block.clone(),
+        sender:   None,
+        simulate: None,
+        contract: cfg.bank,
+    };
+    instance.call_bank_query(&ctx, msg)?.into_std_result().map_err(Into::into)
+}
+
 fn query_code(store: &dyn Storage, hash: Hash) -> anyhow::Result<Binary> {
-    CODES.load(store, &hash)
+    CODES.load(store, &hash).map_err(Into::into)
 }
 
 fn query_codes(
@@ -86,7 +167,8 @@ fn query_codes(
     CODES
         .keys(store, start, None, Order::Ascending)
         .take(limit as usize)
-        .collect()
+        .collect::<StdResult<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<AccountResponse> {
