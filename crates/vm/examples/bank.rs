@@ -17,7 +17,7 @@ lazy_static! {
     static ref INITIAL_BALANCES: Vec<Balance> = vec![
         Balance {
             address: Addr::mock(1),
-            coins: Coins::make(vec![
+            coins: Coins::from_vec_unchecked(vec![
                 Coin {
                     denom: "uatom".into(),
                     amount: Uint128::new(100),
@@ -26,24 +26,21 @@ lazy_static! {
                     denom: "uosmo".into(),
                     amount: Uint128::new(888),
                 },
-            ])
-            .unwrap(),
+            ]),
         },
         Balance {
             address: Addr::mock(2),
-            coins: Coins::make(vec![Coin {
+            coins: Coins::from(Coin {
                 denom: "uatom".into(),
                 amount: Uint128::new(50),
-            }])
-            .unwrap(),
+            }),
         },
         Balance {
             address: Addr::mock(3),
-            coins: Coins::make(vec![Coin {
+            coins: Coins::from(Coin {
                 denom: "uatom".into(),
                 amount: Uint128::new(123),
-            }])
-            .unwrap(),
+            }),
         },
     ];
 }
@@ -134,12 +131,10 @@ where
         &TransferMsg {
             from,
             to,
-            coins: Coins::make(vec![
-                Coin {
-                    denom:  denom.into(),
-                    amount: Uint128::new(amount),
-                },
-            ])?,
+            coins: Coins::from(Coin {
+                denom:  denom.into(),
+                amount: Uint128::new(amount),
+            }),
         },
     )?;
 

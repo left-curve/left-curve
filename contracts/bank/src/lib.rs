@@ -140,11 +140,11 @@ pub fn query_balances(
 ) -> StdResult<Coins> {
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    Coins::unchecked(&mut BALANCES
+    let mut iter = BALANCES
         .prefix(&address)
         .range(ctx.store, start, None, Order::Ascending)
-        .take(limit))
+        .take(limit);
+    Coins::from_iter_unchecked(&mut iter)
 }
 
 pub fn query_supply(ctx: QueryCtx, denom: String) -> StdResult<Coin> {
@@ -162,8 +162,8 @@ pub fn query_supplies(
 ) -> StdResult<Coins> {
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    Coins::unchecked(&mut SUPPLIES
+    let mut iter = SUPPLIES
         .range(ctx.store, start, None, Order::Ascending)
-        .take(limit))
+        .take(limit);
+    Coins::from_iter_unchecked(&mut iter)
 }

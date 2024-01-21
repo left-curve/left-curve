@@ -51,26 +51,21 @@ impl Coins {
         Self(BTreeMap::new())
     }
 
-    /// Create a new Coins instance from a vector of coins. The vector must not
-    /// contain duplicate denoms or zero amounts.
-    pub fn make(coins: Vec<Coin>) -> StdResult<Self> {
-        let mut map = BTreeMap::new();
-        for coin in coins {
-            if coin.amount.is_zero() {
-                return Err(StdError::zero_coin_amount(coin.denom));
-            }
-            if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::DuplicateDenom);
-            }
-        }
-        Ok(Self(map))
+    /// Cast an `Vec<Coin>` into a `Coins` object, without checking for
+    /// duplicate denoms or zero amounts.
+    /// This is potentially unsafe, intended for using in tests. Only use if you
+    /// know what you're doing.
+    #[doc(hidden)]
+    pub fn from_vec_unchecked(vec: Vec<Coin>) -> Self {
+        Self(vec.into_iter().map(|coin| (coin.denom, coin.amount)).collect())
     }
 
     /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
     /// without checking for duplicate denoms or zero amounts.
     /// This is solely intended for use in implementing the bank contract,
-    /// where we know for sure there's no such illegal cases.
-    pub fn unchecked<E>(
+    /// where we know for sure there's no such illegal cases.\
+    #[doc(hidden)]
+    pub fn from_iter_unchecked<E>(
         iter: &mut dyn Iterator<Item = Result<(String, Uint128), E>>,
     ) -> Result<Self, E> {
         iter.collect::<Result<_, E>>().map(Self)
@@ -128,6 +123,25 @@ impl Coins {
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods
     // instead.
+}
+
+// create a new Coins instance from a vector of coins. the vector must not
+// contain duplicate denoms or zero amounts.
+impl TryFrom<Vec<Coin>> for Coins {
+    type Error = StdError;
+
+    fn try_from(vec: Vec<Coin>) -> Result<Self, Self::Error> {
+        let mut map = BTreeMap::new();
+        for coin in vec {
+            if coin.amount.is_zero() {
+                return Err(StdError::zero_coin_amount(coin.denom));
+            }
+            if map.insert(coin.denom, coin.amount).is_some() {
+                return Err(StdError::DuplicateDenom);
+            }
+        }
+        Ok(Self(map))
+    }
 }
 
 impl From<Coin> for Coins {

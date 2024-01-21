@@ -151,11 +151,11 @@ fn make_random_accounts(count: usize, code_hash: &Hash) -> Vec<TestAccount> {
     accts
 }
 
-fn make_initial_balances(accounts: &[TestAccount]) -> anyhow::Result<Vec<Balance>> {
-    Ok(vec![
+fn make_initial_balances(accounts: &[TestAccount]) -> Vec<Balance> {
+    vec![
         Balance {
             address: accounts[0].addr.clone(),
-            coins: Coins::make(vec![
+            coins: Coins::from_vec_unchecked(vec![
                 Coin {
                     denom: "uatom".into(),
                     amount: Uint128::new(100),
@@ -164,7 +164,7 @@ fn make_initial_balances(accounts: &[TestAccount]) -> anyhow::Result<Vec<Balance
                     denom: "uosmo".into(),
                     amount: Uint128::new(888),
                 },
-            ])?,
+            ]),
         },
         Balance {
             address: accounts[1].addr.clone(),
@@ -180,7 +180,7 @@ fn make_initial_balances(accounts: &[TestAccount]) -> anyhow::Result<Vec<Balance
                 amount: Uint128::new(123),
             }),
         },
-    ])
+    ]
 }
 
 fn make_genesis_state(
@@ -205,7 +205,7 @@ fn make_genesis_state(
             Message::Instantiate {
                 code_hash: bank_wasm.hash.clone(),
                 msg: to_json(&cw_bank::InstantiateMsg {
-                    initial_balances: make_initial_balances(accounts)?,
+                    initial_balances: make_initial_balances(accounts),
                 })?,
                 salt:  BANK_SALT.clone(),
                 funds: Coins::empty(),
