@@ -11,10 +11,11 @@ pub use crate::{
     serde::{from_json, to_json},
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     types::{
-        hash, Account, AccountResponse, Addr, Attribute, BeforeTxCtx, Binary, BlockInfo, Coin,
-        CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty, ExecuteCtx,
-        GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message, QueryCtx,
-        QueryRequest, QueryResponse, Response, Tx, Uint128, WasmRawResponse, WasmSmartResponse,
+        hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
+        Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
+        ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message,
+        QueryCtx, QueryRequest, QueryResponse, Response, TransferCtx, TransferMsg, Tx, Uint128,
+        WasmRawResponse, WasmSmartResponse,
     },
 };
 

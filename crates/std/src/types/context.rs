@@ -20,9 +20,12 @@ pub struct Context {
     pub simulate: Option<bool>,
 }
 
-// BlockTxCtx doesn't have a `sender` field, because only messages have senders,
-// but a before_tx call isn't triggered by a message (it's triggered by a tx) so
-// sender doesn't apply.
+pub struct TransferCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+}
+
 pub struct BeforeTxCtx<'a> {
     pub store:    &'a mut dyn Storage,
     pub block:    BlockInfo,

@@ -1,6 +1,5 @@
 use {
-    crate::Uint128,
-    anyhow::anyhow,
+    crate::{StdError, StdResult, Uint128},
     serde::{de, ser, ser::SerializeSeq, Deserialize, Serialize},
     std::{collections::{BTreeMap, btree_map}, fmt},
 };
@@ -87,12 +86,13 @@ impl Coins {
     /// reduced below zero. If the amount is reduced to exactly zero, the record
     /// is purged, so that only non-zero amount coins remain.
     // TODO: replace anyhow::Error with StdError.
-    pub fn decrease_amount(&mut self, denom: &str, by: Uint128) -> anyhow::Result<()> {
+    pub fn decrease_amount(&mut self, denom: &str, by: Uint128) -> StdResult<()> {
         let Some(amount) = self.0.get_mut(denom) else {
-            return Err(anyhow!("Cannot find coin with denom {denom}"));
+            return Err(StdError::DenomNotFound { denom: denom.into() });
         };
 
-        *amount = amount.checked_sub(by)?;
+        // TODO
+        *amount = amount.checked_sub(by).unwrap();
 
         if amount.is_zero() {
             self.0.remove(denom);
@@ -105,6 +105,26 @@ impl Coins {
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods
     // instead.
+}
+
+impl TryFrom<Vec<Coin>> for Coins {
+    type Error = StdError;
+
+    fn try_from(coins: Vec<Coin>) -> Result<Self, Self::Error> {
+        let mut map = BTreeMap::new();
+        for coin in coins {
+            if map.insert(coin.denom, coin.amount).is_some() {
+                return Err(StdError::DuplicateDenom);
+            }
+        }
+        Ok(Self(map))
+    }
+}
+
+impl From<Coins> for Vec<Coin> {
+    fn from(coins: Coins) -> Self {
+        coins.into_iter().collect()
+    }
 }
 
 impl<'a> IntoIterator for &'a Coins {

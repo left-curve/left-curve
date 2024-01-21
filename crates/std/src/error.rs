@@ -8,6 +8,14 @@ pub enum StdError {
     #[error("Generic error: {0}")]
     Generic(String),
 
+    #[error("Duplicate denom detected in coins")]
+    DuplicateDenom,
+
+    #[error("Cannot find denom `{denom}` in coins")]
+    DenomNotFound {
+        denom: String,
+    },
+
     #[error("Failed to serialize into json! type: {ty}, reason: {reason}")]
     Serialize {
         ty:     &'static str,
