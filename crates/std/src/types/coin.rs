@@ -51,6 +51,21 @@ impl Coins {
         Self(BTreeMap::new())
     }
 
+    /// Create a new Coins instance from a vector of coins. The vector must not
+    /// contain duplicate denoms or zero amounts.
+    pub fn make(coins: Vec<Coin>) -> StdResult<Self> {
+        let mut map = BTreeMap::new();
+        for coin in coins {
+            if coin.amount.is_zero() {
+                return Err(StdError::zero_coin_amount(coin.denom));
+            }
+            if map.insert(coin.denom, coin.amount).is_some() {
+                return Err(StdError::DuplicateDenom);
+            }
+        }
+        Ok(Self(map))
+    }
+
     /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
     /// without checking for duplicate denoms or zero amounts.
     /// This is solely intended for use in implementing the bank contract,
@@ -118,23 +133,6 @@ impl Coins {
 impl From<Coins> for Vec<Coin> {
     fn from(coins: Coins) -> Self {
         coins.into_iter().collect()
-    }
-}
-
-impl TryFrom<Vec<Coin>> for Coins {
-    type Error = StdError;
-
-    fn try_from(coins: Vec<Coin>) -> Result<Self, Self::Error> {
-        let mut map = BTreeMap::new();
-        for coin in coins {
-            if coin.amount.is_zero() {
-                return Err(StdError::zero_coin_amount(coin.denom));
-            }
-            if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::DuplicateDenom);
-            }
-        }
-        Ok(Self(map))
     }
 }
 

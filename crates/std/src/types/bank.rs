@@ -51,3 +51,33 @@ pub enum BankQueryResponse {
     Supply(Coin),
     Supplies(Coins),
 }
+
+impl BankQueryResponse {
+    pub fn as_balance(self) -> Coin {
+        let BankQueryResponse::Balance(coin) = self else {
+            panic!("BankQueryResponse is not Balance");
+        };
+        coin
+    }
+
+    pub fn as_balances(self) -> Coins {
+        let BankQueryResponse::Balances(coins) = self else {
+            panic!("BankQueryResponse is not Balances");
+        };
+        coins
+    }
+
+    pub fn as_supply(self) -> Coin {
+        let BankQueryResponse::Supply(coin) = self else {
+            panic!("BankQueryResponse is not Supply");
+        };
+        coin
+    }
+
+    pub fn as_supplies(self) -> Coins {
+        let BankQueryResponse::Supplies(coins) = self else {
+            panic!("BankQueryResponse is not Supplies");
+        };
+        coins
+    }
+}

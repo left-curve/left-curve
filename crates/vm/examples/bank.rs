@@ -5,20 +5,12 @@
 
 use {
     cfg_if::cfg_if,
-    cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw_bank::{Balance, InstantiateMsg},
     cw_db::{BackendStorage, MockBackendStorage},
-    cw_std::{from_json, to_json, Addr, BlockInfo, Context, Uint128},
+    cw_std::{to_json, Addr, BankQuery, BlockInfo, Coin, Coins, Context, TransferMsg, Uint128},
     cw_vm::{BackendQuerier, Instance, MockBackendQuerier},
     std::{env, fs::File, io::Read, path::PathBuf},
 };
-
-// (address, denom, amount)
-const BALANCES: [(Addr, &str, Uint128); 4] = [
-    (Addr::mock(1), "uatom", Uint128::new(100)),
-    (Addr::mock(1), "uosmo", Uint128::new(888)),
-    (Addr::mock(2), "uatom", Uint128::new(50)),
-    (Addr::mock(3), "uatom", Uint128::new(123)),
-];
 
 fn main() -> anyhow::Result<()> {
     // set tracing to TRACE level, so that we can see DB reads/writes logs
@@ -69,6 +61,42 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn mock_initial_balances() -> anyhow::Result<Vec<Balance>> {
+    let mut balances = vec![];
+    balances.push(Balance {
+        address: Addr::mock(1),
+        coins: Coins::make(vec![
+            Coin {
+                denom: "uatom".into(),
+                amount: Uint128::new(100),
+            },
+            Coin {
+                denom: "uosmo".into(),
+                amount: Uint128::new(888),
+            },
+        ])?,
+    });
+    balances.push(Balance {
+        address: Addr::mock(2),
+        coins: Coins::make(vec![
+            Coin {
+                denom:  "uatom".into(),
+                amount: Uint128::new(50),
+            },
+        ])?,
+    });
+    balances.push(Balance {
+        address: Addr::mock(3),
+        coins: Coins::make(vec![
+            Coin {
+                denom:  "uatom".into(),
+                amount: Uint128::new(123),
+            },
+        ])?,
+    });
+    Ok(balances)
+}
+
 fn instantiate<S, Q>(instance: &mut Instance<S, Q>) -> anyhow::Result<()>
 where
     S: BackendStorage + 'static,
@@ -76,19 +104,10 @@ where
 {
     println!("🤖 Instantiating contract");
 
-    let mut initial_balances = vec![];
-    for (address, denom, amount) in BALANCES {
-        initial_balances.push(Balance {
-            address,
-            denom: denom.into(),
-            amount,
-        });
-    }
-
     let res = instance.call_instantiate(
         &mock_context(Some(Addr::mock(0))),
         to_json(&InstantiateMsg {
-            initial_balances,
+            initial_balances: mock_initial_balances()?,
         })?,
     )?;
 
@@ -110,13 +129,18 @@ where
 {
     println!("🤖 Sending... from={from:?} to={to:?} denom={denom} amount={amount}");
 
-    let res = instance.call_execute(
-        &mock_context(Some(from)),
-        to_json(&ExecuteMsg::Send {
+    let res = instance.call_transfer(
+        &mock_context(None),
+        &TransferMsg {
+            from,
             to,
-            denom: denom.into(),
-            amount: Uint128::new(amount),
-        })?,
+            coins: Coins::make(vec![
+                Coin {
+                    denom:  denom.into(),
+                    amount: Uint128::new(amount),
+                },
+            ])?,
+        },
     )?;
 
     println!("✅ Send successful! res={}", serde_json::to_string(&res)?);
@@ -131,18 +155,26 @@ where
 {
     println!("🤖 Querying balances");
 
-    let result = instance.call_query(
-        &mock_context(None),
-        to_json(&QueryMsg::Balances {
-            start_after: None,
-            limit:       None,
-        })?,
-    )?;
+    let mut balances = vec![];
+    for idx in 1..=6 {
+        let address = Addr::mock(idx);
 
-    let res_bytes = result.into_std_result()?;
-    let res: Vec<Balance> = from_json(res_bytes)?;
+        let coins = instance
+            .call_bank_query(
+                &mock_context(None),
+                &BankQuery::Balances {
+                    address:     address.clone(),
+                    start_after: None,
+                    limit:       None,
+                }
+            )?
+            .into_std_result()?
+            .as_balances();
 
-    println!("{}", serde_json::to_string_pretty(&res)?);
+        balances.push(Balance { address, coins });
+    }
+
+    println!("{}", serde_json::to_string_pretty(&balances)?);
 
     Ok(())
 }
