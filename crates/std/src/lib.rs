@@ -12,9 +12,9 @@ pub use crate::{
     storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BeforeTxCtx, Binary, BlockInfo, Coin,
-        Config, Context, Empty, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse,
-        InstantiateCtx, Message, QueryCtx, QueryRequest, QueryResponse, Response, Tx, Uint128,
-        WasmRawResponse, WasmSmartResponse,
+        CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty, ExecuteCtx,
+        GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message, QueryCtx,
+        QueryRequest, QueryResponse, Response, Tx, Uint128, WasmRawResponse, WasmSmartResponse,
     },
 };
 

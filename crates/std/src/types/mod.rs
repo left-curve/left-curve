@@ -15,7 +15,7 @@ pub use {
     address::Addr,
     app::{Account, BlockInfo, Config, GenesisState},
     binary::Binary,
-    coin::Coin,
+    coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx},
     empty::Empty,
     hash::{hash, Hash},
