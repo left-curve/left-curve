@@ -4,7 +4,7 @@
 //!
 //! The bank contract must implement the following two entry points:
 //!
-//! ```rust
+//! ```ignore
 //! #[entry_point]
 //! fn transfer<E>(ctx: TransferCtx, msg: TransferMsg) -> Result<Response, E>;
 //!
