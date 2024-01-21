@@ -1,11 +1,11 @@
 use {
     crate::{
-        from_json, to_json, BeforeTxCtx, Binary, Context, GenericResult, ExecuteCtx,
-        ExternalStorage, InstantiateCtx, QueryCtx, Region, Response, Tx,
+        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx,
+        ExternalStorage, GenericResult, InstantiateCtx, QueryCtx, Region, Response, TransferCtx,
+        TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
-
 
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was
@@ -36,6 +36,8 @@ macro_rules! try_into_generic_result {
         }
     };
 }
+
+// -------------------------------- instantiate --------------------------------
 
 pub fn do_instantiate<M, E>(
     instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
@@ -77,43 +79,7 @@ where
     instantiate_fn(ctx, msg).into()
 }
 
-pub fn do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_ptr:      usize,
-    tx_ptr:       usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
-
-    let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_bytes:    &[u8],
-    tx_bytes:     &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-    let tx = try_into_generic_result!(from_json(tx_bytes));
-
-    let ctx = BeforeTxCtx {
-        store:    &mut ExternalStorage,
-        block:    ctx.block,
-        contract: ctx.contract,
-        simulate: ctx.simulate.expect("host failed to specify whether it's simulation mode"),
-    };
-
-    before_tx_fn(ctx, tx).into()
-}
+// ---------------------------------- execute ----------------------------------
 
 pub fn do_execute<M, E>(
     execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
@@ -155,6 +121,8 @@ where
     execute_fn(ctx, msg).into()
 }
 
+// ----------------------------------- query -----------------------------------
+
 pub fn do_query<M, E>(
     query_fn: &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
     ctx_ptr:  usize,
@@ -192,4 +160,122 @@ where
     };
 
     query_fn(ctx, msg).into()
+}
+
+// --------------------------------- before tx ---------------------------------
+
+pub fn do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_ptr:      usize,
+    tx_ptr:       usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
+
+    let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_bytes:    &[u8],
+    tx_bytes:     &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let tx = try_into_generic_result!(from_json(tx_bytes));
+
+    let ctx = BeforeTxCtx {
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+        simulate: ctx.simulate.expect("host failed to specify whether it's simulation mode"),
+    };
+
+    before_tx_fn(ctx, tx).into()
+}
+
+// --------------------------------- transfer ----------------------------------
+
+pub fn do_transfer<E>(
+    transfer_fn: &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
+    ctx_ptr:     usize,
+    msg_ptr:     usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_transfer<E>(
+    transfer_fn:  &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
+    ctx_bytes:    &[u8],
+    msg_bytes:    &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = TransferCtx {
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+    };
+
+    transfer_fn(ctx, msg).into()
+}
+
+// -------------------------------- bank query ---------------------------------
+
+pub fn do_bank_query<E>(
+    bank_query_fn: &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_ptr:       usize,
+    msg_ptr:       usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_bank_query(bank_query_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_bank_query<E>(
+    bank_query_fn:  &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_bytes:      &[u8],
+    msg_bytes:      &[u8],
+) -> GenericResult<BankQueryResponse>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = QueryCtx {
+        store:    &ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+    };
+
+    bank_query_fn(ctx, msg).into()
 }

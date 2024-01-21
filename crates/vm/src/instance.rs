@@ -5,7 +5,10 @@ use {
         VmResult,
     },
     cw_db::BackendStorage,
-    cw_std::{from_json, to_json, Binary, Context, GenericResult, Response, Tx},
+    cw_std::{
+        from_json, to_json, BankQuery, BankQueryResponse, Binary, Context, GenericResult, Response,
+        TransferMsg, Tx,
+    },
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
     },
@@ -72,15 +75,6 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_before_tx(
-        &mut self,
-        ctx: &Context,
-        tx:  &Tx,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("before_tx", ctx, to_json(tx)?)?;
-        from_json(res_bytes).map_err(Into::into)
-    }
-
     pub fn call_execute(
         &mut self,
         ctx: &Context,
@@ -96,6 +90,33 @@ where
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Binary>> {
         let res_bytes = self.call_entry_point_raw("query", ctx, msg)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    pub fn call_before_tx(
+        &mut self,
+        ctx: &Context,
+        tx:  &Tx,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_entry_point_raw("before_tx", ctx, to_json(tx)?)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    pub fn call_transfer(
+        &mut self,
+        ctx: &Context,
+        msg: &TransferMsg,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_entry_point_raw("transfer", ctx, to_json(msg)?)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    pub fn call_bank_query(
+        &mut self,
+        ctx: &Context,
+        msg: &BankQuery,
+    ) -> VmResult<GenericResult<BankQueryResponse>> {
+        let res_bytes = self.call_entry_point_raw("bank_query", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
