@@ -1,8 +1,8 @@
 use {
     crate::{
-        from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, ExecuteCtx,
+        from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, Coins, ExecuteCtx,
         GenericResult, Hash, InfoResponse, InstantiateCtx, Order, QueryCtx, QueryRequest,
-        QueryResponse, Record, Region, StdError, StdResult, Storage,
+        QueryResponse, Record, Region, StdError, StdResult, Storage, Uint128,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -252,6 +252,34 @@ macro_rules! impl_methods {
 
             pub fn query_info(&self) -> StdResult<InfoResponse> {
                 self.query(&QueryRequest::Info {}).map(|res| res.as_info())
+            }
+
+            pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
+                self.query(&QueryRequest::Balance { address, denom })
+                    .map(|res| res.as_balance().amount)
+            }
+
+            pub fn query_balances(
+                &self,
+                address:     Addr,
+                start_after: Option<String>,
+                limit:       Option<u32>,
+            ) -> StdResult<Coins> {
+                self.query(&QueryRequest::Balances { address, start_after, limit })
+                    .map(|res| res.as_balances())
+            }
+
+            pub fn query_supply(&self, denom: String) -> StdResult<Uint128> {
+                self.query(&QueryRequest::Supply { denom }).map(|res| res.as_supply().amount)
+            }
+
+            pub fn query_supplies(
+                &self,
+                start_after: Option<String>,
+                limit:       Option<u32>,
+            ) -> StdResult<Coins> {
+                self.query(&QueryRequest::Supplies { start_after, limit })
+                    .map(|res| res.as_supplies())
             }
 
             pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
