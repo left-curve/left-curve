@@ -1,5 +1,5 @@
 use {
-    crate::{from_json, Bound, MapKey, Order, RawBound, RawKey, Storage},
+    crate::{from_json, Bound, MapKey, Order, RawBound, RawKey, StdResult, Storage},
     cw_db::{concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim},
     serde::de::DeserializeOwned,
     std::marker::PhantomData,
@@ -33,7 +33,7 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'a> {
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
@@ -59,20 +59,20 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<K::Output>> + 'a> {
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
         let (min, max) = range_bounds(&self.prefix, min, max);
         let prefix = self.prefix.clone();
         // TODO: this is really inefficient because the host needs to load both
         // the key and value into Wasm memory
         let iter = store.scan(Some(&min), Some(&max), order).map(move |(k, _)| {
-            debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
+            debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             K::deserialize(&key_bytes)
         });
         Box::new(iter)
     }
 
-    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> anyhow::Result<()> {
+    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> StdResult<()> {
         todo!()
     }
 }

@@ -1,10 +1,8 @@
 use {
-    crate::{from_json, to_json, RawKey, StdResult, Storage},
+    crate::{from_json, to_json, RawKey, StdError, StdResult, Storage},
     cw_db::nested_namespaces_with_key,
-    anyhow::anyhow,
-    data_encoding::BASE64,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{any::type_name, marker::PhantomData},
+    std:: marker::PhantomData,
 };
 
 pub struct PathBuf<T> {
@@ -54,22 +52,19 @@ where
         store.read(self.storage_key).map(from_json).transpose()
     }
 
-    pub fn load(&self, store: &dyn Storage) -> anyhow::Result<T> {
+    pub fn load(&self, store: &dyn Storage) -> StdResult<T> {
         from_json(store
             .read(self.storage_key)
-            .ok_or_else(|| anyhow!(
-                "[Path]: data not found! type: {}, storage key: {}",
-                type_name::<T>(),
-                BASE64.encode(self.storage_key),
-            ))?)
+            .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))?)
             .map_err(Into::into)
     }
 
     // compared to the original cosmwasm, we require `action` to return an
     // option, which in case of None leads to the record being deleted.
-    pub fn update<A>(&self, store: &mut dyn Storage, action: A) -> anyhow::Result<Option<T>>
+    pub fn update<A, E>(&self, store: &mut dyn Storage, action: A) -> Result<Option<T>, E>
     where
-        A: FnOnce(Option<T>) -> anyhow::Result<Option<T>>,
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
         let maybe_data = action(self.may_load(store)?)?;
 
@@ -82,7 +77,7 @@ where
         Ok(maybe_data)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, data: &T) -> anyhow::Result<()> {
+    pub fn save(&self, store: &mut dyn Storage, data: &T) -> StdResult<()> {
         let bytes = to_json(data)?;
         store.write(self.storage_key, &bytes);
         Ok(())

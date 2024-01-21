@@ -1,6 +1,5 @@
 use {
-    crate::{MapKey, RawKey},
-    anyhow::bail,
+    crate::{MapKey, RawKey, StdError, StdResult},
     serde::{de, ser},
     sha2::{Digest, Sha256},
     std::{
@@ -58,11 +57,11 @@ impl DerefMut for Hash {
 }
 
 impl TryFrom<&[u8]> for Hash {
-    type Error = anyhow::Error;
+    type Error = StdError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            bail!("[Hash]: incorrect length! expecting {}, found {}", Self::LENGTH, bytes.len());
+            return Err(StdError::incorrect_length::<Self>(Self::LENGTH, bytes.len()))
         };
 
         Ok(Self(bytes))
@@ -70,11 +69,11 @@ impl TryFrom<&[u8]> for Hash {
 }
 
 impl FromStr for Hash {
-    type Err = anyhow::Error;
+    type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
-            bail!("[Hash]: string does not start with expected prefix");
+            return Err(StdError::incorrect_prefix::<Self>(Self::PREFIX))
         };
 
         hex::decode(hex_str)?.as_slice().try_into()
@@ -90,7 +89,7 @@ impl MapKey for &Hash {
         vec![RawKey::Ref(&self.0)]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
     }
 }

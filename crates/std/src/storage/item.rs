@@ -1,5 +1,5 @@
 use {
-    crate::{Path, StdResult, Storage},
+    crate::{Path, StdError, StdResult, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::marker::PhantomData,
 };
@@ -34,18 +34,19 @@ where
         self.path().may_load(store)
     }
 
-    pub fn load(&self, store: &dyn Storage) -> anyhow::Result<T> {
+    pub fn load(&self, store: &dyn Storage) -> StdResult<T> {
         self.path().load(store)
     }
 
-    pub fn update<A>(&self, store: &mut dyn Storage, action: A) -> anyhow::Result<Option<T>>
+    pub fn update<A, E>(&self, store: &mut dyn Storage, action: A) -> Result<Option<T>, E>
     where
-        A: FnOnce(Option<T>) -> anyhow::Result<Option<T>>,
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
         self.path().update(store, action)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, data: &T) -> anyhow::Result<()> {
+    pub fn save(&self, store: &mut dyn Storage, data: &T) -> StdResult<()> {
         self.path().save(store, data)
     }
 

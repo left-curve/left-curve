@@ -1,5 +1,5 @@
 use {
-    crate::{Bound, MapKey, Order, PathBuf, Prefix, StdResult, Storage},
+    crate::{Bound, MapKey, Order, PathBuf, Prefix, StdError, StdResult, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::marker::PhantomData,
 };
@@ -58,18 +58,19 @@ where
         self.path(k).as_path().may_load(store)
     }
 
-    pub fn load(&self, store: &dyn Storage, k: K) -> anyhow::Result<T> {
+    pub fn load(&self, store: &dyn Storage, k: K) -> StdResult<T> {
         self.path(k).as_path().load(store)
     }
 
-    pub fn update<A>(&self, store: &mut dyn Storage, k: K, action: A) -> anyhow::Result<Option<T>>
+    pub fn update<A, E>(&self, store: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
     where
-        A: FnOnce(Option<T>) -> anyhow::Result<Option<T>>
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
         self.path(k).as_path().update(store, action)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, k: K, data: &T) -> anyhow::Result<()> {
+    pub fn save(&self, store: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
         self.path(k).as_path().save(store, data)
     }
 
@@ -84,7 +85,7 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<(K::Output, T)>> + 'b> {
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
         self.no_prefix().range(store, min, max, order)
     }
 
@@ -94,11 +95,11 @@ where
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = anyhow::Result<K::Output>> + 'b> {
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
         self.no_prefix().keys(store, min, max, order)
     }
 
-    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) -> anyhow::Result<()> {
+    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) -> StdResult<()> {
         self.no_prefix().clear(store, limit)
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{Binary, Hash, MapKey, RawKey},
+    crate::{Binary, Hash, MapKey, RawKey, StdError, StdResult},
     serde::{Deserialize, Serialize},
     sha2::{Digest, Sha256},
     std::{
@@ -73,7 +73,7 @@ impl DerefMut for Addr {
 }
 
 impl TryFrom<&[u8]> for Addr {
-    type Error = anyhow::Error;
+    type Error = StdError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         Hash::try_from(bytes).map(Self)
@@ -81,7 +81,7 @@ impl TryFrom<&[u8]> for Addr {
 }
 
 impl FromStr for Addr {
-    type Err = anyhow::Error;
+    type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Hash::from_str(s).map(Self)
@@ -97,7 +97,7 @@ impl MapKey for &Addr {
         vec![RawKey::Ref(self.0.as_ref())]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
     }
 }

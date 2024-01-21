@@ -2,9 +2,8 @@ use {
     crate::{
         from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, ExecuteCtx,
         GenericResult, Hash, InfoResponse, InstantiateCtx, Order, QueryCtx, QueryRequest,
-        QueryResponse, Record, Region, StdResult, Storage,
+        QueryResponse, Record, Region, StdError, StdResult, Storage,
     },
-    anyhow::anyhow,
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -189,7 +188,7 @@ macro_rules! impl_methods {
                 msg_hash: impl AsRef<[u8]>,
                 sig:      impl AsRef<[u8]>,
                 pk:       impl AsRef<[u8]>,
-            ) -> anyhow::Result<()> {
+            ) -> StdResult<()> {
                 let msg_hash_region = Region::build(msg_hash.as_ref());
                 let msg_hash_ptr = &*msg_hash_region as *const Region;
 
@@ -207,7 +206,7 @@ macro_rules! impl_methods {
                     Ok(())
                 } else {
                     // TODO: more useful error codes
-                    Err(anyhow!("signature verification failed"))
+                    Err(StdError::VerificationFailed)
                 }
             }
 
@@ -217,7 +216,7 @@ macro_rules! impl_methods {
                 msg_hash: impl AsRef<[u8]>,
                 sig:      impl AsRef<[u8]>,
                 pk:       impl AsRef<[u8]>,
-            ) -> anyhow::Result<()> {
+            ) -> StdResult<()> {
                 let msg_hash_region = Region::build(msg_hash.as_ref());
                 let msg_hash_ptr = &*msg_hash_region as *const Region;
 
@@ -235,7 +234,7 @@ macro_rules! impl_methods {
                     Ok(())
                 } else {
                     // TODO: more useful error codes
-                    Err(anyhow!("signature verification failed"))
+                    Err(StdError::VerificationFailed)
                 }
             }
 

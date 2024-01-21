@@ -1,6 +1,6 @@
 use {
+    crate::{StdError, StdResult},
     cw_db::{nested_namespaces_with_key, split_one_key},
-    anyhow::bail,
     std::mem,
 };
 
@@ -55,7 +55,7 @@ pub trait MapKey: Sized {
         nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output>;
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
 }
 
 impl MapKey for () {
@@ -67,9 +67,9 @@ impl MapKey for () {
         vec![]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
-            bail!("Expecting empty bytes");
+            return Err(StdError::deserialize::<Self::Output>("expecting empty bytes"));
         }
 
         Ok(())
@@ -86,7 +86,7 @@ impl MapKey for &[u8] {
         vec![RawKey::Ref(self)]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         Ok(bytes.to_vec())
     }
 }
@@ -100,8 +100,8 @@ impl MapKey for &str {
         vec![RawKey::Ref(self.as_bytes())]
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
-        String::from_utf8(bytes.to_vec()).map_err(Into::into)
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
 
@@ -116,13 +116,13 @@ macro_rules! impl_integer_map_key {
                 vec![RawKey::$v(self.to_be_bytes())]
             }
 
-            fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+            fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    bail!(
-                        "Wrong number of bytes: expecting {}, got {}",
+                    return Err(StdError::deserialize::<Self::Output>(format!(
+                        "wrong number of bytes: expecting {}, got {}",
                         mem::size_of::<Self>(),
                         bytes.len(),
-                    );
+                    )));
                 };
 
                 Ok(Self::from_be_bytes(bytes))
@@ -155,7 +155,7 @@ where
         keys
     }
 
-    fn deserialize(bytes: &[u8]) -> anyhow::Result<Self::Output> {
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         let (a_bytes, b_bytes) = split_one_key(bytes);
         let a = A::deserialize(a_bytes)?;
         let b = B::deserialize(b_bytes)?;

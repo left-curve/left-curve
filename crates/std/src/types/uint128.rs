@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow,
+    crate::{StdError, StdResult},
     serde::{de, ser},
     std::fmt,
 };
@@ -41,35 +41,35 @@ impl Uint128 {
         self.0.to_le_bytes()
     }
 
-    pub fn checked_add(self, other: Self) -> anyhow::Result<Self> {
+    pub fn checked_add(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_add(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128]: addition overflow: {self} + {other} > Uint128::MAX"))
+            .ok_or_else(|| StdError::overflow_add(self, other))
     }
 
-    pub fn checked_sub(self, other: Self) -> anyhow::Result<Self> {
+    pub fn checked_sub(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_sub(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128]: subtraction overflow: {self} - {other} < 0"))
+            .ok_or_else(|| StdError::overflow_sub(self, other))
     }
 
-    pub fn checked_mul(self, other: Self) -> anyhow::Result<Self> {
+    pub fn checked_mul(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_mul(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128]: multiplication overflow: {self} * {other} > Uint128::MAX"))
+            .ok_or_else(|| StdError::overflow_mul(self, other))
     }
 
-    pub fn checked_div(self, other: Self) -> anyhow::Result<Self> {
+    pub fn checked_div(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_mul(other.0)
             .map(Self::new)
-            .ok_or_else(|| anyhow!("[Uint128]: division by zero: {self} / 0"))
+            .ok_or_else(|| StdError::division_by_zero(self))
     }
 
-    pub fn checked_multiply_ratio(self, _other: Self) -> anyhow::Result<Self> {
+    pub fn checked_multiply_ratio(self, _other: Self) -> StdResult<Self> {
         // need Uint256 implemented
         todo!()
     }
