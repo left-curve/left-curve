@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Config, Hash},
+    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash},
     serde::{Deserialize, Serialize},
 };
 
@@ -9,6 +9,30 @@ pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: InfoResponse
     Info {},
+    /// An account's balance in a single denom.
+    /// Returns: Coin
+    Balance {
+        address: Addr,
+        denom:   String,
+    },
+    /// Enumerate an account's balances in all denoms.
+    /// Returns: Coins
+    Balances {
+        address: Addr,
+        start_after: Option<String>,
+        limit:       Option<u32>,
+    },
+    /// A token's total supply.
+    /// Returns: Coin
+    Supply {
+        denom: String,
+    },
+    /// Enumerate all tokens' total supplies.
+    /// Returns: Coins
+    Supplies {
+        start_after: Option<String>,
+        limit:       Option<u32>,
+    },
     /// A single Wasm byte code.
     /// Returns: Binary
     Code {
@@ -77,6 +101,10 @@ pub struct WasmSmartResponse {
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),
+    Balance(Coin),
+    Balances(Coins),
+    Supply(Coin),
+    Supplies(Coins),
     Code(Binary),
     Codes(Vec<Hash>),
     Account(AccountResponse),
@@ -92,6 +120,34 @@ impl QueryResponse {
             panic!("QueryResponse is not Info");
         };
         resp
+    }
+
+    pub fn as_balance(self) -> Coin {
+        let Self::Balance(coin) = self else {
+            panic!("BankQueryResponse is not Balance");
+        };
+        coin
+    }
+
+    pub fn as_balances(self) -> Coins {
+        let Self::Balances(coins) = self else {
+            panic!("BankQueryResponse is not Balances");
+        };
+        coins
+    }
+
+    pub fn as_supply(self) -> Coin {
+        let Self::Supply(coin) = self else {
+            panic!("BankQueryResponse is not Supply");
+        };
+        coin
+    }
+
+    pub fn as_supplies(self) -> Coins {
+        let Self::Supplies(coins) = self else {
+            panic!("BankQueryResponse is not Supplies");
+        };
+        coins
     }
 
     pub fn as_code(self) -> Binary {
