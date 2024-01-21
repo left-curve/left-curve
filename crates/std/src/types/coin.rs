@@ -48,6 +48,14 @@ pub struct CoinRef<'a> {
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
+    pub fn empty() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Return whether there is a non-zero amount of the given denom.
     pub fn has(&self, denom: &str) -> bool {
         self.0.get(denom).is_some()

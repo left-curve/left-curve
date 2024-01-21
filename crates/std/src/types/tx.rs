@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Coin, Hash},
+    crate::{Addr, Binary, Coins, Hash},
     serde::{Deserialize, Serialize},
 };
 
@@ -20,12 +20,12 @@ pub enum Message {
         code_hash: Hash,
         msg:       Binary,
         salt:      Binary,
-        funds:     Vec<Coin>,
+        funds:     Coins,
         admin:     Option<Addr>,
     },
     Execute {
         contract: Addr,
         msg:      Binary,
-        funds:    Vec<Coin>,
+        funds:    Coins,
     },
 }

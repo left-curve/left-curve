@@ -3,7 +3,9 @@ use {
     cw_app::App,
     cw_db::MockStorage,
     cw_mock_querier::QueryMsg,
-    cw_std::{hash, to_json, Addr, Config, Empty, GenesisState, Message, QueryRequest, Storage},
+    cw_std::{
+        hash, to_json, Addr, Coins, Config, Empty, GenesisState, Message, QueryRequest, Storage,
+    },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
 };
@@ -49,7 +51,7 @@ fn main() -> anyhow::Result<()> {
                 code_hash,
                 msg: to_json(&Empty {})?,
                 salt,
-                funds: vec![],
+                funds: Coins::empty(),
                 admin: None,
             },
         ],

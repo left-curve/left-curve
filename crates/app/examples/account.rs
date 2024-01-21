@@ -10,8 +10,8 @@ use {
     cw_crypto::Identity256,
     cw_db::MockStorage,
     cw_std::{
-        from_json, hash, to_json, Addr, BlockInfo, Config, GenesisState, Message, QueryRequest,
-        Storage, Tx,
+        from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
+        QueryRequest, Storage, Tx,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
                     pubkey: PubKey::Secp256k1(vk1.to_sec1_bytes().to_vec().into()),
                 })?,
                 salt:  salt1,
-                funds: vec![],
+                funds: Coins::empty(),
                 admin: Some(address1.clone()),
             },
         ],
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
                 pubkey: PubKey::Secp256k1(vk2.to_sec1_bytes().to_vec().into()),
             })?,
             salt:  salt2,
-            funds: vec![],
+            funds: Coins::empty(),
             admin: Some(address2.clone()),
         },
     ])?;
@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: vec![],
+            funds: Coins::empty(),
         }
     ])?;
     app.finalize_block(block, vec![tx])?;
@@ -121,7 +121,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: vec![],
+            funds: Coins::empty(),
         }
     ])?;
     app.finalize_block(block, vec![tx])?;
@@ -138,7 +138,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: vec![],
+            funds: Coins::empty(),
         }
     ])?;
     app.finalize_block(block, vec![tx])?;

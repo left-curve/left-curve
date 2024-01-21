@@ -2,7 +2,7 @@ use {
     crate::{Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
     anyhow::ensure,
     cw_db::{PrefixStore, SharedStore},
-    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coin, Context, Hash, Message, Storage},
+    cw_std::{hash, Account, Addr, Binary, BlockInfo, Coins, Context, Hash, Message, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -69,7 +69,7 @@ fn instantiate<S: Storage + 'static>(
     code_hash: Hash,
     msg:       Binary,
     salt:      Binary,
-    funds:     Vec<Coin>,
+    funds:     Coins,
     admin:     Option<Addr>,
 ) -> anyhow::Result<()> {
     match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
@@ -93,7 +93,7 @@ fn _instantiate<S: Storage + 'static>(
     code_hash: Hash,
     msg:       Binary,
     salt:      Binary,
-    funds:     Vec<Coin>,
+    funds:     Coins,
     admin:     Option<Addr>,
 ) -> anyhow::Result<Addr> {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
@@ -135,7 +135,7 @@ fn execute<S: Storage + 'static>(
     contract:  &Addr,
     sender:    &Addr,
     msg:       Binary,
-    funds:     Vec<Coin>,
+    funds:     Coins,
 ) -> anyhow::Result<()> {
     match _execute(store, block, sender, contract, msg, funds) {
         Ok(()) => {
@@ -155,7 +155,7 @@ fn _execute<S: Storage + 'static>(
     contract:  &Addr,
     sender:    &Addr,
     msg:       Binary,
-    funds:     Vec<Coin>,
+    funds:     Coins,
 ) -> anyhow::Result<()> {
     debug_assert!(funds.is_empty(), "UNIMPLEMENTED: sending funds is not supported yet");
 
