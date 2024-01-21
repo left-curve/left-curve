@@ -98,6 +98,10 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
         .add_attribute("coins", msg.coins.to_string()))
 }
 
+// Note to developers who wish to implement their own bank contracts:
+// The query response MUST matches exactly the request. E.g. if the request is
+// BankQuery::Balance, the response must be BankQueryResponse::Balance.
+// It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[entry_point]
 pub fn bank_query(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {

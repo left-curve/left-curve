@@ -24,6 +24,16 @@ pub struct TransferMsg {
     pub coins: Coins,
 }
 
+// Note: The bank contract MUST return query response that matches exactly the
+// request. E.g. if the request is BankQuery::Balance, the response must be
+// BankQueryResponse::Balance. It cannot be any other enum variant. Otherwise
+// the chain may panic and halt.
+//
+// We consider it safe to make this assumption, because bank is a "core"
+// contract, meaning it's not something that anyone can permissionless upload.
+// It is set by the developer at chain genesis, and only only updatable by
+// governance. We assume that the developer and governance have exercised
+// caution when creating their own custom bank contracts.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum BankQuery {
     Balance {
