@@ -427,6 +427,7 @@ dependencies = [
  "cw-db",
  "cw-std",
  "data-encoding",
+ "lazy_static",
  "serde",
  "serde_json",
  "thiserror",

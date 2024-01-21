@@ -6,10 +6,10 @@
 use {
     cfg_if::cfg_if,
     cw_app::App,
-    cw_bank::{Balance, ExecuteMsg, InstantiateMsg, QueryMsg},
+    cw_bank::{Balance, InstantiateMsg},
     cw_std::{
         from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, GenesisState, Message,
-        MockStorage, Query, Storage, Tx, Uint128,
+        Storage, Tx, Uint128,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},

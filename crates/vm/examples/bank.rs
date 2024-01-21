@@ -9,8 +9,44 @@ use {
     cw_db::{BackendStorage, MockBackendStorage},
     cw_std::{to_json, Addr, BankQuery, BlockInfo, Coin, Coins, Context, TransferMsg, Uint128},
     cw_vm::{BackendQuerier, Instance, MockBackendQuerier},
+    lazy_static::lazy_static,
     std::{env, fs::File, io::Read, path::PathBuf},
 };
+
+lazy_static! {
+    static ref INITIAL_BALANCES: Vec<Balance> = vec![
+        Balance {
+            address: Addr::mock(1),
+            coins: Coins::make(vec![
+                Coin {
+                    denom: "uatom".into(),
+                    amount: Uint128::new(100),
+                },
+                Coin {
+                    denom: "uosmo".into(),
+                    amount: Uint128::new(888),
+                },
+            ])
+            .unwrap(),
+        },
+        Balance {
+            address: Addr::mock(2),
+            coins: Coins::make(vec![Coin {
+                denom: "uatom".into(),
+                amount: Uint128::new(50),
+            }])
+            .unwrap(),
+        },
+        Balance {
+            address: Addr::mock(3),
+            coins: Coins::make(vec![Coin {
+                denom: "uatom".into(),
+                amount: Uint128::new(123),
+            }])
+            .unwrap(),
+        },
+    ];
+}
 
 fn main() -> anyhow::Result<()> {
     // set tracing to TRACE level, so that we can see DB reads/writes logs
@@ -61,42 +97,6 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn mock_initial_balances() -> anyhow::Result<Vec<Balance>> {
-    let mut balances = vec![];
-    balances.push(Balance {
-        address: Addr::mock(1),
-        coins: Coins::make(vec![
-            Coin {
-                denom: "uatom".into(),
-                amount: Uint128::new(100),
-            },
-            Coin {
-                denom: "uosmo".into(),
-                amount: Uint128::new(888),
-            },
-        ])?,
-    });
-    balances.push(Balance {
-        address: Addr::mock(2),
-        coins: Coins::make(vec![
-            Coin {
-                denom:  "uatom".into(),
-                amount: Uint128::new(50),
-            },
-        ])?,
-    });
-    balances.push(Balance {
-        address: Addr::mock(3),
-        coins: Coins::make(vec![
-            Coin {
-                denom:  "uatom".into(),
-                amount: Uint128::new(123),
-            },
-        ])?,
-    });
-    Ok(balances)
-}
-
 fn instantiate<S, Q>(instance: &mut Instance<S, Q>) -> anyhow::Result<()>
 where
     S: BackendStorage + 'static,
@@ -107,7 +107,7 @@ where
     let res = instance.call_instantiate(
         &mock_context(Some(Addr::mock(0))),
         to_json(&InstantiateMsg {
-            initial_balances: mock_initial_balances()?,
+            initial_balances: INITIAL_BALANCES.clone(),
         })?,
     )?;
 
