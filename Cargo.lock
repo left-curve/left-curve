@@ -345,6 +345,7 @@ dependencies = [
  "cw-std",
  "cw-vm",
  "k256",
+ "lazy_static",
  "rand",
  "serde",
  "serde-json-wasm",

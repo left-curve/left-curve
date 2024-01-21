@@ -19,6 +19,7 @@ cw-bank            = { path = "../../contracts/bank" }
 cw-crypto          = { path = "../../crates/crypto" }
 cw-mock-querier    = { path = "../../contracts/mocks/querier" }
 k256               = { workspace = true }
+lazy_static        = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }

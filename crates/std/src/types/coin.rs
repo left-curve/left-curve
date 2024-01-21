@@ -43,7 +43,7 @@ pub struct CoinRef<'a> {
     pub amount: &'a Uint128,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
@@ -130,6 +130,12 @@ impl Coins {
     // instead.
 }
 
+impl From<Coin> for Coins {
+    fn from(coin: Coin) -> Self {
+        Self([(coin.denom, coin.amount)].into())
+    }
+}
+
 impl From<Coins> for Vec<Coin> {
     fn from(coins: Coins) -> Self {
         coins.into_iter().collect()
@@ -176,20 +182,18 @@ impl Iterator for CoinsIntoIter {
 
 impl fmt::Display for Coins {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for coin in self {
-            write!(f, "{}:{}", coin.denom, coin.amount)?;
-        }
-        Ok(())
+        let s = self
+            .into_iter()
+            .map(|coin| format!("{}:{}", coin.denom, coin.amount))
+            .collect::<Vec<_>>()
+            .join(",");
+        f.write_str(&s)
     }
 }
 
 impl fmt::Debug for Coins {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Coins(")?;
-        for coin in self {
-            write!(f, "{}:{}", coin.denom, coin.amount)?;
-        }
-        f.write_str(")")
+        write!(f, "Coins({})", self.to_string())
     }
 }
 
