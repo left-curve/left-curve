@@ -1,9 +1,10 @@
 use {
     crate::{Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
-    anyhow::{ensure, bail},
+    anyhow::{bail, ensure},
     cw_db::PrefixStore,
     cw_std::{
-        hash, Account, Addr, Binary, BlockInfo, Coins, Context, Hash, Message, Storage, TransferMsg, Config,
+        hash, Account, Addr, Binary, BlockInfo, Coins, Config, Context, Hash, Message, Storage,
+        TransferMsg,
     },
     cw_vm::Instance,
     tracing::{info, warn},
