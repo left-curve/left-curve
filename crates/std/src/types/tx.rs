@@ -45,5 +45,12 @@ pub enum Message {
         msg:      Binary,
         funds:    Coins,
     },
-    // TODO: migrate
+    /// Update the `code_hash` associated with a contract.
+    /// Only the contract's `admin` is authorized to do this. If the admin is
+    /// set to None, no one can update the code hash.
+    Migrate {
+        contract:      Addr,
+        new_code_hash: Hash,
+        msg:           Binary,
+    },
 }

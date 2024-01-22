@@ -37,7 +37,12 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             contract,
             msg,
             funds,
-        } => execute(store, block, sender, &contract, msg, funds),
+        } => execute(store, block, &contract, sender, msg, funds),
+        Message::Migrate {
+            contract,
+            new_code_hash,
+            msg,
+        } => migrate(store, block, &contract, sender, new_code_hash, msg),
     }
 }
 
@@ -239,14 +244,14 @@ fn _instantiate<S: Storage + Clone + 'static>(
 // ---------------------------------- execute ----------------------------------
 
 fn execute<S: Storage + Clone + 'static>(
-    store:     S,
-    block:     &BlockInfo,
-    contract:  &Addr,
-    sender:    &Addr,
-    msg:       Binary,
-    funds:     Coins,
+    store:    S,
+    block:    &BlockInfo,
+    contract: &Addr,
+    sender:   &Addr,
+    msg:      Binary,
+    funds:    Coins,
 ) -> anyhow::Result<()> {
-    match _execute(store, block, sender, contract, msg, funds) {
+    match _execute(store, block, contract, sender, msg, funds) {
         Ok(()) => {
             info!(contract = contract.to_string(), "executed contract");
             Ok(())
@@ -259,12 +264,12 @@ fn execute<S: Storage + Clone + 'static>(
 }
 
 fn _execute<S: Storage + Clone + 'static>(
-    store:     S,
-    block:     &BlockInfo,
-    contract:  &Addr,
-    sender:    &Addr,
-    msg:       Binary,
-    funds:     Coins,
+    store:    S,
+    block:    &BlockInfo,
+    contract: &Addr,
+    sender:   &Addr,
+    msg:      Binary,
+    funds:    Coins,
 ) -> anyhow::Result<()> {
     // make the coin transfers
     if !funds.is_empty() {
@@ -288,6 +293,72 @@ fn _execute<S: Storage + Clone + 'static>(
         simulate: None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
+
+    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+
+    Ok(())
+}
+
+// ---------------------------------- migrate ----------------------------------
+
+fn migrate<S: Storage + Clone + 'static>(
+    store:         S,
+    block:         &BlockInfo,
+    contract:      &Addr,
+    sender:        &Addr,
+    new_code_hash: Hash,
+    msg:           Binary,
+) -> anyhow::Result<()> {
+    match _migrate(store, block, contract, sender, new_code_hash, msg) {
+        Ok(()) => {
+            info!(contract = contract.to_string(), "migrated contract");
+            Ok(())
+        },
+        Err(err) => {
+            warn!(err = err.to_string(), "failed to execute contract");
+            Err(err)
+        },
+    }
+}
+
+fn _migrate<S: Storage + Clone + 'static>(
+    mut store:     S,
+    block:         &BlockInfo,
+    contract:      &Addr,
+    sender:        &Addr,
+    new_code_hash: Hash,
+    msg:           Binary,
+) -> anyhow::Result<()> {
+    let mut account = ACCOUNTS.load(&store, contract)?;
+
+    // only the admin can update code hash
+    let Some(admin) = &account.admin else {
+        bail!("contract admin is not set");
+    };
+    if sender != admin {
+        bail!("only contract admin can update code hash");
+    }
+
+    // save the new code hash
+    account.code_hash = new_code_hash;
+    ACCOUNTS.save(&mut store, contract, &account)?;
+
+    // load wasm code
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
+
+    // create wasm host
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+
+    // call the contract's migrate entry point
+    let ctx = Context {
+        block:    block.clone(),
+        contract: contract.clone(),
+        sender:   Some(sender.clone()),
+        simulate: None,
+    };
+    let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 

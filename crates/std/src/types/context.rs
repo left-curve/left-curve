@@ -20,19 +20,6 @@ pub struct Context {
     pub simulate: Option<bool>,
 }
 
-pub struct TransferCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-}
-
-pub struct BeforeTxCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub simulate: bool,
-}
-
 pub struct InstantiateCtx<'a> {
     pub store:    &'a mut dyn Storage,
     pub block:    BlockInfo,
@@ -49,6 +36,26 @@ pub struct ExecuteCtx<'a> {
 
 pub struct QueryCtx<'a> {
     pub store:    &'a dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+}
+
+pub struct MigrateCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Addr,
+}
+
+pub struct BeforeTxCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub simulate: bool,
+}
+
+pub struct TransferCtx<'a> {
+    pub store:    &'a mut dyn Storage,
     pub block:    BlockInfo,
     pub contract: Addr,
 }

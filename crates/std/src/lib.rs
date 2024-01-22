@@ -14,8 +14,8 @@ pub use crate::{
         hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
         ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message,
-        QueryCtx, QueryRequest, QueryResponse, Response, TransferCtx, TransferMsg, Tx, Uint128,
-        WasmRawResponse, WasmSmartResponse,
+        MigrateCtx, QueryCtx, QueryRequest, QueryResponse, Response, TransferCtx, TransferMsg, Tx,
+        Uint128, WasmRawResponse, WasmSmartResponse,
     },
 };
 
@@ -28,7 +28,7 @@ mod wasm;
 
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
-    do_query_bank, do_before_tx, do_execute, do_instantiate, do_query, do_transfer,
+    do_before_tx, do_execute, do_instantiate, do_migrate, do_query, do_query_bank, do_transfer,
     ExternalIterator, ExternalStorage, Region,
 };
 

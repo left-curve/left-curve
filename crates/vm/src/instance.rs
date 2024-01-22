@@ -93,6 +93,15 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
+    pub fn call_migrate(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_entry_point_raw("migrate", ctx, msg)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
     pub fn call_before_tx(
         &mut self,
         ctx: &Context,

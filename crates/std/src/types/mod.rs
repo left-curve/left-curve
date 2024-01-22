@@ -15,10 +15,12 @@ mod uint128;
 pub use {
     address::Addr,
     app::{Account, BlockInfo, Config, GenesisState},
-    bank::{TransferMsg, BankQuery, BankQueryResponse},
+    bank::{BankQuery, BankQueryResponse, TransferMsg},
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
-    context::{BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, QueryCtx, TransferCtx},
+    context::{
+        BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx, TransferCtx,
+    },
     empty::Empty,
     hash::{hash, Hash},
     query::{
