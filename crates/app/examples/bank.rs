@@ -276,13 +276,20 @@ where
 {
     let mut resps = BTreeMap::new();
     for acct in accounts {
-        let balances = app.query(QueryRequest::Balances {
-            address:     acct.addr.clone(),
-            start_after: None,
-            limit:       None,
-        })?;
-        resps.insert(acct.addr.clone(), balances.as_balances());
+        let balances = app
+            .query(QueryRequest::Balances {
+                address: acct.addr.clone(),
+                start_after: None,
+                limit: None,
+            })?
+            .as_balances();
+
+        if !balances.is_empty() {
+            resps.insert(acct.addr.clone(), balances);
+        }
     }
+
     println!("{}", serde_json::to_string_pretty(&resps)?);
+
     Ok(())
 }
