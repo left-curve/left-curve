@@ -1,13 +1,13 @@
 use {
     crate::{Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
-    cw_db::{PrefixStore, SharedStore},
+    cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Storage, Tx},
     cw_vm::Instance,
     tracing::{debug, warn},
 };
 
-pub fn authenticate_tx<S: Storage + 'static>(
-    store: SharedStore<S>,
+pub fn authenticate_tx<S: Storage + Clone + 'static>(
+    store: S,
     block: &BlockInfo,
     tx:    &Tx,
 ) -> anyhow::Result<()> {
@@ -24,8 +24,8 @@ pub fn authenticate_tx<S: Storage + 'static>(
     }
 }
 
-fn _authenticate_tx<S: Storage + 'static>(
-    store: SharedStore<S>,
+fn _authenticate_tx<S: Storage + Clone + 'static>(
+    store: S,
     block: &BlockInfo,
     tx:    &Tx,
 ) -> anyhow::Result<()> {
@@ -34,7 +34,7 @@ fn _authenticate_tx<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &tx.sender]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &tx.sender]);
     let querier = Querier::new(store, block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 

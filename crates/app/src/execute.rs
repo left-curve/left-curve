@@ -1,7 +1,7 @@
 use {
     crate::{Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
     anyhow::ensure,
-    cw_db::{PrefixStore, SharedStore},
+    cw_db::PrefixStore,
     cw_std::{
         hash, Account, Addr, Binary, BlockInfo, Coins, Context, Hash, Message, Storage, TransferMsg,
     },
@@ -9,8 +9,8 @@ use {
     tracing::{info, warn},
 };
 
-pub fn process_msg<S: Storage + 'static>(
-    mut store: SharedStore<S>,
+pub fn process_msg<S: Storage + Clone + 'static>(
+    mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,
     msg:       Message,
@@ -67,8 +67,8 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resu
 
 // --------------------------------- transfer ----------------------------------
 
-fn transfer<S: Storage + 'static>(
-    store: SharedStore<S>,
+fn transfer<S: Storage + Clone + 'static>(
+    store: S,
     block: &BlockInfo,
     from:  Addr,
     to:    Addr,
@@ -87,8 +87,8 @@ fn transfer<S: Storage + 'static>(
     }
 }
 
-fn _transfer<S: Storage + 'static>(
-    store: SharedStore<S>,
+fn _transfer<S: Storage + Clone + 'static>(
+    store: S,
     block: &BlockInfo,
     from:  Addr,
     to:    Addr,
@@ -100,7 +100,7 @@ fn _transfer<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &cfg.bank]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &cfg.bank]);
     let querier = Querier::new(store, block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
@@ -126,8 +126,8 @@ fn _transfer<S: Storage + 'static>(
 // -------------------------------- instantiate --------------------------------
 
 #[allow(clippy::too_many_arguments)]
-fn instantiate<S: Storage + 'static>(
-    store:     SharedStore<S>,
+fn instantiate<S: Storage + Clone + 'static>(
+    store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -150,8 +150,8 @@ fn instantiate<S: Storage + 'static>(
 
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
-fn _instantiate<S: Storage + 'static>(
-    mut store: SharedStore<S>,
+fn _instantiate<S: Storage + Clone + 'static>(
+    mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -174,11 +174,11 @@ fn _instantiate<S: Storage + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        _transfer(store.share(), block, sender.clone(), address.clone(), funds)?;
+        _transfer(store.clone(), block, sender.clone(), address.clone(), funds)?;
     }
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &address]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
     let querier = Querier::new(store, block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
@@ -198,8 +198,8 @@ fn _instantiate<S: Storage + 'static>(
 
 // ---------------------------------- execute ----------------------------------
 
-fn execute<S: Storage + 'static>(
-    store:     SharedStore<S>,
+fn execute<S: Storage + Clone + 'static>(
+    store:     S,
     block:     &BlockInfo,
     contract:  &Addr,
     sender:    &Addr,
@@ -218,8 +218,8 @@ fn execute<S: Storage + 'static>(
     }
 }
 
-fn _execute<S: Storage + 'static>(
-    store:     SharedStore<S>,
+fn _execute<S: Storage + Clone + 'static>(
+    store:     S,
     block:     &BlockInfo,
     contract:  &Addr,
     sender:    &Addr,
@@ -228,7 +228,7 @@ fn _execute<S: Storage + 'static>(
 ) -> anyhow::Result<()> {
     // make the coin transfers
     if !funds.is_empty() {
-        _transfer(store.share(), block, sender.clone(), contract.clone(), funds)?;
+        _transfer(store.clone(), block, sender.clone(), contract.clone(), funds)?;
     }
 
     // load wasm code
@@ -236,7 +236,7 @@ fn _execute<S: Storage + 'static>(
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.share(), &[CONTRACT_NAMESPACE, &contract]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
     let querier = Querier::new(store, block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 

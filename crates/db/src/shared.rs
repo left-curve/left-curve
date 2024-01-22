@@ -42,6 +42,12 @@ impl<S> SharedStore<S> {
     }
 }
 
+impl<S> Clone for SharedStore<S> {
+    fn clone(&self) -> Self {
+        self.share()
+    }
+}
+
 impl<S: Flush> Flush for SharedStore<S> {
     fn flush(&mut self, batch: Batch) -> DbResult<()> {
         self.store.borrow_mut().flush(batch)
