@@ -405,7 +405,6 @@ dependencies = [
  "serde-json-wasm",
  "sha2",
  "thiserror",
- "tracing",
 ]
 
 [[package]]

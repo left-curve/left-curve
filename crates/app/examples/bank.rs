@@ -47,10 +47,10 @@ fn main() -> anyhow::Result<()> {
     println!("🤖 Computing bank contract address");
     let bank_addr = Addr::compute(&DEPLOYER, &bank_wasm.hash, &BANK_SALT);
 
-    println!("🤖 Generate random accounts");
+    println!("🤖 Generating random accounts");
     let accounts = make_random_accounts(6, &account_wasm.hash);
 
-    println!("🤖 Initialize chain");
+    println!("🤖 Initializing chain");
     app.init_chain(make_genesis_state(&accounts, &account_wasm, &bank_wasm, &bank_addr)?)?;
 
     println!("🤖 Making transfers");

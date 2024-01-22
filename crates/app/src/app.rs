@@ -82,7 +82,7 @@ where
             process_msg(self.store.share(), &block, &sender, msg)?;
         }
 
-        info!(chain_id = genesis_state.chain_id, "genesis complete");
+        info!(chain_id = genesis_state.chain_id, "completed genesis");
 
         Ok(())
     }

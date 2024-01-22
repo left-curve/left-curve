@@ -75,9 +75,13 @@ fn transfer<S: Storage + Clone + 'static>(
     coins: Coins,
 ) -> anyhow::Result<()> {
     match _transfer(store, block, from, to, coins) {
-        Ok(()) => {
-            // TODO: add more details to tracing output
-            info!("transferred coins");
+        Ok(TransferMsg { from, to, coins }) => {
+            info!(
+                from  = from.to_string(),
+                to    = to.to_string(),
+                coins = coins.to_string(),
+                "transferred coins"
+            );
             Ok(())
         },
         Err(err) => {
@@ -93,7 +97,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     from:  Addr,
     to:    Addr,
     coins: Coins,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<TransferMsg> {
     // load wasm code
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
@@ -120,7 +124,7 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(())
+    Ok(msg)
 }
 
 // -------------------------------- instantiate --------------------------------
