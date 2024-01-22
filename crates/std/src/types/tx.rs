@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Coins, Hash},
+    crate::{Addr, Binary, Coins, Config, Hash},
     serde::{Deserialize, Serialize},
 };
 
@@ -13,6 +13,11 @@ pub struct Tx {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
+    /// Update the chain-level configurations. Only the `owner` can do this.
+    /// If `owner` is set to None, no one can update the config.
+    UpdateConfig {
+        new_cfg: Config,
+    },
     /// Send coins to the given recipient address.
     ///
     /// Note that we don't assert the recipient is an account that exists, only

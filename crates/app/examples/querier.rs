@@ -40,8 +40,9 @@ fn main() -> anyhow::Result<()> {
     app.init_chain(GenesisState {
         chain_id: "dev-1".to_string(),
         config: Config {
-            // we don't need a bank contract for this demo
-            bank: Addr::mock(0),
+            // we don't need an owner or a bank contract for this demo
+            owner: None,
+            bank:  Addr::mock(0),
         },
         msgs: vec![
             Message::StoreCode {

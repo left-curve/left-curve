@@ -1,9 +1,9 @@
 use {
     crate::{Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
-    anyhow::ensure,
+    anyhow::{ensure, bail},
     cw_db::PrefixStore,
     cw_std::{
-        hash, Account, Addr, Binary, BlockInfo, Coins, Context, Hash, Message, Storage, TransferMsg,
+        hash, Account, Addr, Binary, BlockInfo, Coins, Context, Hash, Message, Storage, TransferMsg, Config,
     },
     cw_vm::Instance,
     tracing::{info, warn},
@@ -16,6 +16,9 @@ pub fn process_msg<S: Storage + Clone + 'static>(
     msg:       Message,
 ) -> anyhow::Result<()> {
     match msg {
+        Message::UpdateConfig {
+            new_cfg,
+        } => update_config(&mut store, sender, &new_cfg),
         Message::Transfer {
             to,
             coins,
@@ -38,6 +41,37 @@ pub fn process_msg<S: Storage + Clone + 'static>(
     }
 }
 
+// ------------------------------- update config -------------------------------
+
+fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> anyhow::Result<()> {
+    match _update_config(store, sender, new_cfg) {
+        Ok(()) => {
+            info!("config updated");
+            Ok(())
+        },
+        Err(err) => {
+            warn!(err = err.to_string(), "failed to update config");
+            Err(err)
+        },
+    }
+}
+
+fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> anyhow::Result<()> {
+    // make sure the sender is authorized to update the config
+    let cfg = CONFIG.load(store)?;
+    let Some(owner) = &cfg.owner else {
+        bail!("owner is not set");
+    };
+    if sender != owner {
+        bail!("only the owner can update config");
+    }
+
+    // save the new config
+    CONFIG.save(store, new_cfg)?;
+
+    Ok(())
+}
+
 // -------------------------------- store code ---------------------------------
 
 fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Result<()> {
@@ -53,7 +87,7 @@ fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resul
     }
 }
 
-// return the hash of the code that is stored.
+// return the hash of the code that is stored, for purpose of tracing/logging
 fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Result<Hash> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let code_hash = hash(wasm_byte_code);
@@ -91,6 +125,8 @@ fn transfer<S: Storage + Clone + 'static>(
     }
 }
 
+// return the TransferMsg, which includes the sender, receiver, and amount, for
+// purpose of tracing/logging
 fn _transfer<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,

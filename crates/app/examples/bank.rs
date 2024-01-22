@@ -195,7 +195,8 @@ fn make_genesis_state(
     let mut gen_state = GenesisState {
         chain_id: CHAIN_ID.to_string(),
         config: Config {
-            bank: bank_addr,
+            owner: None,
+            bank:  bank_addr,
         },
         msgs: vec![
             Message::StoreCode {
