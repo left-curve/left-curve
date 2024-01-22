@@ -14,22 +14,20 @@ pub use crate::{
         hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
         ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message,
-        MigrateCtx, QueryCtx, QueryRequest, QueryResponse, Response, TransferCtx, TransferMsg, Tx,
-        Uint128, WasmRawResponse, WasmSmartResponse,
+        MigrateCtx, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Response, TransferCtx,
+        TransferMsg, Tx, Uint128, WasmRawResponse, WasmSmartResponse,
     },
 };
 
 // ---------------------------- wasm32 target only -----------------------------
-// note: during development, it's helpful to comment out the target_arch tags,
-// otherwise rust-analyzer won't include these files.
 
 // #[cfg(target_arch = "wasm32")]
 mod wasm;
 
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
-    do_before_tx, do_execute, do_instantiate, do_migrate, do_query, do_query_bank, do_transfer,
-    ExternalIterator, ExternalStorage, Region,
+    do_before_tx, do_execute, do_instantiate, do_migrate, do_query, do_query_bank, do_receive,
+    do_transfer, ExternalIterator, ExternalStorage, Region,
 };
 
 // -------------------------------- re-exports ---------------------------------

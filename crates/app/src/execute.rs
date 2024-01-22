@@ -146,7 +146,7 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &cfg.bank]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call transfer
@@ -163,6 +163,37 @@ fn _transfer<S: Storage + Clone + 'static>(
         coins,
     };
     let resp = instance.call_transfer(&ctx, &msg)?.into_std_result()?;
+
+    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+
+    // call the recipient contract's `receive` entry point to inform it of this
+    // transfer
+    _receive(store, block, msg)
+}
+
+fn _receive<S: Storage + Clone + 'static>(
+    store: S,
+    block: &BlockInfo,
+    msg:   TransferMsg,
+) -> anyhow::Result<TransferMsg> {
+    // load wasm code
+    let account = ACCOUNTS.load(&store, &msg.to)?;
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
+
+    // create wasm host
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &msg.to]);
+    let querier = Querier::new(store, block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+
+    // call the recipient contract's `receive` entry point
+    let ctx = Context {
+        block:    block.clone(),
+        contract: msg.to.clone(),
+        sender:   Some(msg.from.clone()),
+        funds:    Some(msg.coins.clone()),
+        simulate: None,
+    };
+    let resp = instance.call_receive(&ctx)?.into_std_result()?;
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 

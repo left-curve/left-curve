@@ -19,7 +19,8 @@ pub use {
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
-        BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx, TransferCtx,
+        BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx,
+        TransferCtx,
     },
     empty::Empty,
     hash::{hash, Hash},

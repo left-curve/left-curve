@@ -60,3 +60,11 @@ pub struct TransferCtx<'a> {
     pub block:    BlockInfo,
     pub contract: Addr,
 }
+
+pub struct ReceiveCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Addr,
+    pub funds:    Coins,
+}

@@ -1,6 +1,6 @@
 use cw_std::{
     cw_serde, entry_point, to_json, Binary, Empty, ExecuteCtx, InstantiateCtx, QueryCtx,
-    QueryRequest, Response, StdResult,
+    QueryRequest, ReceiveCtx, Response, StdResult,
 };
 
 #[cw_serde]
@@ -12,6 +12,11 @@ pub enum QueryMsg {
 
 #[entry_point]
 pub fn instantiate(_ctx: InstantiateCtx, _msg: Empty) -> StdResult<Response> {
+    Ok(Response::new())
+}
+
+#[entry_point]
+pub fn receive(_ctx: ReceiveCtx) -> StdResult<Response> {
     Ok(Response::new())
 }
 

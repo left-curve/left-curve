@@ -71,7 +71,7 @@ where
         ctx: &Context,
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("instantiate", ctx, msg)?;
+        let res_bytes = self.call_in_1_out_1("instantiate", ctx, msg)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -80,7 +80,7 @@ where
         ctx: &Context,
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("execute", ctx, msg)?;
+        let res_bytes = self.call_in_1_out_1("execute", ctx, msg)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -89,7 +89,7 @@ where
         ctx: &Context,
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Binary>> {
-        let res_bytes = self.call_entry_point_raw("query", ctx, msg)?;
+        let res_bytes = self.call_in_1_out_1("query", ctx, msg)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -98,7 +98,7 @@ where
         ctx: &Context,
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("migrate", ctx, msg)?;
+        let res_bytes = self.call_in_1_out_1("migrate", ctx, msg)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -107,7 +107,7 @@ where
         ctx: &Context,
         tx:  &Tx,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("before_tx", ctx, to_json(tx)?)?;
+        let res_bytes = self.call_in_1_out_1("before_tx", ctx, to_json(tx)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -116,7 +116,7 @@ where
         ctx: &Context,
         msg: &TransferMsg,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_entry_point_raw("transfer", ctx, to_json(msg)?)?;
+        let res_bytes = self.call_in_1_out_1("transfer", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -125,11 +125,33 @@ where
         ctx: &Context,
         msg: &BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
-        let res_bytes = self.call_entry_point_raw("query_bank", ctx, to_json(msg)?)?;
+        let res_bytes = self.call_in_1_out_1("query_bank", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
-    fn call_entry_point_raw(
+    pub fn call_receive(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_0_out_1("receive", ctx)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    /// Call the a Wasm export function. This method expects no input (besides
+    /// the context) and exactly 1 output.
+    fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
+        let (env, mut wasm_store) = fe_mut.data_and_store_mut();
+
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
+        let res_ptr: u32 = env
+            .call_function1(&mut wasm_store, name, &[ctx_ptr.into()])?
+            .try_into()
+            .map_err(VmError::ReturnType)?;
+
+        read_then_wipe(env, &mut wasm_store, res_ptr)
+    }
+
+    /// Call the a Wasm export function. This method expects exactly 1 input
+    /// (besides the context) and exactly 1 output.
+    fn call_in_1_out_1(
         &mut self,
         name: &str,
         ctx:  &Context,

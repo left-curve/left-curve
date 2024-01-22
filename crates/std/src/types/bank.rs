@@ -2,7 +2,7 @@
 //! meaning contracts that provide core functionalities of the chain, the other
 //! being the tax man, which levies transaction fees.
 //!
-//! The bank contract must implement the following two entry points:
+//! The bank contract MUST implement the following two entry points:
 //!
 //! ```ignore
 //! #[entry_point]
@@ -11,6 +11,21 @@
 //! #[entry_point]
 //! fn query_bank<E>(ctx: QueryCtx, msg: BankQuery) -> Result<BankQueryResponse, E>;
 //! ```
+//!
+//! All contract MUST implement a `receive` entry point as below. When someone
+//! sends a contract coins, the recipient contract is informed of this transfer
+//! via this entry point.
+//!
+//! ```ignore
+//! #[entry_point]
+//! fn receive<E>(ctx: ReceiveCtx) -> Result<Response, E>;
+//! ```
+//!
+//! Some use cases where this may be useful:
+//! - The deveoper wishes to prevent users from sending funds to a contract.
+//!   To do this, simply throw an error in the `receive` entry point.
+//! - For a "wrapped token" contract, mint the wrapped token on receipt.
+//! - Forward the funds to another account.
 
 use {
     crate::{Addr, Coin, Coins},

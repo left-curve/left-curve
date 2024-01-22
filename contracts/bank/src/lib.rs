@@ -2,8 +2,8 @@ use {
     anyhow::bail,
     cw_std::{
         cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins,
-        InstantiateCtx, Map, Order, QueryCtx, Response, StdResult, TransferCtx, TransferMsg,
-        Uint128,
+        InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, TransferCtx,
+        TransferMsg, Uint128,
     },
     std::collections::{HashMap, HashSet},
 };
@@ -69,6 +69,13 @@ fn increment_supply(
     *supply = supply.checked_add(by)?;
 
     Ok(())
+}
+
+#[entry_point]
+pub fn receive(_ctx: ReceiveCtx) -> anyhow::Result<Response> {
+    // we do not expect anyone to send any fund to this contract.
+    // throw an error to revert the transfer.
+    bail!("do not send funds to this contract");
 }
 
 #[entry_point]

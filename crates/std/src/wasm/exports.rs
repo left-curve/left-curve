@@ -1,8 +1,8 @@
 use {
     crate::{
         from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx,
-        ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, Region, Response,
-        TransferCtx, TransferMsg, Tx,
+        ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region,
+        Response, TransferCtx, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -283,6 +283,43 @@ where
     };
 
     transfer_fn(ctx, msg).into()
+}
+
+// ---------------------------------- receive ----------------------------------
+
+pub fn do_receive<E>(
+    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
+    ctx_ptr:    usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+
+    let res = _do_receive(receive_fn, &ctx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_receive<E>(
+    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
+    ctx_bytes:  &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+
+    let ctx = ReceiveCtx {
+        store:    &mut ExternalStorage,
+        block:    ctx.block,
+        contract: ctx.contract,
+        sender:   ctx.sender.expect("host failed to specify sender"),
+        funds:    ctx.funds.expect("host failed to specify funds"),
+    };
+
+    receive_fn(ctx).into()
 }
 
 // -------------------------------- bank query ---------------------------------

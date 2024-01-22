@@ -2,7 +2,7 @@ use {
     anyhow::ensure,
     cw_std::{
         cw_serde, entry_point, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
-        Item, Message, QueryCtx, Response, Tx,
+        Item, Message, QueryCtx, ReceiveCtx, Response, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -80,6 +80,15 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
     SEQUENCE.save(ctx.store, &0)?;
 
     Ok(Response::new())
+}
+
+#[entry_point]
+pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
+    // do nothing, accept all transfers. log the receipt to events
+    Ok(Response::new()
+        .add_attribute("method", "receive")
+        .add_attribute("sender", ctx.sender)
+        .add_attribute("funds", ctx.funds.to_string()))
 }
 
 #[entry_point]
