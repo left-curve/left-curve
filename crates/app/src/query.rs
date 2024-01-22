@@ -145,9 +145,10 @@ fn _query_bank<S: Storage + Clone + 'static>(
     // call query
     let ctx = Context {
         block:    block.clone(),
-        sender:   None,
-        simulate: None,
         contract: cfg.bank,
+        sender:   None,
+        funds:    None,
+        simulate: None,
     };
     instance.call_query_bank(&ctx, msg)?.into_std_result().map_err(Into::into)
 }
@@ -235,6 +236,7 @@ fn query_wasm_smart<S: Storage + Clone + 'static>(
     let ctx = Context {
         block:    block.clone(),
         sender:   None,
+        funds:    None,
         simulate: None,
         contract,
     };

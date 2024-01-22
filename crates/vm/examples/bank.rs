@@ -184,6 +184,7 @@ fn mock_context(sender: Option<Addr>) -> Context {
             timestamp: 0,
         },
         contract: Addr::mock(0),
+        funds:    None,
         simulate: None,
         sender,
     }

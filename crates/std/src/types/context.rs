@@ -1,7 +1,5 @@
-use crate::BlockInfo;
-
 use {
-    crate::{Addr, Storage},
+    crate::{Addr, BlockInfo, Coins, Storage},
     serde::{Deserialize, Serialize},
 };
 
@@ -17,6 +15,7 @@ pub struct Context {
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Option<Addr>,
+    pub funds:    Option<Coins>,
     pub simulate: Option<bool>,
 }
 
@@ -25,6 +24,7 @@ pub struct InstantiateCtx<'a> {
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,
+    pub funds:    Coins,
 }
 
 pub struct ExecuteCtx<'a> {
@@ -32,6 +32,7 @@ pub struct ExecuteCtx<'a> {
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,
+    pub funds:    Coins,
 }
 
 pub struct QueryCtx<'a> {

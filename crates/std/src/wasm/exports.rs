@@ -74,6 +74,7 @@ where
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to provide a sender"),
+        funds:    ctx.funds.expect("host failed to provide funds"),
     };
 
     instantiate_fn(ctx, msg).into()
@@ -116,6 +117,7 @@ where
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to provide a sender"),
+        funds:    ctx.funds.expect("host failed to provide funds"),
     };
 
     execute_fn(ctx, msg).into()

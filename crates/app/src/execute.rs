@@ -154,6 +154,7 @@ fn _transfer<S: Storage + Clone + 'static>(
         block:    block.clone(),
         contract: cfg.bank,
         sender:   None,
+        funds:    None,
         simulate: None,
     };
     let msg = TransferMsg {
@@ -219,7 +220,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        _transfer(store.clone(), block, sender.clone(), address.clone(), funds)?;
+        _transfer(store.clone(), block, sender.clone(), address.clone(), funds.clone())?;
     }
 
     // create wasm host
@@ -232,6 +233,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
         block:    block.clone(),
         contract: address,
         sender:   Some(sender.clone()),
+        funds:    Some(funds),
         simulate: None,
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
@@ -273,7 +275,7 @@ fn _execute<S: Storage + Clone + 'static>(
 ) -> anyhow::Result<()> {
     // make the coin transfers
     if !funds.is_empty() {
-        _transfer(store.clone(), block, sender.clone(), contract.clone(), funds)?;
+        _transfer(store.clone(), block, sender.clone(), contract.clone(), funds.clone())?;
     }
 
     // load wasm code
@@ -290,6 +292,7 @@ fn _execute<S: Storage + Clone + 'static>(
         block:    block.clone(),
         contract: contract.clone(),
         sender:   Some(sender.clone()),
+        funds:    Some(funds),
         simulate: None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
@@ -356,6 +359,7 @@ fn _migrate<S: Storage + Clone + 'static>(
         block:    block.clone(),
         contract: contract.clone(),
         sender:   Some(sender.clone()),
+        funds:    None,
         simulate: None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;

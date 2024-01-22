@@ -43,6 +43,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
         block:    block.clone(),
         contract: tx.sender.clone(),
         sender:   None,
+        funds:    None,
         simulate: Some(false),
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
