@@ -348,11 +348,10 @@ dependencies = [
  "lazy_static",
  "rand",
  "serde",
- "serde-json-wasm",
  "serde_json",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
- "wasmer",
 ]
 
 [[package]]

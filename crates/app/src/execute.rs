@@ -1,6 +1,5 @@
 use {
-    crate::{Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
-    anyhow::{bail, ensure},
+    crate::{AppError, AppResult, Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{
         hash, Account, Addr, Binary, BlockInfo, Coins, Config, Context, Hash, Message, Storage,
@@ -15,7 +14,7 @@ pub fn process_msg<S: Storage + Clone + 'static>(
     block:     &BlockInfo,
     sender:    &Addr,
     msg:       Message,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match msg {
         Message::UpdateConfig {
             new_cfg,
@@ -49,7 +48,7 @@ pub fn process_msg<S: Storage + Clone + 'static>(
 
 // ------------------------------- update config -------------------------------
 
-fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> anyhow::Result<()> {
+fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<()> {
     match _update_config(store, sender, new_cfg) {
         Ok(()) => {
             info!("config updated");
@@ -62,14 +61,14 @@ fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> an
     }
 }
 
-fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> anyhow::Result<()> {
+fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<()> {
     // make sure the sender is authorized to update the config
     let cfg = CONFIG.load(store)?;
-    let Some(owner) = &cfg.owner else {
-        bail!("owner is not set");
+    let Some(owner) = cfg.owner else {
+        return Err(AppError::OwnerNotSet);
     };
-    if sender != owner {
-        bail!("only the owner can update config");
+    if sender != &owner {
+        return Err(AppError::not_owner(sender.clone(), owner));
     }
 
     // save the new config
@@ -80,7 +79,7 @@ fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> a
 
 // -------------------------------- store code ---------------------------------
 
-fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Result<()> {
+fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<()> {
     match _store_code(store, wasm_byte_code) {
         Ok(code_hash) => {
             info!(code_hash = code_hash.to_string(), "stored code");
@@ -94,11 +93,14 @@ fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Resul
 }
 
 // return the hash of the code that is stored, for purpose of tracing/logging
-fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> anyhow::Result<Hash> {
+fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<Hash> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let code_hash = hash(wasm_byte_code);
 
-    ensure!(!CODES.has(store, &code_hash), "code with hash `{code_hash}` already exists");
+    // make sure that the same code isn't uploaded twice
+    if CODES.has(store, &code_hash) {
+        return Err(AppError::code_exists(code_hash));
+    }
 
     CODES.save(store, &code_hash, wasm_byte_code)?;
 
@@ -113,7 +115,7 @@ fn transfer<S: Storage + Clone + 'static>(
     from:  Addr,
     to:    Addr,
     coins: Coins,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match _transfer(store, block, from, to, coins) {
         Ok(TransferMsg { from, to, coins }) => {
             info!(
@@ -139,7 +141,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     from:  Addr,
     to:    Addr,
     coins: Coins,
-) -> anyhow::Result<TransferMsg> {
+) -> AppResult<TransferMsg> {
     // load wasm code
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
@@ -176,7 +178,7 @@ fn _receive<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     msg:   TransferMsg,
-) -> anyhow::Result<TransferMsg> {
+) -> AppResult<TransferMsg> {
     // load wasm code
     let account = ACCOUNTS.load(&store, &msg.to)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
@@ -213,7 +215,7 @@ fn instantiate<S: Storage + Clone + 'static>(
     salt:      Binary,
     funds:     Coins,
     admin:     Option<Addr>,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
         Ok(address) => {
             info!(address = address.to_string(), "instantiated contract");
@@ -237,7 +239,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
     salt:      Binary,
     funds:     Coins,
     admin:     Option<Addr>,
-) -> anyhow::Result<Addr> {
+) -> AppResult<Addr> {
     // load wasm code
     let wasm_byte_code = CODES.load(&store, &code_hash)?;
 
@@ -245,10 +247,11 @@ fn _instantiate<S: Storage + Clone + 'static>(
     let address = Addr::compute(sender, &code_hash, &salt);
 
     // there can't already be an account of the same address
-    ACCOUNTS.update(&mut store, &address, |maybe_acct| {
-        ensure!(maybe_acct.is_none(), "account with the address `{address}` already exists");
-        Ok(Some(Account { code_hash, admin }))
-    })?;
+    if ACCOUNTS.has(&store, &address) {
+        return Err(AppError::account_exists(address));
+    }
+
+    ACCOUNTS.save(&mut store, &address, &Account { code_hash, admin })?;
 
     // make the coin transfers
     if !funds.is_empty() {
@@ -284,7 +287,7 @@ fn execute<S: Storage + Clone + 'static>(
     sender:   &Addr,
     msg:      Binary,
     funds:    Coins,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match _execute(store, block, contract, sender, msg, funds) {
         Ok(()) => {
             info!(contract = contract.to_string(), "executed contract");
@@ -304,7 +307,7 @@ fn _execute<S: Storage + Clone + 'static>(
     sender:   &Addr,
     msg:      Binary,
     funds:    Coins,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     // make the coin transfers
     if !funds.is_empty() {
         _transfer(store.clone(), block, sender.clone(), contract.clone(), funds.clone())?;
@@ -343,7 +346,7 @@ fn migrate<S: Storage + Clone + 'static>(
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           Binary,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match _migrate(store, block, contract, sender, new_code_hash, msg) {
         Ok(()) => {
             info!(contract = contract.to_string(), "migrated contract");
@@ -363,15 +366,15 @@ fn _migrate<S: Storage + Clone + 'static>(
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           Binary,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     let mut account = ACCOUNTS.load(&store, contract)?;
 
     // only the admin can update code hash
     let Some(admin) = &account.admin else {
-        bail!("contract admin is not set");
+        return Err(AppError::AdminNotSet);
     };
     if sender != admin {
-        bail!("only contract admin can update code hash");
+        return Err(AppError::not_admin(sender.clone(), admin.clone()));
     }
 
     // save the new code hash

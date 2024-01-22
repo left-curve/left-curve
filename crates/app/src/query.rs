@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    crate::{AppResult, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
     cw_db::{BackendStorage, PrefixStore},
     cw_std::{
         AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
@@ -36,7 +36,7 @@ pub fn process_query<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     req:   QueryRequest,
-) -> anyhow::Result<QueryResponse> {
+) -> AppResult<QueryResponse> {
     match req {
         QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
         QueryRequest::Balance {
@@ -80,7 +80,7 @@ pub fn process_query<S: Storage + Clone + 'static>(
     }
 }
 
-fn query_info(store: &dyn Storage) -> anyhow::Result<InfoResponse> {
+fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     Ok(InfoResponse {
         config:               CONFIG.load(store)?,
         last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
@@ -92,7 +92,7 @@ fn query_balance<S: Storage + Clone + 'static>(
     block:   &BlockInfo,
     address: Addr,
     denom:   String,
-) -> anyhow::Result<Coin> {
+) -> AppResult<Coin> {
     _query_bank(store, block, &BankQuery::Balance { address, denom })
         .map(|res| res.as_balance())
 }
@@ -103,7 +103,7 @@ fn query_balances<S: Storage + Clone + 'static>(
     address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> anyhow::Result<Coins> {
+) -> AppResult<Coins> {
     _query_bank(store, block, &BankQuery::Balances { address, start_after, limit })
         .map(|res| res.as_balances())
 }
@@ -112,7 +112,7 @@ fn query_supply<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     denom: String,
-) -> anyhow::Result<Coin> {
+) -> AppResult<Coin> {
     _query_bank(store, block, &BankQuery::Supply { denom })
         .map(|res| res.as_supply())
 }
@@ -122,7 +122,7 @@ fn query_supplies<S: Storage + Clone + 'static>(
     block:       &BlockInfo,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> anyhow::Result<Coins> {
+) -> AppResult<Coins> {
     _query_bank(store, block, &BankQuery::Supplies { start_after, limit })
         .map(|res| res.as_supplies())
 }
@@ -131,7 +131,7 @@ fn _query_bank<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     msg:   &BankQuery,
-) -> anyhow::Result<BankQueryResponse> {
+) -> AppResult<BankQueryResponse> {
     // load wasm code
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
@@ -153,7 +153,7 @@ fn _query_bank<S: Storage + Clone + 'static>(
     instance.call_query_bank(&ctx, msg)?.into_std_result().map_err(Into::into)
 }
 
-fn query_code(store: &dyn Storage, hash: Hash) -> anyhow::Result<Binary> {
+fn query_code(store: &dyn Storage, hash: Hash) -> AppResult<Binary> {
     CODES.load(store, &hash).map_err(Into::into)
 }
 
@@ -161,7 +161,7 @@ fn query_codes(
     store:       &dyn Storage,
     start_after: Option<Hash>,
     limit:       Option<u32>,
-) -> anyhow::Result<Vec<Hash>> {
+) -> AppResult<Vec<Hash>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
@@ -172,7 +172,7 @@ fn query_codes(
         .map_err(Into::into)
 }
 
-fn query_account(store: &dyn Storage, address: Addr) -> anyhow::Result<AccountResponse> {
+fn query_account(store: &dyn Storage, address: Addr) -> AppResult<AccountResponse> {
     let account = ACCOUNTS.load(store, &address)?;
     Ok(AccountResponse {
         address,
@@ -185,7 +185,7 @@ fn query_accounts(
     store:       &dyn Storage,
     start_after: Option<Addr>,
     limit:       Option<u32>,
-) -> anyhow::Result<Vec<AccountResponse>> {
+) -> AppResult<Vec<AccountResponse>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
@@ -207,7 +207,7 @@ fn query_wasm_raw<S: Storage + 'static>(
     store:    S,
     contract: Addr,
     key:      Binary,
-) -> anyhow::Result<WasmRawResponse> {
+) -> AppResult<WasmRawResponse> {
     let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, &contract]);
     let value = substore.read(&key)?;
     Ok(WasmRawResponse {
@@ -222,7 +222,7 @@ fn query_wasm_smart<S: Storage + Clone + 'static>(
     block:    &BlockInfo,
     contract: Addr,
     msg:      Binary,
-) -> anyhow::Result<WasmSmartResponse> {
+) -> AppResult<WasmSmartResponse> {
     // load wasm code
     let account = ACCOUNTS.load(&store, &contract)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;

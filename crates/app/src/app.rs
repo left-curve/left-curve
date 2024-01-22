@@ -1,6 +1,5 @@
 use {
-    crate::{auth::authenticate_tx, execute::process_msg, query::process_query},
-    anyhow::{anyhow, ensure},
+    crate::{auth::authenticate_tx, execute::process_msg, query::process_query, AppError, AppResult},
     cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
         Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
@@ -30,24 +29,28 @@ impl<S> App<S> {
         }
     }
 
-    fn take_pending(&mut self) -> anyhow::Result<Batch> {
-        self.pending.take().ok_or(anyhow!("[App]: pending batch not found"))
+    fn take_pending(&mut self) -> AppResult<Batch> {
+        self.pending.take().ok_or(AppError::PendingBatchNotSet)
     }
 
-    fn take_current_block(&mut self) -> anyhow::Result<BlockInfo> {
-        self.current_block.take().ok_or(anyhow!("[App]: current block info not found"))
+    fn take_current_block(&mut self) -> AppResult<BlockInfo> {
+        self.current_block.take().ok_or(AppError::CurrentBlockNotSet)
     }
 
-    fn put_pending(&mut self, pending: Batch) -> anyhow::Result<()> {
-        ensure!(self.pending.is_none(), "[App]: pending batch already exists");
-        self.pending = Some(pending);
-        Ok(())
+    fn put_pending(&mut self, pending: Batch) -> AppResult<()> {
+        if self.pending.replace(pending).is_none() {
+            Ok(())
+        } else {
+            Err(AppError::PendingBatchExists)
+        }
     }
 
-    fn put_current_block(&mut self, current_block: BlockInfo) -> anyhow::Result<()> {
-        ensure!(self.current_block.is_none(), "[App]: current block info already exists");
-        self.current_block = Some(current_block);
-        Ok(())
+    fn put_current_block(&mut self, current_block: BlockInfo) -> AppResult<()> {
+        if self.current_block.replace(current_block).is_none() {
+            Ok(())
+        } else {
+            Err(AppError::CurrentBlockExists)
+        }
     }
 }
 
@@ -55,7 +58,7 @@ impl<S> App<S>
 where
     S: Storage + 'static,
 {
-    pub fn init_chain(&mut self, genesis_state: GenesisState) -> anyhow::Result<()> {
+    pub fn init_chain(&mut self, genesis_state: GenesisState) -> AppResult<()> {
         // TODO: find value for height and timestamp here
         let block = BlockInfo {
             chain_id:  genesis_state.chain_id.clone(),
@@ -87,7 +90,7 @@ where
         Ok(())
     }
 
-    pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> anyhow::Result<()> {
+    pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<()> {
         let cached = SharedStore::new(CacheStore::new(self.store.share(), self.pending.take()));
 
         for (idx, tx) in txs.into_iter().enumerate() {
@@ -106,7 +109,7 @@ where
         Ok(())
     }
 
-    pub fn query(&mut self, req: QueryRequest) -> anyhow::Result<QueryResponse> {
+    pub fn query(&mut self, req: QueryRequest) -> AppResult<QueryResponse> {
         // note: when doing query, we use the state from the last finalized block,
         // do not include uncommitted changes from the current block.
         let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
@@ -120,7 +123,7 @@ where
     S: Storage + Flush + 'static,
 {
     // TODO: we need to think about what to do if the flush fails here...
-    pub fn commit(&mut self) -> anyhow::Result<()> {
+    pub fn commit(&mut self) -> AppResult<()> {
         let pending = self.take_pending()?;
         let current_block = self.take_current_block()?;
 
@@ -136,7 +139,7 @@ where
     }
 }
 
-fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> anyhow::Result<()>
+fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<()>
 where
     S: Storage + Flush + 'static,
 {

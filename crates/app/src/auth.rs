@@ -1,5 +1,5 @@
 use {
-    crate::{Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
+    crate::{AppResult, Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Storage, Tx},
     cw_vm::Instance,
@@ -10,7 +10,7 @@ pub fn authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     match _authenticate_tx(store, block, tx) {
         Ok(()) => {
             // TODO: add txhash here?
@@ -28,7 +28,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
-) -> anyhow::Result<()> {
+) -> AppResult<()> {
     // load wasm code
     let account = ACCOUNTS.load(&store, &tx.sender)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
