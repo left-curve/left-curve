@@ -1,5 +1,5 @@
 use {
-    crate::{auth::authenticate_tx, execute::process_msg, query::process_query, AppError, AppResult},
+    crate::{authenticate_tx, process_msg, process_query, AppError, AppResult},
     cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
         Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
