@@ -44,14 +44,11 @@ fn main() -> anyhow::Result<()> {
     let account_wasm = read_wasm_byte_code("cw_account")?;
     let bank_wasm = read_wasm_byte_code("cw_bank")?;
 
-    println!("🤖 Computing bank contract address");
-    let bank_addr = Addr::compute(&DEPLOYER, &bank_wasm.hash, &BANK_SALT);
-
     println!("🤖 Generating random accounts");
     let accounts = make_random_accounts(6, &account_wasm.hash);
 
     println!("🤖 Initializing chain");
-    app.init_chain(make_genesis_state(&accounts, &account_wasm, &bank_wasm, &bank_addr)?)?;
+    app.init_chain(make_genesis_state(&accounts, &account_wasm, &bank_wasm)?)?;
 
     println!("🤖 Making transfers");
     let block = make_block_info(1, 10000);
@@ -95,6 +92,9 @@ fn main() -> anyhow::Result<()> {
 
     println!("🤖 Querying balances after transfers");
     query_all_balances(&mut app, &accounts)?;
+
+    println!("🤖 Querying token supplies");
+    query_supplies(&mut app)?;
 
     println!("✅ Done!");
 
@@ -187,13 +187,15 @@ fn make_genesis_state(
     accounts:     &[TestAccount],
     account_wasm: &TestCode,
     bank_wasm:    &TestCode,
-    bank_addr:    &Addr,
 ) -> anyhow::Result<GenesisState> {
+    // compute bank contract address
+    let bank_addr = Addr::compute(&DEPLOYER, &bank_wasm.hash, &BANK_SALT);
+
     // upload codes and instantiate bank contract
     let mut gen_state = GenesisState {
         chain_id: CHAIN_ID.to_string(),
         config: Config {
-            bank: bank_addr.clone(),
+            bank: bank_addr,
         },
         msgs: vec![
             Message::StoreCode {
@@ -290,6 +292,22 @@ where
     }
 
     println!("{}", serde_json::to_string_pretty(&resps)?);
+
+    Ok(())
+}
+
+fn query_supplies<S>(app: &mut App<S>) -> anyhow::Result<()>
+where
+    S: Storage + 'static,
+{
+    let supplies = app
+        .query(QueryRequest::Supplies {
+            start_after: None,
+            limit:       None,
+        })?
+        .as_supplies();
+
+    println!("{}", serde_json::to_string_pretty(&supplies)?);
 
     Ok(())
 }
