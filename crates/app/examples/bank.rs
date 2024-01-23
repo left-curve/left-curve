@@ -11,8 +11,8 @@ use {
     cw_crypto::Identity256,
     cw_db::MockStorage,
     cw_std::{
-        hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash, Message,
-        QueryRequest, Storage, Tx, Uint128, from_json, QueryResponse
+        from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash,
+        Message, QueryRequest, QueryResponse, Storage, Tx, Uint128,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
