@@ -4,11 +4,14 @@ use {
     cw_db::MockStorage,
     cw_mock_querier::QueryMsg,
     cw_std::{
-        hash, to_json, Addr, Coins, Config, Empty, GenesisState, Message, QueryRequest, Storage,
+        from_json, hash, to_json, Addr, BlockInfo, Coins, Config, Empty, GenesisState, Message,
+        QueryRequest, QueryResponse, Storage,
     },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
 };
+
+const MOCK_CHAIN_ID: &str = "dev-1";
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
@@ -37,8 +40,7 @@ fn main() -> anyhow::Result<()> {
     let address = Addr::compute(&Addr::mock(0), &code_hash, &salt);
 
     println!("🤖 Genesis chain, instantiate querier contract");
-    app.init_chain(GenesisState {
-        chain_id: "dev-1".to_string(),
+    app.do_init_chain(MOCK_CHAIN_ID.into(), mock_block_info(0, 0), &to_json(&GenesisState {
         config: Config {
             // we don't need an owner or a bank contract for this demo
             owner: None,
@@ -56,7 +58,7 @@ fn main() -> anyhow::Result<()> {
                 admin: None,
             },
         ],
-    })?;
+    })?)?;
 
     println!("🤖 Querying chain info...");
     query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
@@ -82,15 +84,26 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
+    BlockInfo {
+        height,
+        timestamp,
+    }
+}
+
 fn query_wasm_smart<S, M>(app: &mut App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
     S: Storage + 'static,
     M: Serialize,
 {
-    let resp = app.query(QueryRequest::WasmSmart {
+    let data = from_json::<QueryResponse>(app.do_query(&to_json(&QueryRequest::WasmSmart {
         contract: contract.clone(),
         msg: to_json(msg)?,
-    })?;
-    println!("{}", resp.as_wasm_smart().data);
+    })?)?)?
+    .as_wasm_smart()
+    .data;
+
+    println!("{}", data);
+
     Ok(())
 }

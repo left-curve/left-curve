@@ -179,10 +179,10 @@ where
 fn mock_context(sender: Option<Addr>) -> Context {
     Context {
         block: BlockInfo {
-            chain_id:  "dev-1".into(),
             height:    0,
             timestamp: 0,
         },
+        chain_id: "dev-1".into(),
         contract: Addr::mock(0),
         funds:    None,
         simulate: None,

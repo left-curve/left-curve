@@ -2,54 +2,66 @@ use {
     crate::{authenticate_tx, process_msg, process_query, AppError, AppResult},
     cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
-        Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item, Map, QueryRequest,
-        QueryResponse, Storage, Tx,
+        from_json, to_json, Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item,
+        Map, QueryRequest, Storage, Tx,
     },
+    std::sync::{Arc, RwLock},
     tracing::{debug, info},
 };
 
+pub const CHAIN_ID:             Item<String>        = Item::new("chain_id");
 pub const CONFIG:               Item<Config>        = Item::new("config");
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("last_finalized_block");
 pub const CODES:                Map<&Hash, Binary>  = Map::new("c");
 pub const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
 pub const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
+struct PendingData {
+    batch: Batch,
+    block: BlockInfo,
+}
+
+#[derive(Clone)]
 pub struct App<S> {
-    store:         SharedStore<S>,
-    pending:       Option<Batch>,
-    current_block: Option<BlockInfo>,
+    store:   SharedStore<S>,
+    pending: Arc<RwLock<Option<PendingData>>>,
 }
 
 impl<S> App<S> {
     pub fn new(store: S) -> Self {
         Self {
-            store:         SharedStore::new(store),
-            pending:       None,
-            current_block: None,
+            store:   SharedStore::new(store),
+            pending: Arc::new(RwLock::new(None)),
         }
     }
 
-    fn take_pending(&mut self) -> AppResult<Batch> {
-        self.pending.take().ok_or(AppError::PendingBatchNotSet)
+    // TODO: cleanup these speghatti code
+
+    fn take_pending(&self) -> AppResult<(Batch, BlockInfo)> {
+        // TODO: handle poison error
+        self.pending
+            .write()
+            .unwrap()
+            .take()
+            .map(|data| (data.batch, data.block))
+            .ok_or(AppError::PendingDataNotSet)
     }
 
-    fn take_current_block(&mut self) -> AppResult<BlockInfo> {
-        self.current_block.take().ok_or(AppError::CurrentBlockNotSet)
-    }
-
-    fn put_pending(&mut self, pending: Batch) -> AppResult<()> {
-        if self.pending.replace(pending).is_none() {
+    fn put_pending(&self, batch: Batch, block: BlockInfo) -> AppResult<()> {
+        // TODO: handle poison error
+        if self
+            .pending
+            .write()
+            .unwrap()
+            .replace(PendingData {
+                batch,
+                block,
+            })
+            .is_none()
+        {
             Ok(())
         } else {
-            Err(AppError::PendingBatchExists)
-        }
-    }
-
-    fn put_current_block(&mut self, current_block: BlockInfo) -> AppResult<()> {
-        if self.current_block.replace(current_block).is_none() {
-            Ok(())
-        } else {
-            Err(AppError::CurrentBlockExists)
+            Err(AppError::PendingDataExists)
         }
     }
 }
@@ -58,17 +70,21 @@ impl<S> App<S>
 where
     S: Storage + 'static,
 {
-    pub fn init_chain(&mut self, genesis_state: GenesisState) -> AppResult<()> {
-        // TODO: find value for height and timestamp here
-        let block = BlockInfo {
-            chain_id:  genesis_state.chain_id.clone(),
-            height:    0,
-            timestamp: 0,
-        };
+    pub fn do_init_chain(
+        &self,
+        chain_id: String,
+        block: BlockInfo,
+        app_state_bytes: &[u8],
+    ) -> AppResult<Hash> {
+        let mut store = self.store.share();
+
+        // deserialize the genesis state
+        let genesis_state: GenesisState = from_json(app_state_bytes)?;
 
         // save the config and genesis block. some genesis messages may need it
-        CONFIG.save(&mut self.store, &genesis_state.config)?;
-        LAST_FINALIZED_BLOCK.save(&mut self.store, &block)?;
+        CHAIN_ID.save(&mut store, &chain_id)?;
+        CONFIG.save(&mut store, &genesis_state.config)?;
+        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
         // not sure which address to use as genesis message sender. currently we
         // just use an all-zero address.
@@ -85,36 +101,53 @@ where
             process_msg(self.store.share(), &block, &sender, msg)?;
         }
 
-        info!(chain_id = genesis_state.chain_id, "completed genesis");
+        info!(chain_id, "completed genesis");
 
-        Ok(())
+        // return an empty apphash as placeholder, since we haven't implemented
+        // state merklization yet
+        Ok(Hash::zero())
     }
 
-    pub fn finalize_block(&mut self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<()> {
-        let cached = SharedStore::new(CacheStore::new(self.store.share(), self.pending.take()));
+    // TODO: return events, txResults, appHash
+    pub fn do_finalize_block(
+        &self,
+        block:   BlockInfo,
+        raw_txs: Vec<impl AsRef<[u8]>>,
+    ) -> AppResult<()> {
+        let cached = SharedStore::new(CacheStore::new(self.store.share(), None));
 
-        for (idx, tx) in txs.into_iter().enumerate() {
+        for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print
             debug!(idx, "processing tx");
-            run_tx(cached.share(), &block, tx)?;
+            run_tx(cached.share(), &block, from_json(raw_tx)?)?;
         }
 
-        let (_, pending) = cached.disassemble()?.disassemble();
+        let (_, batch) = cached.disassemble()?.disassemble();
 
-        self.put_pending(pending)?;
-        self.put_current_block(block.clone())?;
+        self.put_pending(batch, block.clone())?;
 
         info!(height = block.height, timestamp = block.timestamp, "finalized block");
 
         Ok(())
     }
 
-    pub fn query(&mut self, req: QueryRequest) -> AppResult<QueryResponse> {
+    // returns (last_block_height, last_block_app_hash)
+    pub fn do_info(&self) -> AppResult<(i64, Hash)> {
+        let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
+        // return an all-zero hash as a placeholder, since we haven't implemented
+        // state merklization yet
+        Ok((block.height as i64, Hash::zero()))
+    }
+
+    pub fn do_query(&self, raw_query: &[u8]) -> AppResult<Binary> {
         // note: when doing query, we use the state from the last finalized block,
         // do not include uncommitted changes from the current block.
         let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
 
-        process_query(self.store.share(), &block, req)
+        let req: QueryRequest = from_json(raw_query)?;
+        let res = process_query(self.store.share(), &block, req)?;
+
+        to_json(&res).map_err(Into::into)
     }
 }
 
@@ -123,17 +156,17 @@ where
     S: Storage + Flush + 'static,
 {
     // TODO: we need to think about what to do if the flush fails here...
-    pub fn commit(&mut self) -> AppResult<()> {
-        let pending = self.take_pending()?;
-        let current_block = self.take_current_block()?;
+    pub fn do_commit(&self) -> AppResult<()> {
+        let mut store = self.store.share();
+        let (batch, block) = self.take_pending()?;
 
         // apply the DB ops effected by txs in this block
-        self.store.flush(pending)?;
+        store.flush(batch)?;
 
         // update the last finalized block info
-        LAST_FINALIZED_BLOCK.save(&mut self.store, &current_block)?;
+        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
-        info!(height = current_block.height, "committed state deltas");
+        info!(height = block.height, "committed state deltas");
 
         Ok(())
     }
@@ -155,7 +188,7 @@ where
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
     // fails, we don't update account state.
-    cached.borrow_mut().commit()?;
+    cached.write_access().commit()?;
 
     // now that the tx is authenticated, we loop through the messages and
     // execute them one by one
@@ -169,10 +202,8 @@ where
         }
     }
 
-    // TODO: add `after_tx` hook?
-
     // all messages succeeded. commit the state changes
-    cached.borrow_mut().commit()?;
+    cached.write_access().commit()?;
 
     Ok(())
 }

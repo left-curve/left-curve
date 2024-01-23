@@ -12,7 +12,7 @@ use {
     cw_db::MockStorage,
     cw_std::{
         hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash, Message,
-        QueryRequest, Storage, Tx, Uint128,
+        QueryRequest, Storage, Tx, Uint128, from_json, QueryResponse
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
@@ -48,7 +48,11 @@ fn main() -> anyhow::Result<()> {
     let accounts = make_random_accounts(6, &account_wasm.hash);
 
     println!("🤖 Initializing chain");
-    app.init_chain(make_genesis_state(&accounts, &account_wasm, &bank_wasm)?)?;
+    app.do_init_chain(
+        CHAIN_ID.to_string(),
+        make_block_info(0, 5000),
+        &make_genesis_state(&accounts, &account_wasm, &bank_wasm)?,
+    )?;
 
     println!("🤖 Making transfers");
     let block = make_block_info(1, 10000);
@@ -87,8 +91,8 @@ fn main() -> anyhow::Result<()> {
             },
         ])?,
     ];
-    app.finalize_block(block, txs)?;
-    app.commit()?;
+    app.do_finalize_block(block, txs)?;
+    app.do_commit()?;
 
     println!("🤖 Querying balances after transfers");
     query_all_balances(&mut app, &accounts)?;
@@ -187,13 +191,12 @@ fn make_genesis_state(
     accounts:     &[TestAccount],
     account_wasm: &TestCode,
     bank_wasm:    &TestCode,
-) -> anyhow::Result<GenesisState> {
+) -> anyhow::Result<Binary> {
     // compute bank contract address
     let bank_addr = Addr::compute(&DEPLOYER, &bank_wasm.hash, &BANK_SALT);
 
     // upload codes and instantiate bank contract
     let mut gen_state = GenesisState {
-        chain_id: CHAIN_ID.to_string(),
         config: Config {
             owner: None,
             bank:  bank_addr,
@@ -230,14 +233,14 @@ fn make_genesis_state(
         });
     }
 
-    Ok(gen_state)
+    to_json(&gen_state).map_err(Into::into)
 }
 
 fn make_transfer_tx<const N: usize>(
     accounts:  &[TestAccount],
     from:      usize,
     transfers: [TestTransfer; N],
-) -> anyhow::Result<Tx> {
+) -> anyhow::Result<Binary> {
     let mut msgs = vec![];
     for TestTransfer { to, denom, amount } in transfers {
         msgs.push(Message::Transfer {
@@ -258,16 +261,16 @@ fn make_transfer_tx<const N: usize>(
     )?)?;
     let signature: Signature = accounts[from].sk.sign_digest(sign_bytes);
 
-    Ok(Tx {
+    to_json(&Tx {
         sender:     accounts[from].addr.clone(),
         credential: signature.to_vec().into(),
         msgs,
     })
+    .map_err(Into::into)
 }
 
 fn make_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
-        chain_id: "dev-1".into(),
         height,
         timestamp,
     }
@@ -279,13 +282,14 @@ where
 {
     let mut resps = BTreeMap::new();
     for acct in accounts {
-        let balances = app
-            .query(QueryRequest::Balances {
+        let balances = from_json::<QueryResponse>(
+            &app.do_query(&to_json(&QueryRequest::Balances {
                 address: acct.addr.clone(),
                 start_after: None,
                 limit: None,
-            })?
-            .as_balances();
+            })?)?
+        )?
+        .as_balances();
 
         if !balances.is_empty() {
             resps.insert(acct.addr.clone(), balances);
@@ -301,12 +305,13 @@ fn query_supplies<S>(app: &mut App<S>) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
-    let supplies = app
-        .query(QueryRequest::Supplies {
+    let supplies = from_json::<QueryResponse>(
+        app.do_query(&to_json(&QueryRequest::Supplies {
             start_after: None,
             limit:       None,
-        })?
-        .as_supplies();
+        })?)?
+    )?
+    .as_supplies();
 
     println!("{}", serde_json::to_string_pretty(&supplies)?);
 

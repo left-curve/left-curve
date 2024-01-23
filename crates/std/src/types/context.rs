@@ -12,6 +12,7 @@ use {
 /// a transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Option<Addr>,
@@ -21,6 +22,7 @@ pub struct Context {
 
 pub struct InstantiateCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,
@@ -29,6 +31,7 @@ pub struct InstantiateCtx<'a> {
 
 pub struct ExecuteCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,
@@ -37,12 +40,14 @@ pub struct ExecuteCtx<'a> {
 
 pub struct QueryCtx<'a> {
     pub store:    &'a dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
 }
 
 pub struct MigrateCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,
@@ -50,6 +55,7 @@ pub struct MigrateCtx<'a> {
 
 pub struct BeforeTxCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub simulate: bool,
@@ -57,12 +63,14 @@ pub struct BeforeTxCtx<'a> {
 
 pub struct TransferCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
 }
 
 pub struct ReceiveCtx<'a> {
     pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
     pub sender:   Addr,

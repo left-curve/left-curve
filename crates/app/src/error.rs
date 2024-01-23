@@ -16,17 +16,11 @@ pub enum AppError {
     #[error(transparent)]
     Db(#[from] DbError),
 
-    #[error("Pending batch is not set")]
-    PendingBatchNotSet,
+    #[error("Pending data is not set")]
+    PendingDataNotSet,
 
-    #[error("Pending batch already exists")]
-    PendingBatchExists,
-
-    #[error("Current block is not set")]
-    CurrentBlockNotSet,
-
-    #[error("Current block already exists")]
-    CurrentBlockExists,
+    #[error("Pending data already exists")]
+    PendingDataExists,
 
     #[error("Owner account is not set")]
     OwnerNotSet,

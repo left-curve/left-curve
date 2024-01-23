@@ -97,7 +97,7 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let mut sequence = SEQUENCE.load(ctx.store)?;
 
     // prepare the hash that is expected to have been signed
-    let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.block.chain_id, sequence)?;
+    let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.chain_id, sequence)?;
 
     // verify the signature
     // skip if we are in simulate mode

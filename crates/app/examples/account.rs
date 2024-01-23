@@ -11,13 +11,15 @@ use {
     cw_db::MockStorage,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
-        QueryRequest, Storage, Tx,
+        QueryRequest, QueryResponse, Storage, Tx,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{env, fs::File, io::Read, path::PathBuf},
 };
+
+const MOCK_CHAIN_ID: &str = "dev-1";
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
@@ -58,8 +60,7 @@ fn main() -> anyhow::Result<()> {
     let address2 = Addr::compute(&address1, &code_hash, &salt2);
 
     println!("🤖 Genesis chain, instantiate accounts 1");
-    app.init_chain(GenesisState {
-        chain_id: "dev-1".to_string(),
+    app.do_init_chain(MOCK_CHAIN_ID.into(), mock_block_info(0, 0), &to_json(&GenesisState {
         config: Config {
             // we don't need an owner or a bank contract for this demo
             owner: None,
@@ -79,7 +80,7 @@ fn main() -> anyhow::Result<()> {
                 admin: Some(address1.clone()),
             },
         ],
-    })?;
+    })?)?;
 
     println!("🤖 Account 1 sends a tx to create account 2");
     let block = mock_block_info(1, 1);
@@ -94,8 +95,8 @@ fn main() -> anyhow::Result<()> {
             admin: Some(address2.clone()),
         },
     ])?;
-    app.finalize_block(block, vec![tx])?;
-    app.commit()?;
+    app.do_finalize_block(block, vec![to_json(&tx)?])?;
+    app.do_commit()?;
 
     println!("🤖 Account 1 updates its public key - should work");
     let block = mock_block_info(2, 2);
@@ -108,8 +109,8 @@ fn main() -> anyhow::Result<()> {
             funds: Coins::empty(),
         }
     ])?;
-    app.finalize_block(block, vec![tx])?;
-    app.commit()?;
+    app.do_finalize_block(block, vec![to_json(&tx)?])?;
+    app.do_commit()?;
 
     println!("🤖 Account 1 attempts to update public key with outdated signature - should fail");
     // we've already updated key to sk3, but we still try to sign with sk1 here.
@@ -125,8 +126,8 @@ fn main() -> anyhow::Result<()> {
             funds: Coins::empty(),
         }
     ])?;
-    app.finalize_block(block, vec![tx])?;
-    app.commit()?;
+    app.do_finalize_block(block, vec![to_json(&tx)?])?;
+    app.do_commit()?;
 
     println!("🤖 Account 2 attempts to update account 1's public key - should fail");
     // only the account itself can update its own key. this should pass
@@ -142,8 +143,8 @@ fn main() -> anyhow::Result<()> {
             funds: Coins::empty(),
         }
     ])?;
-    app.finalize_block(block, vec![tx])?;
-    app.commit()?;
+    app.do_finalize_block(block, vec![to_json(&tx)?])?;
+    app.do_commit()?;
 
     println!("🤖 Querying chain info");
     query(&mut app, QueryRequest::Info {})?;
@@ -171,7 +172,6 @@ fn main() -> anyhow::Result<()> {
 
 fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
-        chain_id: "dev-1".into(),
         height,
         timestamp,
     }
@@ -183,26 +183,19 @@ fn new_tx<S: Storage + 'static>(
     sk:     &SigningKey,
     msgs:   Vec<Message>,
 ) -> anyhow::Result<Tx> {
-    // query chain_id
-    let chain_id = app
-        .query(QueryRequest::Info {})?
-        .as_info()
-        .last_finalized_block
-        .chain_id;
-
     // query account sequence
-    let sequence = from_json::<StateResponse>(app
-        .query(QueryRequest::WasmSmart {
+    let sequence = from_json::<StateResponse>(from_json::<QueryResponse>(app
+        .do_query(&to_json(&QueryRequest::WasmSmart {
             contract: sender.clone(),
             msg: to_json(&QueryMsg::State {})?,
-        })?
+        })?)?)?
         .as_wasm_smart()
         .data)?
         .sequence;
 
     // create sign bytes
     // need to wrap bytes in Identity256 so that it can be used in sign_digest
-    let sign_bytes = sign_bytes(&msgs, sender, &chain_id, sequence)?;
+    let sign_bytes = sign_bytes(&msgs, sender, MOCK_CHAIN_ID, sequence)?;
     let sign_bytes = Identity256::from_bytes(&sign_bytes)?;
 
     // sign the sign bytes
@@ -223,7 +216,7 @@ fn query<S>(app: &mut App<S>, req: QueryRequest) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
-    let resp = app.query(req)?;
+    let resp = app.do_query(&to_json(&req)?)?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())
 }
@@ -234,11 +227,14 @@ where
     M: Serialize,
     T: Serialize + DeserializeOwned,
 {
-    let resp = app.query(QueryRequest::WasmSmart {
-        contract: contract.clone(),
-        msg: to_json(msg)?,
-    })?;
-    let resp: T = from_json(resp.as_wasm_smart().data)?;
+    let resp: T = from_json(
+        from_json::<QueryResponse>(&app.do_query(&to_json(&QueryRequest::WasmSmart {
+            contract: contract.clone(),
+            msg: to_json(msg)?,
+        })?)?)?
+        .as_wasm_smart()
+        .data,
+    )?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())
 }

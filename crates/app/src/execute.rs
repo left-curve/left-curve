@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, AppResult, Querier, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE},
+    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{
         hash, Account, Addr, Binary, BlockInfo, Coins, Config, Context, Hash, Message, Storage,
@@ -143,6 +143,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     coins: Coins,
 ) -> AppResult<TransferMsg> {
     // load wasm code
+    let chain_id = CHAIN_ID.load(&store)?;
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
@@ -154,6 +155,7 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     // call transfer
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: cfg.bank,
         sender:   None,
@@ -180,6 +182,7 @@ fn _receive<S: Storage + Clone + 'static>(
     msg:   TransferMsg,
 ) -> AppResult<TransferMsg> {
     // load wasm code
+    let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &msg.to)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
@@ -190,6 +193,7 @@ fn _receive<S: Storage + Clone + 'static>(
 
     // call the recipient contract's `receive` entry point
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: msg.to.clone(),
         sender:   Some(msg.from.clone()),
@@ -240,6 +244,8 @@ fn _instantiate<S: Storage + Clone + 'static>(
     funds:     Coins,
     admin:     Option<Addr>,
 ) -> AppResult<Addr> {
+    let chain_id = CHAIN_ID.load(&store)?;
+
     // load wasm code
     let wasm_byte_code = CODES.load(&store, &code_hash)?;
 
@@ -265,6 +271,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // call instantiate
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: address,
         sender:   Some(sender.clone()),
@@ -308,6 +315,8 @@ fn _execute<S: Storage + Clone + 'static>(
     msg:      Binary,
     funds:    Coins,
 ) -> AppResult<()> {
+    let chain_id = CHAIN_ID.load(&store)?;
+
     // make the coin transfers
     if !funds.is_empty() {
         _transfer(store.clone(), block, sender.clone(), contract.clone(), funds.clone())?;
@@ -324,6 +333,7 @@ fn _execute<S: Storage + Clone + 'static>(
 
     // call execute
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: contract.clone(),
         sender:   Some(sender.clone()),
@@ -367,6 +377,7 @@ fn _migrate<S: Storage + Clone + 'static>(
     new_code_hash: Hash,
     msg:           Binary,
 ) -> AppResult<()> {
+    let chain_id = CHAIN_ID.load(&store)?;
     let mut account = ACCOUNTS.load(&store, contract)?;
 
     // only the admin can update code hash
@@ -391,6 +402,7 @@ fn _migrate<S: Storage + Clone + 'static>(
 
     // call the contract's migrate entry point
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: contract.clone(),
         sender:   Some(sender.clone()),

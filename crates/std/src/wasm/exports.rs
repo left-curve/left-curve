@@ -71,6 +71,7 @@ where
 
     let ctx = InstantiateCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to provide a sender"),
@@ -114,6 +115,7 @@ where
 
     let ctx = ExecuteCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to provide a sender"),
@@ -157,6 +159,7 @@ where
 
     let ctx = QueryCtx {
         store:    &ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
     };
@@ -198,6 +201,7 @@ where
 
     let ctx = MigrateCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to provide a sender"),
@@ -238,6 +242,7 @@ where
 
     let ctx = BeforeTxCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
         simulate: ctx.simulate.expect("host failed to specify whether it's simulation mode"),
@@ -278,6 +283,7 @@ where
 
     let ctx = TransferCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
     };
@@ -313,6 +319,7 @@ where
 
     let ctx = ReceiveCtx {
         store:    &mut ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
         sender:   ctx.sender.expect("host failed to specify sender"),
@@ -354,6 +361,7 @@ where
 
     let ctx = QueryCtx {
         store:    &ExternalStorage,
+        chain_id: ctx.chain_id,
         block:    ctx.block,
         contract: ctx.contract,
     };

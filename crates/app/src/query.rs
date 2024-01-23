@@ -1,5 +1,7 @@
 use {
-    crate::{AppResult, ACCOUNTS, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    crate::{
+        AppResult, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+    },
     cw_db::{BackendStorage, PrefixStore},
     cw_std::{
         AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
@@ -133,6 +135,7 @@ fn _query_bank<S: Storage + Clone + 'static>(
     msg:   &BankQuery,
 ) -> AppResult<BankQueryResponse> {
     // load wasm code
+    let chain_id = CHAIN_ID.load(&store)?;
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
@@ -144,6 +147,7 @@ fn _query_bank<S: Storage + Clone + 'static>(
 
     // call query
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: cfg.bank,
         sender:   None,
@@ -224,6 +228,7 @@ fn query_wasm_smart<S: Storage + Clone + 'static>(
     msg:      Binary,
 ) -> AppResult<WasmSmartResponse> {
     // load wasm code
+    let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &contract)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
@@ -234,6 +239,7 @@ fn query_wasm_smart<S: Storage + Clone + 'static>(
 
     // call query
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         sender:   None,
         funds:    None,

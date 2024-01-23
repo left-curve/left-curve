@@ -4,11 +4,14 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [dependencies]
-cw-db     = { path = "../db" }
-cw-std    = { path = "../std" }
-cw-vm     = { path = "../vm" }
-thiserror = { workspace = true }
-tracing   = { workspace = true }
+cw-db            = { path = "../db" }
+cw-std           = { path = "../std" }
+cw-vm            = { path = "../vm" }
+hex              = { workspace = true }
+tendermint-proto = { workspace = true }
+tendermint-abci  = { workspace = true }
+thiserror        = { workspace = true }
+tracing          = { workspace = true }
 
 [dev-dependencies]
 anyhow             = { workspace = true }

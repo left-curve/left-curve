@@ -1,5 +1,5 @@
 use {
-    crate::{AppResult, Querier, ACCOUNTS, CODES, CONTRACT_NAMESPACE},
+    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Storage, Tx},
     cw_vm::Instance,
@@ -30,6 +30,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     tx:    &Tx,
 ) -> AppResult<()> {
     // load wasm code
+    let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &tx.sender)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
@@ -40,6 +41,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
 
     // call `before_tx` entry point
     let ctx = Context {
+        chain_id,
         block:    block.clone(),
         contract: tx.sender.clone(),
         sender:   None,
