@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
-    let mut app = App::new(MockStorage::new());
+    let app = App::new(MockStorage::new());
 
     println!("🤖 Reading wasm byte code from file");
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
@@ -84,7 +84,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("🤖 Account 1 sends a tx to create account 2");
     let block = mock_block_info(1, 1);
-    let tx = new_tx(&mut app, &address1, &sk1, vec![
+    let tx = new_tx(&app, &address1, &sk1, vec![
         Message::Instantiate {
             code_hash,
             msg: to_json(&InstantiateMsg {
@@ -100,7 +100,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("🤖 Account 1 updates its public key - should work");
     let block = mock_block_info(2, 2);
-    let tx = new_tx(&mut app, &address1, &sk1, vec![
+    let tx = new_tx(&app, &address1, &sk1, vec![
         Message::Execute {
             contract: address1.clone(),
             msg: to_json(&ExecuteMsg::UpdateKey {
@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
     // this should fail authentication. account1's sequence shouldn't be
     // incremented (should be 2).
     let block = mock_block_info(2, 2);
-    let tx = new_tx(&mut app, &address1, &sk1, vec![
+    let tx = new_tx(&app, &address1, &sk1, vec![
         Message::Execute {
             contract: address1.clone(),
             msg: to_json(&ExecuteMsg::UpdateKey {
@@ -134,7 +134,7 @@ fn main() -> anyhow::Result<()> {
     // authentication, but the execute call should fail. account2's sequence
     // number should be incremented (to 1).
     let block = mock_block_info(2, 2);
-    let tx = new_tx(&mut app, &address2, &sk2, vec![
+    let tx = new_tx(&app, &address2, &sk2, vec![
         Message::Execute {
             contract: address1.clone(),
             msg: to_json(&ExecuteMsg::UpdateKey {
@@ -147,25 +147,25 @@ fn main() -> anyhow::Result<()> {
     app.do_commit()?;
 
     println!("🤖 Querying chain info");
-    query(&mut app, QueryRequest::Info {})?;
+    query(&app, QueryRequest::Info {})?;
 
     println!("🤖 Querying codes");
-    query(&mut app, QueryRequest::Codes {
+    query(&app, QueryRequest::Codes {
         start_after: None,
         limit:       None,
     })?;
 
     println!("🤖 Querying accounts");
-    query(&mut app, QueryRequest::Accounts {
+    query(&app, QueryRequest::Accounts {
         start_after: None,
         limit:       None,
     })?;
 
     println!("🤖 Querying account 1 state");
-    query_wasm_smart::<_, _, StateResponse>(&mut app, &address1, &QueryMsg::State {})?;
+    query_wasm_smart::<_, _, StateResponse>(&app, &address1, &QueryMsg::State {})?;
 
     println!("🤖 Querying account 2 state");
-    query_wasm_smart::<_, _, StateResponse>(&mut app, &address2, &QueryMsg::State {})?;
+    query_wasm_smart::<_, _, StateResponse>(&app, &address2, &QueryMsg::State {})?;
 
     Ok(())
 }
@@ -178,7 +178,7 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
 }
 
 fn new_tx<S: Storage + 'static>(
-    app:    &mut App<S>,
+    app:    &App<S>,
     sender: &Addr,
     sk:     &SigningKey,
     msgs:   Vec<Message>,
@@ -212,7 +212,7 @@ fn new_tx<S: Storage + 'static>(
     Ok(tx)
 }
 
-fn query<S>(app: &mut App<S>, req: QueryRequest) -> anyhow::Result<()>
+fn query<S>(app: &App<S>, req: QueryRequest) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
@@ -221,7 +221,7 @@ where
     Ok(())
 }
 
-fn query_wasm_smart<S, M, T>(app: &mut App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
+fn query_wasm_smart<S, M, T>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
     S: Storage + 'static,
     M: Serialize,

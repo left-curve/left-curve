@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     println!("🤖 Creating app");
-    let mut app = App::new(MockStorage::new());
+    let app = App::new(MockStorage::new());
 
     println!("🤖 Reading wasm byte codes from files");
     let account_wasm = read_wasm_byte_code("cw_account")?;
@@ -95,10 +95,10 @@ fn main() -> anyhow::Result<()> {
     app.do_commit()?;
 
     println!("🤖 Querying balances after transfers");
-    query_all_balances(&mut app, &accounts)?;
+    query_all_balances(&app, &accounts)?;
 
     println!("🤖 Querying token supplies");
-    query_supplies(&mut app)?;
+    query_supplies(&app)?;
 
     println!("✅ Done!");
 
@@ -276,7 +276,7 @@ fn make_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn query_all_balances<S>(app: &mut App<S>, accounts: &[TestAccount]) -> anyhow::Result<()>
+fn query_all_balances<S>(app: &App<S>, accounts: &[TestAccount]) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
@@ -301,7 +301,7 @@ where
     Ok(())
 }
 
-fn query_supplies<S>(app: &mut App<S>) -> anyhow::Result<()>
+fn query_supplies<S>(app: &App<S>) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {

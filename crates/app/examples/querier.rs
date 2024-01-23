@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
-    let mut app = App::new(MockStorage::new());
+    let app = App::new(MockStorage::new());
 
     println!("🤖 Reading wasm byte code from file");
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
@@ -61,12 +61,12 @@ fn main() -> anyhow::Result<()> {
     })?)?;
 
     println!("🤖 Querying chain info...");
-    query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
+    query_wasm_smart(&app, &address, &QueryMsg::QueryChain {
         request: QueryRequest::Info {},
     })?;
 
     println!("🤖 Querying codes...");
-    query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
+    query_wasm_smart(&app, &address, &QueryMsg::QueryChain {
         request: QueryRequest::Codes {
             start_after: None,
             limit:       None,
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
     })?;
 
     println!("🤖 Querying accounts...");
-    query_wasm_smart(&mut app, &address, &QueryMsg::QueryChain {
+    query_wasm_smart(&app, &address, &QueryMsg::QueryChain {
         request: QueryRequest::Accounts {
             start_after: None,
             limit:       None,
@@ -91,7 +91,7 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn query_wasm_smart<S, M>(app: &mut App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
+fn query_wasm_smart<S, M>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
     S: Storage + 'static,
     M: Serialize,
