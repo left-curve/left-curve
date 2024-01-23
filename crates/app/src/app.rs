@@ -1,20 +1,15 @@
 use {
-    crate::{authenticate_tx, process_msg, process_query, AppError, AppResult},
+    crate::{
+        authenticate_tx, process_msg, process_query, AppError, AppResult, CHAIN_ID, CONFIG,
+        LAST_FINALIZED_BLOCK,
+    },
     cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
-        from_json, to_json, Account, Addr, Binary, BlockInfo, Config, GenesisState, Hash, Item,
-        Map, QueryRequest, Storage, Tx,
+        from_json, to_json, Addr, Binary, BlockInfo, GenesisState, Hash, QueryRequest, Storage, Tx,
     },
     std::sync::{Arc, RwLock},
     tracing::{debug, info},
 };
-
-pub const CHAIN_ID:             Item<String>        = Item::new("chain_id");
-pub const CONFIG:               Item<Config>        = Item::new("config");
-pub const LAST_FINALIZED_BLOCK: Item<BlockInfo>     = Item::new("last_finalized_block");
-pub const CODES:                Map<&Hash, Binary>  = Map::new("c");
-pub const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
-pub const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
 /// Represent state changes caused by the FinalizeBlock call, but not yet
 /// persisted to disk.
