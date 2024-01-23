@@ -1,43 +1,47 @@
 use {
     crate::{increment_last_byte, Batch, DbError, DbResult, Flush, Order, Record, Storage},
     std::{
-        cell::{Ref, RefCell, RefMut},
-        rc::Rc,
+        sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
     },
 };
 
 pub struct SharedStore<S> {
-    // TODO: change to Arc<RwLock<S>> once we move to multithread?
-    store: Rc<RefCell<S>>,
+    store: Arc<RwLock<S>>,
 }
 
 impl<S> SharedStore<S> {
     pub fn new(store: S) -> Self {
         Self {
-            store: Rc::new(RefCell::new(store)),
+            store: Arc::new(RwLock::new(store)),
         }
     }
 
     pub fn share(&self) -> Self {
         Self {
-            store: Rc::clone(&self.store),
+            store: Arc::clone(&self.store),
         }
     }
 
-    pub fn borrow(&self) -> Ref<S> {
-        self.store.borrow()
+    pub fn read_access(&self) -> RwLockReadGuard<S> {
+        self.store.read().unwrap_or_else(|err| {
+            panic!("poisoned lock: {err:?}")
+        })
     }
 
-    pub fn borrow_mut(&self) -> RefMut<S> {
-        self.store.borrow_mut()
+    pub fn write_access(&self) -> RwLockWriteGuard<S> {
+        self.store.write().unwrap_or_else(|err| {
+            panic!("poisoned lock: {err:?}")
+        })
     }
 
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
     pub fn disassemble(self) -> DbResult<S> {
-        Rc::try_unwrap(self.store)
-            .map(|cell| cell.into_inner())
+        Arc::try_unwrap(self.store)
+            .map(|lock| lock.into_inner().unwrap_or_else(|err| {
+                panic!("poisoned lock: {err:?}")
+            }))
             .map_err(|_| DbError::StillReferenced)
     }
 }
@@ -50,13 +54,13 @@ impl<S> Clone for SharedStore<S> {
 
 impl<S: Flush> Flush for SharedStore<S> {
     fn flush(&mut self, batch: Batch) -> DbResult<()> {
-        self.store.borrow_mut().flush(batch)
+        self.write_access().flush(batch)
     }
 }
 
 impl<S: Storage> Storage for SharedStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.store.borrow().read(key)
+        self.read_access().read(key)
     }
 
     // This is very tricky! Took me days to figure out how to do `scan` on a
@@ -91,35 +95,40 @@ impl<S: Storage> Storage for SharedStore<S> {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        Box::new(SharedIter::new(self.store.borrow(), min, max, order))
+        Box::new(SharedIter::new(self.read_access(), min, max, order))
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.store.borrow_mut().write(key, value)
+        self.write_access().write(key, value)
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.store.borrow_mut().remove(key)
+        self.write_access().remove(key)
     }
 }
 
 struct SharedIter<'a, S> {
-    store: Ref<'a, S>,
+    store: RwLockReadGuard<'a, S>,
     batch: vec::IntoIter<Record>,
-    min: Option<Vec<u8>>,
-    max: Option<Vec<u8>>,
+    min:   Option<Vec<u8>>,
+    max:   Option<Vec<u8>>,
     order: Order,
 }
 
 impl<'a, S> SharedIter<'a, S> {
     const BATCH_SIZE: usize = 30;
 
-    pub fn new(store: Ref<'a, S>, min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> Self {
+    pub fn new(
+        store: RwLockReadGuard<'a, S>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
+    ) -> Self {
         Self {
             store,
             batch: Vec::new().into_iter(),
-            min: min.map(|slice| slice.to_vec()),
-            max: max.map(|slice| slice.to_vec()),
+            min:   min.map(|slice| slice.to_vec()),
+            max:   max.map(|slice| slice.to_vec()),
             order,
         }
     }
