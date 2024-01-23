@@ -16,14 +16,21 @@ pub const CODES:                Map<&Hash, Binary>  = Map::new("c");
 pub const ACCOUNTS:             Map<&Addr, Account> = Map::new("a");
 pub const CONTRACT_NAMESPACE:   &[u8]               = b"w";
 
+/// Represent state changes caused by the FinalizeBlock call, but not yet
+/// persisted to disk.
 struct PendingData {
+    /// Database write batch
     batch: Batch,
+    /// The unfinalized block
     block: BlockInfo,
 }
 
+/// The ABCI application.
 #[derive(Clone)]
 pub struct App<S> {
-    store:   SharedStore<S>,
+    /// The underlying database. Must be thread safe.
+    store: SharedStore<S>,
+    /// State changes that have not yet been persisted to disk.
     pending: Arc<RwLock<Option<PendingData>>>,
 }
 
