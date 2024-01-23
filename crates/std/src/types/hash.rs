@@ -30,6 +30,17 @@ impl Hash {
     pub const LENGTH: usize = 32;
 }
 
+impl Hash {
+    /// Return a hash of all zeroes. Useful as mockups or placeholders.
+    pub fn zero() -> Self {
+        Self([0; Self::LENGTH])
+    }
+
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0.into()
+    }
+}
+
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
         &self.0
