@@ -16,6 +16,9 @@ pub enum AppError {
     #[error(transparent)]
     Db(#[from] DbError),
 
+    #[error("Pending data lock is poisoned")]
+    PendingDataPoisoned,
+
     #[error("Pending data is not set")]
     PendingDataNotSet,
 

@@ -35,34 +35,18 @@ impl<S> App<S> {
         }
     }
 
-    // TODO: cleanup these speghatti code
-
     fn take_pending(&self) -> AppResult<(Batch, BlockInfo)> {
-        // TODO: handle poison error
-        self.pending
-            .write()
-            .unwrap()
-            .take()
-            .map(|data| (data.batch, data.block))
-            .ok_or(AppError::PendingDataNotSet)
+        let mut lock = self.pending.write().map_err(|_| AppError::PendingDataPoisoned)?;
+        let data = lock.take().ok_or(AppError::PendingDataNotSet)?;
+        Ok((data.batch, data.block))
     }
 
     fn put_pending(&self, batch: Batch, block: BlockInfo) -> AppResult<()> {
-        // TODO: handle poison error
-        if self
-            .pending
-            .write()
-            .unwrap()
-            .replace(PendingData {
-                batch,
-                block,
-            })
-            .is_none()
-        {
-            Ok(())
-        } else {
-            Err(AppError::PendingDataExists)
+        let mut lock = self.pending.write().map_err(|_| AppError::PendingDataPoisoned)?;
+        if lock.replace(PendingData { batch, block }).is_some() {
+            return Err(AppError::PendingDataExists);
         }
+        Ok(())
     }
 }
 
