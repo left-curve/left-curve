@@ -83,11 +83,11 @@ where
         // if anyone fails, it's fatal error and we abort the genesis.
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
-            debug!(idx, "processing genesis message");
+            info!(idx, "Processing genesis message");
             process_msg(self.store.share(), &block, &sender, msg)?;
         }
 
-        info!(chain_id, "completed genesis");
+        info!(chain_id, "Completed genesis");
 
         // return an empty apphash as placeholder, since we haven't implemented
         // state merklization yet
@@ -104,7 +104,7 @@ where
 
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print
-            debug!(idx, "processing tx");
+            debug!(idx, "Processing transaction");
             run_tx(cached.share(), &block, from_json(raw_tx)?)?;
         }
 
@@ -112,7 +112,7 @@ where
 
         self.put_pending(batch, block.clone())?;
 
-        info!(height = block.height, timestamp = block.timestamp, "finalized block");
+        info!(height = block.height, timestamp = block.timestamp, "Finalized block");
 
         Ok(())
     }
@@ -160,7 +160,7 @@ where
         // update the last finalized block info
         LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
-        info!(height = block.height, "committed state deltas");
+        info!(height = block.height, "Committed state");
 
         Ok(())
     }
@@ -187,7 +187,7 @@ where
     // now that the tx is authenticated, we loop through the messages and
     // execute them one by one
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
-        debug!(idx, "processing msg");
+        debug!(idx, "Processing message");
         if process_msg(cached.share(), block, &tx.sender, msg).is_err() {
             // if any one of the msgs fails, the entire tx fails.
             // abort, discard uncommitted changes (the changes from the before_tx

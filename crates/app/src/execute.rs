@@ -51,11 +51,11 @@ pub fn process_msg<S: Storage + Clone + 'static>(
 fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<()> {
     match _update_config(store, sender, new_cfg) {
         Ok(()) => {
-            info!("config updated");
+            info!("Config updated");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to update config");
+            warn!(err = err.to_string(), "Failed to update config");
             Err(err)
         },
     }
@@ -82,11 +82,11 @@ fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> A
 fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<()> {
     match _store_code(store, wasm_byte_code) {
         Ok(code_hash) => {
-            info!(code_hash = code_hash.to_string(), "stored code");
+            info!(code_hash = code_hash.to_string(), "Stored code");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to store code");
+            warn!(err = err.to_string(), "Failed to store code");
             Err(err)
         },
     }
@@ -122,12 +122,12 @@ fn transfer<S: Storage + Clone + 'static>(
                 from  = from.to_string(),
                 to    = to.to_string(),
                 coins = coins.to_string(),
-                "transferred coins"
+                "Transferred coins"
             );
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to transfer coins");
+            warn!(err = err.to_string(), "Failed to transfer coins");
             Err(err)
         },
     }
@@ -222,11 +222,11 @@ fn instantiate<S: Storage + Clone + 'static>(
 ) -> AppResult<()> {
     match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
         Ok(address) => {
-            info!(address = address.to_string(), "instantiated contract");
+            info!(address = address.to_string(), "Instantiated contract");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to instantiate contract");
+            warn!(err = err.to_string(), "Failed to instantiate contract");
             Err(err)
         },
     }
@@ -297,11 +297,11 @@ fn execute<S: Storage + Clone + 'static>(
 ) -> AppResult<()> {
     match _execute(store, block, contract, sender, msg, funds) {
         Ok(()) => {
-            info!(contract = contract.to_string(), "executed contract");
+            info!(contract = contract.to_string(), "Executed contract");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to execute contract");
+            warn!(err = err.to_string(), "Failed to execute contract");
             Err(err)
         },
     }
@@ -359,11 +359,11 @@ fn migrate<S: Storage + Clone + 'static>(
 ) -> AppResult<()> {
     match _migrate(store, block, contract, sender, new_code_hash, msg) {
         Ok(()) => {
-            info!(contract = contract.to_string(), "migrated contract");
+            info!(contract = contract.to_string(), "Migrated contract");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to execute contract");
+            warn!(err = err.to_string(), "Failed to execute contract");
             Err(err)
         },
     }

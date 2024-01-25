@@ -14,11 +14,11 @@ pub fn authenticate_tx<S: Storage + Clone + 'static>(
     match _authenticate_tx(store, block, tx) {
         Ok(()) => {
             // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "tx authenticated");
+            debug!(sender = tx.sender.to_string(), "Transaction authenticated");
             Ok(())
         },
         Err(err) => {
-            warn!(err = err.to_string(), "failed to authenticate tx");
+            warn!(err = err.to_string(), "Failed to authenticate transaction");
             Err(err)
         },
     }

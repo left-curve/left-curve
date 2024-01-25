@@ -2,7 +2,7 @@ use {
     crate::{read_from_memory, write_to_memory, BackendQuerier, Environment, VmResult},
     cw_db::BackendStorage,
     cw_std::{from_json, to_json, QueryRequest, Record},
-    tracing::debug,
+    tracing::info,
     wasmer::FunctionEnvMut,
 };
 
@@ -126,7 +126,7 @@ where
 
     let msg_bytes = read_from_memory(env, &wasm_store, msg_ptr)?;
     let msg = String::from_utf8(msg_bytes)?;
-    debug!(msg, "contract debug");
+    info!(msg, "Contract emitted debug message");
 
     Ok(())
 }
