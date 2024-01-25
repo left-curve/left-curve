@@ -119,10 +119,18 @@ where
 
     // returns (last_block_height, last_block_app_hash)
     pub fn do_info(&self) -> AppResult<(i64, Hash)> {
-        let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
-        // return an all-zero hash as a placeholder, since we haven't implemented
-        // state merklization yet
-        Ok((block.height as i64, Hash::zero()))
+        match LAST_FINALIZED_BLOCK.may_load(&self.store)? {
+            Some(block) => {
+                // return an all-zero hash as a placeholder, since we haven't
+                // implemented state merklization yet
+                Ok((block.height as i64, Hash::zero()))
+            },
+            None => {
+                // prior to genesis, we simply return 0 as block height and an
+                // empty app hash
+                Ok((0, Hash::zero()))
+            },
+        }
     }
 
     pub fn do_query(&self, raw_query: &[u8]) -> AppResult<Binary> {

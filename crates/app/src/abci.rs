@@ -2,7 +2,8 @@ use {
     crate::App,
     cw_db::{Flush, Storage},
     cw_std::{BlockInfo, Hash},
-    tendermint_abci::Application,
+    std::net::ToSocketAddrs,
+    tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
         abci::{
             RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery,
@@ -11,22 +12,29 @@ use {
         },
         google::protobuf::Timestamp,
     },
-    tracing::{debug, trace},
+    tracing::Value,
 };
+
+impl<S> App<S>
+where
+    S: Clone + Send + Sync + Storage + Flush + 'static,
+{
+    pub fn start_abci_server(
+        self,
+        read_buf_size: usize,
+        addr: impl ToSocketAddrs + Value,
+    ) -> Result<(), ABCIError> {
+        ServerBuilder::new(read_buf_size)
+            .bind(addr, self)?
+            .listen()
+    }
+}
 
 impl<S> Application for App<S>
 where
     S: Clone + Send + Sync + Storage + Flush + 'static,
 {
-    fn info(&self, req: RequestInfo) -> ResponseInfo {
-        debug!(
-            tm_version    = req.version,
-            block_version = req.block_version,
-            p2p_version   = req.p2p_version,
-            abci_version  = req.abci_version,
-            "got info request"
-        );
-
+    fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {
             Ok((last_block_height, last_block_version)) => {
                 ResponseInfo {
@@ -42,13 +50,6 @@ where
     }
 
     fn init_chain(&self, req: RequestInitChain) -> ResponseInitChain {
-        debug!(
-            chain_id = req.chain_id,
-            height   = req.initial_height,
-            time     = ?req.time,
-            "got init chain request"
-        );
-
         let block = from_tm_block(req.initial_height, req.time);
 
         match self.do_init_chain(req.chain_id, block, &req.app_state_bytes) {
@@ -64,14 +65,6 @@ where
     }
 
     fn finalize_block(&self, req: RequestFinalizeBlock) -> ResponseFinalizeBlock {
-        debug!(
-            height  = req.height,
-            time    = ?req.time,
-            num_txs = req.txs.len(),
-            hash    = hex::encode(&req.hash),
-            "got finalize block request"
-        );
-
         let block = from_tm_block(req.height, req.time);
 
         match self.do_finalize_block(block, req.txs) {
@@ -89,8 +82,6 @@ where
     }
 
     fn commit(&self) -> ResponseCommit {
-        debug!("got commit request");
-
         match self.do_commit() {
             Ok(()) => {
                 ResponseCommit {
@@ -102,8 +93,6 @@ where
     }
 
     fn query(&self, req: RequestQuery) -> ResponseQuery {
-        trace!("got query request");
-
         match self.do_query(&req.data) {
             Ok(res) => {
                 ResponseQuery {
@@ -125,8 +114,6 @@ where
     }
 
     fn check_tx(&self, _req: RequestCheckTx) -> ResponseCheckTx {
-        trace!("got check tx request");
-
         // TODO
         ResponseCheckTx {
             ..Default::default()
