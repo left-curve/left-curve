@@ -10,7 +10,7 @@ use {
 };
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, next_display_order = None)]
 struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -27,15 +27,15 @@ struct Cli {
 #[derive(Parser)]
 enum Command {
     /// Make a query
-    #[command(subcommand, alias = "q")]
+    #[command(subcommand, next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
     /// Send a transaction
-    #[command(subcommand)]
+    #[command(subcommand, next_display_order = None)]
     Tx(TxCmd),
 
     /// Manage keys
-    #[command(subcommand)]
+    #[command(subcommand, next_display_order = None)]
     Key(KeyCmd),
 }
 

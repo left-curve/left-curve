@@ -4,7 +4,7 @@ use {
 };
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, next_display_order = None)]
 struct Cli {
     /// ABCI listening address
     #[arg(long, default_value = "127.0.0.1:26658")]
