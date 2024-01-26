@@ -7,7 +7,7 @@ rust-version  = { workspace = true }
 documentation = { workspace = true }
 repository    = { workspace = true }
 license       = { workspace = true }
-category      = { workspace = true }
+categories    = { workspace = true }
 
 [dependencies]
 anyhow             = { workspace = true }

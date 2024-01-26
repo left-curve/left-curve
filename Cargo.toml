@@ -17,7 +17,7 @@ documentation = "https://larry.engineer/cwd" # TODO: update this once we have a 
 repository    = "https://github.com/cwsoftware123/cwd"
 license       = "TBD"
 keywords      = ["blockchain", "wasm"]
-category      = ["cryptography::cryptocurrencies"]
+categories    = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
 anyhow             = "1"
