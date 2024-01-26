@@ -1,6 +1,12 @@
 [package]
-name    = "cw-jellyfish-merkle"
-version = { workspace = true }
-edition = { workspace = true }
+name          = "cw-jellyfish-merkle"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+category      = { workspace = true }
 
 [dependencies]

@@ -1,7 +1,13 @@
 [package]
-name    = "cw-db"
-version = { workspace = true }
-edition = { workspace = true }
+name          = "cw-db"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+category      = { workspace = true }
 
 [dependencies]
 thiserror = { workspace = true }

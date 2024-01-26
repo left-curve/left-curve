@@ -9,8 +9,15 @@ members  = [
 ]
 
 [workspace.package]
-version = "0.0.0"
-edition = "2021"
+version       = "0.0.0"
+authors       = ["Larry Lyu <gm@larry.engineer>"]
+edition       = "2021"
+rust-version  = "1.75"
+documentation = "https://larry.engineer/cwd" # TODO: update this once we have a docs site
+repository    = "https://github.com/cwsoftware123/cwd"
+license       = "TBD"
+keywords      = ["blockchain", "wasm"]
+category      = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
 anyhow             = "1"
