@@ -1,3 +1,4 @@
+mod format;
 mod key;
 mod query;
 mod tx;
@@ -15,7 +16,7 @@ struct Cli {
     pub command: Command,
 
     /// Tendermint RPC address
-    #[arg(long, global = true, default_value = "127.0.0.1:26657")]
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
     pub node: String,
 
     /// Directory for storing keys
@@ -38,11 +39,12 @@ enum Command {
     Key(KeyCmd),
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Query(cmd) => cmd.run(),
+        Command::Query(cmd) => cmd.run(&cli.node).await,
         Command::Tx(cmd) => cmd.run(),
         Command::Key(cmd) => cmd.run(),
     }

@@ -92,6 +92,15 @@ where
         }
     }
 
+    // TODO: From ABCI docs (https://github.com/cometbft/cometbft/blob/main/spec/abci/abci++_methods.md):
+    //
+    // > Applications MUST interpret "/store" or any path starting with "/store/"
+    // > as a query by key on the underlying store, in which case a key SHOULD
+    // > be specified in data. Applications SHOULD allow queries over specific
+    // > types like /accounts/... or /votes/....
+    //
+    // Currently we're going neither of these. We ignore `path`, `height`, and
+    // `prove` fields, and interpret `data` as a JSON-encoded QueryRequest.
     fn query(&self, req: RequestQuery) -> ResponseQuery {
         match self.do_query(&req.data) {
             Ok(res) => {
