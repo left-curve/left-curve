@@ -5,8 +5,7 @@ use {
     },
 };
 
-/// Hash the given message using BLAKE3 hash function, return the result hash as
-/// an Identity256.
+// a convenience method for use in tests.
 #[cfg(test)]
 pub(crate) fn hash(data: &[u8]) -> Identity256 {
     use digest::Digest;
