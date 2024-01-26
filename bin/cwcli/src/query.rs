@@ -131,19 +131,19 @@ async fn query_info(client: impl Client + Sync) -> anyhow::Result<()> {
 }
 
 async fn query_balance(
-    client: impl Client + Sync,
+    client:  impl Client + Sync,
     address: Addr,
-    denom: String,
+    denom:   String,
 ) -> anyhow::Result<()> {
     let res = do_abci_query(client, QueryRequest::Balance { address, denom }).await?;
     print_json_pretty(res.as_balance())
 }
 
 async fn query_balances(
-    client: impl Client + Sync,
-    address: Addr,
+    client:      impl Client + Sync,
+    address:     Addr,
     start_after: Option<String>,
-    limit: Option<u32>,
+    limit:       Option<u32>,
 ) -> anyhow::Result<()> {
     let res = do_abci_query(client, QueryRequest::Balances { address, start_after, limit }).await?;
     print_json_pretty(res.as_balances())
@@ -155,16 +155,16 @@ async fn query_supply(client: impl Client + Sync, denom: String) -> anyhow::Resu
 }
 
 async fn query_supplies(
-    client: impl Client + Sync,
+    client:      impl Client + Sync,
     start_after: Option<String>,
-    limit: Option<u32>,
+    limit:       Option<u32>,
 ) -> anyhow::Result<()> {
     let res = do_abci_query(client, QueryRequest::Supplies { start_after, limit }).await?;
     print_json_pretty(res.as_supplies())
 }
 
 async fn query_code(client: impl Client + Sync, hash: Hash) -> anyhow::Result<()> {
-    // we will be writing the wasm byte code to ./{hash}.wasm
+    // we will be writing the wasm byte code to $(pwd)/${hash}.wasm
     // first check if the file already exists. throw if it does
     let filename = format!("{hash}.wasm");
     if Path::new(&filename).exists() {
@@ -212,6 +212,7 @@ async fn query_wasm_raw(
     contract: Addr,
     key_hex:  String,
 ) -> anyhow::Result<()> {
+    // we interpret the input raw key as Hex encoded
     let key = hex::decode(&key_hex)?.into();
     let res = do_abci_query(client, QueryRequest::WasmRaw { contract, key }).await?;
     print_json_pretty(res.as_wasm_raw())
@@ -222,6 +223,7 @@ async fn query_wasm_smart(
     contract: Addr,
     msg:      String,
 ) -> anyhow::Result<()> {
+    // the input should be a JSON string, e.g. `{"config":{}}`
     let msg = msg.into_bytes().into();
     let res = do_abci_query(client, QueryRequest::WasmSmart { contract, msg }).await?;
     print_json_pretty(res.as_wasm_smart())
@@ -231,7 +233,7 @@ async fn query_wasm_smart(
 // `height`, and `prove` fields, and interpret `data` and JSON-encoded QueryRequest.
 async fn do_abci_query(
     client: impl Client + Sync,
-    req: QueryRequest,
+    req:    QueryRequest,
 ) -> anyhow::Result<QueryResponse> {
     let res = client.abci_query(None, to_json(&req)?, None, false).await?;
     if res.code.is_err() {
