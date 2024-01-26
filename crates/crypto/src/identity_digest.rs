@@ -1,5 +1,5 @@
 use {
-    anyhow::ensure,
+    crate::{CryptoError, CryptoResult},
     digest::{
         consts::U32, generic_array::GenericArray, FixedOutput, HashMarker, OutputSizeUser, Update,
     },
@@ -40,8 +40,11 @@ pub struct Identity256 {
 }
 
 impl Identity256 {
-    pub fn from_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
-        ensure!(bytes.len() == 32, "[Identity256]: message is not exactly 32 bytes");
+    pub fn from_bytes(bytes: &[u8]) -> CryptoResult<Self> {
+        if bytes.len() != 32 {
+            return Err(CryptoError::incorrect_length(32, bytes.len()));
+        }
+
         Ok(Self {
             bytes: *GenericArray::from_slice(bytes),
         })

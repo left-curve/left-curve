@@ -1,10 +1,10 @@
 use {
-    crate::Identity256,
+    crate::{CryptoResult, Identity256},
     k256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
 /// NOTE: This function takes the hash of the message, not the prehash.
-pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> anyhow::Result<()> {
+pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
     let msg = Identity256::from_bytes(msg_hash)?;
     let sig = Signature::from_bytes(sig.into())?;
     let vk = VerifyingKey::from_sec1_bytes(pk)?;

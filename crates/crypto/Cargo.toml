@@ -10,10 +10,11 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-digest = { workspace = true }
-k256   = { workspace = true }
-p256   = { workspace = true }
+digest    = { workspace = true }
+k256      = { workspace = true }
+p256      = { workspace = true }
+signature = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }
