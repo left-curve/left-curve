@@ -258,7 +258,7 @@ fn make_transfer_tx<const N: usize>(
         &accounts[from].addr,
         &CHAIN_ID,
         0,
-    )?)?;
+    )?);
     let signature: Signature = accounts[from].sk.sign_digest(sign_bytes);
 
     to_json(&Tx {

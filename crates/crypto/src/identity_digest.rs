@@ -40,13 +40,24 @@ pub struct Identity256 {
 }
 
 impl Identity256 {
-    pub fn from_bytes(bytes: &[u8]) -> CryptoResult<Self> {
-        if bytes.len() != 32 {
-            return Err(CryptoError::incorrect_length(32, bytes.len()));
+    /// Convert from a byte slice of fixed length of 32 bytes.
+    /// To convert from byte slices of unknown lengths, use `from_slice`.
+    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
+        Self {
+            bytes: *GenericArray::from_slice(bytes),
+        }
+    }
+
+    /// Convert from a byte slice of unknown length. Error if the length isn't
+    /// exactly 32 bytes.
+    /// To convert from a byte slice of fixed size of 32 bytes, use `from_bytes`.
+    pub fn from_slice(slice: &[u8]) -> CryptoResult<Self> {
+        if slice.len() != 32 {
+            return Err(CryptoError::incorrect_length(32, slice.len()));
         }
 
         Ok(Self {
-            bytes: *GenericArray::from_slice(bytes),
+            bytes: *GenericArray::from_slice(slice),
         })
     }
 

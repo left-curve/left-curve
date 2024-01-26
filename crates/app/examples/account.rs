@@ -196,7 +196,7 @@ fn new_tx<S: Storage + 'static>(
     // create sign bytes
     // need to wrap bytes in Identity256 so that it can be used in sign_digest
     let sign_bytes = sign_bytes(&msgs, sender, MOCK_CHAIN_ID, sequence)?;
-    let sign_bytes = Identity256::from_bytes(&sign_bytes)?;
+    let sign_bytes = Identity256::from_bytes(&sign_bytes);
 
     // sign the sign bytes
     let signature: Signature = sk.sign_digest(sign_bytes);
