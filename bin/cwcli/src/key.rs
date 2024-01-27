@@ -1,4 +1,14 @@
-use {crate::{keyring::{Keyring, SigningKey}, prompt::read_text}, bip32::{Mnemonic, Language}, clap::Parser, colored::Colorize, rand::rngs::OsRng, std::path::PathBuf};
+use {
+    crate::{
+        keyring::{Keyring, SigningKey},
+        prompt::read_text,
+    },
+    bip32::{Language, Mnemonic},
+    clap::Parser,
+    colored::Colorize,
+    rand::rngs::OsRng,
+    std::path::PathBuf,
+};
 
 /// We we the the BIP-44 coin type as Ethereum for better compatibility:
 /// https://github.com/satoshilabs/slips/blob/master/slip-0044.md
@@ -56,8 +66,7 @@ impl KeyCmd {
 
 fn add(keyring: Keyring, name: String, recover: bool, coin_type: usize) -> anyhow::Result<()> {
     let mnemonic = if recover {
-        let phrase = read_text("Enter your BIP-39 mnemonic")?;
-        println!("\n");
+        let phrase = read_text("🔑 Enter your BIP-39 mnemonic".bold())?;
         Mnemonic::new(phrase, Language::English)?
     } else {
         Mnemonic::random(OsRng, Language::English)

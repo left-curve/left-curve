@@ -137,7 +137,7 @@ impl Keyring {
         let record_str = serde_json::to_string_pretty(&record)?;
         fs::write(&filename, record_str.as_bytes())?;
 
-        println!("{record_str}");
+        println!("\n{record_str}");
 
         Ok(())
     }
@@ -169,8 +169,9 @@ impl Keyring {
         let filename = self.filename(name);
         ensure!(filename.exists(), "No signing key with name `{name}` found");
 
-        if confirm("Confirm deleting key `{name}`?")? {
+        if confirm(format!("🚨 Confirm deleting key `{name}`?").bold())? {
             fs::remove_file(filename)?;
+            println!("Key `{name}` deleted");
         }
 
         Ok(())

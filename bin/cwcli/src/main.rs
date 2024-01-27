@@ -42,7 +42,7 @@ enum Command {
     Tx(TxCmd),
 
     /// Manage keys
-    #[command(subcommand, next_display_order = None)]
+    #[command(subcommand, next_display_order = None, alias = "k")]
     Key(KeyCmd),
 }
 
