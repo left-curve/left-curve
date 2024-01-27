@@ -159,8 +159,8 @@ impl Keyring {
 
         // descrypt the signing key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
-        let sk_bytes = cipher.decrypt(record.nonce.as_ref().try_into()?, record.ciphertext.as_ref())?;
-        let sk = k256::ecdsa::SigningKey::from_bytes(sk_bytes.as_slice().try_into()?)?;
+        let sk_bytes = cipher.decrypt(record.nonce.as_ref().into(), record.ciphertext.as_ref())?;
+        let sk = k256::ecdsa::SigningKey::from_bytes(sk_bytes.as_slice().into())?;
 
         Ok(SigningKey { inner: sk })
     }
@@ -191,7 +191,7 @@ impl Keyring {
         for entry in self.dir.read_dir()? {
             let entry = entry?;
             let record_str = fs::read_to_string(entry.path())?;
-            let record = serde_json::from_str(&record_str)?;
+            let record: Record = serde_json::from_str(&record_str)?;
             records.push(record);
         }
 
