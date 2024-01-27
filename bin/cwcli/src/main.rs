@@ -48,15 +48,15 @@ struct Cli {
 
 #[derive(Parser)]
 enum Command {
-    /// Manage keys
+    /// Manage keys [alias: k]
     #[command(subcommand, next_display_order = None, alias = "k")]
     Key(KeyCmd),
 
-    /// Make a query
+    /// Make a query [alias: q]
     #[command(subcommand, next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
-    /// Interact with Tendermint consensus engine
+    /// Interact with Tendermint consensus engine [alias: tm]
     #[command(subcommand, next_display_order = None, alias = "tm")]
     Tendermint(TendermintCmd),
 
