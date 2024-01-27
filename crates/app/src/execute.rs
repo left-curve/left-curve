@@ -1,9 +1,13 @@
 use {
-    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
+    crate::{
+        new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
+        new_store_code_event, new_transfer_event, new_update_config_event, AppError, AppResult,
+        Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
+    },
     cw_db::PrefixStore,
     cw_std::{
-        hash, Account, Addr, Binary, BlockInfo, Coins, Config, Context, Hash, Message, Storage,
-        TransferMsg,
+        hash, Account, Addr, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Message,
+        Storage, TransferMsg,
     },
     cw_vm::Instance,
     tracing::{info, warn},
@@ -14,7 +18,7 @@ pub fn process_msg<S: Storage + Clone + 'static>(
     block:     &BlockInfo,
     sender:    &Addr,
     msg:       Message,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match msg {
         Message::UpdateConfig {
             new_cfg,
@@ -25,7 +29,7 @@ pub fn process_msg<S: Storage + Clone + 'static>(
         } => transfer(store, block, sender.clone(), to, coins),
         Message::StoreCode {
             wasm_byte_code,
-        } => store_code(&mut store, &wasm_byte_code),
+        } => store_code(&mut store, sender, &wasm_byte_code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -48,11 +52,15 @@ pub fn process_msg<S: Storage + Clone + 'static>(
 
 // ------------------------------- update config -------------------------------
 
-fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<()> {
+fn update_config(
+    store:   &mut dyn Storage,
+    sender:  &Addr,
+    new_cfg: &Config,
+) -> AppResult<Vec<Event>> {
     match _update_config(store, sender, new_cfg) {
-        Ok(()) => {
+        Ok(events) => {
             info!("Config updated");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to update config");
@@ -61,7 +69,11 @@ fn update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> Ap
     }
 }
 
-fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<()> {
+fn _update_config(
+    store:   &mut dyn Storage,
+    sender:  &Addr,
+    new_cfg: &Config,
+) -> AppResult<Vec<Event>> {
     // make sure the sender is authorized to update the config
     let cfg = CONFIG.load(store)?;
     let Some(owner) = cfg.owner else {
@@ -74,16 +86,20 @@ fn _update_config(store: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> A
     // save the new config
     CONFIG.save(store, new_cfg)?;
 
-    Ok(())
+    Ok(vec![new_update_config_event(sender)])
 }
 
 // -------------------------------- store code ---------------------------------
 
-fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<()> {
-    match _store_code(store, wasm_byte_code) {
-        Ok(code_hash) => {
+fn store_code(
+    store:          &mut dyn Storage,
+    uploader:       &Addr,
+    wasm_byte_code: &Binary,
+) -> AppResult<Vec<Event>> {
+    match _store_code(store, uploader, wasm_byte_code) {
+        Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to store code");
@@ -93,7 +109,11 @@ fn store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<()>
 }
 
 // return the hash of the code that is stored, for purpose of tracing/logging
-fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<Hash> {
+fn _store_code(
+    store:          &mut dyn Storage,
+    uploader:       &Addr,
+    wasm_byte_code: &Binary,
+) -> AppResult<(Vec<Event>, Hash)> {
     // TODO: static check, ensure wasm code has necessary imports/exports
     let code_hash = hash(wasm_byte_code);
 
@@ -104,7 +124,7 @@ fn _store_code(store: &mut dyn Storage, wasm_byte_code: &Binary) -> AppResult<Ha
 
     CODES.save(store, &code_hash, wasm_byte_code)?;
 
-    Ok(code_hash)
+    Ok((vec![new_store_code_event(&code_hash, uploader)], code_hash))
 }
 
 // --------------------------------- transfer ----------------------------------
@@ -115,16 +135,16 @@ fn transfer<S: Storage + Clone + 'static>(
     from:  Addr,
     to:    Addr,
     coins: Coins,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match _transfer(store, block, from, to, coins) {
-        Ok(TransferMsg { from, to, coins }) => {
+        Ok((events, msg)) => {
             info!(
-                from  = from.to_string(),
-                to    = to.to_string(),
-                coins = coins.to_string(),
+                from  = msg.from.to_string(),
+                to    = msg.to.to_string(),
+                coins = msg.coins.to_string(),
                 "Transferred coins"
             );
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to transfer coins");
@@ -141,7 +161,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     from:  Addr,
     to:    Addr,
     coins: Coins,
-) -> AppResult<TransferMsg> {
+) -> AppResult<(Vec<Event>, TransferMsg)> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
     let cfg = CONFIG.load(&store)?;
@@ -173,14 +193,15 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     // call the recipient contract's `receive` entry point to inform it of this
     // transfer
-    _receive(store, block, msg)
+    _receive(store, block, msg, new_transfer_event(&ctx.contract, resp))
 }
 
 fn _receive<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    msg:   TransferMsg,
-) -> AppResult<TransferMsg> {
+    store:      S,
+    block:      &BlockInfo,
+    msg:        TransferMsg,
+    prev_event: Event,
+) -> AppResult<(Vec<Event>, TransferMsg)> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &msg.to)?;
@@ -204,7 +225,7 @@ fn _receive<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(msg)
+    Ok((vec![prev_event, new_receive_event(&msg.to, resp)], msg))
 }
 
 // -------------------------------- instantiate --------------------------------
@@ -219,11 +240,11 @@ fn instantiate<S: Storage + Clone + 'static>(
     salt:      Binary,
     funds:     Coins,
     admin:     Option<Addr>,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
-        Ok(address) => {
+        Ok((events, address)) => {
             info!(address = address.to_string(), "Instantiated contract");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to instantiate contract");
@@ -243,7 +264,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
     salt:      Binary,
     funds:     Coins,
     admin:     Option<Addr>,
-) -> AppResult<Addr> {
+) -> AppResult<(Vec<Event>, Addr)> {
     let chain_id = CHAIN_ID.load(&store)?;
 
     // load wasm code
@@ -257,7 +278,8 @@ fn _instantiate<S: Storage + Clone + 'static>(
         return Err(AppError::account_exists(address));
     }
 
-    ACCOUNTS.save(&mut store, &address, &Account { code_hash, admin })?;
+    let account = Account { code_hash, admin };
+    ACCOUNTS.save(&mut store, &address, &account)?;
 
     // make the coin transfers
     if !funds.is_empty() {
@@ -282,7 +304,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(ctx.contract)
+    Ok((vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp)], ctx.contract))
 }
 
 // ---------------------------------- execute ----------------------------------
@@ -294,11 +316,11 @@ fn execute<S: Storage + Clone + 'static>(
     sender:   &Addr,
     msg:      Binary,
     funds:    Coins,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match _execute(store, block, contract, sender, msg, funds) {
-        Ok(()) => {
+        Ok(events) => {
             info!(contract = contract.to_string(), "Executed contract");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to execute contract");
@@ -314,7 +336,7 @@ fn _execute<S: Storage + Clone + 'static>(
     sender:   &Addr,
     msg:      Binary,
     funds:    Coins,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     let chain_id = CHAIN_ID.load(&store)?;
 
     // make the coin transfers
@@ -344,7 +366,7 @@ fn _execute<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(())
+    Ok(vec![new_execute_event(&ctx.contract, resp)])
 }
 
 // ---------------------------------- migrate ----------------------------------
@@ -356,11 +378,11 @@ fn migrate<S: Storage + Clone + 'static>(
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           Binary,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match _migrate(store, block, contract, sender, new_code_hash, msg) {
-        Ok(()) => {
+        Ok(events) => {
             info!(contract = contract.to_string(), "Migrated contract");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to execute contract");
@@ -376,7 +398,7 @@ fn _migrate<S: Storage + Clone + 'static>(
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           Binary,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     let chain_id = CHAIN_ID.load(&store)?;
     let mut account = ACCOUNTS.load(&store, contract)?;
 
@@ -389,6 +411,7 @@ fn _migrate<S: Storage + Clone + 'static>(
     }
 
     // save the new code hash
+    let old_code_hash = account.code_hash;
     account.code_hash = new_code_hash;
     ACCOUNTS.save(&mut store, contract, &account)?;
 
@@ -413,5 +436,5 @@ fn _migrate<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(())
+    Ok(vec![new_migrate_event(&ctx.contract, &old_code_hash, &account.code_hash, resp)])
 }

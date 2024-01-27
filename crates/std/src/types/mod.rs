@@ -5,6 +5,7 @@ mod binary;
 mod coin;
 mod context;
 mod empty;
+mod event;
 mod hash;
 mod query;
 mod response;
@@ -23,12 +24,13 @@ pub use {
         TransferCtx,
     },
     empty::Empty,
+    event::{Attribute, Event},
     hash::{hash, Hash},
     query::{
         AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
         WasmSmartResponse,
     },
-    response::{Attribute, Response},
+    response::Response,
     result::GenericResult,
     tx::{Message, Tx},
     uint128::Uint128,

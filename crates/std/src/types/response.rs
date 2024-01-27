@@ -1,5 +1,5 @@
 use {
-    crate::Message,
+    crate::{Attribute, Message},
     serde::{Deserialize, Serialize},
 };
 
@@ -19,23 +19,8 @@ impl Response {
         self
     }
 
-    pub fn add_attribute(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub fn add_attribute(mut self, key: impl ToString, value: impl ToString) -> Self {
         self.attributes.push(Attribute::new(key, value));
         self
-    }
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
-pub struct Attribute {
-    key:   String,
-    value: String,
-}
-
-impl Attribute {
-    pub fn new(key: impl Into<String>, value: impl Into<String>) -> Self {
-        Self {
-            key:   key.into(),
-            value: value.into(),
-        }
     }
 }

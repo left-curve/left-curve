@@ -175,7 +175,7 @@ impl TryFrom<Vec<Coin>> for Coins {
                 return Err(StdError::parse_coins(format!("denom `{}` as zero amount", coin.denom)));
             }
             if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::parse_coins(format!("duplicate denom found")));
+                return Err(StdError::parse_coins("duplicate denom found"));
             }
         }
         Ok(Self(map))

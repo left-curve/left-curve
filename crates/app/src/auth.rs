@@ -1,7 +1,9 @@
 use {
-    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
+    crate::{
+        new_before_tx_event, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE,
+    },
     cw_db::PrefixStore,
-    cw_std::{BlockInfo, Context, Storage, Tx},
+    cw_std::{BlockInfo, Context, Event, Storage, Tx},
     cw_vm::Instance,
     tracing::{debug, warn},
 };
@@ -10,12 +12,12 @@ pub fn authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     match _authenticate_tx(store, block, tx) {
-        Ok(()) => {
+        Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Transaction authenticated");
-            Ok(())
+            Ok(events)
         },
         Err(err) => {
             warn!(err = err.to_string(), "Failed to authenticate transaction");
@@ -28,7 +30,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
-) -> AppResult<()> {
+) -> AppResult<Vec<Event>> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &tx.sender)?;
@@ -52,5 +54,5 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
 
     debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
-    Ok(())
+    Ok(vec![new_before_tx_event(&tx.sender, resp)])
 }

@@ -5,7 +5,8 @@ use {
     },
     cw_db::{Batch, CacheStore, Flush, SharedStore},
     cw_std::{
-        from_json, to_json, Addr, Binary, BlockInfo, GenesisState, Hash, QueryRequest, Storage, Tx,
+        from_json, to_json, Addr, Binary, BlockInfo, Event, GenesisState, Hash, QueryRequest,
+        Storage, Tx,
     },
     std::sync::{Arc, RwLock},
     tracing::{debug, info},
@@ -99,13 +100,14 @@ where
         &self,
         block:   BlockInfo,
         raw_txs: Vec<impl AsRef<[u8]>>,
-    ) -> AppResult<()> {
+    ) -> AppResult<Vec<AppResult<Vec<Event>>>> {
         let cached = SharedStore::new(CacheStore::new(self.store.share(), None));
+        let mut tx_results = vec![];
 
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             // TODO: add txhash to the debug print
             debug!(idx, "Processing transaction");
-            run_tx(cached.share(), &block, from_json(raw_tx)?)?;
+            tx_results.push(run_tx(cached.share(), &block, from_json(raw_tx)?));
         }
 
         let (_, batch) = cached.disassemble()?.disassemble();
@@ -114,7 +116,7 @@ where
 
         info!(height = block.height, timestamp = block.timestamp, "Finalized block");
 
-        Ok(())
+        Ok(tx_results)
     }
 
     // returns (last_block_height, last_block_app_hash)
@@ -166,18 +168,18 @@ where
     }
 }
 
-fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<()>
+fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Flush + 'static,
 {
+    let mut events = vec![];
+
     // create cached store for this tx
     let cached = SharedStore::new(CacheStore::new(store, None));
 
-    // first, authenticate tx by calling the sender account's before_tx method
-    if authenticate_tx(cached.share(), block, &tx).is_err() {
-        // if authentication fails, abort, discard uncommitted changes
-        return Ok(());
-    }
+    // first, authenticate tx by calling the sender account's before_tx method.
+    // if authentication fails, abort, discard uncommitted.
+    events.extend(authenticate_tx(cached.share(), block, &tx)?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -185,19 +187,17 @@ where
     cached.write_access().commit()?;
 
     // now that the tx is authenticated, we loop through the messages and
-    // execute them one by one
+    // execute them one by one.
+    // if any one of the msgs fails, the entire tx fails; abort, discard
+    // uncommitted changes (the changes from the before_tx call earlier are
+    // persisted)
     for (idx, msg) in tx.msgs.into_iter().enumerate() {
         debug!(idx, "Processing message");
-        if process_msg(cached.share(), block, &tx.sender, msg).is_err() {
-            // if any one of the msgs fails, the entire tx fails.
-            // abort, discard uncommitted changes (the changes from the before_tx
-            // call earlier are persisted)
-            return Ok(());
-        }
+        events.extend(process_msg(cached.share(), block, &tx.sender, msg)?);
     }
 
     // all messages succeeded. commit the state changes
     cached.write_access().commit()?;
 
-    Ok(())
+    Ok(events)
 }

@@ -1,14 +1,12 @@
 use {
-    crate::App,
+    crate::{App, AppResult},
     cw_db::{Flush, Storage},
-    cw_std::{BlockInfo, Hash},
+    cw_std::{Attribute, BlockInfo, Event, Hash},
     std::net::ToSocketAddrs,
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
         abci::{
-            RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery,
-            ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
-            ResponseInitChain, ResponseQuery,
+            Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery
         },
         google::protobuf::Timestamp,
     },
@@ -68,10 +66,10 @@ where
         let block = from_tm_block(req.height, req.time);
 
         match self.do_finalize_block(block, req.txs) {
-            Ok(()) => {
+            Ok(tx_results) => {
                 ResponseFinalizeBlock {
                     events:                  vec![], // this should be begin/endblocker events, which we don't have yet
-                    tx_results:              vec![],
+                    tx_results:              tx_results.into_iter().map(to_tm_tx_result).collect(),
                     validator_updates:       vec![],
                     consensus_param_updates: None,
                     app_hash:                Hash::zero().into_vec().into(),
@@ -134,5 +132,36 @@ fn from_tm_block(height: i64, time: Option<Timestamp>) -> BlockInfo {
     BlockInfo {
         height:    height as u64,
         timestamp: time.expect("block time not given").seconds as u64,
+    }
+}
+
+fn to_tm_tx_result(tx_result: AppResult<Vec<Event>>) -> ExecTxResult {
+    match tx_result {
+        Ok(events) => ExecTxResult {
+            code:   0,
+            events: events.into_iter().map(to_tm_event).collect(),
+            ..Default::default()
+        },
+        Err(err) => ExecTxResult {
+            code:      1,                // TODO: custom error code
+            codespace: "tx".to_string(), // TODO: custom error codespace
+            log:       err.to_string(),
+            ..Default::default()
+        },
+    }
+}
+
+fn to_tm_event(event: Event) -> TmEvent {
+    TmEvent {
+        r#type:     event.r#type,
+        attributes: event.attributes.into_iter().map(to_tm_attribute).collect(),
+    }
+}
+
+fn to_tm_attribute(attr: Attribute) -> TmAttribute {
+    TmAttribute {
+        key:   attr.key,
+        value: attr.value,
+        index: true,
     }
 }
