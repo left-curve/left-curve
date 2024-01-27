@@ -1,5 +1,7 @@
 mod format;
 mod key;
+mod keyring;
+mod prompt;
 mod query;
 mod tx;
 
@@ -46,6 +48,6 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Query(cmd) => cmd.run(&cli.node).await,
         Command::Tx(cmd) => cmd.run(),
-        Command::Key(cmd) => cmd.run(),
+        Command::Key(cmd) => cmd.run(cli.key_dir),
     }
 }

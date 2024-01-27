@@ -20,15 +20,21 @@ keywords      = ["blockchain", "wasm"]
 categories    = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
+aes-gcm            = "0.10"
 anyhow             = "1"
+bip32              = "0.5"
 cfg-if             = "1"
 clap               = "4"
+colored            = "2"
 data-encoding      = "2"
+dialoguer          = "0.11"
 digest             = "0.10"
 hex                = "0.4"
 k256               = "0.13"
 lazy_static        = "1"
 p256               = "0.13"
+password-hash      = "0.5"
+pbkdf2             = "0.12"
 proc-macro2        = "1"
 quote              = "1"
 rand               = "0.8"
