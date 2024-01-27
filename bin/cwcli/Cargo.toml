@@ -20,6 +20,7 @@ cw-crypto      = { path = "../../crates/crypto" }
 cw-std         = { path = "../../crates/std" }
 dialoguer      = { workspace = true }
 hex            = { workspace = true }
+home           = { workspace = true }
 k256           = { workspace = true }
 pbkdf2         = { workspace = true }
 rand           = { workspace = true }

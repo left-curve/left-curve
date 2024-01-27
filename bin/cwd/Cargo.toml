@@ -14,5 +14,6 @@ anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
 cw-app             = { path = "../../crates/app" }
 cw-db              = { path = "../../crates/db" }
+home               = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

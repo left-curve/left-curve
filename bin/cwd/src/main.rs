@@ -1,7 +1,10 @@
 use {
-    clap::Parser, cw_app::App, cw_db::MockStorage, std::path::PathBuf,
-    tracing::metadata::LevelFilter,
+    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::MockStorage, home::home_dir,
+    std::path::PathBuf, tracing::metadata::LevelFilter,
 };
+
+// relative to user home directory (~)
+const DEFAULT_DB_DIR: &str = ".cwd";
 
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
@@ -11,8 +14,8 @@ struct Cli {
     pub addr: String,
 
     /// Directory for the physical database
-    #[arg(long, default_value = "~/.cwd")]
-    pub db_dir: PathBuf,
+    #[arg(long)]
+    pub db_dir: Option<PathBuf>,
 
     /// Use a in-memory mock storage instead of a persisted physical database
     #[arg(long)]
@@ -33,6 +36,14 @@ fn main() -> anyhow::Result<()> {
 
     // set tracing level
     tracing_subscriber::fmt().with_max_level(cli.tracing_level).init();
+
+    // find DB directory
+    let _db_dir = if let Some(dir) = cli.db_dir {
+        dir
+    } else {
+        let home_dir = home_dir().ok_or(anyhow!("Failed to find home directory"))?;
+        home_dir.join(DEFAULT_DB_DIR)
+    };
 
     // create DB backend
     let store = if cli.mock {
