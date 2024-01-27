@@ -1,10 +1,10 @@
 use {
-    crate::{format::print_json_pretty, query::do_abci_query},
+    crate::query::do_abci_query,
     anyhow::anyhow,
     clap::Parser,
     colored::Colorize,
     cw_account::StateResponse,
-    cw_keyring::{confirm, Keyring, SigningKey},
+    cw_keyring::{confirm, print_json_pretty, Keyring, SigningKey},
     cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},

@@ -5,5 +5,5 @@ mod prompt;
 pub use crate::{
     key::SigningKey,
     keyring::Keyring,
-    prompt::{confirm, read_password, read_text},
+    prompt::{confirm, read_password, read_text, print_json_pretty},
 };

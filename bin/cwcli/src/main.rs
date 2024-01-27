@@ -1,4 +1,3 @@
-mod format;
 mod key;
 mod query;
 mod tx;

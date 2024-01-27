@@ -1,3 +1,14 @@
+use {colored_json::ToColoredJson, serde::ser};
+
+pub fn print_json_pretty(data: impl ser::Serialize) -> anyhow::Result<()> {
+    let json = serde_json::to_string_pretty(&data)?;
+    let colored = json.to_colored_json_auto()?;
+
+    println!("{colored}");
+
+    Ok(())
+}
+
 pub fn confirm(prompt: impl ToString) -> dialoguer::Result<bool> {
     dialoguer::Confirm::new()
         .with_prompt(prompt.to_string())

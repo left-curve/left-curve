@@ -10,17 +10,18 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-aes-gcm    = { workspace = true, features = ["std"] }
-anyhow     = { workspace = true }
-bip32      = { workspace = true }
-colored    = { workspace = true }
-cw-crypto  = { path = "../crypto" }
-cw-std     = { path = "../std" }
-dialoguer  = { workspace = true }
-k256       = { workspace = true }
-pbkdf2     = { workspace = true }
-rand       = { workspace = true }
-serde      = { workspace = true }
-serde_json = { workspace = true }
-sha2       = { workspace = true }
-signature  = { workspace = true }
+aes-gcm      = { workspace = true, features = ["std"] }
+anyhow       = { workspace = true }
+bip32        = { workspace = true }
+colored      = { workspace = true }
+colored_json = { workspace = true }
+cw-crypto    = { path = "../crypto" }
+cw-std       = { path = "../std" }
+dialoguer    = { workspace = true }
+k256         = { workspace = true }
+pbkdf2       = { workspace = true }
+rand         = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+sha2         = { workspace = true }
+signature    = { workspace = true }

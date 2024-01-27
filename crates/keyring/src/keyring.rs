@@ -1,10 +1,14 @@
 use {
-    crate::{prompt::{confirm, read_password, read_text}, SigningKey},
+    crate::{
+        print_json_pretty,
+        prompt::{confirm, read_password, read_text},
+        SigningKey,
+    },
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     anyhow::ensure,
     bip32::{Language, Mnemonic},
     colored::Colorize,
-    cw_std::Binary,
+    cw_std::{from_json, Binary},
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
     serde::{Deserialize, Serialize},
@@ -151,9 +155,9 @@ impl Keyring {
         ensure!(filename.exists(), "No signing key with name `{name}` found");
 
         let record_str = fs::read_to_string(filename)?;
-        println!("{record_str}");
+        let record: Record = from_json(record_str.as_bytes())?;
 
-        Ok(())
+        print_json_pretty(record)
     }
 
     pub fn list(&self) -> anyhow::Result<()> {
@@ -165,8 +169,6 @@ impl Keyring {
             records.push(record);
         }
 
-        println!("{}", serde_json::to_string_pretty(&records)?);
-
-        Ok(())
+        print_json_pretty(records)
     }
 }
