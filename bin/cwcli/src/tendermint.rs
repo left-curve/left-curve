@@ -20,6 +20,12 @@ pub enum TendermintCmd {
         /// Block height [default: latest]
         height: Option<u64>,
     },
+    /// Get block, including transaction execution results and events, at a given
+    /// height
+    BlockResults {
+        /// Block height [default: latest]
+        height: Option<u64>,
+    },
 }
 
 impl TendermintCmd {
@@ -33,6 +39,9 @@ impl TendermintCmd {
             TendermintCmd::Block {
                 height,
             } => query_block(client, height).await,
+            TendermintCmd::BlockResults {
+                height,
+            } => query_block_results(client, height).await,
         }
     }
 }
@@ -52,6 +61,17 @@ async fn query_block(client: impl Client + Sync, height: Option<u64>) -> anyhow:
     let res = match height {
         Some(height) => client.block(Height::try_from(height)?).await?,
         None => client.latest_block().await?,
+    };
+    print_json_pretty(res)
+}
+
+async fn query_block_results(
+    client: impl Client + Sync,
+    height: Option<u64>,
+) -> anyhow::Result<()> {
+    let res = match height {
+        Some(height) => client.block_results(Height::try_from(height)?).await?,
+        None => client.latest_block_results().await?,
     };
     print_json_pretty(res)
 }
