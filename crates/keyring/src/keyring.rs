@@ -15,7 +15,11 @@ use {
 // https://docs.rs/password-hash/0.5.0/password_hash/struct.Salt.html#recommended-length
 const SALT_LEN: usize = 16;
 // https://en.wikipedia.org/wiki/PBKDF2#:~:text=In%202023%2C%20OWASP%20recommended%20to,for%20PBKDF2%2DHMAC%2DSHA512.
+#[cfg(not(debug_assertions))]
 const ROUNDS: u32 = 600_000;
+// in debug mode, reduce the number of rounds to make it run faster.
+#[cfg(debug_assertions)]
+const ROUNDS: u32 = 50_000;
 
 /// An encrypted secp256k1 private key to be written to file.
 #[derive(Serialize, Deserialize)]
