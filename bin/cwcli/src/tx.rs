@@ -2,12 +2,13 @@ use {
     crate::{format::print_json_pretty, query::do_abci_query},
     anyhow::anyhow,
     clap::Parser,
+    colored::Colorize,
     cw_account::StateResponse,
-    cw_keyring::{Keyring, SigningKey},
+    cw_keyring::{confirm, Keyring, SigningKey},
     cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf},
-    tendermint_rpc::{Client, HttpClient},
+    tendermint_rpc::{endpoint::broadcast::tx_async, Client, HttpClient},
 };
 
 #[derive(Parser)]
@@ -171,17 +172,16 @@ impl TxCmd {
         let keyring = Keyring::open(key_dir)?;
         let key = keyring.get(&key_name)?;
 
-        // sign and broadcast the tx
+        // sign the transaction
         let tx = create_and_sign_tx(&key, sender, vec![msg], &chain_id, sequence)?;
-        let tx_bytes = to_json(&tx)?;
-        let broadcast_res = client.broadcast_tx_async(tx_bytes).await?;
+        print_json_pretty(&tx)?;
 
-        print_json_pretty(PrintableBroadcastResponse {
-            code: broadcast_res.code.into(),
-            data: broadcast_res.data.to_vec().into(),
-            log:  broadcast_res.log,
-            hash: broadcast_res.hash.to_string(),
-        })?;
+        // prompt user to confirm, then broadcast the tx
+        if confirm("🤔 Broadcast transaction?".bold())? {
+            let tx_bytes = to_json(&tx)?;
+            let broadcast_res = client.broadcast_tx_async(tx_bytes).await?;
+            print_json_pretty(PrintableBroadcastResponse::from(broadcast_res))?;
+        }
 
         Ok(())
     }
@@ -203,10 +203,22 @@ fn create_and_sign_tx(
     })
 }
 
+/// Similar to tendermint_rpc Response but serializes to nicer JSON.
 #[derive(Serialize)]
 struct PrintableBroadcastResponse {
     code: u32,
     data: Binary,
     log:  String,
     hash: String,
+}
+
+impl From<tx_async::Response> for PrintableBroadcastResponse {
+    fn from(broadcast_res: tx_async::Response) -> Self {
+        Self {
+            code: broadcast_res.code.into(),
+            data: broadcast_res.data.to_vec().into(),
+            log:  broadcast_res.log,
+            hash: broadcast_res.hash.to_string(),
+        }
+    }
 }

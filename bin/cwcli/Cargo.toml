@@ -12,6 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 anyhow         = { workspace = true }
 clap           = { workspace = true, features = ["derive", "wrap_help"] }
+colored        = { workspace = true }
 cw-account     = { path = "../../contracts/account" }
 cw-keyring     = { path = "../../crates/keyring" }
 cw-std         = { path = "../../crates/std" }
