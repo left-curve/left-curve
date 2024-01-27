@@ -13,6 +13,7 @@ pub enum AdminOption {
 
 /// Helper for building genesis state. See the examples folder of this repository
 /// for an example.
+#[derive(Default)]
 pub struct GenesisBuilder {
     cfg:        Option<Config>,
     code_msgs:  Vec<Message>,
@@ -21,11 +22,7 @@ pub struct GenesisBuilder {
 
 impl GenesisBuilder {
     pub fn new() -> Self {
-        Self {
-            cfg:        None,
-            code_msgs:  vec![],
-            other_msgs: vec![],
-        }
+        Self::default()
     }
 
     pub fn store_code(&mut self, path: impl AsRef<Path>) -> anyhow::Result<Hash> {
