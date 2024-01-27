@@ -7,7 +7,7 @@ use {
     cw_keyring::{confirm, Keyring, SigningKey},
     cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
     serde::Serialize,
-    std::{fs::File, io::Read, path::PathBuf},
+    std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::{endpoint::broadcast::tx_async, Client, HttpClient},
 };
 
@@ -85,7 +85,7 @@ impl TxCmd {
                 }
             },
             TxCmd::Transfer { to, coins } => {
-                let coins: Coins = from_json(coins.as_bytes())?;
+                let coins = Coins::from_str(&coins)?;
                 Message::Transfer {
                     to,
                     coins,
@@ -101,7 +101,7 @@ impl TxCmd {
             },
             TxCmd::Instantiate { code_hash, msg, salt, funds, admin } => {
                 let funds = match funds {
-                    Some(s) => from_json(s.as_bytes())?,
+                    Some(s) => Coins::from_str(&s)?,
                     None => Coins::empty(),
                 };
                 Message::Instantiate {
@@ -114,7 +114,7 @@ impl TxCmd {
             },
             TxCmd::Execute { contract, msg, funds } => {
                 let funds = match funds {
-                    Some(s) => from_json(s.as_bytes())?,
+                    Some(s) => Coins::from_str(&s)?,
                     None => Coins::empty(),
                 };
                 Message::Execute {
