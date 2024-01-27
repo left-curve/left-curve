@@ -231,7 +231,7 @@ async fn query_wasm_smart(
 
 // NOTE: the App's current implementation of ABCI Query method ignores `path`,
 // `height`, and `prove` fields, and interpret `data` and JSON-encoded QueryRequest.
-async fn do_abci_query(
+pub async fn do_abci_query(
     client: impl Client + Sync,
     req:    QueryRequest,
 ) -> anyhow::Result<QueryResponse> {

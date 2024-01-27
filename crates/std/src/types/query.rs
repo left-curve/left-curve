@@ -73,6 +73,7 @@ pub enum QueryRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
+    pub chain_id:             String,
     pub config:               Config,
     pub last_finalized_block: BlockInfo,
 }

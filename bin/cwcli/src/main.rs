@@ -9,6 +9,7 @@ use {
     crate::{key::KeyCmd, query::QueryCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
+    cw_std::Addr,
     home::home_dir,
     std::path::PathBuf,
 };
@@ -29,6 +30,22 @@ struct Cli {
     /// Directory for storing keys [default: ~/.cwcli/keys]
     #[arg(long, global = true)]
     pub key_dir: Option<PathBuf>,
+
+    /// Name of the key to sign transactions
+    #[arg(long, global = true)]
+    pub key_name: Option<String>,
+
+    /// Transaction sender address
+    #[arg(long, global = true)]
+    pub sender: Option<Addr>,
+
+    /// Chain identifier [default: query from chain]
+    #[arg(long, global = true)]
+    pub chain_id: Option<String>,
+
+    /// Account sequence number [default: query from chain]
+    #[arg(long, global = true)]
+    pub sequence: Option<u32>,
 }
 
 #[derive(Parser)]
@@ -59,7 +76,9 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Query(cmd) => cmd.run(&cli.node).await,
-        Command::Tx(cmd) => cmd.run(),
+        Command::Tx(cmd) => {
+            cmd.run(&cli.node, key_dir, cli.key_name, cli.sender, cli.chain_id, cli.sequence).await
+        },
         Command::Key(cmd) => cmd.run(key_dir),
     }
 }

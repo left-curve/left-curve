@@ -84,6 +84,7 @@ pub fn process_query<S: Storage + Clone + 'static>(
 
 fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     Ok(InfoResponse {
+        chain_id:             CHAIN_ID.load(store)?,
         config:               CONFIG.load(store)?,
         last_finalized_block: LAST_FINALIZED_BLOCK.load(store)?,
     })
