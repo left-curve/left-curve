@@ -10,22 +10,14 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-aes-gcm        = { workspace = true, features = ["std"] }
 anyhow         = { workspace = true }
-bip32          = { workspace = true }
 clap           = { workspace = true, features = ["derive", "wrap_help"] }
-colored        = { workspace = true }
 cw-account     = { path = "../../contracts/account" }
-cw-crypto      = { path = "../../crates/crypto" }
+cw-keyring     = { path = "../../crates/keyring" }
 cw-std         = { path = "../../crates/std" }
-dialoguer      = { workspace = true }
 hex            = { workspace = true }
 home           = { workspace = true }
-k256           = { workspace = true }
-pbkdf2         = { workspace = true }
-rand           = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }
-sha2           = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 tokio          = { workspace = true }

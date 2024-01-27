@@ -654,6 +654,26 @@ name = "cw-jellyfish-merkle"
 version = "0.0.0"
 
 [[package]]
+name = "cw-keyring"
+version = "0.0.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "bip32",
+ "colored",
+ "cw-crypto",
+ "cw-std",
+ "dialoguer",
+ "k256",
+ "pbkdf2",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "signature",
+]
+
+[[package]]
 name = "cw-mock-querier"
 version = "0.0.0"
 dependencies = [
@@ -716,23 +736,15 @@ dependencies = [
 name = "cwcli"
 version = "0.0.0"
 dependencies = [
- "aes-gcm",
  "anyhow",
- "bip32",
  "clap",
- "colored",
  "cw-account",
- "cw-crypto",
+ "cw-keyring",
  "cw-std",
- "dialoguer",
  "hex",
  "home",
- "k256",
- "pbkdf2",
- "rand",
  "serde",
  "serde_json",
- "sha2 0.10.8",
  "tendermint-rpc",
  "tokio",
 ]

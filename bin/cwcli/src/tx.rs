@@ -1,9 +1,10 @@
 use {
-    crate::{format::print_json_pretty, keyring::Keyring, query::do_abci_query},
+    crate::{format::print_json_pretty, query::do_abci_query},
     anyhow::anyhow,
     clap::Parser,
     cw_account::StateResponse,
-    cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest},
+    cw_keyring::{Keyring, SigningKey},
+    cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf},
     tendermint_rpc::{Client, HttpClient},
@@ -171,7 +172,7 @@ impl TxCmd {
         let key = keyring.get(&key_name)?;
 
         // sign and broadcast the tx
-        let tx = key.create_and_sign_tx(sender, vec![msg], &chain_id, sequence)?;
+        let tx = create_and_sign_tx(&key, sender, vec![msg], &chain_id, sequence)?;
         let tx_bytes = to_json(&tx)?;
         let broadcast_res = client.broadcast_tx_async(tx_bytes).await?;
 
@@ -184,6 +185,22 @@ impl TxCmd {
 
         Ok(())
     }
+}
+
+fn create_and_sign_tx(
+    sk:       &SigningKey,
+    sender:   Addr,
+    msgs:     Vec<Message>,
+    chain_id: &str,
+    sequence: u32,
+) -> anyhow::Result<Tx> {
+    let sign_bytes = cw_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
+    let signature = sk.sign_digest(&sign_bytes);
+    Ok(Tx {
+        sender,
+        msgs,
+        credential: signature.to_vec().into(),
+    })
 }
 
 #[derive(Serialize)]

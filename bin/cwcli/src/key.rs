@@ -1,14 +1,4 @@
-use {
-    crate::{
-        keyring::{Keyring, SigningKey},
-        prompt::read_text,
-    },
-    bip32::{Language, Mnemonic},
-    clap::Parser,
-    colored::Colorize,
-    rand::rngs::OsRng,
-    std::path::PathBuf,
-};
+use {clap::Parser, cw_keyring::Keyring, std::path::PathBuf};
 
 /// We we the the BIP-44 coin type as Ethereum for better compatibility:
 /// https://github.com/satoshilabs/slips/blob/master/slip-0044.md
@@ -52,7 +42,7 @@ impl KeyCmd {
                 name,
                 recover,
                 coin_type,
-            } => add(keyring, name, recover, coin_type),
+            } => keyring.add(&name, recover, coin_type),
             KeyCmd::Delete {
                 name,
             } => keyring.delete(&name),
@@ -62,24 +52,4 @@ impl KeyCmd {
             KeyCmd::List => keyring.list(),
         }
     }
-}
-
-fn add(keyring: Keyring, name: String, recover: bool, coin_type: usize) -> anyhow::Result<()> {
-    let mnemonic = if recover {
-        let phrase = read_text("🔑 Enter your BIP-39 mnemonic".bold())?;
-        Mnemonic::new(phrase, Language::English)?
-    } else {
-        Mnemonic::random(OsRng, Language::English)
-    };
-
-    let sk = SigningKey::derive_from_mnemonic(&mnemonic, coin_type)?;
-    keyring.add(&name, &sk)?;
-
-    if !recover {
-        println!("\n{} write this mnemonic phrase in a safe place!", "Important:".bold());
-        println!("It is the only way to recover your account if you ever forget your password.");
-        println!("\n{}", mnemonic.phrase());
-    }
-
-    Ok(())
 }

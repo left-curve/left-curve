@@ -1,12 +1,10 @@
 use {
-    crate::prompt::{confirm, read_password},
+    crate::{prompt::{confirm, read_password, read_text}, SigningKey},
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     anyhow::ensure,
-    bip32::{Mnemonic, XPrv},
+    bip32::{Language, Mnemonic},
     colored::Colorize,
-    cw_crypto::Identity256,
-    cw_std::{Addr, Binary, Message, Tx},
-    k256::ecdsa::{signature::DigestSigner, Signature, VerifyingKey},
+    cw_std::Binary,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
     serde::{Deserialize, Serialize},
@@ -14,67 +12,12 @@ use {
     std::{fs, path::PathBuf},
 };
 
-// -------------------------------- SigningKey ---------------------------------
-
-/// A wrapper over k256 SigningKey, providing a handy API to work with.
-pub struct SigningKey {
-    inner: k256::ecdsa::SigningKey,
-}
-
-impl SigningKey {
-    /// Note: Only support secp256k1, not r1. This is because we use Bitcoin's
-    /// BIP-32 library, and Bitcoin only uses k1.
-    pub fn derive_from_mnemonic(mnemonic: &Mnemonic, coin_type: usize) -> anyhow::Result<Self> {
-        // The `to_seed` function takes a password to generate salt.
-        // Here we just use an empty str.
-        // For reference, Terra Station and Keplr use an empty string as well:
-        // - https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
-        // - https://github.com/chainapsis/keplr-wallet/blob/b6062a4d24f3dcb15dda063b1ece7d1fbffdbfc8/packages/crypto/src/mnemonic.ts#L63
-        let seed = mnemonic.to_seed("");
-        let path = format!("m/44'/{coin_type}'/0'/0/0");
-        let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
-        Ok(Self {
-            inner: xprv.into(),
-        })
-    }
-
-    /// Note: The transaction is signed using the method defined by the default
-    /// cw-account contract. This CLI tool is intended to work with this account
-    /// type only. Projects that wish to create their custom account types may
-    /// consider creating their custom CLI tools or scripting libraries.
-    pub fn create_and_sign_tx(
-        &self,
-        sender: Addr,
-        msgs: Vec<Message>,
-        chain_id: &str,
-        sequence: u32,
-    ) -> anyhow::Result<Tx> {
-        let sign_bytes = cw_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
-        let sign_bytes = Identity256::from_bytes(&sign_bytes);
-        let signature: Signature = self.inner.sign_digest(sign_bytes);
-        Ok(Tx {
-            sender,
-            msgs,
-            credential: signature.to_vec().into(),
-        })
-    }
-
-    fn to_bytes(&self) -> [u8; 32] {
-        self.inner.to_bytes().into()
-    }
-
-    fn verifying_key(&self) -> &VerifyingKey {
-        self.inner.verifying_key()
-    }
-}
-
-// ---------------------------------- Keyring ----------------------------------
-
 // https://docs.rs/password-hash/0.5.0/password_hash/struct.Salt.html#recommended-length
 const SALT_LEN: usize = 16;
 // https://en.wikipedia.org/wiki/PBKDF2#:~:text=In%202023%2C%20OWASP%20recommended%20to,for%20PBKDF2%2DHMAC%2DSHA512.
 const ROUNDS: u32 = 600_000;
 
+/// An encrypted secp256k1 private key to be written to file.
 #[derive(Serialize, Deserialize)]
 pub struct Record {
     name:       String,
@@ -106,9 +49,21 @@ impl Keyring {
         self.dir.join(format!("{name}.json"))
     }
 
-    pub fn add(&self, name: &str, sk: &SigningKey) -> anyhow::Result<()> {
+    pub fn add(&self, name: &str, recover: bool, coin_type: usize) -> anyhow::Result<()> {
+        // make sure that a key with the same name doesn't already exist
         let filename = self.filename(name);
         ensure!(!filename.exists(), "A signing key with name `{name}` already exists");
+
+        // generate or recover the mnemonic phrase
+        let mnemonic = if recover {
+            let phrase = read_text("🔑 Enter your BIP-39 mnemonic".bold())?;
+            Mnemonic::new(phrase, Language::English)?
+        } else {
+            Mnemonic::random(OsRng, Language::English)
+        };
+
+        // derive the signing key from mnemonic
+        let sk = SigningKey::derive_from_mnemonic(&mnemonic, coin_type)?;
 
         // ask the user for a password
         let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
@@ -138,6 +93,12 @@ impl Keyring {
         fs::write(&filename, record_str.as_bytes())?;
 
         println!("\n{record_str}");
+
+        if !recover {
+            println!("\n{} write this mnemonic phrase in a safe place!", "Important:".bold());
+            println!("It is the only way to recover your account if you ever forget your password.");
+            println!("\n{}", mnemonic.phrase());
+        }
 
         Ok(())
     }
@@ -196,8 +157,7 @@ impl Keyring {
             records.push(record);
         }
 
-        let records_str = serde_json::to_string_pretty(&records)?;
-        println!("{records_str}");
+        println!("{}", serde_json::to_string_pretty(&records)?);
 
         Ok(())
     }

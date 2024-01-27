@@ -1,7 +1,5 @@
 mod format;
 mod key;
-mod keyring;
-mod prompt;
 mod query;
 mod tx;
 
