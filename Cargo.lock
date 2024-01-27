@@ -708,8 +708,13 @@ name = "cw-utils"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "cw-account",
+ "cw-bank",
+ "cw-keyring",
  "cw-std",
+ "home",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -66,7 +66,9 @@ impl Keyring {
         let sk = SigningKey::derive_from_mnemonic(&mnemonic, coin_type)?;
 
         // ask the user for a password
-        let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
+        let password = read_password(
+            format!("🔑 Enter a password to encrypt key `{name}`").bold()
+        )?;
 
         // generate a random salt for use in encryption key derivation
         let mut salt = [0u8; SALT_LEN];
@@ -112,7 +114,9 @@ impl Keyring {
         let record: Record = serde_json::from_str(&record_str)?;
 
         // ask the user for the password
-        let password = read_password("🔑 Enter the password the was used to encrypt the key".bold())?;
+        let password = read_password(
+            format!("🔑 Enter the password the was used to encrypt key `{name}`").bold()
+        )?;
 
         // derive the password, using the saved salt
         let mut password_hash = [0u8; 32];

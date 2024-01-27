@@ -77,6 +77,18 @@ impl GenesisBuilder {
         Ok(contract)
     }
 
+    pub fn store_code_and_instantiate<M: Serialize>(
+        &mut self,
+        path:  impl AsRef<Path>,
+        msg:   M,
+        salt:  Binary,
+        funds: Coins,
+        admin: AdminOption,
+    ) -> anyhow::Result<Addr> {
+        let code_hash = self.store_code(path)?;
+        self.instantiate(code_hash, msg, salt, funds, admin)
+    }
+
     pub fn execute<M: Serialize>(
         &mut self,
         contract: Addr,

@@ -13,3 +13,10 @@ categories    = { workspace = true }
 anyhow = { workspace = true }
 cw-std = { path = "../std" }
 serde  = { workspace = true }
+
+[dev-dependencies]
+cw-account = { path = "../../contracts/account" }
+cw-bank    = { path = "../../contracts/bank" }
+cw-keyring = { path = "../keyring" }
+home       = { workspace = true }
+serde_json = { workspace = true }

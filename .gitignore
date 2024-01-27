@@ -1,12 +1,15 @@
-# rust
-target/
+# editors
+.idea/
+.vscode/
 
 # contract build artifacts
 artifacts/
 
-# editors
-.idea/
-.vscode/
+# rust
+target/
+
+# data for test purpose
+**/testdata/
 
 # macOS
 **/.DS_Store
