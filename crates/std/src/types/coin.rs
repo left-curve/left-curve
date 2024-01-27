@@ -1,7 +1,11 @@
 use {
     crate::{StdError, StdResult, Uint128},
     serde::{de, ser, ser::SerializeSeq, Deserialize, Serialize},
-    std::{collections::{BTreeMap, btree_map}, fmt},
+    std::{
+        collections::{btree_map, BTreeMap},
+        fmt,
+        str::FromStr,
+    },
 };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -125,6 +129,40 @@ impl Coins {
     // instead.
 }
 
+// cast a string of the following format to Coins:
+// denom1:amount1,denom2:amount2,...,denomN:amountN
+// allow the denoms to be out of order, but disallow duplicates and zero amounts.
+// this is mostly intended to use in CLIs.
+impl FromStr for Coins {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut map = BTreeMap::new();
+        for coin_str in s.split(',') {
+            let Some((denom, amount_str)) = coin_str.split_once(':') else {
+                return Err(StdError::parse_coins(format!(
+                    "invalid coin `{coin_str}`: must be in the format {{denom}}:{{amount}}"
+                )));
+            };
+
+            let Ok(amount) = Uint128::from_str(amount_str) else {
+                return Err(StdError::parse_coins(format!("invalid amount `{amount_str}`")));
+            };
+
+            if amount.is_zero() {
+                return Err(StdError::parse_coins(format!("denom `{denom}` as zero amount")));
+            }
+
+            if map.contains_key(denom) {
+                return Err(StdError::parse_coins(format!("duplicate denom: {denom}")));
+            }
+
+            map.insert(denom.into(), amount);
+        }
+        Ok(Self(map))
+    }
+}
+
 // create a new Coins instance from a vector of coins. the vector must not
 // contain duplicate denoms or zero amounts.
 impl TryFrom<Vec<Coin>> for Coins {
@@ -134,10 +172,10 @@ impl TryFrom<Vec<Coin>> for Coins {
         let mut map = BTreeMap::new();
         for coin in vec {
             if coin.amount.is_zero() {
-                return Err(StdError::zero_coin_amount(coin.denom));
+                return Err(StdError::parse_coins(format!("denom `{}` as zero amount", coin.denom)));
             }
             if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::DuplicateDenom);
+                return Err(StdError::parse_coins(format!("duplicate denom found")));
             }
         }
         Ok(Self(map))
@@ -300,5 +338,20 @@ mod tests {
         // invalid string: contains duplicate
         let s = br#"[{"denom":"uatom","amount":"123"},{"denom":"uatom","amount":"456"}]"#;
         assert!(from_json::<Coins>(s).is_err());
+    }
+
+    #[test]
+    fn coins_from_str() {
+        // valid string. note: out of order is allowed
+        let s = "uosmo:789,uatom:123,umars:456";
+        assert_eq!(Coins::from_str(s).unwrap(), mock_coins());
+
+        // invalid string: contains zero amount
+        let s = "uatom:0";
+        assert!(Coins::from_str(s).is_err());
+
+        // invalid string: contains duplicate
+        let s = "uatom:123,uatom:456";
+        assert!(Coins::from_str(s).is_err())
     }
 }

@@ -1,9 +1,17 @@
-use {data_encoding::BASE64, hex::FromHexError, std::any::type_name, thiserror::Error};
+use {
+    data_encoding::BASE64,
+    hex::FromHexError,
+    std::{any::type_name, num::ParseIntError},
+    thiserror::Error,
+};
 
 #[derive(Debug, Error)]
 pub enum StdError {
     #[error(transparent)]
     FromHex(#[from] FromHexError),
+
+    #[error(transparent)]
+    ParseInt(#[from] ParseIntError),
 
     #[error("Generic error: {0}")]
     Generic(String),
@@ -12,12 +20,9 @@ pub enum StdError {
     #[error("Signature verification failed")]
     VerificationFailed,
 
-    #[error("Duplicate denom detected in coins")]
-    DuplicateDenom,
-
-    #[error("Zero amount for denom `{denom}` detected in coins")]
-    ZeroAmount {
-        denom: String,
+    #[error("Failed to parse into Coins: {reason}")]
+    ParseCoins {
+        reason: String,
     },
 
     #[error("Cannot find denom `{denom}` in coins")]
@@ -84,8 +89,10 @@ pub enum StdError {
 }
 
 impl StdError {
-    pub fn zero_coin_amount(denom: String) -> Self {
-        Self::ZeroAmount { denom }
+    pub fn parse_coins(reason: impl Into<String>) -> Self {
+        Self::ParseCoins {
+            reason: reason.into(),
+        }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {

@@ -1,7 +1,7 @@
 use {
     crate::{StdError, StdResult},
     serde::{de, ser},
-    std::fmt,
+    std::{fmt, str::FromStr},
 };
 
 /// A wrapper of uint128, serialized as a string.
@@ -86,6 +86,15 @@ impl From<Uint128> for String {
 impl fmt::Display for Uint128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0.to_string())
+    }
+}
+
+impl FromStr for Uint128 {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let inner = u128::from_str(s)?;
+        Ok(Self::new(inner))
     }
 }
 
