@@ -684,6 +684,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-utils"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-std",
+ "serde",
+]
+
+[[package]]
 name = "cw-vm"
 version = "0.0.0"
 dependencies = [
