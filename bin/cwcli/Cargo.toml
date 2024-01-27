@@ -20,5 +20,6 @@ hex            = { workspace = true }
 home           = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }
+tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 tokio          = { workspace = true }

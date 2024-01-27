@@ -70,7 +70,7 @@ where
         match self.do_finalize_block(block, req.txs) {
             Ok(()) => {
                 ResponseFinalizeBlock {
-                    events:                  vec![],
+                    events:                  vec![], // this should be begin/endblocker events, which we don't have yet
                     tx_results:              vec![],
                     validator_updates:       vec![],
                     consensus_param_updates: None,

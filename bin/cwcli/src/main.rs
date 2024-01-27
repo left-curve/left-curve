@@ -1,9 +1,10 @@
 mod key;
 mod query;
+mod tendermint;
 mod tx;
 
 use {
-    crate::{key::KeyCmd, query::QueryCmd, tx::TxCmd},
+    crate::{key::KeyCmd, query::QueryCmd, tendermint::TendermintCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
     cw_std::Addr,
@@ -47,17 +48,21 @@ struct Cli {
 
 #[derive(Parser)]
 enum Command {
+    /// Manage keys
+    #[command(subcommand, next_display_order = None, alias = "k")]
+    Key(KeyCmd),
+
     /// Make a query
     #[command(subcommand, next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
+    /// Interact with Tendermint consensus engine
+    #[command(subcommand, next_display_order = None, alias = "tm")]
+    Tendermint(TendermintCmd),
+
     /// Send a transaction
     #[command(subcommand, next_display_order = None)]
     Tx(TxCmd),
-
-    /// Manage keys
-    #[command(subcommand, next_display_order = None, alias = "k")]
-    Key(KeyCmd),
 }
 
 #[tokio::main]
@@ -72,10 +77,11 @@ async fn main() -> anyhow::Result<()> {
     };
 
     match cli.command {
+        Command::Key(cmd) => cmd.run(key_dir),
         Command::Query(cmd) => cmd.run(&cli.node).await,
+        Command::Tendermint(cmd) => cmd.run(&cli.node).await,
         Command::Tx(cmd) => {
             cmd.run(&cli.node, key_dir, cli.key_name, cli.sender, cli.chain_id, cli.sequence).await
         },
-        Command::Key(cmd) => cmd.run(key_dir),
     }
 }
