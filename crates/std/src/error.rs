@@ -25,6 +25,12 @@ pub enum StdError {
         reason: String,
     },
 
+    #[error("Invalid payment: expecting {expect} coins, found {actual}")]
+    Payment {
+        expect: usize,
+        actual: usize,
+    },
+
     #[error("Cannot find denom `{denom}` in coins")]
     DenomNotFound {
         denom: String,
@@ -93,6 +99,10 @@ impl StdError {
         Self::ParseCoins {
             reason: reason.into(),
         }
+    }
+
+    pub fn payment(expect: usize, actual: usize) -> Self {
+        Self::Payment { expect, actual }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {

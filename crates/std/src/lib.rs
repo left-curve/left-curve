@@ -33,7 +33,7 @@ pub use crate::wasm::{
 // -------------------------------- re-exports ---------------------------------
 
 // stuff from cw-db
-pub use cw_db::{Batch, Op, Order, Record, Storage};
+pub use cw_db::{Batch, MockStorage, Op, Order, Record, Storage};
 
 // macros
 pub use cw_std_derive::{cw_serde, entry_point};

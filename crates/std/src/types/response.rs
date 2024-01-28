@@ -19,6 +19,11 @@ impl Response {
         self
     }
 
+    pub fn add_messages(mut self, msgs: impl IntoIterator<Item = Message>) -> Self {
+        self.msgs.extend(msgs);
+        self
+    }
+
     pub fn add_attribute(mut self, key: impl ToString, value: impl ToString) -> Self {
         self.attributes.push(Attribute::new(key, value));
         self

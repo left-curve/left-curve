@@ -214,7 +214,7 @@ fn make_genesis_state(
                     initial_balances: make_initial_balances(accounts),
                 })?,
                 salt:  BANK_SALT.clone(),
-                funds: Coins::empty(),
+                funds: Coins::new_empty(),
                 admin: None,
             },
         ]
@@ -228,7 +228,7 @@ fn make_genesis_state(
                 pubkey: PubKey::Secp256k1(acct.vk.to_sec1_bytes().to_vec().into()),
             })?,
             salt: ACCT_SALT(idx),
-            funds: Coins::empty(),
+            funds: Coins::new_empty(),
             admin: Some(acct.addr.clone()),
         });
     }

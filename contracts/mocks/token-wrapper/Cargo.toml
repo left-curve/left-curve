@@ -1,0 +1,18 @@
+[package]
+name          = "cw-mock-token-wrapper"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow  = { workspace = true }
+cw-bank = { path = "../../bank" }
+cw-std  = { path = "../../../crates/std" }

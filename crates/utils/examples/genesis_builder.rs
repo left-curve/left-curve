@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
             pubkey: PubKey::Secp256k1(key1.verifying_key().to_sec1_bytes().to_vec().into()),
         },
         b"test1".to_vec().into(),
-        Coins::empty(),
+        Coins::new_empty(),
         AdminOption::SetToSelf,
     )?;
 
@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
             pubkey: PubKey::Secp256k1(key2.verifying_key().to_sec1_bytes().to_vec().into()),
         },
         b"test2".to_vec().into(),
-        Coins::empty(),
+        Coins::new_empty(),
         AdminOption::SetToSelf,
     )?;
 
@@ -67,7 +67,7 @@ fn main() -> anyhow::Result<()> {
             }],
         },
         b"bank".to_vec().into(),
-        Coins::empty(),
+        Coins::new_empty(),
         AdminOption::SetToNone,
     )?;
 

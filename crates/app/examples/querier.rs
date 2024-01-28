@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
                 code_hash,
                 msg: to_json(&Empty {})?,
                 salt,
-                funds: Coins::empty(),
+                funds: Coins::new_empty(),
                 admin: None,
             },
         ],

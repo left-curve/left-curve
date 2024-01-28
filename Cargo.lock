@@ -693,6 +693,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-mock-token-wrapper"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-bank",
+ "cw-std",
+]
+
+[[package]]
 name = "cw-std"
 version = "0.0.0"
 dependencies = [

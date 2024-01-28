@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
                     pubkey: PubKey::Secp256k1(vk1.to_sec1_bytes().to_vec().into()),
                 })?,
                 salt:  salt1,
-                funds: Coins::empty(),
+                funds: Coins::new_empty(),
                 admin: Some(address1.clone()),
             },
         ],
@@ -91,7 +91,7 @@ fn main() -> anyhow::Result<()> {
                 pubkey: PubKey::Secp256k1(vk2.to_sec1_bytes().to_vec().into()),
             })?,
             salt:  salt2,
-            funds: Coins::empty(),
+            funds: Coins::new_empty(),
             admin: Some(address2.clone()),
         },
     ])?;
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: Coins::empty(),
+            funds: Coins::new_empty(),
         }
     ])?;
     app.do_finalize_block(block, vec![to_json(&tx)?])?;
@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: Coins::empty(),
+            funds: Coins::new_empty(),
         }
     ])?;
     app.do_finalize_block(block, vec![to_json(&tx)?])?;
@@ -140,7 +140,7 @@ fn main() -> anyhow::Result<()> {
             msg: to_json(&ExecuteMsg::UpdateKey {
                 new_pubkey: PubKey::Secp256k1(vk3.to_sec1_bytes().to_vec().into()),
             })?,
-            funds: Coins::empty(),
+            funds: Coins::new_empty(),
         }
     ])?;
     app.do_finalize_block(block, vec![to_json(&tx)?])?;

@@ -14,6 +14,15 @@ pub struct Coin {
     pub amount: Uint128,
 }
 
+impl Coin {
+    pub fn new(denom: impl Into<String>, amount: u128) -> Self {
+        Self {
+            denom:  denom.into(),
+            amount: Uint128::new(amount),
+        }
+    }
+}
+
 impl fmt::Display for Coin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.denom, self.amount)
@@ -51,8 +60,12 @@ pub struct CoinRef<'a> {
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
-    pub fn empty() -> Self {
+    pub fn new_empty() -> Self {
         Self(BTreeMap::new())
+    }
+
+    pub fn new_one(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
+        Self([(denom.into(), amount.into())].into())
     }
 
     /// Cast an `Vec<Coin>` into a `Coins` object, without checking for
@@ -79,6 +92,10 @@ impl Coins {
         self.0.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Return whether there is a non-zero amount of the given denom.
     pub fn has(&self, denom: &str) -> bool {
         self.0.get(denom).is_some()
@@ -88,6 +105,29 @@ impl Coins {
     /// Note, if the denom does not exist, zero is returned.
     pub fn amount_of(&self, denom: &str) -> Uint128 {
         self.0.get(denom).copied().unwrap_or_else(Uint128::zero)
+    }
+
+    /// Do nothing if the `Coins` is empty; throw an error if not empty.
+    pub fn assert_empty(&self) -> StdResult<()> {
+        if !self.is_empty() {
+            return Err(StdError::payment(0, self.len()));
+        }
+
+        Ok(())
+    }
+
+    /// If the `Coins` is exactly one coin, return a reference to this coin;
+    /// otherwise throw error.
+    pub fn one_coin(&self) -> StdResult<CoinRef> {
+        let Some((denom, amount)) = self.0.first_key_value() else {
+            return Err(StdError::payment(1, 0));
+        };
+
+        if self.0.len() > 1 {
+            return Err(StdError::payment(1, self.len()));
+        }
+
+        Ok(CoinRef { denom, amount })
     }
 
     /// Increase the amount of a denom by the given amount. If the denom doesn't
