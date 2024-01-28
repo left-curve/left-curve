@@ -1,9 +1,9 @@
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins,
-        InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, TransferCtx,
-        TransferMsg, Uint128,
+        cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
+        InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, Storage,
+        TransferCtx, TransferMsg, Uint128,
     },
     std::collections::{HashMap, HashSet},
 };
@@ -28,6 +28,20 @@ pub struct Balance {
     pub coins:   Coins,
 }
 
+#[cw_serde]
+pub enum ExecuteMsg {
+    Mint {
+        to:     Addr,
+        denom:  String,
+        amount: Uint128,
+    },
+    Burn {
+        from:   Addr,
+        denom:  String,
+        amount: Uint128,
+    },
+}
+
 #[entry_point]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     // need to make sure there are no duplicate address in initial balances.
@@ -43,7 +57,7 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
 
         for coin in coins {
             BALANCES.save(ctx.store, (&address, &coin.denom), &coin.amount)?;
-            increment_supply(&mut supplies, &coin.denom, coin.amount)?;
+            accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
 
         seen_addrs.insert(address);
@@ -56,7 +70,9 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
     Ok(Response::new())
 }
 
-fn increment_supply(
+// just a helper function for use during instantiation
+// not to be confused with `increase_supply` also found in this contract
+fn accumulate_supply(
     supplies: &mut HashMap<String, Uint128>,
     denom:    &str,
     by:       Uint128,
@@ -72,30 +88,10 @@ fn increment_supply(
 }
 
 #[entry_point]
-pub fn receive(_ctx: ReceiveCtx) -> anyhow::Result<Response> {
-    // we do not expect anyone to send any fund to this contract.
-    // throw an error to revert the transfer.
-    bail!("do not send funds to this contract");
-}
-
-#[entry_point]
 pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
-        // decrease the sender's balance
-        BALANCES.update(ctx.store, (&msg.from, &coin.denom), |maybe_balance| -> StdResult<_> {
-            let balance = maybe_balance.unwrap_or_else(Uint128::zero).checked_sub(*coin.amount)?;
-            // if balance is reduced to zero, we delete it, to save disk space
-            if balance > Uint128::zero() {
-                Ok(Some(balance))
-            } else {
-                Ok(None)
-            }
-        })?;
-
-        // increase the receiver's balance
-        BALANCES.update(ctx.store, (&msg.to, &coin.denom), |maybe_balance| {
-            maybe_balance.unwrap_or_else(Uint128::zero).checked_add(*coin.amount).map(Some)
-        })?;
+        decrease_balance(ctx.store, &msg.from, coin.denom, *coin.amount)?;
+        increase_balance(ctx.store, &msg.to, coin.denom, *coin.amount)?;
     }
 
     Ok(Response::new()
@@ -103,6 +99,129 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
         .add_attribute("from", msg.from)
         .add_attribute("to", msg.to)
         .add_attribute("coins", msg.coins.to_string()))
+}
+
+#[entry_point]
+pub fn receive(_ctx: ReceiveCtx) -> anyhow::Result<Response> {
+    // we do not expect anyone to send any fund to this contract.
+    // throw an error to revert the transfer.
+    bail!("do not send funds to this contract");
+}
+
+#[entry_point]
+pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    match msg {
+        ExecuteMsg::Mint {
+            to,
+            denom,
+            amount,
+        } => mint(ctx, to, denom, amount),
+        ExecuteMsg::Burn {
+            from,
+            denom,
+            amount,
+        } => burn(ctx, from, denom, amount),
+    }
+}
+
+// NOTE: we haven't implement gatekeeping for minting/burning yet. for now
+// anyone can mint any denom to any account, or burn any token from any account.
+pub fn mint(
+    ctx:    ExecuteCtx,
+    to:     Addr,
+    denom:  String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
+    increase_supply(ctx.store, &denom, amount)?;
+    increase_balance(ctx.store, &to, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "mint")
+        .add_attribute("to", to)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
+}
+
+// NOTE: we haven't implement gatekeeping for minting/burning yet. for now
+// anyone can mint any denom to any account, or burn any token from any account.
+pub fn burn(
+    ctx:    ExecuteCtx,
+    from:   Addr,
+    denom:  String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
+    decrease_supply(ctx.store, &denom, amount)?;
+    decrease_balance(ctx.store, &from, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "burn")
+        .add_attribute("from", from)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
+}
+
+/// Increase the total supply of a token by the given amount.
+/// Return the total supply value after the increase.
+fn increase_supply(
+    store:  &mut dyn Storage,
+    denom:  &str,
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
+    SUPPLIES.update(store, denom, |supply| {
+        let supply = supply.unwrap_or_default().checked_add(amount)?;
+        Ok(Some(supply))
+    })
+}
+
+/// Decrease the total supply of a token by the given amount.
+/// Return the total supply value after the decrease.
+fn decrease_supply(
+    store:  &mut dyn Storage,
+    denom:  &str,
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
+    SUPPLIES.update(store, denom, |supply| {
+        let supply = supply.unwrap_or_default().checked_sub(amount)?;
+        // if supply is reduced to zero, delete it, to save disk space
+        if supply.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(supply))
+        }
+    })
+}
+
+/// Increase an account's balance of a token by the given amount.
+/// Return the balance value after the increase.
+fn increase_balance(
+    store:   &mut dyn Storage,
+    address: &Addr,
+    denom:   &str,
+    amount:  Uint128,
+) -> StdResult<Option<Uint128>> {
+    BALANCES.update(store, (address, denom), |balance| {
+        let balance = balance.unwrap_or_default().checked_add(amount)?;
+        Ok(Some(balance))
+    })
+}
+
+/// Decrease an account's balance of a token by the given amount.
+/// Return the balance value after the decrease.
+fn decrease_balance(
+    store:   &mut dyn Storage,
+    address: &Addr,
+    denom:   &str,
+    amount:  Uint128,
+) -> StdResult<Option<Uint128>> {
+    BALANCES.update(store, (address, denom), |balance| {
+        let balance = balance.unwrap_or_default().checked_sub(amount)?;
+        // if balance is reduced to zero, delete it, to save disk space
+        if balance.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(balance))
+        }
+    })
 }
 
 // Note to developers who wish to implement their own bank contracts:
