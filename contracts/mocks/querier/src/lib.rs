@@ -10,22 +10,22 @@ pub enum QueryMsg {
     },
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(_ctx: InstantiateCtx, _msg: Empty) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn receive(_ctx: ReceiveCtx) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(_ctx: ExecuteCtx, _msg: Empty) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryChain {

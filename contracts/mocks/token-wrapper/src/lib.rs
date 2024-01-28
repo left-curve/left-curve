@@ -15,14 +15,14 @@ pub struct InstantiateMsg {
     pub bank: Addr,
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     BANK.save(ctx.store, &msg.bank)?;
 
     Ok(Response::new())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
     let bank = BANK.load(ctx.store)?;
 

@@ -42,7 +42,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     // need to make sure there are no duplicate address in initial balances.
     // we don't need to dedup denoms however. if there's duplicate denoms, the
@@ -87,7 +87,7 @@ fn accumulate_supply(
     Ok(())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.store, &msg.from, coin.denom, *coin.amount)?;
@@ -101,14 +101,14 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
         .add_attribute("coins", msg.coins.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn receive(_ctx: ReceiveCtx) -> anyhow::Result<Response> {
     // we do not expect anyone to send any fund to this contract.
     // throw an error to revert the transfer.
     bail!("do not send funds to this contract");
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Mint {

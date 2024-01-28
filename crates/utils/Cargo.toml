@@ -15,8 +15,8 @@ cw-std = { path = "../std" }
 serde  = { workspace = true }
 
 [dev-dependencies]
-cw-account = { path = "../../contracts/account" }
-cw-bank    = { path = "../../contracts/bank" }
+cw-account = { path = "../../contracts/account", features = ["library"] }
+cw-bank    = { path = "../../contracts/bank", features = ["library"] }
 cw-keyring = { path = "../keyring" }
 home       = { workspace = true }
 serde_json = { workspace = true }

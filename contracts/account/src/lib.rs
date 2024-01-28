@@ -1,3 +1,5 @@
+// rust-analyzer incorrectly thinks `entry_point` isn't used
+#[allow(unused_imports)]
 use {
     anyhow::ensure,
     cw_std::{
@@ -74,7 +76,7 @@ pub fn sign_bytes(
     Ok(hasher.finalize().into())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     PUBKEY.save(ctx.store, &msg.pubkey)?;
     SEQUENCE.save(ctx.store, &0)?;
@@ -82,7 +84,7 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
     Ok(Response::new())
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
     // do nothing, accept all transfers. log the receipt to events
     Ok(Response::new()
@@ -91,7 +93,7 @@ pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
         .add_attribute("funds", ctx.funds.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let pubkey = PUBKEY.load(ctx.store)?;
     let mut sequence = SEQUENCE.load(ctx.store)?;
@@ -121,7 +123,7 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
         .add_attribute("next_sequence", sequence.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateKey {
@@ -130,7 +132,7 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     match msg {
         QueryMsg::State {} => to_json(&query_state(ctx)?),

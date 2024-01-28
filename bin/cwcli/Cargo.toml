@@ -13,7 +13,7 @@ categories    = { workspace = true }
 anyhow         = { workspace = true }
 clap           = { workspace = true, features = ["derive", "wrap_help"] }
 colored        = { workspace = true }
-cw-account     = { path = "../../contracts/account" }
+cw-account     = { path = "../../contracts/account", features = ["library"] }
 cw-keyring     = { path = "../../crates/keyring" }
 cw-std         = { path = "../../crates/std" }
 hex            = { workspace = true }

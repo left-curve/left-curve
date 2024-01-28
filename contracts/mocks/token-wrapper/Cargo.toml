@@ -12,7 +12,12 @@ categories    = { workspace = true }
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# If enabled, Wasm exports won't be created. This allows this contract to be
+# imported into other contracts as a library.
+library = []
+
 [dependencies]
 anyhow  = { workspace = true }
-cw-bank = { path = "../../bank" }
+cw-bank = { path = "../../bank", features = ["library"] }
 cw-std  = { path = "../../../crates/std" }

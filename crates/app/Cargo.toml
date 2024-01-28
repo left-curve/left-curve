@@ -22,8 +22,8 @@ tracing          = { workspace = true }
 [dev-dependencies]
 anyhow             = { workspace = true }
 cfg-if             = { workspace = true }
-cw-account         = { path = "../../contracts/account" }
-cw-bank            = { path = "../../contracts/bank" }
+cw-account         = { path = "../../contracts/account", features = ["library"] }
+cw-bank            = { path = "../../contracts/bank", features = ["library"] }
 cw-crypto          = { path = "../../crates/crypto" }
 cw-mock-querier    = { path = "../../contracts/mocks/querier" }
 k256               = { workspace = true }
