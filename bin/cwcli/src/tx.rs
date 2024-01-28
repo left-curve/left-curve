@@ -102,7 +102,7 @@ impl TxCmd {
             TxCmd::Instantiate { code_hash, msg, salt, funds, admin } => {
                 let funds = match funds {
                     Some(s) => Coins::from_str(&s)?,
-                    None => Coins::empty(),
+                    None => Coins::new_empty(),
                 };
                 Message::Instantiate {
                     code_hash,
@@ -115,7 +115,7 @@ impl TxCmd {
             TxCmd::Execute { contract, msg, funds } => {
                 let funds = match funds {
                     Some(s) => Coins::from_str(&s)?,
-                    None => Coins::empty(),
+                    None => Coins::new_empty(),
                 };
                 Message::Execute {
                     contract,
