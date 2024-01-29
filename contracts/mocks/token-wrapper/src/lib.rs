@@ -129,7 +129,7 @@ mod tests {
         };
 
         let res = receive(ctx)?;
-        assert_eq!(res.msgs, vec![
+        assert_eq!(res.messages, vec![
             new_mint_msg(
                 mock_bank.clone(),
                 mock_sender.clone(),

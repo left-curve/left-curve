@@ -52,7 +52,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     Ok(vec![new_before_tx_event(&tx.sender, resp)])
 }

@@ -189,7 +189,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_transfer(&ctx, &msg)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     // call the recipient contract's `receive` entry point to inform it of this
     // transfer
@@ -223,7 +223,7 @@ fn _receive<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     Ok((vec![prev_event, new_receive_event(&msg.to, resp)], msg))
 }
@@ -302,7 +302,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     Ok((vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp)], ctx.contract))
 }
@@ -364,7 +364,7 @@ fn _execute<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     Ok(vec![new_execute_event(&ctx.contract, resp)])
 }
@@ -434,7 +434,7 @@ fn _migrate<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.msgs.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
 
     Ok(vec![new_migrate_event(&ctx.contract, &old_code_hash, &account.code_hash, resp)])
 }

@@ -5,7 +5,7 @@ use {
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Response {
-    pub msgs:       Vec<Message>,
+    pub messages:   Vec<Message>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -15,12 +15,12 @@ impl Response {
     }
 
     pub fn add_message(mut self, msg: Message) -> Self {
-        self.msgs.push(msg);
+        self.messages.push(msg);
         self
     }
 
     pub fn add_messages(mut self, msgs: impl IntoIterator<Item = Message>) -> Self {
-        self.msgs.extend(msgs);
+        self.messages.extend(msgs);
         self
     }
 
