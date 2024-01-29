@@ -6,7 +6,9 @@ use {
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
         abci::{
-            Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx, RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery
+            Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx,
+            RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx,
+            ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery,
         },
         google::protobuf::Timestamp,
     },

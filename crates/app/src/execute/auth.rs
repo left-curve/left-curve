@@ -1,8 +1,6 @@
 use {
-    crate::{
-        handle_submessages, new_before_tx_event, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES,
-        CONTRACT_NAMESPACE,
-    },
+    super::{handle_submessages, new_before_tx_event},
+    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Event, Storage, Tx},
     cw_vm::Instance,

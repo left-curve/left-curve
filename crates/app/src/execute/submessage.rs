@@ -1,5 +1,7 @@
-use cw_std::{Addr, BlockInfo, Event, Message, Storage};
-use crate::{process_msg, AppResult};
+use {
+    crate::{process_msg, AppResult},
+    cw_std::{Addr, BlockInfo, Event, Message, Storage},
+};
 
 /// Recursively execute submessages emitted in a contract response using a
 /// depth-first approach.
