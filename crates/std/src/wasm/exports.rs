@@ -1,8 +1,6 @@
 use {
     crate::{
-        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx,
-        ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region,
-        Response, TransferCtx, TransferMsg, Tx,
+        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, TransferCtx, TransferMsg, Tx
     },
     serde::de::DeserializeOwned,
 };
@@ -371,3 +369,43 @@ where
 
 // ----------------------------------- reply -----------------------------------
 
+pub fn do_reply<M, E>(
+    reply_fn: &dyn Fn(ReplyCtx, M) -> Result<Response, E>,
+    ctx_ptr:  usize,
+    msg_ptr:  usize,
+) -> usize
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_reply(reply_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_reply<M, E>(
+    reply_fn:  &dyn Fn(ReplyCtx, M) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = ReplyCtx {
+        store: &mut ExternalStorage,
+        chain_id:      ctx.chain_id,
+        block:         ctx.block,
+        contract:      ctx.contract,
+        submsg_result: ctx.submsg_result.expect("host failed to specify submsg result"),
+    };
+
+    reply_fn(ctx, msg).into()
+}

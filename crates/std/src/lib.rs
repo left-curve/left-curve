@@ -28,7 +28,7 @@ mod wasm;
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
     do_before_tx, do_execute, do_instantiate, do_migrate, do_query, do_query_bank, do_receive,
-    do_transfer, ExternalIterator, ExternalStorage, Region,
+    do_reply, do_transfer, ExternalIterator, ExternalStorage, Region,
 };
 
 // -------------------------------- re-exports ---------------------------------
