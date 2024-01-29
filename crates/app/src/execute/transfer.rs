@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_receive_event, new_transfer_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
+    cw_db::{Flush, PrefixStore, Storage},
+    cw_std::{Addr, BlockInfo, Coins, Context, Event, TransferMsg},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn transfer<S: Storage + Clone + 'static>(
+pub fn transfer<S: Storage + Flush + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     from:  Addr,
@@ -33,7 +33,7 @@ pub fn transfer<S: Storage + Clone + 'static>(
 
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
-fn _transfer<S: Storage + Clone + 'static>(
+fn _transfer<S: Storage + Flush + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     from:  Addr,
@@ -54,11 +54,12 @@ fn _transfer<S: Storage + Clone + 'static>(
     // call transfer
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: cfg.bank,
-        sender:   None,
-        funds:    None,
-        simulate: None,
+        block:         block.clone(),
+        contract:      cfg.bank,
+        sender:        None,
+        funds:         None,
+        simulate:      None,
+        submsg_result: None,
     };
     let msg = TransferMsg {
         from,
@@ -69,14 +70,14 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(store.clone(), block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store.clone(), block, &ctx.contract, resp.submsgs)?);
 
     // call the recipient contract's `receive` entry point to inform it of this
     // transfer
     _receive(store, block, msg, events)
 }
 
-fn _receive<S: Storage + Clone + 'static>(
+fn _receive<S: Storage + Flush + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     msg:        TransferMsg,
@@ -95,17 +96,18 @@ fn _receive<S: Storage + Clone + 'static>(
     // call the recipient contract's `receive` entry point
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: msg.to.clone(),
-        sender:   Some(msg.from.clone()),
-        funds:    Some(msg.coins.clone()),
-        simulate: None,
+        block:         block.clone(),
+        contract:      msg.to.clone(),
+        sender:        Some(msg.from.clone()),
+        funds:         Some(msg.coins.clone()),
+        simulate:      None,
+        submsg_result: None,
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 
     // handle submessages
     events.push(new_receive_event(&msg.to, resp.attributes));
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, msg))
 }

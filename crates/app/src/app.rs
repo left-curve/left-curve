@@ -55,7 +55,7 @@ impl<S> App<S> {
 
 impl<S> App<S>
 where
-    S: Storage + 'static,
+    S: Storage + Flush + 'static,
 {
     pub fn do_init_chain(
         &self,
@@ -119,6 +119,22 @@ where
         Ok(tx_results)
     }
 
+    // TODO: we need to think about what to do if the flush fails here?
+    pub fn do_commit(&self) -> AppResult<()> {
+        let mut store = self.store.share();
+        let (batch, block) = self.take_pending()?;
+
+        // apply the DB ops effected by txs in this block
+        store.flush(batch)?;
+
+        // update the last finalized block info
+        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
+
+        info!(height = block.height, "Committed state");
+
+        Ok(())
+    }
+
     // returns (last_block_height, last_block_app_hash)
     pub fn do_info(&self) -> AppResult<(i64, Hash)> {
         match LAST_FINALIZED_BLOCK.may_load(&self.store)? {
@@ -144,27 +160,6 @@ where
         let res = process_query(self.store.share(), &block, req)?;
 
         to_json(&res).map_err(Into::into)
-    }
-}
-
-impl<S> App<S>
-where
-    S: Storage + Flush + 'static,
-{
-    // TODO: we need to think about what to do if the flush fails here...
-    pub fn do_commit(&self) -> AppResult<()> {
-        let mut store = self.store.share();
-        let (batch, block) = self.take_pending()?;
-
-        // apply the DB ops effected by txs in this block
-        store.flush(batch)?;
-
-        // update the last finalized block info
-        LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
-
-        info!(height = block.height, "Committed state");
-
-        Ok(())
     }
 }
 

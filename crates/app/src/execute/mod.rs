@@ -14,10 +14,12 @@ pub use auth::authenticate_tx;
 use {
     crate::AppResult,
     config::update_config,
-    cw_std::{Addr, BlockInfo, Event, Message, Storage},
+    cw_db::{Flush, Storage},
+    cw_std::{Addr, BlockInfo, Event, Message},
     events::{
         new_before_tx_event, new_execute_event, new_instantiate_event, new_migrate_event,
-        new_receive_event, new_store_code_event, new_transfer_event, new_update_config_event,
+        new_receive_event, new_reply_event, new_store_code_event, new_transfer_event,
+        new_update_config_event,
     },
     execute::execute,
     instantiate::instantiate,
@@ -27,7 +29,7 @@ use {
     transfer::transfer,
 };
 
-pub fn process_msg<S: Storage + Clone + 'static>(
+pub fn process_msg<S: Storage + Flush + Clone + 'static>(
     mut store: S,
     block: &BlockInfo,
     sender: &Addr,

@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_migrate_event},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, Binary, BlockInfo, Context, Event, Hash, Storage},
+    cw_db::{Flush, PrefixStore, Storage},
+    cw_std::{Addr, Binary, BlockInfo, Context, Event, Hash},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn migrate<S: Storage + Clone + 'static>(
+pub fn migrate<S: Storage + Flush + Clone + 'static>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,
@@ -27,7 +27,7 @@ pub fn migrate<S: Storage + Clone + 'static>(
     }
 }
 
-fn _migrate<S: Storage + Clone + 'static>(
+fn _migrate<S: Storage + Flush + Clone + 'static>(
     mut store:     S,
     block:         &BlockInfo,
     contract:      &Addr,
@@ -62,11 +62,12 @@ fn _migrate<S: Storage + Clone + 'static>(
     // call the contract's migrate entry point
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: contract.clone(),
-        sender:   Some(sender.clone()),
-        funds:    None,
-        simulate: None,
+        block:         block.clone(),
+        contract:      contract.clone(),
+        sender:        Some(sender.clone()),
+        funds:         None,
+        simulate:      None,
+        submsg_result: None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
@@ -77,7 +78,7 @@ fn _migrate<S: Storage + Clone + 'static>(
         &account.code_hash,
         resp.attributes,
     )];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_before_tx_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{BlockInfo, Context, Event, Storage, Tx},
+    cw_db::{Flush, PrefixStore, Storage},
+    cw_std::{BlockInfo, Context, Event, Tx},
     cw_vm::Instance,
     tracing::{debug, warn},
 };
 
-pub fn authenticate_tx<S: Storage + Clone + 'static>(
+pub fn authenticate_tx<S: Storage + Flush + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
@@ -25,7 +25,7 @@ pub fn authenticate_tx<S: Storage + Clone + 'static>(
     }
 }
 
-fn _authenticate_tx<S: Storage + Clone + 'static>(
+fn _authenticate_tx<S: Storage + Flush + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
@@ -43,17 +43,18 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     // call `before_tx` entry point
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: tx.sender.clone(),
-        sender:   None,
-        funds:    None,
-        simulate: Some(false),
+        block:         block.clone(),
+        contract:      tx.sender.clone(),
+        sender:        None,
+        funds:         None,
+        simulate:      Some(false),
+        submsg_result: None,
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_before_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

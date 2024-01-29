@@ -1,14 +1,14 @@
 use {
     super::{handle_submessages, new_instantiate_event, transfer},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash, Storage},
+    cw_db::{Flush, PrefixStore, Storage},
+    cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn instantiate<S: Storage + Clone + 'static>(
+pub fn instantiate<S: Storage + Flush + Clone + 'static>(
     store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
@@ -32,7 +32,7 @@ pub fn instantiate<S: Storage + Clone + 'static>(
 
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
-fn _instantiate<S: Storage + Clone + 'static>(
+fn _instantiate<S: Storage + Flush + Clone + 'static>(
     mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,
@@ -71,17 +71,18 @@ fn _instantiate<S: Storage + Clone + 'static>(
     // call instantiate
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: address,
-        sender:   Some(sender.clone()),
-        funds:    Some(funds),
-        simulate: None,
+        block:         block.clone(),
+        contract:      address,
+        sender:        Some(sender.clone()),
+        funds:         Some(funds),
+        simulate:      None,
+        submsg_result: None,
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, ctx.contract))
 }

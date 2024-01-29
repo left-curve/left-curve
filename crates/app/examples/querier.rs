@@ -1,11 +1,11 @@
 use {
     cfg_if::cfg_if,
     cw_app::App,
-    cw_db::MockStorage,
+    cw_db::{Flush, Storage, MockStorage},
     cw_mock_querier::QueryMsg,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, Empty, GenesisState, Message,
-        QueryRequest, QueryResponse, Storage,
+        QueryRequest, QueryResponse,
     },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -93,7 +93,7 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
 
 fn query_wasm_smart<S, M>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
-    S: Storage + 'static,
+    S: Storage + Flush + 'static,
     M: Serialize,
 {
     let data = from_json::<QueryResponse>(app.do_query(&to_json(&QueryRequest::WasmSmart {

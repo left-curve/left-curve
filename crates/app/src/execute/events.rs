@@ -56,3 +56,9 @@ pub fn new_migrate_event(
         .add_attribute("new_code_hash", new_code_hash)
         .add_attributes(attrs)
 }
+
+pub fn new_reply_event(contract: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("reply")
+        .add_attribute(CONTRACT_ADDRESS_KEY, contract)
+        .add_attributes(attrs)
+}

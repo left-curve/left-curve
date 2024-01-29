@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_execute_event, transfer},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event, Storage},
+    cw_db::{Flush, PrefixStore, Storage},
+    cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn execute<S: Storage + Clone + 'static>(
+pub fn execute<S: Storage + Flush + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -27,7 +27,7 @@ pub fn execute<S: Storage + Clone + 'static>(
     }
 }
 
-fn _execute<S: Storage + Clone + 'static>(
+fn _execute<S: Storage + Flush + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -54,17 +54,18 @@ fn _execute<S: Storage + Clone + 'static>(
     // call execute
     let ctx = Context {
         chain_id,
-        block:    block.clone(),
-        contract: contract.clone(),
-        sender:   Some(sender.clone()),
-        funds:    Some(funds),
-        simulate: None,
+        block:         block.clone(),
+        contract:      contract.clone(),
+        sender:        Some(sender.clone()),
+        funds:         Some(funds),
+        simulate:      None,
+        submsg_result: None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
