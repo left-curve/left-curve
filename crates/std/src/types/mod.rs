@@ -30,7 +30,7 @@ pub use {
         AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
         WasmSmartResponse,
     },
-    response::Response,
+    response::{ReplyOn, Response, SubMessage},
     result::GenericResult,
     tx::{Message, Tx},
     uint128::Uint128,

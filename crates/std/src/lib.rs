@@ -14,8 +14,8 @@ pub use crate::{
         hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
         Event, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx,
-        Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Response,
-        TransferCtx, TransferMsg, Tx, Uint128, WasmRawResponse, WasmSmartResponse,
+        Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyOn, Response,
+        SubMessage, TransferCtx, TransferMsg, Tx, Uint128, WasmRawResponse, WasmSmartResponse,
     },
 };
 
