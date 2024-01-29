@@ -1,6 +1,8 @@
 use {
     crate::{
-        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, TransferCtx, TransferMsg, Tx
+        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx,
+        ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region,
+        ReplyCtx, Response, TransferCtx, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
