@@ -29,10 +29,36 @@ where
 }
 
 impl<T> GenericResult<T> {
+    /// Convert the GenericResult to a StdResult, so that it can be unwrapped
+    /// with the `?` operator.
     pub fn into_std_result(self) -> StdResult<T> {
         match self {
             GenericResult::Ok(data) => Ok(data),
             GenericResult::Err(err) => Err(StdError::Generic(err)),
+        }
+    }
+
+    /// Assume the GenericResult is an Ok, get the data it carries. Error if it
+    /// is an Err.
+    /// This is useful if you're sure the result is an Ok, e.g. when handling a
+    /// submessage result in the `reply` entry point, when you have configured
+    /// it to reply only on success.
+    pub fn as_ok(self) -> T {
+        match self {
+            GenericResult::Ok(data) => data,
+            GenericResult::Err(_) => unreachable!(),
+        }
+    }
+
+    /// Assume the GenericResult is an Err, get the error message. Error if it
+    /// is an Ok.
+    /// This is useful if you're sure the result is an Err, e.g. when handling a
+    /// submessage result in the `reply` entry point, when you have configured
+    /// it to reply only on error.
+    pub fn as_err(self) -> String {
+        match self {
+            GenericResult::Ok(_) => unreachable!(),
+            GenericResult::Err(err) => err,
         }
     }
 }

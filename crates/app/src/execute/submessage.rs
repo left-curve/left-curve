@@ -1,6 +1,6 @@
 use {
     crate::{process_msg, AppResult},
-    cw_std::{Addr, BlockInfo, Event, Message, Storage},
+    cw_std::{Addr, BlockInfo, Event, SubMessage, Storage},
 };
 
 /// Recursively execute submessages emitted in a contract response using a
@@ -12,7 +12,7 @@ pub fn handle_submessages<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     sender:   &Addr,
-    messages: Vec<Message>,
+    messages: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>> {
     let mut events = vec![];
     for msg in messages {
