@@ -1,8 +1,9 @@
 use {
     crate::{
         from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, Coins, ExecuteCtx,
-        GenericResult, Hash, InfoResponse, InstantiateCtx, Order, QueryCtx, QueryRequest,
-        QueryResponse, Record, Region, StdError, StdResult, Storage, Uint128,
+        GenericResult, Hash, InfoResponse, InstantiateCtx, MigrateCtx, Order, QueryCtx,
+        QueryRequest, QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult,
+        Storage, TransferCtx, Uint128,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -339,7 +340,16 @@ macro_rules! impl_methods {
     };
 }
 
-impl_methods!(BeforeTxCtx<'a>, ExecuteCtx<'a>, InstantiateCtx<'a>, QueryCtx<'a>);
+impl_methods!(
+    BeforeTxCtx<'a>,
+    ExecuteCtx<'a>,
+    InstantiateCtx<'a>,
+    MigrateCtx<'a>,
+    QueryCtx<'a>,
+    ReceiveCtx<'a>,
+    ReplyCtx<'a>,
+    TransferCtx<'a>,
+);
 
 // ----------------------------------- tests -----------------------------------
 
