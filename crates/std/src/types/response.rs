@@ -40,10 +40,18 @@ impl Response {
     }
 }
 
+/// Indicates that after a submessage has been executed, whether the host should
+/// give the contract a callack.
+///
+/// The host's behavior is summariazed in the table below:
+///
 /// result | Success   | Error    | Always   | Never   |
 /// ------ | --------- | -------- | -------- | ------- |
 /// Ok     | callback  | nothing  | callback | nothing |
 /// Err    | abort     | callback | callback | abort   |
+///
+/// In case a callback is to be performed, the host passes a piece of binary
+/// payload data to the contract.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ReplyOn {
     Success(Binary),
