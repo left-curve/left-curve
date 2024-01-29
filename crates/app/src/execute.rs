@@ -1,8 +1,8 @@
 use {
     crate::{
-        new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
-        new_store_code_event, new_transfer_event, new_update_config_event, AppError, AppResult,
-        Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
+        handle_submessages, new_execute_event, new_instantiate_event, new_migrate_event,
+        new_receive_event, new_store_code_event, new_transfer_event, new_update_config_event,
+        AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
     },
     cw_db::PrefixStore,
     cw_std::{
@@ -189,18 +189,20 @@ fn _transfer<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_transfer(&ctx, &msg)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];
+    events.extend(handle_submessages(store.clone(), block, &ctx.contract, resp.messages)?);
 
     // call the recipient contract's `receive` entry point to inform it of this
     // transfer
-    _receive(store, block, msg, new_transfer_event(&ctx.contract, resp))
+    _receive(store, block, msg, events)
 }
 
 fn _receive<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     msg:        TransferMsg,
-    prev_event: Event,
+    mut events: Vec<Event>,
 ) -> AppResult<(Vec<Event>, TransferMsg)> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
@@ -209,7 +211,7 @@ fn _receive<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &msg.to]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call the recipient contract's `receive` entry point
@@ -223,9 +225,11 @@ fn _receive<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    events.push(new_receive_event(&msg.to, resp.attributes));
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
 
-    Ok((vec![prev_event, new_receive_event(&msg.to, resp)], msg))
+    Ok((events, msg))
 }
 
 // -------------------------------- instantiate --------------------------------
@@ -288,7 +292,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call instantiate
@@ -302,9 +306,11 @@ fn _instantiate<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    let mut events = vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp.attributes)];
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
 
-    Ok((vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp)], ctx.contract))
+    Ok((events, ctx.contract))
 }
 
 // ---------------------------------- execute ----------------------------------
@@ -350,7 +356,7 @@ fn _execute<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call execute
@@ -364,9 +370,11 @@ fn _execute<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
 
-    Ok(vec![new_execute_event(&ctx.contract, resp)])
+    Ok(events)
 }
 
 // ---------------------------------- migrate ----------------------------------
@@ -420,7 +428,7 @@ fn _migrate<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call the contract's migrate entry point
@@ -434,7 +442,14 @@ fn _migrate<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    let mut events = vec![new_migrate_event(
+        &ctx.contract,
+        &old_code_hash,
+        &account.code_hash,
+        resp.attributes,
+    )];
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
 
-    Ok(vec![new_migrate_event(&ctx.contract, &old_code_hash, &account.code_hash, resp)])
+    Ok(events)
 }

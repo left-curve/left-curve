@@ -6,6 +6,7 @@ mod events;
 mod execute;
 mod query;
 mod state;
+mod submsg;
 
 pub use crate::{
     app::App,
@@ -18,4 +19,5 @@ pub use crate::{
     execute::process_msg,
     query::{process_query, Querier},
     state::{ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK},
+    submsg::handle_submessages,
 };

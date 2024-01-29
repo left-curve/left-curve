@@ -1,6 +1,7 @@
 use {
     crate::{
-        new_before_tx_event, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE,
+        handle_submessages, new_before_tx_event, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES,
+        CONTRACT_NAMESPACE,
     },
     cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Event, Storage, Tx},
@@ -38,7 +39,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
 
     // create wasm host
     let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &tx.sender]);
-    let querier = Querier::new(store, block.clone());
+    let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
     // call `before_tx` entry point
@@ -52,7 +53,9 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 
-    debug_assert!(resp.messages.is_empty(), "UNIMPLEMENTED: submessage is not supported yet");
+    // handle submessages
+    let mut events = vec![new_before_tx_event(&ctx.contract, resp.attributes)];
+    events.extend(handle_submessages(store, block, &ctx.contract, resp.messages)?);
 
-    Ok(vec![new_before_tx_event(&tx.sender, resp)])
+    Ok(events)
 }
