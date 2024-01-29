@@ -5,7 +5,7 @@ use {
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Response {
-    pub messages: Vec<SubMessage>,
+    pub submsgs: Vec<SubMessage>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -15,22 +15,22 @@ impl Response {
     }
 
     pub fn add_message(mut self, msg: Message) -> Self {
-        self.messages.push(SubMessage::reply_never(msg));
+        self.submsgs.push(SubMessage::reply_never(msg));
         self
     }
 
     pub fn add_messages(mut self, msgs: impl IntoIterator<Item = Message>) -> Self {
-        self.messages.extend(msgs.into_iter().map(SubMessage::reply_never));
+        self.submsgs.extend(msgs.into_iter().map(SubMessage::reply_never));
         self
     }
 
-    pub fn add_submsg(mut self, submsg: SubMessage) -> Self {
-        self.messages.push(submsg);
+    pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
+        self.submsgs.push(submsg);
         self
     }
 
-    pub fn add_submsgs(mut self, submsgs: impl IntoIterator<Item = SubMessage>) -> Self {
-        self.messages.extend(submsgs);
+    pub fn add_submessages(mut self, submsgs: impl IntoIterator<Item = SubMessage>) -> Self {
+        self.submsgs.extend(submsgs);
         self
     }
 
