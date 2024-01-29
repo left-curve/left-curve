@@ -134,6 +134,15 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
+    pub fn call_reply(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_1_out_1("reply", ctx, msg)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
     /// Call the a Wasm export function. This method expects no input (besides
     /// the context) and exactly 1 output.
     fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
