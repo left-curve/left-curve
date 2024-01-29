@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, BlockInfo, Coins, Storage},
+    crate::{Addr, BlockInfo, Coins, Event, GenericResult, Storage},
     serde::{Deserialize, Serialize},
 };
 
@@ -12,12 +12,13 @@ use {
 /// a transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Option<Addr>,
-    pub funds:    Option<Coins>,
-    pub simulate: Option<bool>,
+    pub chain_id:      String,
+    pub block:         BlockInfo,
+    pub contract:      Addr,
+    pub sender:        Option<Addr>,
+    pub funds:         Option<Coins>,
+    pub simulate:      Option<bool>,
+    pub submsg_result: Option<GenericResult<Vec<Event>>>,
 }
 
 pub struct InstantiateCtx<'a> {
@@ -75,4 +76,12 @@ pub struct ReceiveCtx<'a> {
     pub contract: Addr,
     pub sender:   Addr,
     pub funds:    Coins,
+}
+
+pub struct ReplyCtx<'a> {
+    pub store:         &'a mut dyn Storage,
+    pub chain_id:      String,
+    pub block:         BlockInfo,
+    pub contract:      Addr,
+    pub submsg_result: GenericResult<Vec<Event>>,
 }

@@ -21,7 +21,7 @@ pub use {
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
         BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx,
-        TransferCtx,
+        ReplyCtx, TransferCtx,
     },
     empty::Empty,
     event::{Attribute, Event},

@@ -182,10 +182,11 @@ fn mock_context(sender: Option<Addr>) -> Context {
             height:    0,
             timestamp: 0,
         },
-        chain_id: "dev-1".into(),
-        contract: Addr::mock(0),
-        funds:    None,
-        simulate: None,
+        chain_id:      "dev-1".into(),
+        contract:      Addr::mock(0),
+        funds:         None,
+        simulate:      None,
+        submsg_result: None,
         sender,
     }
 }
