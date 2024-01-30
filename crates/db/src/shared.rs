@@ -1,5 +1,5 @@
 use {
-    crate::{increment_last_byte, Batch, DbError, DbResult, Order, Record, Storage},
+    cw_std::{increment_last_byte, Batch, Order, Record, Storage},
     std::{
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
@@ -37,12 +37,14 @@ impl<S> SharedStore<S> {
 
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
-    pub fn disassemble(self) -> DbResult<S> {
-        Arc::try_unwrap(self.store)
-            .map(|lock| lock.into_inner().unwrap_or_else(|err| {
-                panic!("poisoned lock: {err:?}")
-            }))
-            .map_err(|_| DbError::StillReferenced)
+    pub fn disassemble(self) -> S {
+        let lock = Arc::try_unwrap(self.store).unwrap_or_else(|_| {
+            panic!("")
+        });
+
+        lock.into_inner().unwrap_or_else(|err| {
+            panic!("poisoned lock: {err:?}")
+        })
     }
 }
 
@@ -174,7 +176,7 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::MockStorage};
+    use {super::*, cw_std::MockStorage};
 
     fn mock_records(min: u32, max: u32, order: Order) -> Vec<Record> {
         let mut records = vec![];

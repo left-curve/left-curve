@@ -6,9 +6,8 @@
 use {
     cfg_if::cfg_if,
     cw_bank::{Balance, InstantiateMsg},
-    cw_db::{BackendStorage, MockBackendStorage},
     cw_std::{to_json, Addr, BankQuery, BlockInfo, Coin, Coins, Context, TransferMsg, Uint128},
-    cw_vm::{BackendQuerier, Instance, MockBackendQuerier},
+    cw_vm::{BackendQuerier, BackendStorage, Instance, MockBackendQuerier, MockBackendStorage},
     lazy_static::lazy_static,
     std::{env, fs::File, io::Read, path::PathBuf},
 };

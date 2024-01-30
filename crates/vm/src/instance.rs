@@ -1,10 +1,9 @@
 use {
     crate::{
         db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
-        secp256k1_verify, secp256r1_verify, write_to_memory, BackendQuerier, Environment, VmError,
-        VmResult,
+        secp256k1_verify, secp256r1_verify, write_to_memory, BackendQuerier, BackendStorage,
+        Environment, VmError, VmResult,
     },
-    cw_db::BackendStorage,
     cw_std::{
         from_json, to_json, BankQuery, BankQueryResponse, Binary, Context, GenericResult, Response,
         TransferMsg, Tx,

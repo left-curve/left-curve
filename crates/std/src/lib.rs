@@ -9,7 +9,12 @@ mod types;
 pub use crate::{
     error::{StdError, StdResult},
     serde::{from_json, to_json},
-    storage::{Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey},
+    storage::{
+        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
+        split_one_key, trim, Batch, Bound, Item, Map, MapKey, Op, Order, Path, PathBuf, Prefix,
+        RawBound, RawKey, Record, Storage,
+    },
+    testing::MockStorage,
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
@@ -32,9 +37,6 @@ pub use crate::wasm::{
 };
 
 // -------------------------------- re-exports ---------------------------------
-
-// stuff from cw-db
-pub use cw_db::{Batch, MockStorage, Op, Order, Record, Storage};
 
 // macros
 pub use cw_std_derive::{cw_serde, entry_point};

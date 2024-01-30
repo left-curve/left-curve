@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_receive_event, new_transfer_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
-    cw_db::{Flush, PrefixStore, Storage},
-    cw_std::{Addr, BlockInfo, Coins, Context, Event, TransferMsg},
+    cw_db::PrefixStore,
+    cw_std::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn transfer<S: Storage + Flush + Clone + 'static>(
+pub fn transfer<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     from:  Addr,
@@ -33,7 +33,7 @@ pub fn transfer<S: Storage + Flush + Clone + 'static>(
 
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
-fn _transfer<S: Storage + Flush + Clone + 'static>(
+fn _transfer<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     from:  Addr,
@@ -77,7 +77,7 @@ fn _transfer<S: Storage + Flush + Clone + 'static>(
     _receive(store, block, msg, events)
 }
 
-fn _receive<S: Storage + Flush + Clone + 'static>(
+fn _receive<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     msg:        TransferMsg,

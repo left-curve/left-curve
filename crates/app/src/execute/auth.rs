@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_before_tx_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{Flush, PrefixStore, Storage},
-    cw_std::{BlockInfo, Context, Event, Tx},
+    cw_db::PrefixStore,
+    cw_std::{BlockInfo, Context, Event, Storage, Tx},
     cw_vm::Instance,
     tracing::{debug, warn},
 };
 
-pub fn authenticate_tx<S: Storage + Flush + Clone + 'static>(
+pub fn authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
@@ -25,7 +25,7 @@ pub fn authenticate_tx<S: Storage + Flush + Clone + 'static>(
     }
 }
 
-fn _authenticate_tx<S: Storage + Flush + Clone + 'static>(
+fn _authenticate_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,

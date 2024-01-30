@@ -102,7 +102,10 @@ impl StdError {
     }
 
     pub fn payment(expect: usize, actual: usize) -> Self {
-        Self::Payment { expect, actual }
+        Self::Payment {
+            expect,
+            actual,
+        }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {

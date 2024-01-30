@@ -1,5 +1,5 @@
 use {
-    crate::{Batch, Op, Order, Record, Storage},
+    cw_std::{Batch, Op, Order, Record, Storage},
     std::{cmp::Ordering, iter, iter::Peekable, mem, ops::Bound},
 };
 
@@ -158,7 +158,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::MockStorage};
+    use {super::*, cw_std::MockStorage};
 
     // illustration of this test case:
     //

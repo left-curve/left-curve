@@ -1,7 +1,6 @@
 use {
     crate::{App, AppResult},
-    cw_db::{Flush, Storage},
-    cw_std::{Attribute, BlockInfo, Event, Hash},
+    cw_std::{Attribute, BlockInfo, Event, Hash, Storage},
     std::net::ToSocketAddrs,
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
@@ -17,7 +16,7 @@ use {
 
 impl<S> App<S>
 where
-    S: Clone + Send + Sync + Storage + Flush + 'static,
+    S: Storage + Clone + Send + Sync + 'static,
 {
     pub fn start_abci_server(
         self,
@@ -32,7 +31,7 @@ where
 
 impl<S> Application for App<S>
 where
-    S: Clone + Send + Sync + Storage + Flush + 'static,
+    S: Storage + Clone + Send + Sync + 'static,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {

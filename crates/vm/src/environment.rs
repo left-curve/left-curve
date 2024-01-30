@@ -1,6 +1,5 @@
 use {
     crate::{VmError, VmResult},
-    cw_std::{GenericResult, QueryRequest, QueryResponse},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -8,10 +7,6 @@ use {
     },
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
-
-pub trait BackendQuerier {
-    fn query_chain(&self, req: QueryRequest) -> VmResult<GenericResult<QueryResponse>>;
-}
 
 // TODO: add explaination on why these fields need to be Options
 pub struct ContextData<S, Q> {

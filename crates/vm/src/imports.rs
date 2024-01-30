@@ -1,6 +1,5 @@
 use {
-    crate::{read_from_memory, write_to_memory, BackendQuerier, Environment, VmResult},
-    cw_db::BackendStorage,
+    crate::{read_from_memory, write_to_memory, BackendQuerier, BackendStorage, Environment, VmResult},
     cw_std::{from_json, to_json, QueryRequest, Record},
     tracing::info,
     wasmer::FunctionEnvMut,

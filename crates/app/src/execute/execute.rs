@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_execute_event, transfer},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{Flush, PrefixStore, Storage},
-    cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event},
+    cw_db::PrefixStore,
+    cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn execute<S: Storage + Flush + Clone + 'static>(
+pub fn execute<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -27,7 +27,7 @@ pub fn execute<S: Storage + Flush + Clone + 'static>(
     }
 }
 
-fn _execute<S: Storage + Flush + Clone + 'static>(
+fn _execute<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,

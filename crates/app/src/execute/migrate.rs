@@ -1,13 +1,13 @@
 use {
     super::{handle_submessages, new_migrate_event},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{Flush, PrefixStore, Storage},
-    cw_std::{Addr, Binary, BlockInfo, Context, Event, Hash},
+    cw_db::PrefixStore,
+    cw_std::{Addr, Binary, BlockInfo, Context, Event, Hash, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
-pub fn migrate<S: Storage + Flush + Clone + 'static>(
+pub fn migrate<S: Storage + Clone + 'static>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,
@@ -27,7 +27,7 @@ pub fn migrate<S: Storage + Flush + Clone + 'static>(
     }
 }
 
-fn _migrate<S: Storage + Flush + Clone + 'static>(
+fn _migrate<S: Storage + Clone + 'static>(
     mut store:     S,
     block:         &BlockInfo,
     contract:      &Addr,

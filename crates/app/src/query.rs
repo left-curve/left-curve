@@ -2,13 +2,13 @@ use {
     crate::{
         AppResult, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
-    cw_db::{BackendStorage, PrefixStore},
+    cw_db::PrefixStore,
     cw_std::{
         AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
         Context, GenericResult, Hash, InfoResponse, Order, QueryRequest, QueryResponse, StdResult,
         Storage, WasmRawResponse, WasmSmartResponse,
     },
-    cw_vm::{BackendQuerier, Instance, VmResult},
+    cw_vm::{BackendQuerier, BackendStorage, Instance, VmResult},
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;

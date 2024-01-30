@@ -9,10 +9,9 @@ use {
     cw_app::App,
     cw_bank::Balance,
     cw_crypto::Identity256,
-    cw_db::{Flush, MockStorage, Storage},
     cw_std::{
         from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash,
-        Message, QueryRequest, QueryResponse, Tx, Uint128,
+        Message, MockStorage, QueryRequest, QueryResponse, Storage, Tx, Uint128,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
@@ -278,7 +277,7 @@ fn make_block_info(height: u64, timestamp: u64) -> BlockInfo {
 
 fn query_all_balances<S>(app: &App<S>, accounts: &[TestAccount]) -> anyhow::Result<()>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     let mut resps = BTreeMap::new();
     for acct in accounts {
@@ -303,7 +302,7 @@ where
 
 fn query_supplies<S>(app: &App<S>) -> anyhow::Result<()>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     let supplies = from_json::<QueryResponse>(
         app.do_query(&to_json(&QueryRequest::Supplies {

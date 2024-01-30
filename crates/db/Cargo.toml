@@ -10,4 +10,5 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-thiserror = { workspace = true }
+cw-std = { path = "../std" }
+cw-vm  = { path = "../vm" }

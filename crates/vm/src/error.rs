@@ -1,6 +1,5 @@
 use {
     thiserror::Error,
-    cw_db::DbError,
     cw_std::StdError,
     std::string::FromUtf8Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
@@ -8,9 +7,6 @@ use {
 
 #[derive(Debug, Error)]
 pub enum VmError {
-    #[error(transparent)]
-    Db(#[from] DbError),
-
     #[error(transparent)]
     Std(#[from] StdError),
 
@@ -46,6 +42,11 @@ pub enum VmError {
 
     #[error("Failed to write lock ContextData")]
     FailedWriteLock,
+
+    #[error("Cannot find iterator with ID {iterator_id}")]
+    IteratorNotFound {
+        iterator_id: i32,
+    },
 
     #[error("Region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
     RegionTooSmall {

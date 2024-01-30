@@ -1,0 +1,94 @@
+use {
+    crate::{StdError, StdResult},
+    std::collections::BTreeMap,
+};
+
+/// A shorthand for an owned KV pair.
+pub type Record = (Vec<u8>, Vec<u8>);
+
+/// A batch of Db ops, ready to be committed.
+/// For RocksDB, this is similar to rocksdb::WriteBatch.
+pub type Batch = BTreeMap<Vec<u8>, Op>;
+
+/// Represents a database operation, either inserting a value or deleting one.
+#[derive(Debug, Clone)]
+pub enum Op {
+    Put(Vec<u8>),
+    Delete,
+}
+
+/// Describing iteration order.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Order {
+    Ascending = 1,
+    Descending = 2,
+}
+
+// we need to convert Order into a primitive type such as i32 so that it can be
+// passed over FFI
+impl From<Order> for i32 {
+    fn from(order: Order) -> Self {
+        order as _
+    }
+}
+
+impl TryFrom<i32> for Order {
+    type Error = StdError;
+
+    fn try_from(value: i32) -> StdResult<Self> {
+        match value {
+            1 => Ok(Order::Ascending),
+            2 => Ok(Order::Descending),
+            _ => {
+                let reason = format!("must be 1 (asc) or 2 (desc), found {value}");
+                Err(StdError::deserialize::<Self>(reason))
+            },
+        }
+    }
+}
+
+/// Describing a KV store that supports read, write, and iteration.
+///
+/// A question you may have is why these methods are not fallible (that is, for
+/// example, why `read` returns an Option<Vec<u8>> instead of a Result<Option<Vec<u8>>>).
+/// Surely reading/writing a database may fail?
+///
+/// The answer is that this trait describe the KV store _viewed from the Wasm
+/// module's perspective_. Indeed DB reads/writes may fail, but if they fail,
+/// the contract call is aborted in the host function; the Wasm module never
+/// receives a response. As long as the Wasm module receives a response, the
+/// read/write must have been successful.
+pub trait Storage {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
+
+    /// Iterate over data in the KV store under the given bounds and order.
+    /// Minimum bound is inclusive, maximum bound is exclusive.
+    /// If min > max, an empty iterator is to be returned.
+    ///
+    /// NOTE: Rust's BTreeMap panics if max > max. We don't want this behavior.
+    fn scan<'a>(
+        &'a self,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a>;
+
+    fn write(&mut self, key: &[u8], value: &[u8]);
+
+    fn remove(&mut self, key: &[u8]);
+
+    /// Perform a batch of writes and removes altogether, ideally atomically.
+    ///
+    /// The default implementation here is just looping through the ops and
+    /// applying them one by one, which is inefficient and not atomic.
+    /// Overwrite this implementation if there are more efficient approaches.
+    fn flush(&mut self, batch: Batch) {
+        for (key, op) in batch {
+            if let Op::Put(value) = op {
+                self.write(&key, &value);
+            } else {
+                self.remove(&key);
+            }
+        }
+    }
+}

@@ -657,7 +657,8 @@ dependencies = [
 name = "cw-db"
 version = "0.0.0"
 dependencies = [
- "thiserror",
+ "cw-std",
+ "cw-vm",
 ]
 
 [[package]]
@@ -705,7 +706,6 @@ dependencies = [
 name = "cw-std"
 version = "0.0.0"
 dependencies = [
- "cw-db",
  "cw-std-derive",
  "data-encoding",
  "hex",
@@ -746,7 +746,6 @@ dependencies = [
  "cfg-if",
  "cw-bank",
  "cw-crypto",
- "cw-db",
  "cw-std",
  "data-encoding",
  "lazy_static",
@@ -785,6 +784,7 @@ dependencies = [
  "clap",
  "cw-app",
  "cw-db",
+ "cw-std",
  "home",
  "tracing",
  "tracing-subscriber",

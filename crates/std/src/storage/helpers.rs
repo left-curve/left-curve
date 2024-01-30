@@ -40,6 +40,9 @@ pub fn nested_namespaces_with_key(
     out
 }
 
+/// Given a byte slice, return two bytes in big endian representing its length.
+/// Panic if the given byte slice is longer than the biggest length that can be
+/// represented by a two bytes (i.e. 65535).
 pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
     let len = bytes.as_ref().len();
     if len > 0xffff {
@@ -68,11 +71,15 @@ pub fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes
 }
 
+/// Given an extendable byte slice, append a zero byte to the end of it.
+/// This is useful for dealing with iterator bounds.
 pub fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes.push(0);
     bytes
 }
 
+/// Given two byte slices, make a new byte vector that is the two slices joined
+/// end to end.
 pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(namespace.len() + key.len());
     out.extend_from_slice(namespace);
@@ -80,10 +87,26 @@ pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     out
 }
 
+/// Given a byte slice that is prefixed with a namespace, trim the namespace,
+/// return the suffix. The reverse of what `concat` function does.
+///
+/// Note that this function only checks whether the byte slice is actually
+/// prefixed with the namespace in debug mode. In release we skip this for
+/// performance. You must make sure only use this function we you're sure the
+/// slice actually is prefixed with the namespace.
 pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
+    debug_assert!(key.starts_with(namespace), "byte slice doesn't start with the given namespace");
     key[namespace.len()..].to_vec()
 }
 
+/// Given a compound key consisting of [k1, k2, ..., kN] (N > 1) that is encoded
+/// in the following way:
+///
+/// len(k1) | k1 | len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}
+///
+/// Strip the first key, returns two new byte slices:
+/// 1. k1
+/// 2. len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}
 pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // NOTE: this panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);

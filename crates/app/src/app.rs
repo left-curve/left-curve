@@ -3,10 +3,10 @@ use {
         authenticate_tx, process_msg, process_query, AppError, AppResult, CHAIN_ID, CONFIG,
         LAST_FINALIZED_BLOCK,
     },
-    cw_db::{Batch, CacheStore, Flush, SharedStore},
+    cw_db::{CacheStore, SharedStore},
     cw_std::{
-        from_json, to_json, Addr, Binary, BlockInfo, Event, GenesisState, Hash, QueryRequest,
-        Storage, Tx,
+        from_json, to_json, Addr, Batch, Binary, BlockInfo, Event, GenesisState, Hash,
+        QueryRequest, Storage, Tx,
     },
     std::sync::{Arc, RwLock},
     tracing::{debug, info},
@@ -55,7 +55,7 @@ impl<S> App<S> {
 
 impl<S> App<S>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     pub fn do_init_chain(
         &self,
@@ -110,7 +110,7 @@ where
             tx_results.push(run_tx(cached.share(), &block, from_json(raw_tx)?));
         }
 
-        let (_, batch) = cached.disassemble()?.disassemble();
+        let (_, batch) = cached.disassemble().disassemble();
 
         self.put_pending(batch, block.clone())?;
 
@@ -125,7 +125,7 @@ where
         let (batch, block) = self.take_pending()?;
 
         // apply the DB ops effected by txs in this block
-        store.flush(batch)?;
+        store.flush(batch);
 
         // update the last finalized block info
         LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
@@ -165,7 +165,7 @@ where
 
 fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     let mut events = vec![];
 
@@ -179,7 +179,7 @@ where
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
     // fails, we don't update account state.
-    cached.write_access().commit()?;
+    cached.write_access().commit();
 
     // now that the tx is authenticated, we loop through the messages and
     // execute them one by one.
@@ -192,7 +192,7 @@ where
     }
 
     // all messages succeeded. commit the state changes
-    cached.write_access().commit()?;
+    cached.write_access().commit();
 
     Ok(events)
 }

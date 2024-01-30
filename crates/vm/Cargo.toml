@@ -11,7 +11,6 @@ categories    = { workspace = true }
 
 [dependencies]
 cw-crypto     = { path = "../crypto" }
-cw-db         = { path = "../db" }
 cw-std        = { path = "../std" }
 data-encoding = { workspace = true }
 serde         = { workspace = true }

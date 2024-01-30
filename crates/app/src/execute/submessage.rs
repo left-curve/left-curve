@@ -1,8 +1,8 @@
 use {
     super::new_reply_event,
     crate::{process_msg, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{CacheStore, Flush, PrefixStore, SharedStore, Storage},
-    cw_std::{Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, SubMessage},
+    cw_db::{CacheStore, PrefixStore, SharedStore},
+    cw_std::{Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -12,7 +12,7 @@ use {
 ///
 /// Note: The `sender` in this function signature is the contract, i.e. the
 /// account that emitted the submessages, not the transaction's sender.
-pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
+pub fn handle_submessages<S: Storage + Clone + 'static>(
     store:   S,
     block:   &BlockInfo,
     sender:  &Addr,
@@ -25,7 +25,7 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
-                cached.disassemble()?.consume()?;
+                cached.disassemble().consume();
                 events.extend(submsg_events.clone());
                 events.extend(reply(
                     store.clone(),
@@ -49,7 +49,7 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
             // success - callback not requested
             // flush state changes, log events, move on to the next submsg
             (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
-                cached.disassemble()?.consume()?;
+                cached.disassemble().consume();
                 events.extend(submsg_events);
             },
             // error - callback not requested
@@ -62,7 +62,7 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
     Ok(events)
 }
 
-fn reply<S: Storage + Flush + Clone + 'static>(
+fn reply<S: Storage + Clone + 'static>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,
@@ -81,7 +81,7 @@ fn reply<S: Storage + Flush + Clone + 'static>(
     }
 }
 
-fn _reply<S: Storage + Flush + Clone + 'static>(
+fn _reply<S: Storage + Clone + 'static>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,

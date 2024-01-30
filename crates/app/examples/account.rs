@@ -8,10 +8,9 @@ use {
     cw_account::{sign_bytes, ExecuteMsg, InstantiateMsg, PubKey, QueryMsg, StateResponse},
     cw_app::App,
     cw_crypto::Identity256,
-    cw_db::{Flush, MockStorage, Storage},
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
-        QueryRequest, QueryResponse, Tx,
+        MockStorage, QueryRequest, QueryResponse, Storage, Tx,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -177,7 +176,7 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn new_tx<S: Storage + Flush + 'static>(
+fn new_tx<S: Storage + 'static>(
     app:    &App<S>,
     sender: &Addr,
     sk:     &SigningKey,
@@ -214,7 +213,7 @@ fn new_tx<S: Storage + Flush + 'static>(
 
 fn query<S>(app: &App<S>, req: QueryRequest) -> anyhow::Result<()>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
 {
     let resp = app.do_query(&to_json(&req)?)?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
@@ -223,7 +222,7 @@ where
 
 fn query_wasm_smart<S, M, T>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
-    S: Storage + Flush + 'static,
+    S: Storage + 'static,
     M: Serialize,
     T: Serialize + DeserializeOwned,
 {

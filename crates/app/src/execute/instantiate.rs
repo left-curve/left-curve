@@ -1,14 +1,14 @@
 use {
     super::{handle_submessages, new_instantiate_event, transfer},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{Flush, PrefixStore, Storage},
-    cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash},
+    cw_db::PrefixStore,
+    cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn instantiate<S: Storage + Flush + Clone + 'static>(
+pub fn instantiate<S: Storage + Clone + 'static>(
     store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
@@ -32,7 +32,7 @@ pub fn instantiate<S: Storage + Flush + Clone + 'static>(
 
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
-fn _instantiate<S: Storage + Flush + Clone + 'static>(
+fn _instantiate<S: Storage + Clone + 'static>(
     mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,

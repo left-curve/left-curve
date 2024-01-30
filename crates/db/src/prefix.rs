@@ -1,8 +1,6 @@
 use {
-    crate::{
-        concat, increment_last_byte, trim, BackendStorage, DbError, DbResult, Order, Record,
-        Storage,
-    },
+    cw_std::{concat, increment_last_byte, trim, Order, Record, Storage},
+    cw_vm::{BackendStorage, VmError, VmResult},
     std::collections::HashMap,
 };
 
@@ -39,7 +37,9 @@ impl<S> PrefixStore<S> {
 }
 
 impl<S: Storage> BackendStorage for PrefixStore<S> {
-    fn read(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>> {
+    type Err = VmError;
+
+    fn read(&self, key: &[u8]) -> VmResult<Option<Vec<u8>>> {
         Ok(self.store.read(&concat(&self.namespace, key)))
     }
 
@@ -48,7 +48,7 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> DbResult<i32> {
+    ) -> VmResult<i32> {
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
@@ -58,14 +58,14 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: i32) -> DbResult<Option<Record>> {
+    fn next(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
             .map(|iter| iter.next(&self.store))
-            .ok_or(DbError::IteratorNotFound { iterator_id })
+            .ok_or(VmError::IteratorNotFound { iterator_id })
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> DbResult<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) -> VmResult<()> {
         self.store.write(&concat(&self.namespace, key), value);
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -75,7 +75,7 @@ impl<S: Storage> BackendStorage for PrefixStore<S> {
         Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> DbResult<()> {
+    fn remove(&mut self, key: &[u8]) -> VmResult<()> {
         self.store.remove(&concat(&self.namespace, key));
 
         // whenever KV data is mutated, delete all existing iterators to avoid

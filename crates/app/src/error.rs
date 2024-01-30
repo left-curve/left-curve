@@ -1,5 +1,4 @@
 use {
-    cw_db::DbError,
     cw_std::{Addr, Hash, StdError},
     cw_vm::VmError,
     thiserror::Error,
@@ -12,9 +11,6 @@ pub enum AppError {
 
     #[error(transparent)]
     Vm(#[from] VmError),
-
-    #[error(transparent)]
-    Db(#[from] DbError),
 
     #[error("Pending data lock is poisoned")]
     PendingDataPoisoned,
