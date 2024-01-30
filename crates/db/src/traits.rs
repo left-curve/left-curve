@@ -1,4 +1,4 @@
-use crate::{Batch, DbResult, Order, Record};
+use crate::{Batch, DbResult, Op, Order, Record};
 
 /// Describing a KV store that supports read, write, and iteration.
 ///
@@ -29,6 +29,21 @@ pub trait Storage {
     fn write(&mut self, key: &[u8], value: &[u8]);
 
     fn remove(&mut self, key: &[u8]);
+
+    /// Perform a batch of writes and removes altogether, ideally atomically.
+    ///
+    /// The default implementation here is just looping through the ops and
+    /// applying them one by one, which is inefficient and not atomic.
+    /// Overwrite this implementation if there are more efficient approaches.
+    fn flush(&mut self, batch: Batch) {
+        for (key, op) in batch {
+            if let Op::Put(value) = op {
+                self.write(&key, &value);
+            } else {
+                self.remove(&key);
+            }
+        }
+    }
 }
 
 /// Describing a KV store that supports read, write, and iteration.
@@ -41,6 +56,8 @@ pub trait Storage {
 ///   an iterator ID. To advance the iterator, call the `next` method with the
 ///   ID. The reason for this is we can't pass an iterator object over the
 ///   Rust<>Wasm FFI; we can only pass IDs.
+/// - There isn't a method equivalent to `flush` because we don't need it for
+///   out use case.
 pub trait BackendStorage {
     fn read(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>>;
 
@@ -63,13 +80,11 @@ pub trait BackendStorage {
     /// we MUST NOT change the underlying KV data.
     fn next(&mut self, iterator_id: i32) -> DbResult<Option<Record>>;
 
+    /// IMPORTANT: to avoid race conditions, calling this method MUST result in
+    /// all existing iterators being dropped.
     fn write(&mut self, key: &[u8], value: &[u8]) -> DbResult<()>;
 
+    /// IMPORTANT: to avoid race conditions, calling this method MUST result in
+    /// all existing iterators being dropped.
     fn remove(&mut self, key: &[u8]) -> DbResult<()>;
-}
-
-/// Describing a KV store capable to performing a batch of reads/writes together,
-/// ideally atomically.
-pub trait Flush {
-    fn flush(&mut self, batch: Batch) -> DbResult<()>;
 }

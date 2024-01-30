@@ -1,5 +1,5 @@
 use {
-    crate::{increment_last_byte, Batch, DbError, DbResult, Flush, Order, Record, Storage},
+    crate::{increment_last_byte, Batch, DbError, DbResult, Order, Record, Storage},
     std::{
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
@@ -52,12 +52,6 @@ impl<S> Clone for SharedStore<S> {
     }
 }
 
-impl<S: Flush> Flush for SharedStore<S> {
-    fn flush(&mut self, batch: Batch) -> DbResult<()> {
-        self.write_access().flush(batch)
-    }
-}
-
 impl<S: Storage> Storage for SharedStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
@@ -104,6 +98,10 @@ impl<S: Storage> Storage for SharedStore<S> {
 
     fn remove(&mut self, key: &[u8]) {
         self.write_access().remove(key)
+    }
+
+    fn flush(&mut self, batch: Batch) {
+        self.write_access().flush(batch)
     }
 }
 

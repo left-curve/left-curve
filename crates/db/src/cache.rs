@@ -1,5 +1,5 @@
 use {
-    crate::{Batch, DbResult, Flush, Op, Order, Record, Storage},
+    crate::{Batch, Op, Order, Record, Storage},
     std::{cmp::Ordering, iter, iter::Peekable, mem, ops::Bound},
 };
 
@@ -19,35 +19,25 @@ impl<S> CacheStore<S> {
         }
     }
 
-    /// Comsume self, return the underlying store and the uncommitted batch.
+    /// Comsume self, do not flush, just return the underlying store and the
+    /// pending ops.
     pub fn disassemble(self) -> (S, Batch) {
         (self.base, self.pending)
     }
 }
 
-impl<S> Flush for CacheStore<S> {
-    fn flush(&mut self, batch: Batch) -> DbResult<()> {
-        // if we do a.extend(b), while a and b have common keys, the values in b
-        // are chosen. this is exactly what we want.
-        self.pending.extend(batch);
-        Ok(())
-    }
-}
-
-impl<S: Flush> CacheStore<S> {
-    /// Consume self, apply the pending changes to the underlying store, return
-    /// the underlying store.
-    pub fn consume(mut self) -> DbResult<S> {
-        self.base.flush(self.pending)?;
-        Ok(self.base)
-    }
-
-    /// Similar to `consume`, but without consuming self. `self.pending` is
-    /// replaced with an empty batch.
-    pub fn commit(&mut self) -> DbResult<()> {
+impl<S: Storage> CacheStore<S> {
+    /// Flush pending ops to the underlying store.
+    pub fn commit(&mut self) {
         let pending = mem::take(&mut self.pending);
-        self.base.flush(pending)?;
-        Ok(())
+        self.base.flush(pending);
+    }
+
+    /// Consume self, flush pending ops to the underlying store, return the
+    /// underlying store.
+    pub fn consume(mut self) -> S {
+        self.base.flush(self.pending);
+        self.base
     }
 }
 
@@ -91,6 +81,12 @@ impl<S: Storage> Storage for CacheStore<S> {
 
     fn remove(&mut self, key: &[u8]) {
         self.pending.insert(key.to_vec(), Op::Delete);
+    }
+
+    fn flush(&mut self, batch: Batch) {
+        // if we do a.extend(b), while a and b have common keys, the values in b
+        // are chosen. this is exactly what we want.
+        self.pending.extend(batch);
     }
 }
 

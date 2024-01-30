@@ -13,7 +13,7 @@ pub use {
     prefix::PrefixStore,
     shared::SharedStore,
     testing::{MockBackendStorage, MockStorage},
-    traits::{BackendStorage, Flush, Storage},
+    traits::{BackendStorage, Storage},
     types::{Batch, Op, Order, Record},
     utils::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
