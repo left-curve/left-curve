@@ -20,7 +20,7 @@ pub enum Op {
 /// Describing iteration order.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Order {
-    Ascending = 1,
+    Ascending  = 1,
     Descending = 2,
 }
 
@@ -48,16 +48,6 @@ impl TryFrom<i32> for Order {
 }
 
 /// Describing a KV store that supports read, write, and iteration.
-///
-/// A question you may have is why these methods are not fallible (that is, for
-/// example, why `read` returns an Option<Vec<u8>> instead of a Result<Option<Vec<u8>>>).
-/// Surely reading/writing a database may fail?
-///
-/// The answer is that this trait describe the KV store _viewed from the Wasm
-/// module's perspective_. Indeed DB reads/writes may fail, but if they fail,
-/// the contract call is aborted in the host function; the Wasm module never
-/// receives a response. As long as the Wasm module receives a response, the
-/// read/write must have been successful.
 pub trait Storage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
 
