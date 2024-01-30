@@ -24,7 +24,7 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
         match (submsg.reply_on, process_msg(cached.share(), block, sender, submsg.msg)) {
             // success - callback requested
             // flush state changes, log events, give callback
-            (ReplyOn::Success(payload) | ReplyOn::Always(payload), AppResult::Ok(submsg_events)) => {
+            (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 cached.disassemble()?.consume()?;
                 events.extend(submsg_events.clone());
                 events.extend(reply(
@@ -37,7 +37,7 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
             },
             // error - callback requested
             // discard uncommitted state changes, give callback
-            (ReplyOn::Error(payload) | ReplyOn::Always(payload), AppResult::Err(err)) => {
+            (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
                 events.extend(reply(
                     store.clone(),
                     block,
@@ -48,13 +48,13 @@ pub fn handle_submessages<S: Storage + Flush + Clone + 'static>(
             },
             // success - callback not requested
             // flush state changes, log events, move on to the next submsg
-            (ReplyOn::Error(_) | ReplyOn::Never, AppResult::Ok(submsg_events)) => {
+            (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
                 cached.disassemble()?.consume()?;
                 events.extend(submsg_events);
             },
             // error - callback not requested
             // abort by throwing error
-            (ReplyOn::Success(_) | ReplyOn::Never, AppResult::Err(err)) => {
+            (ReplyOn::Success(_) | ReplyOn::Never, Result::Err(err)) => {
                 return Err(err);
             },
         };
