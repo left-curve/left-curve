@@ -49,6 +49,7 @@ extern "C" {
 /// For entry points where state mutation isn't allowed (such as query), an
 /// immutable reference is included. This prevents the contract from calling
 /// the write/remove methods. Of course, the host must also set safeguards!
+#[derive(Clone)]
 pub struct ExternalStorage;
 
 impl Storage for ExternalStorage {

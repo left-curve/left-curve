@@ -12,6 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 cw-std-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
+dyn-clone       = { workspace = true }
 hex             = { workspace = true }
 serde           = { workspace = true, features = ["derive"] }
 serde-json-wasm = { workspace = true }

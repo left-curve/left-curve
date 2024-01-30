@@ -2,7 +2,9 @@ use {
     super::new_reply_event,
     crate::{process_msg, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::{CacheStore, PrefixStore, SharedStore},
-    cw_std::{Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage},
+    cw_std::{
+        Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage,
+    },
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -12,8 +14,34 @@ use {
 ///
 /// Note: The `sender` in this function signature is the contract, i.e. the
 /// account that emitted the submessages, not the transaction's sender.
-pub fn handle_submessages<S: Storage + Clone + 'static>(
-    store:   S,
+pub fn handle_submessages(
+    // This function takes a boxed store instead of using a generic like others.
+    //
+    // This is because this function is recursive: every layer of recursion, it
+    // wraps the store with `SharedStore<CacheStore<S>>`.
+    //
+    // Although the recursion is guaranteed to be bounded at run time (thanks to
+    // gas limit), the compiler can't understand this. The compiler thinks the
+    // wrapping can possibly go on infinitely. It would throw this error:
+    //
+    // > error: reached the recursion limit while instantiating
+    // > `process_msg::<SharedStore<CacheStore<SharedStore<CacheStore<SharedStore<...>>>>>>`
+    //
+    // To prevent this, we use `Box<dyn Storage>` instead, which is an opaque
+    // type, so that the compiler does not think about how many layers of
+    // wrapping there are.
+    //
+    // Another complexity involved here is that we need the store to be clonable.
+    // However we can't write `Box<dyn Storage + Clone>` because `Clone` is not
+    // an object-safe trait:
+    // https://doc.rust-lang.org/reference/items/traits.html#object-safety
+    //
+    // Instead, we use the `dyn_clone::DynClone` trait:
+    // https://docs.rs/dyn-clone/1.0.16/dyn_clone/
+    //
+    // TODO: these wrapping and boxing for sure has impact on performance.
+    // This is probably fine for now, but we should think about optimizing this.
+    store:   Box<dyn Storage>,
     block:   &BlockInfo,
     sender:  &Addr,
     submsgs: Vec<SubMessage>,
@@ -63,10 +91,10 @@ pub fn handle_submessages<S: Storage + Clone + 'static>(
 }
 
 fn reply<S: Storage + Clone + 'static>(
-    store:         S,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    payload:       Binary,
+    store: S,
+    block: &BlockInfo,
+    contract: &Addr,
+    payload: Binary,
     submsg_result: GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
     match _reply(store, block, contract, payload, submsg_result) {
@@ -82,10 +110,10 @@ fn reply<S: Storage + Clone + 'static>(
 }
 
 fn _reply<S: Storage + Clone + 'static>(
-    store:         S,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    payload:       Binary,
+    store: S,
+    block: &BlockInfo,
+    contract: &Addr,
+    payload: Binary,
     submsg_result: GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
@@ -101,18 +129,18 @@ fn _reply<S: Storage + Clone + 'static>(
     // call reply
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      contract.clone(),
-        sender:        None,
-        funds:         None,
-        simulate:      None,
+        block: block.clone(),
+        contract: contract.clone(),
+        sender: None,
+        funds: None,
+        simulate: None,
         submsg_result: Some(submsg_result),
     };
     let resp = instance.call_reply(&ctx, payload)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages(store, block, contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store), block, contract, resp.submsgs)?);
 
     Ok(events)
 }

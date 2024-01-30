@@ -65,7 +65,7 @@ fn _execute<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

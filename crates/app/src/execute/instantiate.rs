@@ -82,7 +82,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, ctx.contract))
 }

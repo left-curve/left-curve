@@ -70,7 +70,7 @@ fn _transfer<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(store.clone(), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store.clone()), block, &ctx.contract, resp.submsgs)?);
 
     // call the recipient contract's `receive` entry point to inform it of this
     // transfer
@@ -107,7 +107,7 @@ fn _receive<S: Storage + Clone + 'static>(
 
     // handle submessages
     events.push(new_receive_event(&msg.to, resp.attributes));
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, msg))
 }

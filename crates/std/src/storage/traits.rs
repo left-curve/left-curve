@@ -1,5 +1,6 @@
 use {
     crate::{StdError, StdResult},
+    dyn_clone::DynClone,
     std::collections::BTreeMap,
 };
 
@@ -48,7 +49,13 @@ impl TryFrom<i32> for Order {
 }
 
 /// Describing a KV store that supports read, write, and iteration.
-pub trait Storage {
+///
+/// Note that the store must be clone-able, which is required by Wasmer runtime.
+/// We can't use the std library Clone trait, which is not object-safe.
+/// We use DynClone (https://crates.io/crates/dyn-clone) instead, which is
+/// object-safe, and use the `clone_trait_object!` macro below to derive std
+/// Clone trait for any type that implements Storage.
+pub trait Storage: DynClone {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
 
     /// Iterate over data in the KV store under the given bounds and order.
@@ -82,3 +89,6 @@ pub trait Storage {
         }
     }
 }
+
+// derive std Clone trait for any type that implements Storage
+dyn_clone::clone_trait_object!(Storage);

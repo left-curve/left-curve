@@ -13,6 +13,7 @@ categories    = { workspace = true }
 cw-db            = { path = "../db" }
 cw-std           = { path = "../std" }
 cw-vm            = { path = "../vm" }
+dyn-clone        = { workspace = true }
 hex              = { workspace = true }
 tendermint-proto = { workspace = true }
 tendermint-abci  = { workspace = true }

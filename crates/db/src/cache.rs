@@ -5,12 +5,13 @@ use {
 
 /// Adapted from cw-multi-test:
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
-pub struct CacheStore<S> {
+#[derive(Clone)]
+pub struct CacheStore<S: Clone> {
     base:    S,
     pending: Batch,
 }
 
-impl<S> CacheStore<S> {
+impl<S: Clone> CacheStore<S> {
     /// Create a new cached store with an optional write batch.
     pub fn new(base: S, pending: Option<Batch>) -> Self {
         Self {
@@ -26,7 +27,7 @@ impl<S> CacheStore<S> {
     }
 }
 
-impl<S: Storage> CacheStore<S> {
+impl<S: Storage + Clone> CacheStore<S> {
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
         let pending = mem::take(&mut self.pending);
@@ -41,7 +42,7 @@ impl<S: Storage> CacheStore<S> {
     }
 }
 
-impl<S: Storage> Storage for CacheStore<S> {
+impl<S: Storage + Clone> Storage for CacheStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         match self.pending.get(key) {
             Some(Op::Put(value)) => Some(value.clone()),

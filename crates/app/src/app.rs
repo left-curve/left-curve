@@ -165,7 +165,7 @@ where
 
 fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + 'static,
+    S: Storage + Clone + 'static,
 {
     let mut events = vec![];
 

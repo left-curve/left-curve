@@ -78,7 +78,7 @@ fn _migrate<S: Storage + Clone + 'static>(
         &account.code_hash,
         resp.attributes,
     )];
-    events.extend(handle_submessages(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
