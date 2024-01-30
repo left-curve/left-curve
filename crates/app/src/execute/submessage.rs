@@ -2,9 +2,7 @@ use {
     super::new_reply_event,
     crate::{process_msg, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::{CacheStore, PrefixStore, SharedStore},
-    cw_std::{
-        Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage,
-    },
+    cw_std::{Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -91,10 +89,10 @@ pub fn handle_submessages(
 }
 
 fn reply<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    contract: &Addr,
-    payload: Binary,
+    store:         S,
+    block:         &BlockInfo,
+    contract:      &Addr,
+    payload:       Binary,
     submsg_result: GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
     match _reply(store, block, contract, payload, submsg_result) {
@@ -110,10 +108,10 @@ fn reply<S: Storage + Clone + 'static>(
 }
 
 fn _reply<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    contract: &Addr,
-    payload: Binary,
+    store:         S,
+    block:         &BlockInfo,
+    contract:      &Addr,
+    payload:       Binary,
     submsg_result: GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
@@ -129,11 +127,11 @@ fn _reply<S: Storage + Clone + 'static>(
     // call reply
     let ctx = Context {
         chain_id,
-        block: block.clone(),
-        contract: contract.clone(),
-        sender: None,
-        funds: None,
-        simulate: None,
+        block:         block.clone(),
+        contract:      contract.clone(),
+        sender:        None,
+        funds:         None,
+        simulate:      None,
         submsg_result: Some(submsg_result),
     };
     let resp = instance.call_reply(&ctx, payload)?.into_std_result()?;
