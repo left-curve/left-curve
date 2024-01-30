@@ -128,6 +128,8 @@ fn new_refund_msg(to: Addr, coins: Coins) -> StdResult<SubMessage> {
     )
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
