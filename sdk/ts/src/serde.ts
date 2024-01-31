@@ -1,42 +1,57 @@
 /**
- * Represents either an JSON object, a string, or a number.
+ * Represents either an JSON object, an array, a string, or a number.
  * Note that we utilize a recursive type definition here.
  */
-export type Payload = { [key: string]: Payload } | string | number;
+export type Payload = { [key: string]: Payload } | Payload[] | string | number;
 
 /**
  * Serialize a payload to JSON string.
  * The payload should use camelCase, while the JSON string would have snale_case.
  */
-export function serialize(msg: Payload): string {
-  if (typeof msg === "string" || typeof msg === "number") {
-    return JSON.stringify(msg);
-  } else {
-    let snakeCaseObj = {} as { [key: string]: Payload };
-    for (const key of Object.keys(msg)) {
-      const snakeKey = camelToSnake(key);
-      snakeCaseObj[snakeKey] = msg[key];
-    }
-    return JSON.stringify(snakeCaseObj);
-  }
+export function serialize(payload: Payload): string {
+  return JSON.stringify(recursiveTransform(payload, camelToSnake));
 }
 
 /**
  * Deserialize a JSON string to a payload.
  * The JSON string should use snake_case, while the payload would have camelCase.
  */
-export function deserialize(base64Str: string): Payload {
-  const parsed = JSON.parse(base64Str);
-  if (typeof parsed === "string" || typeof parsed === "number") {
-    return parsed;
-  } else {
-    let camelCaseObj = {} as { [key: string]: Payload };
-    for (const key of Object.keys(parsed)) {
-      const camelKey = snakeToCamel(key);
-      camelCaseObj[camelKey] = parsed[key];
-    }
-    return camelCaseObj;
+export function deserialize(str: string): Payload {
+  return recursiveTransform(JSON.parse(str), snakeToCamel);
+}
+
+/**
+ * Given a payload, recursively transform the case of the keys.
+ *
+ * To transform camelCase to snake_case, do:
+ *
+ * ```javascript
+ * let snakeCasePayload = recursiveTransform(payload, camelToSnake);
+ * ```
+ *
+ * To transform snake_case to camelCase, do:
+ *
+ * ```javascript
+ * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
+ * ```
+ */
+function recursiveTransform(payload: Payload, transformFn: (str: string) => string): Payload {
+  // for strings, numbers, and nulls, there's no key to be transformed
+  if (typeof payload !== "object" || payload === null) {
+    return payload;
   }
+
+  // for arrays, we recursively transform each element
+  if (Array.isArray(payload)) {
+    return payload.map((element) => recursiveTransform(element, transformFn));
+  }
+
+  // for objects, we go through each key, transforming it to snake_case
+  const newObj = {} as { [key: string]: Payload };
+  for (const [key, value] of Object.entries(payload)) {
+    newObj[transformFn(key)] = recursiveTransform(value, transformFn);
+  }
+  return newObj;
 }
 
 /**
@@ -67,4 +82,77 @@ export function encodeUtf8(str: string): Uint8Array {
 export function decodeUtf8(bytes: Uint8Array): string {
   const decoder = new TextDecoder();
   return decoder.decode(bytes);
+}
+
+/**
+ * Given a number, assume it is a non-negative integer, encode it as 32-bit big
+ * endian bytes.
+ */
+export function encodeBigEndian32(value: number): Uint8Array {
+  const buffer = new ArrayBuffer(4);
+  const view = new DataView(buffer);
+  view.setUint32(0, value, false);
+  return new Uint8Array(buffer);
+}
+
+/**
+ * Given a byte array, attempt to deserialize it into a number as 32-bit big
+ * endian encoding. Error if the byte array isn't exactly 4 bytes in length.
+ */
+export function decodeBigEndian32(bytes: Uint8Array): number {
+  if (bytes.byteLength !== 4) {
+    throw new Error(`expecting exactly 4 bytes, got ${bytes.byteLength}`);
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return view.getUint32(0, false);
+}
+
+/**
+ * Encode a byte array to a string using the Hex scheme, lowercase, no 0x prefix.
+ */
+export function encodeHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map((byte) => byte.toString(16)).join('');
+}
+
+/**
+ * Decode a string to byte array using the Hex scheme.
+ */
+export function decodeHex(hexStr: string): Uint8Array {
+  if (hexStr.length % 2 !== 0) {
+    throw new Error("hex string has an odd length");
+  }
+  const bytes = new Uint8Array(hexStr.length / 2);
+  for (let i = 0, j = 0; i < hexStr.length; i += 2, j++) {
+    bytes[j] = parseInt(hexStr.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+/**
+ * Encode a byte array to a string using the Base64 scheme.
+ *
+ * JavaScript provides the built-in `btoa` function, but it only works with
+ * strings, so we first need to convert the byte array to a Unicode string.
+ */
+export function encodeBase64(bytes: Uint8Array): string {
+  let unicodeStr = "";
+  for (let i = 0; i < bytes.length; i++) {
+    unicodeStr += String.fromCharCode(bytes[i]);
+  }
+  return btoa(unicodeStr);
+}
+
+/**
+ * Decode a string to byte array using the Base64 scheme.
+ *
+ * JavaScript provides the build-in `atob` function, but it only works with
+ * strings, so we first need to convert the Base64 string to a Unicode string.
+ */
+export function decodeBase64(base64Str: string): Uint8Array {
+  const unicodeStr = atob(base64Str);
+  const bytes = new Uint8Array(unicodeStr.length);
+  for (let i = 0; i < unicodeStr.length; i++) {
+    bytes[i] = unicodeStr.charCodeAt(i);
+  }
+  return bytes;
 }

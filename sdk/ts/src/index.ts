@@ -1,6 +1,18 @@
-export { Client } from "./client";
+export { createSignBytes, Client, SigningOptions } from "./client";
 export { GenesisBuilder } from "./genesisbuilder";
-export { decodeUtf8, deserialize, encodeUtf8, serialize, Payload } from "./serde";
+export {
+  decodeBase64,
+  decodeBigEndian32,
+  decodeHex,
+  decodeUtf8,
+  deserialize,
+  encodeBase64,
+  encodeBigEndian32,
+  encodeHex,
+  encodeUtf8,
+  serialize,
+  Payload,
+} from "./serde";
 export {
   Account,
   AccountResponse,

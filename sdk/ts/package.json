@@ -20,6 +20,7 @@
     "build": "rm -rf ./dist && tsc"
   },
   "dependencies": {
+    "@cosmjs/crypto": "^0.32.2",
     "@cosmjs/tendermint-rpc": "^0.32.2"
   },
   "devDependencies": {
