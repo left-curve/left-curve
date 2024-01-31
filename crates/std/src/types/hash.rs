@@ -19,14 +19,13 @@ pub fn hash(data: impl AsRef<[u8]>) -> Hash {
 pub struct Hash(pub(crate) [u8; Self::LENGTH]);
 
 impl Hash {
-    /// We use lowercase HEX encoding for hashes, with the 0x prefix.
-    pub const PREFIX: &'static str = "0x";
-
     /// The length (number of bytes) of hashes.
     ///
     /// In CWD, we use SHA-256 hash everywhere, of which the length is 32 bytes.
     ///
-    /// Do not confuse length in terms of bytes and in terms of ASCII chars.
+    /// Do not confuse length in terms of bytes and in terms of ASCII characters.
+    /// We use Hex encoding, which uses 2 ASCII characters per byte, so the
+    /// ASCII length should be 64.
     pub const LENGTH: usize = 32;
 }
 
@@ -72,7 +71,7 @@ impl TryFrom<&[u8]> for Hash {
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::incorrect_length::<Self>(Self::LENGTH, bytes.len()))
+            return Err(StdError::deserialize::<Self>("hash is not of the correct length"));
         };
 
         Ok(Self(bytes))
@@ -83,11 +82,11 @@ impl FromStr for Hash {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
-            return Err(StdError::incorrect_prefix::<Self>(Self::PREFIX))
-        };
+        if !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
+            return Err(StdError::deserialize::<Self>("hash must only contain lowercase alphanumeric characters"));
+        }
 
-        hex::decode(hex_str)?.as_slice().try_into()
+        hex::decode(s)?.as_slice().try_into()
     }
 }
 
@@ -107,13 +106,13 @@ impl MapKey for &Hash {
 
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Self::PREFIX, hex::encode(self.0))
+        f.write_str(&hex::encode(self.0))
     }
 }
 
 impl fmt::Debug for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Hash({}{})", Self::PREFIX, hex::encode(self.0))
+        write!(f, "Hash({})", hex::encode(self.0))
     }
 }
 
@@ -141,14 +140,50 @@ impl<'de> de::Visitor<'de> for HashVisitor {
     type Value = Hash;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("A lowercase, hex encoded, 0x prefixed string representing 32 bytes")
+        f.write_str("a lowercase, hex-encoded string representing 32 bytes")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Hash::from_str(v)
-            .map_err(|err| E::custom(format!("[Hash]: failed to parse from string `{v}`: {err}")))
+        Hash::from_str(v).map_err(E::custom)
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{from_json, to_json},
+        hex_literal::hex,
+    };
+
+    // just a random block hash I grabbed from MintScan
+    const MOCK_STR:  &str = "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
+    const MOCK_JSON: &str = "\"299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b\"";
+    const MOCK_HASH: Hash = Hash(hex!("299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"));
+
+    #[test]
+    fn serializing() {
+        assert_eq!(MOCK_STR, MOCK_HASH.to_string());
+        assert_eq!(MOCK_JSON.as_bytes(), to_json(&MOCK_HASH).unwrap().as_ref());
+    }
+
+    #[test]
+    fn deserializing() {
+        assert_eq!(MOCK_HASH, Hash::from_str(MOCK_STR).unwrap());
+        assert_eq!(MOCK_HASH, from_json(MOCK_JSON).unwrap());
+
+        // uppercase hex strings are not accepted
+        let illegal_str = MOCK_STR.to_uppercase();
+        assert!(from_json::<Hash>(illegal_str.as_bytes()).is_err());
+
+        // incorrect length
+        // trim the last two characters, so the string only represents 31 bytes
+        let illegal_str = &MOCK_STR[..MOCK_STR.len() - 2];
+        assert!(from_json::<Hash>(illegal_str.as_bytes()).is_err());
     }
 }
