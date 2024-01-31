@@ -21,7 +21,7 @@ import {
 import { Message, Tx } from "./types";
 
 // cwcli uses 50,000 iterations in debug mode and 600,000 in release mode
-const PBKDF2_ITERATIONS = 50_000 /* 600_000 */;
+const PBKDF2_ITERATIONS = 600_000 /* 50_000 */;
 const PBKDF2_KEY_LEN = 32;
 
 /**
