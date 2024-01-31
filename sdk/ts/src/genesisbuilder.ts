@@ -120,6 +120,6 @@ export class GenesisBuilder {
       msgs: [...this.storeCodeMsgs, ...this.otherMsgs],
     };
     cometGen["app_state"] = recursiveTransform(appState, camelToSnake);
-    fs.writeFileSync(cometGenPath, JSON.stringify(cometGen, null, 2));
+    fs.writeFileSync(cometGenPath, JSON.stringify(cometGen, null, 2) + "\n");
   }
 }
