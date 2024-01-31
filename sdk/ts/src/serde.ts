@@ -5,7 +5,8 @@
 export type Payload = { [key: string]: Payload } | string | number;
 
 /**
- * Serialize a `Payload` to JSON string.
+ * Serialize a payload to JSON string.
+ * The payload should use camelCase, while the JSON string would have snale_case.
  */
 export function serialize(msg: Payload): string {
   if (typeof msg === "string" || typeof msg === "number") {
@@ -21,7 +22,8 @@ export function serialize(msg: Payload): string {
 }
 
 /**
- * Deserialize a JSON string to a `Payload`.
+ * Deserialize a JSON string to a payload.
+ * The JSON string should use snake_case, while the payload would have camelCase.
  */
 export function deserialize(base64Str: string): Payload {
   const parsed = JSON.parse(atob(base64Str));
@@ -38,14 +40,14 @@ export function deserialize(base64Str: string): Payload {
 }
 
 /**
- * Convert a string from `camelCase` to `snake_case`.
+ * Convert a string from camelCase to snake_case.
  */
 function camelToSnake(str: string): string {
   return str.replace(/([A-Z])/g, "_$1").toLowerCase();
 }
 
 /**
- * Convert a string from `snake_case` to `camelCase`.
+ * Convert a string from snake_case to camelCase.
  */
 function snakeToCamel(str: string): string {
   return str.replace(/(_[a-z])/g, (group) => group.toUpperCase().replace('_', ''));
