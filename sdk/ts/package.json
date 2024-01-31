@@ -1,0 +1,28 @@
+{
+  "name": "@cwsoftware/cw.js",
+  "version": "0.0.0",
+  "description": "The JavaScript SDK for Cosmos Wasm Daemon",
+  "author": "Larry Lyu <gm@larry.engineer>",
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "*.md",
+    "!*.spec.*",
+    "!**/testdata/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cwsoftware123/cwd/tree/main/sdk/ts"
+  },
+  "scripts": {
+    "build": "rm -rf ./dist && tsc"
+  },
+  "dependencies": {
+    "@cosmjs/tendermint-rpc": "^0.32.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

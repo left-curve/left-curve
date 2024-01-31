@@ -2,11 +2,13 @@
 .idea/
 .vscode/
 
-# contract build artifacts
-artifacts/
-
 # rust
-target/
+**/target/
+**/artifacts/
+
+# javascript
+**/node_modules/
+**/dist/
 
 # data for test purpose
 **/testdata/
