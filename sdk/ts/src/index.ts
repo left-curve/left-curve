@@ -1,16 +1,9 @@
+export { AdminOption, AdminOptionKind, Client, SigningOptions, createAdmin, deriveAddress } from "./client";
 export { GenesisBuilder } from "./genesisbuilder";
 export { createSignBytes, SigningKey } from "./signingkey";
 
 export {
-  createAdmin,
-  deriveAddress,
-  AdminOption,
-  AdminOptionKind,
-  Client,
-  SigningOptions,
-} from "./client";
-
-export {
+  Payload,
   camelToSnake,
   decodeBase64,
   decodeBigEndian32,
@@ -24,7 +17,6 @@ export {
   recursiveTransform,
   serialize,
   snakeToCamel,
-  Payload,
 } from "./serde";
 
 export {

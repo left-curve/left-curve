@@ -1,6 +1,5 @@
 import { Sha256, sha256 } from "@cosmjs/crypto";
 import { Comet38Client, HttpEndpoint } from "@cosmjs/tendermint-rpc";
-import { BroadcastTxSyncResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
   decodeUtf8,
   deserialize,
@@ -124,7 +123,7 @@ export class Client {
 
   // ------------------------------- tx methods --------------------------------
 
-  public async sendTx(msgs: Message[], signOpts: SigningOptions): Promise<BroadcastTxSyncResponse> {
+  public async sendTx(msgs: Message[], signOpts: SigningOptions): Promise<Uint8Array> {
     if (!signOpts.chainId) {
       const infoRes = await this.queryInfo();
       signOpts.chainId = infoRes.chainId;
@@ -135,20 +134,26 @@ export class Client {
       signOpts.sequence = accountStateRes.sequence;
     }
 
-    const tx = await signOpts.signingKey.createAndSignTx(
+    const tx = encodeUtf8(serialize(await signOpts.signingKey.createAndSignTx(
       msgs,
       signOpts.sender,
       signOpts.chainId,
       signOpts.sequence,
-    );
+    )));
 
-    return this.cometClient.broadcastTxSync({ tx: encodeUtf8(serialize(tx)) });
+    const { code, codespace, log, hash } = await this.cometClient.broadcastTxSync({ tx });
+
+    if (code === 0) {
+      return hash;
+    } else {
+      throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+    }
   }
 
   public async updateConfig(
     newCfg: Config,
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<Uint8Array> {
     const updateCfgMsg = {
       updateConfig: { newCfg },
     };
@@ -159,7 +164,7 @@ export class Client {
     to: string,
     coins: Coin[],
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<Uint8Array> {
     const transferMsg = {
       transfer: { to, coins },
     };
@@ -169,7 +174,7 @@ export class Client {
   public async storeCode(
     wasmByteCode: Uint8Array,
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<Uint8Array> {
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: encodeBase64(wasmByteCode),
@@ -185,7 +190,8 @@ export class Client {
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<[string, Uint8Array]> {
+    const address = deriveAddress(signOpts.sender, codeHash, salt);
     const instantiateMsg = {
       instantiate: {
         codeHash: encodeHex(codeHash),
@@ -195,7 +201,8 @@ export class Client {
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
-    return this.sendTx([instantiateMsg], signOpts);
+    const txhash = await this.sendTx([instantiateMsg], signOpts);
+    return [address, txhash];
   }
 
   public async storeCodeAndInstantiate(
@@ -205,8 +212,9 @@ export class Client {
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
-    const codeHash = sha256(wasmByteCode)
+  ): Promise<[string, Uint8Array]> {
+    const codeHash = sha256(wasmByteCode);
+    const address = deriveAddress(signOpts.sender, codeHash, salt);
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: encodeBase64(wasmByteCode),
@@ -221,7 +229,8 @@ export class Client {
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
-    return this.sendTx([storeCodeMsg, instantiateMsg], signOpts);
+    const txhash = await this.sendTx([storeCodeMsg, instantiateMsg], signOpts);
+    return [address, txhash];
   }
 
   public async execute(
@@ -229,7 +238,7 @@ export class Client {
     msg: Payload,
     funds: Coin[],
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<Uint8Array> {
     const executeMsg = {
       execute: {
         contract,
@@ -245,7 +254,7 @@ export class Client {
     newCodeHash: Uint8Array,
     msg: Payload,
     signOpts: SigningOptions,
-  ): Promise<BroadcastTxSyncResponse> {
+  ): Promise<Uint8Array> {
     const migrateMsg = {
       migrate: {
         contract,

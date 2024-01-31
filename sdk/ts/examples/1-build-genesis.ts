@@ -2,16 +2,14 @@ import * as os from "os";
 import * as path from "path";
 import { AdminOptionKind, GenesisBuilder, SigningKey, encodeBase64, encodeUtf8 } from "../src";
 
-(async function () {
-  // the folder that contains the compiled wasm contracts
-  const artifactDir = path.resolve(__dirname, "../../../artifacts");
+const artifactDir = path.resolve(__dirname, "../../../artifacts");
+const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
+const keystorePassword = "123";
 
+(async function () {
   // load two pubkeys from the keystore. we will register an account for each of them
-  const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
-  // the password we used to encrypt the keystore. don't use in production
-  const password = "123";
-  const test1 = await SigningKey.fromFile(path.join(keystoreDir, "test1.json"), password);
-  const test2 = await SigningKey.fromFile(path.join(keystoreDir, "test2.json"), password);
+  const test1 = await SigningKey.fromFile(path.join(keystoreDir, "test1.json"), keystorePassword);
+  const test2 = await SigningKey.fromFile(path.join(keystoreDir, "test2.json"), keystorePassword);
 
   // create the genesis builder
   const builder = new GenesisBuilder();
