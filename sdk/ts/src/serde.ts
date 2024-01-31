@@ -35,7 +35,7 @@ export function deserialize(str: string): Payload {
  * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
  * ```
  */
-function recursiveTransform(payload: Payload, transformFn: (str: string) => string): Payload {
+export function recursiveTransform(payload: Payload, transformFn: (str: string) => string): Payload {
   // for strings, numbers, and nulls, there's no key to be transformed
   if (typeof payload !== "object" || payload === null) {
     return payload;
@@ -57,14 +57,14 @@ function recursiveTransform(payload: Payload, transformFn: (str: string) => stri
 /**
  * Convert a string from camelCase to snake_case.
  */
-function camelToSnake(str: string): string {
+export function camelToSnake(str: string): string {
   return str.replace(/([A-Z])/g, "_$1").toLowerCase();
 }
 
 /**
  * Convert a string from snake_case to camelCase.
  */
-function snakeToCamel(str: string): string {
+export function snakeToCamel(str: string): string {
   return str.replace(/(_[a-z])/g, (group) => group.toUpperCase().replace('_', ''));
 }
 

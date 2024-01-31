@@ -155,6 +155,13 @@ export type MsgMigrate = {
   msg: string;
 };
 
+// ---------------------------------- genesis ----------------------------------
+
+export type GenesisState = {
+  config: Config;
+  msgs: Message[];
+};
+
 // -------------------------------- cw-account ---------------------------------
 
 export type PubKey = { secp256k1: string } | { secp256r1: string };

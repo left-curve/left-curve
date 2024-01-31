@@ -1,11 +1,10 @@
-import { Secp256k1, Sha256, sha256 } from "@cosmjs/crypto";
+import { Sha256, sha256 } from "@cosmjs/crypto";
 import { Comet38Client, HttpEndpoint } from "@cosmjs/tendermint-rpc";
 import { BroadcastTxSyncResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
   decodeUtf8,
   deserialize,
   encodeBase64,
-  encodeBigEndian32,
   encodeHex,
   encodeUtf8,
   serialize,

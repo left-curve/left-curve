@@ -10,7 +10,7 @@
     "dist/",
     "*.md",
     "!*.spec.*",
-    "!**/testdata/"
+    "!**/examples/"
   ],
   "repository": {
     "type": "git",

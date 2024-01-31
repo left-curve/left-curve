@@ -12,8 +12,8 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "outDir": "dist",
     "pretty": true,
     "removeComments": false,
@@ -21,7 +21,7 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,
-    "target": "es2020"
+    "target": "esnext"
   },
   "include": ["src/**/*"]
 }

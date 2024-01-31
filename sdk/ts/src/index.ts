@@ -11,6 +11,7 @@ export {
 } from "./client";
 
 export {
+  camelToSnake,
   decodeBase64,
   decodeBigEndian32,
   decodeHex,
@@ -20,7 +21,9 @@ export {
   encodeBigEndian32,
   encodeHex,
   encodeUtf8,
+  recursiveTransform,
   serialize,
+  snakeToCamel,
   Payload,
 } from "./serde";
 
@@ -31,6 +34,7 @@ export {
   BlockInfo,
   Coin,
   Config,
+  GenesisState,
   InfoResponse,
   Message,
   MsgExecute,
