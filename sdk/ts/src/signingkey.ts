@@ -10,7 +10,14 @@ import {
   Slip10Curve,
   stringToPath,
 } from "@cosmjs/crypto";
-import { encodeBase64, encodeBigEndian32, encodeUtf8, decodeBase64, serialize } from "./serde";
+import {
+  encodeBase64,
+  encodeBigEndian32,
+  encodeUtf8,
+  decodeBase64,
+  decodeHex,
+  serialize,
+} from "./serde";
 import { Message, Tx } from "./types";
 
 // cwcli uses 50,000 iterations in debug mode and 600,000 in release mode
@@ -84,11 +91,13 @@ export class SigningKey {
     sequence: number,
   ): Promise<Tx> {
     const signBytes = createSignBytes(msgs, sender, chainId, sequence);
-    const signature = await Secp256k1.createSignature(signBytes, this.keyPair.privkey);
+    const extendedSignature = await Secp256k1.createSignature(signBytes, this.keyPair.privkey);
+    // important: trim the recovery byte to get the 64-byte signature
+    const signature = Secp256k1.trimRecoveryByte(extendedSignature.toFixedLength());
     return {
       sender,
       msgs,
-      credential: encodeBase64(signature.toDer()),
+      credential: encodeBase64(signature),
     };
   }
 
@@ -97,6 +106,7 @@ export class SigningKey {
   }
 
   public pubKey(): Uint8Array {
+    // important: get the compressed 32-byte pubkey instead of the 64-byte one
     return Secp256k1.compressPubkey(this.keyPair.pubkey);
   }
 }
@@ -112,7 +122,7 @@ export function createSignBytes(
 ): Uint8Array {
   const hasher = new Sha256();
   hasher.update(encodeUtf8(serialize(msgs)));
-  hasher.update(encodeUtf8(sender));
+  hasher.update(decodeHex(sender.slice(2)));
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
   return hasher.digest();

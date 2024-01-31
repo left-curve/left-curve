@@ -8,8 +8,8 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg = Identity256::from_slice(msg_hash)?;
     // NOTE: sig.into() here will panic if the byte slice is of incorrect length,
     // crashing the node. we must safe guard this
-    if sig.len() != 32 {
-        return Err(CryptoError::incorrect_length(32, sig.len()));
+    if sig.len() != 64 {
+        return Err(CryptoError::incorrect_length(64, sig.len()));
     }
     let sig = Signature::from_bytes(sig.into())?;
     let vk = VerifyingKey::from_sec1_bytes(pk)?;

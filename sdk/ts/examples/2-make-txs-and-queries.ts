@@ -44,7 +44,7 @@ async function sleep(seconds: number) {
 
   // query the user's balances
   const balancesBefore = await client.queryBalances(user);
-  console.log("\nusers balance before wrapping:", JSON.stringify(balancesBefore, null, 2));
+  console.log("\nusers balance before wrapping:\n" + JSON.stringify(balancesBefore, null, 2));
 
   // wrap some tokens
   const tx2 = await client.transfer(
@@ -69,5 +69,5 @@ async function sleep(seconds: number) {
 
   // query the user's balances again
   const balancesAfter = await client.queryBalances(user);
-  console.log("\buser balances after wrapping:", JSON.stringify(balancesAfter, null, 2));
+  console.log("\nuser balances after wrapping\n" + JSON.stringify(balancesAfter, null, 2));
 })();

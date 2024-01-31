@@ -23,5 +23,5 @@
     "strict": true,
     "target": "esnext"
   },
-  "include": ["src/**/*", "examples/**/*"]
+  "include": ["src/**/*", "examples/**/*", "testdata/**/*"]
 }
