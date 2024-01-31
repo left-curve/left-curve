@@ -111,7 +111,11 @@ export function decodeBigEndian32(bytes: Uint8Array): number {
  * Encode a byte array to a string using the Hex scheme, lowercase, no 0x prefix.
  */
 export function encodeHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((byte) => byte.toString(16)).join('');
+  let hexStr = "";
+  for (let i = 0; i < bytes.length; i++) {
+    hexStr += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hexStr;
 }
 
 /**

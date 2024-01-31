@@ -69,7 +69,7 @@ import { AdminOptionKind, GenesisBuilder, SigningKey, encodeBase64, encodeUtf8 }
   builder.writeToFile();
 
   console.log("done!");
-  console.log("account1:", account1);
-  console.log("account2:", account2);
-  console.log("bank:", bank);
+  console.log("account1 :", account1);
+  console.log("account2 :", account2);
+  console.log("bank     :", bank);
 })();
