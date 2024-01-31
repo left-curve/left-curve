@@ -18,10 +18,10 @@
     "pretty": true,
     "removeComments": false,
     "resolveJsonModule": true,
-    "rootDir": "src",
+    "rootDir": ".",
     "sourceMap": true,
     "strict": true,
     "target": "esnext"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "examples/**/*"]
 }
