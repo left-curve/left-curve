@@ -11,6 +11,7 @@ pub fn cw_serde(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     match input.data {
         Data::Struct(_) | Data::Enum(_) => quote! {
+            #[::cw_std::__private::serde_with::skip_serializing_none]
             #[derive(
                 ::cw_std::__private::serde::Serialize,
                 ::cw_std::__private::serde::Deserialize,

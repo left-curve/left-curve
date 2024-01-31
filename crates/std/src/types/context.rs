@@ -1,6 +1,7 @@
 use {
     crate::{Addr, BlockInfo, Coins, Event, GenericResult, Storage},
     serde::{Deserialize, Serialize},
+    serde_with::skip_serializing_none,
 };
 
 /// The context passed by the host to the Wasm module whenever an entry point is
@@ -10,6 +11,7 @@ use {
 /// Some fields may be optional depending on which entry point is called.
 /// For example, for queries there is no sender, because queries are not part of
 /// a transaction.
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
     pub chain_id:      String,

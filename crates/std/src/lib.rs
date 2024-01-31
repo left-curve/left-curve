@@ -45,4 +45,5 @@ pub use cw_std_derive::{cw_serde, entry_point};
 #[doc(hidden)]
 pub mod __private {
     pub use ::serde;
+    pub use ::serde_with;
 }

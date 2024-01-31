@@ -1,8 +1,10 @@
 use {
     crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash},
     serde::{Deserialize, Serialize},
+    serde_with::skip_serializing_none,
 };
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryRequest {
@@ -78,6 +80,7 @@ pub struct InfoResponse {
     pub last_finalized_block: BlockInfo,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AccountResponse {
     pub address:   Addr,
@@ -85,6 +88,7 @@ pub struct AccountResponse {
     pub admin:     Option<Addr>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WasmRawResponse {
     pub contract: Addr,

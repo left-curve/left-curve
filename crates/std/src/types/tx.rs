@@ -1,6 +1,7 @@
 use {
     crate::{Addr, Binary, Coins, Config, Hash},
     serde::{Deserialize, Serialize},
+    serde_with::skip_serializing_none,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -10,6 +11,7 @@ pub struct Tx {
     pub credential: Binary,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {

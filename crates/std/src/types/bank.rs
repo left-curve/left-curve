@@ -30,6 +30,7 @@
 use {
     crate::{Addr, Coin, Coins},
     serde::{Deserialize, Serialize},
+    serde_with::skip_serializing_none,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -49,6 +50,7 @@ pub struct TransferMsg {
 // It is set by the developer at chain genesis, and only only updatable by
 // governance. We assume that the developer and governance have exercised
 // caution when creating their own custom bank contracts.
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum BankQuery {
     Balance {

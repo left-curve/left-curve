@@ -1,9 +1,11 @@
 use {
     crate::{Addr, Hash, Message},
     serde::{Deserialize, Serialize},
+    serde_with::skip_serializing_none,
 };
 
 /// Chain-level configurations. Not to be confused with contract-level configs.
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     /// The account that can update this config. Typically it's recommended to
@@ -34,6 +36,7 @@ pub struct BlockInfo {
     // TODO: add hash?
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Account {
     pub code_hash: Hash,
