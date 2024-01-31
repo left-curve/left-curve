@@ -10,6 +10,7 @@ import {
   encodeUtf8,
   serialize,
   Payload,
+  decodeHex,
 } from "./serde";
 import {
   Account,
@@ -182,18 +183,18 @@ export class Client {
   public async instantiate(
     codeHash: Uint8Array,
     msg: Payload,
-    salt: string,
+    salt: Uint8Array,
     funds: Coin[],
-    admin: string | undefined,
+    adminOpt: AdminOption,
     signOpts: SigningOptions,
   ): Promise<BroadcastTxSyncResponse> {
     const instantiateMsg = {
       instantiate: {
         codeHash: encodeHex(codeHash),
         msg: btoa(serialize(msg)),
-        salt,
+        salt: encodeBase64(salt),
         funds,
-        admin,
+        admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
     return this.sendTx([instantiateMsg], signOpts);
@@ -202,11 +203,12 @@ export class Client {
   public async storeCodeAndInstantiate(
     wasmByteCode: Uint8Array,
     msg: Payload,
-    salt: string,
+    salt: Uint8Array,
     funds: Coin[],
-    admin: string | undefined,
+    adminOpt: AdminOption,
     signOpts: SigningOptions,
   ): Promise<BroadcastTxSyncResponse> {
+    const codeHash = sha256(wasmByteCode)
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: encodeBase64(wasmByteCode),
@@ -214,11 +216,11 @@ export class Client {
     };
     const instantiateMsg = {
       instantiate: {
-        codeHash: encodeHex(sha256(wasmByteCode)),
+        codeHash: encodeHex(codeHash),
         msg: btoa(serialize(msg)),
-        salt,
+        salt: encodeBase64(salt),
         funds,
-        admin,
+        admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
     return this.sendTx([storeCodeMsg, instantiateMsg], signOpts);
@@ -264,6 +266,43 @@ export type SigningOptions = {
   sequence?: number;
 };
 
+export enum AdminOptionKind {
+  SetToSelf,
+  SetToNone,
+}
+
+export type AdminOption = string | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
+
+/**
+ * Determine the admin address based on the given option.
+ */
+export function createAdmin(
+  adminOpt: AdminOption,
+  deployer: string,
+  codeHash: Uint8Array,
+  salt: Uint8Array,
+): string | undefined {
+  if (typeof adminOpt === "string") {
+    return adminOpt;
+  } else if (adminOpt === AdminOptionKind.SetToSelf) {
+    return deriveAddress(deployer, codeHash, salt);
+  } else {
+    return undefined;
+  }
+}
+
+/**
+ * Derive an account address based on the deployer address, code hash, and salt.
+ */
+export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint8Array): string {
+  const hasher = new Sha256();
+  hasher.update(decodeHex(deployer.slice(2))); // note: remove the 0x prefix
+  hasher.update(codeHash);
+  hasher.update(salt);
+  const bytes = hasher.digest();
+  return "0x" + encodeHex(bytes);
+}
+
 /**
  * Generate sign byte that the cw-account contract expects.
  */
@@ -273,7 +312,7 @@ export function createSignBytes(
   chainId: string,
   sequence: number,
 ): Uint8Array {
-  let hasher = new Sha256();
+  const hasher = new Sha256();
   hasher.update(encodeUtf8(serialize(msgs)));
   hasher.update(encodeUtf8(sender));
   hasher.update(encodeUtf8(chainId));

@@ -1,5 +1,15 @@
-export { createSignBytes, Client, SigningOptions } from "./client";
 export { GenesisBuilder } from "./genesisbuilder";
+
+export {
+  createAdmin,
+  createSignBytes,
+  deriveAddress,
+  AdminOption,
+  AdminOptionKind,
+  Client,
+  SigningOptions,
+} from "./client";
+
 export {
   decodeBase64,
   decodeBigEndian32,
@@ -13,6 +23,7 @@ export {
   serialize,
   Payload,
 } from "./serde";
+
 export {
   Account,
   AccountResponse,
