@@ -10,14 +10,14 @@ export type Payload = { [key: string]: Payload } | string | number;
  */
 export function serialize(msg: Payload): string {
   if (typeof msg === "string" || typeof msg === "number") {
-    return btoa(JSON.stringify(msg));
+    return JSON.stringify(msg);
   } else {
     let snakeCaseObj = {} as { [key: string]: Payload };
     for (const key of Object.keys(msg)) {
       const snakeKey = camelToSnake(key);
       snakeCaseObj[snakeKey] = msg[key];
     }
-    return btoa(JSON.stringify(snakeCaseObj));
+    return JSON.stringify(snakeCaseObj);
   }
 }
 
@@ -26,7 +26,7 @@ export function serialize(msg: Payload): string {
  * The JSON string should use snake_case, while the payload would have camelCase.
  */
 export function deserialize(base64Str: string): Payload {
-  const parsed = JSON.parse(atob(base64Str));
+  const parsed = JSON.parse(base64Str);
   if (typeof parsed === "string" || typeof parsed === "number") {
     return parsed;
   } else {

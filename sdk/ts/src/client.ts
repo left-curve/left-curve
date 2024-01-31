@@ -24,12 +24,12 @@ export class Client {
 
   private async query(req: QueryRequest): Promise<QueryResponse> {
     const res = await this.inner.abciQuery({
-      path: "",
+      path: "app",
       data: encodeUtf8(serialize(req)),
     });
 
     if (res.code !== 0) {
-      throw new Error(`query failed! codespace: ${res.codespace}, code: ${res.code}`);
+      throw new Error(`query failed! codespace: ${res.codespace}, code: ${res.code}, log: ${res.log}`);
     }
 
     return deserialize(decodeUtf8(res.value)) as QueryResponse;
