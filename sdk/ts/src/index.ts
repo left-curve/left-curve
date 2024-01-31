@@ -1,8 +1,8 @@
 export { GenesisBuilder } from "./genesisbuilder";
+export { createSignBytes, SigningKey } from "./signingkey";
 
 export {
   createAdmin,
-  createSignBytes,
   deriveAddress,
   AdminOption,
   AdminOptionKind,

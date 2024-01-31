@@ -23,6 +23,7 @@ import {
   QueryRequest,
   QueryResponse,
 } from "./types";
+import { SigningKey } from "./signingkey";
 
 /**
  * Client for interacting with a CWD blockchain via Tendermint RPC.
@@ -49,7 +50,7 @@ export class Client {
 
   // ------------------------------ query methods ------------------------------
 
-  private async query(req: QueryRequest): Promise<QueryResponse> {
+  public async query(req: QueryRequest): Promise<QueryResponse> {
     const res = await this.cometClient.abciQuery({
       path: "app",
       data: encodeUtf8(serialize(req)),
@@ -135,16 +136,14 @@ export class Client {
       signOpts.sequence = accountStateRes.sequence;
     }
 
-    const signBytes = createSignBytes(msgs, signOpts.sender, signOpts.chainId, signOpts.sequence);
-    const signature = await Secp256k1.createSignature(signBytes, signOpts.signingKey);
-
-    const tx = encodeUtf8(serialize({
-      sender: signOpts.sender,
+    const tx = await signOpts.signingKey.createAndSignTx(
       msgs,
-      credential: encodeBase64(signature.toDer()),
-    }));
+      signOpts.sender,
+      signOpts.chainId,
+      signOpts.sequence,
+    );
 
-    return this.cometClient.broadcastTxSync({ tx });
+    return this.cometClient.broadcastTxSync({ tx: encodeUtf8(serialize(tx)) });
   }
 
   public async updateConfig(
@@ -260,8 +259,8 @@ export class Client {
 }
 
 export type SigningOptions = {
+  signingKey: SigningKey;
   sender: string;
-  signingKey: Uint8Array;
   chainId?: string;
   sequence?: number;
 };
@@ -301,21 +300,4 @@ export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint
   hasher.update(salt);
   const bytes = hasher.digest();
   return "0x" + encodeHex(bytes);
-}
-
-/**
- * Generate sign byte that the cw-account contract expects.
- */
-export function createSignBytes(
-  msgs: Message[],
-  sender: string,
-  chainId: string,
-  sequence: number,
-): Uint8Array {
-  const hasher = new Sha256();
-  hasher.update(encodeUtf8(serialize(msgs)));
-  hasher.update(encodeUtf8(sender));
-  hasher.update(encodeUtf8(chainId));
-  hasher.update(encodeBigEndian32(sequence));
-  return hasher.digest();
 }
