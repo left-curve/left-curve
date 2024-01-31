@@ -1,12 +1,13 @@
 export { Client } from "./client";
 export { GenesisBuilder } from "./genesisbuilder";
-export { decodeUtf8, deserialize, encodeUtf8, serialize, Message } from "./serde";
+export { decodeUtf8, deserialize, encodeUtf8, serialize, Payload } from "./serde";
 export {
   Account,
   AccountResponse,
   BlockInfo,
   Coin,
   Config,
+  InfoResponse,
   QueryAccountRequest,
   QueryAccountsRequest,
   QueryBalanceRequest,

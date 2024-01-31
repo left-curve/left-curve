@@ -1,5 +1,5 @@
 import { Comet38Client, HttpEndpoint } from "@cosmjs/tendermint-rpc";
-import { Message, decodeUtf8, deserialize, encodeUtf8, serialize } from "./serde";
+import { decodeUtf8, deserialize, encodeUtf8, serialize, Payload } from "./serde";
 import { Account, AccountResponse, Coin, InfoResponse, QueryRequest, QueryResponse } from "./types";
 
 export class Client {
@@ -89,7 +89,7 @@ export class Client {
     return res.wasmRaw!.value;
   }
 
-  public async queryWasmSmart<T>(contract: string, msg: Message): Promise<T> {
+  public async queryWasmSmart<T>(contract: string, msg: Payload): Promise<T> {
     const res = await this.query({ wasmSmart: { contract, msg: btoa(serialize(msg)) } });
     const wasmRes = deserialize(atob(res.wasmSmart!.data));
     return wasmRes as T;

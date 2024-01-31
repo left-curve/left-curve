@@ -2,16 +2,16 @@
  * Represents either an JSON object, a string, or a number.
  * Note that we utilize a recursive type definition here.
  */
-export type Message = { [key: string]: Message } | string | number;
+export type Payload = { [key: string]: Payload } | string | number;
 
 /**
- * Serialize a `Message` to JSON string.
+ * Serialize a `Payload` to JSON string.
  */
-export function serialize(msg: Message): string {
+export function serialize(msg: Payload): string {
   if (typeof msg === "string" || typeof msg === "number") {
     return btoa(JSON.stringify(msg));
   } else {
-    let snakeCaseObj = {} as { [key: string]: Message | string | number };
+    let snakeCaseObj = {} as { [key: string]: Payload };
     for (const key of Object.keys(msg)) {
       const snakeKey = camelToSnake(key);
       snakeCaseObj[snakeKey] = msg[key];
@@ -21,14 +21,14 @@ export function serialize(msg: Message): string {
 }
 
 /**
- * Deserialize a JSON string to a `Message`.
+ * Deserialize a JSON string to a `Payload`.
  */
-export function deserialize(base64Str: string): Message {
+export function deserialize(base64Str: string): Payload {
   const parsed = JSON.parse(atob(base64Str));
   if (typeof parsed === "string" || typeof parsed === "number") {
     return parsed;
   } else {
-    let camelCaseObj = {} as { [key: string]: Message | string | number };
+    let camelCaseObj = {} as { [key: string]: Payload };
     for (const key of Object.keys(parsed)) {
       const camelKey = snakeToCamel(key);
       camelCaseObj[camelKey] = parsed[key];
