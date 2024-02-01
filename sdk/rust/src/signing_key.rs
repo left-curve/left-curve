@@ -84,7 +84,7 @@ impl SigningKey {
             ciphertext: ciphertext.into(),
         };
         let keystore_str = serde_json::to_string_pretty(&keystore)?;
-        fs::write(&filename, keystore_str.as_bytes())?;
+        fs::write(filename, keystore_str.as_bytes())?;
 
         Ok(keystore)
     }

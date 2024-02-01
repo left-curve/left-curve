@@ -80,9 +80,9 @@ fn add(filename: &Path, recover: bool, coin_type: usize) -> anyhow::Result<()> {
     // ask for password and save encrypted keystore
     let password = read_password("🔑 Enter a password to encrypt file `{filename:?}`".bold())?;
     let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
-    let keystore = sk.write_to_file(&filename, &password)?;
+    let keystore = sk.write_to_file(filename, &password)?;
 
-    print_json_pretty(&keystore)?;
+    print_json_pretty(keystore)?;
 
     if !recover {
         println!("\n{} write this mnemonic phrase in a safe place!", "Important:".bold());
@@ -108,7 +108,7 @@ fn show(filename: &Path) -> anyhow::Result<()> {
     ensure!(filename.exists(), "file {filename:?} not found");
 
     let keystore_str = fs::read_to_string(filename)?;
-    let keystore = from_json(&keystore_str)?;
+    let keystore: Keystore = from_json(keystore_str)?;
 
     print_json_pretty(keystore)
 }
