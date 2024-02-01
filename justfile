@@ -1,12 +1,24 @@
+# List available recipes
+default:
+  @just --list
+
+# Compile and install cwd and cwcli executables
 install:
-  cargo install --path bin/cwd
+  cargo install --path bin/cwd && cargo install --path bin/cwcli
 
-lint:
-  cargo +nightly clippy --tests --examples
-
+# Run tests
 test:
-  cargo test
+  cargo test --all-features --all-targets
 
+# Perform linting
+lint:
+  cargo +nightly clippy --bins --tests --benches --examples --all-features --all-targets
+
+# Check for unused dependencies (https://github.com/est31/cargo-udeps)
+udeps:
+  cargo +nigtly udeps --bins --tests --benches --examples --all-features --all-targets
+
+# Compile and optimize contracts (https://github.com/CosmWasm/rust-optimizer)
 optimize:
   if [[ $(uname -m) =~ "arm64" ]]; then \
   docker run --rm -v "$(pwd)":/code \
