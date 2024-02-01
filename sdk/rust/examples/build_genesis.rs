@@ -10,12 +10,10 @@ use {
 
 lazy_static! {
     static ref ARTIFACT_DIR: PathBuf = {
-        let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to find manifest directory");
-        PathBuf::from(manifest_dir).join("../../artifacts")
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../artifacts")
     };
     static ref KEYSTORE_DIR: PathBuf = {
-        let home = home_dir().expect("failed to find home directory");
-        home.join(".cwcli/keys")
+        home_dir().unwrap().join(".cwcli/keys")
     };
 }
 
