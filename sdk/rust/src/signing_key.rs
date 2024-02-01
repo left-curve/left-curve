@@ -18,6 +18,7 @@ const PBKDF2_KEY_LEN:    usize = 32;
 
 #[derive(Serialize, Deserialize)]
 pub struct Keystore {
+    pk:         Binary,
     salt:       Binary,
     nonce:      Binary,
     ciphertext: Binary,
@@ -79,6 +80,7 @@ impl SigningKey {
 
         // write keystore to file
         let keystore = Keystore {
+            pk:         self.pubkey().to_vec().into(),
             salt:       salt.to_vec().into(),
             nonce:      nonce.to_vec().into(),
             ciphertext: ciphertext.into(),
