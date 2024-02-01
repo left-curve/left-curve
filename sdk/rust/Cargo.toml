@@ -11,21 +11,24 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-aes-gcm      = { workspace = true, features = ["std"] }
-anyhow       = { workspace = true }
-bip32        = { workspace = true }
-cw-account   = { path = "../../contracts/account", features = ["library"] }
-cw-crypto    = { path = "../../crates/crypto" }
-cw-std       = { path = "../../crates/std" }
-home         = { workspace = true }
-k256         = { workspace = true }
-lazy_static  = { workspace = true }
-pbkdf2       = { workspace = true }
-rand         = { workspace = true }
-serde        = { workspace = true }
-serde_json   = { workspace = true }
-sha2         = { workspace = true }
-signature    = { workspace = true }
+aes-gcm        = { workspace = true, features = ["std"] }
+anyhow         = { workspace = true }
+bip32          = { workspace = true }
+cw-account     = { path = "../../contracts/account", features = ["library"] }
+cw-crypto      = { path = "../../crates/crypto" }
+cw-std         = { path = "../../crates/std" }
+hex            = { workspace = true }
+home           = { workspace = true }
+k256           = { workspace = true }
+lazy_static    = { workspace = true }
+pbkdf2         = { workspace = true }
+rand           = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+sha2           = { workspace = true }
+signature      = { workspace = true }
+tendermint     = { workspace = true }
+tendermint-rpc = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
 cw-bank = { path = "../../contracts/bank", features = ["library"] }

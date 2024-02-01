@@ -1,4 +1,5 @@
 use {
+    crate::AdminOption,
     anyhow::{anyhow, ensure},
     cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message},
     home::home_dir,
@@ -19,12 +20,6 @@ lazy_static! {
         let home = home_dir().expect("failed to find home directory");
         home.join(".cometbft/config/genesis.json")
     };
-}
-
-pub enum AdminOption {
-    SetToAddr(Addr),
-    SetToSelf,
-    SetToNone,
 }
 
 /// Helper for building genesis state. See the examples folder of this repository
