@@ -112,14 +112,7 @@ impl SigningKey {
         self.inner.to_bytes().into()
     }
 
-    pub fn pubkey(&self) -> [u8; 32] {
-        // trim the extra byte of SEC1 tag
-        trim_last_byte(self.inner.verifying_key().to_bytes())
+    pub fn pubkey(&self) -> [u8; 33] {
+        self.inner.verifying_key().to_bytes()
     }
-}
-
-fn trim_last_byte(full: [u8; 33]) -> [u8; 32] {
-    let mut trimmed = [0u8; 32];
-    trimmed.copy_from_slice(&full[..32]);
-    trimmed
 }
