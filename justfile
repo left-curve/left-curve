@@ -16,7 +16,7 @@ lint:
 
 # Check for unused dependencies (https://github.com/est31/cargo-udeps)
 udeps:
-  cargo +nigtly udeps --bins --tests --benches --examples --all-features --all-targets
+  cargo +nightly udeps --bins --tests --benches --examples --all-features --all-targets
 
 # Compile and optimize contracts (https://github.com/CosmWasm/rust-optimizer)
 optimize:
