@@ -14,9 +14,11 @@ cw-std-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
 dyn-clone       = { workspace = true }
 hex             = { workspace = true }
-hex-literal     = { workspace = true }
 serde           = { workspace = true, features = ["derive"] }
 serde-json-wasm = { workspace = true }
 serde_with      = { workspace = true }
 sha2            = { workspace = true }
 thiserror       = { workspace = true }
+
+[dev-dependencies]
+hex-literal = { workspace = true }
