@@ -788,7 +788,6 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
- "cw-account",
  "cw-rs",
  "cw-std",
  "dialoguer",
@@ -797,7 +796,6 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
- "tendermint",
  "tendermint-rpc",
  "tokio",
 ]
