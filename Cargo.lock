@@ -720,6 +720,7 @@ dependencies = [
  "cw-account",
  "cw-bank",
  "cw-crypto",
+ "cw-mock-token-wrapper",
  "cw-std",
  "hex",
  "home",
@@ -733,6 +734,7 @@ dependencies = [
  "signature",
  "tendermint",
  "tendermint-rpc",
+ "tokio",
 ]
 
 [[package]]

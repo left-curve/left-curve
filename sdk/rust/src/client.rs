@@ -3,8 +3,7 @@ use {
     anyhow::bail,
     cw_account::{QueryMsg, StateResponse},
     cw_std::{
-        from_json, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash, InfoResponse,
-        Message, QueryRequest, QueryResponse, Tx, WasmRawResponse,
+        from_json, hash, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx, WasmRawResponse
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     tendermint::block::Height,
@@ -245,12 +244,27 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = to_json(msg)?;
-        let admin = match admin {
-            AdminOption::SetToAddr(addr) => Some(addr),
-            AdminOption::SetToSelf => Some(Addr::compute(&sign_opts.sender, &code_hash, &salt)),
-            AdminOption::SetToNone => None,
-        };
+        let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
         self.send_tx(vec![Message::Instantiate { code_hash, msg, salt, funds, admin }], sign_opts).await
+    }
+
+    pub async fn store_code_and_instantiate<M: Serialize>(
+        &self,
+        wasm_byte_code: Binary,
+        msg: &M,
+        salt: Binary,
+        funds: Coins,
+        admin: AdminOption,
+        sign_opts: &SigningOptions,
+    ) -> anyhow::Result<(Addr, tx_sync::Response)> {
+        let code_hash = hash(&wasm_byte_code);
+        let msg = to_json(msg)?;
+        let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
+        let admin = admin.decide(&address);
+        let store_code_msg = Message::StoreCode { wasm_byte_code };
+        let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
+        let res = self.send_tx(vec![store_code_msg, instantiate_msg], sign_opts).await?;
+        Ok((address, res))
     }
 
     pub async fn execute<M: Serialize>(

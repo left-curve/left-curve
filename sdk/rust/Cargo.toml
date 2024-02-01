@@ -31,4 +31,6 @@ tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
-cw-bank = { path = "../../contracts/bank", features = ["library"] }
+cw-bank               = { path = "../../contracts/bank", features = ["library"] }
+cw-mock-token-wrapper = { path = "../../contracts/mocks/token-wrapper", features = ["library"] }
+tokio                 = { workspace = true }

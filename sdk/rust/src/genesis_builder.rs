@@ -60,19 +60,9 @@ impl GenesisBuilder {
         salt:      Binary,
         admin:     AdminOption,
     ) -> anyhow::Result<Addr> {
-        // derive the contract address
-        // note that for now we use an all-zero address as the message sender
-        // during genesis. this design may change.
+        // note: we use an all-zero address as the message sender during genesis
         let contract = Addr::compute(&Addr::mock(0), &code_hash, &salt);
-
-        // decide contract admin
-        let admin = match admin {
-            AdminOption::SetToAddr(addr) => Some(addr),
-            AdminOption::SetToSelf => Some(contract.clone()),
-            AdminOption::SetToNone => None,
-        };
-
-        // push the message into queue
+        let admin = admin.decide(&contract);
         self.other_msgs.push(Message::Instantiate {
             code_hash,
             msg: to_json(&msg)?,
@@ -80,7 +70,6 @@ impl GenesisBuilder {
             funds: Coins::new_empty(),
             admin,
         });
-
         Ok(contract)
     }
 
