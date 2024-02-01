@@ -162,5 +162,5 @@ async fn query_wasm_smart(
 ) -> anyhow::Result<()> {
     // the input should be a JSON string, e.g. `{"config":{}}`
     let msg: Value = serde_json::from_str(&msg)?;
-    print_json_pretty(client.query_wasm_smart(contract, &msg).await?)
+    print_json_pretty(client.query_wasm_smart::<_, Value>(contract, &msg).await?)
 }
