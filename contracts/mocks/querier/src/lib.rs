@@ -1,6 +1,8 @@
+#[cfg(not(feature = "library"))]
+use cw_std::entry_point;
 use cw_std::{
-    cw_serde, entry_point, to_json, Binary, Empty, ExecuteCtx, InstantiateCtx, QueryCtx,
-    QueryRequest, ReceiveCtx, Response, StdResult,
+    cw_serde, to_json, Binary, Empty, ExecuteCtx, InstantiateCtx, QueryCtx, QueryRequest,
+    ReceiveCtx, Response, StdResult,
 };
 
 #[cw_serde]

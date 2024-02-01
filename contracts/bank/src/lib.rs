@@ -1,7 +1,9 @@
+#[cfg(not(feature = "library"))]
+use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, entry_point, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
+        cw_serde, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
         InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, Storage,
         TransferCtx, TransferMsg, Uint128,
     },
@@ -228,7 +230,7 @@ fn decrease_balance(
 // The query response MUST matches exactly the request. E.g. if the request is
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query_bank(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance {

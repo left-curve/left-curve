@@ -1,10 +1,10 @@
-// rust-analyzer incorrectly thinks `entry_point` isn't used
-#[allow(unused_imports)]
+#[cfg(not(feature = "library"))]
+use cw_std::entry_point;
 use {
     anyhow::ensure,
     cw_std::{
-        cw_serde, entry_point, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
-        Item, Message, QueryCtx, ReceiveCtx, Response, Tx,
+        cw_serde, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx, Item, Message,
+        QueryCtx, ReceiveCtx, Response, Tx,
     },
     sha2::{Digest, Sha256},
 };

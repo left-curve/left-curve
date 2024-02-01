@@ -1,6 +1,8 @@
+#[cfg(not(feature = "library"))]
+use cw_std::entry_point;
 use cw_std::{
-    cw_serde, entry_point, to_json, Addr, Coins, GenericResult, InstantiateCtx, Item, Message,
-    ReceiveCtx, ReplyCtx, Response, StdResult, SubMessage, Uint128,
+    cw_serde, to_json, Addr, Coins, GenericResult, InstantiateCtx, Item, Message, ReceiveCtx,
+    ReplyCtx, Response, StdResult, SubMessage, Uint128,
 };
 
 // we namespace all wrapped token denoms with this
