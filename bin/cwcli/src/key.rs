@@ -54,19 +54,20 @@ impl KeyCmd {
                 name,
                 recover,
                 coin_type,
-            } => add(&key_dir.join(name), recover, coin_type),
+            } => add(&key_dir, &name, recover, coin_type),
             KeyCmd::Delete {
                 name,
-            } => delete(&key_dir.join(name)),
+            } => delete(&key_dir, &name),
             KeyCmd::Show {
                 name,
-            } => show(&key_dir.join(name)),
+            } => show(&key_dir, &name),
             KeyCmd::List => list(&key_dir),
         }
     }
 }
 
-fn add(filename: &Path, recover: bool, coin_type: usize) -> anyhow::Result<()> {
+fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Result<()> {
+    let filename = dir.join(format!("{name}.json"));
     ensure!(!filename.exists(), "file `{filename:?}` already exists");
 
     // generate or recover mnemonic phrase
@@ -78,10 +79,11 @@ fn add(filename: &Path, recover: bool, coin_type: usize) -> anyhow::Result<()> {
     };
 
     // ask for password and save encrypted keystore
-    let password = read_password("🔑 Enter a password to encrypt file `{filename:?}`".bold())?;
+    let password = read_password(format!("🔑 Enter a password to encrypt file `{filename:?}`").bold())?;
     let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
-    let keystore = sk.write_to_file(filename, &password)?;
+    let keystore = sk.write_to_file(&filename, &password)?;
 
+    println!();
     print_json_pretty(keystore)?;
 
     if !recover {
@@ -93,18 +95,20 @@ fn add(filename: &Path, recover: bool, coin_type: usize) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn delete(filename: &Path) -> anyhow::Result<()> {
+fn delete(dir: &Path, name: &str) -> anyhow::Result<()> {
+    let filename = dir.join(format!("{name}.json"));
     ensure!(filename.exists(), "file {filename:?} not found");
 
     if confirm(format!("🚨 Confirm deleting file {filename:?}").bold())? {
         fs::remove_file(filename)?;
-        println!("🗑️ Deleted!");
+        println!("🗑️  Deleted!");
     }
 
     Ok(())
 }
 
-fn show(filename: &Path) -> anyhow::Result<()> {
+fn show(dir: &Path, name: &str) -> anyhow::Result<()> {
+    let filename = dir.join(format!("{name}.json"));
     ensure!(filename.exists(), "file {filename:?} not found");
 
     let keystore_str = fs::read_to_string(filename)?;
