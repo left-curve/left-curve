@@ -1,17 +1,13 @@
 use {
-    crate::{
-        prompt::{confirm, print_json_pretty, read_password},
-        query::do_abci_query,
-    },
+    crate::prompt::{confirm, print_json_pretty, read_password},
     anyhow::anyhow,
     clap::Parser,
     colored::Colorize,
-    cw_account::StateResponse,
-    cw_rs::SigningKey,
-    cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest},
+    cw_rs::{Client, SigningKey, SigningOptions},
+    cw_std::{from_json, Addr, Binary, Coins, Config, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
-    tendermint_rpc::{endpoint::broadcast::tx_async, Client, HttpClient},
+    tendermint_rpc::endpoint::broadcast::tx_sync,
 };
 
 #[derive(Parser)]
@@ -79,6 +75,9 @@ impl TxCmd {
         chain_id: Option<String>,
         sequence: Option<u32>,
     ) -> anyhow::Result<()> {
+        let sender = sender.ok_or(anyhow!("sender is not specified"))?;
+        let key_name = key_name.ok_or(anyhow!("Key name not provided"))?;
+
         // compose the message
         let msg = match self {
             TxCmd::UpdateConfig { new_cfg } => {
@@ -135,55 +134,29 @@ impl TxCmd {
             },
         };
 
-        // create RPC client
-        let client = HttpClient::new(rpc_addr)?;
-
-        // query chain id
-        let chain_id = match chain_id {
-            None => {
-                // TODO: avoid cloning here?
-                do_abci_query(client.clone(), QueryRequest::Info {})
-                .await?
-                .as_info()
-                .chain_id
-            },
-            Some(id) => id,
-        };
-
-        // query account sequence
-        let sender = sender.ok_or(anyhow!("Sender address not provided"))?;
-        let sequence = match sequence {
-            None => {
-                // TODO: avoid cloning here?
-                from_json::<StateResponse>(do_abci_query(
-                    client.clone(),
-                    QueryRequest::WasmSmart {
-                        contract: sender.clone(),
-                        msg: to_json(&cw_account::QueryMsg::State {})?,
-                    },
-                )
-                .await?
-                .as_wasm_smart()
-                .data)?
-                .sequence
-            },
-            Some(seq) => seq,
-        };
-
         // load signing key
-        let key_name = key_name.ok_or(anyhow!("Key name not provided"))?;
         let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
-        let sk = SigningKey::from_file(&key_dir.join(key_name), &password)?;
+        let signing_key = SigningKey::from_file(&key_dir.join(key_name), &password)?;
+        let sign_opts = SigningOptions {
+            signing_key,
+            sender,
+            chain_id,
+            sequence,
+        };
 
-        // sign the transaction
-        let tx = sk.create_and_sign_tx(vec![msg], sender, &chain_id, sequence)?;
-        print_json_pretty(&tx)?;
+        // broadcast transaction
+        let client = Client::connect(rpc_addr)?;
+        let maybe_res = client.send_tx_with_confirmation(vec![msg], &sign_opts, |tx| {
+            print_json_pretty(tx)?;
+            Ok(confirm("🤔 Broadcast transaction?".bold())?)
+        })
+        .await?;
 
-        // prompt user to confirm, then broadcast the tx
-        if confirm("🤔 Broadcast transaction?".bold())? {
-            let tx_bytes = to_json(&tx)?;
-            let broadcast_res = client.broadcast_tx_async(tx_bytes).await?;
-            print_json_pretty(PrintableBroadcastResponse::from(broadcast_res))?;
+        // print result
+        if let Some(res) = maybe_res {
+            print_json_pretty(PrintableBroadcastResponse::from(res))?;
+        } else {
+            println!("🤷 User aborted");
         }
 
         Ok(())
@@ -199,8 +172,8 @@ struct PrintableBroadcastResponse {
     hash: String,
 }
 
-impl From<tx_async::Response> for PrintableBroadcastResponse {
-    fn from(broadcast_res: tx_async::Response) -> Self {
+impl From<tx_sync::Response> for PrintableBroadcastResponse {
+    fn from(broadcast_res: tx_sync::Response) -> Self {
         Self {
             code: broadcast_res.code.into(),
             data: broadcast_res.data.to_vec().into(),
