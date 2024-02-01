@@ -17,7 +17,7 @@ struct Cli {
     #[arg(long)]
     pub db_dir: Option<PathBuf>,
 
-    /// Use a in-memory mock storage instead of a persisted physical database
+    /// Use an in-memory mock storage instead of a persisted physical database
     #[arg(long)]
     pub mock: bool,
 
