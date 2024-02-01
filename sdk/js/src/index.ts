@@ -1,6 +1,6 @@
 export { AdminOption, AdminOptionKind, Client, SigningOptions, createAdmin, deriveAddress } from "./client";
 export { GenesisBuilder } from "./genesisbuilder";
-export { createSignBytes, SigningKey } from "./signingkey";
+export { Keystore, SigningKey, createSignBytes } from "./signingkey";
 
 export {
   Payload,

@@ -40,6 +40,7 @@ const keystorePassword = "123";
   );
 
   // store and instantiate and bank contract
+  // give account1 some initial balances
   const bank = builder.storeCodeAndInstantiate(
     path.join(artifactDir, "cw_bank-aarch64.wasm"),
     {
@@ -66,7 +67,7 @@ const keystorePassword = "123";
   builder.setConfig({ bank });
   builder.writeToFile();
 
-  console.log("done!");
+  console.log("✅ done!");
   console.log("account1 :", account1);
   console.log("account2 :", account2);
   console.log("bank     :", bank);

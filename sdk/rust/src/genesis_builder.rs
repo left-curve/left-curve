@@ -16,7 +16,7 @@ use {
 lazy_static! {
     // the default path to the CometBFT genesis file
     static ref DEFAULT_COMET_GEN_PATH: PathBuf = {
-        let home = home_dir().expect("failed to get home directory");
+        let home = home_dir().expect("failed to find home directory");
         home.join(".cometbft/config/genesis.json")
     };
 }
@@ -63,7 +63,6 @@ impl GenesisBuilder {
         code_hash: Hash,
         msg:       M,
         salt:      Binary,
-        funds:     Coins,
         admin:     AdminOption,
     ) -> anyhow::Result<Addr> {
         // derive the contract address
@@ -83,7 +82,7 @@ impl GenesisBuilder {
             code_hash,
             msg: to_json(&msg)?,
             salt,
-            funds,
+            funds: Coins::new_empty(),
             admin,
         });
 
@@ -95,23 +94,17 @@ impl GenesisBuilder {
         path:  impl AsRef<Path>,
         msg:   M,
         salt:  Binary,
-        funds: Coins,
         admin: AdminOption,
     ) -> anyhow::Result<Addr> {
         let code_hash = self.store_code(path)?;
-        self.instantiate(code_hash, msg, salt, funds, admin)
+        self.instantiate(code_hash, msg, salt, admin)
     }
 
-    pub fn execute<M: Serialize>(
-        &mut self,
-        contract: Addr,
-        msg:      M,
-        funds:    Coins,
-    ) -> anyhow::Result<()> {
+    pub fn execute<M: Serialize>(&mut self, contract: Addr, msg: M) -> anyhow::Result<()> {
         self.other_msgs.push(Message::Execute {
             contract,
-            msg: to_json(&msg)?,
-            funds,
+            msg:  to_json(&msg)?,
+            funds: Coins::new_empty(),
         });
 
         Ok(())

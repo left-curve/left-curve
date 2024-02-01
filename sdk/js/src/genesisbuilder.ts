@@ -65,23 +65,8 @@ export class GenesisBuilder {
     salt: Uint8Array,
     adminOpt: AdminOption,
   ): string {
-    const wasmByteCode = fs.readFileSync(path);
-    const codeHash = sha256(wasmByteCode);
-    this.storeCodeMsgs.push({
-      storeCode: {
-        wasmByteCode: encodeBase64(wasmByteCode),
-      },
-    });
-    this.otherMsgs.push({
-      instantiate: {
-        codeHash: encodeHex(codeHash),
-        msg: btoa(serialize(msg)),
-        salt: encodeBase64(salt),
-        funds: [],
-        admin: createAdmin(adminOpt, ZERO_ADDRESS, codeHash, salt),
-      },
-    });
-    return deriveAddress(ZERO_ADDRESS, codeHash, salt);
+    const codeHash = this.storeCode(path);
+    return this.instantiate(codeHash, msg, salt, adminOpt);
   }
 
   /**

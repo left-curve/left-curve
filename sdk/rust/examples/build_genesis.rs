@@ -1,51 +1,59 @@
 use {
-    anyhow::anyhow,
     cw_account::PubKey,
     cw_bank::Balance,
-    cw_rs::{AdminOption, GenesisBuilder, Keyring},
+    cw_rs::{AdminOption, GenesisBuilder, SigningKey},
     cw_std::{Coin, Coins, Config, Uint128},
     home::home_dir,
+    lazy_static::lazy_static,
     std::{env, path::PathBuf},
 };
 
+lazy_static! {
+    static ref ARTIFACT_DIR: PathBuf = {
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("failed to find manifest directory");
+        PathBuf::from(manifest_dir).join("../../artifacts")
+    };
+    static ref KEYSTORE_DIR: PathBuf = {
+        let home = home_dir().expect("failed to find home directory");
+        home.join(".cwcli/keys")
+    };
+}
+
+const KEYSTORE_PASSWORD: &str = "123";
+
 fn main() -> anyhow::Result<()> {
-    let artifact_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
+    // load two pubkeys from the keystore. we will register an account for each of them
+    let test1 = SigningKey::from_file(KEYSTORE_DIR.join("test1.json"), KEYSTORE_PASSWORD)?;
+    let test2 = SigningKey::from_file(KEYSTORE_DIR.join("test2.json"), KEYSTORE_PASSWORD)?;
 
-    // open the keyring. we will register accounts for two of the keys
-    let home_dir = home_dir().ok_or(anyhow!("Failed to find user home directory"))?;
-    let keyring = Keyring::open(home_dir.join(".cwcli/keys"))?;
-
+    // create the genesis builder
     let mut builder = GenesisBuilder::new();
 
-    // upload account code and register two accounts
-    let account_code_hash = builder.store_code(artifact_dir.join("cw_bank-aarch64.wasm"))?;
+    // upload account wasm code
+    let account_code_hash = builder.store_code(ARTIFACT_DIR.join("cw_account-aarch64.wasm"))?;
 
-    let key1 = keyring.get("test1")?;
+    // register two accounts
     let account1 = builder.instantiate(
         account_code_hash.clone(),
         cw_account::InstantiateMsg {
-            pubkey: PubKey::Secp256k1(key1.verifying_key().to_sec1_bytes().to_vec().into()),
+            pubkey: PubKey::Secp256k1(test1.privkey().to_vec().into()),
         },
         b"test1".to_vec().into(),
-        Coins::new_empty(),
         AdminOption::SetToSelf,
     )?;
-
-    let key2 = keyring.get("test2")?;
     let account2 = builder.instantiate(
         account_code_hash.clone(),
         cw_account::InstantiateMsg {
-            pubkey: PubKey::Secp256k1(key2.verifying_key().to_sec1_bytes().to_vec().into()),
+            pubkey: PubKey::Secp256k1(test2.privkey().to_vec().into()),
         },
         b"test2".to_vec().into(),
-        Coins::new_empty(),
         AdminOption::SetToSelf,
     )?;
 
-    // upload bank code and register account
+    // store and instantiate and bank contract
     // give account1 some initial balances
     let bank = builder.store_code_and_instantiate(
-        artifact_dir.join("cw_bank-aarch64.wasm"),
+        ARTIFACT_DIR.join("cw_bank-aarch64.wasm"),
         cw_bank::InstantiateMsg {
             initial_balances: vec![Balance {
                 address: account1.clone(),
@@ -62,7 +70,6 @@ fn main() -> anyhow::Result<()> {
             }],
         },
         b"bank".to_vec().into(),
-        Coins::new_empty(),
         AdminOption::SetToNone,
     )?;
 
@@ -75,7 +82,7 @@ fn main() -> anyhow::Result<()> {
     // build the final genesis state and write to file
     builder.write_to_file(None)?;
 
-    println!("done!");
+    println!("✅ done!");
     println!("account1 : {account1}");
     println!("account2 : {account2}");
     println!("bank     : {bank}");
