@@ -3,7 +3,8 @@ use {
     anyhow::bail,
     cw_account::{QueryMsg, StateResponse},
     cw_std::{
-        from_json, hash, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx, WasmRawResponse
+        from_json, hash, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash,
+        InfoResponse, Message, QueryRequest, QueryResponse, Tx, WasmRawResponse,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     tendermint::block::Height,
