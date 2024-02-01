@@ -1,4 +1,5 @@
 mod key;
+mod prompt;
 mod query;
 mod tendermint;
 mod tx;

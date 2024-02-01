@@ -23,8 +23,8 @@ const KEYSTORE_PASSWORD: &str = "123";
 
 fn main() -> anyhow::Result<()> {
     // load two pubkeys from the keystore. we will register an account for each of them
-    let test1 = SigningKey::from_file(KEYSTORE_DIR.join("test1.json"), KEYSTORE_PASSWORD)?;
-    let test2 = SigningKey::from_file(KEYSTORE_DIR.join("test2.json"), KEYSTORE_PASSWORD)?;
+    let test1 = SigningKey::from_file(&KEYSTORE_DIR.join("test1.json"), KEYSTORE_PASSWORD)?;
+    let test2 = SigningKey::from_file(&KEYSTORE_DIR.join("test2.json"), KEYSTORE_PASSWORD)?;
 
     // create the genesis builder
     let mut builder = GenesisBuilder::new();

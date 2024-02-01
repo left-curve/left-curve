@@ -1,6 +1,6 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
-    bip32::{Language, Mnemonic, PublicKey, XPrv},
+    bip32::{Mnemonic, PublicKey, XPrv},
     cw_crypto::Identity256,
     cw_std::{Addr, Binary, Message, Tx},
     k256::ecdsa::Signature,
@@ -31,8 +31,7 @@ pub struct SigningKey {
 impl SigningKey {
     /// Derive an secp256k1 private key pair from the given English mnemonic and
     /// BIP-44 coin type.
-    pub fn from_mnemonic(mnemonic: &str, coin_type: usize) -> anyhow::Result<Self> {
-        let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
+    pub fn from_mnemonic(mnemonic: &Mnemonic, coin_type: usize) -> anyhow::Result<Self> {
         // The `to_seed` function takes a password to generate salt.
         // Here we just use an empty str.
         // For reference, Terra Station and Keplr use an empty string as well:
@@ -47,7 +46,7 @@ impl SigningKey {
     }
 
     /// Read and decrypt a keystore file.
-    pub fn from_file(filename: impl AsRef<Path>, password: &str) -> anyhow::Result<Self> {
+    pub fn from_file(filename: &Path, password: &str) -> anyhow::Result<Self> {
         // read keystore file
         let keystore_str = fs::read_to_string(filename)?;
         let keystore: Keystore = serde_json::from_str(&keystore_str)?;
@@ -66,7 +65,7 @@ impl SigningKey {
     }
 
     /// Encrypt a key and save it to a file
-    pub fn write_to_file(&self, filename: impl AsRef<Path>, password: &str) -> anyhow::Result<()> {
+    pub fn write_to_file(&self, filename: &Path, password: &str) -> anyhow::Result<Keystore> {
         // generate encryption key
         let mut salt = [0u8; PBKDF2_SALT_LEN];
         OsRng.fill(&mut salt);
@@ -87,7 +86,7 @@ impl SigningKey {
         let keystore_str = serde_json::to_string_pretty(&keystore)?;
         fs::write(&filename, keystore_str.as_bytes())?;
 
-        Ok(())
+        Ok(keystore)
     }
 
     pub fn create_and_sign_tx(

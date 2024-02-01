@@ -1,6 +1,6 @@
 use {
+    crate::prompt::print_json_pretty,
     clap::Parser,
-    cw_rs::print_json_pretty,
     tendermint::block::Height,
     tendermint_rpc::{Client, HttpClient},
 };

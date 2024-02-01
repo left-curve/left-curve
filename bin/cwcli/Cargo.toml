@@ -11,13 +11,17 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow         = { workspace = true }
+bip32          = { workspace = true }
 clap           = { workspace = true, features = ["derive", "wrap_help"] }
 colored        = { workspace = true }
+colored_json   = { workspace = true }
 cw-account     = { path = "../../contracts/account", features = ["library"] }
 cw-rs          = { path = "../../sdk/rust" }
 cw-std         = { path = "../../crates/std" }
+dialoguer      = { workspace = true }
 hex            = { workspace = true }
 home           = { workspace = true }
+rand           = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }
 tendermint     = { workspace = true }

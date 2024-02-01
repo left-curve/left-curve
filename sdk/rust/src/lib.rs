@@ -3,5 +3,5 @@ mod signing_key;
 
 pub use crate::{
     genesis_builder::{AdminOption, GenesisBuilder},
-    signing_key::SigningKey,
+    signing_key::{Keystore, SigningKey},
 };

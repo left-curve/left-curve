@@ -14,12 +14,9 @@ categories    = { workspace = true }
 aes-gcm      = { workspace = true, features = ["std"] }
 anyhow       = { workspace = true }
 bip32        = { workspace = true }
-colored      = { workspace = true }
-colored_json = { workspace = true }
 cw-account   = { path = "../../contracts/account", features = ["library"] }
 cw-crypto    = { path = "../../crates/crypto" }
 cw-std       = { path = "../../crates/std" }
-dialoguer    = { workspace = true }
 home         = { workspace = true }
 k256         = { workspace = true }
 lazy_static  = { workspace = true }

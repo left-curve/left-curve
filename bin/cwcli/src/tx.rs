@@ -1,11 +1,14 @@
 use {
-    crate::query::do_abci_query,
+    crate::{
+        prompt::{confirm, print_json_pretty, read_password},
+        query::do_abci_query,
+    },
     anyhow::anyhow,
     clap::Parser,
     colored::Colorize,
     cw_account::StateResponse,
-    cw_rs::{confirm, print_json_pretty, Keyring, SigningKey},
-    cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
+    cw_rs::SigningKey,
+    cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::{endpoint::broadcast::tx_async, Client, HttpClient},
@@ -169,11 +172,11 @@ impl TxCmd {
 
         // load signing key
         let key_name = key_name.ok_or(anyhow!("Key name not provided"))?;
-        let keyring = Keyring::open(key_dir)?;
-        let key = keyring.get(&key_name)?;
+        let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
+        let sk = SigningKey::from_file(&key_dir.join(key_name), &password)?;
 
         // sign the transaction
-        let tx = create_and_sign_tx(&key, sender, vec![msg], &chain_id, sequence)?;
+        let tx = sk.create_and_sign_tx(vec![msg], sender, &chain_id, sequence)?;
         print_json_pretty(&tx)?;
 
         // prompt user to confirm, then broadcast the tx
@@ -185,22 +188,6 @@ impl TxCmd {
 
         Ok(())
     }
-}
-
-fn create_and_sign_tx(
-    sk:       &SigningKey,
-    sender:   Addr,
-    msgs:     Vec<Message>,
-    chain_id: &str,
-    sequence: u32,
-) -> anyhow::Result<Tx> {
-    let sign_bytes = cw_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
-    let signature = sk.sign_digest(&sign_bytes);
-    Ok(Tx {
-        sender,
-        msgs,
-        credential: signature.to_vec().into(),
-    })
 }
 
 /// Similar to tendermint_rpc Response but serializes to nicer JSON.
