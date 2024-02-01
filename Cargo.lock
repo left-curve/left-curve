@@ -726,6 +726,7 @@ dependencies = [
  "dialoguer",
  "home",
  "k256",
+ "lazy_static",
  "pbkdf2",
  "rand",
  "serde",

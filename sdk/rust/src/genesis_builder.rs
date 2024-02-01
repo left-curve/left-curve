@@ -1,9 +1,25 @@
 use {
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, ensure},
     cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message},
+    home::home_dir,
+    lazy_static::lazy_static,
     serde::ser::Serialize,
-    std::{fs::File, io::Read, path::Path},
+    serde_json::Value,
+    std::{
+        fs,
+        fs::File,
+        io::Read,
+        path::{Path, PathBuf},
+    },
 };
+
+lazy_static! {
+    // the default path to the CometBFT genesis file
+    static ref DEFAULT_COMET_GEN_PATH: PathBuf = {
+        let home = home_dir().expect("failed to get home directory");
+        home.join(".cometbft/config/genesis.json")
+    };
+}
 
 pub enum AdminOption {
     SetToAddr(Addr),
@@ -109,16 +125,27 @@ impl GenesisBuilder {
         Ok(())
     }
 
-    pub fn finalize(mut self) -> anyhow::Result<GenesisState> {
-        // a config must have been provided
-        let Some(config) = self.cfg.take() else {
-            bail!("Config is not set");
-        };
+    fn finalize(mut self) -> anyhow::Result<GenesisState> {
+        // config must have been set
+        let config = self.cfg.take().ok_or(anyhow!("config is not set"))?;
 
         // ensure that store code messages are in front of all other msgs
         let mut msgs = self.code_msgs;
         msgs.extend(self.other_msgs);
 
         Ok(GenesisState { config, msgs })
+    }
+
+    pub fn write_to_file(self, comet_gen_path: Option<PathBuf>) -> anyhow::Result<()> {
+        let comet_gen_path = comet_gen_path.unwrap_or_else(|| DEFAULT_COMET_GEN_PATH.to_path_buf());
+        let comet_gen_str = fs::read_to_string(&comet_gen_path)?;
+        let mut comet_gen: Value = serde_json::from_str(&comet_gen_str)?;
+
+        let app_state = self.finalize()?;
+        comet_gen["app_state"] = serde_json::to_value(app_state)?;
+
+        fs::write(&comet_gen_path, serde_json::to_string_pretty(&comet_gen)?)?;
+
+        Ok(())
     }
 }

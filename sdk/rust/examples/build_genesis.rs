@@ -5,15 +5,11 @@ use {
     cw_rs::{AdminOption, GenesisBuilder, Keyring},
     cw_std::{Coin, Coins, Config, Uint128},
     home::home_dir,
-    std::{env, fs, path::PathBuf},
+    std::{env, path::PathBuf},
 };
 
 fn main() -> anyhow::Result<()> {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
-
-    // load wasm binaries
-    let account_wasm = manifest_dir.join("../../artifacts/cw_account-aarch64.wasm");
-    let bank_wasm = manifest_dir.join("../../artifacts/cw_bank-aarch64.wasm");
+    let artifact_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("../../artifacts");
 
     // open the keyring. we will register accounts for two of the keys
     let home_dir = home_dir().ok_or(anyhow!("Failed to find user home directory"))?;
@@ -22,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     let mut builder = GenesisBuilder::new();
 
     // upload account code and register two accounts
-    let account_code_hash = builder.store_code(account_wasm)?;
+    let account_code_hash = builder.store_code(artifact_dir.join("cw_bank-aarch64.wasm"))?;
 
     let key1 = keyring.get("test1")?;
     let account1 = builder.instantiate(
@@ -36,7 +32,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let key2 = keyring.get("test2")?;
-    let _account2 = builder.instantiate(
+    let account2 = builder.instantiate(
         account_code_hash.clone(),
         cw_account::InstantiateMsg {
             pubkey: PubKey::Secp256k1(key2.verifying_key().to_sec1_bytes().to_vec().into()),
@@ -48,11 +44,11 @@ fn main() -> anyhow::Result<()> {
 
     // upload bank code and register account
     // give account1 some initial balances
-    let bank_addr = builder.store_code_and_instantiate(
-        bank_wasm,
+    let bank = builder.store_code_and_instantiate(
+        artifact_dir.join("cw_bank-aarch64.wasm"),
         cw_bank::InstantiateMsg {
             initial_balances: vec![Balance {
-                address: account1,
+                address: account1.clone(),
                 coins: Coins::from_vec_unchecked(vec![
                     Coin {
                         denom: "uatom".into(),
@@ -73,25 +69,16 @@ fn main() -> anyhow::Result<()> {
     // set config
     builder.set_config(Config {
         owner: None,
-        bank: bank_addr,
+        bank:  bank.clone(),
     })?;
 
-    // build the final genesis state
-    let genesis_state = builder.finalize()?;
-    let genesis_state_str = serde_json::to_string_pretty(&genesis_state)?;
+    // build the final genesis state and write to file
+    builder.write_to_file(None)?;
 
-    // prepare to write
-    let testdata_dir = manifest_dir.join("testdata");
-    if !testdata_dir.exists() {
-        fs::create_dir_all(&testdata_dir)?;
-    }
-
-    // write the genesis state to file
-    // you can paste it to the `app_state` section of ~/.cometbft/config/genesis.json
-    let out_path = testdata_dir.join("genesis_state.json");
-    fs::write(&out_path, genesis_state_str.as_bytes())?;
-
-    println!("✅ Genesis state written to {out_path:?}");
+    println!("done!");
+    println!("account1 : {account1}");
+    println!("account2 : {account2}");
+    println!("bank     : {bank}");
 
     Ok(())
 }

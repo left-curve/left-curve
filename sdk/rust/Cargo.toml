@@ -19,7 +19,9 @@ colored_json = { workspace = true }
 cw-crypto    = { path = "../../crates/crypto" }
 cw-std       = { path = "../../crates/std" }
 dialoguer    = { workspace = true }
+home         = { workspace = true }
 k256         = { workspace = true }
+lazy_static  = { workspace = true }
 pbkdf2       = { workspace = true }
 rand         = { workspace = true }
 serde        = { workspace = true }
@@ -28,6 +30,5 @@ sha2         = { workspace = true }
 signature    = { workspace = true }
 
 [dev-dependencies]
-cw-account = { path = "../../contracts/account", features = ["library"] }
-cw-bank    = { path = "../../contracts/bank", features = ["library"] }
-home       = { workspace = true }
+cw-account  = { path = "../../contracts/account", features = ["library"] }
+cw-bank     = { path = "../../contracts/bank", features = ["library"] }
