@@ -1,6 +1,6 @@
 use {
     clap::Parser,
-    cw_keyring::print_json_pretty,
+    cw_rs::print_json_pretty,
     tendermint::block::Height,
     tendermint_rpc::{Client, HttpClient},
 };

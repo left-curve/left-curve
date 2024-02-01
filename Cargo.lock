@@ -695,27 +695,6 @@ name = "cw-jellyfish-merkle"
 version = "0.0.0"
 
 [[package]]
-name = "cw-keyring"
-version = "0.0.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "bip32",
- "colored",
- "colored_json",
- "cw-crypto",
- "cw-std",
- "dialoguer",
- "k256",
- "pbkdf2",
- "rand",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "signature",
-]
-
-[[package]]
 name = "cw-mock-querier"
 version = "0.0.0"
 dependencies = [
@@ -729,6 +708,30 @@ dependencies = [
  "anyhow",
  "cw-bank",
  "cw-std",
+]
+
+[[package]]
+name = "cw-rs"
+version = "0.0.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "bip32",
+ "colored",
+ "colored_json",
+ "cw-account",
+ "cw-bank",
+ "cw-crypto",
+ "cw-std",
+ "dialoguer",
+ "home",
+ "k256",
+ "pbkdf2",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "signature",
 ]
 
 [[package]]
@@ -754,20 +757,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "cw-utils"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "cw-account",
- "cw-bank",
- "cw-keyring",
- "cw-std",
- "home",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -797,7 +786,7 @@ dependencies = [
  "clap",
  "colored",
  "cw-account",
- "cw-keyring",
+ "cw-rs",
  "cw-std",
  "hex",
  "home",

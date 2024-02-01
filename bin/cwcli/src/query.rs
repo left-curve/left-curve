@@ -1,7 +1,7 @@
 use {
     anyhow::bail,
     clap::Parser,
-    cw_keyring::print_json_pretty,
+    cw_rs::print_json_pretty,
     cw_std::{from_json, to_json, Addr, Hash, QueryRequest, QueryResponse},
     std::{fs::File, io::Write, path::Path},
     tendermint_rpc::{Client, HttpClient},

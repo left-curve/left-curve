@@ -1,4 +1,4 @@
-use {clap::Parser, cw_keyring::Keyring, std::path::PathBuf};
+use {clap::Parser, cw_rs::Keyring, std::path::PathBuf};
 
 /// We we the the BIP-44 coin type as Ethereum for better compatibility:
 /// https://github.com/satoshilabs/slips/blob/master/slip-0044.md

@@ -2,9 +2,8 @@ use {
     anyhow::anyhow,
     cw_account::PubKey,
     cw_bank::Balance,
-    cw_keyring::Keyring,
+    cw_rs::{AdminOption, GenesisBuilder, Keyring},
     cw_std::{Coin, Coins, Config, Uint128},
-    cw_utils::{AdminOption, GenesisBuilder},
     home::home_dir,
     std::{env, fs, path::PathBuf},
 };

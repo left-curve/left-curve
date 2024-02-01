@@ -4,7 +4,7 @@ use {
     clap::Parser,
     colored::Colorize,
     cw_account::StateResponse,
-    cw_keyring::{confirm, print_json_pretty, Keyring, SigningKey},
+    cw_rs::{confirm, print_json_pretty, Keyring, SigningKey},
     cw_std::{from_json, to_json, Addr, Binary, Coins, Config, Hash, Message, QueryRequest, Tx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
