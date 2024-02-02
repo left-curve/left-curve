@@ -76,6 +76,10 @@ pub trait Storage: DynClone {
 
     /// Perform a batch of writes and removes altogether, ideally atomically.
     ///
+    /// The batch is provided by value instead of by reference (unlike other
+    /// trait methods above) because in some implementations a copy/clone can be
+    /// avoided this way, improving performance.
+    ///
     /// The default implementation here is just looping through the ops and
     /// applying them one by one, which is inefficient and not atomic.
     /// Overwrite this implementation if there are more efficient approaches.
