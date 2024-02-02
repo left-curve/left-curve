@@ -6,6 +6,7 @@ mod key;
 mod map;
 mod path;
 mod prefix;
+mod set;
 mod traits;
 
 pub use {
@@ -19,5 +20,6 @@ pub use {
     map::Map,
     path::{Path, PathBuf},
     prefix::Prefix,
+    set::Set,
     traits::{Batch, Op, Order, Record, Storage},
 };

@@ -74,7 +74,13 @@ where
         Box::new(iter)
     }
 
-    pub fn clear(&self, _store: &mut dyn Storage, _limit: Option<usize>) -> StdResult<()> {
+    pub fn clear(
+        &self,
+        _store: &mut dyn Storage,
+        _min:   Option<Bound<K>>,
+        _max:   Option<Bound<K>>,
+        _limit: Option<usize>,
+    ) -> StdResult<()> {
         todo!()
     }
 }

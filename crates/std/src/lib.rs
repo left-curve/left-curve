@@ -12,7 +12,7 @@ pub use crate::{
     storage::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         split_one_key, trim, Batch, Bound, Item, Map, MapKey, Op, Order, Path, PathBuf, Prefix,
-        RawBound, RawKey, Record, Storage,
+        RawBound, RawKey, Record, Set, Storage,
     },
     testing::MockStorage,
     types::{

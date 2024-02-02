@@ -99,7 +99,13 @@ where
         self.no_prefix().keys(store, min, max, order)
     }
 
-    pub fn clear(&self, store: &mut dyn Storage, limit: Option<usize>) -> StdResult<()> {
-        self.no_prefix().clear(store, limit)
+    pub fn clear(
+        &self,
+        store: &mut dyn Storage,
+        min:   Option<Bound<K>>,
+        max:   Option<Bound<K>>,
+        limit: Option<usize>,
+    ) -> StdResult<()> {
+        self.no_prefix().clear(store, min, max, limit)
     }
 }
