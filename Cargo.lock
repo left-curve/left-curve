@@ -693,6 +693,9 @@ dependencies = [
 [[package]]
 name = "cw-jellyfish-merkle"
 version = "0.0.0"
+dependencies = [
+ "cw-std",
+]
 
 [[package]]
 name = "cw-mock-querier"

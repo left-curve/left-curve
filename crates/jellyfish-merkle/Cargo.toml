@@ -1,5 +1,6 @@
 [package]
 name          = "cw-jellyfish-merkle"
+description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,3 +11,4 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+cw-std = { path = "../std" }

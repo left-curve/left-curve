@@ -11,7 +11,7 @@ pub struct Map<'a, K, T> {
 }
 
 impl<'a, K, T> Map<'a, K, T> {
-    pub const fn new(namespace: &'static str) -> Self {
+    pub const fn new(namespace: &'a str) -> Self {
         // TODO: add a maximum length for namespace
         // see comments of increment_last_byte function for rationale
         Self {

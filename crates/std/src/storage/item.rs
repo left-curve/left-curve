@@ -10,7 +10,7 @@ pub struct Item<'a, T> {
 }
 
 impl<'a, T> Item<'a, T> {
-    pub const fn new(storage_key: &'static str) -> Self {
+    pub const fn new(storage_key: &'a str) -> Self {
         Self {
             storage_key: storage_key.as_bytes(),
             _data_type:  PhantomData,
