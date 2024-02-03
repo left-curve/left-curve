@@ -43,12 +43,13 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
     // call `before_tx` entry point
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      tx.sender.clone(),
-        sender:        None,
-        funds:         None,
-        simulate:      Some(false),
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        tx.sender.clone(),
+        sender:          None,
+        funds:           None,
+        simulate:        Some(false),
+        submsg_result:   None,
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 

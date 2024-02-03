@@ -127,12 +127,13 @@ fn _reply<S: Storage + Clone + 'static>(
     // call reply
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      contract.clone(),
-        sender:        None,
-        funds:         None,
-        simulate:      None,
-        submsg_result: Some(submsg_result),
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        contract.clone(),
+        sender:          None,
+        funds:           None,
+        simulate:        None,
+        submsg_result:   Some(submsg_result),
     };
     let resp = instance.call_reply(&ctx, payload)?.into_std_result()?;
 

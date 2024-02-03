@@ -71,12 +71,13 @@ fn _instantiate<S: Storage + Clone + 'static>(
     // call instantiate
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      address,
-        sender:        Some(sender.clone()),
-        funds:         Some(funds),
-        simulate:      None,
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        address,
+        sender:          Some(sender.clone()),
+        funds:           Some(funds),
+        simulate:        None,
+        submsg_result:   None,
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 

@@ -136,7 +136,7 @@ fn new_refund_msg(to: Addr, coins: Coins) -> StdResult<SubMessage> {
 mod tests {
     use {
         super::*,
-        cw_std::{BlockInfo, Coin, MockStorage},
+        cw_std::{Coin, MockStorage},
     };
 
     #[test]
@@ -151,15 +151,13 @@ mod tests {
 
         // TODO: this should be a helper function, something like ReceiveCtx::mock
         let ctx = ReceiveCtx {
-            store: &mut store,
-            chain_id: "dev-1".into(),
-            block: BlockInfo {
-                height:    0,
-                timestamp: 0,
-            },
-            contract: mock_contract.clone(),
-            sender: mock_sender.clone(),
-            // note that coins are sorted
+            store:           &mut store,
+            chain_id:        "dev-1".into(),
+            block_height:    0,
+            block_timestamp: 0,
+            contract:        mock_contract.clone(),
+            sender:          mock_sender.clone(),
+            // note that coins must be sorted by denom
             funds: Coins::from_vec_unchecked(vec![
                 // no prefix
                 Coin::new("uosmo", 111),

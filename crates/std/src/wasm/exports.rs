@@ -70,12 +70,13 @@ where
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = InstantiateCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-        sender:   ctx.sender.expect("host failed to provide a sender"),
-        funds:    ctx.funds.expect("host failed to provide funds"),
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        sender:          ctx.sender.expect("host failed to provide a sender"),
+        funds:           ctx.funds.expect("host failed to provide funds"),
     };
 
     instantiate_fn(ctx, msg).into()
@@ -114,12 +115,13 @@ where
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = ExecuteCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-        sender:   ctx.sender.expect("host failed to provide a sender"),
-        funds:    ctx.funds.expect("host failed to provide funds"),
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        sender:          ctx.sender.expect("host failed to provide a sender"),
+        funds:           ctx.funds.expect("host failed to provide funds"),
     };
 
     execute_fn(ctx, msg).into()
@@ -158,10 +160,11 @@ where
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = QueryCtx {
-        store:    &ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
+        store:           &ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
     };
 
     query_fn(ctx, msg).into()
@@ -200,173 +203,15 @@ where
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
     let ctx = MigrateCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-        sender:   ctx.sender.expect("host failed to provide a sender"),
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        sender:          ctx.sender.expect("host failed to provide a sender"),
     };
 
     migrate_fn(ctx, msg).into()
-}
-
-// --------------------------------- before tx ---------------------------------
-
-pub fn do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_ptr:      usize,
-    tx_ptr:       usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
-
-    let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_bytes:    &[u8],
-    tx_bytes:     &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-    let tx = try_into_generic_result!(from_json(tx_bytes));
-
-    let ctx = BeforeTxCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-        simulate: ctx.simulate.expect("host failed to specify whether it's simulation mode"),
-    };
-
-    before_tx_fn(ctx, tx).into()
-}
-
-// --------------------------------- transfer ----------------------------------
-
-pub fn do_transfer<E>(
-    transfer_fn: &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
-    ctx_ptr:     usize,
-    msg_ptr:     usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
-
-    let res = _do_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_transfer<E>(
-    transfer_fn:  &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
-    ctx_bytes:    &[u8],
-    msg_bytes:    &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-    let msg = try_into_generic_result!(from_json(msg_bytes));
-
-    let ctx = TransferCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-    };
-
-    transfer_fn(ctx, msg).into()
-}
-
-// ---------------------------------- receive ----------------------------------
-
-pub fn do_receive<E>(
-    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
-    ctx_ptr:    usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-
-    let res = _do_receive(receive_fn, &ctx_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_receive<E>(
-    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
-    ctx_bytes:  &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-
-    let ctx = ReceiveCtx {
-        store:    &mut ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-        sender:   ctx.sender.expect("host failed to specify sender"),
-        funds:    ctx.funds.expect("host failed to specify funds"),
-    };
-
-    receive_fn(ctx).into()
-}
-
-// -------------------------------- bank query ---------------------------------
-
-pub fn do_query_bank<E>(
-    query_bank_fn: &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
-    ctx_ptr:       usize,
-    msg_ptr:       usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
-
-    let res = _do_query_bank(query_bank_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_query_bank<E>(
-    query_bank_fn:  &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
-    ctx_bytes:      &[u8],
-    msg_bytes:      &[u8],
-) -> GenericResult<BankQueryResponse>
-where
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-    let msg = try_into_generic_result!(from_json(msg_bytes));
-
-    let ctx = QueryCtx {
-        store:    &ExternalStorage,
-        chain_id: ctx.chain_id,
-        block:    ctx.block,
-        contract: ctx.contract,
-    };
-
-    query_bank_fn(ctx, msg).into()
 }
 
 // ----------------------------------- reply -----------------------------------
@@ -403,11 +248,177 @@ where
 
     let ctx = ReplyCtx {
         store: &mut ExternalStorage,
-        chain_id:      ctx.chain_id,
-        block:         ctx.block,
-        contract:      ctx.contract,
-        submsg_result: ctx.submsg_result.expect("host failed to specify submsg result"),
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        submsg_result:   ctx.submsg_result.expect("host failed to specify submsg result"),
     };
 
     reply_fn(ctx, msg).into()
 }
+
+// ---------------------------------- receive ----------------------------------
+
+pub fn do_receive<E>(
+    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
+    ctx_ptr:    usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+
+    let res = _do_receive(receive_fn, &ctx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_receive<E>(
+    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
+    ctx_bytes:  &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+
+    let ctx = ReceiveCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        sender:          ctx.sender.expect("host failed to specify sender"),
+        funds:           ctx.funds.expect("host failed to specify funds"),
+    };
+
+    receive_fn(ctx).into()
+}
+
+// --------------------------------- before tx ---------------------------------
+
+pub fn do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_ptr:      usize,
+    tx_ptr:       usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
+
+    let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_before_tx<E>(
+    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
+    ctx_bytes:    &[u8],
+    tx_bytes:     &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let tx = try_into_generic_result!(from_json(tx_bytes));
+
+    let ctx = BeforeTxCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+        simulate:        ctx.simulate.expect("host failed to specify whether it's simulation mode"),
+    };
+
+    before_tx_fn(ctx, tx).into()
+}
+
+// --------------------------------- transfer ----------------------------------
+
+pub fn do_transfer<E>(
+    transfer_fn: &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
+    ctx_ptr:     usize,
+    msg_ptr:     usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_transfer<E>(
+    transfer_fn:  &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
+    ctx_bytes:    &[u8],
+    msg_bytes:    &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = TransferCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+    };
+
+    transfer_fn(ctx, msg).into()
+}
+
+// -------------------------------- bank query ---------------------------------
+
+pub fn do_query_bank<E>(
+    query_bank_fn: &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_ptr:       usize,
+    msg_ptr:       usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_query_bank(query_bank_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_query_bank<E>(
+    query_bank_fn:  &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_bytes:      &[u8],
+    msg_bytes:      &[u8],
+) -> GenericResult<BankQueryResponse>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = QueryCtx {
+        store:           &ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        contract:        ctx.contract,
+    };
+
+    query_bank_fn(ctx, msg).into()
+}
+
+

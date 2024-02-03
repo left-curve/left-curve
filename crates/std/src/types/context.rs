@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, BlockInfo, Coins, Event, GenericResult, Storage},
+    crate::{Addr, Coins, Event, GenericResult, Storage},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -14,76 +14,85 @@ use {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
-    pub chain_id:      String,
-    pub block:         BlockInfo,
-    pub contract:      Addr,
-    pub sender:        Option<Addr>,
-    pub funds:         Option<Coins>,
-    pub simulate:      Option<bool>,
-    pub submsg_result: Option<GenericResult<Vec<Event>>>,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub sender:          Option<Addr>,
+    pub funds:           Option<Coins>,
+    pub simulate:        Option<bool>,
+    pub submsg_result:   Option<GenericResult<Vec<Event>>>,
 }
 
 pub struct InstantiateCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Addr,
-    pub funds:    Coins,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub sender:          Addr,
+    pub funds:           Coins,
 }
 
 pub struct ExecuteCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Addr,
-    pub funds:    Coins,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub sender:          Addr,
+    pub funds:           Coins,
 }
 
 pub struct QueryCtx<'a> {
-    pub store:    &'a dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
+    pub store:           &'a dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
 }
 
 pub struct MigrateCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Addr,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub sender:          Addr,
 }
 
 pub struct ReplyCtx<'a> {
-    pub store:         &'a mut dyn Storage,
-    pub chain_id:      String,
-    pub block:         BlockInfo,
-    pub contract:      Addr,
-    pub submsg_result: GenericResult<Vec<Event>>,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub submsg_result:   GenericResult<Vec<Event>>,
 }
 
 pub struct ReceiveCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Addr,
-    pub funds:    Coins,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub sender:          Addr,
+    pub funds:           Coins,
 }
 
 pub struct BeforeTxCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub simulate: bool,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
+    pub simulate:        bool,
 }
 
 pub struct TransferCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    u64,
+    pub block_timestamp: u64,
+    pub contract:        Addr,
 }

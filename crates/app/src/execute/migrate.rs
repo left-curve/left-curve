@@ -62,12 +62,13 @@ fn _migrate<S: Storage + Clone + 'static>(
     // call the contract's migrate entry point
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      contract.clone(),
-        sender:        Some(sender.clone()),
-        funds:         None,
-        simulate:      None,
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        contract.clone(),
+        sender:          Some(sender.clone()),
+        funds:           None,
+        simulate:        None,
+        submsg_result:   None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 

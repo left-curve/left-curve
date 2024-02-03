@@ -54,12 +54,13 @@ fn _transfer<S: Storage + Clone + 'static>(
     // call transfer
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      cfg.bank,
-        sender:        None,
-        funds:         None,
-        simulate:      None,
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        cfg.bank,
+        sender:          None,
+        funds:           None,
+        simulate:        None,
+        submsg_result:   None,
     };
     let msg = TransferMsg {
         from,
@@ -96,12 +97,13 @@ fn _receive<S: Storage + Clone + 'static>(
     // call the recipient contract's `receive` entry point
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      msg.to.clone(),
-        sender:        Some(msg.from.clone()),
-        funds:         Some(msg.coins.clone()),
-        simulate:      None,
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        msg.to.clone(),
+        sender:          Some(msg.from.clone()),
+        funds:           Some(msg.coins.clone()),
+        simulate:        None,
+        submsg_result:   None,
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 

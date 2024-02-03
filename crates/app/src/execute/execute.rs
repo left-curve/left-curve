@@ -54,12 +54,13 @@ fn _execute<S: Storage + Clone + 'static>(
     // call execute
     let ctx = Context {
         chain_id,
-        block:         block.clone(),
-        contract:      contract.clone(),
-        sender:        Some(sender.clone()),
-        funds:         Some(funds),
-        simulate:      None,
-        submsg_result: None,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        contract:        contract.clone(),
+        sender:          Some(sender.clone()),
+        funds:           Some(funds),
+        simulate:        None,
+        submsg_result:   None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 

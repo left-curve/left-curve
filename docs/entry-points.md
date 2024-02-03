@@ -49,7 +49,7 @@ These are entry points that a contract needs in order to be able to initiate tra
 fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> Result<Response, Error>;
 
 #[entry_point]
-fn after_tx(ctx: AfterTxCtx) -> Result<Response, Error>;
+fn after_tx(ctx: AfterTxCtx, tx: Tx) -> Result<Response, Error>;
 ```
 
 ## Cronjobs
