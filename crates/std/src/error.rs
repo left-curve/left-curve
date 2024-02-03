@@ -63,23 +63,34 @@ pub enum StdError {
         b:  String,
     },
 
+    #[error("Power overflow: {a} ^ {b} > {ty}::MAX")]
+    OverflowPow {
+        ty: &'static str,
+        a:  String,
+        b:  String,
+    },
+
+    #[error("Left shift overflow: {a} << {b}")]
+    OverflowShl {
+        a:  String,
+        b:  u32,
+    },
+
+    #[error("Right shift overflow: {a} >> {b}")]
+    OverflowShr {
+        a:  String,
+        b:  u32,
+    },
+
     #[error("Division by zero: {a} / 0")]
     DivisionByZero {
         a: String,
     },
 
-    // #[error("Incorrect length! type: {ty}, expected: {expect}, actual: {actual}")]
-    // IncorrectLength {
-    //     ty:     &'static str,
-    //     expect: usize,
-    //     actual: usize,
-    // },
-
-    // #[error("String does not start with the expected prefix: {prefix}")]
-    // IncorrectPrefix {
-    //     ty:     &'static str,
-    //     prefix: String,
-    // },
+    #[error("Remainder by zero: {a} % 0")]
+    RemainerByZero {
+        a: String,
+    },
 
     #[error("Failed to serialize into json! type: {ty}, reason: {reason}")]
     Serialize {
@@ -139,26 +150,39 @@ impl StdError {
         }
     }
 
+    pub fn overflow_pow<T: ToString>(a: T, b: u32) -> Self {
+        Self::OverflowPow {
+            ty: type_name::<T>(),
+            a:  a.to_string(),
+            b:  b.to_string(),
+        }
+    }
+
+    pub fn overflow_shl<T: ToString>(a: T, b: u32) -> Self {
+        Self::OverflowShl {
+            a: a.to_string(),
+            b,
+        }
+    }
+
+    pub fn overflow_shr<T: ToString>(a: T, b: u32) -> Self {
+        Self::OverflowShr {
+            a: a.to_string(),
+            b,
+        }
+    }
+
     pub fn division_by_zero<T: ToString>(a: T) -> Self {
         Self::DivisionByZero {
             a: a.to_string(),
         }
     }
 
-    // pub fn incorrect_length<T>(expect: usize, actual: usize) -> Self {
-    //     Self::IncorrectLength {
-    //         ty: type_name::<T>(),
-    //         expect,
-    //         actual,
-    //     }
-    // }
-
-    // pub fn incorrect_prefix<T>(prefix: impl ToString) -> Self {
-    //     Self::IncorrectPrefix {
-    //         ty:     type_name::<T>(),
-    //         prefix: prefix.to_string(),
-    //     }
-    // }
+    pub fn remainder_by_zero<T: ToString>(a: T) -> Self {
+        Self::RemainerByZero {
+            a: a.to_string(),
+        }
+    }
 
     pub fn serialize<T>(reason: impl ToString) -> Self {
         Self::Serialize {
