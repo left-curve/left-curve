@@ -53,10 +53,7 @@ impl<'a> Tree<'a> {
     /// ever been written to the tree yet, or the version is old and has been
     /// pruned.
     pub fn root_hash(&self, store: &dyn Storage, version: Option<u64>) -> StdResult<Option<Hash>> {
-        let version = match version {
-            Some(v) => v,
-            None => self.version.load(store)?,
-        };
+        let version = self.version_or_latest(store, version)?;
         let root_node_key = NodeKey::root(version);
         let root_node = self.nodes.may_load(store, &root_node_key)?;
         Ok(root_node.map(|node| node.hash()))
@@ -91,5 +88,12 @@ impl<'a> Tree<'a> {
         limit:         Option<usize>,
     ) -> StdResult<()> {
         todo!()
+    }
+
+    fn version_or_latest(&self, store: &dyn Storage, maybe_version: Option<u64>) -> StdResult<u64> {
+        match maybe_version {
+            Some(v) => Ok(v),
+            None => self.version.load(store),
+        }
     }
 }
