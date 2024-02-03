@@ -11,6 +11,7 @@ mod query;
 mod response;
 mod result;
 mod tx;
+mod uint64;
 mod uint128;
 
 pub use {
@@ -33,5 +34,6 @@ pub use {
     response::{ReplyOn, Response, SubMessage},
     result::GenericResult,
     tx::{Message, Tx},
+    uint64::Uint64,
     uint128::Uint128,
 };
