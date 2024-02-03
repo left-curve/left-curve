@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Coins, Event, GenericResult, Storage},
+    crate::{Addr, Coins, Event, GenericResult, Storage, Timestamp, Uint64},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -15,8 +15,8 @@ use {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Context {
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub sender:          Option<Addr>,
     pub funds:           Option<Coins>,
@@ -27,8 +27,8 @@ pub struct Context {
 pub struct InstantiateCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -37,8 +37,8 @@ pub struct InstantiateCtx<'a> {
 pub struct ExecuteCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -47,16 +47,16 @@ pub struct ExecuteCtx<'a> {
 pub struct QueryCtx<'a> {
     pub store:           &'a dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
 }
 
 pub struct MigrateCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub sender:          Addr,
 }
@@ -64,8 +64,8 @@ pub struct MigrateCtx<'a> {
 pub struct ReplyCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub submsg_result:   GenericResult<Vec<Event>>,
 }
@@ -73,8 +73,8 @@ pub struct ReplyCtx<'a> {
 pub struct ReceiveCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -83,8 +83,8 @@ pub struct ReceiveCtx<'a> {
 pub struct BeforeTxCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
     pub simulate:        bool,
 }
@@ -92,7 +92,7 @@ pub struct BeforeTxCtx<'a> {
 pub struct TransferCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
-    pub block_height:    u64,
-    pub block_timestamp: u64,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
     pub contract:        Addr,
 }

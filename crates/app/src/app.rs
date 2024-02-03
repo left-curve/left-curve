@@ -6,7 +6,7 @@ use {
     cw_db::{CacheStore, SharedStore},
     cw_std::{
         from_json, to_json, Addr, Batch, Binary, BlockInfo, Event, GenesisState, Hash,
-        QueryRequest, Storage, Tx,
+        QueryRequest, Storage, Tx, Uint64,
     },
     std::sync::{Arc, RwLock},
     tracing::{debug, info},
@@ -114,7 +114,7 @@ where
 
         self.put_pending(batch, block.clone())?;
 
-        info!(height = block.height, timestamp = block.timestamp, "Finalized block");
+        info!(height = block.height.to_string(), "Finalized block");
 
         Ok(tx_results)
     }
@@ -130,23 +130,23 @@ where
         // update the last finalized block info
         LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
-        info!(height = block.height, "Committed state");
+        info!(height = block.height.to_string(), "Committed state");
 
         Ok(())
     }
 
     // returns (last_block_height, last_block_app_hash)
-    pub fn do_info(&self) -> AppResult<(i64, Hash)> {
+    pub fn do_info(&self) -> AppResult<(Uint64, Hash)> {
         match LAST_FINALIZED_BLOCK.may_load(&self.store)? {
             Some(block) => {
                 // return an all-zero hash as a placeholder, since we haven't
                 // implemented state merklization yet
-                Ok((block.height as i64, Hash::zero()))
+                Ok((block.height, Hash::zero()))
             },
             None => {
                 // prior to genesis, we simply return 0 as block height and an
                 // empty app hash
-                Ok((0, Hash::zero()))
+                Ok((Uint64::zero(), Hash::zero()))
             },
         }
     }

@@ -10,7 +10,7 @@ use {
     cw_crypto::Identity256,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage, Tx,
+        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint64,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -171,8 +171,8 @@ fn main() -> anyhow::Result<()> {
 
 fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
-        height,
-        timestamp,
+        height:    Uint64::new(height),
+        timestamp: Timestamp::from_seconds(timestamp),
     }
 }
 

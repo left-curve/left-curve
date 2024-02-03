@@ -11,7 +11,7 @@ use {
     cw_crypto::Identity256,
     cw_std::{
         from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash,
-        Message, MockStorage, QueryRequest, QueryResponse, Storage, Tx, Uint128,
+        Message, MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint128, Uint64,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
@@ -270,8 +270,8 @@ fn make_transfer_tx<const N: usize>(
 
 fn make_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
-        height,
-        timestamp,
+        height:    Uint64::new(height),
+        timestamp: Timestamp::from_seconds(timestamp),
     }
 }
 

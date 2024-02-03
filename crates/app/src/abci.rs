@@ -1,6 +1,6 @@
 use {
     crate::{App, AppResult},
-    cw_std::{Attribute, BlockInfo, Event, Hash, Storage},
+    cw_std::{Attribute, BlockInfo, Event, Hash, Storage, Timestamp, Uint64},
     std::net::ToSocketAddrs,
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
@@ -9,7 +9,7 @@ use {
             RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx,
             ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery,
         },
-        google::protobuf::Timestamp,
+        google::protobuf::Timestamp as TmTimestamp,
     },
     tracing::Value,
 };
@@ -41,7 +41,7 @@ where
                     version:             env!("CARGO_PKG_VERSION").into(),
                     app_version:         1,
                     last_block_app_hash: last_block_version.into_vec().into(),
-                    last_block_height,
+                    last_block_height:   last_block_height.u64() as i64,
                 }
             },
             Err(err) => panic!("failed to get info: {err}"),
@@ -150,11 +150,15 @@ where
     }
 }
 
-fn from_tm_block(height: i64, time: Option<Timestamp>) -> BlockInfo {
+fn from_tm_block(height: i64, time: Option<TmTimestamp>) -> BlockInfo {
     BlockInfo {
-        height:    height as u64,
-        timestamp: time.expect("block time not given").seconds as u64,
+        height:    Uint64::new(height as u64),
+        timestamp: from_tm_timestamp(time.expect("block time not found")),
     }
+}
+
+fn from_tm_timestamp(time: TmTimestamp) -> Timestamp {
+    Timestamp::from_seconds(time.seconds as u64).plus_nanos(time.nanos as u64)
 }
 
 fn to_tm_tx_result(tx_result: AppResult<Vec<Event>>) -> ExecTxResult {

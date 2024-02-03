@@ -18,6 +18,16 @@ impl Timestamp {
         Self(Uint64::new(seconds * NANOS_PER_SECOND))
     }
 
+    pub fn plus_nanos(&self, nanos: u64) -> Self {
+        Self(self.0 + Uint64::new(nanos))
+    }
+
+    pub fn plus_seconds(&self, seconds: u64) -> Self {
+        self.plus_nanos(seconds * NANOS_PER_SECOND)
+    }
+
+    // TODO: add more plus/minus methods
+
     #[inline]
     pub fn nanos(&self) -> u64 {
         self.0.u64()

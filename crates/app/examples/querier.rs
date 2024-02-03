@@ -4,7 +4,7 @@ use {
     cw_mock_querier::QueryMsg,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, Empty, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage,
+        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Uint64,
     },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -85,8 +85,8 @@ fn main() -> anyhow::Result<()> {
 
 fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
-        height,
-        timestamp,
+        height:    Uint64::new(height),
+        timestamp: Timestamp::from_seconds(timestamp),
     }
 }
 

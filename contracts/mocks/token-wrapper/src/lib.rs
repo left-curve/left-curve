@@ -136,7 +136,7 @@ fn new_refund_msg(to: Addr, coins: Coins) -> StdResult<SubMessage> {
 mod tests {
     use {
         super::*,
-        cw_std::{Coin, MockStorage},
+        cw_std::{Coin, MockStorage, Timestamp, Uint64},
     };
 
     #[test]
@@ -153,8 +153,8 @@ mod tests {
         let ctx = ReceiveCtx {
             store:           &mut store,
             chain_id:        "dev-1".into(),
-            block_height:    0,
-            block_timestamp: 0,
+            block_height:    Uint64::new(0),
+            block_timestamp: Timestamp::from_seconds(0),
             contract:        mock_contract.clone(),
             sender:          mock_sender.clone(),
             // note that coins must be sorted by denom
