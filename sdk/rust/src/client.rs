@@ -100,7 +100,7 @@ impl Client {
 
     pub async fn query_app(&self, req: &QueryRequest) -> anyhow::Result<QueryResponse> {
         let res = self.query("/app", to_json(req)?.to_vec(), 0, false).await?;
-        Ok(from_json(&res.value)?)
+        Ok(from_json(res.value)?)
     }
 
     pub async fn query_info(&self) -> anyhow::Result<InfoResponse> {
