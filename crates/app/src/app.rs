@@ -5,12 +5,13 @@ use {
     },
     cw_db::{CacheStore, SharedStore},
     cw_std::{
-        from_json, to_json, Addr, Batch, Binary, BlockInfo, Event, GenesisState, Hash,
-        QueryRequest, Storage, Tx, Uint64,
+        from_json, to_json, Batch, Binary, BlockInfo, Event, GenesisState, Hash, QueryRequest,
+        Storage, Tx, Uint64, GENESIS_SENDER,
     },
     std::sync::{Arc, RwLock},
     tracing::{debug, info},
 };
+
 
 /// Represent state changes caused by the FinalizeBlock call, but not yet
 /// persisted to disk.
@@ -59,8 +60,8 @@ where
 {
     pub fn do_init_chain(
         &self,
-        chain_id: String,
-        block: BlockInfo,
+        chain_id:        String,
+        block:           BlockInfo,
         app_state_bytes: &[u8],
     ) -> AppResult<Hash> {
         let mut store = self.store.share();
@@ -73,19 +74,13 @@ where
         CONFIG.save(&mut store, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
-        // not sure which address to use as genesis message sender. currently we
-        // just use an all-zero address.
-        // probably should make the sender Option in the contexts. None if it's
-        // in genesis.
-        let sender = Addr::mock(0);
-
         // loop through genesis messages and execute each one.
         // it's expected that genesis messages should all successfully execute.
         // if anyone fails, it's fatal error and we abort the genesis.
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             info!(idx, "Processing genesis message");
-            process_msg(self.store.share(), &block, &sender, msg)?;
+            process_msg(self.store.share(), &block, &GENESIS_SENDER, msg)?;
         }
 
         info!(chain_id, "Completed genesis");
