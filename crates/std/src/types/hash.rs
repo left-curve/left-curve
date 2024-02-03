@@ -27,12 +27,14 @@ impl Hash {
     /// We use Hex encoding, which uses 2 ASCII characters per byte, so the
     /// ASCII length should be 64.
     pub const LENGTH: usize = 32;
+
+    /// A zeroed-out hash. Useful as mockups or placeholders.
+    pub const ZERO: Self = Self([0; Self::LENGTH]);
 }
 
 impl Hash {
-    /// Return a hash of all zeroes. Useful as mockups or placeholders.
-    pub fn zero() -> Self {
-        Self([0; Self::LENGTH])
+    pub fn into_slice(self) -> [u8; Self::LENGTH] {
+        self.0
     }
 
     pub fn into_vec(self) -> Vec<u8> {

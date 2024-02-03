@@ -87,7 +87,7 @@ where
 
         // return an empty apphash as placeholder, since we haven't implemented
         // state merklization yet
-        Ok(Hash::zero())
+        Ok(Hash::ZERO)
     }
 
     // TODO: return events, txResults, appHash
@@ -136,12 +136,12 @@ where
             Some(block) => {
                 // return an all-zero hash as a placeholder, since we haven't
                 // implemented state merklization yet
-                Ok((block.height, Hash::zero()))
+                Ok((block.height, Hash::ZERO))
             },
             None => {
                 // prior to genesis, we simply return 0 as block height and an
                 // empty app hash
-                Ok((Uint64::zero(), Hash::zero()))
+                Ok((Uint64::ZERO, Hash::ZERO))
             },
         }
     }

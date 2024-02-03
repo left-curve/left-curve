@@ -104,7 +104,7 @@ impl Coins {
     /// Get the amount of the given denom.
     /// Note, if the denom does not exist, zero is returned.
     pub fn amount_of(&self, denom: &str) -> Uint128 {
-        self.0.get(denom).copied().unwrap_or_else(Uint128::zero)
+        self.0.get(denom).copied().unwrap_or(Uint128::ZERO)
     }
 
     /// Do nothing if the `Coins` is empty; throw an error if not empty.

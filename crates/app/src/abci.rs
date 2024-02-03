@@ -74,7 +74,7 @@ where
                     tx_results:              tx_results.into_iter().map(to_tm_tx_result).collect(),
                     validator_updates:       vec![],
                     consensus_param_updates: None,
-                    app_hash:                Hash::zero().into_vec().into(),
+                    app_hash:                Hash::ZERO.into_vec().into(),
                 }
             },
             Err(err) => panic!("failed to finalize block: {err}"),

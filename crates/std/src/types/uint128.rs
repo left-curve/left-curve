@@ -21,8 +21,10 @@ use {
 pub struct Uint128(u128);
 
 impl Uint128 {
-    pub const MAX: Self = Self::new(u128::MAX);
-    pub const MIN: Self = Self::new(u128::MAX);
+    pub const MAX:  Self = Self::new(u128::MAX);
+    pub const MIN:  Self = Self::new(u128::MIN);
+    pub const ZERO: Self = Self::new(0);
+    pub const ONE:  Self = Self::new(1);
 
     pub const fn new(value: u128) -> Self {
         Self(value)
@@ -32,13 +34,16 @@ impl Uint128 {
         self.0
     }
 
-    #[inline]
-    pub const fn zero() -> Self {
-        Self(0)
-    }
-
     pub const fn is_zero(self) -> bool {
         self.0 == 0
+    }
+
+    pub const fn from_be_bytes(bytes: [u8; 16]) -> Self {
+        Self(u128::from_be_bytes(bytes))
+    }
+
+    pub const fn from_le_bytes(bytes: [u8; 16]) -> Self {
+        Self(u128::from_le_bytes(bytes))
     }
 
     pub const fn to_be_bytes(self) -> [u8; 16] {

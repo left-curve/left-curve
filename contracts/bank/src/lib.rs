@@ -256,7 +256,7 @@ pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> StdResult<C
     let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
     Ok(Coin {
         denom,
-        amount: maybe_amount.unwrap_or_else(Uint128::zero),
+        amount: maybe_amount.unwrap_or(Uint128::ZERO),
     })
 }
 
@@ -279,7 +279,7 @@ pub fn query_supply(ctx: QueryCtx, denom: String) -> StdResult<Coin> {
     let maybe_supply = SUPPLIES.may_load(ctx.store, &denom)?;
     Ok(Coin {
         denom,
-        amount: maybe_supply.unwrap_or_else(Uint128::zero),
+        amount: maybe_supply.unwrap_or(Uint128::ZERO),
     })
 }
 
