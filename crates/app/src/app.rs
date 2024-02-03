@@ -114,7 +114,7 @@ where
 
         self.put_pending(batch, block.clone())?;
 
-        info!(height = block.height.to_string(), "Finalized block");
+        info!(height = block.height.u64(), timestamp = block.timestamp.seconds(), "Finalized block");
 
         Ok(tx_results)
     }
@@ -130,7 +130,7 @@ where
         // update the last finalized block info
         LAST_FINALIZED_BLOCK.save(&mut store, &block)?;
 
-        info!(height = block.height.to_string(), "Committed state");
+        info!(height = block.height.u64(), "Committed state");
 
         Ok(())
     }
