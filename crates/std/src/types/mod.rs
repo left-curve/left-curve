@@ -10,9 +10,10 @@ mod hash;
 mod query;
 mod response;
 mod result;
+mod timestamp;
 mod tx;
-mod uint64;
 mod uint128;
+mod uint64;
 
 pub use {
     address::Addr,
@@ -33,7 +34,8 @@ pub use {
     },
     response::{ReplyOn, Response, SubMessage},
     result::GenericResult,
+    timestamp::Timestamp,
     tx::{Message, Tx},
-    uint64::Uint64,
     uint128::Uint128,
+    uint64::Uint64,
 };

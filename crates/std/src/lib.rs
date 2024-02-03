@@ -20,8 +20,8 @@ pub use crate::{
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Empty,
         Event, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx,
         Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyCtx, ReplyOn,
-        Response, SubMessage, TransferCtx, TransferMsg, Tx, Uint128, Uint64, WasmRawResponse,
-        WasmSmartResponse,
+        Response, SubMessage, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint64,
+        WasmRawResponse, WasmSmartResponse,
     },
 };
 
