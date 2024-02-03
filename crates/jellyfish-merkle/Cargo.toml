@@ -12,3 +12,4 @@ categories    = { workspace = true }
 
 [dependencies]
 cw-std = { path = "../std" }
+sha2   = { workspace = true }

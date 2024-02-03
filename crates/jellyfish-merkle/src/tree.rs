@@ -45,10 +45,21 @@ impl<'a> Tree<'a> {
         }
     }
 
-    /// Return the root hash at the given version. If version isn't specified,
-    /// use the latest version.
-    pub fn root_hash(&self, store: &dyn Storage, version: Option<u64>) -> StdResult<Hash> {
-        todo!()
+    /// Return the root hash at the given version.
+    /// If version isn't specified, use the latest version.
+    ///
+    /// If the root node is not found at the given version, return None.
+    /// There are two possible reasons that it's not found: either no data has
+    /// ever been written to the tree yet, or the version is old and has been
+    /// pruned.
+    pub fn root_hash(&self, store: &dyn Storage, version: Option<u64>) -> StdResult<Option<Hash>> {
+        let version = match version {
+            Some(v) => v,
+            None => self.version.load(store)?,
+        };
+        let root_node_key = NodeKey::root(version);
+        let root_node = self.nodes.may_load(store, &root_node_key)?;
+        Ok(root_node.map(|node| node.hash()))
     }
 
     /// Generate Merkle proof for the a key at the given version. If the key

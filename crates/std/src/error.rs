@@ -1,7 +1,7 @@
 use {
     data_encoding::BASE64,
     hex::FromHexError,
-    std::{any::type_name, num::ParseIntError},
+    std::{any::type_name, array::TryFromSliceError, num::ParseIntError},
     thiserror::Error,
 };
 
@@ -12,6 +12,9 @@ pub enum StdError {
 
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
+
+    #[error(transparent)]
+    TryFromSlice(#[from] TryFromSliceError),
 
     #[error("Generic error: {0}")]
     Generic(String),

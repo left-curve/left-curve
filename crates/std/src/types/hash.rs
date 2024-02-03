@@ -33,6 +33,10 @@ impl Hash {
 }
 
 impl Hash {
+    pub fn from_slice(slice: [u8; Self::LENGTH]) -> Self {
+        Self(slice)
+    }
+
     pub fn into_slice(self) -> [u8; Self::LENGTH] {
         self.0
     }
