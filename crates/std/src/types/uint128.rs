@@ -21,10 +21,10 @@ use {
 pub struct Uint128(u128);
 
 impl Uint128 {
-    pub const MAX:  Self = Self::new(u128::MAX);
-    pub const MIN:  Self = Self::new(u128::MIN);
-    pub const ZERO: Self = Self::new(0);
-    pub const ONE:  Self = Self::new(1);
+    pub const MAX:  Self = Self(u128::MAX);
+    pub const MIN:  Self = Self(u128::MIN);
+    pub const ZERO: Self = Self(0);
+    pub const ONE:  Self = Self(1);
 
     pub const fn new(value: u128) -> Self {
         Self(value)

@@ -21,10 +21,10 @@ use {
 pub struct Uint64(u64);
 
 impl Uint64 {
-    pub const MAX:  Self = Self::new(u64::MAX);
-    pub const MIN:  Self = Self::new(u64::MIN);
-    pub const ZERO: Self = Self::new(0);
-    pub const ONE:  Self = Self::new(1);
+    pub const MAX:  Self = Self(u64::MAX);
+    pub const MIN:  Self = Self(u64::MIN);
+    pub const ZERO: Self = Self(0);
+    pub const ONE:  Self = Self(1);
 
     pub const fn new(value: u64) -> Self {
         Self(value)
