@@ -101,6 +101,20 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
+    pub fn call_reply(
+        &mut self,
+        ctx: &Context,
+        msg: impl AsRef<[u8]>,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_1_out_1("reply", ctx, msg)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    pub fn call_receive(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_0_out_1("receive", ctx)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
     pub fn call_before_tx(
         &mut self,
         ctx: &Context,
@@ -125,20 +139,6 @@ where
         msg: &BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
         let res_bytes = self.call_in_1_out_1("query_bank", ctx, to_json(msg)?)?;
-        from_json(res_bytes).map_err(Into::into)
-    }
-
-    pub fn call_receive(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_0_out_1("receive", ctx)?;
-        from_json(res_bytes).map_err(Into::into)
-    }
-
-    pub fn call_reply(
-        &mut self,
-        ctx: &Context,
-        msg: impl AsRef<[u8]>,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("reply", ctx, msg)?;
         from_json(res_bytes).map_err(Into::into)
     }
 

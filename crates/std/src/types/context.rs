@@ -56,6 +56,23 @@ pub struct MigrateCtx<'a> {
     pub sender:   Addr,
 }
 
+pub struct ReplyCtx<'a> {
+    pub store:         &'a mut dyn Storage,
+    pub chain_id:      String,
+    pub block:         BlockInfo,
+    pub contract:      Addr,
+    pub submsg_result: GenericResult<Vec<Event>>,
+}
+
+pub struct ReceiveCtx<'a> {
+    pub store:    &'a mut dyn Storage,
+    pub chain_id: String,
+    pub block:    BlockInfo,
+    pub contract: Addr,
+    pub sender:   Addr,
+    pub funds:    Coins,
+}
+
 pub struct BeforeTxCtx<'a> {
     pub store:    &'a mut dyn Storage,
     pub chain_id: String,
@@ -69,21 +86,4 @@ pub struct TransferCtx<'a> {
     pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
-}
-
-pub struct ReceiveCtx<'a> {
-    pub store:    &'a mut dyn Storage,
-    pub chain_id: String,
-    pub block:    BlockInfo,
-    pub contract: Addr,
-    pub sender:   Addr,
-    pub funds:    Coins,
-}
-
-pub struct ReplyCtx<'a> {
-    pub store:         &'a mut dyn Storage,
-    pub chain_id:      String,
-    pub block:         BlockInfo,
-    pub contract:      Addr,
-    pub submsg_result: GenericResult<Vec<Event>>,
 }
