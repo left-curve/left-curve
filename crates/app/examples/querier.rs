@@ -4,7 +4,7 @@ use {
     cw_mock_querier::QueryMsg,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, Empty, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Uint64,
+        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Uint64, GENESIS_SENDER,
     },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     println!("🤖 Computing querier contract address");
     let code_hash = hash(&wasm_byte_code);
     let salt = b"mock-querier".to_vec().into();
-    let address = Addr::compute(&Addr::mock(0), &code_hash, &salt);
+    let address = Addr::compute(&GENESIS_SENDER, &code_hash, &salt);
 
     println!("🤖 Genesis chain, instantiate querier contract");
     app.do_init_chain(MOCK_CHAIN_ID.into(), mock_block_info(0, 0), &to_json(&GenesisState {

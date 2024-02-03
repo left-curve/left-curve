@@ -10,7 +10,7 @@ use {
     cw_crypto::Identity256,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint64,
+        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint64, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     let salt1 = b"account-1".to_vec().into();
     let salt2 = b"account-2".to_vec().into();
     // note: we use a zeroed-out address as sender during genesis
-    let address1 = Addr::compute(&Addr::mock(0), &code_hash, &salt1);
+    let address1 = Addr::compute(&GENESIS_SENDER, &code_hash, &salt1);
     let address2 = Addr::compute(&address1, &code_hash, &salt2);
 
     println!("🤖 Genesis chain, instantiate accounts 1");

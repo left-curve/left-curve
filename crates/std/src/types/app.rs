@@ -1,8 +1,17 @@
 use {
     crate::{Addr, Hash, Message, Timestamp, Uint64},
+    hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
+
+/// Genesis messages don't have senders, so we use this mock up hash as the
+/// sender address. It is the SHA-256 hash of the UTF-8 string `sender`.
+pub const GENESIS_SENDER: Addr = Addr(Hash(hex!("0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a")));
+
+/// During genesis there isn't a block hash, so we use this mock up hash as the
+/// block hash. It is the SHA-256 hash of the UTF-8 string `hash`.
+pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"));
 
 /// Chain-level configurations. Not to be confused with contract-level configs.
 #[skip_serializing_none]

@@ -1,7 +1,7 @@
 use {
     crate::AdminOption,
     anyhow::{anyhow, ensure},
-    cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message},
+    cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
     home::home_dir,
     lazy_static::lazy_static,
     serde::ser::Serialize,
@@ -17,8 +17,7 @@ use {
 lazy_static! {
     // the default path to the CometBFT genesis file
     static ref DEFAULT_COMET_GEN_PATH: PathBuf = {
-        let home = home_dir().expect("failed to find home directory");
-        home.join(".cometbft/config/genesis.json")
+        home_dir().unwrap().join(".cometbft/config/genesis.json")
     };
 }
 
@@ -61,7 +60,7 @@ impl GenesisBuilder {
         admin:     AdminOption,
     ) -> anyhow::Result<Addr> {
         // note: we use an all-zero address as the message sender during genesis
-        let contract = Addr::compute(&Addr::mock(0), &code_hash, &salt);
+        let contract = Addr::compute(&GENESIS_SENDER, &code_hash, &salt);
         let admin = admin.decide(&contract);
         self.other_msgs.push(Message::Instantiate {
             code_hash,

@@ -1,12 +1,20 @@
 import * as fs from "fs";
 import * as os from "os";
 import { Config, Message } from "./types";
-import { Payload, encodeBase64, encodeHex, recursiveTransform, camelToSnake, serialize } from "./serde";
+import {
+  Payload,
+  decodeHex,
+  encodeBase64,
+  encodeHex,
+  recursiveTransform,
+  camelToSnake,
+  serialize,
+} from "./serde";
 import { sha256 } from "@cosmjs/crypto";
 import { AdminOption, createAdmin, deriveAddress } from "./client";
 
-// during genesis, the zero address is used as the message sender.
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000000";
+export const GENESIS_SENDER = "0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a";
+export const GENESIS_BLOCK_HASH = decodeHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
 
 export class GenesisBuilder {
   storeCodeMsgs: Message[];
@@ -49,10 +57,10 @@ export class GenesisBuilder {
         msg: btoa(serialize(msg)),
         salt: encodeBase64(salt),
         funds: [],
-        admin: createAdmin(adminOpt, ZERO_ADDRESS, codeHash, salt),
+        admin: createAdmin(adminOpt, GENESIS_SENDER, codeHash, salt),
       },
     });
-    return deriveAddress(ZERO_ADDRESS, codeHash, salt);
+    return deriveAddress(GENESIS_SENDER, codeHash, salt);
   }
 
   /**

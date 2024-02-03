@@ -29,7 +29,7 @@ use {
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Addr(Hash);
+pub struct Addr(pub(crate) Hash);
 
 impl Addr {
     /// Addresses are encoded as lowercase hex strings, with the 0x prefix.

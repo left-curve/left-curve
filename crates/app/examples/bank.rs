@@ -12,6 +12,7 @@ use {
     cw_std::{
         from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash,
         Message, MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint128, Uint64,
+        GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
@@ -22,9 +23,6 @@ use {
 lazy_static! {
     // chain ID for the purpose of this example
     static ref CHAIN_ID: &'static str = "dev-1";
-
-    // during genesis, we use an all-zero address as the deployer
-    static ref DEPLOYER: Addr = Addr::mock(0);
 
     // salt for instantiating the bank contract
     static ref BANK_SALT: Binary = b"bank".to_vec().into();
@@ -148,7 +146,7 @@ fn make_random_accounts(count: usize, code_hash: &Hash) -> Vec<TestAccount> {
     for idx in 0..count {
         let sk = SigningKey::random(&mut rng);
         let vk = VerifyingKey::from(&sk);
-        let addr = Addr::compute(&DEPLOYER, code_hash, &ACCT_SALT(idx));
+        let addr = Addr::compute(&GENESIS_SENDER, code_hash, &ACCT_SALT(idx));
         accts.push(TestAccount { addr, sk, vk });
     }
     accts
@@ -192,7 +190,7 @@ fn make_genesis_state(
     bank_wasm:    &TestCode,
 ) -> anyhow::Result<Binary> {
     // compute bank contract address
-    let bank_addr = Addr::compute(&DEPLOYER, &bank_wasm.hash, &BANK_SALT);
+    let bank_addr = Addr::compute(&GENESIS_SENDER, &bank_wasm.hash, &BANK_SALT);
 
     // upload codes and instantiate bank contract
     let mut gen_state = GenesisState {
