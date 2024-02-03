@@ -22,6 +22,7 @@ import {
   QueryResponse,
 } from "./types";
 import { SigningKey } from "./signingkey";
+import { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 
 /**
  * Client for interacting with a CWD blockchain via Tendermint RPC.
@@ -48,56 +49,72 @@ export class Client {
 
   // ------------------------------ query methods ------------------------------
 
-  public async query(req: QueryRequest): Promise<QueryResponse> {
-    const res = await this.cometClient.abciQuery({
-      path: "app",
-      data: encodeUtf8(serialize(req)),
-    });
-
+  private async query(
+    path: string,
+    data: Uint8Array,
+    height = 0,
+    prove = false,
+  ): Promise<AbciQueryResponse> {
+    const res = await this.cometClient.abciQuery({ path, data, height, prove });
     if (res.code !== 0) {
       throw new Error(`query failed! codespace: ${res.codespace}, code: ${res.code}, log: ${res.log}`);
     }
+    return res;
+  }
 
+  public async queryStore(
+    key: Uint8Array,
+    height = 0,
+    prove = false,
+  ): Promise<Uint8Array | undefined> {
+    const res = await this.query("/store", key, height, prove);
+    const value = res.value.length > 0 ? res.value : undefined;
+    // TODO: deserialize and return proof
+    return value;
+  }
+
+  public async queryApp(req: QueryRequest): Promise<QueryResponse> {
+    const res = await this.query("/app", encodeUtf8(serialize(req)));
     return deserialize(decodeUtf8(res.value)) as QueryResponse;
   }
 
   public async queryInfo(): Promise<InfoResponse> {
-    const res = await this.query({ info: {} });
+    const res = await this.queryApp({ info: {} });
     return res.info!;
   }
 
   public async queryBalance(address: string, denom: string): Promise<string> {
-    const res = await this.query({ balance: { address, denom } });
+    const res = await this.queryApp({ balance: { address, denom } });
     return res.balance!.amount;
   }
 
   public async queryBalances(address: string, startAfter?: string, limit?: number): Promise<Coin[]> {
-    const res = await this.query({ balances: { address, startAfter, limit } });
+    const res = await this.queryApp({ balances: { address, startAfter, limit } });
     return res.balances!;
   }
 
   public async querySupply(denom: string): Promise<string> {
-    const res = await this.query({ supply: { denom } });
+    const res = await this.queryApp({ supply: { denom } });
     return res.supply!.amount;
   }
 
   public async querySupplies(startAfter?: string, limit?: number): Promise<Coin[]> {
-    const res = await this.query({ supplies: { startAfter, limit } });
+    const res = await this.queryApp({ supplies: { startAfter, limit } });
     return res.supplies!;
   }
 
   public async queryCode(hash: string): Promise<string> {
-    const res = await this.query({ code: { hash } });
+    const res = await this.queryApp({ code: { hash } });
     return res.code!;
   }
 
   public async queryCodes(startAfter?: string, limit?: number): Promise<string[]> {
-    const res = await this.query({ codes: { startAfter, limit } });
+    const res = await this.queryApp({ codes: { startAfter, limit } });
     return res.codes!;
   }
 
   public async queryAccount(address: string): Promise<Account> {
-    const res = await this.query({ account: { address } });
+    const res = await this.queryApp({ account: { address } });
     const accountRes = res.account!;
     return {
       codeHash: accountRes.codeHash,
@@ -106,17 +123,17 @@ export class Client {
   }
 
   public async queryAccounts(startAfter?: string, limit?: number): Promise<AccountResponse[]> {
-    const res = await this.query({ accounts: { startAfter, limit } });
+    const res = await this.queryApp({ accounts: { startAfter, limit } });
     return res.accounts!;
   }
 
   public async queryWasmRaw(contract: string, key: string): Promise<string | undefined> {
-    const res = await this.query({ wasmRaw: { contract, key } });
+    const res = await this.queryApp({ wasmRaw: { contract, key } });
     return res.wasmRaw!.value;
   }
 
   public async queryWasmSmart<T>(contract: string, msg: Payload): Promise<T> {
-    const res = await this.query({ wasmSmart: { contract, msg: btoa(serialize(msg)) } });
+    const res = await this.queryApp({ wasmSmart: { contract, msg: btoa(serialize(msg)) } });
     const wasmRes = deserialize(atob(res.wasmSmart!.data));
     return wasmRes as T;
   }

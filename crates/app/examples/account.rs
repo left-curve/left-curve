@@ -184,7 +184,7 @@ fn new_tx<S: Storage + 'static>(
 ) -> anyhow::Result<Tx> {
     // query account sequence
     let sequence = from_json::<StateResponse>(from_json::<QueryResponse>(app
-        .do_query(&to_json(&QueryRequest::WasmSmart {
+        .do_query_app(&to_json(&QueryRequest::WasmSmart {
             contract: sender.clone(),
             msg: to_json(&QueryMsg::State {})?,
         })?)?)?
@@ -215,7 +215,7 @@ fn query<S>(app: &App<S>, req: QueryRequest) -> anyhow::Result<()>
 where
     S: Storage + 'static,
 {
-    let resp = app.do_query(&to_json(&req)?)?;
+    let resp = app.do_query_app(&to_json(&req)?)?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())
 }
@@ -227,7 +227,7 @@ where
     T: Serialize + DeserializeOwned,
 {
     let resp: T = from_json(
-        from_json::<QueryResponse>(&app.do_query(&to_json(&QueryRequest::WasmSmart {
+        from_json::<QueryResponse>(&app.do_query_app(&to_json(&QueryRequest::WasmSmart {
             contract: contract.clone(),
             msg: to_json(msg)?,
         })?)?)?

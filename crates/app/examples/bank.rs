@@ -282,7 +282,7 @@ where
     let mut resps = BTreeMap::new();
     for acct in accounts {
         let balances = from_json::<QueryResponse>(
-            &app.do_query(&to_json(&QueryRequest::Balances {
+            &app.do_query_app(&to_json(&QueryRequest::Balances {
                 address: acct.addr.clone(),
                 start_after: None,
                 limit: None,
@@ -305,7 +305,7 @@ where
     S: Storage + 'static,
 {
     let supplies = from_json::<QueryResponse>(
-        app.do_query(&to_json(&QueryRequest::Supplies {
+        app.do_query_app(&to_json(&QueryRequest::Supplies {
             start_after: None,
             limit:       None,
         })?)?

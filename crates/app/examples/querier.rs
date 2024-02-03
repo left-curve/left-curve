@@ -95,7 +95,7 @@ where
     S: Storage + 'static,
     M: Serialize,
 {
-    let data = from_json::<QueryResponse>(app.do_query(&to_json(&QueryRequest::WasmSmart {
+    let data = from_json::<QueryResponse>(app.do_query_app(&to_json(&QueryRequest::WasmSmart {
         contract: contract.clone(),
         msg: to_json(msg)?,
     })?)?)?

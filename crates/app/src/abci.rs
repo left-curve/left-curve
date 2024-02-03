@@ -91,6 +91,13 @@ where
         }
     }
 
+    fn check_tx(&self, _req: RequestCheckTx) -> ResponseCheckTx {
+        // TODO
+        ResponseCheckTx {
+            ..Default::default()
+        }
+    }
+
     // TODO: From ABCI docs (https://github.com/cometbft/cometbft/blob/main/spec/abci/abci++_methods.md):
     //
     // > Applications MUST interpret "/store" or any path starting with "/store/"
@@ -101,31 +108,45 @@ where
     // Currently we're going neither of these. We ignore `path`, `height`, and
     // `prove` fields, and interpret `data` as a JSON-encoded QueryRequest.
     fn query(&self, req: RequestQuery) -> ResponseQuery {
-        match self.do_query(&req.data) {
-            Ok(res) => {
+        match req.path.as_str() {
+            "/app" => match self.do_query_app(&req.data) {
+                Ok(res) => {
+                    ResponseQuery {
+                        code:  0,
+                        value: res.to_vec().into(),
+                        // TODO: more fields...
+                        ..Default::default()
+                    }
+                },
+                Err(err) => {
+                    ResponseQuery {
+                        code:      1,            // TODO: custom error code
+                        codespace: "app".into(), // TODO: custom error codespace
+                        log:       err.to_string(),
+                        ..Default::default()
+                    }
+                },
+            },
+            "/store" => {
+                let maybe_value = self.do_query_store(&req.data, req.height as u64, req.prove);
                 ResponseQuery {
-                    code:  0,
-                    value: res.to_vec().into(),
-                    // TODO: more fields...
+                    code:      0,
+                    value:     maybe_value.unwrap_or_default().into(),
+                    height:    req.height,
+                    proof_ops: None, // TODO
                     ..Default::default()
                 }
-            },
-            Err(err) => {
+            }
+            unknown => {
                 ResponseQuery {
-                    code:      1,            // TODO: custom error code
-                    codespace: "app".into(), // TODO: custom error codespace
-                    log:       err.to_string(),
+                    code:      1,
+                    codespace: "app".into(),
+                    log:       format!("unknown path `{unknown}`; must be `/app` or `/store`"),
                     ..Default::default()
                 }
-            },
+            }
         }
-    }
 
-    fn check_tx(&self, _req: RequestCheckTx) -> ResponseCheckTx {
-        // TODO
-        ResponseCheckTx {
-            ..Default::default()
-        }
     }
 }
 

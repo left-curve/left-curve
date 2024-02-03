@@ -151,7 +151,7 @@ where
         }
     }
 
-    pub fn do_query(&self, raw_query: &[u8]) -> AppResult<Binary> {
+    pub fn do_query_app(&self, raw_query: &[u8]) -> AppResult<Binary> {
         // note: when doing query, we use the state from the last finalized block,
         // do not include uncommitted changes from the current block.
         let block = LAST_FINALIZED_BLOCK.load(&self.store)?;
@@ -160,6 +160,18 @@ where
         let res = process_query(self.store.share(), &block, req)?;
 
         to_json(&res).map_err(Into::into)
+    }
+
+    pub fn do_query_store(
+        &self,
+        key:    &[u8],
+        height: u64,
+        prove:  bool,
+    ) -> Option<Vec<u8>> { // TODO: add proof to return data
+        debug_assert_eq!(height, 0, "query at past height isn't supported yet");
+        debug_assert!(!prove, "merkle proof isn't supported yet");
+
+        self.store.read_access().read(key)
     }
 }
 
