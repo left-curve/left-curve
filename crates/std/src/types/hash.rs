@@ -66,6 +66,18 @@ impl DerefMut for Hash {
     }
 }
 
+impl TryFrom<Vec<u8>> for Hash {
+    type Error = StdError;
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        let Ok(bytes) = bytes.try_into() else {
+            return Err(StdError::deserialize::<Self>("hash is not of the correct length"));
+        };
+
+        Ok(Self(bytes))
+    }
+}
+
 impl TryFrom<&[u8]> for Hash {
     type Error = StdError;
 

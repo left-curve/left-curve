@@ -73,6 +73,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
         chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
+        block_hash:      block.hash.clone(),
         contract:        address,
         sender:          Some(sender.clone()),
         funds:           Some(funds),

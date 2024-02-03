@@ -173,6 +173,7 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     BlockInfo {
         height:    Uint64::new(height),
         timestamp: Timestamp::from_seconds(timestamp),
+        hash:      hash(""),
     }
 }
 

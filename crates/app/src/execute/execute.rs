@@ -56,6 +56,7 @@ fn _execute<S: Storage + Clone + 'static>(
         chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
+        block_hash:      block.hash.clone(),
         contract:        contract.clone(),
         sender:          Some(sender.clone()),
         funds:           Some(funds),

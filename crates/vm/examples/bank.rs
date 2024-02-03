@@ -7,7 +7,8 @@ use {
     cfg_if::cfg_if,
     cw_bank::{Balance, InstantiateMsg},
     cw_std::{
-        to_json, Addr, BankQuery, Coin, Coins, Context, Timestamp, TransferMsg, Uint128, Uint64,
+        hash, to_json, Addr, BankQuery, Coin, Coins, Context, Timestamp, TransferMsg, Uint128,
+        Uint64,
     },
     cw_vm::{BackendQuerier, BackendStorage, Instance, MockBackendQuerier, MockBackendStorage},
     lazy_static::lazy_static,
@@ -182,6 +183,7 @@ fn mock_context(sender: Option<Addr>) -> Context {
         chain_id:        "dev-1".into(),
         block_height:    Uint64::new(0),
         block_timestamp: Timestamp::from_seconds(0),
+        block_hash:      hash(""),
         contract:        Addr::mock(0),
         funds:           None,
         simulate:        None,

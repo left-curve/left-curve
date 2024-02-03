@@ -45,6 +45,7 @@ fn _authenticate_tx<S: Storage + Clone + 'static>(
         chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
+        block_hash:      block.hash.clone(),
         contract:        tx.sender.clone(),
         sender:          None,
         funds:           None,

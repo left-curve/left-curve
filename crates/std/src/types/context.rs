@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Coins, Event, GenericResult, Storage, Timestamp, Uint64},
+    crate::{Addr, Coins, Event, GenericResult, Hash, Storage, Timestamp, Uint64},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -17,6 +17,7 @@ pub struct Context {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub sender:          Option<Addr>,
     pub funds:           Option<Coins>,
@@ -29,6 +30,7 @@ pub struct InstantiateCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -39,6 +41,7 @@ pub struct ExecuteCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -49,6 +52,7 @@ pub struct QueryCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
 }
 
@@ -57,6 +61,7 @@ pub struct MigrateCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub sender:          Addr,
 }
@@ -66,6 +71,7 @@ pub struct ReplyCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub submsg_result:   GenericResult<Vec<Event>>,
 }
@@ -75,6 +81,7 @@ pub struct ReceiveCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub sender:          Addr,
     pub funds:           Coins,
@@ -85,6 +92,7 @@ pub struct BeforeTxCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
     pub simulate:        bool,
 }
@@ -94,5 +102,6 @@ pub struct TransferCtx<'a> {
     pub chain_id:        String,
     pub block_height:    Uint64,
     pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
     pub contract:        Addr,
 }

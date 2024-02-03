@@ -651,6 +651,7 @@ dependencies = [
  "hex",
  "k256",
  "lazy_static",
+ "prost",
  "rand",
  "serde",
  "serde_json",

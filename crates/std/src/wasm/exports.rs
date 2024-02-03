@@ -74,6 +74,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to provide a sender"),
         funds:           ctx.funds.expect("host failed to provide funds"),
@@ -119,6 +120,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to provide a sender"),
         funds:           ctx.funds.expect("host failed to provide funds"),
@@ -164,6 +166,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
     };
 
@@ -207,6 +210,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to provide a sender"),
     };
@@ -251,6 +255,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         submsg_result:   ctx.submsg_result.expect("host failed to specify submsg result"),
     };
@@ -289,6 +294,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         sender:          ctx.sender.expect("host failed to specify sender"),
         funds:           ctx.funds.expect("host failed to specify funds"),
@@ -332,6 +338,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
         simulate:        ctx.simulate.expect("host failed to specify whether it's simulation mode"),
     };
@@ -374,6 +381,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
     };
 
@@ -415,6 +423,7 @@ where
         chain_id:        ctx.chain_id,
         block_height:    ctx.block_height,
         block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
         contract:        ctx.contract,
     };
 

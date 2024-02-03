@@ -1,6 +1,7 @@
 use {
     crate::{App, AppResult},
-    cw_std::{Attribute, BlockInfo, Event, Hash, Storage, Timestamp, Uint64},
+    cw_std::{Attribute, BlockInfo, Event, Hash, Storage, Timestamp, Uint64, GENESIS_BLOCK_HASH},
+    prost::bytes::Bytes,
     std::net::ToSocketAddrs,
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
     tendermint_proto::{
@@ -49,7 +50,7 @@ where
     }
 
     fn init_chain(&self, req: RequestInitChain) -> ResponseInitChain {
-        let block = from_tm_block(req.initial_height, req.time);
+        let block = from_tm_block(req.initial_height, req.time, None);
 
         match self.do_init_chain(req.chain_id, block, &req.app_state_bytes) {
             Ok(app_hash) => {
@@ -64,7 +65,7 @@ where
     }
 
     fn finalize_block(&self, req: RequestFinalizeBlock) -> ResponseFinalizeBlock {
-        let block = from_tm_block(req.height, req.time);
+        let block = from_tm_block(req.height, req.time, Some(req.hash));
 
         match self.do_finalize_block(block, req.txs) {
             Ok(tx_results) => {
@@ -150,15 +151,20 @@ where
     }
 }
 
-fn from_tm_block(height: i64, time: Option<TmTimestamp>) -> BlockInfo {
+fn from_tm_block(height: i64, time: Option<TmTimestamp>, hash: Option<Bytes>) -> BlockInfo {
     BlockInfo {
         height:    Uint64::new(height as u64),
         timestamp: from_tm_timestamp(time.expect("block time not found")),
+        hash:      hash.map(from_tm_hash).unwrap_or(GENESIS_BLOCK_HASH),
     }
 }
 
 fn from_tm_timestamp(time: TmTimestamp) -> Timestamp {
     Timestamp::from_seconds(time.seconds as u64).plus_nanos(time.nanos as u64)
+}
+
+fn from_tm_hash(bytes: Bytes) -> Hash {
+    bytes.to_vec().try_into().expect("incorrect block hash length")
 }
 
 fn to_tm_tx_result(tx_result: AppResult<Vec<Event>>) -> ExecTxResult {

@@ -15,6 +15,7 @@ cw-std           = { path = "../std" }
 cw-vm            = { path = "../vm" }
 dyn-clone        = { workspace = true }
 hex              = { workspace = true }
+prost            = { workspace = true }
 tendermint-proto = { workspace = true }
 tendermint-abci  = { workspace = true }
 thiserror        = { workspace = true }

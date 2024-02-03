@@ -42,7 +42,7 @@ pub struct GenesisState {
 pub struct BlockInfo {
     pub height:    Uint64,
     pub timestamp: Timestamp,
-    // TODO: add hash? the question is what to use for genesis block?
+    pub hash:      Hash,
 }
 
 #[skip_serializing_none]
