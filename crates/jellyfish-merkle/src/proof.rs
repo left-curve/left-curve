@@ -5,14 +5,18 @@ pub struct Proof {
 }
 
 pub fn verify_membership(
-    root_hash:  &Hash,
-    key_hash:   &Hash,
-    value_hash: &Hash,
-    proof:      &Proof,
+    _root_hash:  &Hash,
+    _key_hash:   &Hash,
+    _value_hash: &Hash,
+    _proof:      &Proof,
 ) -> StdResult<()> {
     todo!()
 }
 
-pub fn verify_non_membership(root_hash: &Hash, key_hash: &Hash, proof: &Proof) -> StdResult<()> {
+pub fn verify_non_membership(
+    _root_hash: &Hash,
+    _key_hash:  &Hash,
+    _proof:     &Proof,
+) -> StdResult<()> {
     todo!()
 }

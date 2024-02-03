@@ -1,14 +1,30 @@
 use {
     crate::BitArray,
-    cw_std::{MapKey, RawKey, StdError, StdResult},
+    cw_std::{Hash, MapKey, RawKey, StdError, StdResult},
+    std::mem,
 };
 
-pub struct NodeKey<const N: usize = 32> {
+// we need to serialize NodeKey into binary so that it can be used as keys in
+// the backing KV store.
+// since we use a 32-byte hash, the NodeKey serializes to 10-42 bytes:
+// - the first 8 bytes are the version in big endian
+// - the next 2 bytes are the num_bits in big endian
+// - the rest 0-32 bits are the bits
+//
+// ********|**|********************************
+// ^       ^  ^                               ^
+// 0       b1 b2                              b3
+const HASH_LEN: usize = Hash::LENGTH;                  // 32
+const LEN_1:    usize = mem::size_of::<u64>();         // 8
+const LEN_2:    usize = LEN_1 + mem::size_of::<u16>(); // 10
+const LEN_3:    usize = LEN_2 + HASH_LEN;              // 42
+
+pub struct NodeKey {
     pub version: u64,
-    pub bits:    BitArray<N>,
+    pub bits:    BitArray<HASH_LEN>,
 }
 
-impl<const N: usize> NodeKey<N> {
+impl NodeKey {
     pub fn root(version: u64) -> Self {
         Self {
             version,
@@ -17,10 +33,10 @@ impl<const N: usize> NodeKey<N> {
     }
 }
 
-impl<const N: usize> MapKey for &NodeKey<N> {
+impl MapKey for &NodeKey {
     type Prefix = ();
     type Suffix = ();
-    type Output = NodeKey<N>;
+    type Output = NodeKey;
 
     /// Assuming a 32-byte hash is used, the NodeKey serializes to 10-42 bytes:
     /// - the first 8 bytes are the version in big endian
@@ -37,17 +53,16 @@ impl<const N: usize> MapKey for &NodeKey<N> {
     }
 
     fn deserialize(slice: &[u8]) -> StdResult<Self::Output> {
-        let range = 10..=(10 + N);
+        let range = LEN_1..=LEN_3;
         if !range.contains(&slice.len()) {
             return Err(StdError::deserialize::<Self>(
                 format!("slice length must be in the range {range:?}, found {}", slice.len())
             ));
         }
 
-        let (version_bytes, num_bits_bytes, bytes) = (&slice[..2], &slice[2..10], &slice[10..]);
-        let version = u64::from_be_bytes(version_bytes.try_into()?);
-        let num_bits = u16::from_be_bytes(num_bits_bytes.try_into()?);
-        let bytes = bytes.try_into()?;
+        let version = u64::from_be_bytes(slice[..LEN_1].try_into()?);
+        let num_bits = u16::from_be_bytes(slice[LEN_1..LEN_2].try_into()?);
+        let bytes = slice[LEN_2..].try_into()?;
 
         Ok(NodeKey {
             version,

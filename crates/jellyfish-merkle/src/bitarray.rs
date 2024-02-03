@@ -46,3 +46,13 @@ impl<const N: usize> BitArray<N> {
         Ok(BitArray { num_bits, bytes })
     }
 }
+
+impl<const N: usize> From<&[u8]> for BitArray<N> {
+    fn from(bytes: &[u8]) -> Self {
+        assert!(bytes.len() < N);
+        Self {
+            num_bits: (bytes.len() * 8) as u16,
+            bytes: bytes.try_into().unwrap(),
+        }
+    }
+}
