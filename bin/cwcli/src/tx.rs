@@ -4,7 +4,7 @@ use {
     clap::Parser,
     colored::Colorize,
     cw_rs::{Client, SigningKey, SigningOptions},
-    cw_std::{from_json, Addr, Binary, Coins, Config, Hash, Message},
+    cw_std::{from_json, hash, Addr, Binary, Coins, Config, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -33,6 +33,21 @@ pub enum TxCmd {
     Instantiate {
         /// Hash of the Wasm byte code to be associated with the contract
         code_hash: Hash,
+        /// Instantiate message as a JSON string
+        msg: String,
+        /// Salt in UTF-8 encoding
+        salt: String,
+        /// Coins to be sent to the contract, in the format: {denom1}:{amount},{denom2}:{amount},...
+        #[arg(long)]
+        funds: Option<String>,
+        /// Administrator address for the contract
+        #[arg(long)]
+        admin: Option<Addr>,
+    },
+    /// Upload code and instantiate a contract in one go
+    StoreAndInstantiate {
+        /// Path to the Wasm file
+        path: PathBuf,
         /// Instantiate message as a JSON string
         msg: String,
         /// Salt in UTF-8 encoding
@@ -79,58 +94,68 @@ impl TxCmd {
         let key_name = key_name.ok_or(anyhow!("key name not specified"))?;
 
         // compose the message
-        let msg = match self {
+        let msgs = match self {
             TxCmd::UpdateConfig { new_cfg } => {
                 let new_cfg: Config = from_json(new_cfg.as_bytes())?;
-                Message::UpdateConfig {
+                vec![Message::UpdateConfig {
                     new_cfg,
-                }
+                }]
             },
             TxCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
-                Message::Transfer {
+                vec![Message::Transfer {
                     to,
                     coins,
-                }
+                }]
             },
             TxCmd::Store { path } => {
                 let mut file = File::open(path)?;
                 let mut wasm_byte_code = vec![];
                 file.read_to_end(&mut wasm_byte_code)?;
-                Message::StoreCode {
+                vec![Message::StoreCode {
                     wasm_byte_code: wasm_byte_code.into(),
-                }
+                }]
             },
             TxCmd::Instantiate { code_hash, msg, salt, funds, admin } => {
-                let funds = match funds {
-                    Some(s) => Coins::from_str(&s)?,
-                    None => Coins::new_empty(),
-                };
-                Message::Instantiate {
+                vec![Message::Instantiate {
+                    msg:   msg.into_bytes().into(),
+                    salt:  salt.into_bytes().into(),
+                    funds: Coins::from_str(&funds.unwrap_or_default())?,
                     code_hash,
-                    msg: msg.into_bytes().into(),
-                    salt: salt.into_bytes().into(),
-                    funds,
                     admin,
-                }
+                }]
+            },
+            TxCmd::StoreAndInstantiate { path, msg, salt, funds, admin } => {
+                let mut file = File::open(path)?;
+                let mut wasm_byte_code = vec![];
+                file.read_to_end(&mut wasm_byte_code)?;
+                let code_hash = hash(&wasm_byte_code);
+                vec![
+                    Message::StoreCode {
+                        wasm_byte_code: wasm_byte_code.into(),
+                    },
+                    Message::Instantiate {
+                        msg:   msg.into_bytes().into(),
+                        salt:  salt.into_bytes().into(),
+                        funds: Coins::from_str(&funds.unwrap_or_default())?,
+                        code_hash,
+                        admin,
+                    },
+                ]
             },
             TxCmd::Execute { contract, msg, funds } => {
-                let funds = match funds {
-                    Some(s) => Coins::from_str(&s)?,
-                    None => Coins::new_empty(),
-                };
-                Message::Execute {
+                vec![Message::Execute {
+                    msg:   msg.into_bytes().into(),
+                    funds: Coins::from_str(&funds.unwrap_or_default())?,
                     contract,
-                    msg: msg.into_bytes().into(),
-                    funds,
-                }
+                }]
             },
             TxCmd::Migrate { contract, new_code_hash, msg } => {
-                Message::Migrate {
-                    contract,
-                    new_code_hash,
+                vec![Message::Migrate {
                     msg: msg.into_bytes().into(),
-                }
+                    new_code_hash,
+                    contract,
+                }]
             },
         };
 
@@ -147,7 +172,7 @@ impl TxCmd {
 
         // broadcast transaction
         let client = Client::connect(rpc_addr)?;
-        let maybe_res = client.send_tx_with_confirmation(vec![msg], &sign_opts, |tx| {
+        let maybe_res = client.send_tx_with_confirmation(msgs, &sign_opts, |tx| {
             print_json_pretty(tx)?;
             Ok(confirm("🤔 Broadcast transaction?".bold())?)
         })
