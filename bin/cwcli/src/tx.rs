@@ -137,7 +137,7 @@ impl TxCmd {
                     Message::Instantiate {
                         msg:   msg.into_bytes().into(),
                         salt:  salt.into_bytes().into(),
-                        funds: Coins::from_str(&funds.unwrap_or_default())?,
+                        funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
                         code_hash,
                         admin,
                     },
@@ -146,7 +146,7 @@ impl TxCmd {
             TxCmd::Execute { contract, msg, funds } => {
                 vec![Message::Execute {
                     msg:   msg.into_bytes().into(),
-                    funds: Coins::from_str(&funds.unwrap_or_default())?,
+                    funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
                     contract,
                 }]
             },

@@ -60,6 +60,21 @@ pub struct CoinRef<'a> {
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
+    // There are two ways to stringify a Coins:
+    //
+    // 1. Use `cw_std::{to_json,from_json}`
+    //    This is used in contract messages and responses.
+    //    > [{"denom":"uatom","amount":"12345"},{"denom":"uosmo","amount":"67890"}]
+    //
+    // 2. Use `Coins::{to_string,from_str}`
+    //    This is used in event logging and the CLI.
+    //    > uatom:12345,uosmo:67890
+    //
+    // For method 2 specifically, an empty Coins stringifies to an empty string.
+    // This can sometimes be confusing. Therefore we make this a special case
+    // and stringifies it to a set of empty square brackets instead.
+    pub const EMPTY_COINS_STR: &'static str = "[]";
+
     pub fn new_empty() -> Self {
         Self(BTreeMap::new())
     }
@@ -177,6 +192,11 @@ impl FromStr for Coins {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // handle special case: empty string
+        if s == Self::EMPTY_COINS_STR {
+            return Ok(Coins::new_empty());
+        }
+
         let mut map = BTreeMap::new();
         for coin_str in s.split(',') {
             let Some((denom, amount_str)) = coin_str.split_once(':') else {
@@ -199,6 +219,7 @@ impl FromStr for Coins {
 
             map.insert(denom.into(), amount);
         }
+
         Ok(Self(map))
     }
 }
@@ -274,11 +295,17 @@ impl Iterator for CoinsIntoIter {
 
 impl fmt::Display for Coins {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // special case: empty string
+        if self.is_empty() {
+            return f.write_str(Self::EMPTY_COINS_STR);
+        }
+
         let s = self
             .into_iter()
             .map(|coin| format!("{}:{}", coin.denom, coin.amount))
             .collect::<Vec<_>>()
             .join(",");
+
         f.write_str(&s)
     }
 }
