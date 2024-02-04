@@ -75,8 +75,8 @@ impl TxCmd {
         chain_id: Option<String>,
         sequence: Option<u32>,
     ) -> anyhow::Result<()> {
-        let sender = sender.ok_or(anyhow!("sender is not specified"))?;
-        let key_name = key_name.ok_or(anyhow!("Key name not provided"))?;
+        let sender = sender.ok_or(anyhow!("sender not specified"))?;
+        let key_name = key_name.ok_or(anyhow!("key name not specified"))?;
 
         // compose the message
         let msg = match self {
@@ -135,8 +135,9 @@ impl TxCmd {
         };
 
         // load signing key
+        let key_path = key_dir.join(format!("{key_name}.json"));
         let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
-        let signing_key = SigningKey::from_file(&key_dir.join(key_name), &password)?;
+        let signing_key = SigningKey::from_file(&key_path, &password)?;
         let sign_opts = SigningOptions {
             signing_key,
             sender,
