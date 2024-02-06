@@ -31,6 +31,18 @@ impl NodeKey {
             bits: BitArray::empty(),
         }
     }
+
+    pub fn left_child_at_version(&self, version: u64) -> Self {
+        let mut bits = self.bits.clone();
+        bits.push(0);
+        Self { version, bits }
+    }
+
+    pub fn right_child_at_version(&self, version: u64) -> Self {
+        let mut bits = self.bits.clone();
+        bits.push(1);
+        Self { version, bits }
+    }
 }
 
 impl MapKey for &NodeKey {
@@ -61,7 +73,7 @@ impl MapKey for &NodeKey {
         }
 
         let version = u64::from_be_bytes(slice[..LEN_1].try_into()?);
-        let num_bits = u16::from_be_bytes(slice[LEN_1..LEN_2].try_into()?);
+        let num_bits = u16::from_be_bytes(slice[LEN_1..LEN_2].try_into()?) as usize;
         let bytes = slice[LEN_2..].try_into()?;
 
         Ok(NodeKey {

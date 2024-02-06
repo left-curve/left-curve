@@ -1,5 +1,5 @@
 use {
-    crate::{BitArray, Node, NodeKey, Proof},
+    crate::{BitArray, Child, InternalNode, LeafNode, Node, NodeKey, Proof},
     cw_std::{Batch, Hash, Item, Map, Op, Set, StdResult, Storage},
 };
 
@@ -7,10 +7,19 @@ pub const DEFAULT_VERSION_NAMESPACE: &str = "v";
 pub const DEFAULT_NODE_NAMESPACE:    &str = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE:  &str = "o";
 
+/// Extends `cw_std::Batch`, adding the key hash as a `BitArray`.
+type BatchExt = [(BitArray, Vec<u8>, Op)];
+
+/// Describes the outcome of applying an op or a batch of ops at a node.
+/// The node may either be updated (in which case the updated node is returned),
+/// unchanged (in which case return this unchanged node), or deleted.
+///
+/// Note: if a Null node is unchanged (i.e. when attempting to delete a node
+/// that doesn't exist) the response should be `Deleted`, not `Unchanged`.
 enum OpResponse {
+    Unchanged(Node),
     Updated(Node),
     Deleted,
-    Unchanged,
 }
 
 /// Jellyfish Merkle tree (JMT).
@@ -78,23 +87,13 @@ impl<'a> Tree<'a> {
         let new_root_node_key = NodeKey::root(new_version);
 
         // convert the raw keys to bitarrays
-        let batch = batch.into_iter().map(|(k, op)| (BitArray::from(k.as_slice()), k, op));
+        let batch: Vec<_> = batch.into_iter().map(|(k, op)| (BitArray::from(&k), k, op)).collect();
 
         // recursively apply the ops, starting at the old root
-        match self.apply_at(store, new_version, &old_root_node_key, None, batch)? {
-            OpResponse::Updated(new_root_node) => {
-                // the root node has been updated. save this new node.
-                self.nodes.save(store, &new_root_node_key, &new_root_node)?;
+        match self.apply_at(store, new_version, &old_root_node_key, &batch)? {
+            OpResponse::Updated(node) | OpResponse::Unchanged(node) => {
+                self.nodes.save(store, &new_root_node_key, &node)?;
             },
-            OpResponse::Unchanged => {
-                // new node is the same as the old one. copy the old node.
-                // except if the old version is zero, in which case the old root
-                // node doesn't exist.
-                if old_version > 0 {
-                    let old_root_node = self.nodes.load(store, &old_root_node_key)?;
-                    self.nodes.save(store, &new_root_node_key, &old_root_node)?;
-                }
-            }
             OpResponse::Deleted => {}, // nothing to do
         }
 
@@ -113,13 +112,126 @@ impl<'a> Tree<'a> {
 
     fn apply_at(
         &self,
-        _store:            &mut dyn Storage,
-        _version:          u64,
-        _current_node_key: &NodeKey,
-        _current_node:     Option<Node>,
-        _batch:            impl Iterator<Item = (BitArray, Vec<u8>, Op)>,
+        store:    &mut dyn Storage,
+        version:  u64,
+        node_key: &NodeKey,
+        batch:    &BatchExt,
+    ) -> StdResult<OpResponse> {
+        match self.nodes.may_load(store, node_key)? {
+            Some(Node::Internal(node)) => self.apply_at_internal(store, version, node_key, node, batch),
+            Some(Node::Leaf(node)) => self.apply_at_leaf(store, version, node_key, node, batch),
+            None => self.apply_at_null(store, version, node_key, batch),
+        }
+    }
+
+    fn apply_at_internal(
+        &self,
+        store:    &mut dyn Storage,
+        version:  u64,
+        node_key: &NodeKey,
+        mut node: InternalNode,
+        batch:    &BatchExt,
+    ) -> StdResult<OpResponse> {
+        // split the batch into two, one for left child, one for right
+        let (left_batch, right_batch) = partition_batch_at_index(batch, node_key.bits.num_bits);
+
+        // apply the left batch at the left child
+        let left_child_version = node.left_child.as_ref().map(|c| c.version).unwrap_or(version);
+        let left_child_node_key = node_key.left_child_at_version(left_child_version);
+        let left_response = self.apply_at(store, version, &left_child_node_key, left_batch)?;
+
+        // apply the right batch at the right chils
+        let right_child_version = node.right_child.as_ref().map(|c| c.version).unwrap_or(version);
+        let right_child_node_key = node_key.right_child_at_version(right_child_version);
+        let right_response = self.apply_at(store, version, &right_child_node_key, right_batch)?;
+
+        match (left_response, right_response) {
+            // both children are deleted. delete this node as well
+            (OpResponse::Deleted, OpResponse::Deleted) => {
+                Ok(OpResponse::Deleted)
+            },
+            // neither children is changed. this node is unchanged as well
+            (OpResponse::Unchanged(_), OpResponse::Unchanged(_)) => {
+                Ok(OpResponse::Unchanged(Node::Internal(node)))
+            },
+            // left child is deleted, right child is a leaf
+            // path can be collapsed
+            (OpResponse::Deleted, OpResponse::Updated(node) | OpResponse::Unchanged(node)) if node.is_leaf() => {
+                Ok(OpResponse::Updated(node))
+            },
+            // right child is deleted, left child is a leaf
+            // path can be collapsed
+            (OpResponse::Updated(node) | OpResponse::Unchanged(node), OpResponse::Deleted) if node.is_leaf() => {
+                Ok(OpResponse::Updated(node))
+            },
+            // at least one child is updated and the path can't be collapsed.
+            // update the currenct node as well
+            (left, right) => {
+                node.left_child = match left {
+                    OpResponse::Updated(child_node) | OpResponse::Unchanged(child_node) => {
+                        self.nodes.save(store, &node_key.left_child_at_version(version), &child_node)?;
+                        Some(Child {
+                            version,
+                            hash: child_node.hash(),
+                        })
+                    }
+                    OpResponse::Deleted => None,
+                };
+
+                node.right_child = match right {
+                    OpResponse::Updated(child_node) | OpResponse::Unchanged(child_node) => {
+                        self.nodes.save(store, &node_key.right_child_at_version(version), &child_node)?;
+                        Some(Child {
+                            version,
+                            hash: child_node.hash(),
+                        })
+                    }
+                    OpResponse::Deleted => None,
+                };
+
+                Ok(OpResponse::Updated(Node::Internal(node)))
+            },
+        }
+    }
+
+    fn apply_at_leaf(
+        &self,
+        store:    &mut dyn Storage,
+        version:  u64,
+        node_key: &NodeKey,
+        node:     LeafNode,
+        batch:    &BatchExt,
     ) -> StdResult<OpResponse> {
         todo!()
+    }
+
+    fn apply_at_null(
+        &self,
+        store:    &mut dyn Storage,
+        version:  u64,
+        node_key: &NodeKey,
+        batch:    &BatchExt,
+    ) -> StdResult<OpResponse> {
+        match batch.len() {
+            // node doesn't exist, and we don't have any op to do
+            0 => Ok(OpResponse::Deleted),
+            // there is exactly one op to do
+            // if it's an insert, create a new leaf node
+            // if it's an delete, nothing to do
+            1 => Ok({
+                let (_, key, op) = &batch[0];
+                match op {
+                    Op::Put(value) => OpResponse::Updated(Node::Leaf(LeafNode::new(key, value))),
+                    Op::Delete => OpResponse::Deleted,
+                }
+            }),
+            // there are more than one op to do. create an empty internal node
+            // and apply the batch at this internal node
+            _ => {
+                let node = InternalNode::new_childless();
+                self.apply_at_internal(store, version, node_key, node, batch)
+            },
+        }
     }
 
     /// Generate Merkle proof for the a key at the given version. If the key
@@ -145,4 +257,11 @@ impl<'a> Tree<'a> {
     ) -> StdResult<()> {
         todo!()
     }
+}
+
+fn partition_batch_at_index(batch: &BatchExt, index: usize) -> (&BatchExt, &BatchExt) {
+    let partition_point = batch.partition_point(|(bitarray, _, _)| {
+        bitarray.bit_at_index(index) == 0
+    });
+    (&batch[..partition_point], &batch[partition_point..])
 }
