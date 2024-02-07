@@ -375,6 +375,7 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
+/// TODO: add explanation on what this does
 fn partition_batch(batch: &BatchExt, depth: usize) -> (&BatchExt, &BatchExt) {
     let partition_point = batch.partition_point(|(bitarray, _, _)| {
         bitarray.bit_at_index(depth) == 0
@@ -382,10 +383,11 @@ fn partition_batch(batch: &BatchExt, depth: usize) -> (&BatchExt, &BatchExt) {
     (&batch[..partition_point], &batch[partition_point..])
 }
 
+/// TODO: add explanation on what this does
 fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
         // TODO: avoid cloning here
-        let bit = BitArray::from(leaf.key_hash.clone()).bit_at_index(depth);
+        let bit = bit_at_index(&leaf.key_hash, depth);
         // 0 = left, 1 = right
         debug_assert!(bit == 0 || bit == 1);
         if bit == 0 {
@@ -396,4 +398,12 @@ fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Op
     } else {
         (None, None)
     }
+}
+
+/// Get the i-th bit without having to cast the byte slice to BitArray (which
+/// involves some copying).
+fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
+    let (quotient, remainder) = (index / 8, index % 8);
+    let byte = bytes[quotient];
+    (byte >> (7 - remainder)) & 0b1
 }
