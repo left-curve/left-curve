@@ -50,7 +50,7 @@ impl BitArray {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        let num_bytes = self.num_bits.div_ceil(8) as usize;
+        let num_bytes = self.num_bits.div_ceil(8);
         let mut bytes = Vec::with_capacity(2 + num_bytes);
         bytes.extend(self.num_bits.to_be_bytes());
         bytes.extend(&self.bytes[..num_bytes]);

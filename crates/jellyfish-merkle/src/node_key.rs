@@ -49,7 +49,7 @@ impl MapKey for &NodeKey {
     /// - the rest 0-32 bits are the bits
     fn raw_keys(&self) -> Vec<RawKey> {
         // how many bytes are necesary to represent the bits
-        let num_bytes = self.bits.num_bits.div_ceil(8) as usize;
+        let num_bytes = self.bits.num_bits.div_ceil(8);
         let mut bytes = Vec::with_capacity(num_bytes + 10);
         bytes.extend(self.version.to_be_bytes());
         bytes.extend(self.bits.num_bits.to_be_bytes());

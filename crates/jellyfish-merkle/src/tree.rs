@@ -229,6 +229,7 @@ impl<'a> Tree<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_at_child(
         &self,
         store:         &mut dyn Storage,
