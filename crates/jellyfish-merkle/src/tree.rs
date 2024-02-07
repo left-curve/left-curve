@@ -1,6 +1,6 @@
 use {
     crate::{BitArray, Child, InternalNode, LeafNode, Node, NodeKey, Proof},
-    cw_std::{Batch, Hash, Item, Map, Op, Set, StdResult, Storage},
+    cw_std::{hash, Batch, Hash, Item, Map, Op, Set, StdResult, Storage},
 };
 
 pub const DEFAULT_VERSION_NAMESPACE: &str = "v";
@@ -90,7 +90,7 @@ impl<'a> Tree<'a> {
         let batch: Vec<_> = batch.into_iter().map(|(k, op)| (BitArray::from(&k), k, op)).collect();
 
         // recursively apply the ops, starting at the old root
-        match self.apply_at(store, new_version, &old_root_node_key, &batch)? {
+        match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
             OpResponse::Updated(node) | OpResponse::Unchanged(node) => {
                 self.nodes.save(store, &new_root_node_key, &node)?;
             },
@@ -112,38 +112,71 @@ impl<'a> Tree<'a> {
 
     fn apply_at(
         &self,
-        store:    &mut dyn Storage,
-        version:  u64,
-        node_key: &NodeKey,
-        batch:    &BatchExt,
+        store:        &mut dyn Storage,
+        version:      u64,
+        node_key:     &NodeKey,
+        batch:        &BatchExt,
+        existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match self.nodes.may_load(store, node_key)? {
-            Some(Node::Internal(node)) => self.apply_at_internal(store, version, node_key, node, batch),
-            Some(Node::Leaf(node)) => self.apply_at_leaf(store, version, node_key, node, batch),
-            None => self.apply_at_null(store, version, node_key, batch),
+            Some(Node::Internal(node)) => self.apply_at_internal(
+                store,
+                version,
+                node_key,
+                node,
+                batch,
+                existing_leaf,
+            ),
+            Some(Node::Leaf(node)) => {
+                // we can't encounter two leaf nodes during the same insertion.
+                // if our current node is a leaf, this means the existing leaf
+                // must be None.
+                debug_assert!(existing_leaf.is_none(), "encountered leaves twice");
+                self.apply_at_leaf(store, version, node_key, node, batch)
+            },
+            None => self.apply_at_null(store, version, node_key, batch, existing_leaf),
         }
     }
 
     fn apply_at_internal(
         &self,
-        store:    &mut dyn Storage,
-        version:  u64,
-        node_key: &NodeKey,
-        mut node: InternalNode,
-        batch:    &BatchExt,
+        store:         &mut dyn Storage,
+        version:       u64,
+        node_key:      &NodeKey,
+        mut node:      InternalNode,
+        batch:         &BatchExt,
+        existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
+        // our current depth in the tree is simply the number of bits in the
+        // current node key. root node has depth 0
+        let depth = node_key.bits.num_bits;
+
         // split the batch into two, one for left child, one for right
-        let (left_batch, right_batch) = partition_batch_at_index(batch, node_key.bits.num_bits);
+        let (batch_for_left, batch_for_right) = partition_batch(batch, depth);
 
-        // apply the left batch at the left child
-        let left_child_version = node.left_child.as_ref().map(|c| c.version).unwrap_or(version);
-        let left_child_node_key = node_key.left_child_at_version(left_child_version);
-        let left_response = self.apply_at(store, version, &left_child_node_key, left_batch)?;
+        // if an existing leaf is given, decide whether it's going to the left
+        // or the right subtree based on its bit at the current depth
+        let (existing_leaf_for_left, existing_leaf_for_right) = partition_leaf(existing_leaf, depth);
 
-        // apply the right batch at the right chils
-        let right_child_version = node.right_child.as_ref().map(|c| c.version).unwrap_or(version);
-        let right_child_node_key = node_key.right_child_at_version(right_child_version);
-        let right_response = self.apply_at(store, version, &right_child_node_key, right_batch)?;
+        // apply at the two children, respectively
+        let left_response = self.apply_at_child(
+            store,
+            version,
+            node_key,
+            true,
+            node.left_child.as_ref(),
+            batch_for_left,
+            existing_leaf_for_left,
+        )?;
+        let right_response = self.apply_at_child(
+            store,
+            version,
+            node_key,
+            false,
+            node.right_child.as_ref(),
+            batch_for_right,
+            existing_leaf_for_right,
+        )?;
 
         match (left_response, right_response) {
             // both children are deleted. delete this node as well
@@ -165,32 +198,62 @@ impl<'a> Tree<'a> {
                 Ok(OpResponse::Updated(node))
             },
             // at least one child is updated and the path can't be collapsed.
-            // update the currenct node as well
+            // update the currenct node and return
             (left, right) => {
                 node.left_child = match left {
-                    OpResponse::Updated(child_node) | OpResponse::Unchanged(child_node) => {
-                        self.nodes.save(store, &node_key.left_child_at_version(version), &child_node)?;
+                    OpResponse::Updated(child_node) => {
+                        self.nodes.save(store, &node_key.child_at_version(true, version), &child_node)?;
                         Some(Child {
                             version,
                             hash: child_node.hash(),
                         })
-                    }
+                    },
                     OpResponse::Deleted => None,
+                    OpResponse::Unchanged(_) => node.left_child,
                 };
 
                 node.right_child = match right {
-                    OpResponse::Updated(child_node) | OpResponse::Unchanged(child_node) => {
-                        self.nodes.save(store, &node_key.right_child_at_version(version), &child_node)?;
+                    OpResponse::Updated(child_node) => {
+                        self.nodes.save(store, &node_key.child_at_version(false, version), &child_node)?;
                         Some(Child {
                             version,
                             hash: child_node.hash(),
                         })
-                    }
+                    },
                     OpResponse::Deleted => None,
+                    OpResponse::Unchanged(_) => node.right_child,
                 };
 
                 Ok(OpResponse::Updated(Node::Internal(node)))
             },
+        }
+    }
+
+    fn apply_at_child(
+        &self,
+        store:         &mut dyn Storage,
+        version:       u64,
+        node_key:      &NodeKey,
+        left:          bool,
+        child:         Option<&Child>,
+        batch:         &BatchExt,
+        existing_leaf: Option<LeafNode>,
+    ) -> StdResult<OpResponse> {
+        // only apply if the batch is non-empty, or an existing leaf is given
+        // and it's going to this subtree
+        if !batch.is_empty() || existing_leaf.is_some() {
+            let child_version = child.map(|c| c.version).unwrap_or(version);
+            let child_node_key = node_key.child_at_version(left, child_version);
+            self.apply_at(store, version, &child_node_key, batch, existing_leaf)
+        } else {
+            // no action at the subtree. in this case, if there is a left child,
+            // we return OpResponse::Unchanged; otherwise, return Deleted
+            if let Some(child) = child {
+                let child_node_key = node_key.child_at_version(left, child.version);
+                Ok(OpResponse::Updated(self.nodes.load(store, &child_node_key)?))
+            } else {
+                Ok(OpResponse::Deleted)
+            }
         }
     }
 
@@ -199,25 +262,60 @@ impl<'a> Tree<'a> {
         store:    &mut dyn Storage,
         version:  u64,
         node_key: &NodeKey,
-        node:     LeafNode,
+        mut node: LeafNode,
         batch:    &BatchExt,
     ) -> StdResult<OpResponse> {
-        todo!()
+        // if there is only one op AND the key matches exactly the leaf node's
+        // key, then we have found the correct node, apply the op right here.
+        if batch.len() == 1 {
+            let (bits, _, op) = &batch[0];
+            if *bits == BitArray::from(&node.key_hash) {
+                return if let Op::Put(value) = op {
+                    let new_value_hash = hash(value);
+                    if node.value_hash == new_value_hash {
+                        Ok(OpResponse::Unchanged(Node::Leaf(node)))
+                    } else {
+                        node.value_hash = new_value_hash;
+                        Ok(OpResponse::Updated(Node::Leaf(node)))
+                    }
+                } else {
+                    Ok(OpResponse::Deleted)
+                };
+            }
+        }
+
+        // now we know we can't apply the op right at this leaf node, either
+        // because there are more than one ops in the batch, or there is only
+        // one but it doesn't match the current leaf. either way, we have to
+        // turn the current node into an internal node and apply the batch at
+        // its children.
+        let new_internal_node = InternalNode::new_childless();
+        self.apply_at_internal(store, version, node_key, new_internal_node, batch, Some(node))
     }
 
     fn apply_at_null(
         &self,
-        store:    &mut dyn Storage,
-        version:  u64,
-        node_key: &NodeKey,
-        batch:    &BatchExt,
+        store:         &mut dyn Storage,
+        version:       u64,
+        node_key:      &NodeKey,
+        batch:         &BatchExt,
+        existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match batch.len() {
-            // node doesn't exist, and we don't have any op to do
-            0 => Ok(OpResponse::Deleted),
+            // batch is empty, the existing leaf must be given (otherwise this
+            // function shouldn't have been called). in this case we create a
+            // new leaf node
+            0 => {
+                debug_assert!(
+                    existing_leaf.is_some(),
+                    "apply_at_null called when batch and existing_leaf are both empty"
+                );
+                let new_leaf_node = existing_leaf.unwrap();
+                Ok(OpResponse::Updated(Node::Leaf(new_leaf_node)))
+            },
             // there is exactly one op to do
             // if it's an insert, create a new leaf node
-            // if it's an delete, nothing to do
+            // if it's an delete, nothing to do (deleting a non-exist node)
             1 => Ok({
                 let (_, key, op) = &batch[0];
                 match op {
@@ -229,7 +327,7 @@ impl<'a> Tree<'a> {
             // and apply the batch at this internal node
             _ => {
                 let node = InternalNode::new_childless();
-                self.apply_at_internal(store, version, node_key, node, batch)
+                self.apply_at_internal(store, version, node_key, node, batch, existing_leaf)
             },
         }
     }
@@ -259,9 +357,24 @@ impl<'a> Tree<'a> {
     }
 }
 
-fn partition_batch_at_index(batch: &BatchExt, index: usize) -> (&BatchExt, &BatchExt) {
+fn partition_batch(batch: &BatchExt, depth: usize) -> (&BatchExt, &BatchExt) {
     let partition_point = batch.partition_point(|(bitarray, _, _)| {
-        bitarray.bit_at_index(index) == 0
+        bitarray.bit_at_index(depth) == 0
     });
     (&batch[..partition_point], &batch[partition_point..])
+}
+
+fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
+    if let Some(leaf) = leaf {
+        let bit = BitArray::from(&leaf.key_hash).bit_at_index(depth);
+        // 0 = left, 1 = right
+        debug_assert!(bit == 0 || bit == 1);
+        if bit == 0 {
+            (Some(leaf), None)
+        } else {
+            (None, Some(leaf))
+        }
+    } else {
+        (None, None)
+    }
 }

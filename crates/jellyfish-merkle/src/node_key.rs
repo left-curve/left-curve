@@ -14,14 +14,13 @@ use {
 // ********|**|********************************
 // ^       ^  ^                               ^
 // 0       b1 b2                              b3
-const HASH_LEN: usize = Hash::LENGTH;                  // 32
 const LEN_1:    usize = mem::size_of::<u64>();         // 8
 const LEN_2:    usize = LEN_1 + mem::size_of::<u16>(); // 10
-const LEN_3:    usize = LEN_2 + HASH_LEN;              // 42
+const LEN_3:    usize = LEN_2 + Hash::LENGTH;          // 42
 
 pub struct NodeKey {
     pub version: u64,
-    pub bits:    BitArray<HASH_LEN>,
+    pub bits:    BitArray,
 }
 
 impl NodeKey {
@@ -32,15 +31,9 @@ impl NodeKey {
         }
     }
 
-    pub fn left_child_at_version(&self, version: u64) -> Self {
+    pub fn child_at_version(&self, left: bool, version: u64) -> Self {
         let mut bits = self.bits.clone();
-        bits.push(0);
-        Self { version, bits }
-    }
-
-    pub fn right_child_at_version(&self, version: u64) -> Self {
-        let mut bits = self.bits.clone();
-        bits.push(1);
+        bits.push(if left { 0 } else { 1 });
         Self { version, bits }
     }
 }

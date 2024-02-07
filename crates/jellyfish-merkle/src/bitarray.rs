@@ -1,7 +1,7 @@
-use cw_std::{StdError, StdResult};
+use cw_std::{Hash, StdError, StdResult};
 
-#[derive(Clone)]
-pub struct BitArray<const N: usize = 32> {
+#[derive(Clone, PartialEq, Eq)]
+pub struct BitArray {
     /// For our use case, the maximum size of the bitarray is 256 bits, so the
     /// length can be represented by a u16 (2 bytes).
     pub(crate) num_bits: usize,
@@ -10,14 +10,14 @@ pub struct BitArray<const N: usize = 32> {
     /// so this is a waste of memory space. Essentially, we trade memory usage
     /// for speed.
     /// For blockchain nodes in general, memory is cheap, while time is expensive.
-    pub(crate) bytes: [u8; N],
+    pub(crate) bytes: [u8; Hash::LENGTH],
 }
 
-impl<const N: usize> BitArray<N> {
+impl BitArray {
     pub fn empty() -> Self {
         Self {
             num_bits: 0,
-            bytes: [0; N],
+            bytes: [0; Hash::LENGTH],
         }
     }
 
@@ -59,7 +59,7 @@ impl<const N: usize> BitArray<N> {
 
     pub fn deserialize(slice: &[u8]) -> StdResult<Self> {
         // the length of the bytes should be between 2 and 2+N (inclusive)
-        let range = 2..=(2 + N);
+        let range = 2..=(2 + Hash::LENGTH);
         if !range.contains(&slice.len()) {
             return Err(StdError::deserialize::<Self>(
                 format!("slice length must be in the range {range:?}, found {}", slice.len())
@@ -69,17 +69,17 @@ impl<const N: usize> BitArray<N> {
         let num_bits = u16::from_be_bytes(slice[..2].try_into()?) as usize;
 
         let num_bytes = slice.len() - 2;
-        let mut bytes = [0; N];
+        let mut bytes = [0; Hash::LENGTH];
         bytes[..num_bytes].copy_from_slice(&slice[..num_bytes]);
 
         Ok(BitArray { num_bits, bytes })
     }
 }
 
-impl<T: AsRef<[u8]>, const N: usize> From<T> for BitArray<N> {
+impl<T: AsRef<[u8]>> From<T> for BitArray {
     fn from(bytes: T) -> Self {
         let bytes = bytes.as_ref();
-        assert!(bytes.len() < N);
+        assert!(bytes.len() < Hash::LENGTH);
         Self {
             num_bits: bytes.len() * 8,
             bytes: bytes.try_into().unwrap(),

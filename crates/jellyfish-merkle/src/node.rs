@@ -67,8 +67,8 @@ impl InternalNode {
 
 #[cw_serde]
 pub struct LeafNode {
-    key_hash:   Hash,
-    value_hash: Hash,
+    pub key_hash:   Hash,
+    pub value_hash: Hash,
 }
 
 impl LeafNode {
