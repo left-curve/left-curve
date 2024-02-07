@@ -9,5 +9,5 @@ pub use crate::{
     node::{Child, InternalNode, LeafNode, Node},
     node_key::NodeKey,
     proof::{verify_membership, verify_non_membership, Proof},
-    tree::{Tree, DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE, DEFAULT_VERSION_NAMESPACE},
+    tree::{MerkleTree, DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE, DEFAULT_VERSION_NAMESPACE},
 };

@@ -35,19 +35,19 @@ enum OpResponse {
 ///   https://github.com/penumbra-zone/jmt
 /// - Sovereign Lab's article on optimizations:
 ///   https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8
-pub struct Tree<'a> {
+pub struct MerkleTree<'a> {
     version: Item<'a, u64>,
     nodes:   Map<'a, &'a NodeKey, Node>,
     orphans: Set<'a, (u64, &'a NodeKey)>,
 }
 
-impl<'a> Default for Tree<'a> {
+impl<'a> Default for MerkleTree<'a> {
     fn default() -> Self {
         Self::new(DEFAULT_VERSION_NAMESPACE, DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE)
     }
 }
 
-impl<'a> Tree<'a> {
+impl<'a> MerkleTree<'a> {
     pub const fn new(
         version_namespace: &'a str,
         node_namespace:    &'a str,
