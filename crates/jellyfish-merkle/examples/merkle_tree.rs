@@ -1,12 +1,14 @@
 use {
     cw_jellyfish_merkle::MerkleTree,
-    cw_std::{Batch, MockStorage, Op},
+    cw_std::{Batch, MockStorage, Op, Storage},
 };
 
 fn main() -> anyhow::Result<()> {
     let mut store = MockStorage::new();
     let tree = MerkleTree::default();
 
+    // write a first batch.
+    //
     // hash("larry")
     // = 0x0d098b1c0162939e05719f059f0f844ed989472e9e6a53283a00fe92127ac27f
     // = 0b0000110100001001100010110001110000000001011000101001001110011110000001010111000110011111000001011001111100001111100001000100111011011001100010010100011100101110100111100110101001010011001010000011101000000000111111101001001000010010011110101100001001111111
@@ -23,17 +25,30 @@ fn main() -> anyhow::Result<()> {
     ]);
     tree.apply(&mut store, &batch)?;
 
-    let version = tree.lateset_version(&store)?;
+    print_tree(&tree, &store)?;
+
+    // write a second batch. this time try deleting or mutating some values
+    let batch = Batch::from([
+        (b"foo".to_vec(), Op::Delete),
+        (b"larry".to_vec(), Op::Put(b"programmer".to_vec())),
+    ]);
+    tree.apply(&mut store, &batch)?;
+
+    print_tree(&tree, &store)
+}
+
+fn print_tree(tree: &MerkleTree, store: &dyn Storage) -> anyhow::Result<()> {
+    let version = tree.lateset_version(store)?;
     println!("version = {version}");
 
-    let root_hash = tree.root_hash(&store, None)?;
+    let root_hash = tree.root_hash(store, None)?;
     println!("root_hash = {root_hash:?}");
 
-    for (node_key, node) in tree.nodes(&store)? {
+    for (node_key, node) in tree.nodes(store)? {
         println!("node_key = {node_key:?}, node = {node:?}");
     }
 
-    for (orphaned_since_version, node_key) in tree.orphans(&store)? {
+    for (orphaned_since_version, node_key) in tree.orphans(store)? {
         println!("orphaned_since_version = {orphaned_since_version:?}, node_key = {node_key:?}");
     }
 
