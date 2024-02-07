@@ -103,43 +103,29 @@ impl<T: AsRef<[u8]>> From<T> for BitArray {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        rand::{thread_rng, Rng},
-    };
+    use {super::*, proptest::prelude::*};
 
-    // TODO: convert to fuzz/proptest
-    #[test]
-    fn pushing_and_getting() {
-        let mut rng = thread_rng();
-        let mut bits = [0u8; BitArray::MAX_BIT_LENGTH];
-        let mut bitarray = BitArray::empty();
-
-        // put 256 bits into the array
-        for i in 0..BitArray::MAX_BIT_LENGTH {
-            let random_bit = if rng.gen_bool(0.5) { 1 } else { 0 };
-            bits[i] = random_bit;
-            bitarray.push(random_bit);
+    proptest! {
+        /// Generate 256 random bits, push them one-by-one into the BitArray,
+        /// then retrieve them one-by-one. The retrieved msut match the original.
+        #[test]
+        fn pushing_and_getting(bits in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH)) {
+            let mut bitarray = BitArray::empty();
+            for bit in &bits {
+                bitarray.push(if *bit { 1 } else { 0 });
+            }
+            for (index, bit) in bits.into_iter().enumerate() {
+                prop_assert_eq!(bit, bitarray.bit_at_index(index) == 1);
+            }
         }
 
-        // now try to retrieve each bit
-        for i in 0..BitArray::MAX_BIT_LENGTH {
-            assert_eq!(bits[i], bitarray.bit_at_index(i));
+        /// Generate a BitArray of random length, serialize it to raw bytes,
+        /// then deserialize it back. The recovered msut match the original.
+        #[test]
+        fn serializing_and_deserializing(bytes in prop::collection::vec(any::<u8>(), 1..=BitArray::MAX_BYTE_LENGTH)) {
+            let original = BitArray::from(bytes.as_slice());
+            let recovered = BitArray::deserialize(&original.serialize()).unwrap();
+            prop_assert_eq!(original, recovered);
         }
-    }
-
-    // TODO: convert to fuzz/proptest
-    #[test]
-    fn serializing_and_deserializing() {
-        // generate random bytes of random length
-        let mut rng = thread_rng();
-        let mut bytes = [0u8; BitArray::MAX_BYTE_LENGTH];
-        let num_bytes = rng.gen_range(1..=BitArray::MAX_BYTE_LENGTH);
-        rng.fill(&mut bytes[..num_bytes]);
-
-        // serialize then deserialize; the original and the recovered must match
-        let bitarray = BitArray::from(&bytes[..num_bytes]);
-        let recovered = BitArray::deserialize(&bitarray.serialize()).unwrap();
-        assert_eq!(bitarray, recovered);
     }
 }
