@@ -85,12 +85,11 @@ impl<T: AsRef<[u8]>> From<T> for BitArray {
     fn from(slice: T) -> Self {
         // the slice must be no longer than 32 bytes, otherwise panic
         let slice = slice.as_ref();
-        let slice_len = slice.len();
-        assert!(slice_len <= Self::MAX_BYTE_LENGTH, "slice too long: {slice_len} > {}", Self::MAX_BYTE_LENGTH);
+        assert!(slice.len() <= Self::MAX_BYTE_LENGTH, "slice too long: {} > {}", slice.len(), Self::MAX_BYTE_LENGTH);
 
         // copy the bytes over
         let mut bytes = [0; Self::MAX_BYTE_LENGTH];
-        (&mut bytes[..slice_len]).copy_from_slice(slice);
+        bytes[..slice.len()].copy_from_slice(slice);
 
         Self {
             num_bits: slice.len() * 8,
