@@ -9,13 +9,23 @@ pub type Record = (Vec<u8>, Vec<u8>);
 
 /// A batch of Db ops, ready to be committed.
 /// For RocksDB, this is similar to rocksdb::WriteBatch.
-pub type Batch = BTreeMap<Vec<u8>, Op>;
+pub type Batch<K = Vec<u8>, V = Vec<u8>> = BTreeMap<K, Op<V>>;
 
 /// Represents a database operation, either inserting a value or deleting one.
 #[derive(Debug, Clone)]
-pub enum Op {
-    Put(Vec<u8>),
+pub enum Op<V = Vec<u8>> {
+    Put(V),
     Delete,
+}
+
+impl<V> Op<V> {
+    // similar to Option::map
+    pub fn map<T>(self, f: fn(V) -> T) -> Op<T> {
+        match self {
+            Op::Put(v) => Op::Put(f(v)),
+            Op::Delete => Op::Delete,
+        }
+    }
 }
 
 /// Describing iteration order.

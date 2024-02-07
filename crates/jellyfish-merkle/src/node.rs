@@ -1,5 +1,5 @@
 use {
-    cw_std::{cw_serde, hash, Hash},
+    cw_std::{cw_serde, Hash},
     sha2::{Digest, Sha256},
 };
 
@@ -80,10 +80,10 @@ pub struct LeafNode {
 }
 
 impl LeafNode {
-    pub fn new(key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) -> Self {
+    pub fn new(key_hash: Hash, value_hash: Hash) -> Self {
         Self {
-            key_hash:   hash(key),
-            value_hash: hash(value),
+            key_hash,
+            value_hash,
         }
     }
 }

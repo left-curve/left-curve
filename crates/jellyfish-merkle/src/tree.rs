@@ -1,7 +1,7 @@
 #[cfg(feature = "debug")]
 use cw_std::Order;
 use {
-    crate::{BitArray, Child, InternalNode, LeafNode, Node, NodeKey, Proof},
+    crate::{Child, InternalNode, LeafNode, Node, NodeKey, Proof},
     cw_std::{hash, Batch, Hash, Item, Map, Op, Set, StdResult, Storage},
 };
 
@@ -9,8 +9,9 @@ pub const DEFAULT_VERSION_NAMESPACE: &str = "v";
 pub const DEFAULT_NODE_NAMESPACE:    &str = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE:  &str = "o";
 
-/// Extends `cw_std::Batch`, adding the key hash as a `BitArray`.
-type BatchExt = [(BitArray, Vec<u8>, Op)];
+/// A `Batch` the keys and values are both hashed, and collected into a slice so
+/// that it can be bisected.
+type HashedBatch = [(Hash, Op<Hash>)];
 
 /// Describes the outcome of applying an op or a batch of ops at a node.
 /// The node may either be updated (in which case the updated node is returned),
@@ -103,8 +104,10 @@ impl<'a> MerkleTree<'a> {
         let new_version = old_version + 1;
         let new_root_node_key = NodeKey::root(new_version);
 
-        // hash the keys
-        let batch: Vec<_> = batch.into_iter().map(|(k, op)| (BitArray::from(hash(&k)), k, op)).collect();
+        // hash the keys and values
+        let mut batch = batch.into_iter().map(|(k, op)| (hash(k), op.map(hash))).collect::<Vec<_>>();
+        // sort by key hashes
+        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(&k2));
 
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
@@ -132,7 +135,7 @@ impl<'a> MerkleTree<'a> {
         store:        &mut dyn Storage,
         version:      u64,
         node_key:     &NodeKey,
-        batch:        &BatchExt,
+        batch:        &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match self.nodes.may_load(store, node_key)? {
@@ -161,7 +164,7 @@ impl<'a> MerkleTree<'a> {
         version:       u64,
         node_key:      &NodeKey,
         mut node:      InternalNode,
-        batch:         &BatchExt,
+        batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         // our current depth in the tree is simply the number of bits in the
@@ -254,7 +257,7 @@ impl<'a> MerkleTree<'a> {
         node_key:      &NodeKey,
         left:          bool,
         child:         Option<&Child>,
-        batch:         &BatchExt,
+        batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         // only apply if the batch is non-empty, or an existing leaf is given
@@ -281,12 +284,12 @@ impl<'a> MerkleTree<'a> {
         version:  u64,
         node_key: &NodeKey,
         mut node: LeafNode,
-        batch:    &BatchExt,
+        batch:    &HashedBatch,
     ) -> StdResult<OpResponse> {
         // if there is only one op AND the key matches exactly the leaf node's
         // key, then we have found the correct node, apply the op right here.
         if batch.len() == 1 {
-            let (bits, _, op) = &batch[0];
+            let (bits, op) = &batch[0];
             if *bits == node.key_hash {
                 return if let Op::Put(value) = op {
                     let new_value_hash = hash(value);
@@ -316,7 +319,7 @@ impl<'a> MerkleTree<'a> {
         store:         &mut dyn Storage,
         version:       u64,
         node_key:      &NodeKey,
-        batch:         &BatchExt,
+        batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match batch.len() {
@@ -335,9 +338,12 @@ impl<'a> MerkleTree<'a> {
             // if it's an insert, create a new leaf node
             // if it's an delete, nothing to do (deleting a non-exist node)
             1 => Ok({
-                let (_, key, op) = &batch[0];
+                let (key_hash, op) = &batch[0];
                 match op {
-                    Op::Put(value) => OpResponse::Updated(Node::Leaf(LeafNode::new(key, value))),
+                    Op::Put(value_hash) => {
+                        let new_leaf_node = LeafNode::new(key_hash.clone(), value_hash.clone());
+                        OpResponse::Updated(Node::Leaf(new_leaf_node))
+                    },
                     Op::Delete => OpResponse::Deleted,
                 }
             }),
@@ -376,9 +382,9 @@ impl<'a> MerkleTree<'a> {
 }
 
 /// TODO: add explanation on what this does
-fn partition_batch(batch: &BatchExt, depth: usize) -> (&BatchExt, &BatchExt) {
-    let partition_point = batch.partition_point(|(bitarray, _, _)| {
-        bitarray.bit_at_index(depth) == 0
+fn partition_batch(batch: &HashedBatch, depth: usize) -> (&HashedBatch, &HashedBatch) {
+    let partition_point = batch.partition_point(|(key_hash, _)| {
+        bit_at_index(key_hash, depth) == 0
     });
     (&batch[..partition_point], &batch[partition_point..])
 }
