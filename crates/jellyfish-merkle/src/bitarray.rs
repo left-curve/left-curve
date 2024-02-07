@@ -22,6 +22,21 @@ impl BitArray {
         }
     }
 
+    pub fn from_bytes(slice: &[u8]) -> Self {
+        // the slice must be no longer than 32 bytes, otherwise panic
+        let slice = slice.as_ref();
+        assert!(slice.len() <= Self::MAX_BYTE_LENGTH, "slice too long: {} > {}", slice.len(), Self::MAX_BYTE_LENGTH);
+
+        // copy the bytes over
+        let mut bytes = [0; Self::MAX_BYTE_LENGTH];
+        bytes[..slice.len()].copy_from_slice(slice);
+
+        Self {
+            num_bits: slice.len() * 8,
+            bytes,
+        }
+    }
+
     // we can't use Rust's `Index` trait, because it requires returning a &u8,
     // so we get a "cannot return local reference" error.
     pub fn bit_at_index(&self, index: usize) -> u8 {
@@ -52,20 +67,18 @@ impl BitArray {
     }
 }
 
-impl<T: AsRef<[u8]>> From<T> for BitArray {
-    fn from(slice: T) -> Self {
-        // the slice must be no longer than 32 bytes, otherwise panic
-        let slice = slice.as_ref();
-        assert!(slice.len() <= Self::MAX_BYTE_LENGTH, "slice too long: {} > {}", slice.len(), Self::MAX_BYTE_LENGTH);
-
-        // copy the bytes over
-        let mut bytes = [0; Self::MAX_BYTE_LENGTH];
-        bytes[..slice.len()].copy_from_slice(slice);
-
+impl From<Hash> for BitArray {
+    fn from(hash: Hash) -> Self {
         Self {
-            num_bits: slice.len() * 8,
-            bytes,
+            num_bits: Self::MAX_BIT_LENGTH,
+            bytes: hash.into_slice(),
         }
+    }
+}
+
+impl PartialEq<Hash> for BitArray {
+    fn eq(&self, hash: &Hash) -> bool {
+        self.num_bits == Self::MAX_BIT_LENGTH && self.bytes == hash.as_ref()
     }
 }
 

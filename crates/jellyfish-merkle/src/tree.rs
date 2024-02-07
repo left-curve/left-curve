@@ -103,8 +103,8 @@ impl<'a> MerkleTree<'a> {
         let new_version = old_version + 1;
         let new_root_node_key = NodeKey::root(new_version);
 
-        // convert the raw keys to bitarrays
-        let batch: Vec<_> = batch.into_iter().map(|(k, op)| (BitArray::from(&k), k, op)).collect();
+        // hash the keys
+        let batch: Vec<_> = batch.into_iter().map(|(k, op)| (BitArray::from(hash(&k)), k, op)).collect();
 
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
@@ -287,7 +287,7 @@ impl<'a> MerkleTree<'a> {
         // key, then we have found the correct node, apply the op right here.
         if batch.len() == 1 {
             let (bits, _, op) = &batch[0];
-            if *bits == BitArray::from(&node.key_hash) {
+            if *bits == node.key_hash {
                 return if let Op::Put(value) = op {
                     let new_value_hash = hash(value);
                     if node.value_hash == new_value_hash {
@@ -384,7 +384,8 @@ fn partition_batch(batch: &BatchExt, depth: usize) -> (&BatchExt, &BatchExt) {
 
 fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
-        let bit = BitArray::from(&leaf.key_hash).bit_at_index(depth);
+        // TODO: avoid cloning here
+        let bit = BitArray::from(leaf.key_hash.clone()).bit_at_index(depth);
         // 0 = left, 1 = right
         debug_assert!(bit == 0 || bit == 1);
         if bit == 0 {

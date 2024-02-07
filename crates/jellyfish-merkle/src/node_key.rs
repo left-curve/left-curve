@@ -101,7 +101,7 @@ mod tests {
         ) {
             let original = NodeKey {
                 version,
-                bits: BitArray::from(bytes.as_slice()),
+                bits: BitArray::from_bytes(bytes.as_slice()),
             };
 
             // serialize

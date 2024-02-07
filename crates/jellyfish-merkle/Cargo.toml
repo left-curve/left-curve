@@ -11,7 +11,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = ["debug"]
+default = []
 # MerkleTree exposes `nodes` and `orphans` function for enumerating these records
 # in storage. Useful for debugging.
 debug = []
@@ -21,4 +21,6 @@ cw-std = { path = "../std" }
 sha2   = { workspace = true }
 
 [dev-dependencies]
-proptest = { workspace = true }
+anyhow              = { workspace = true }
+cw-jellyfish-merkle = { path = ".", features = ["debug"] }
+proptest            = { workspace = true }
