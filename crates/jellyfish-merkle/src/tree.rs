@@ -98,14 +98,14 @@ impl<'a> MerkleTree<'a> {
     /// Apply a batch of ops to the tree. Each op is either 1) inserting a value
     /// at a key, or 2) deleting a key.
     /// Increments the version by 1, and recomputes the root hash.
-    pub fn apply(&self, store: &mut dyn Storage, batch: Batch) -> StdResult<()> {
+    pub fn apply(&self, store: &mut dyn Storage, batch: &Batch) -> StdResult<()> {
         let old_version = self.version.may_load(store)?.unwrap_or(0);
         let old_root_node_key = NodeKey::root(old_version);
         let new_version = old_version + 1;
         let new_root_node_key = NodeKey::root(new_version);
 
         // hash the keys and values
-        let mut batch = batch.into_iter().map(|(k, op)| (hash(k), op.map(hash))).collect::<Vec<_>>();
+        let mut batch: Vec<_> = batch.into_iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
         // sort by key hashes
         batch.sort_by(|(k1, _), (k2, _)| k1.cmp(&k2));
 
@@ -132,10 +132,10 @@ impl<'a> MerkleTree<'a> {
 
     fn apply_at(
         &self,
-        store:        &mut dyn Storage,
-        version:      u64,
-        node_key:     &NodeKey,
-        batch:        &HashedBatch,
+        store:         &mut dyn Storage,
+        version:       u64,
+        node_key:      &NodeKey,
+        batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match self.nodes.may_load(store, node_key)? {

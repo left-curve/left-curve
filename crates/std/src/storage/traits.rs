@@ -11,6 +11,8 @@ pub type Record = (Vec<u8>, Vec<u8>);
 /// For RocksDB, this is similar to rocksdb::WriteBatch.
 pub type Batch<K = Vec<u8>, V = Vec<u8>> = BTreeMap<K, Op<V>>;
 
+// ------------------------------------ op -------------------------------------
+
 /// Represents a database operation, either inserting a value or deleting one.
 #[derive(Debug, Clone)]
 pub enum Op<V = Vec<u8>> {
@@ -19,6 +21,14 @@ pub enum Op<V = Vec<u8>> {
 }
 
 impl<V> Op<V> {
+    // similar to Option::as_ref
+    pub fn as_ref(&self) -> Op<&V> {
+        match self {
+            Op::Put(v) => Op::Put(v),
+            Op::Delete => Op::Delete,
+        }
+    }
+
     // similar to Option::map
     pub fn map<T>(self, f: fn(V) -> T) -> Op<T> {
         match self {
@@ -27,6 +37,8 @@ impl<V> Op<V> {
         }
     }
 }
+
+// ----------------------------------- order -----------------------------------
 
 /// Describing iteration order.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -57,6 +69,8 @@ impl TryFrom<i32> for Order {
         }
     }
 }
+
+// ------------------------------- storage trait -------------------------------
 
 /// Describing a KV store that supports read, write, and iteration.
 ///
