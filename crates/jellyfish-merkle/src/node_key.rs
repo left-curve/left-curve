@@ -8,14 +8,14 @@ use {
 // the backing KV store.
 // since we use a 32-byte hash, the NodeKey serializes to 9-41 bytes:
 // - the first 8 bytes are the version in big endian
-// - the next 1 byte is the (num_bits-1) in big endian
+// - the next 2 bytes are the num_bits- in big endian
 // - the rest 0-32 bits are the bits
 //
 // ********|*|********************************
 // ^       ^ ^                               ^
 // 0       len1,len2                         len3
 const LEN_1: usize = mem::size_of::<u64>();         // 8
-const LEN_2: usize = LEN_1 + mem::size_of::<u8>();  // 9
+const LEN_2: usize = LEN_1 + mem::size_of::<u16>(); // 10
 const LEN_3: usize = LEN_2 + Hash::LENGTH;          // 41
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,8 +57,8 @@ impl MapKey for &NodeKey {
         let len = self.bits.num_bits.div_ceil(8);
         let mut bytes = Vec::with_capacity(len + LEN_2);
         bytes.extend(self.version.to_be_bytes());
-        // num_bits can be of value 256 at most, so (num_bits - 1) fits in a u8
-        bytes.push((self.bits.num_bits - 1) as u8);
+        // num_bits can be of value 256 at most, so it fits in a u16
+        bytes.extend((self.bits.num_bits as u16).to_be_bytes());
         bytes.extend(&self.bits.bytes[..len]);
         vec![RawKey::Owned(bytes)]
     }
@@ -72,8 +72,7 @@ impl MapKey for &NodeKey {
         }
 
         let version = u64::from_be_bytes(slice[..LEN_1].try_into()?);
-        // we subtracted 1 when serializng, so adding 1 back here
-        let num_bits = slice[LEN_1] as usize + 1;
+        let num_bits = u16::from_be_bytes(slice[LEN_1..LEN_2].try_into()?) as usize;
         // copy the bytes over
         let mut bytes = [0u8; BitArray::MAX_BYTE_LENGTH];
         bytes[..slice.len() - LEN_2].copy_from_slice(&slice[LEN_2..]);
