@@ -10,6 +10,12 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
+[features]
+default = ["debug"]
+# MerkleTree exposes `nodes` and `orphans` function for enumerating these records
+# in storage. Useful for debugging.
+debug = []
+
 [dependencies]
 cw-std = { path = "../std" }
 sha2   = { workspace = true }
