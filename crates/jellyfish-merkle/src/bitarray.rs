@@ -1,6 +1,8 @@
+use core::fmt;
+
 use cw_std::Hash;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BitArray {
     pub(crate) num_bits: usize,
     /// We opt for the stack-allocated `[u8; N]` over heap-allocated `Vec<u8>`.
@@ -64,6 +66,16 @@ impl BitArray {
             *byte &= !(0b1 << (7 - remainder));
         }
         self.num_bits += 1;
+    }
+}
+
+impl fmt::Debug for BitArray {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.num_bits == 0 {
+            write!(f, "_")
+        } else {
+            (0..self.num_bits).try_for_each(|index| write!(f, "{}", self.bit_at_index(index)))
+        }
     }
 }
 
