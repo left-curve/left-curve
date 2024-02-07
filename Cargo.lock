@@ -712,7 +712,6 @@ version = "0.0.0"
 dependencies = [
  "cw-std",
  "proptest",
- "rand",
  "sha2 0.10.8",
 ]
 

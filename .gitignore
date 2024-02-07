@@ -7,11 +7,12 @@
 **/artifacts/
 
 # javascript
-**/node_modules/
 **/dist/
+**/node_modules/
 
 # data for test purpose
 **/testdata/
+**/proptest-regressions/
 
 # macOS
 **/.DS_Store

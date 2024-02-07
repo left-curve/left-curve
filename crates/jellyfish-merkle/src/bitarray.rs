@@ -1,4 +1,4 @@
-use cw_std::{Hash, StdError, StdResult};
+use cw_std::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BitArray {
@@ -50,35 +50,6 @@ impl BitArray {
         }
         self.num_bits += 1;
     }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        let num_bytes = self.num_bits.div_ceil(8);
-        let mut bytes = Vec::with_capacity(1 + num_bytes);
-        // num_bits can be of value 256 at most, so (num_bits - 1) fits in a u8
-        bytes.extend(((self.num_bits - 1) as u8).to_be_bytes());
-        bytes.extend(&self.bytes[..num_bytes]);
-        bytes
-    }
-
-    pub fn deserialize(slice: &[u8]) -> StdResult<Self> {
-        // the length of the bytes should be between 2 and 2+N (inclusive)
-        let range = 1..=(1 + Self::MAX_BYTE_LENGTH);
-        if !range.contains(&slice.len()) {
-            return Err(StdError::deserialize::<Self>(
-                format!("slice length must be in the range {range:?}, found {}", slice.len())
-            ));
-        }
-
-        // we subtracted 1 when serializng, so adding 1 back here
-        let num_bits = u8::from_be_bytes(slice[..1].try_into()?) as usize + 1;
-
-        // copy the bytes over
-        let num_bytes = slice.len() - 1;
-        let mut bytes = [0; Self::MAX_BYTE_LENGTH];
-        bytes[..num_bytes].copy_from_slice(&slice[1..=num_bytes]);
-
-        Ok(BitArray { num_bits, bytes })
-    }
 }
 
 impl<T: AsRef<[u8]>> From<T> for BitArray {
@@ -116,15 +87,6 @@ mod tests {
             for (index, bit) in bits.into_iter().enumerate() {
                 prop_assert_eq!(bit, bitarray.bit_at_index(index) == 1);
             }
-        }
-
-        /// Generate a BitArray of random length, serialize it to raw bytes,
-        /// then deserialize it back. The recovered msut match the original.
-        #[test]
-        fn serializing_and_deserializing(bytes in prop::collection::vec(any::<u8>(), 1..=BitArray::MAX_BYTE_LENGTH)) {
-            let original = BitArray::from(bytes.as_slice());
-            let recovered = BitArray::deserialize(&original.serialize()).unwrap();
-            prop_assert_eq!(original, recovered);
         }
     }
 }
