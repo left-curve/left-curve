@@ -14,9 +14,9 @@ use {
 // ********|**|********************************
 // ^       ^  ^                               ^
 // 0       b1 b2                              b3
-const LEN_1:    usize = mem::size_of::<u64>();         // 8
-const LEN_2:    usize = LEN_1 + mem::size_of::<u16>(); // 10
-const LEN_3:    usize = LEN_2 + Hash::LENGTH;          // 42
+const LEN_1: usize = mem::size_of::<u64>();         // 8
+const LEN_2: usize = LEN_1 + mem::size_of::<u16>(); // 10
+const LEN_3: usize = LEN_2 + Hash::LENGTH;          // 42
 
 pub struct NodeKey {
     pub version: u64,
