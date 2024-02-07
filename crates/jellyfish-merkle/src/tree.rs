@@ -251,7 +251,7 @@ impl<'a> Tree<'a> {
             // we return OpResponse::Unchanged; otherwise, return Deleted
             if let Some(child) = child {
                 let child_node_key = node_key.child_at_version(left, child.version);
-                Ok(OpResponse::Updated(self.nodes.load(store, &child_node_key)?))
+                Ok(OpResponse::Unchanged(self.nodes.load(store, &child_node_key)?))
             } else {
                 Ok(OpResponse::Deleted)
             }
