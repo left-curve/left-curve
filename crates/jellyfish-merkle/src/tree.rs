@@ -419,16 +419,17 @@ fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
 // ----------------------------------- tests -----------------------------------
 
 // we use the following very simple merkle tree in these tests:
+// (parentheses designates internal nodes. without parentheses then it's a leaf)
 //
 //           root
 //         ┌──┴──┐
-//         0     1
-//         └─┐
-//          01
-//        ┌──┴──┐
-//       010    011
-//           ┌──┴──┐
-//         0110   0111
+//        (0)    1
+//      ┌──┴──┐
+//    null   (01)
+//         ┌──┴──┐
+//       (010)  (011)
+//            ┌──┴──┐
+//          0110   0111
 //
 // to build this tree, we need four keys that hash to 010..., 0110..., 0111...,
 // and 1... respectively, which were found with a little trials:
