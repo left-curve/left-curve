@@ -1,5 +1,5 @@
 use {
-    crate::{hash_internal_node, hash_leaf_node, hash_of, BitArray, InternalNode, LeafNode, Node},
+    crate::{hash_internal_node, hash_leaf_node, BitArray},
     cw_std::{cw_serde, Hash},
     thiserror::Error,
 };
@@ -33,8 +33,23 @@ pub enum Proof {
         sibling_hashes: Vec<Option<Hash>>,
     },
     NonMembership {
-        node: Node,
+        node: ProofNode,
         sibling_hashes: Vec<Option<Hash>>,
+    },
+}
+
+/// `ProofNode` is just like `Node`, but for internal nodes it omits the child
+/// versions, which aren't needed for proving, only including child node hashes.
+/// This reduces proof sizes.
+#[cw_serde]
+pub enum ProofNode {
+    Internal {
+        left_hash:  Option<Hash>,
+        right_hash: Option<Hash>,
+    },
+    Leaf {
+        key_hash:   Hash,
+        value_hash: Hash,
     },
 }
 
@@ -74,17 +89,17 @@ pub fn verify_non_membership(
         // if the node given is an internal node, we check the bit at the depth.
         // if the bit is a 0, it must not have a left child; if the bit is a 1,
         // it must not have a right child.
-        Node::Internal(InternalNode { left_child, right_child }) => {
-            match (bitarray.bit_at_index(sibling_hashes.len()), left_child, right_child) {
+        ProofNode::Internal { left_hash, right_hash } => {
+            match (bitarray.bit_at_index(sibling_hashes.len()), left_hash, right_hash) {
                 (0, Some(_), _) | (1, _, Some(_)) => {
                     return Err(ProofError::UnexpectedChild);
                 },
-                _ => hash_internal_node(hash_of(left_child), hash_of(right_child)),
+                _ => hash_internal_node(left_hash.as_ref(), right_hash.as_ref()),
             }
         },
         // if the node given is a leaf, it's bit path must share a common prefix
         // with the key we want to prove not exist.
-        Node::Leaf(LeafNode { key_hash, value_hash }) => {
+        ProofNode::Leaf { key_hash, value_hash } => {
             let non_exist_bitarray = BitArray::from_bytes(key_hash);
             let exist_bits = bitarray.reverse_iterate_from_index(sibling_hashes.len());
             let non_exist_bits = non_exist_bitarray.reverse_iterate_from_index(sibling_hashes.len());
@@ -128,7 +143,6 @@ fn compute_and_compare_root_hash(
 mod tests {
     use {
         super::*,
-        crate::Child,
         cw_std::{hash, Hash},
         hex_literal::hex,
         test_case::test_case,
@@ -205,10 +219,10 @@ mod tests {
     #[test_case(
         "b", // sha256("b") = 0011... node 0 doesn't have a left child
         Proof::NonMembership {
-            node: Node::Internal(InternalNode {
-                left_child:  None,
-                right_child: Some(Child { version: 1, hash: HASH_01 }),
-            }),
+            node: ProofNode::Internal {
+                left_hash:  None,
+                right_hash: Some(HASH_01),
+            },
             sibling_hashes: vec![Some(HASH_1)],
         };
         "proving b"
@@ -216,10 +230,10 @@ mod tests {
     #[test_case(
         "o", // sha256("o") = 011001... there's a leaf 0110 ("m") which doesn't match key
         Proof::NonMembership {
-            node: Node::Leaf(LeafNode {
+            node: ProofNode::Leaf {
                 key_hash:   HASH_M,
                 value_hash: HASH_BAR,
-            }),
+            },
             sibling_hashes: vec![
                 Some(HASH_0111),
                 Some(HASH_010),
@@ -237,4 +251,6 @@ mod tests {
         )
         .is_ok());
     }
+
+    // TODO: add fail cases for proofs
 }

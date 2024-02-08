@@ -59,7 +59,7 @@ pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
 
 // just a helper function to avoid repetitive verbose code...
 #[inline]
-pub fn hash_of(child: &Option<Child>) -> Option<&Hash> {
+fn hash_of(child: &Option<Child>) -> Option<&Hash> {
     child.as_ref().map(|child| &child.hash)
 }
 
