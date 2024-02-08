@@ -105,9 +105,9 @@ impl<'a> MerkleTree<'a> {
         let new_root_node_key = NodeKey::root(new_version);
 
         // hash the keys and values
-        let mut batch: Vec<_> = batch.into_iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
+        let mut batch: Vec<_> = batch.iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
         // sort by key hashes
-        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(&k2));
+        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {

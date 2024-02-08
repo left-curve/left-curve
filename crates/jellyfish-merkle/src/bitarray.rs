@@ -26,13 +26,10 @@ impl BitArray {
 
     pub fn from_bytes(slice: &[u8]) -> Self {
         // the slice must be no longer than 32 bytes, otherwise panic
-        let slice = slice.as_ref();
         assert!(slice.len() <= Self::MAX_BYTE_LENGTH, "slice too long: {} > {}", slice.len(), Self::MAX_BYTE_LENGTH);
-
         // copy the bytes over
         let mut bytes = [0; Self::MAX_BYTE_LENGTH];
         bytes[..slice.len()].copy_from_slice(slice);
-
         Self {
             num_bits: slice.len() * 8,
             bytes,
