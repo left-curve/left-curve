@@ -64,6 +64,11 @@ impl BitArray {
         }
         self.num_bits += 1;
     }
+
+    /// Iterate the bits in reverse, starting from the given index (exclusive).
+    pub fn reverse_iterate_from_index(&self, index: usize) -> ReverseBitIterator {
+        ReverseBitIterator::new(&self.bytes, index)
+    }
 }
 
 impl fmt::Debug for BitArray {
@@ -91,24 +96,73 @@ impl PartialEq<Hash> for BitArray {
     }
 }
 
+pub struct ReverseBitIterator<'a> {
+    bytes:     &'a [u8],
+    quotient:  usize,
+    remainder: usize,
+}
+
+impl<'a> ReverseBitIterator<'a> {
+    pub fn new(bytes: &'a [u8], index: usize) -> Self {
+        let (quotient, remainder) = (index / 8, index % 8);
+        Self { bytes, quotient, remainder }
+    }
+}
+
+impl<'a> Iterator for ReverseBitIterator<'a> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remainder == 0 {
+            if self.quotient == 0 {
+                return None;
+            } else {
+                self.quotient -= 1;
+                self.remainder = 7;
+            }
+        } else {
+            self.remainder -= 1;
+        }
+
+        let byte = self.bytes[self.quotient];
+        Some((byte >> (7 - self.remainder)) & 0b1)
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {super::*, proptest::prelude::*};
 
+    fn build_bitarray_from_booleans(bits: &[bool]) -> BitArray {
+        let mut bitarray = BitArray::empty();
+        for bit in bits {
+            bitarray.push(if *bit { 1 } else { 0 });
+        }
+        bitarray
+    }
+
     proptest! {
         /// Generate 256 random bits, push them one-by-one into the BitArray,
         /// then retrieve them one-by-one. The retrieved msut match the original.
         #[test]
         fn pushing_and_getting(bits in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH)) {
-            let mut bitarray = BitArray::empty();
-            for bit in &bits {
-                bitarray.push(if *bit { 1 } else { 0 });
-            }
+            let bitarray = build_bitarray_from_booleans(&bits);
             for (index, bit) in bits.into_iter().enumerate() {
                 prop_assert_eq!(bit, bitarray.bit_at_index(index) == 1);
             }
+        }
+
+        #[test]
+        fn reverse_iterating(
+            start in 0..BitArray::MAX_BIT_LENGTH,
+            bits in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH),
+        ) {
+            let bitarray = build_bitarray_from_booleans(&bits);
+            for (i, bit) in bitarray.reverse_iterate_from_index(start).enumerate() {
+                prop_assert_eq!(bits[start - i - 1], bit == 1);
+            };
         }
     }
 }
