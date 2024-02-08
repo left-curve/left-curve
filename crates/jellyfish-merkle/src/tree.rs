@@ -415,3 +415,91 @@ fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
     let byte = bytes[quotient];
     (byte >> (7 - remainder)) & 0b1
 }
+
+// ----------------------------------- tests -----------------------------------
+
+// we use the following very simple merkle tree in these tests:
+//
+//           root
+//         ┌──┴──┐
+//         0     1
+//         └─┐
+//          01
+//        ┌──┴──┐
+//       010    011
+//           ┌──┴──┐
+//         0110   0111
+//
+// to build this tree, we need four keys that hash to 010..., 0110..., 0111...,
+// and 1... respectively, which were found with a little trials:
+//
+// sha256("r") = 0100...
+// sha256("m") = 0110...
+// sha256("L") = 0111...
+// sha256("a") = 1100...
+//
+// the node hashes are computed as follows:
+//
+// hash of node 0110
+// = sha256(01 | sha256("m") | sha256("bar"))
+// = sha256(01 | 62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a | fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9)
+// = fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280
+//
+// hash of node 0111
+// = sha256(01 | sha256("L") | sha256("fuzz"))
+// = sha256(01 | 72dfcfb0c470ac255cde83fb8fe38de8a128188e03ea5ba5b2a93adbea1062fa | 93850b707585e404e4951a3ddc1f05a34b3d4f5fc081d616f46d8a2e8f1c8e68)
+// = 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b
+//
+// hash of node 011
+// = sha256(00 | fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280 | 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b)
+// = e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744
+//
+// hash of node 010
+// = sha256(01 | sha256("r") | sha256("foo"))
+// = sha256(01 | 454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1 | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae)
+// = c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684
+//
+// hash of node 01
+// = sha256(00 | c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684 | e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744)
+// = 521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b
+//
+// hash of node 0
+// = sha256(00 | 0000000000000000000000000000000000000000000000000000000000000000 | 521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b)
+// = b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042
+//
+// hash of node 1
+// = sha256(01 | sha256("a") | sha256("buzz"))
+// = sha256(01 | ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb | 9fff3bcb10ca5e87b8109ccde9e9452012d634a005942afc46cf2b7fa307526a)
+// = cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222
+//
+// root hash
+// = sha256(00 | b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042 | cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
+// = ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b
+
+#[cfg(test)]
+mod tests {
+    use {super::*, cw_std::MockStorage, hex_literal::hex};
+
+    fn build_test_case(tree: &MerkleTree, store: &mut dyn Storage) -> StdResult<()> {
+        tree.apply(store, &Batch::from([
+            (b"r".to_vec(), Op::Put(b"foo".to_vec())),
+            (b"m".to_vec(), Op::Put(b"bar".to_vec())),
+            (b"L".to_vec(), Op::Put(b"fuzz".to_vec())),
+            (b"a".to_vec(), Op::Put(b"buzz".to_vec())),
+        ]))
+    }
+
+    #[test]
+    fn applying_batch() {
+        let mut store = MockStorage::new();
+        let tree = MerkleTree::default();
+        build_test_case(&tree, &mut store).unwrap();
+
+        // just check the root hash matches our calculation
+        let root_hash = tree.root_hash(&store, None).unwrap().unwrap();
+        assert_eq!(
+            root_hash,
+            Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b")),
+        );
+    }
+}

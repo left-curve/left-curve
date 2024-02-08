@@ -33,7 +33,7 @@ impl Hash {
 }
 
 impl Hash {
-    pub fn from_slice(slice: [u8; Self::LENGTH]) -> Self {
+    pub const fn from_slice(slice: [u8; Self::LENGTH]) -> Self {
         Self(slice)
     }
 

@@ -99,10 +99,10 @@ pub fn verify_non_membership(
 }
 
 fn compute_and_compare_root_hash(
-    root_hash: &Hash,
-    bitarray: &BitArray,
+    root_hash:      &Hash,
+    bitarray:       &BitArray,
     sibling_hashes: &[Option<Hash>],
-    mut hash: Hash,
+    mut hash:       Hash,
 ) -> Result<(), ProofError> {
     for (bit, sibling_hash) in bitarray.reverse_iterate_from_index(sibling_hashes.len()).zip(sibling_hashes) {
         if bit == 0 {
@@ -126,15 +126,115 @@ fn compute_and_compare_root_hash(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {
+        super::*,
+        crate::Child,
+        cw_std::{hash, Hash},
+        hex_literal::hex,
+        test_case::test_case,
+    };
 
-    #[test]
-    fn proving_membership() {
-        todo!()
+    // use the same test case as in tree.rs
+    const HASH_ROOT: Hash = Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"));
+    const HASH_0:    Hash = Hash::from_slice(hex!("b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"));
+    const HASH_1:    Hash = Hash::from_slice(hex!("cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"));
+    const HASH_01:   Hash = Hash::from_slice(hex!("521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"));
+    const HASH_010:  Hash = Hash::from_slice(hex!("c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"));
+    const HASH_011:  Hash = Hash::from_slice(hex!("e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"));
+    const HASH_0110: Hash = Hash::from_slice(hex!("fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"));
+    const HASH_0111: Hash = Hash::from_slice(hex!("412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"));
+    const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
+    const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
+
+    #[test_case(
+        "r",
+        "foo",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_011),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving (r, foo)"
+    )]
+    #[test_case(
+        "m",
+        "bar",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_0111),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving (m, bar)"
+    )]
+    #[test_case(
+        "L",
+        "fuzz",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_0110),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving (L, fuzz)"
+    )]
+    #[test_case(
+        "a",
+        "buzz",
+        Proof::Membership {
+            sibling_hashes: vec![Some(HASH_0)],
+        };
+        "proving (a, buzz)"
+    )]
+    fn verifying_membership(key: &str, value: &str, proof: Proof){
+        assert!(verify_membership(
+            &HASH_ROOT,
+            &hash(key.as_bytes()),
+            &hash(value.as_bytes()),
+            &proof,
+        )
+        .is_ok());
     }
 
-    #[test]
-    fn proving_non_membership() {
-        todo!()
+    #[test_case(
+        "b", // sha256("b") = 0011... node 0 doesn't have a left child
+        Proof::NonMembership {
+            node: Node::Internal(InternalNode {
+                left_child:  None,
+                right_child: Some(Child { version: 1, hash: HASH_01 }),
+            }),
+            sibling_hashes: vec![Some(HASH_1)],
+        };
+        "proving b"
+    )]
+    #[test_case(
+        "o", // sha256("o") = 011001... there's a leaf 0110 ("m") which doesn't match key
+        Proof::NonMembership {
+            node: Node::Leaf(LeafNode {
+                key_hash:   HASH_M,
+                value_hash: HASH_BAR,
+            }),
+            sibling_hashes: vec![
+                Some(HASH_0111),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving o"
+    )]
+    fn verifying_non_membership(key: &str, proof: Proof) {
+        assert!(verify_non_membership(
+            &HASH_ROOT,
+            &hash(key.as_bytes()),
+            &proof,
+        )
+        .is_ok());
     }
 }

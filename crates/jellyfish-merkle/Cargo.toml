@@ -24,4 +24,6 @@ thiserror = { workspace = true }
 [dev-dependencies]
 anyhow              = { workspace = true }
 cw-jellyfish-merkle = { path = ".", features = ["debug"] }
+hex-literal         = { workspace = true }
 proptest            = { workspace = true }
+test-case           = { workspace = true }
