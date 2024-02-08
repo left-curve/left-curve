@@ -260,22 +260,24 @@ impl<'a> MerkleTree<'a> {
         batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
-        // only apply if the batch is non-empty, or an existing leaf is given
-        // and it's going to this subtree
+        // if the batch is non-empty OR there's an existing leaf to be inserted,
+        // then we recursively apply at the child node
         if !batch.is_empty() || existing_leaf.is_some() {
             let child_version = child.map(|c| c.version).unwrap_or(version);
             let child_node_key = node_key.child_at_version(left, child_version);
-            self.apply_at(store, version, &child_node_key, batch, existing_leaf)
-        } else {
-            // no action at the subtree. in this case, if there is a left child,
-            // we return OpResponse::Unchanged; otherwise, return Deleted
-            if let Some(child) = child {
-                let child_node_key = node_key.child_at_version(left, child.version);
-                Ok(OpResponse::Unchanged(self.nodes.load(store, &child_node_key)?))
-            } else {
-                Ok(OpResponse::Deleted)
-            }
+            return self.apply_at(store, version, &child_node_key, batch, existing_leaf);
         }
+
+        // the batch is empty AND there isn't an existing leaf to be inserted.
+        // in other words, there's nothing to be done. we end the recursion here.
+        // if the child exists, we return Unchanged; otherwise, return Deleted
+        if let Some(child) = child {
+            let child_node_key = node_key.child_at_version(left, child.version);
+            let child_node = self.nodes.load(store, &child_node_key)?;
+            return Ok(OpResponse::Unchanged(child_node));
+        }
+
+        Ok(OpResponse::Deleted)
     }
 
     fn apply_at_leaf(
