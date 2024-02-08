@@ -30,20 +30,10 @@ impl Node {
     /// If an internal nodes doesn't have a left or right child, that child is
     /// represented by a zero hash `[0u8; 32]`.
     pub fn hash(&self) -> Hash {
-        let mut hasher = Sha256::new();
         match self {
-            Node::Internal(InternalNode { left_child, right_child }) => {
-                hasher.update(INTERNAL_NODE_HASH_PREFIX);
-                hasher.update(left_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
-                hasher.update(right_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
-            },
-            Node::Leaf(LeafNode { key_hash, value_hash }) => {
-                hasher.update(LEAF_NODE_HASH_PERFIX);
-                hasher.update(key_hash);
-                hasher.update(value_hash);
-            },
+            Node::Internal(internal_node) => internal_node.hash(),
+            Node::Leaf(leaf_node) => leaf_node.hash(),
         }
-        Hash::from_slice(hasher.finalize().into())
     }
 }
 
@@ -69,6 +59,14 @@ impl InternalNode {
             right_child: None,
         }
     }
+
+    pub fn hash(&self) -> Hash {
+        let mut hasher = Sha256::new();
+        hasher.update(INTERNAL_NODE_HASH_PREFIX);
+        hasher.update(self.left_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
+        hasher.update(self.right_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
+        Hash::from_slice(hasher.finalize().into())
+    }
 }
 
 // --------------------------------- leaf node ---------------------------------
@@ -85,5 +83,13 @@ impl LeafNode {
             key_hash,
             value_hash,
         }
+    }
+
+    pub fn hash(&self) -> Hash {
+        let mut hasher = Sha256::new();
+        hasher.update(LEAF_NODE_HASH_PERFIX);
+        hasher.update(&self.key_hash);
+        hasher.update(&self.value_hash);
+        Hash::from_slice(hasher.finalize().into())
     }
 }
