@@ -350,8 +350,8 @@ impl<'a> MerkleTree<'a> {
             // regardless of whether there's an existing leaf, create an empty
             // internal node and apply the batch at this internal node.
             (_, existing_leaf) => {
-                let node = InternalNode::new_childless();
-                self.apply_at_internal(store, version, node_key, node, batch, existing_leaf)
+                let new_internal_node = InternalNode::new_childless();
+                self.apply_at_internal(store, version, node_key, new_internal_node, batch, existing_leaf)
             },
         }
     }
