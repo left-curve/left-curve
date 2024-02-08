@@ -23,8 +23,8 @@ pub enum ProofError {
     UnexpectedChild,
 
     // TODO: add more details to the error message?
-    #[error("expecting key hashes to share a common prefix but they do not")]
-    NonCommonPrefix,
+    #[error("expecting bitarrays to share a common prefix but they do not")]
+    NotCommonPrefix,
 }
 
 #[cw_serde]
@@ -89,7 +89,7 @@ pub fn verify_non_membership(
             let exist_bits = bitarray.reverse_iterate_from_index(sibling_hashes.len());
             let non_exist_bits = non_exist_bitarray.reverse_iterate_from_index(sibling_hashes.len());
             if exist_bits.zip(non_exist_bits).any(|(a, b)| a != b) {
-                return Err(ProofError::NonCommonPrefix);
+                return Err(ProofError::NotCommonPrefix);
             }
             hash_leaf_node(key_hash, value_hash)
         },
