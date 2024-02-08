@@ -383,7 +383,6 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
-/// TODO: add explanation on what this does
 fn partition_batch(batch: &HashedBatch, depth: usize) -> (&HashedBatch, &HashedBatch) {
     let partition_point = batch.partition_point(|(key_hash, _)| {
         bit_at_index(key_hash, depth) == 0
@@ -391,7 +390,6 @@ fn partition_batch(batch: &HashedBatch, depth: usize) -> (&HashedBatch, &HashedB
     (&batch[..partition_point], &batch[partition_point..])
 }
 
-/// TODO: add explanation on what this does
 fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
         // TODO: avoid cloning here
