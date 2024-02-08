@@ -291,12 +291,11 @@ impl<'a> MerkleTree<'a> {
         if batch.len() == 1 {
             let (bits, op) = &batch[0];
             if *bits == node.key_hash {
-                return if let Op::Put(value) = op {
-                    let new_value_hash = hash(value);
-                    if node.value_hash == new_value_hash {
+                return if let Op::Put(value_hash) = op {
+                    if node.value_hash == *value_hash {
                         Ok(OpResponse::Unchanged(Node::Leaf(node)))
                     } else {
-                        node.value_hash = new_value_hash;
+                        node.value_hash = value_hash.clone();
                         Ok(OpResponse::Updated(Node::Leaf(node)))
                     }
                 } else {
@@ -322,22 +321,22 @@ impl<'a> MerkleTree<'a> {
         batch:         &HashedBatch,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
-        match batch.len() {
-            // batch is empty, the existing leaf must be given (otherwise this
-            // function shouldn't have been called). in this case we create a
-            // new leaf node
-            0 => {
-                debug_assert!(
-                    existing_leaf.is_some(),
-                    "apply_at_null called when batch and existing_leaf are both empty"
-                );
-                let new_leaf_node = existing_leaf.unwrap();
-                Ok(OpResponse::Updated(Node::Leaf(new_leaf_node)))
+        match (batch.len(), existing_leaf) {
+            // batch is empty, and there isn't an existing leaf.
+            // this situation should not happen. in this case, the function
+            // would have never been called (see the logics in `apply_at_child`)
+            (0, None) => {
+                unreachable!("applying an empty batch with no existing leaf");
             },
-            // there is exactly one op to do
-            // if it's an insert, create a new leaf node
-            // if it's an delete, nothing to do (deleting a non-exist node)
-            1 => Ok({
+            // batch is empty, but there's an existing leaf.
+            // in this case, we create a new leaf node
+            (0, Some(leaf_node)) => {
+                Ok(OpResponse::Updated(Node::Leaf(leaf_node)))
+            },
+            // there is exactly one op to do, and no existing leaf.
+            // if it's an insert, create a new leaf node;
+            // if it's an delete, nothing to do (deleting a non-exist node).
+            (1, None) => Ok({
                 let (key_hash, op) = &batch[0];
                 match op {
                     Op::Put(value_hash) => {
@@ -347,9 +346,10 @@ impl<'a> MerkleTree<'a> {
                     Op::Delete => OpResponse::Deleted,
                 }
             }),
-            // there are more than one op to do. create an empty internal node
-            // and apply the batch at this internal node
-            _ => {
+            // there are more than one op to do.
+            // regardless of whether there's an existing leaf, create an empty
+            // internal node and apply the batch at this internal node.
+            (_, existing_leaf) => {
                 let node = InternalNode::new_childless();
                 self.apply_at_internal(store, version, node_key, node, batch, existing_leaf)
             },
