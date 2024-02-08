@@ -31,10 +31,36 @@ impl Node {
     /// represented by a zero hash `[0u8; 32]`.
     pub fn hash(&self) -> Hash {
         match self {
-            Node::Internal(internal_node) => internal_node.hash(),
-            Node::Leaf(leaf_node) => leaf_node.hash(),
+            Node::Internal(InternalNode { left_child, right_child }) => {
+                hash_internal_node(hash_of(left_child), hash_of(right_child))
+            },
+            Node::Leaf(LeafNode { key_hash, value_hash }) => {
+                hash_leaf_node(key_hash, value_hash)
+            },
         }
     }
+}
+
+pub fn hash_internal_node(left_hash: Option<&Hash>, right_hash: Option<&Hash>) -> Hash {
+    let mut hasher = Sha256::new();
+    hasher.update(INTERNAL_NODE_HASH_PREFIX);
+    hasher.update(left_hash.unwrap_or(&Hash::ZERO));
+    hasher.update(right_hash.unwrap_or(&Hash::ZERO));
+    Hash::from_slice(hasher.finalize().into())
+}
+
+pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
+    let mut hasher = Sha256::new();
+    hasher.update(LEAF_NODE_HASH_PERFIX);
+    hasher.update(key_hash);
+    hasher.update(value_hash);
+    Hash::from_slice(hasher.finalize().into())
+}
+
+// just a helper function to avoid repetitive verbose code...
+#[inline]
+pub fn hash_of(child: &Option<Child>) -> Option<&Hash> {
+    child.as_ref().map(|child| &child.hash)
 }
 
 // ------------------------------- internal node -------------------------------
@@ -59,14 +85,6 @@ impl InternalNode {
             right_child: None,
         }
     }
-
-    pub fn hash(&self) -> Hash {
-        let mut hasher = Sha256::new();
-        hasher.update(INTERNAL_NODE_HASH_PREFIX);
-        hasher.update(self.left_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
-        hasher.update(self.right_child.as_ref().map(|c| &c.hash).unwrap_or(&Hash::ZERO));
-        Hash::from_slice(hasher.finalize().into())
-    }
 }
 
 // --------------------------------- leaf node ---------------------------------
@@ -83,13 +101,5 @@ impl LeafNode {
             key_hash,
             value_hash,
         }
-    }
-
-    pub fn hash(&self) -> Hash {
-        let mut hasher = Sha256::new();
-        hasher.update(LEAF_NODE_HASH_PERFIX);
-        hasher.update(&self.key_hash);
-        hasher.update(&self.value_hash);
-        Hash::from_slice(hasher.finalize().into())
     }
 }
