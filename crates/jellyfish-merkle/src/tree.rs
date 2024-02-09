@@ -51,20 +51,6 @@ impl<'a> Default for MerkleTree<'a> {
     }
 }
 
-#[cfg(feature = "debug")]
-impl<'a> MerkleTree<'a> {
-    /// Return all nodes in the tree. Useful for debugging.
-    pub fn nodes(&self, store: &dyn Storage) -> StdResult<Vec<(NodeKey, Node)>> {
-        self.nodes.range(store, None, None, Order::Ascending).collect()
-    }
-
-    /// Return all node keys that have been marked orphaned, and the versions
-    /// since which they became orphaned. Useful for debugging.
-    pub fn orphans(&self, store: &dyn Storage) -> StdResult<Vec<(u64, NodeKey)>> {
-        self.orphans.range(store, None, None, Order::Ascending).collect()
-    }
-}
-
 impl<'a> MerkleTree<'a> {
     /// Create a new Merkle tree with the given namespaces.
     pub const fn new(

@@ -711,7 +711,6 @@ name = "cw-jellyfish-merkle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "cw-jellyfish-merkle",
  "cw-std",
  "hex-literal",
  "proptest",
