@@ -1,8 +1,6 @@
-#[cfg(feature = "debug")]
-use cw_std::Order;
 use {
-    crate::{Child, InternalNode, LeafNode, Node, NodeKey, Proof},
-    cw_std::{hash, Batch, Hash, Item, Map, Op, Set, StdResult, Storage},
+    crate::{BitArray, Child, InternalNode, LeafNode, Node, NodeKey, Proof, ProofNode},
+    cw_std::{hash, Batch, Hash, Item, Map, Op, Order, Set, StdResult, Storage},
 };
 
 pub const DEFAULT_VERSION_NAMESPACE: &str = "v";
@@ -122,7 +120,7 @@ impl<'a> MerkleTree<'a> {
     /// hashed, and sorted ascendingly by the key hashes. If you have a batch
     /// of prehashes, use `apply_raw` instead.
     pub fn apply(&self, store: &mut dyn Storage, batch: &HashedBatch) -> StdResult<()> {
-        let old_version = self.version.may_load(store)?.unwrap_or(0);
+        let old_version = self.lateset_version(store)?;
         let old_root_node_key = NodeKey::root(old_version);
         let new_version = old_version + 1;
         let new_root_node_key = NodeKey::root(new_version);
@@ -410,11 +408,87 @@ impl<'a> MerkleTree<'a> {
     /// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md
     pub fn prove(
         &self,
-        _store:    &dyn Storage,
-        _key_hash: &Hash,
-        _version:  Option<u64>,
+        store:    &dyn Storage,
+        key_hash: &Hash,
+        version:  Option<u64>,
     ) -> StdResult<Proof> {
-        todo!()
+        let version = version.map(Ok).unwrap_or_else(|| self.lateset_version(store))?;
+        let mut node_key = NodeKey::root(version);
+        // TODO: add a more descriptive error message if the root is not found
+        // e.g. "root node not found at version x (latest version: y), probably pruned"
+        let mut node = self.nodes.load(store, &node_key)?;
+
+        let bitarray = BitArray::from_bytes(key_hash);
+        let mut bits = bitarray.range(None, None, Order::Ascending);
+        let mut proof_node = None;
+        let mut sibling_hashes = vec![];
+
+        loop {
+            match node {
+                // we've reached a leaf node. if the key hashes match then we've
+                // found it. if they don't match then we know the key doesn't
+                // doesn't exist in the tree. either way, break the loop.
+                Node::Leaf(leaf) => {
+                    if *key_hash != leaf.key_hash {
+                        proof_node = Some(ProofNode::Leaf {
+                            key_hash:   leaf.key_hash,
+                            value_hash: leaf.value_hash,
+                        });
+                    }
+                    break;
+                },
+                // we've reached an internal node. move on to its child based on
+                // the next bit in the key hash. append its sibling to the sibling
+                // hashes.
+                Node::Internal(InternalNode { left_child, right_child }) => {
+                    match (bits.next(), left_child, right_child) {
+                        (Some(0), Some(child), sibling) => {
+                            sibling_hashes.push(hash_of(sibling));
+                            node_key = node_key.child_at_version(true, child.version);
+                            node = self.nodes.load(store, &node_key)?;
+                        },
+                        (Some(1), sibling, Some(child)) => {
+                            sibling_hashes.push(hash_of(sibling));
+                            node_key = node_key.child_at_version(false, child.version);
+                            node = self.nodes.load(store, &node_key)?;
+                        },
+                        (Some(0), None, sibling) => {
+                            proof_node = Some(ProofNode::Internal {
+                                left_hash:  None,
+                                right_hash: hash_of(sibling),
+                            });
+                            break;
+                        },
+                        (Some(1), sibling, None) => {
+                            proof_node = Some(ProofNode::Internal {
+                                left_hash:  hash_of(sibling),
+                                right_hash: None,
+                            });
+                            break;
+                        },
+                        (bit, _, _) => {
+                            // the next bit must exist, because if we have reached the end of the
+                            // bitarray, the node is definitely a leaf. also it can only be 0 or 1.
+                            unreachable!("unexpected next bit: {bit:?}");
+                        },
+                    };
+                },
+            }
+        }
+
+        // in our proof format, the sibling hashes is from bottom up (from leaf
+        // to the root), so we have to reverse it.
+        // we can either reverse it here, or reverse it during verification.
+        // we do it here since proving is usually done off-chain (e.g. an IBC
+        // relayer querying the node) while verification is usally done on-chain
+        // (e.g. inside an IBC light client).
+        sibling_hashes.reverse();
+
+        if let Some(node) = proof_node {
+            Ok(Proof::NonMembership { node, sibling_hashes })
+        } else {
+            Ok(Proof::Membership { sibling_hashes })
+        }
     }
 
     /// Delete nodes that no longer part of the tree since `up_to_version`
@@ -457,6 +531,12 @@ fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
     let (quotient, remainder) = (index / 8, index % 8);
     let byte = bytes[quotient];
     (byte >> (7 - remainder)) & 0b1
+}
+
+// just a helper function to avoid repetitive verbose code...
+#[inline]
+fn hash_of(child: Option<Child>) -> Option<Hash> {
+    child.map(|child| child.hash)
 }
 
 // ----------------------------------- tests -----------------------------------
