@@ -322,7 +322,7 @@ impl<'a> MerkleTree<'a> {
         if batch.len() == 1 {
             let (bits, op) = &batch[0];
             if *bits == node.key_hash {
-                return if let Op::Put(value_hash) = op {
+                return if let Op::Insert(value_hash) = op {
                     if node.value_hash == *value_hash {
                         Ok(OpResponse::Unchanged(Node::Leaf(node)))
                     } else {
@@ -370,7 +370,7 @@ impl<'a> MerkleTree<'a> {
             (1, None) => Ok({
                 let (key_hash, op) = &batch[0];
                 match op {
-                    Op::Put(value_hash) => {
+                    Op::Insert(value_hash) => {
                         let new_leaf_node = LeafNode::new(key_hash.clone(), value_hash.clone());
                         OpResponse::Updated(Node::Leaf(new_leaf_node))
                     },
@@ -620,10 +620,10 @@ mod tests {
     fn build_test_case() -> StdResult<MockStorage> {
         let mut store = MockStorage::new();
         TREE.apply_raw(&mut store, &Batch::from([
-            (b"r".to_vec(), Op::Put(b"foo".to_vec())),
-            (b"m".to_vec(), Op::Put(b"bar".to_vec())),
-            (b"L".to_vec(), Op::Put(b"fuzz".to_vec())),
-            (b"a".to_vec(), Op::Put(b"buzz".to_vec())),
+            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
         ]))?;
         Ok(store)
     }

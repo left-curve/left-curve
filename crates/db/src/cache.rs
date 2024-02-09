@@ -45,7 +45,7 @@ impl<S: Storage + Clone> CacheStore<S> {
 impl<S: Storage + Clone> Storage for CacheStore<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         match self.pending.get(key) {
-            Some(Op::Put(value)) => Some(value.clone()),
+            Some(Op::Insert(value)) => Some(value.clone()),
             Some(Op::Delete) => None,
             None => self.base.read(key),
         }
@@ -77,7 +77,7 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.pending.insert(key.to_vec(), Op::Put(value.to_vec()));
+        self.pending.insert(key.to_vec(), Op::Insert(value.to_vec()));
     }
 
     fn remove(&mut self, key: &[u8]) {
@@ -117,7 +117,7 @@ where
     fn take_pending(&mut self) -> Option<Record> {
         let (key, op) = self.pending.next()?;
         match op {
-            Op::Put(value) => Some((key.clone(), value.clone())),
+            Op::Insert(value) => Some((key.clone(), value.clone())),
             Op::Delete => self.next(),
         }
     }

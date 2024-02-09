@@ -16,7 +16,7 @@ pub type Batch<K = Vec<u8>, V = Vec<u8>> = BTreeMap<K, Op<V>>;
 /// Represents a database operation, either inserting a value or deleting one.
 #[derive(Debug, Clone)]
 pub enum Op<V = Vec<u8>> {
-    Put(V),
+    Insert(V),
     Delete,
 }
 
@@ -24,7 +24,7 @@ impl<V> Op<V> {
     // similar to Option::as_ref
     pub fn as_ref(&self) -> Op<&V> {
         match self {
-            Op::Put(v) => Op::Put(v),
+            Op::Insert(v) => Op::Insert(v),
             Op::Delete => Op::Delete,
         }
     }
@@ -32,7 +32,7 @@ impl<V> Op<V> {
     // similar to Option::map
     pub fn map<T>(self, f: fn(V) -> T) -> Op<T> {
         match self {
-            Op::Put(v) => Op::Put(f(v)),
+            Op::Insert(v) => Op::Insert(f(v)),
             Op::Delete => Op::Delete,
         }
     }
@@ -109,7 +109,7 @@ pub trait Storage: DynClone {
     /// Overwrite this implementation if there are more efficient approaches.
     fn flush(&mut self, batch: Batch) {
         for (key, op) in batch {
-            if let Op::Put(value) = op {
+            if let Op::Insert(value) = op {
                 self.write(&key, &value);
             } else {
                 self.remove(&key);

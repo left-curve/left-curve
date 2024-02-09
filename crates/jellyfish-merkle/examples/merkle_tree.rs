@@ -19,9 +19,9 @@ fn main() -> anyhow::Result<()> {
     // = 0x93850b707585e404e4951a3ddc1f05a34b3d4f5fc081d616f46d8a2e8f1c8e68
     // = 0b1001001110000101000010110111000001110101100001011110010000000100111001001001010100011010001111011101110000011111000001011010001101001011001111010100111101011111110000001000000111010110000101101111010001101101100010100010111010001111000111001000111001101000
     let batch = Batch::from([
-        (b"foo".to_vec(), Op::Put(b"bar".to_vec())),
-        (b"fuzz".to_vec(), Op::Put(b"buzz".to_vec())),
-        (b"larry".to_vec(), Op::Put(b"engineer".to_vec())),
+        (b"foo".to_vec(), Op::Insert(b"bar".to_vec())),
+        (b"fuzz".to_vec(), Op::Insert(b"buzz".to_vec())),
+        (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
     ]);
     tree.apply_raw(&mut store, &batch)?;
 
@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
     // write a second batch. this time try deleting or mutating some values
     let batch = Batch::from([
         (b"foo".to_vec(), Op::Delete),
-        (b"larry".to_vec(), Op::Put(b"programmer".to_vec())),
+        (b"larry".to_vec(), Op::Insert(b"programmer".to_vec())),
     ]);
     tree.apply_raw(&mut store, &batch)?;
 
