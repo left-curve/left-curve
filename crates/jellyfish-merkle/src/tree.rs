@@ -438,7 +438,6 @@ fn partition_batch(batch: &HashedBatch, depth: usize) -> (&HashedBatch, &HashedB
 
 fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
-        // TODO: avoid cloning here
         let bit = bit_at_index(&leaf.key_hash, depth);
         // 0 = left, 1 = right
         debug_assert!(bit == 0 || bit == 1);
