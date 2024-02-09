@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test_case(
-        "b", // sha256("b") = 0011... node 0 doesn't have a left child
+        "b",
         Proof::NonMembership {
             node: ProofNode::Internal {
                 left_hash:  None,
@@ -236,7 +236,7 @@ mod tests {
         "proving b"
     )]
     #[test_case(
-        "o", // sha256("o") = 011001... there's a leaf 0110 ("m") which doesn't match key
+        "o",
         Proof::NonMembership {
             node: ProofNode::Leaf {
                 key_hash:   HASH_M,

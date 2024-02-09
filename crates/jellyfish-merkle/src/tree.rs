@@ -599,28 +599,109 @@ fn hash_of(child: Option<Child>) -> Option<Hash> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_std::MockStorage, hex_literal::hex};
+    use {super::*, cw_std::MockStorage, hex_literal::hex, test_case::test_case};
 
-    fn build_test_case(tree: &MerkleTree, store: &mut dyn Storage) -> StdResult<()> {
-        tree.apply_raw(store, &Batch::from([
+    const HASH_ROOT: Hash = Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"));
+    const HASH_0:    Hash = Hash::from_slice(hex!("b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"));
+    const HASH_1:    Hash = Hash::from_slice(hex!("cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"));
+    const HASH_01:   Hash = Hash::from_slice(hex!("521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"));
+    const HASH_010:  Hash = Hash::from_slice(hex!("c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"));
+    const HASH_011:  Hash = Hash::from_slice(hex!("e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"));
+    const HASH_0110: Hash = Hash::from_slice(hex!("fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"));
+    const HASH_0111: Hash = Hash::from_slice(hex!("412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"));
+    const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
+    const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
+
+    fn build_test_case() -> StdResult<(MockStorage, MerkleTree<'static>)> {
+        let mut store = MockStorage::new();
+        let tree = MerkleTree::default();
+        tree.apply_raw(&mut store, &Batch::from([
             (b"r".to_vec(), Op::Put(b"foo".to_vec())),
             (b"m".to_vec(), Op::Put(b"bar".to_vec())),
             (b"L".to_vec(), Op::Put(b"fuzz".to_vec())),
             (b"a".to_vec(), Op::Put(b"buzz".to_vec())),
-        ]))
+        ]))?;
+        Ok((store, tree))
     }
 
     #[test]
     fn applying_batch() {
-        let mut store = MockStorage::new();
-        let tree = MerkleTree::default();
-        build_test_case(&tree, &mut store).unwrap();
+        let (store, tree) = build_test_case().unwrap();
+        // if root hash matches our expected value then we consider it a success
+        assert_eq!(tree.root_hash(&store, None).unwrap().unwrap(), HASH_ROOT);
+    }
 
-        // just check the root hash matches our calculation
-        let root_hash = tree.root_hash(&store, None).unwrap().unwrap();
-        assert_eq!(
-            root_hash,
-            Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b")),
-        );
+    #[test_case(
+        "r",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_011),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving membership of r"
+    )]
+    #[test_case(
+        "m",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_0111),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving membership of m"
+    )]
+    #[test_case(
+        "L",
+        Proof::Membership {
+            sibling_hashes: vec![
+                Some(HASH_0110),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving membership of L"
+    )]
+    #[test_case(
+        "a",
+        Proof::Membership {
+            sibling_hashes: vec![Some(HASH_0)],
+        };
+        "proving membership of a"
+    )]
+    #[test_case(
+        "b", // sha256("b") = 0011... node 0 doesn't have a left child
+        Proof::NonMembership {
+            node: ProofNode::Internal {
+                left_hash:  None,
+                right_hash: Some(HASH_01),
+            },
+            sibling_hashes: vec![Some(HASH_1)],
+        };
+        "proving non-membership of b"
+    )]
+    #[test_case(
+        "o", // sha256("o") = 011001... there's a leaf 0110 ("m") which doesn't match key
+        Proof::NonMembership {
+            node: ProofNode::Leaf {
+                key_hash:   HASH_M,
+                value_hash: HASH_BAR,
+            },
+            sibling_hashes: vec![
+                Some(HASH_0111),
+                Some(HASH_010),
+                None,
+                Some(HASH_1),
+            ],
+        };
+        "proving non-membership of o"
+    )]
+    fn proving(key: &str, proof: Proof) {
+        let (store, tree) = build_test_case().unwrap();
+        assert_eq!(tree.prove(&store, &hash(key.as_bytes()), None).unwrap(), proof);
     }
 }
