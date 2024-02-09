@@ -1,6 +1,7 @@
 use {
     crate::{StdError, StdResult},
     dyn_clone::DynClone,
+    serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
 
@@ -14,7 +15,8 @@ pub type Batch<K = Vec<u8>, V = Vec<u8>> = BTreeMap<K, Op<V>>;
 // ------------------------------------ op -------------------------------------
 
 /// Represents a database operation, either inserting a value or deleting one.
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum Op<V = Vec<u8>> {
     Insert(V),
     Delete,
