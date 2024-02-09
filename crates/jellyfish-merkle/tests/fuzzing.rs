@@ -4,7 +4,7 @@
 // $ cargo test -p cw-jellyfish-merkle --features fuzzing --test fuzzing -- --nocapture
 #![cfg(feature = "fuzzing")]
 
-//! Our fuzz testing strategy is as follows:
+//! Our fuzzing strategy is as follows:
 //!
 //! - Write an initial batch of 100 random keys and values.
 //!
@@ -29,15 +29,21 @@ use {
     anyhow::bail,
     cw_jellyfish_merkle::{verify_proof, HashedPair, MerkleTree},
     cw_std::{Batch, Hash, MockStorage, Op, Storage},
-    rand::{rngs::StdRng, Rng, SeedableRng},
+    rand::{rngs::StdRng, thread_rng, Rng, RngCore, SeedableRng},
 };
 
-const TREE: MerkleTree = MerkleTree::new_default();
-const SEED: u64 = 42;
+const TREE:        MerkleTree  = MerkleTree::new_default();
+const SEED:        Option<u64> = None;
+const NUM_BATCHES: usize       = 100;
 
 #[test]
 fn fuzzing() -> anyhow::Result<()> {
-    let mut rng = StdRng::seed_from_u64(SEED);
+    // if a seed is given, create a seeded RNG; otherwise created an unseeded one
+    let mut rng: Box<dyn RngCore> = if let Some(seed) = SEED {
+        Box::new(StdRng::seed_from_u64(seed))
+    } else {
+        Box::new(thread_rng())
+    };
     let mut log = Batch::new();
     let mut store = MockStorage::new();
 
@@ -46,7 +52,7 @@ fn fuzzing() -> anyhow::Result<()> {
     log.extend(batch);
     check(&store, &log, 1)?;
 
-    for i in 2..=100 {
+    for i in 2..=NUM_BATCHES {
         let batch = generate_subsequent_batch(&log, &mut rng);
         TREE.apply(&mut store, &batch).unwrap();
         log.extend(batch);

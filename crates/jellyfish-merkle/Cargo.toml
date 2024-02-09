@@ -11,7 +11,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = ["fuzzing"]
+default = []
+# if enabled, a fuzzing test is included, which can take a long time to run
 fuzzing = []
 
 [dependencies]
