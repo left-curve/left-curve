@@ -125,7 +125,7 @@ impl<'a> BitIterator<'a> {
             // minimum bound in inclusive, we simply return the min q and r.
             // make sure to check the max bound.
             if self.min < self.max {
-                self.current = Some(self.min.clone());
+                self.current = Some(self.min);
                 return self.current;
             } else {
                 return None;
@@ -151,7 +151,7 @@ impl<'a> BitIterator<'a> {
             // this is the first time `next` is called. in this case, initialize
             // current q and r. since max bound is exclusive, we don't just return
             // here yet as in `increment`, but instead move on to decrement it.
-            self.current = Some(self.max.clone());
+            self.current = Some(self.max);
         }
         let (q, r) = self.current.as_mut().unwrap();
 

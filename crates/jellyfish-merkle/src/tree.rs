@@ -126,7 +126,7 @@ impl<'a> MerkleTree<'a> {
         let new_root_node_key = NodeKey::root(new_version);
 
         // recursively apply the ops, starting at the old root
-        match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
+        match self.apply_at(store, new_version, &old_root_node_key, batch, None)? {
             OpResponse::Updated(node) => {
                 // increment the version
                 self.version.save(store, &new_version)?;
