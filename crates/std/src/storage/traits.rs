@@ -36,6 +36,13 @@ impl<V> Op<V> {
             Op::Delete => Op::Delete,
         }
     }
+
+    pub fn into_option(self) -> Option<V> {
+        match self {
+            Op::Insert(v) => Some(v),
+            Op::Delete => None,
+        }
+    }
 }
 
 // ----------------------------------- order -----------------------------------

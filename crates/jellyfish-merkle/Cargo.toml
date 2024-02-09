@@ -11,10 +11,12 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = []
+default = ["fuzzing"]
 # MerkleTree exposes `nodes` and `orphans` function for enumerating these records
 # in storage. Useful for debugging.
 debug = []
+# Include a fuzz testing
+fuzzing = []
 
 [dependencies]
 cw-std    = { path = "../std" }
@@ -26,4 +28,5 @@ anyhow              = { workspace = true }
 cw-jellyfish-merkle = { path = ".", features = ["debug"] }
 hex-literal         = { workspace = true }
 proptest            = { workspace = true }
+rand                = { workspace = true }
 test-case           = { workspace = true }
