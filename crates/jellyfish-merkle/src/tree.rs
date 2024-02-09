@@ -3,9 +3,9 @@ use {
     cw_std::{hash, Batch, Hash, Item, Map, Op, Order, Set, StdResult, Storage},
 };
 
-pub const DEFAULT_VERSION_NAMESPACE: &str = "v";
-pub const DEFAULT_NODE_NAMESPACE:    &str = "n";
-pub const DEFAULT_ORPHAN_NAMESPACE:  &str = "o";
+pub const DEFAULT_VERSION_NAMESPACE: &str  = "v";
+pub const DEFAULT_NODE_NAMESPACE:    &str  = "n";
+pub const DEFAULT_ORPHAN_NAMESPACE:  &str  = "o";
 
 /// A `Batch` the keys and values are both hashed, and collected into a slice so
 /// that it can be bisected.
@@ -488,14 +488,10 @@ impl<'a> MerkleTree<'a> {
         }
     }
 
-    /// Delete nodes that no longer part of the tree since `up_to_version`
-    /// (exclusive). If no `up_to_version` is provided then delete all orphans.
-    pub fn prune(
-        &self,
-        _store:         &mut dyn Storage,
-        _up_to_version: Option<u64>,
-        _limit:         Option<usize>,
-    ) -> StdResult<()> {
+    /// Delete nodes that are no longer part of the tree as of `up_to_version`.
+    /// If no `up_to_version` is provided then delete all orphans.
+    pub fn prune(&self, _store: &mut dyn Storage, _up_to_version: Option<u64>) -> StdResult<()> {
+        // we should first implement a `range_remove` method on Storage trait
         todo!()
     }
 }
