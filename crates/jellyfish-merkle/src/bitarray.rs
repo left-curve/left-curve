@@ -112,8 +112,8 @@ impl<'a> BitIterator<'a> {
     pub fn new(bytes: &'a [u8], min: usize, max: usize, order: Order) -> Self {
         Self {
             current: None,
-            min:     (min / 8, min % 8),
-            max:     (max / 8, max % 8),
+            min: (min / 8, min % 8),
+            max: (max / 8, max % 8),
             bytes,
             order,
         }
