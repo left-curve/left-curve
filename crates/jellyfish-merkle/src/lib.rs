@@ -8,7 +8,10 @@ pub use crate::{
     bitarray::{BitArray, BitIterator},
     node::{hash_internal_node, hash_leaf_node, Child, InternalNode, LeafNode, Node},
     node_key::NodeKey,
-    proof::{verify_membership, verify_non_membership, Proof, ProofError, ProofNode},
+    proof::{
+        verify_membership_proof, verify_non_membership_proof, verify_proof,
+        MembershipProof, NonMembershipProof, Proof, ProofError, ProofNode,
+    },
     tree::{
         HashedPair, MerkleTree,
         DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE, DEFAULT_VERSION_NAMESPACE,

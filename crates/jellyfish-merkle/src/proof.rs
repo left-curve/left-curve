@@ -29,13 +29,19 @@ pub enum ProofError {
 
 #[cw_serde]
 pub enum Proof {
-    Membership {
-        sibling_hashes: Vec<Option<Hash>>,
-    },
-    NonMembership {
-        node: ProofNode,
-        sibling_hashes: Vec<Option<Hash>>,
-    },
+    Membership(MembershipProof),
+    NonMembership(NonMembershipProof),
+}
+
+#[cw_serde]
+pub struct MembershipProof {
+    pub sibling_hashes: Vec<Option<Hash>>,
+}
+
+#[cw_serde]
+pub struct NonMembershipProof {
+    pub node: ProofNode,
+    pub sibling_hashes: Vec<Option<Hash>>,
 }
 
 /// `ProofNode` is just like `Node`, but for internal nodes it omits the child
@@ -53,44 +59,58 @@ pub enum ProofNode {
     },
 }
 
-pub fn verify_membership(
+pub fn verify_proof(
+    root_hash:  &Hash,
+    key_hash:   &Hash,
+    value_hash: Option<&Hash>,
+    proof:      &Proof,
+) -> Result<(), ProofError> {
+    match (value_hash, proof) {
+        (Some(value_hash), Proof::Membership(proof)) => {
+            verify_membership_proof(root_hash, key_hash, value_hash, proof)
+        },
+        (None, Proof::NonMembership(proof)) => {
+            verify_non_membership_proof(root_hash, key_hash, proof)
+        },
+        (Some(_), Proof::NonMembership(_)) => {
+            Err(ProofError::IncorrectProofType {
+                expect: "membership",
+                actual: "non-membership",
+            })
+        },
+        (None, Proof::Membership(_)) => {
+            Err(ProofError::IncorrectProofType {
+                expect: "non-membership",
+                actual: "membership",
+            })
+        },
+    }
+}
+
+pub fn verify_membership_proof(
     root_hash:  &Hash,
     key_hash:   &Hash,
     value_hash: &Hash,
-    proof:      &Proof,
+    proof:      &MembershipProof,
 ) -> Result<(), ProofError> {
-    let Proof::Membership { sibling_hashes } = proof else {
-        return Err(ProofError::IncorrectProofType {
-            expect: "membership",
-            actual: "non-membership",
-        });
-    };
-
     let bitarray = BitArray::from_bytes(key_hash);
     let hash = hash_leaf_node(key_hash, value_hash);
 
-    compute_and_compare_root_hash(root_hash, &bitarray, sibling_hashes, hash)
+    compute_and_compare_root_hash(root_hash, &bitarray, &proof.sibling_hashes, hash)
 }
 
-pub fn verify_non_membership(
+pub fn verify_non_membership_proof(
     root_hash: &Hash,
     key_hash:  &Hash,
-    proof:     &Proof,
+    proof:     &NonMembershipProof,
 ) -> Result<(), ProofError> {
-    let Proof::NonMembership { node, sibling_hashes } = proof else {
-        return Err(ProofError::IncorrectProofType {
-            expect: "non-membership",
-            actual: "membership",
-        });
-    };
-
     let bitarray = BitArray::from_bytes(key_hash);
-    let hash = match node {
+    let hash = match &proof.node {
         // if the node given is an internal node, we check the bit at the depth.
         // if the bit is a 0, it must not have a left child; if the bit is a 1,
         // it must not have a right child.
         ProofNode::Internal { left_hash, right_hash } => {
-            match (bitarray.bit_at_index(sibling_hashes.len()), left_hash, right_hash) {
+            match (bitarray.bit_at_index(proof.sibling_hashes.len()), left_hash, right_hash) {
                 (0, Some(_), _) | (1, _, Some(_)) => {
                     return Err(ProofError::UnexpectedChild);
                 },
@@ -103,12 +123,12 @@ pub fn verify_non_membership(
             let non_exist_bitarray = BitArray::from_bytes(key_hash);
             let exist_bits = bitarray.range(
                 None,
-                Some(sibling_hashes.len()),
+                Some(proof.sibling_hashes.len()),
                 Order::Descending,
             );
             let non_exist_bits = non_exist_bitarray.range(
                 None,
-                Some(sibling_hashes.len()),
+                Some(proof.sibling_hashes.len()),
                 Order::Descending,
             );
             if exist_bits.zip(non_exist_bits).any(|(a, b)| a != b) {
@@ -118,7 +138,7 @@ pub fn verify_non_membership(
         },
     };
 
-    compute_and_compare_root_hash(root_hash, &bitarray, sibling_hashes, hash)
+    compute_and_compare_root_hash(root_hash, &bitarray, &proof.sibling_hashes, hash)
 }
 
 fn compute_and_compare_root_hash(
@@ -171,7 +191,7 @@ mod tests {
     #[test_case(
         "r",
         "foo",
-        Proof::Membership {
+        MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_011),
                 None,
@@ -183,7 +203,7 @@ mod tests {
     #[test_case(
         "m",
         "bar",
-        Proof::Membership {
+        MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_0111),
                 Some(HASH_010),
@@ -196,7 +216,7 @@ mod tests {
     #[test_case(
         "L",
         "fuzz",
-        Proof::Membership {
+        MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_0110),
                 Some(HASH_010),
@@ -209,13 +229,13 @@ mod tests {
     #[test_case(
         "a",
         "buzz",
-        Proof::Membership {
+        MembershipProof {
             sibling_hashes: vec![Some(HASH_0)],
         };
         "proving (a, buzz)"
     )]
-    fn verifying_membership(key: &str, value: &str, proof: Proof){
-        assert!(verify_membership(
+    fn verifying_membership(key: &str, value: &str, proof: MembershipProof){
+        assert!(verify_membership_proof(
             &HASH_ROOT,
             &hash(key.as_bytes()),
             &hash(value.as_bytes()),
@@ -226,7 +246,7 @@ mod tests {
 
     #[test_case(
         "b",
-        Proof::NonMembership {
+        NonMembershipProof {
             node: ProofNode::Internal {
                 left_hash:  None,
                 right_hash: Some(HASH_01),
@@ -237,7 +257,7 @@ mod tests {
     )]
     #[test_case(
         "o",
-        Proof::NonMembership {
+        NonMembershipProof {
             node: ProofNode::Leaf {
                 key_hash:   HASH_M,
                 value_hash: HASH_BAR,
@@ -251,8 +271,8 @@ mod tests {
         };
         "proving o"
     )]
-    fn verifying_non_membership(key: &str, proof: Proof) {
-        assert!(verify_non_membership(
+    fn verifying_non_membership(key: &str, proof: NonMembershipProof) {
+        assert!(verify_non_membership_proof(
             &HASH_ROOT,
             &hash(key.as_bytes()),
             &proof,

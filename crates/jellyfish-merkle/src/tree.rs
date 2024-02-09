@@ -1,5 +1,8 @@
 use {
-    crate::{BitArray, Child, InternalNode, LeafNode, Node, NodeKey, Proof, ProofNode},
+    crate::{
+        BitArray, Child, InternalNode, LeafNode, MembershipProof, Node, NodeKey,
+        NonMembershipProof, Proof, ProofNode,
+    },
     cw_std::{hash, Batch, Hash, Item, Map, Op, Order, Set, StdResult, Storage},
 };
 
@@ -489,9 +492,9 @@ impl<'a> MerkleTree<'a> {
         sibling_hashes.reverse();
 
         if let Some(node) = proof_node {
-            Ok(Proof::NonMembership { node, sibling_hashes })
+            Ok(Proof::NonMembership(NonMembershipProof { node, sibling_hashes }))
         } else {
-            Ok(Proof::Membership { sibling_hashes })
+            Ok(Proof::Membership(MembershipProof { sibling_hashes }))
         }
     }
 
@@ -637,60 +640,60 @@ mod tests {
 
     #[test_case(
         "r",
-        Proof::Membership {
+        Proof::Membership(MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_011),
                 None,
                 Some(HASH_1),
             ],
-        };
+        });
         "proving membership of r"
     )]
     #[test_case(
         "m",
-        Proof::Membership {
+        Proof::Membership(MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_0111),
                 Some(HASH_010),
                 None,
                 Some(HASH_1),
             ],
-        };
+        });
         "proving membership of m"
     )]
     #[test_case(
         "L",
-        Proof::Membership {
+        Proof::Membership(MembershipProof {
             sibling_hashes: vec![
                 Some(HASH_0110),
                 Some(HASH_010),
                 None,
                 Some(HASH_1),
             ],
-        };
+        });
         "proving membership of L"
     )]
     #[test_case(
         "a",
-        Proof::Membership {
+        Proof::Membership(MembershipProof {
             sibling_hashes: vec![Some(HASH_0)],
-        };
+        });
         "proving membership of a"
     )]
     #[test_case(
         "b", // sha256("b") = 0011... node 0 doesn't have a left child
-        Proof::NonMembership {
+        Proof::NonMembership(NonMembershipProof {
             node: ProofNode::Internal {
                 left_hash:  None,
                 right_hash: Some(HASH_01),
             },
             sibling_hashes: vec![Some(HASH_1)],
-        };
+        });
         "proving non-membership of b"
     )]
     #[test_case(
         "o", // sha256("o") = 011001... there's a leaf 0110 ("m") which doesn't match key
-        Proof::NonMembership {
+        Proof::NonMembership(NonMembershipProof {
             node: ProofNode::Leaf {
                 key_hash:   HASH_M,
                 value_hash: HASH_BAR,
@@ -701,7 +704,7 @@ mod tests {
                 None,
                 Some(HASH_1),
             ],
-        };
+        });
         "proving non-membership of o"
     )]
     fn proving(key: &str, proof: Proof) {
