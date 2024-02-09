@@ -329,8 +329,15 @@ impl<'a> MerkleTree<'a> {
         // one but it doesn't match the current leaf. either way, we have to
         // turn the current node into an internal node and apply the batch at
         // its children.
+        let existing_leaf = if batch.iter().any(|(k, _)| *k == node.key_hash) {
+            // if the existing leaf will be overwritten by the batch, then we
+            // don't need to worry about it.
+            None
+        } else {
+            Some(node)
+        };
         let new_internal_node = InternalNode::new_childless();
-        self.apply_at_internal(store, version, node_key, new_internal_node, batch, Some(node))
+        self.apply_at_internal(store, version, node_key, new_internal_node, batch, existing_leaf)
     }
 
     fn apply_at_null(
