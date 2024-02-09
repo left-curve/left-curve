@@ -164,22 +164,19 @@ impl<'a> MerkleTree<'a> {
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match self.nodes.may_load(store, node_key)? {
-            Some(Node::Internal(node)) => self.apply_at_internal(
-                store,
-                version,
-                node_key,
-                node,
-                batch,
-                existing_leaf,
-            ),
             Some(Node::Leaf(node)) => {
-                // we can't encounter two leaf nodes during the same insertion.
+                // we can't run into leaf nodes twice during the same insertion.
                 // if our current node is a leaf, this means the existing leaf
                 // must be None.
                 debug_assert!(existing_leaf.is_none(), "encountered leaves twice");
                 self.apply_at_leaf(store, version, node_key, node, batch)
             },
-            None => self.apply_at_null(store, version, node_key, batch, existing_leaf),
+            Some(Node::Internal(node)) => {
+                self.apply_at_internal( store, version, node_key, node, batch, existing_leaf)
+            },
+            None => {
+                self.apply_at_null(store, version, node_key, batch, existing_leaf)
+            },
         }
     }
 
@@ -476,9 +473,9 @@ impl<'a> MerkleTree<'a> {
             }
         }
 
-        // in our proof format, the sibling hashes is from bottom up (from leaf
+        // in our proof format, the sibling hashes are from bottom up (from leaf
         // to the root), so we have to reverse it.
-        // we can either reverse it here, or reverse it during verification.
+        // we can either reverse it during proving, or during verification.
         // we do it here since proving is usually done off-chain (e.g. an IBC
         // relayer querying the node) while verification is usally done on-chain
         // (e.g. inside an IBC light client).
