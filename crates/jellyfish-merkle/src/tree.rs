@@ -9,7 +9,7 @@ pub const DEFAULT_ORPHAN_NAMESPACE:  &str  = "o";
 
 /// A `Batch` the keys and values are both hashed, and collected into a slice so
 /// that it can be bisected.
-type HashedBatch = [(Hash, Op<Hash>)];
+pub type HashedPair = (Hash, Op<Hash>);
 
 /// Describes the outcome of applying an op or a batch of ops at a node.
 /// The node may either be updated (in which case the updated node is returned),
@@ -126,7 +126,7 @@ impl<'a> MerkleTree<'a> {
     /// This function takes a `HashedBatch` where both the keys and values are
     /// hashed, and sorted ascendingly by the key hashes. If you have a batch
     /// of prehashes, use `apply_raw` instead.
-    pub fn apply(&self, store: &mut dyn Storage, batch: &HashedBatch) -> StdResult<()> {
+    pub fn apply(&self, store: &mut dyn Storage, batch: &[HashedPair]) -> StdResult<()> {
         let old_version = self.lateset_version(store)?;
         let old_root_node_key = NodeKey::root(old_version);
         let new_version = old_version + 1;
@@ -167,7 +167,7 @@ impl<'a> MerkleTree<'a> {
         store:         &mut dyn Storage,
         version:       u64,
         node_key:      &NodeKey,
-        batch:         &HashedBatch,
+        batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match self.nodes.may_load(store, node_key)? {
@@ -193,7 +193,7 @@ impl<'a> MerkleTree<'a> {
         version:       u64,
         node_key:      &NodeKey,
         mut node:      InternalNode,
-        batch:         &HashedBatch,
+        batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         // our current depth in the tree is simply the number of bits in the
@@ -286,7 +286,7 @@ impl<'a> MerkleTree<'a> {
         node_key:      &NodeKey,
         left:          bool,
         child:         Option<&Child>,
-        batch:         &HashedBatch,
+        batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         // if the batch is non-empty OR there's an existing leaf to be inserted,
@@ -315,7 +315,7 @@ impl<'a> MerkleTree<'a> {
         version:  u64,
         node_key: &NodeKey,
         mut node: LeafNode,
-        batch:    &HashedBatch,
+        batch:    &[HashedPair],
     ) -> StdResult<OpResponse> {
         // if there is only one op AND the key matches exactly the leaf node's
         // key, then we have found the correct node, apply the op right here.
@@ -349,7 +349,7 @@ impl<'a> MerkleTree<'a> {
         store:         &mut dyn Storage,
         version:       u64,
         node_key:      &NodeKey,
-        batch:         &HashedBatch,
+        batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
         match (batch.len(), existing_leaf) {
@@ -503,7 +503,7 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
-fn partition_batch(batch: &HashedBatch, depth: usize) -> (&HashedBatch, &HashedBatch) {
+fn partition_batch(batch: &[HashedPair], depth: usize) -> (&[HashedPair], &[HashedPair]) {
     let partition_point = batch.partition_point(|(key_hash, _)| {
         bit_at_index(key_hash, depth) == 0
     });
