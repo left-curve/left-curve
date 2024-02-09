@@ -1,6 +1,7 @@
-use core::fmt;
-
-use cw_std::Hash;
+use {
+    cw_std::{Hash, Order},
+    std::fmt,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitArray {
@@ -17,7 +18,7 @@ impl BitArray {
     pub const MAX_BIT_LENGTH:  usize = Self::MAX_BYTE_LENGTH * 8; // 256
     pub const MAX_BYTE_LENGTH: usize = Hash::LENGTH;              // 32
 
-    pub fn empty() -> Self {
+    pub fn new_empty() -> Self {
         Self {
             num_bits: 0,
             bytes: [0; Self::MAX_BYTE_LENGTH],
@@ -65,9 +66,12 @@ impl BitArray {
         self.num_bits += 1;
     }
 
-    /// Iterate the bits in reverse, starting from the given index (exclusive).
-    pub fn reverse_iterate_from_index(&self, index: usize) -> ReverseBitIterator {
-        ReverseBitIterator::new(&self.bytes, index)
+    /// Iterate the bits in the index range. `min` is inclusive, `max` exclusive.
+    /// If min >= max, an empty iterator is returned.
+    pub fn range(&self, min: Option<usize>, max: Option<usize>, order: Order) -> BitIterator {
+        let min = min.unwrap_or(0);
+        let max = max.unwrap_or(self.num_bits);
+        BitIterator::new(&self.bytes, min, max, order)
     }
 }
 
@@ -96,36 +100,92 @@ impl PartialEq<Hash> for BitArray {
     }
 }
 
-pub struct ReverseBitIterator<'a> {
-    bytes:     &'a [u8],
-    quotient:  usize,
-    remainder: usize,
+pub struct BitIterator<'a> {
+    bytes:   &'a [u8],
+    current: Option<(usize, usize)>, // None if `next` hasn't been called for the 1st time yet
+    min:     (usize, usize),
+    max:     (usize, usize),
+    order:   Order,
 }
 
-impl<'a> ReverseBitIterator<'a> {
-    pub fn new(bytes: &'a [u8], index: usize) -> Self {
-        let (quotient, remainder) = (index / 8, index % 8);
-        Self { bytes, quotient, remainder }
+impl<'a> BitIterator<'a> {
+    pub fn new(bytes: &'a [u8], min: usize, max: usize, order: Order) -> Self {
+        Self {
+            current: None,
+            min:     (min / 8, min % 8),
+            max:     (max / 8, max % 8),
+            bytes,
+            order,
+        }
+    }
+
+    fn increment_quotient_and_remainder(&mut self) -> Option<(usize, usize)> {
+        let Some((q, r)) = self.current.as_mut() else {
+            // this is the first time `next` is called. in this case, since the
+            // minimum bound in inclusive, we simply return the min q and r.
+            // make sure to check the max bound.
+            if self.min < self.max {
+                self.current = Some(self.min.clone());
+                return self.current;
+            } else {
+                return None;
+            }
+        };
+
+        if *r == 7 {
+            *q += 1;
+            *r = 0;
+        } else {
+            *r += 1;
+        }
+
+        if (*q, *r) < self.max {
+            Some((*q, *r))
+        } else {
+            None
+        }
+    }
+
+    fn decrement_quotient_and_remainder(&mut self) -> Option<(usize, usize)> {
+        if self.current.is_none() {
+            // this is the first time `next` is called. in this case, initialize
+            // current q and r. since max bound is exclusive, we don't just return
+            // here yet as in `increment`, but instead move on to decrement it.
+            self.current = Some(self.max.clone());
+        }
+        let (q, r) = self.current.as_mut().unwrap();
+
+        if *r == 0 {
+            // prevent subtraction underflow
+            if *q == 0 {
+                return None;
+            }
+            *q -= 1;
+            *r = 7;
+        } else {
+            *r -= 1;
+        }
+
+        if (*q, *r) >= self.min {
+            Some((*q, *r))
+        } else {
+            None
+        }
     }
 }
 
-impl<'a> Iterator for ReverseBitIterator<'a> {
+impl<'a> Iterator for BitIterator<'a> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.remainder == 0 {
-            if self.quotient == 0 {
-                return None;
-            } else {
-                self.quotient -= 1;
-                self.remainder = 7;
-            }
+        let (q, r) = if self.order == Order::Ascending {
+            self.increment_quotient_and_remainder()?
         } else {
-            self.remainder -= 1;
-        }
+            self.decrement_quotient_and_remainder()?
+        };
 
-        let byte = self.bytes[self.quotient];
-        Some((byte >> (7 - self.remainder)) & 0b1)
+        let byte = self.bytes[q];
+        Some((byte >> (7 - r)) & 0b1)
     }
 }
 
@@ -136,7 +196,7 @@ mod tests {
     use {super::*, proptest::prelude::*};
 
     fn build_bitarray_from_booleans(bits: &[bool]) -> BitArray {
-        let mut bitarray = BitArray::empty();
+        let mut bitarray = BitArray::new_empty();
         for bit in bits {
             bitarray.push(if *bit { 1 } else { 0 });
         }
@@ -147,22 +207,47 @@ mod tests {
         /// Generate 256 random bits, push them one-by-one into the BitArray,
         /// then retrieve them one-by-one. The retrieved msut match the original.
         #[test]
-        fn pushing_and_getting(bits in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH)) {
-            let bitarray = build_bitarray_from_booleans(&bits);
-            for (index, bit) in bits.into_iter().enumerate() {
-                prop_assert_eq!(bit, bitarray.bit_at_index(index) == 1);
+        fn pushing_and_getting(
+            booleans in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH),
+        ) {
+            let bits = build_bitarray_from_booleans(&booleans);
+            for (bit, boolean) in bits.range(None, None, Order::Ascending).zip(booleans) {
+                prop_assert_eq!(boolean, bit == 1);
             }
         }
 
         #[test]
-        fn reverse_iterating(
-            start in 0..BitArray::MAX_BIT_LENGTH,
-            bits in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH),
+        fn iterating_no_bounds(
+            booleans in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH),
         ) {
-            let bitarray = build_bitarray_from_booleans(&bits);
-            for (i, bit) in bitarray.reverse_iterate_from_index(start).enumerate() {
-                prop_assert_eq!(bits[start - i - 1], bit == 1);
+            let bits = build_bitarray_from_booleans(&booleans);
+            for (bit, boolean) in bits.range(None, None, Order::Ascending).zip(&booleans) {
+                prop_assert_eq!(*boolean, bit == 1);
             };
+            for (bit, boolean) in bits.range(None, None, Order::Descending).zip(booleans.iter().rev()) {
+                prop_assert_eq!(*boolean, bit == 1);
+            };
+        }
+
+        #[test]
+        fn iterating_with_bounds(
+            min in 0..=BitArray::MAX_BIT_LENGTH,
+            max in 0..=BitArray::MAX_BIT_LENGTH,
+            booleans in prop::collection::vec(any::<bool>(), BitArray::MAX_BIT_LENGTH),
+        ) {
+            let bits = build_bitarray_from_booleans(&booleans);
+            if min >= max {
+                // in this case, we just assert the iterator is empty and be done
+                prop_assert!(bits.range(Some(min), Some(max), Order::Ascending).next().is_none());
+                prop_assert!(bits.range(Some(min), Some(max), Order::Descending).next().is_none());
+                return Ok(());
+            }
+            for (bit, boolean) in bits.range(Some(min), Some(max), Order::Ascending).zip(&booleans[min..max]) {
+                prop_assert_eq!(*boolean, bit == 1);
+            }
+            for (bit, boolean) in bits.range(Some(min), Some(max), Order::Descending).zip(booleans[min..max].iter().rev()) {
+                prop_assert_eq!(*boolean, bit == 1);
+            }
         }
     }
 }

@@ -5,7 +5,7 @@ mod proof;
 mod tree;
 
 pub use crate::{
-    bitarray::{BitArray, ReverseBitIterator},
+    bitarray::{BitArray, BitIterator},
     node::{hash_internal_node, hash_leaf_node, Child, InternalNode, LeafNode, Node},
     node_key::NodeKey,
     proof::{verify_membership, verify_non_membership, Proof, ProofError, ProofNode},

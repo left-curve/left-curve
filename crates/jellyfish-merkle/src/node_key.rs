@@ -28,7 +28,7 @@ impl NodeKey {
     pub fn root(version: u64) -> Self {
         Self {
             version,
-            bits: BitArray::empty(),
+            bits: BitArray::new_empty(),
         }
     }
 

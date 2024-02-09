@@ -1,6 +1,6 @@
 use {
     crate::{hash_internal_node, hash_leaf_node, BitArray},
-    cw_std::{cw_serde, Hash},
+    cw_std::{cw_serde, Hash, Order},
     thiserror::Error,
 };
 
@@ -101,8 +101,16 @@ pub fn verify_non_membership(
         // with the key we want to prove not exist.
         ProofNode::Leaf { key_hash, value_hash } => {
             let non_exist_bitarray = BitArray::from_bytes(key_hash);
-            let exist_bits = bitarray.reverse_iterate_from_index(sibling_hashes.len());
-            let non_exist_bits = non_exist_bitarray.reverse_iterate_from_index(sibling_hashes.len());
+            let exist_bits = bitarray.range(
+                None,
+                Some(sibling_hashes.len()),
+                Order::Descending,
+            );
+            let non_exist_bits = non_exist_bitarray.range(
+                None,
+                Some(sibling_hashes.len()),
+                Order::Descending,
+            );
             if exist_bits.zip(non_exist_bits).any(|(a, b)| a != b) {
                 return Err(ProofError::NotCommonPrefix);
             }
@@ -119,7 +127,7 @@ fn compute_and_compare_root_hash(
     sibling_hashes: &[Option<Hash>],
     mut hash:       Hash,
 ) -> Result<(), ProofError> {
-    for (bit, sibling_hash) in bitarray.reverse_iterate_from_index(sibling_hashes.len()).zip(sibling_hashes) {
+    for (bit, sibling_hash) in bitarray.range(None, Some(sibling_hashes.len()), Order::Descending).zip(sibling_hashes) {
         if bit == 0 {
             hash = hash_internal_node(Some(&hash), sibling_hash.as_ref());
         } else {
