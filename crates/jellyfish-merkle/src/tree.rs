@@ -44,7 +44,7 @@ pub struct MerkleTree<'a> {
 
 impl<'a> Default for MerkleTree<'a> {
     fn default() -> Self {
-        Self::new(DEFAULT_VERSION_NAMESPACE, DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE)
+        Self::new_default()
     }
 }
 
@@ -74,6 +74,13 @@ impl<'a> MerkleTree<'a> {
             nodes:   Map::new(node_namespace),
             orphans: Set::new(orphan_namespace),
         }
+    }
+
+    /// Create a new Merkle tree with the default namespaces.
+    ///
+    /// The `Default` feature does not allow declaring constants, so use this.
+    pub const fn new_default() -> Self {
+        Self::new(DEFAULT_VERSION_NAMESPACE, DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE)
     }
 
     /// Get the latest version number.
@@ -597,6 +604,8 @@ fn hash_of(child: Option<Child>) -> Option<Hash> {
 mod tests {
     use {super::*, cw_std::MockStorage, hex_literal::hex, test_case::test_case};
 
+    const TREE: MerkleTree = MerkleTree::new_default();
+
     const HASH_ROOT: Hash = Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"));
     const HASH_0:    Hash = Hash::from_slice(hex!("b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"));
     const HASH_1:    Hash = Hash::from_slice(hex!("cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"));
@@ -608,23 +617,22 @@ mod tests {
     const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
     const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
 
-    fn build_test_case() -> StdResult<(MockStorage, MerkleTree<'static>)> {
+    fn build_test_case() -> StdResult<MockStorage> {
         let mut store = MockStorage::new();
-        let tree = MerkleTree::default();
-        tree.apply_raw(&mut store, &Batch::from([
+        TREE.apply_raw(&mut store, &Batch::from([
             (b"r".to_vec(), Op::Put(b"foo".to_vec())),
             (b"m".to_vec(), Op::Put(b"bar".to_vec())),
             (b"L".to_vec(), Op::Put(b"fuzz".to_vec())),
             (b"a".to_vec(), Op::Put(b"buzz".to_vec())),
         ]))?;
-        Ok((store, tree))
+        Ok(store)
     }
 
     #[test]
     fn applying_batch() {
-        let (store, tree) = build_test_case().unwrap();
+        let store = build_test_case().unwrap();
         // if root hash matches our expected value then we consider it a success
-        assert_eq!(tree.root_hash(&store, None).unwrap().unwrap(), HASH_ROOT);
+        assert_eq!(TREE.root_hash(&store, None).unwrap().unwrap(), HASH_ROOT);
     }
 
     #[test_case(
@@ -697,7 +705,7 @@ mod tests {
         "proving non-membership of o"
     )]
     fn proving(key: &str, proof: Proof) {
-        let (store, tree) = build_test_case().unwrap();
-        assert_eq!(tree.prove(&store, &hash(key.as_bytes()), None).unwrap(), proof);
+        let store = build_test_case().unwrap();
+        assert_eq!(TREE.prove(&store, &hash(key.as_bytes()), None).unwrap(), proof);
     }
 }
