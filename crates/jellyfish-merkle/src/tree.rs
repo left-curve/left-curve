@@ -129,23 +129,32 @@ impl<'a> MerkleTree<'a> {
 
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
-            OpResponse::Updated(node) | OpResponse::Unchanged(node) => {
+            OpResponse::Updated(node) => {
+                // increment the version
+                self.version.save(store, &new_version)?;
+
+                // save the updated root node
                 self.nodes.save(store, &new_root_node_key, &node)?;
+
+                // mark the old root as orphaned, except if the old version is
+                // zero, because at version zero there isn't a root node
+                if old_version > 0 {
+                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
+                }
             },
-            OpResponse::Deleted => {}, // nothing to do
+            OpResponse::Deleted => {
+                self.version.save(store, &new_version)?;
+                if old_version > 0 {
+                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
+                }
+            },
+            OpResponse::Unchanged(_) => {
+                // nothing to do. we only increment the version if the tree has
+                // been changed at all.
+            },
         }
 
-        // mark the old root as orphaned, except if the old version is zero,
-        if old_version > 0 {
-            self.orphans.insert(store, (new_version, &old_root_node_key))?;
-        }
-
-        // save the new version. while writing the batch may not actually change
-        // the root hash (e.g. if overwriting a key with the same value),
-        // we still increment the version. this way, we ensure the version is
-        // always the same as the block height. some logics in cw-app are based
-        // on the assumption of this.
-        self.version.save(store, &new_version)
+        Ok(())
     }
 
     fn apply_at(
