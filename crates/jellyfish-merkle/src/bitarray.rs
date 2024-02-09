@@ -77,11 +77,11 @@ impl BitArray {
 
 impl fmt::Debug for BitArray {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.num_bits == 0 {
-            write!(f, "_")
-        } else {
-            (0..self.num_bits).try_for_each(|index| write!(f, "{}", self.bit_at_index(index)))
+        f.write_str("BitArray(")?;
+        for i in 0..self.num_bits {
+            f.write_str(&self.bit_at_index(i).to_string())?;
         }
+        f.write_str(")")
     }
 }
 
