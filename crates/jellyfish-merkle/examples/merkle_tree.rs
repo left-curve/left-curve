@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
         (b"fuzz".to_vec(), Op::Put(b"buzz".to_vec())),
         (b"larry".to_vec(), Op::Put(b"engineer".to_vec())),
     ]);
-    tree.apply(&mut store, &batch)?;
+    tree.apply_raw(&mut store, &batch)?;
 
     print_tree(&tree, &store)?;
 
@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         (b"foo".to_vec(), Op::Delete),
         (b"larry".to_vec(), Op::Put(b"programmer".to_vec())),
     ]);
-    tree.apply(&mut store, &batch)?;
+    tree.apply_raw(&mut store, &batch)?;
 
     print_tree(&tree, &store)
 }

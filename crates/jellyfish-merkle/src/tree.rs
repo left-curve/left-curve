@@ -95,19 +95,37 @@ impl<'a> MerkleTree<'a> {
         Ok(root_node.map(|node| node.hash()))
     }
 
-    /// Apply a batch of ops to the tree. Each op is either 1) inserting a value
-    /// at a key, or 2) deleting a key.
-    /// Increments the version by 1, and recomputes the root hash.
-    pub fn apply(&self, store: &mut dyn Storage, batch: &Batch) -> StdResult<()> {
+    /// Apply a batch of ops to the tree, recomputes the root hash, and increment
+    /// the version if root hash is changed.
+    ///
+    /// Each of is either 1) inserting a value at a key, or 2) deleting a key.
+    ///
+    /// This function takes a batch where both the keys and values are prehashes.
+    /// If you already have them hashed and sorted ascendingly by the key hashes,
+    /// use `apply` instead.
+    pub fn apply_raw(&self, store: &mut dyn Storage, batch: &Batch) -> StdResult<()> {
+        // hash the keys and values
+        let mut batch: Vec<_> = batch.iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
+
+        // sort by key hashes ascendingly
+        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
+        self.apply(store, &batch)
+    }
+
+    /// Apply a batch of ops to the tree, recomputes the root hash, and increment
+    /// the version if root hash is changed.
+    ///
+    /// Each op is either 1) inserting a value at a key, or 2) deleting a key.
+    ///
+    /// This function takes a `HashedBatch` where both the keys and values are
+    /// hashed, and sorted ascendingly by the key hashes. If you have a batch
+    /// of prehashes, use `apply_raw` instead.
+    pub fn apply(&self, store: &mut dyn Storage, batch: &HashedBatch) -> StdResult<()> {
         let old_version = self.version.may_load(store)?.unwrap_or(0);
         let old_root_node_key = NodeKey::root(old_version);
         let new_version = old_version + 1;
         let new_root_node_key = NodeKey::root(new_version);
-
-        // hash the keys and values
-        let mut batch: Vec<_> = batch.iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
-        // sort by key hashes
-        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, &batch, None)? {
@@ -358,10 +376,29 @@ impl<'a> MerkleTree<'a> {
         }
     }
 
-    /// Generate Merkle proof for the a key at the given version. If the key
-    /// exists in the tree, a membership proof is returned; otherwise,
-    /// a non-membership proof is returned. If version is isn't specified, use
-    /// the latest version.
+    /// Generate Merkle proof for the a key at the given version.
+    ///
+    /// If the key exists in the tree, a membership proof is returned;
+    /// otherwise, a non-membership proof is returned.
+    ///
+    /// If version is isn't specified, use the latest version.
+    ///
+    /// Note that this method only looks at the key, not the value. Therefore
+    /// it may be possible that the caller thinks key A exists with value B,
+    /// while in fact it exists with value C, in which case this method will
+    /// succeed, returning a proof for the membership of (A, C). If the caller
+    /// then attempts to verify the proof with (A, B) it will fail.
+    ///
+    /// The intended way to avoid this situation is to use a raw key-value store
+    /// together with the Merkle tree:
+    ///
+    /// - raw KV store stores prehash keys + prehash values
+    /// - Merkle tree stores hashed keys + hashed values
+    ///
+    /// To query a key with proof, the caller should first call `get` on the raw
+    /// KV store, then `prove` on the Merkle tree. This separation of data
+    /// storage and data commitment was put forward by Cosmos SDK's ADR-65:
+    /// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md
     pub fn prove(
         &self,
         _store:    &dyn Storage,
@@ -480,7 +517,7 @@ mod tests {
     use {super::*, cw_std::MockStorage, hex_literal::hex};
 
     fn build_test_case(tree: &MerkleTree, store: &mut dyn Storage) -> StdResult<()> {
-        tree.apply(store, &Batch::from([
+        tree.apply_raw(store, &Batch::from([
             (b"r".to_vec(), Op::Put(b"foo".to_vec())),
             (b"m".to_vec(), Op::Put(b"bar".to_vec())),
             (b"L".to_vec(), Op::Put(b"fuzz".to_vec())),
