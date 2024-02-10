@@ -15,6 +15,7 @@ pub const DEFAULT_ORPHAN_NAMESPACE:  &str  = "o";
 pub type HashedPair = (Hash, Op<Hash>);
 
 /// Describes the outcome of applying ops at a node.
+#[derive(Debug)]
 enum OpResponse {
     /// The node has not been changed. This can be the result of overwriting a
     /// value with the same value, or deleting a key that doesn't exist in the
@@ -359,9 +360,17 @@ impl<'a> MerkleTree<'a> {
             // don't need to worry about it.
             None
         } else {
-            Some(leaf_node)
+            Some(leaf_node.clone())
         };
-        self.apply_at_internal(store, new_version, node_key, None, batch, existing_leaf)
+
+        match self.apply_at_internal(store, new_version, node_key, None, batch, existing_leaf)? {
+            // handle an edge case... if the batch includes entirely of no-ops
+            // (e.g. deleting non-existing keys) then we should return Unchanged
+            OpResponse::Updated(Node::Leaf(new_leaf_node)) if leaf_node == new_leaf_node => {
+                Ok(OpResponse::Unchanged(Some(Node::Leaf(leaf_node))))
+            }
+            res => Ok(res),
+        }
     }
 
     fn apply_at_null(
@@ -713,6 +722,30 @@ mod tests {
             assert_eq!(node_key.version, 1);
             assert!(TREE.orphans.has(&store, (2, &node_key)));
         }
+    }
+
+    // no-op is when the batch contains entirely of overwrites of values by the
+    // same value, or deletes of non-existing keys. the version number shouldn't
+    // be incremented and root hash shouldn't be changed.
+    #[test]
+    fn no_ops() {
+        let (mut store, _, _) = build_test_case().unwrap();
+
+        let (new_version, new_root_hash) = TREE.apply_raw(&mut store, &Batch::from([
+            // overwriting keys with the same keys
+            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            // deleting non-existing keys
+            (b"larry".to_vec(), Op::Delete), // 00001101...
+            (b"trump".to_vec(), Op::Delete), // 10100110...
+            (b"biden".to_vec(), Op::Delete), // 00000110...
+        ]))
+        .unwrap();
+        assert_eq!(new_version, 1);
+        assert_eq!(TREE.lateset_version(&store).unwrap(), 1);
+        assert_eq!(new_root_hash, Some(HASH_ROOT));
     }
 
     #[test_case(
