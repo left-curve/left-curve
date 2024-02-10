@@ -184,6 +184,8 @@ impl<'a> MerkleTree<'a> {
         store:         &mut dyn Storage,
         new_version:   u64,
         mut node_key:  NodeKey,
+        // Some if we're working with an existing internal node;
+        // None if the internal node doesn't exist yet.
         internal_node: Option<InternalNode>,
         batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
@@ -226,24 +228,28 @@ impl<'a> MerkleTree<'a> {
             },
             // neither children exists any more. this internal node can be deleted
             (OpResponse::Deleted | OpResponse::Unchanged(None), OpResponse::Deleted | OpResponse::Unchanged(None)) => {
+                self.orphans.insert(store, (new_version, &node_key))?;
                 Ok(OpResponse::Deleted)
             },
             // left child does not exist, right child is a leaf.
             // in this case, the internal node can be deleted, and the right
             // child be moved up one level. we call this "collapsing the path".
             (OpResponse::Deleted | OpResponse::Unchanged(None), OpResponse::Unchanged(Some(node)) | OpResponse::Updated(node)) if node.is_leaf() => {
+                self.orphans.insert(store, (new_version, &node_key))?;
                 Ok(OpResponse::Updated(node))
             },
             // left child is a leaf, right node no longer exists.
             // path can be collapsed (same as above).
             (OpResponse::Unchanged(Some(node)) | OpResponse::Updated(node), OpResponse::Deleted | OpResponse::Unchanged(None)) if node.is_leaf() => {
+                self.orphans.insert(store, (new_version, &node_key))?;
                 Ok(OpResponse::Updated(node))
             },
             // at least one child is updated and the path can't be collapsed.
             // update the currenct node and return
             (left, right) => {
-                let mut internal_node = internal_node.unwrap_or_else(InternalNode::new_childless);
+                self.orphans.insert(store, (new_version, &node_key))?;
 
+                let mut internal_node = internal_node.unwrap_or_else(InternalNode::new_childless);
                 internal_node.left_child = match left {
                     OpResponse::Updated(child_node) => {
                         Some(Child {
@@ -254,7 +260,6 @@ impl<'a> MerkleTree<'a> {
                     OpResponse::Deleted => None,
                     OpResponse::Unchanged(_) => internal_node.left_child,
                 };
-
                 internal_node.right_child = match right {
                     OpResponse::Updated(child_node) => {
                         Some(Child {
@@ -265,9 +270,9 @@ impl<'a> MerkleTree<'a> {
                     OpResponse::Deleted => None,
                     OpResponse::Unchanged(_) => internal_node.right_child,
                 };
+                let node = Node::Internal(internal_node);
 
                 node_key.version = new_version;
-                let node = Node::Internal(internal_node);
                 self.nodes.save(store, &node_key, &node)?;
 
                 Ok(OpResponse::Updated(node))
@@ -391,7 +396,7 @@ impl<'a> MerkleTree<'a> {
                         self.nodes.save(store, &node_key, &node)?;
                         OpResponse::Updated(node)
                     },
-                    Op::Delete => OpResponse::Deleted,
+                    Op::Delete => OpResponse::Unchanged(None),
                 }
             }),
             // there are more than one op to do.
@@ -569,7 +574,7 @@ fn hash_of(child: Option<Child>) -> Option<Hash> {
 //      ┌──┴──┐
 //    null   (01)
 //         ┌──┴──┐
-//       (010)  (011)
+//        010  (011)
 //            ┌──┴──┐
 //          0110   0111
 //
@@ -636,22 +641,78 @@ mod tests {
     const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
     const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
 
-    fn build_test_case() -> StdResult<MockStorage> {
+    fn build_test_case() -> StdResult<(MockStorage, u64, Option<Hash>)> {
         let mut store = MockStorage::new();
-        TREE.apply_raw(&mut store, &Batch::from([
+        let (version, root_hash) = TREE.apply_raw(&mut store, &Batch::from([
             (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
             (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
             (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
             (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
         ]))?;
-        Ok(store)
+        Ok((store, version, root_hash))
     }
 
     #[test]
-    fn applying_batch() {
-        let store = build_test_case().unwrap();
+    fn applying_initial_batch() {
+        let (_, version, root_hash) = build_test_case().unwrap();
         // if root hash matches our expected value then we consider it a success
-        assert_eq!(TREE.root_hash(&store, None).unwrap().unwrap(), HASH_ROOT);
+        assert_eq!(version, 1);
+        assert_eq!(root_hash, Some(HASH_ROOT));
+    }
+
+    // delete the leaves 010 and 0110. this should cause the leaf 0111 be moved
+    // up to bit path `0`. the result tree is:
+    //
+    //           root
+    //         ┌──┴──┐
+    //         0     1
+    //
+    // hash of node 0
+    // = 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b
+    // (the same as that of node 0111 of the last version)
+    //
+    // hash of node 1
+    // = cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222
+    // (unchanged)
+    //
+    // root hash
+    // = sha256(00 | 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b | cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
+    // = b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf
+    #[test]
+    fn collapsing_path() {
+        let (mut store, _, _) = build_test_case().unwrap();
+        let (new_version, new_root_hash) = TREE.apply_raw(&mut store, &Batch::from([
+            (b"r".to_vec(), Op::Delete),
+            (b"m".to_vec(), Op::Delete),
+        ]))
+        .unwrap();
+        assert_eq!(new_version, 2);
+        assert_eq!(new_root_hash, Some(Hash::from_slice(hex!("b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf"))));
+    }
+
+    // try deleting every single node. the function should return None as the
+    // new root hash. see that nodes have been properly marked as orphaned.
+    #[test]
+    fn deleting_all_nodes() {
+        let (mut store, _, _) = build_test_case().unwrap();
+
+        // check that new root hash is None
+        let (new_version, new_root_hash) = TREE.apply_raw(&mut store, &Batch::from([
+            (b"r".to_vec(), Op::Delete),
+            (b"m".to_vec(), Op::Delete),
+            (b"L".to_vec(), Op::Delete),
+            (b"a".to_vec(), Op::Delete),
+        ]))
+        .unwrap();
+        assert_eq!(new_version, 2);
+        assert!(new_root_hash.is_none());
+
+        // check that every node has been marked as orphaned
+        for item in TREE.nodes.keys(&store, None, None, Order::Ascending) {
+            let node_key = item.unwrap();
+            assert_eq!(node_key.version, 1);
+            assert!(TREE.orphans.has(&store, (2, &node_key)));
+        }
     }
 
     #[test_case(
@@ -724,7 +785,7 @@ mod tests {
         "proving non-membership of o"
     )]
     fn proving(key: &str, proof: Proof) {
-        let store = build_test_case().unwrap();
+        let (store, _, _) = build_test_case().unwrap();
         assert_eq!(TREE.prove(&store, &hash(key.as_bytes()), None).unwrap(), proof);
     }
 }
