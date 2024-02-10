@@ -10,19 +10,24 @@ pub const DEFAULT_VERSION_NAMESPACE: &str  = "v";
 pub const DEFAULT_NODE_NAMESPACE:    &str  = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE:  &str  = "o";
 
-/// A `Batch` the keys and values are both hashed, and collected into a slice so
-/// that it can be bisected.
+/// Describe a database operation, which can be either inserting a value, or
+/// deleting the value, under the given key. Both the key and value are hashed.
 pub type HashedPair = (Hash, Op<Hash>);
 
-/// Describes the outcome of applying an op or a batch of ops at a node.
-/// The node may either be updated (in which case the updated node is returned),
-/// unchanged (in which case return this unchanged node), or deleted.
-///
-/// Note: if a Null node is unchanged (i.e. when attempting to delete a node
-/// that doesn't exist) the response should be `Deleted`, not `Unchanged`.
+/// Describes the outcome of applying ops at a node.
 enum OpResponse {
-    Unchanged(Node),
+    /// The node has not been changed. This can be the result of overwriting a
+    /// value with the same value, or deleting a key that doesn't exist in the
+    /// first place.
+    /// - `Unchanged(Some(_))` means the node exists, and after applying the ops
+    ///   it hasn't been changed.
+    /// - `Unchanged(None)` means the node didn't exist, and after applying the
+    ///   ops it still doesn't exist.
+    Unchanged(Option<Node>),
+    /// The node didn't exist, but has now been created; or, it used to exist,
+    /// and has now been modified.
     Updated(Node),
+    /// The node used to exist, but no longer exists after applying the ops.
     Deleted,
 }
 
@@ -89,15 +94,21 @@ impl<'a> MerkleTree<'a> {
         Ok(root_node.map(|node| node.hash()))
     }
 
-    /// Apply a batch of ops to the tree, recomputes the root hash, and increment
-    /// the version if root hash is changed.
+    /// Apply a batch of ops to the tree. Return the new version and root hash.
     ///
-    /// Each of is either 1) inserting a value at a key, or 2) deleting a key.
+    /// If the tree isn't changed, the version isn't incremented.
+    ///
+    /// If the tree becomes empty after applying the ops, `None` is returned as
+    /// the new root.
     ///
     /// This function takes a batch where both the keys and values are prehashes.
     /// If you already have them hashed and sorted ascendingly by the key hashes,
     /// use `apply` instead.
-    pub fn apply_raw(&self, store: &mut dyn Storage, batch: &Batch) -> StdResult<()> {
+    pub fn apply_raw(
+        &self,
+        store: &mut dyn Storage,
+        batch: &Batch,
+    ) -> StdResult<(u64, Option<Hash>)> {
         // hash the keys and values
         let mut batch: Vec<_> = batch.iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
 
@@ -107,71 +118,63 @@ impl<'a> MerkleTree<'a> {
         self.apply(store, &batch)
     }
 
-    /// Apply a batch of ops to the tree, recomputes the root hash, and increment
-    /// the version if root hash is changed.
+    /// Apply a batch of ops to the tree. Return the new version and root hash.
     ///
-    /// Each op is either 1) inserting a value at a key, or 2) deleting a key.
+    /// If the tree isn't changed, the version isn't incremented.
+    ///
+    /// If the tree becomes empty after applying the ops, `None` is returned as
+    /// the new root.
     ///
     /// This function takes a `HashedBatch` where both the keys and values are
     /// hashed, and sorted ascendingly by the key hashes. If you have a batch
     /// of prehashes, use `apply_raw` instead.
-    pub fn apply(&self, store: &mut dyn Storage, batch: &[HashedPair]) -> StdResult<()> {
+    pub fn apply(
+        &self,
+        store: &mut dyn Storage,
+        batch: &[HashedPair],
+    ) -> StdResult<(u64, Option<Hash>)> {
         let old_version = self.lateset_version(store)?;
-        let old_root_node_key = NodeKey::root(old_version);
         let new_version = old_version + 1;
-        let new_root_node_key = NodeKey::root(new_version);
 
         // recursively apply the ops, starting at the old root
-        match self.apply_at(store, new_version, &old_root_node_key, batch, None)? {
-            OpResponse::Updated(node) => {
-                // increment the version
+        match self.apply_at(store, new_version, NodeKey::root(old_version), batch, None)? {
+            OpResponse::Updated(new_root_node) => {
+                // root hash has been changed. increment the version
                 self.version.save(store, &new_version)?;
-
-                // save the updated root node
-                self.nodes.save(store, &new_root_node_key, &node)?;
-
-                // mark the old root as orphaned, except if the old version is
-                // zero, because at version zero there isn't a root node
-                if old_version > 0 {
-                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
-                }
+                Ok((new_version, Some(new_root_node.hash())))
             },
             OpResponse::Deleted => {
                 self.version.save(store, &new_version)?;
-                if old_version > 0 {
-                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
-                }
-            },
-            OpResponse::Unchanged(_) => {
-                // nothing to do. we only increment the version if the tree has
-                // been changed at all.
+                Ok((new_version, None))
+            }
+            OpResponse::Unchanged(old_root_node) => {
+                // do not increment the version if the tree hasn't been changed
+                Ok((old_version, old_root_node.map(|node| node.hash())))
             },
         }
-
-        Ok(())
     }
 
     fn apply_at(
         &self,
         store:         &mut dyn Storage,
-        version:       u64,
-        node_key:      &NodeKey,
+        new_version:   u64,
+        node_key:      NodeKey,
         batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
-        match self.nodes.may_load(store, node_key)? {
-            Some(Node::Leaf(node)) => {
+        match self.nodes.may_load(store, &node_key)? {
+            Some(Node::Leaf(leaf_node)) => {
                 // we can't run into leaf nodes twice during the same insertion.
                 // if our current node is a leaf, this means the existing leaf
                 // must be None.
                 debug_assert!(existing_leaf.is_none(), "encountered leaves twice");
-                self.apply_at_leaf(store, version, node_key, node, batch)
+                self.apply_at_leaf(store, new_version, node_key, leaf_node, batch)
             },
-            Some(Node::Internal(node)) => {
-                self.apply_at_internal( store, version, node_key, node, batch, existing_leaf)
+            Some(Node::Internal(internal_node)) => {
+                self.apply_at_internal( store, new_version, node_key, Some(internal_node), batch, existing_leaf)
             },
             None => {
-                self.apply_at_null(store, version, node_key, batch, existing_leaf)
+                self.apply_at_null(store, new_version, node_key, batch, existing_leaf)
             },
         }
     }
@@ -179,9 +182,9 @@ impl<'a> MerkleTree<'a> {
     fn apply_at_internal(
         &self,
         store:         &mut dyn Storage,
-        version:       u64,
-        node_key:      &NodeKey,
-        mut node:      InternalNode,
+        new_version:   u64,
+        mut node_key:  NodeKey,
+        internal_node: Option<InternalNode>,
         batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
@@ -199,81 +202,87 @@ impl<'a> MerkleTree<'a> {
         // apply at the two children, respectively
         let left_response = self.apply_at_child(
             store,
-            version,
-            node_key,
+            new_version,
+            &node_key,
             true,
-            node.left_child.as_ref(),
+            internal_node.as_ref().and_then(|node| node.left_child.as_ref()),
             batch_for_left,
             existing_leaf_for_left,
         )?;
         let right_response = self.apply_at_child(
             store,
-            version,
-            node_key,
+            new_version,
+            &node_key,
             false,
-            node.right_child.as_ref(),
+            internal_node.as_ref().and_then(|node| node.right_child.as_ref()),
             batch_for_right,
             existing_leaf_for_right,
         )?;
 
         match (left_response, right_response) {
-            // both children are deleted. delete this node as well
-            (OpResponse::Deleted, OpResponse::Deleted) => {
+            // neither children has been changed. this node is unchanged as well
+            (OpResponse::Unchanged(_), OpResponse::Unchanged(_)) => {
+                Ok(OpResponse::Unchanged(internal_node.map(Node::Internal)))
+            },
+            // neither children exists any more. this internal node can be deleted
+            (OpResponse::Deleted | OpResponse::Unchanged(None), OpResponse::Deleted | OpResponse::Unchanged(None)) => {
                 Ok(OpResponse::Deleted)
             },
-            // neither children is changed. this node is unchanged as well
-            (OpResponse::Unchanged(_), OpResponse::Unchanged(_)) => {
-                Ok(OpResponse::Unchanged(Node::Internal(node)))
-            },
-            // left child is deleted, right child is a leaf
-            // path can be collapsed
-            (OpResponse::Deleted, OpResponse::Updated(node) | OpResponse::Unchanged(node)) if node.is_leaf() => {
+            // left child does not exist, right child is a leaf.
+            // in this case, the internal node can be deleted, and the right
+            // child be moved up one level. we call this "collapsing the path".
+            (OpResponse::Deleted | OpResponse::Unchanged(None), OpResponse::Unchanged(Some(node)) | OpResponse::Updated(node)) if node.is_leaf() => {
                 Ok(OpResponse::Updated(node))
             },
-            // right child is deleted, left child is a leaf
-            // path can be collapsed
-            (OpResponse::Updated(node) | OpResponse::Unchanged(node), OpResponse::Deleted) if node.is_leaf() => {
+            // left child is a leaf, right node no longer exists.
+            // path can be collapsed (same as above).
+            (OpResponse::Unchanged(Some(node)) | OpResponse::Updated(node), OpResponse::Deleted | OpResponse::Unchanged(None)) if node.is_leaf() => {
                 Ok(OpResponse::Updated(node))
             },
             // at least one child is updated and the path can't be collapsed.
             // update the currenct node and return
             (left, right) => {
-                node.left_child = match left {
+                let mut internal_node = internal_node.unwrap_or_else(InternalNode::new_childless);
+
+                internal_node.left_child = match left {
                     OpResponse::Updated(child_node) => {
-                        self.nodes.save(store, &node_key.child_at_version(true, version), &child_node)?;
                         Some(Child {
-                            version,
+                            version: new_version,
                             hash: child_node.hash(),
                         })
                     },
                     OpResponse::Deleted => None,
-                    OpResponse::Unchanged(_) => node.left_child,
+                    OpResponse::Unchanged(_) => internal_node.left_child,
                 };
 
-                node.right_child = match right {
+                internal_node.right_child = match right {
                     OpResponse::Updated(child_node) => {
-                        self.nodes.save(store, &node_key.child_at_version(false, version), &child_node)?;
                         Some(Child {
-                            version,
+                            version: new_version,
                             hash: child_node.hash(),
                         })
                     },
                     OpResponse::Deleted => None,
-                    OpResponse::Unchanged(_) => node.right_child,
+                    OpResponse::Unchanged(_) => internal_node.right_child,
                 };
 
-                Ok(OpResponse::Updated(Node::Internal(node)))
+                node_key.version = new_version;
+                let node = Node::Internal(internal_node);
+                self.nodes.save(store, &node_key, &node)?;
+
+                Ok(OpResponse::Updated(node))
             },
         }
     }
 
+    #[inline]
     #[allow(clippy::too_many_arguments)]
     fn apply_at_child(
         &self,
         store:         &mut dyn Storage,
-        version:       u64,
+        new_version:   u64,
         node_key:      &NodeKey,
-        left:          bool,
+        is_left:       bool,
         child:         Option<&Child>,
         batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
@@ -281,45 +290,56 @@ impl<'a> MerkleTree<'a> {
         // if the batch is non-empty OR there's an existing leaf to be inserted,
         // then we recursively apply at the child node
         if !batch.is_empty() || existing_leaf.is_some() {
-            let child_version = child.map(|c| c.version).unwrap_or(version);
-            let child_node_key = node_key.child_at_version(left, child_version);
-            return self.apply_at(store, version, &child_node_key, batch, existing_leaf);
+            let child_version = child.map(|c| c.version).unwrap_or(new_version);
+            let child_node_key = node_key.child_at_version(is_left, child_version);
+            return self.apply_at(store, new_version, child_node_key, batch, existing_leaf);
         }
 
         // the batch is empty AND there isn't an existing leaf to be inserted.
-        // in other words, there's nothing to be done. we end the recursion here.
-        // if the child exists, we return Unchanged; otherwise, return Deleted
+        // there's nothing to be done. we end the recursion here.
         if let Some(child) = child {
-            let child_node_key = node_key.child_at_version(left, child.version);
+            let child_node_key = node_key.child_at_version(is_left, child.version);
             let child_node = self.nodes.load(store, &child_node_key)?;
-            return Ok(OpResponse::Unchanged(child_node));
+            return Ok(OpResponse::Unchanged(Some(child_node)));
         }
 
-        Ok(OpResponse::Deleted)
+        Ok(OpResponse::Unchanged(None))
     }
 
     fn apply_at_leaf(
         &self,
-        store:    &mut dyn Storage,
-        version:  u64,
-        node_key: &NodeKey,
-        mut node: LeafNode,
-        batch:    &[HashedPair],
+        store:         &mut dyn Storage,
+        new_version:   u64,
+        mut node_key:  NodeKey,
+        mut leaf_node: LeafNode,
+        batch:         &[HashedPair],
     ) -> StdResult<OpResponse> {
         // if there is only one op AND the key matches exactly the leaf node's
         // key, then we have found the correct node, apply the op right here.
         if batch.len() == 1 {
             let (bits, op) = &batch[0];
-            if *bits == node.key_hash {
-                return if let Op::Insert(value_hash) = op {
-                    if node.value_hash == *value_hash {
-                        Ok(OpResponse::Unchanged(Node::Leaf(node)))
-                    } else {
-                        node.value_hash = value_hash.clone();
-                        Ok(OpResponse::Updated(Node::Leaf(node)))
+            if *bits == leaf_node.key_hash {
+                return match op {
+                    Op::Insert(value_hash) => {
+                        if leaf_node.value_hash == *value_hash {
+                            // overwriting the value with the same value
+                            // node is unchanged
+                            Ok(OpResponse::Unchanged(Some(Node::Leaf(leaf_node))))
+                        } else {
+                            // overwriting with a different value
+                            // node is updated, save the new node
+                            node_key.version = new_version;
+                            leaf_node.value_hash = value_hash.clone();
+                            let node = Node::Leaf(leaf_node);
+                            self.nodes.save(store, &node_key, &node)?;
+                            Ok(OpResponse::Updated(node))
+                        }
+                    },
+                    Op::Delete => {
+                        // node is deleted, mark it as orphaned
+                        self.orphans.insert(store, (new_version, &node_key))?;
+                        Ok(OpResponse::Deleted)
                     }
-                } else {
-                    Ok(OpResponse::Deleted)
                 };
             }
         }
@@ -329,22 +349,21 @@ impl<'a> MerkleTree<'a> {
         // one but it doesn't match the current leaf. either way, we have to
         // turn the current node into an internal node and apply the batch at
         // its children.
-        let existing_leaf = if batch.iter().any(|(k, _)| *k == node.key_hash) {
+        let existing_leaf = if batch.iter().any(|(k, _)| *k == leaf_node.key_hash) {
             // if the existing leaf will be overwritten by the batch, then we
             // don't need to worry about it.
             None
         } else {
-            Some(node)
+            Some(leaf_node)
         };
-        let new_internal_node = InternalNode::new_childless();
-        self.apply_at_internal(store, version, node_key, new_internal_node, batch, existing_leaf)
+        self.apply_at_internal(store, new_version, node_key, None, batch, existing_leaf)
     }
 
     fn apply_at_null(
         &self,
         store:         &mut dyn Storage,
-        version:       u64,
-        node_key:      &NodeKey,
+        new_version:   u64,
+        mut node_key:  NodeKey,
         batch:         &[HashedPair],
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<OpResponse> {
@@ -367,8 +386,10 @@ impl<'a> MerkleTree<'a> {
                 let (key_hash, op) = &batch[0];
                 match op {
                     Op::Insert(value_hash) => {
-                        let new_leaf_node = LeafNode::new(key_hash.clone(), value_hash.clone());
-                        OpResponse::Updated(Node::Leaf(new_leaf_node))
+                        node_key.version = new_version;
+                        let node = Node::Leaf(LeafNode::new(key_hash.clone(), value_hash.clone()));
+                        self.nodes.save(store, &node_key, &node)?;
+                        OpResponse::Updated(node)
                     },
                     Op::Delete => OpResponse::Deleted,
                 }
@@ -377,8 +398,7 @@ impl<'a> MerkleTree<'a> {
             // regardless of whether there's an existing leaf, create an empty
             // internal node and apply the batch at this internal node.
             (_, existing_leaf) => {
-                let new_internal_node = InternalNode::new_childless();
-                self.apply_at_internal(store, version, node_key, new_internal_node, batch, existing_leaf)
+                self.apply_at_internal(store, new_version, node_key, None, batch, existing_leaf)
             },
         }
     }
@@ -499,6 +519,7 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
+#[inline]
 fn partition_batch(batch: &[HashedPair], depth: usize) -> (&[HashedPair], &[HashedPair]) {
     let partition_point = batch.partition_point(|(key_hash, _)| {
         bit_at_index(key_hash, depth) == 0
@@ -506,6 +527,7 @@ fn partition_batch(batch: &[HashedPair], depth: usize) -> (&[HashedPair], &[Hash
     (&batch[..partition_point], &batch[partition_point..])
 }
 
+#[inline]
 fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
         let bit = bit_at_index(&leaf.key_hash, depth);
@@ -523,6 +545,7 @@ fn partition_leaf(leaf: Option<LeafNode>, depth: usize) -> (Option<LeafNode>, Op
 
 /// Get the i-th bit without having to cast the byte slice to BitArray (which
 /// involves some copying).
+#[inline]
 fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
     let (quotient, remainder) = (index / 8, index % 8);
     let byte = bytes[quotient];

@@ -32,9 +32,9 @@ impl NodeKey {
         }
     }
 
-    pub fn child_at_version(&self, left: bool, version: u64) -> Self {
+    pub fn child_at_version(&self, is_left: bool, version: u64) -> Self {
         let mut bits = self.bits.clone();
-        bits.push(if left { 0 } else { 1 });
+        bits.push(if is_left { 0 } else { 1 });
         Self { version, bits }
     }
 }
