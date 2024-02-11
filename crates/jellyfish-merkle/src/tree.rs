@@ -309,15 +309,19 @@ impl<'a> MerkleTree<'a> {
         if batch.len() == 1 {
             let (key_hash, op) = only_item(batch);
             return match (key_hash == leaf_node.key_hash, op) {
+                (true, Op::Insert(value_hash)) => {
+                    if value_hash == leaf_node.value_hash {
+                        Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
+                    } else {
+                        leaf_node.value_hash = value_hash;
+                        Ok(Outcome::Updated(Node::Leaf(leaf_node)))
+                    }
+                },
                 (true, Op::Delete) => {
                     Ok(Outcome::Deleted)
                 },
                 (false, Op::Delete) => {
                     Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
-                },
-                (true, Op::Insert(value_hash)) => {
-                    leaf_node.value_hash = value_hash;
-                    Ok(Outcome::Updated(Node::Leaf(leaf_node)))
                 },
                 (false, Op::Insert(value_hash)) => {
                     self.create_subtree(
