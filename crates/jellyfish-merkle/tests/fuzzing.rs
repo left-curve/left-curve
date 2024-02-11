@@ -27,7 +27,7 @@
 
 use {
     anyhow::bail,
-    cw_jellyfish_merkle::{verify_proof, HashedPair, MerkleTree},
+    cw_jellyfish_merkle::{verify_proof, MerkleTree},
     cw_std::{Batch, Hash, MockStorage, Op, Storage},
     rand::{rngs::StdRng, thread_rng, Rng, RngCore, SeedableRng},
 };
@@ -48,13 +48,13 @@ fn fuzzing() -> anyhow::Result<()> {
     let mut store = MockStorage::new();
 
     let batch = generate_initial_batch(&mut rng);
-    TREE.apply(&mut store, &batch).unwrap();
+    TREE.apply(&mut store, batch.clone()).unwrap();
     log.extend(batch);
     check(&store, &log, 1)?;
 
     for i in 2..=NUM_BATCHES {
         let batch = generate_subsequent_batch(&log, &mut rng);
-        TREE.apply(&mut store, &batch).unwrap();
+        TREE.apply(&mut store, batch.clone()).unwrap();
         log.extend(batch);
         check(&store, &log, i)?;
     }
@@ -75,7 +75,7 @@ fn random_item_from_log<'a, R: Rng>(
     log.iter().nth(rng.gen_range(0..log.len())).unwrap()
 }
 
-fn generate_initial_batch<R: Rng>(rng: &mut R) -> Vec<HashedPair> {
+fn generate_initial_batch<R: Rng>(rng: &mut R) -> Vec<(Hash, Op<Hash>)> {
     let mut batch = Batch::new();
     for _ in 0..100 {
         batch.insert(random_hash(rng), Op::Insert(random_hash(rng)));
@@ -83,7 +83,7 @@ fn generate_initial_batch<R: Rng>(rng: &mut R) -> Vec<HashedPair> {
     batch.into_iter().collect()
 }
 
-fn generate_subsequent_batch<R: Rng>(log: &Batch<Hash, Hash>, rng: &mut R) -> Vec<HashedPair> {
+fn generate_subsequent_batch<R: Rng>(log: &Batch<Hash, Hash>, rng: &mut R) -> Vec<(Hash, Op<Hash>)> {
     let mut batch = Batch::new();
     // 50 inserts under existing keys
     for _ in 0..50 {
