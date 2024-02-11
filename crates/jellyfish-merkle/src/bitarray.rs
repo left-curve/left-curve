@@ -85,11 +85,16 @@ impl BitArray {
 
 impl fmt::Debug for BitArray {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("BitArray(")?;
-        for i in 0..self.num_bits {
-            f.write_str(&self.bit_at_index(i).to_string())?;
+        // spefial case: empty bits
+        if self.num_bits == 0 {
+            return f.write_str("_");
         }
-        f.write_str(")")
+
+        for bit in self.range(None, None, Order::Ascending) {
+            f.write_str(&bit.to_string())?;
+        }
+
+        Ok(())
     }
 }
 

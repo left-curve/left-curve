@@ -62,6 +62,7 @@ thiserror          = "1"
 tokio              = "1"
 tracing            = "0.1"
 tracing-subscriber = "0.3"
+tracing-test       = "0.2"
 wasmer             = "4"
 
 [profile.release]
