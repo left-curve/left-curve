@@ -161,3 +161,31 @@ where
         Ok((a, b))
     }
 }
+
+impl<A, B, C> MapKey for (A, B, C)
+where
+    A: MapKey,
+    B: MapKey,
+    C: MapKey,
+{
+    type Prefix = A;
+    type Suffix = (B, C);
+    type Output = (A::Output, B::Output, C::Output);
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        let mut keys = vec![];
+        keys.extend(self.0.raw_keys());
+        keys.extend(self.1.raw_keys());
+        keys.extend(self.2.raw_keys());
+        keys
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (a_bytes, bc_bytes) = split_one_key(bytes);
+        let (b_bytes, c_bytes) = split_one_key(bc_bytes);
+        let a = A::deserialize(a_bytes)?;
+        let b = B::deserialize(b_bytes)?;
+        let c = C::deserialize(c_bytes)?;
+        Ok((a, b, c))
+    }
+}

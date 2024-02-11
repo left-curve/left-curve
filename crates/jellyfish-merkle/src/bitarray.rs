@@ -1,28 +1,36 @@
 use {
-    cw_std::{Hash, Order},
+    cw_std::{split_one_key, Hash, MapKey, Order, RawKey, StdResult},
     std::fmt,
 };
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitArray {
-    pub(crate) num_bits: usize,
+    pub num_bits: usize,
     /// We opt for the stack-allocated `[u8; N]` over heap-allocated `Vec<u8>`.
     /// In practice, the vast majority of node keys are not the full 256 bits,
     /// so this is a waste of memory space. Essentially, we trade memory usage
     /// for speed.
     /// For blockchain nodes in general, memory is cheap, while time is expensive.
-    pub(crate) bytes: [u8; Self::MAX_BYTE_LENGTH],
+    bytes: [u8; Self::MAX_BYTE_LENGTH],
 }
 
 impl BitArray {
     pub const MAX_BIT_LENGTH:  usize = Self::MAX_BYTE_LENGTH * 8; // 256
     pub const MAX_BYTE_LENGTH: usize = Hash::LENGTH;              // 32
 
-    pub fn new_empty() -> Self {
+    pub const fn new_empty() -> Self {
         Self {
             num_bits: 0,
             bytes: [0; Self::MAX_BYTE_LENGTH],
         }
+    }
+
+    /// This is useful to get the child node bits from the parent node bits.
+    pub fn extend_one_bit(&self, is_left: bool) -> Self {
+        let mut new = self.clone();
+        // left child = 0, right child = 1
+        new.push(if is_left { 0 } else { 1 });
+        new
     }
 
     pub fn from_bytes(slice: &[u8]) -> Self {
@@ -97,6 +105,28 @@ impl From<Hash> for BitArray {
 impl PartialEq<Hash> for BitArray {
     fn eq(&self, hash: &Hash) -> bool {
         self.num_bits == Self::MAX_BIT_LENGTH && self.bytes == hash.as_ref()
+    }
+}
+
+impl<'a> MapKey for &'a BitArray {
+    type Prefix = u16;
+    type Suffix = &'a [u8];
+    type Output = BitArray;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        let num_bytes = self.num_bits.div_ceil(8);
+        vec![
+            RawKey::Val16((self.num_bits as u16).to_be_bytes()),
+            RawKey::Ref(&self.bytes[..num_bytes]),
+        ]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (a, b) = split_one_key(bytes);
+        let num_bits = u16::deserialize(a)? as usize;
+        let mut bytes = [0u8; BitArray::MAX_BYTE_LENGTH];
+        bytes[..b.len()].copy_from_slice(b);
+        Ok(BitArray { num_bits, bytes })
     }
 }
 
