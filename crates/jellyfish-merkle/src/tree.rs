@@ -13,7 +13,7 @@ pub const DEFAULT_NODE_NAMESPACE:    &str  = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE:  &str  = "o";
 
 /// The bit path of the root node, which is just empty
-pub const ROOT_BITS: &'static BitArray = &BitArray::new_empty();
+pub const ROOT_BITS: &BitArray = &BitArray::new_empty();
 
 /// Describes what happens after applying ops (a slice of `HashedPair`) at a
 /// node and its subtree.
@@ -283,7 +283,7 @@ impl<'a> MerkleTree<'a> {
                 let outcome = self.apply_at(store, new_version, child.version, &child_bits, batch)?;
                 // if the child has been updated, save the updated node
                 if let Outcome::Updated(new_child_node) = &outcome {
-                    self.save_node(store, new_version, &child_bits, &new_child_node)?;
+                    self.save_node(store, new_version, &child_bits, new_child_node)?;
                 }
                 // if the child has been deleted or updated, mark it as orphaned
                 if let Outcome::Deleted | Outcome::Updated(_) = &outcome {
@@ -309,21 +309,19 @@ impl<'a> MerkleTree<'a> {
         // if there's only one item in the batch, and its key hash matches the
         // current leaf node's, then we have found the correct node, perform the
         // op right here.
-        if batch.len() == 1 {
-            if batch[0].0 == leaf_node.key_hash {
-                let (_, op) = only_item(batch);
-                return Ok(if let Op::Insert(value_hash) = op {
-                    if value_hash == leaf_node.value_hash {
-                        // overwriting with the same value. unchanged.
-                        Outcome::Unchanged(Some(Node::Leaf(leaf_node)))
-                    } else {
-                        leaf_node.value_hash = value_hash;
-                        Outcome::Updated(Node::Leaf(leaf_node))
-                    }
+        if batch.len() == 1 && batch[0].0 == leaf_node.key_hash {
+            let (_, op) = only_item(batch);
+            return Ok(if let Op::Insert(value_hash) = op {
+                if value_hash == leaf_node.value_hash {
+                    // overwriting with the same value. unchanged.
+                    Outcome::Unchanged(Some(Node::Leaf(leaf_node)))
                 } else {
-                    Outcome::Deleted
-                })
-            }
+                    leaf_node.value_hash = value_hash;
+                    Outcome::Updated(Node::Leaf(leaf_node))
+                }
+            } else {
+                Outcome::Deleted
+            })
         }
 
         // we don't need to worry about the existing leaf if it will be
@@ -549,6 +547,7 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 #[inline]
 fn partition_batch<T>(mut batch: Vec<(Hash, T)>, bits: &BitArray) -> (Vec<(Hash, T)>, Vec<(Hash, T)>) {
     let partition_point = batch.partition_point(|(key_hash, _)| {
