@@ -111,6 +111,7 @@ impl<'a> MerkleTree<'a> {
         // sort by key hashes ascendingly
         batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
+        // apply the hashed keys and values
         self.apply(store, batch)
     }
 
