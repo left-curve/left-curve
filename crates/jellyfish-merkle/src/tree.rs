@@ -358,7 +358,7 @@ impl<'a> MerkleTree<'a> {
             }
             (1, None) => {
                 let (key_hash, value_hash) = only_item(batch);
-                Node::Leaf(LeafNode::new(key_hash, value_hash))
+                Node::Leaf(LeafNode { key_hash, value_hash })
             },
             (_, existing_leaf) => {
                 let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
