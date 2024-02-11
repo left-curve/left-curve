@@ -306,32 +306,23 @@ impl<'a> MerkleTree<'a> {
         mut leaf_node: LeafNode,
         batch:         Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
+        // if there's only one item in the batch, and its key hash matches the
+        // current leaf node's, then we have found the correct node, perform the
+        // op right here.
         if batch.len() == 1 {
-            let (key_hash, op) = only_item(batch);
-            return match (key_hash == leaf_node.key_hash, op) {
-                (true, Op::Insert(value_hash)) => {
+            if batch[0].0 == leaf_node.key_hash {
+                let (_, op) = only_item(batch);
+                return Ok(if let Op::Insert(value_hash) = op {
                     if value_hash == leaf_node.value_hash {
-                        Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
+                        // overwriting with the same value. unchanged.
+                        Outcome::Unchanged(Some(Node::Leaf(leaf_node)))
                     } else {
                         leaf_node.value_hash = value_hash;
-                        Ok(Outcome::Updated(Node::Leaf(leaf_node)))
+                        Outcome::Updated(Node::Leaf(leaf_node))
                     }
-                },
-                (true, Op::Delete) => {
-                    Ok(Outcome::Deleted)
-                },
-                (false, Op::Delete) => {
-                    Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
-                },
-                (false, Op::Insert(value_hash)) => {
-                    self.create_subtree(
-                        store,
-                        new_version,
-                        bits,
-                        vec![(key_hash, value_hash)],
-                        Some(leaf_node),
-                    )
-                },
+                } else {
+                    Outcome::Deleted
+                })
             }
         }
 
