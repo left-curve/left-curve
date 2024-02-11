@@ -134,17 +134,17 @@ impl<'a> MerkleTree<'a> {
         // recursively apply the ops, starting at the old root
         match self.apply_at(store, new_version, &old_root_node_key, batch)? {
             Outcome::Updated(new_root_node) => {
-                self.version.save(store, &new_version)?;
-                self.nodes.save(store, &new_root_node_key, &new_root_node)?;
+                self.set_version(store, new_version)?;
+                self.save_node(store, &new_root_node_key, &new_root_node)?;
                 if old_version > 0 {
-                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
+                    self.mark_node_as_orphaned(store, new_version, &old_root_node_key)?;
                 }
                 Ok((new_version, Some(new_root_node.hash())))
             },
             Outcome::Deleted => {
-                self.version.save(store, &new_version)?;
+                self.set_version(store, new_version)?;
                 if old_version > 0 {
-                    self.orphans.insert(store, (new_version, &old_root_node_key))?;
+                    self.mark_node_as_orphaned(store, new_version, &old_root_node_key)?;
                 }
                 Ok((new_version, None))
             },
@@ -283,11 +283,11 @@ impl<'a> MerkleTree<'a> {
                 // if the child has been updated, save the updated node
                 if let Outcome::Updated(new_child_node) = &outcome {
                     child_node_key.version = new_version;
-                    self.nodes.save(store, &child_node_key, &new_child_node)?;
+                    self.save_node(store, &child_node_key, &new_child_node)?;
                 }
                 // if the child has been deleted or updated, mark it as orphaned
                 if let Outcome::Deleted | Outcome::Updated(_) = &outcome {
-                    self.orphans.insert(store, (new_version, &child_node_key))?;
+                    self.mark_node_as_orphaned(store, new_version, &child_node_key)?;
                 }
                 Ok(outcome)
             },
@@ -386,7 +386,7 @@ impl<'a> MerkleTree<'a> {
             },
         };
 
-        self.nodes.save(store, node_key, &new_node)?;
+        self.save_node(store, node_key, &new_node)?;
 
         Ok(Outcome::Updated(new_node))
     }
@@ -504,6 +504,40 @@ impl<'a> MerkleTree<'a> {
     pub fn prune(&self, _store: &mut dyn Storage, _up_to_version: Option<u64>) -> StdResult<()> {
         // we should first implement a `range_remove` method on Storage trait
         todo!()
+    }
+
+    #[inline]
+    fn set_version(&self, store: &mut dyn Storage, new_version: u64) -> StdResult<()> {
+        #[cfg(debug_assertions)]
+        println!("[MerkleTree]: setting version to {new_version}");
+        self.version.save(store, &new_version)
+    }
+
+    #[inline]
+    fn save_node(&self, store: &mut dyn Storage, node_key: &NodeKey, node: &Node) -> StdResult<()> {
+        #[cfg(debug_assertions)]
+        println!(
+            "[MerkleTree]: saving node: version = {}, bits = {:?}, node = {node:?}",
+            node_key.version,
+            node_key.bits,
+        );
+        self.nodes.save(store, node_key, node)
+    }
+
+    #[inline]
+    fn mark_node_as_orphaned(
+        &self,
+        store:         &mut dyn Storage,
+        since_version: u64,
+        node_key:      &NodeKey,
+    ) -> StdResult<()> {
+        #[cfg(debug_assertions)]
+        println!(
+            "[MerkleTree]: marking node as orphaned: since_version: {since_version}, version: {}, bits: {:?}",
+            node_key.version,
+            node_key.bits,
+        );
+        self.orphans.insert(store, (since_version, node_key))
     }
 }
 
