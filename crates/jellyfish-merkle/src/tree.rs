@@ -174,7 +174,9 @@ impl<'a> MerkleTree<'a> {
                 self.apply_at_internal(store, new_version, bits, internal_node, batch)
             },
             None => {
-                self.create_subtree(store, new_version, bits, only_inserts(batch), None)
+                let (batch, op) = prepare_batch_for_subtree(batch, None);
+                debug_assert!(op.is_none());
+                self.create_subtree(store, new_version, bits, batch, None)
             },
         }
     }
@@ -293,7 +295,9 @@ impl<'a> MerkleTree<'a> {
             },
             // child doesn't exist, but there are ops to apply
             (None, _) => {
-                self.create_subtree(store, new_version, &child_bits, only_inserts(batch), None)
+                let (batch, op) = prepare_batch_for_subtree(batch, None);
+                debug_assert!(op.is_none());
+                self.create_subtree(store, new_version, &child_bits, batch, None)
             },
         }
     }
@@ -306,33 +310,34 @@ impl<'a> MerkleTree<'a> {
         mut leaf_node: LeafNode,
         batch:         Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
-        // if there's only one item in the batch, and its key hash matches the
-        // current leaf node's, then we have found the correct node, perform the
-        // op right here.
-        if batch.len() == 1 && batch[0].0 == leaf_node.key_hash {
-            let (_, op) = only_item(batch);
-            return Ok(if let Op::Insert(value_hash) = op {
+        let (batch, op) = prepare_batch_for_subtree(batch, Some(&leaf_node));
+        match (batch.is_empty(), op) {
+            (true, Some(Op::Insert(value_hash))) => {
                 if value_hash == leaf_node.value_hash {
-                    // overwriting with the same value. unchanged.
-                    Outcome::Unchanged(Some(Node::Leaf(leaf_node)))
+                    // overwriting with the same value hash, no-op
+                    Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
                 } else {
                     leaf_node.value_hash = value_hash;
-                    Outcome::Updated(Node::Leaf(leaf_node))
+                    Ok(Outcome::Updated(Node::Leaf(leaf_node)))
                 }
-            } else {
-                Outcome::Deleted
-            })
+            },
+            (true, Some(Op::Delete)) => {
+                Ok(Outcome::Deleted)
+            },
+            (true, None) => {
+                Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
+            },
+            (false, Some(Op::Insert(value_hash))) => {
+                leaf_node.value_hash = value_hash;
+                self.create_subtree(store, new_version, bits, batch, Some(leaf_node))
+            },
+            (false, Some(Op::Delete)) => {
+                self.create_subtree(store, new_version, bits, batch, None)
+            },
+            (false, None) => {
+                self.create_subtree(store, new_version, bits, batch, Some(leaf_node))
+            },
         }
-
-        // we don't need to worry about the existing leaf if it will be
-        // overwritten or deleted
-        let existing_leaf = if batch.iter().any(|(k, _)| *k == leaf_node.key_hash) {
-            None
-        } else {
-            Some(leaf_node)
-        };
-
-        self.create_subtree(store, new_version, bits, only_inserts(batch), existing_leaf)
     }
 
     fn create_subtree(
@@ -573,20 +578,35 @@ fn partition_leaf(leaf: Option<LeafNode>, bits: &BitArray) -> (Option<LeafNode>,
     }
 }
 
-/// Given a batch, which may contain both inserts and deletes, remove all the
-/// deletes, only keep the inserts.
+/// Given a batch,
+/// 1. See if there is an op whose key hash matches the existing leaf's. If yes,
+///    take it out.
+/// 2. Amoung the rest ops, filter off the deletes, keeping only the inserts.
 #[inline]
-fn only_inserts(batch: Vec<(Hash, Op<Hash>)>) -> Vec<(Hash, Hash)> {
-    batch
+fn prepare_batch_for_subtree(
+    batch: Vec<(Hash, Op<Hash>)>,
+    existing_leaf: Option<&LeafNode>,
+) -> (Vec<(Hash, Hash)>, Option<Op<Hash>>) {
+    let mut maybe_op = None;
+    let filtered_batch = batch
         .into_iter()
         .filter_map(|(key_hash, op)| {
+            // check if key hash match the leaf's
+            if let Some(leaf) = existing_leaf {
+                if key_hash == leaf.key_hash {
+                    maybe_op = Some(op);
+                    return None;
+                }
+            }
+            // keep inserts, remove deletes
             if let Op::Insert(value_hash) = op {
                 Some((key_hash, value_hash))
             } else {
                 None
             }
         })
-        .collect()
+        .collect();
+    (filtered_batch, maybe_op)
 }
 
 /// Consume a vector, assert it has exactly item, return this item by value.
@@ -793,13 +813,13 @@ mod tests {
         let (new_version, new_root_hash) = TREE.apply_raw(&mut store, &Batch::from([
             // overwriting keys with the same keys
             (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
-            // (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
-            // (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
-            // (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
             // deleting non-existing keys
-            // (b"larry".to_vec(), Op::Delete), // 00001101...
-            // (b"trump".to_vec(), Op::Delete), // 10100110...
-            // (b"biden".to_vec(), Op::Delete), // 00000110...
+            (b"larry".to_vec(), Op::Delete), // 00001101...
+            (b"trump".to_vec(), Op::Delete), // 10100110...
+            (b"biden".to_vec(), Op::Delete), // 00000110...
         ]))
         .unwrap();
         assert_eq!(new_version, 1);
