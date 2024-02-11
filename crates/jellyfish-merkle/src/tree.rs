@@ -271,18 +271,18 @@ impl<'a> MerkleTree<'a> {
         batch:       Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
         let child_bits = parent_bits.extend_one_bit(is_left);
-        match (child, batch.len()) {
+        match (batch.is_empty(), child) {
             // child exists, but there is no op to apply
-            (Some(child), 0) => {
+            (true, Some(child)) => {
                 let child_node = self.nodes.load(store, (child.version, &child_bits))?;
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
             // child doesn't exist, and there is no op to apply
-            (None, 0) => {
+            (true, None) => {
                 Ok(Outcome::Unchanged(None))
             },
             // child exists, and there are ops to apply
-            (Some(child), _) => {
+            (false, Some(child)) => {
                 let outcome = self.apply_at(store, new_version, child.version, &child_bits, batch)?;
                 // if the child has been updated, save the updated node
                 if let Outcome::Updated(new_child_node) = &outcome {
@@ -295,7 +295,7 @@ impl<'a> MerkleTree<'a> {
                 Ok(outcome)
             },
             // child doesn't exist, but there are ops to apply
-            (None, _) => {
+            (false, None) => {
                 let (batch, op) = prepare_batch_for_subtree(batch, None);
                 debug_assert!(op.is_none());
                 self.create_subtree(store, new_version, &child_bits, batch, None)
