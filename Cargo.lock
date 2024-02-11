@@ -716,7 +716,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-jellyfish-merkle"
+name = "cw-jmt"
 version = "0.0.0"
 dependencies = [
  "anyhow",

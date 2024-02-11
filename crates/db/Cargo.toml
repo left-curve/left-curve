@@ -10,5 +10,6 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+# cw-jmt = { path = "../jellyfish-merkle" }
 cw-std = { path = "../std" }
 cw-vm  = { path = "../vm" }

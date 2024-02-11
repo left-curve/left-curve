@@ -1,5 +1,6 @@
+mod base;
 mod cache;
 mod prefix;
 mod shared;
 
-pub use {cache::CacheStore, prefix::PrefixStore, shared::SharedStore};
+pub use {base::BaseStore, cache::CacheStore, prefix::PrefixStore, shared::SharedStore};
