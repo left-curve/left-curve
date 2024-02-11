@@ -207,8 +207,8 @@ impl<'a> MerkleTree<'a> {
         )?;
 
         match (left_outcome, right_outcome) {
-            // both children are deleted. delete this node as well
-            (Outcome::Deleted, Outcome::Deleted) => {
+            // both children are deleted or never existed. delete this node as well
+            (Outcome::Deleted | Outcome::Unchanged(None), Outcome::Deleted | Outcome::Unchanged(None)) => {
                 Ok(Outcome::Deleted)
             },
             // neither children is changed. this node is unchanged as well
