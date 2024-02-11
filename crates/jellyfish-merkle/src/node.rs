@@ -85,6 +85,10 @@ impl InternalNode {
             right_child: None,
         }
     }
+
+    pub fn hash(&self) -> Hash {
+        hash_internal_node(hash_of(&self.left_child), hash_of(&self.right_child))
+    }
 }
 
 // --------------------------------- leaf node ---------------------------------
@@ -101,5 +105,9 @@ impl LeafNode {
             key_hash,
             value_hash,
         }
+    }
+
+    pub fn hash(&self) -> Hash {
+        hash_leaf_node(&self.key_hash, &self.value_hash)
     }
 }
