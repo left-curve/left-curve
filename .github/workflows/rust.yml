@@ -30,8 +30,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
+          toolchain: stable
           components: clippy
 
       - name: Run clippy
-        run: cargo +nightly clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
