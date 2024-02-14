@@ -10,6 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-# cw-jmt = { path = "../jellyfish-merkle" }
-cw-std = { path = "../std" }
-cw-vm  = { path = "../vm" }
+cw-jmt    = { path = "../jellyfish-merkle" }
+cw-std    = { path = "../std" }
+cw-vm     = { path = "../vm" }
+rocksdb   = { workspace = true }
+thiserror = { workspace = true }

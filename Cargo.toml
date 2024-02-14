@@ -46,6 +46,13 @@ proptest           = "1"
 prost              = "0.12"
 quote              = "1"
 rand               = "0.8"
+# our fork of rust-rocksdb is based on the `v0.21.0` release and adds partial
+# support for the user-defined timestamp feature:
+# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
+#
+# see the `v0.21.0-cw` branch. comparison:
+# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...cwsoftware123:v0.21.0-cw
+rocksdb            = { git = "https://github.com/cwsoftware123/rust-rocksdb", rev = "9015972" }
 serde              = "1"
 serde_json         = "1"
 serde-json-wasm    = "1"

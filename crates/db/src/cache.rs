@@ -7,8 +7,8 @@ use {
 /// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
 #[derive(Clone)]
 pub struct CacheStore<S: Clone> {
-    base:    S,
-    pending: Batch,
+    base: S,
+    pub(crate) pending: Batch,
 }
 
 impl<S: Clone> CacheStore<S> {
