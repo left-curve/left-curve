@@ -81,9 +81,9 @@ struct BaseStoreInner {
 }
 
 pub(crate) struct PendingData {
-    version: u64,
+    version:          u64,
     state_commitment: Batch,
-    state_storage: Batch,
+    state_storage:    Batch,
 }
 
 impl Clone for BaseStore {
@@ -201,9 +201,9 @@ impl BaseStore {
         let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
-            version: new_version,
+            version:          new_version,
             state_commitment: cache.pending,
-            state_storage: batch,
+            state_storage:    batch,
         });
 
         Ok((new_version, root_hash))
@@ -275,8 +275,8 @@ impl Storage for StateCommitment {
 
     fn scan<'a>(
         &'a self,
-        _min: Option<&[u8]>,
-        _max: Option<&[u8]>,
+        _min:   Option<&[u8]>,
+        _max:   Option<&[u8]>,
         _order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         unimplemented!("this isn't used by the MerkleTree")
@@ -298,8 +298,8 @@ impl Storage for StateCommitment {
 // ------------------------------- state storage -------------------------------
 
 pub struct StateStorage {
-    inner: Arc<BaseStoreInner>,
-    opts: OnceCell<ReadOptions>,
+    inner:   Arc<BaseStoreInner>,
+    opts:    OnceCell<ReadOptions>,
     version: u64,
 }
 
@@ -328,8 +328,8 @@ impl Storage for StateStorage {
 
     fn scan<'a>(
         &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
+        min:   Option<&[u8]>,
+        max:   Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let opts = new_read_options(Some(self.version), min, max);
@@ -385,7 +385,7 @@ fn new_cf_options_with_ts() -> Options {
 }
 
 fn new_read_options(
-    version: Option<u64>,
+    version:             Option<u64>,
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
@@ -439,7 +439,7 @@ mod tests {
     /// https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8
     struct DBPath {
         #[allow(dead_code)]
-        dir: TempDir, // keep the value alive so that the directory isn't deleted prematurely
+        dir:  TempDir, // keep the value alive so that the directory isn't deleted prematurely
         path: PathBuf,
     }
 
@@ -595,9 +595,9 @@ mod tests {
         // write a batch with version = 1
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
-            (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
-            (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
-            (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            (b"jake".to_vec(),   Op::Insert(b"shepherd".to_vec())),
+            (b"joe".to_vec(),    Op::Insert(b"biden".to_vec())),
+            (b"larry".to_vec(),  Op::Insert(b"engineer".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
         assert_eq!(version, 1);
@@ -605,8 +605,8 @@ mod tests {
 
         // write another batch with version = 2
         let batch = Batch::from([
-            (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
-            (b"joe".to_vec(), Op::Delete),
+            (b"donald".to_vec(),  Op::Insert(b"duck".to_vec())),
+            (b"joe".to_vec(),     Op::Delete),
             (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
@@ -615,15 +615,15 @@ mod tests {
 
         // try query values at the two versions, respectively, from state storage
         for (version, key, value) in [
-            (1, "donald", Some("trump")),
-            (1, "jake", Some("shepherd")),
-            (1, "joe", Some("biden")),
-            (1, "larry", Some("engineer")),
+            (1, "donald",  Some("trump")),
+            (1, "jake",    Some("shepherd")),
+            (1, "joe",     Some("biden")),
+            (1, "larry",   Some("engineer")),
             (1, "pumpkin", None),
-            (2, "donald", Some("duck")),
-            (2, "jake", Some("shepherd")),
-            (2, "joe", None),
-            (2, "larry", Some("engineer")),
+            (2, "donald",  Some("duck")),
+            (2, "jake",    Some("shepherd")),
+            (2, "joe",     None),
+            (2, "larry",   Some("engineer")),
             (2, "pumpkin", Some("cat")),
         ] {
             let found_value = store.state_storage(Some(version)).read(key.as_bytes());
@@ -634,14 +634,14 @@ mod tests {
         for (version, items) in [
             (1, [
                 ("donald", "trump"),
-                ("jake", "shepherd"),
-                ("joe", "biden"),
-                ("larry", "engineer"),
+                ("jake",   "shepherd"),
+                ("joe",    "biden"),
+                ("larry",  "engineer"),
             ]),
             (2, [
-                ("donald", "duck"),
-                ("jake", "shepherd"),
-                ("larry", "engineer"),
+                ("donald",  "duck"),
+                ("jake",    "shepherd"),
+                ("larry",   "engineer"),
                 ("pumpkin", "cat"),
             ]),
         ] {
