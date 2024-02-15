@@ -72,8 +72,9 @@ impl<'a> MerkleTree<'a> {
     /// If the root node is not found at the version, return None. There are two
     /// possible reasons that it's not found: either no data has ever been
     /// written to the tree yet, or the version is old and has been pruned.
-    pub fn root_hash(&self, store: &dyn Storage, version: u64) -> StdResult<Hash> {
-        self.nodes.load(store, (version, ROOT_BITS)).map(|node| node.hash())
+    pub fn root_hash(&self, store: &dyn Storage, version: u64) -> StdResult<Option<Hash>> {
+        let root_node = self.nodes.may_load(store, (version, ROOT_BITS))?;
+        Ok(root_node.map(|node| node.hash()))
     }
 
     /// Apply a batch of ops to the tree. Return the new root hash.

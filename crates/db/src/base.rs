@@ -135,10 +135,10 @@ impl BaseStore {
     /// Return the Merkle root hash of the state commitment at the given version
     /// (default to latest version if not specified).
     ///
-    /// NOTE: Error the tree is empty at the version (there isn't a root node)
-    /// or if the version has been pruned. We can't different between these two
-    /// possibilities.
-    pub fn root_hash(&self, version: Option<u64>) -> DbResult<Hash> {
+    /// NOTE: Return `None` the tree is empty at the version (there isn't a root
+    /// node) or if the version has been pruned. We can't different between
+    /// these two possibilities.
+    pub fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
         let version = version.unwrap_or_else(|| self.latest_version());
         Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
     }
