@@ -115,7 +115,7 @@ impl BaseStore {
         }
     }
 
-    /// Get the latest version of the state that the database stores.
+    /// Return the latest version of the state that the database stores.
     pub fn latest_version(&self) -> u64 {
         let maybe_bytes = self.db.get_cf(&cf_default(&self.db), LATEST_VERSION_KEY).unwrap_or_else(|err| {
             panic!("failed to read from default column family: {err}");
@@ -132,8 +132,19 @@ impl BaseStore {
         u64::from_le_bytes(array)
     }
 
+    /// Return the Merkle root hash of the state commitment at the given version
+    /// (default to latest version if not specified).
+    ///
+    /// NOTE: Error the tree is empty at the version (there isn't a root node)
+    /// or if the version has been pruned. We can't different between these two
+    /// possibilities.
+    pub fn root_hash(&self, version: Option<u64>) -> DbResult<Hash> {
+        let version = version.unwrap_or_else(|| self.latest_version());
+        Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
+    }
+
     /// Generate Merkle proof for a key at the given version (default to latest
-    /// version if not provided).
+    /// version if not specified).
     pub fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version());
         Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
@@ -354,4 +365,326 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
+}
+
+// ----------------------------------- test ------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        cw_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
+        cw_std::Hash,
+        hex_literal::hex,
+        rocksdb::DB,
+        std::path::PathBuf,
+        tempfile::TempDir,
+    };
+
+    /// Temporary database path which calls DB::destroy when DBPath is dropped.
+    /// Copyed from rust-rocksdb:
+    /// https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8
+    struct DBPath {
+        #[allow(dead_code)]
+        dir: TempDir, // keep the value alive so that the directory isn't deleted prematurely
+        path: PathBuf,
+    }
+
+    impl DBPath {
+        /// Produces a fresh (non-existent) temporary path which will be
+        /// DB::destroy'ed automatically.
+        pub fn new(prefix: &str) -> Self {
+            let dir = tempfile::Builder::new().prefix(prefix).tempdir().unwrap_or_else(|err| {
+                panic!("failed to create temporary directory for DB: {err}");
+            });
+            let path = dir.path().join("db");
+            Self { dir, path }
+        }
+    }
+
+    impl Drop for DBPath {
+        fn drop(&mut self) {
+            DB::destroy(&Options::default(), &self.path).unwrap_or_else(|err| {
+                panic!("failed to destroy DB: {err}");
+            });
+        }
+    }
+
+    // implement for &DBPath (reference) instead of for DBPath (owned value)
+    // because we want to make sure the owned value lives until the end of its
+    // scope, so that the DB isn't destroyed prematurely.
+    impl AsRef<Path> for &DBPath {
+        fn as_ref(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    // using the same test case as in our rust-rocksdb fork:
+    // https://github.com/cwsoftware123/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
+    //
+    // hash(donald)  = 01000001...
+    // hash(jake)    = 11001101...
+    // hash(joe)     = 01111000...
+    // hash(larry)   = 00001101...
+    // hash(pumpkin) = 11111111...
+
+    // the tree at version 1 should look like:
+    //
+    //           root
+    //         ┌──┴──┐
+    //         0     jake
+    //      ┌──┴──┐
+    //    larry   01
+    //         ┌──┴──┐
+    //      donald  joe
+    //
+    // hash_00
+    // = hash(01 | hash("larry") | hash("engineer"))
+    // = hash(01 | 0d098b1c0162939e05719f059f0f844ed989472e9e6a53283a00fe92127ac27f | 7826b958b79c70626801b880405eb5111557dadceb2fee2b1ed69a18eed0c6dc)
+    // = 01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b
+    //
+    // hash_010
+    // = hash(01 | hash("donald") | hash("trump"))
+    // = hash(01 | 4138cfbc5d36f31e8ae09ef4044bb88c0c9c6f289a6a1c27b335a99d1d8dc86f | a60a52382d7077712def2a69eda3ba309b19598944aa459ce418ae53b7fb5d58)
+    // = 8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575
+    //
+    // hash_011
+    // = hash(01 | hash("joe") | hash("biden"))
+    // = hash(01 | 78675cc176081372c43abab3ea9fb70c74381eb02dc6e93fb6d44d161da6eeb3 | 0631a609edb7c79f3a051b935ddb0927818ebd03964a4d18f316d2dadf216894)
+    // = hash(3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a)
+    //
+    // hash_01
+    // = hash(00 | 8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575 | 3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a)
+    // = 248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf
+    //
+    // hash_0
+    // = hash(00 | 01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b | 248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf)
+    // = 4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad
+    //
+    // hash_1
+    // = hash(01 | hash("jake") | hash("shepherd"))
+    // = hash(01 | cdf30c6b345276278bedc7bcedd9d5582f5b8e0c1dd858f46ef4ea231f92731d | def3735d7a0d2696775d6d72f379e4536c4d9e3cd6367f27a0bcb7f40d4558fb)
+    // = 8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394
+    //
+    // root_hash
+    // = hash(00 | 4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad | 8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394)
+    // = 1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64
+    mod v1 {
+        use super::*;
+
+        pub const ROOT_HASH: Hash = Hash::from_slice(hex!("1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64"));
+        pub const HASH_0:    Hash = Hash::from_slice(hex!("4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad"));
+        pub const HASH_00:   Hash = Hash::from_slice(hex!("01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"));
+        pub const HASH_01:   Hash = Hash::from_slice(hex!("248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf"));
+        pub const HASH_010:  Hash = Hash::from_slice(hex!("8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575"));
+        pub const HASH_011:  Hash = Hash::from_slice(hex!("3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a"));
+        pub const HASH_1:    Hash = Hash::from_slice(hex!("8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"));
+    }
+
+    // the tree at version 2 should look like:
+    //
+    //            root
+    //         ┌───┴───┐
+    //         0       1
+    //      ┌──┴──┐    └──┐
+    //   larry  donald    11
+    //                ┌───┴───┐
+    //              jake   pumpkin
+    //
+    // hash_00
+    // = 01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b (same as v1)
+    //
+    // hash_01
+    // = hash(01 | hash("donald") | hash("duck"))
+    // = hash(01 | 4138cfbc5d36f31e8ae09ef4044bb88c0c9c6f289a6a1c27b335a99d1d8dc86f | 2d2370db2447ff8cf4f3accd68c85aa119a9c893effd200a9b69176e9fc5eb98)
+    // = 44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7
+    //
+    // hash_0
+    // = hash(00 | 01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b | 44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7)
+    // = 7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402
+    //
+    // hash_110
+    // = 8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394 (same as in v1)
+    //
+    // hash_111
+    // = hash(01 | hash("pumpkin") | hash("cat"))
+    // = hash(01 | ff48e511e1638fc379cb75de1c28fe2016051b167f9aa8cac3dd86c6f4787539 | 77af778b51abd4a3c51c5ddd97204a9c3ae614ebccb75a606c3b6865aed6744e)
+    // = a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6
+    //
+    // hash_11
+    // = hash(00 | 8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394 | a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6)
+    // = 1fd4c7d63c6349b827d1af289d9870f923d0be6ecbb6b91c2f42d81ac7b45a51
+    //
+    // hash_1
+    // = hash(00 | 0000000000000000000000000000000000000000000000000000000000000000 | 1fd4c7d63c6349b827d1af289d9870f923d0be6ecbb6b91c2f42d81ac7b45a51)
+    // = 9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f
+    //
+    // root_hash
+    // = hash(00 | 7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402 | 9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f)
+    // = 05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4
+    mod v2 {
+        use super::*;
+
+        pub const ROOT_HASH: Hash = Hash::from_slice(hex!("05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4"));
+        pub const HASH_0:    Hash = Hash::from_slice(hex!("7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402"));
+        pub const HASH_00:   Hash = Hash::from_slice(hex!("01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"));
+        pub const HASH_01:   Hash = Hash::from_slice(hex!("44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7"));
+        pub const HASH_1:    Hash = Hash::from_slice(hex!("9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f"));
+        pub const HASH_110:  Hash = Hash::from_slice(hex!("8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"));
+        pub const HASH_111:  Hash = Hash::from_slice(hex!("a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6"));
+    }
+
+    #[test]
+    fn base_store_works() {
+        let path = DBPath::new("_cw_db_base_store_works");
+        let store = BaseStore::open(&path).unwrap();
+
+        // write a batch with version = 1
+        let batch = Batch::from([
+            (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+            (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+            (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+            (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+        ]);
+        let (version, root_hash) = store.flush(&batch).unwrap();
+        assert_eq!(version, 1);
+        assert_eq!(root_hash, Some(v1::ROOT_HASH));
+
+        // write another batch with version = 2
+        let batch = Batch::from([
+            (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+            (b"joe".to_vec(), Op::Delete),
+            (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+        ]);
+        let (version, root_hash) = store.flush(&batch).unwrap();
+        assert_eq!(version, 2);
+        assert_eq!(root_hash, Some(v2::ROOT_HASH));
+
+        // try query values at the two versions, respectively, from state storage
+        for (version, key, value) in [
+            (1, "donald", Some("trump")),
+            (1, "jake", Some("shepherd")),
+            (1, "joe", Some("biden")),
+            (1, "larry", Some("engineer")),
+            (1, "pumpkin", None),
+            (2, "donald", Some("duck")),
+            (2, "jake", Some("shepherd")),
+            (2, "joe", None),
+            (2, "larry", Some("engineer")),
+            (2, "pumpkin", Some("cat")),
+        ] {
+            let found_value = store.state_storage(Some(version)).read(key.as_bytes());
+            assert_eq!(found_value.map(|bz| String::from_utf8(bz).unwrap()).as_deref(), value);
+        }
+
+        // try iterating at the two versions, respectively
+        for (version, items) in [
+            (1, [
+                ("donald", "trump"),
+                ("jake", "shepherd"),
+                ("joe", "biden"),
+                ("larry", "engineer"),
+            ]),
+            (2, [
+                ("donald", "duck"),
+                ("jake", "shepherd"),
+                ("larry", "engineer"),
+                ("pumpkin", "cat"),
+            ]),
+        ] {
+            for ((found_key, found_value), (key, value)) in
+                store.state_storage(Some(version)).scan(None, None, Order::Ascending).zip(items)
+            {
+                assert_eq!(found_key, key.as_bytes());
+                assert_eq!(found_value, value.as_bytes());
+            }
+        }
+
+        // try generating merkle proofs at the two versions, respectively; also
+        // verify the proofs.
+        for (version, key, value, proof) in [
+            (1, "donald", Some("trump"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v1::HASH_011),
+                    Some(v1::HASH_00),
+                    Some(v1::HASH_1),
+                ],
+            })),
+            (1, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![Some(v1::HASH_0)],
+            })),
+            (1, "joe", Some("biden"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v1::HASH_010),
+                    Some(v1::HASH_00),
+                    Some(v1::HASH_1),
+                ],
+            })),
+            (1, "larry", Some("engineer"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v1::HASH_01),
+                    Some(v1::HASH_1),
+                ],
+            })),
+            (1, "pumpkin", None, Proof::NonMembership(NonMembershipProof {
+                node: ProofNode::Leaf {
+                    key_hash: hash(b"jake"),
+                    value_hash: hash(b"shepherd"),
+                },
+                sibling_hashes: vec![Some(v1::HASH_0)],
+            })),
+            (2, "donald", Some("duck"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v2::HASH_00),
+                    Some(v2::HASH_1),
+                ],
+            })),
+            (2, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v2::HASH_111),
+                    None,
+                    Some(v2::HASH_0),
+                ],
+            })),
+            (2, "joe", None, Proof::NonMembership(NonMembershipProof {
+                node: ProofNode::Leaf {
+                    key_hash: hash(b"donald"),
+                    value_hash: hash(b"duck"),
+                },
+                sibling_hashes: vec![
+                    Some(v2::HASH_00),
+                    Some(v2::HASH_1),
+                ],
+            })),
+            (2, "larry", Some("engineer"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v2::HASH_01),
+                    Some(v2::HASH_1),
+                ],
+            })),
+            (2, "pumpkin", Some("cat"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v2::HASH_110),
+                    None,
+                    Some(v2::HASH_0),
+                ],
+            })),
+        ] {
+            let found_proof = store.prove(key.as_bytes(), Some(version)).unwrap();
+            assert_eq!(found_proof, proof);
+
+            let root_hash = match version {
+                1 => v1::ROOT_HASH,
+                2 => v2::ROOT_HASH,
+                _ => unreachable!(),
+            };
+            assert!(verify_proof(
+                &root_hash,
+                &hash(key.as_bytes()),
+                value.map(hash).as_ref(),
+                &found_proof,
+            )
+            .is_ok());
+        }
+    }
 }

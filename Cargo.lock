@@ -767,7 +767,9 @@ dependencies = [
  "cw-jmt",
  "cw-std",
  "cw-vm",
+ "hex-literal",
  "rocksdb",
+ "tempfile",
  "thiserror",
 ]
 
