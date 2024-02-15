@@ -68,6 +68,14 @@ pub struct BaseStore {
     db: Arc<DBWithThreadMode<MultiThreaded>>,
 }
 
+impl Clone for BaseStore {
+    fn clone(&self) -> Self {
+        Self {
+            db: Arc::clone(&self.db),
+        }
+    }
+}
+
 impl BaseStore {
     /// Create a BaseStore instance by opening a physical RocksDB instance.
     pub fn open(data_dir: impl AsRef<Path>) -> DbResult<Self> {
