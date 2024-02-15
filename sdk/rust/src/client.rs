@@ -1,12 +1,14 @@
 use {
     crate::{AdminOption, SigningKey},
-    anyhow::bail,
+    anyhow::{bail, ensure},
     cw_account::{QueryMsg, StateResponse},
+    cw_jmt::Proof,
     cw_std::{
         from_json, hash, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash,
         InfoResponse, Message, QueryRequest, QueryResponse, Tx, WasmRawResponse,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
+    std::any::type_name,
     tendermint::block::Height,
     tendermint_rpc::{
         endpoint::{abci_query::AbciQuery, block, block_results, broadcast::tx_sync, status, tx},
@@ -67,10 +69,11 @@ impl Client {
         &self,
         path:   &str,
         data:   Vec<u8>,
-        height: u64,
+        height: Option<u64>,
         prove:  bool,
     ) -> anyhow::Result<AbciQuery> {
-        let res = self.inner.abci_query(Some(path.into()), data, Some(height.try_into()?), prove).await?;
+        let height = height.map(|h| h.try_into()).transpose()?;
+        let res = self.inner.abci_query(Some(path.into()), data, height, prove).await?;
         if res.code.is_err() {
             bail!(
                 "query failed! codespace = {}, code = {}, log = {}",
@@ -85,31 +88,49 @@ impl Client {
     pub async fn query_store(
         &self,
         key:    Vec<u8>,
-        height: u64,
+        height: Option<u64>,
         prove:  bool,
-    ) -> anyhow::Result<Option<Vec<u8>>> {
-        let res = self.query("/store", key, height, prove).await?;
+    ) -> anyhow::Result<(Option<Vec<u8>>, Option<Proof>)> {
+        let res = self.query("/store", key.clone(), height, prove).await?;
         let value = if res.value.is_empty() {
             None
         } else {
             Some(res.value)
         };
-        // TODO: deserialize and return proof
-        Ok(value)
+        let proof = if prove {
+            ensure!(res.proof.is_some());
+            let proof = res.proof.unwrap();
+            ensure!(proof.ops.len() == 1);
+            ensure!(proof.ops[0].field_type == type_name::<Proof>());
+            ensure!(proof.ops[0].key == key);
+            Some(from_json(&proof.ops[0].data)?)
+        } else {
+            None
+        };
+        Ok((value, proof))
     }
 
-    pub async fn query_app(&self, req: &QueryRequest) -> anyhow::Result<QueryResponse> {
-        let res = self.query("/app", to_json(req)?.to_vec(), 0, false).await?;
+    pub async fn query_app(
+        &self,
+        req: &QueryRequest,
+        height: Option<u64>,
+    ) -> anyhow::Result<QueryResponse> {
+        let res = self.query("/app", to_json(req)?.to_vec(), height, false).await?;
         Ok(from_json(res.value)?)
     }
 
-    pub async fn query_info(&self) -> anyhow::Result<InfoResponse> {
-        let res = self.query_app(&QueryRequest::Info {}).await?;
+    pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
+        let res = self.query_app(&QueryRequest::Info {}, height).await?;
         Ok(res.as_info())
     }
 
-    pub async fn query_balance(&self, address: Addr, denom: String) -> anyhow::Result<Coin> {
-        let res = self.query_app(&QueryRequest::Balance { address, denom }).await?;
+    pub async fn query_balance(
+        &self,
+        address: Addr,
+        denom: String,
+        height: Option<u64>,
+    ) -> anyhow::Result<Coin> {
+        let res = self.query_app(&QueryRequest::Balance { address, denom }, height).await?;
         Ok(res.as_balance())
     }
 
@@ -118,13 +139,14 @@ impl Client {
         address: Addr,
         start_after: Option<String>,
         limit: Option<u32>,
+        height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self.query_app(&QueryRequest::Balances { address, start_after, limit }).await?;
+        let res = self.query_app(&QueryRequest::Balances { address, start_after, limit }, height).await?;
         Ok(res.as_balances())
     }
 
-    pub async fn query_supply(&self, denom: String) -> anyhow::Result<Coin> {
-        let res = self.query_app(&QueryRequest::Supply { denom }).await?;
+    pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
+        let res = self.query_app(&QueryRequest::Supply { denom }, height).await?;
         Ok(res.as_supply())
     }
 
@@ -132,13 +154,14 @@ impl Client {
         &self,
         start_after: Option<String>,
         limit: Option<u32>,
+        height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self.query_app(&QueryRequest::Supplies { start_after, limit }).await?;
+        let res = self.query_app(&QueryRequest::Supplies { start_after, limit }, height).await?;
         Ok(res.as_supplies())
     }
 
-    pub async fn query_code(&self, hash: Hash) -> anyhow::Result<Binary> {
-        let res = self.query_app(&QueryRequest::Code { hash }).await?;
+    pub async fn query_code(&self, hash: Hash, height: Option<u64>) -> anyhow::Result<Binary> {
+        let res = self.query_app(&QueryRequest::Code { hash }, height).await?;
         Ok(res.as_code())
     }
 
@@ -146,13 +169,14 @@ impl Client {
         &self,
         start_after: Option<Hash>,
         limit: Option<u32>,
+        height: Option<u64>,
     ) -> anyhow::Result<Vec<Hash>> {
-        let res = self.query_app(&QueryRequest::Codes { start_after, limit }).await?;
+        let res = self.query_app(&QueryRequest::Codes { start_after, limit }, height).await?;
         Ok(res.as_codes())
     }
 
-    pub async fn query_account(&self, address: Addr) -> anyhow::Result<AccountResponse> {
-        let res = self.query_app(&QueryRequest::Account { address }).await?;
+    pub async fn query_account(&self, address: Addr, height: Option<u64>) -> anyhow::Result<AccountResponse> {
+        let res = self.query_app(&QueryRequest::Account { address }, height).await?;
         Ok(res.as_account())
     }
 
@@ -160,8 +184,9 @@ impl Client {
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
+        height: Option<u64>,
     ) -> anyhow::Result<Vec<AccountResponse>> {
-        let res = self.query_app(&QueryRequest::Accounts { start_after, limit }).await?;
+        let res = self.query_app(&QueryRequest::Accounts { start_after, limit }, height).await?;
         Ok(res.as_accounts())
     }
 
@@ -169,8 +194,9 @@ impl Client {
         &self,
         contract: Addr,
         key: Binary,
+        height: Option<u64>,
     ) -> anyhow::Result<WasmRawResponse> {
-        let res = self.query_app(&QueryRequest::WasmRaw { contract, key }).await?;
+        let res = self.query_app(&QueryRequest::WasmRaw { contract, key }, height).await?;
         Ok(res.as_wasm_raw())
     }
 
@@ -178,9 +204,10 @@ impl Client {
         &self,
         contract: Addr,
         msg: &M,
+        height: Option<u64>,
     ) -> anyhow::Result<R> {
         let msg = to_json(msg)?;
-        let res = self.query_app(&QueryRequest::WasmSmart { contract, msg }).await?;
+        let res = self.query_app(&QueryRequest::WasmSmart { contract, msg }, height).await?;
         Ok(from_json(res.as_wasm_smart().data)?)
     }
 
@@ -206,7 +233,7 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
         let chain_id = match &sign_opts.chain_id {
-            None => self.query_info().await?.chain_id,
+            None => self.query_info(None).await?.chain_id,
             Some(id) => id.to_string(),
         };
 
@@ -215,6 +242,7 @@ impl Client {
                 self.query_wasm_smart::<_, StateResponse>(
                     sign_opts.sender.clone(),
                     &QueryMsg::State {},
+                    None,
                 )
                 .await?
                 .sequence

@@ -73,48 +73,48 @@ export class Client {
     return value;
   }
 
-  public async queryApp(req: QueryRequest): Promise<QueryResponse> {
-    const res = await this.query("/app", encodeUtf8(serialize(req)));
+  public async queryApp(req: QueryRequest, height = 0): Promise<QueryResponse> {
+    const res = await this.query("/app", encodeUtf8(serialize(req)), height, false);
     return deserialize(decodeUtf8(res.value)) as QueryResponse;
   }
 
-  public async queryInfo(): Promise<InfoResponse> {
-    const res = await this.queryApp({ info: {} });
+  public async queryInfo(height = 0): Promise<InfoResponse> {
+    const res = await this.queryApp({ info: {} }, height);
     return res.info!;
   }
 
-  public async queryBalance(address: string, denom: string): Promise<string> {
-    const res = await this.queryApp({ balance: { address, denom } });
+  public async queryBalance(address: string, denom: string, height = 0): Promise<string> {
+    const res = await this.queryApp({ balance: { address, denom } }, height);
     return res.balance!.amount;
   }
 
-  public async queryBalances(address: string, startAfter?: string, limit?: number): Promise<Coin[]> {
-    const res = await this.queryApp({ balances: { address, startAfter, limit } });
+  public async queryBalances(address: string, startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
+    const res = await this.queryApp({ balances: { address, startAfter, limit } }, height);
     return res.balances!;
   }
 
-  public async querySupply(denom: string): Promise<string> {
-    const res = await this.queryApp({ supply: { denom } });
+  public async querySupply(denom: string, height = 0): Promise<string> {
+    const res = await this.queryApp({ supply: { denom } }, height);
     return res.supply!.amount;
   }
 
-  public async querySupplies(startAfter?: string, limit?: number): Promise<Coin[]> {
-    const res = await this.queryApp({ supplies: { startAfter, limit } });
+  public async querySupplies(startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
+    const res = await this.queryApp({ supplies: { startAfter, limit } }, height);
     return res.supplies!;
   }
 
-  public async queryCode(hash: string): Promise<string> {
-    const res = await this.queryApp({ code: { hash } });
+  public async queryCode(hash: string, height = 0): Promise<string> {
+    const res = await this.queryApp({ code: { hash } }, height);
     return res.code!;
   }
 
-  public async queryCodes(startAfter?: string, limit?: number): Promise<string[]> {
-    const res = await this.queryApp({ codes: { startAfter, limit } });
+  public async queryCodes(startAfter?: string, limit?: number, height = 0): Promise<string[]> {
+    const res = await this.queryApp({ codes: { startAfter, limit } }, height);
     return res.codes!;
   }
 
-  public async queryAccount(address: string): Promise<Account> {
-    const res = await this.queryApp({ account: { address } });
+  public async queryAccount(address: string, height = 0): Promise<Account> {
+    const res = await this.queryApp({ account: { address } }, height);
     const accountRes = res.account!;
     return {
       codeHash: accountRes.codeHash,
@@ -122,18 +122,18 @@ export class Client {
     }
   }
 
-  public async queryAccounts(startAfter?: string, limit?: number): Promise<AccountResponse[]> {
-    const res = await this.queryApp({ accounts: { startAfter, limit } });
+  public async queryAccounts(startAfter?: string, limit?: number, height = 0): Promise<AccountResponse[]> {
+    const res = await this.queryApp({ accounts: { startAfter, limit } }, height);
     return res.accounts!;
   }
 
-  public async queryWasmRaw(contract: string, key: string): Promise<string | undefined> {
-    const res = await this.queryApp({ wasmRaw: { contract, key } });
+  public async queryWasmRaw(contract: string, key: string, height = 0): Promise<string | undefined> {
+    const res = await this.queryApp({ wasmRaw: { contract, key } }, height);
     return res.wasmRaw!.value;
   }
 
-  public async queryWasmSmart<T>(contract: string, msg: Payload): Promise<T> {
-    const res = await this.queryApp({ wasmSmart: { contract, msg: btoa(serialize(msg)) } });
+  public async queryWasmSmart<T>(contract: string, msg: Payload, height = 0): Promise<T> {
+    const res = await this.queryApp({ wasmSmart: { contract, msg: btoa(serialize(msg)) } }, height);
     const wasmRes = deserialize(atob(res.wasmSmart!.data));
     return wasmRes as T;
   }

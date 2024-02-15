@@ -16,6 +16,7 @@ anyhow         = { workspace = true }
 bip32          = { workspace = true }
 cw-account     = { path = "../../contracts/account", features = ["library"] }
 cw-crypto      = { path = "../../crates/crypto" }
+cw-jmt         = { path = "../../crates/jellyfish-merkle" }
 cw-std         = { path = "../../crates/std" }
 hex            = { workspace = true }
 home           = { workspace = true }

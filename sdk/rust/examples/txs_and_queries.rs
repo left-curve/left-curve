@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
     thread::sleep(Duration::from_secs(2));
 
     // query the user's balances
-    let balances_before = client.query_balances(USER.clone(), None, None).await?;
+    let balances_before = client.query_balances(USER.clone(), None, None, None).await?;
     println!("\nuser balances before wrapping:\n{}", serde_json::to_string_pretty(&balances_before)?);
 
     // wrap some tokens
@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
     thread::sleep(Duration::from_secs(2));
 
     // query the user's balances again
-    let balances_after = client.query_balances(USER.clone(), None, None).await?;
+    let balances_after = client.query_balances(USER.clone(), None, None, None).await?;
     println!("\nuser balances after wrapping:\n{}", serde_json::to_string_pretty(&balances_after)?);
 
     Ok(())

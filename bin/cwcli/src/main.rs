@@ -20,31 +20,39 @@ const DEFAULT_KEY_DIR: &str = ".cwcli/keys";
 #[command(author, version, about, next_display_order = None)]
 struct Cli {
     #[command(subcommand)]
-    pub command: Command,
+    command: Command,
 
     /// Tendermint RPC address
     #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
-    pub node: String,
+    node: String,
 
     /// Directory for storing keys [default: ~/.cwcli/keys]
     #[arg(long, global = true)]
-    pub key_dir: Option<PathBuf>,
+    key_dir: Option<PathBuf>,
 
     /// Name of the key to sign transactions
     #[arg(long, global = true)]
-    pub key_name: Option<String>,
+    key_name: Option<String>,
 
     /// Transaction sender address
     #[arg(long, global = true)]
-    pub sender: Option<Addr>,
+    sender: Option<Addr>,
 
     /// Chain identifier [default: query from chain]
     #[arg(long, global = true)]
-    pub chain_id: Option<String>,
+    chain_id: Option<String>,
 
     /// Account sequence number [default: query from chain]
     #[arg(long, global = true)]
-    pub sequence: Option<u32>,
+    sequence: Option<u32>,
+
+    /// The block height at which to perform queries [default: last finalized height]
+    #[arg(long, global = true)]
+    height: Option<u64>,
+
+    /// Whether to request Merkle proof for raw store queries [default: false]
+    #[arg(long, global = true, default_value_t = false)]
+    prove: bool,
 }
 
 #[derive(Parser)]
@@ -79,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Key(cmd) => cmd.run(key_dir),
-        Command::Query(cmd) => cmd.run(&cli.node).await,
+        Command::Query(cmd) => cmd.run(&cli.node, cli.height, cli.prove).await,
         Command::Tendermint(cmd) => cmd.run(&cli.node).await,
         Command::Tx(cmd) => {
             cmd.run(&cli.node, key_dir, cli.key_name, cli.sender, cli.chain_id, cli.sequence).await
