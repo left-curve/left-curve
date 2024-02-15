@@ -1,12 +1,16 @@
 use {
-    crate::{CacheStore, DbResult, U64Comparator, U64Timestamp},
+    crate::{CacheStore, DbError, DbResult, U64Comparator, U64Timestamp},
     cw_jmt::{MerkleTree, Proof},
     cw_std::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
-    std::{cell::OnceCell, path::Path, sync::Arc},
+    std::{
+        cell::OnceCell,
+        path::Path,
+        sync::{Arc, RwLock},
+    },
 };
 
 /// We use three column families (CFs) for storing data.
@@ -65,13 +69,27 @@ const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 /// have time to look into those advanced features yet. We will keep experimenting
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct BaseStore {
-    db: Arc<DBWithThreadMode<MultiThreaded>>,
+    inner: Arc<BaseStoreInner>,
+}
+
+struct BaseStoreInner {
+    db: DBWithThreadMode<MultiThreaded>,
+    // data that are ready to be persisted to the physical database.
+    // ideally we want to just use a rocksdb::WriteBatch here, but it's not
+    // thread-safe.
+    pending_data: RwLock<Option<PendingData>>,
+}
+
+pub(crate) struct PendingData {
+    version: u64,
+    state_commitment: Batch,
+    state_storage: Batch,
 }
 
 impl Clone for BaseStore {
     fn clone(&self) -> Self {
         Self {
-            db: Arc::clone(&self.db),
+            inner: Arc::clone(&self.inner),
         }
     }
 }
@@ -92,7 +110,10 @@ impl BaseStore {
         )?;
 
         Ok(Self {
-            db: Arc::new(db),
+            inner: Arc::new(BaseStoreInner {
+                db,
+                pending_data: RwLock::new(None),
+            }),
         })
     }
 
@@ -105,7 +126,7 @@ impl BaseStore {
     /// leads to panicking. Wrap it in a `CacheStore` instead.
     fn state_commitment(&self) -> StateCommitment {
         StateCommitment {
-            db: Arc::clone(&self.db),
+            inner: Arc::clone(&self.inner),
         }
     }
 
@@ -117,7 +138,7 @@ impl BaseStore {
     /// leads to panicking. Wrap it in a `CacheStore` instead.
     pub fn state_storage(&self, version: Option<u64>) -> StateStorage {
         StateStorage {
-            db: Arc::clone(&self.db),
+            inner: Arc::clone(&self.inner),
             opts: OnceCell::new(),
             version: version.unwrap_or_else(|| self.latest_version()),
         }
@@ -125,7 +146,7 @@ impl BaseStore {
 
     /// Return the latest version of the state that the database stores.
     pub fn latest_version(&self) -> u64 {
-        let maybe_bytes = self.db.get_cf(&cf_default(&self.db), LATEST_VERSION_KEY).unwrap_or_else(|err| {
+        let maybe_bytes = self.inner.db.get_cf(&cf_default(&self.inner.db), LATEST_VERSION_KEY).unwrap_or_else(|err| {
             panic!("failed to read from default column family: {err}");
         });
 
@@ -158,46 +179,75 @@ impl BaseStore {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
     }
 
-    /// Flush a batch of ops (inserts/deletes) into the database, incrementing
-    /// the version. Return the updated version and hash.
-    pub fn flush(&self, batch: &Batch) -> DbResult<(u64, Option<Hash>)> {
+    /// Flush a batch of ops (inserts/deletes) into a write batch, incrementing
+    /// the version. Return the updated version and hash. However, do not persist
+    /// the batch to disk yet; just keep it in memory. Call `commit` to persist
+    /// it to disk. This behavior to for intended for use in this ABCI
+    /// `FinalizeBlock` call.
+    pub fn flush_but_not_commit(&mut self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+        // a write batch must not already exist. if it does, it means a batch
+        // has been flushed, but not committed, then a next batch is flusehd,
+        // which indicates some error in the ABCI app's logic.
+        if self.inner.pending_data.read()?.is_some() {
+            return Err(DbError::PendingDataAlreadySet);
+        }
+
         let old_version = self.latest_version();
         let new_version = old_version + 1;
-        let ts = U64Timestamp::from(new_version);
-        let mut write_batch = WriteBatch::default();
 
         // commit hashed KVs to state commitment
-        // note: the column family does not have timestamping enabled
-        let cf = cf_state_commitment(&self.db);
+        // the DB writes here are kept in the in-memory PendingData
         let mut cache = CacheStore::new(self.state_commitment(), None);
-        let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, batch)?;
-        for (key, op) in cache.pending {
+        let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
+
+        *(self.inner.pending_data.write()?) = Some(PendingData {
+            version: new_version,
+            state_commitment: cache.pending,
+            state_storage: batch,
+        });
+
+        Ok((new_version, root_hash))
+    }
+
+    /// Persist pending data to the physical DB.
+    pub fn commit(&mut self) -> DbResult<()> {
+        let pending = self.inner.pending_data.write()?.take().ok_or(DbError::PendingDataNotSet)?;
+        let mut batch = WriteBatch::default();
+
+        // set the new version (note: use little endian)
+        let cf = cf_default(&self.inner.db);
+        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+
+        // writes in state commitment
+        let cf = cf_state_commitment(&self.inner.db);
+        for (key, op) in pending.state_commitment {
             if let Op::Insert(value) = op {
-                write_batch.put_cf(&cf, key, value);
+                batch.put_cf(&cf, key, value);
             } else {
-                write_batch.delete_cf(&cf, key);
+                batch.delete_cf(&cf, key);
             }
         }
 
-        // write raw KVs to state storage
-        // note: the column family *does* have timestamping enabled
-        let cf = cf_state_storage(&self.db);
-        for (key, op) in batch {
+        // writes in state storage (note: don't forget timestamping)
+        let cf = cf_state_storage(&self.inner.db);
+        let ts = U64Timestamp::from(pending.version);
+        for (key, op) in pending.state_storage {
             if let Op::Insert(value) = op {
-                write_batch.put_cf_with_ts(&cf, key, ts, value);
+                batch.put_cf_with_ts(&cf, key, ts, value);
             } else {
-                write_batch.delete_cf_with_ts(&cf, key, ts);
+                batch.delete_cf_with_ts(&cf, key, ts);
             }
         }
 
-        // write the latest version
-        // note: use little endian encoding; the column family does not have
-        // timestamping enabled
-        write_batch.put_cf(&cf_default(&self.db), LATEST_VERSION_KEY, new_version.to_le_bytes());
+        Ok(self.inner.db.write(batch)?)
+    }
 
-        // write the batch to physical DB
-        self.db.write(write_batch)?;
-
+    /// Do `flush_but_not_commit` and `commit` in one go. This isn't actually
+    /// used by the real ABCI app. Only used in tests for simplifying the code.
+    #[cfg(test)]
+    pub fn flush_and_commit(&mut self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+        let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
+        self.commit()?;
         Ok((new_version, root_hash))
     }
 }
@@ -205,20 +255,20 @@ impl BaseStore {
 // ----------------------------- state commitment ------------------------------
 
 pub struct StateCommitment {
-    db: Arc<DBWithThreadMode<MultiThreaded>>,
+    inner: Arc<BaseStoreInner>,
 }
 
 impl Clone for StateCommitment {
     fn clone(&self) -> Self {
         Self {
-            db: Arc::clone(&self.db),
+            inner: Arc::clone(&self.inner),
         }
     }
 }
 
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.db.get_cf(&cf_state_commitment(&self.db), key).unwrap_or_else(|err| {
+        self.inner.db.get_cf(&cf_state_commitment(&self.inner.db), key).unwrap_or_else(|err| {
             panic!("failed to read from state commitment: {err}");
         })
     }
@@ -248,7 +298,7 @@ impl Storage for StateCommitment {
 // ------------------------------- state storage -------------------------------
 
 pub struct StateStorage {
-    db: Arc<DBWithThreadMode<MultiThreaded>>,
+    inner: Arc<BaseStoreInner>,
     opts: OnceCell<ReadOptions>,
     version: u64,
 }
@@ -262,7 +312,7 @@ impl StateStorage {
 impl Clone for StateStorage {
     fn clone(&self) -> Self {
         Self {
-            db: Arc::clone(&self.db),
+            inner: Arc::clone(&self.inner),
             opts: OnceCell::new(),
             version: self.version,
         }
@@ -271,7 +321,7 @@ impl Clone for StateStorage {
 
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.db.get_cf_opt(&cf_state_storage(&self.db), key, self.read_opts()).unwrap_or_else(|err| {
+        self.inner.db.get_cf_opt(&cf_state_storage(&self.inner.db), key, self.read_opts()).unwrap_or_else(|err| {
             panic!("failed to read from state storage: {err}");
         })
     }
@@ -287,7 +337,7 @@ impl Storage for StateStorage {
             Order::Ascending => IteratorMode::Start,
             Order::Descending => IteratorMode::End,
         };
-        let iter = self.db.iterator_cf_opt(&cf_state_storage(&self.db), opts, mode).map(|item| {
+        let iter = self.inner.db.iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode).map(|item| {
             let (k, v) = item.unwrap_or_else(|err| {
                 panic!("failed to iterate in state storage: {err}");
             });
@@ -540,7 +590,7 @@ mod tests {
     #[test]
     fn base_store_works() {
         let path = DBPath::new("_cw_db_base_store_works");
-        let store = BaseStore::open(&path).unwrap();
+        let mut store = BaseStore::open(&path).unwrap();
 
         // write a batch with version = 1
         let batch = Batch::from([
@@ -549,7 +599,7 @@ mod tests {
             (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
             (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
         ]);
-        let (version, root_hash) = store.flush(&batch).unwrap();
+        let (version, root_hash) = store.flush_and_commit(batch).unwrap();
         assert_eq!(version, 1);
         assert_eq!(root_hash, Some(v1::ROOT_HASH));
 
@@ -559,7 +609,7 @@ mod tests {
             (b"joe".to_vec(), Op::Delete),
             (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
         ]);
-        let (version, root_hash) = store.flush(&batch).unwrap();
+        let (version, root_hash) = store.flush_and_commit(batch).unwrap();
         assert_eq!(version, 2);
         assert_eq!(root_hash, Some(v2::ROOT_HASH));
 
