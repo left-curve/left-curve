@@ -1,10 +1,10 @@
 use {
-    anyhow::anyhow, clap::Parser, cw_app::App, cw_std::MockStorage, home::home_dir,
+    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::BaseStore, home::home_dir,
     std::path::PathBuf, tracing::metadata::LevelFilter,
 };
 
 // relative to user home directory (~)
-const DEFAULT_DB_DIR: &str = ".cwd";
+const DEFAULT_DATA_DIR: &str = ".cwd";
 
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
@@ -16,10 +16,6 @@ struct Cli {
     /// Directory for the physical database
     #[arg(long)]
     pub db_dir: Option<PathBuf>,
-
-    /// Use an in-memory mock storage instead of a persisted physical database
-    #[arg(long)]
-    pub mock: bool,
 
     /// Buffer size for reading chunks of incoming data from client
     #[arg(long, default_value = "1048576")]
@@ -38,19 +34,15 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(cli.tracing_level).init();
 
     // find DB directory
-    let _db_dir = if let Some(dir) = cli.db_dir {
+    let data_dir = if let Some(dir) = cli.db_dir {
         dir
     } else {
-        let home_dir = home_dir().ok_or(anyhow!("Failed to find home directory"))?;
-        home_dir.join(DEFAULT_DB_DIR)
+        let home_dir = home_dir().ok_or(anyhow!("failed to find home directory"))?;
+        home_dir.join(DEFAULT_DATA_DIR)
     };
 
     // create DB backend
-    let store = if cli.mock {
-        MockStorage::new()
-    } else {
-        todo!("persisted DB backend isn't implemented yet")
-    };
+    let store = BaseStore::open(data_dir)?;
 
     // start the ABCI server
     App::new(store).start_abci_server(cli.read_buf_size, cli.addr).map_err(Into::into)

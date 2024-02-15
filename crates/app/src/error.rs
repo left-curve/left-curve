@@ -1,4 +1,5 @@
 use {
+    cw_db::DbError,
     cw_std::{Addr, Hash, StdError},
     cw_vm::VmError,
     thiserror::Error,
@@ -12,14 +13,11 @@ pub enum AppError {
     #[error(transparent)]
     Vm(#[from] VmError),
 
-    #[error("Pending data lock is poisoned")]
-    PendingDataPoisoned,
+    #[error(transparent)]
+    Db(#[from] DbError),
 
-    #[error("Pending data is not set")]
-    PendingDataNotSet,
-
-    #[error("Pending data already exists")]
-    PendingDataExists,
+    #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
+    ProofNotSupported,
 
     #[error("Owner account is not set")]
     OwnerNotSet,

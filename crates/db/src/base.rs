@@ -146,18 +146,16 @@ impl BaseStore {
 
     /// Return the latest version of the state that the database stores.
     pub fn latest_version(&self) -> u64 {
-        let maybe_bytes = self.inner.db.get_cf(&cf_default(&self.inner.db), LATEST_VERSION_KEY).unwrap_or_else(|err| {
+        let cf = cf_default(&self.inner.db);
+        let maybe_bytes = self.inner.db.get_cf(&cf, LATEST_VERSION_KEY).unwrap_or_else(|err| {
             panic!("failed to read from default column family: {err}");
         });
-
         let Some(bytes) = maybe_bytes else {
             return 0;
         };
-
         let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
             panic!("latest version is of incorrect byte length: {}", bytes.len());
         });
-
         u64::from_le_bytes(array)
     }
 
@@ -184,7 +182,7 @@ impl BaseStore {
     /// the batch to disk yet; just keep it in memory. Call `commit` to persist
     /// it to disk. This behavior to for intended for use in this ABCI
     /// `FinalizeBlock` call.
-    pub fn flush_but_not_commit(&mut self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+    pub fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
         // a write batch must not already exist. if it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
@@ -210,7 +208,7 @@ impl BaseStore {
     }
 
     /// Persist pending data to the physical DB.
-    pub fn commit(&mut self) -> DbResult<()> {
+    pub fn commit(&self) -> DbResult<()> {
         let pending = self.inner.pending_data.write()?.take().ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
 
@@ -242,10 +240,11 @@ impl BaseStore {
         Ok(self.inner.db.write(batch)?)
     }
 
-    /// Do `flush_but_not_commit` and `commit` in one go. This isn't actually
-    /// used by the real ABCI app. Only used in tests for simplifying the code.
-    #[cfg(test)]
-    pub fn flush_and_commit(&mut self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+    /// Do `flush_but_not_commit` and `commit` in one go.
+    ///
+    /// This is used in ABCI InitChain call. For the FinalizeBlock call, we flush
+    /// but don't commit; only commit in the Commit call.
+    pub fn flush_and_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
         let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
         self.commit()?;
         Ok((new_version, root_hash))
@@ -426,51 +425,11 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
 mod tests {
     use {
         super::*,
+        crate::TempDataDir,
         cw_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
         cw_std::Hash,
         hex_literal::hex,
-        rocksdb::DB,
-        std::path::PathBuf,
-        tempfile::TempDir,
     };
-
-    /// Temporary database path which calls DB::destroy when DBPath is dropped.
-    /// Copyed from rust-rocksdb:
-    /// https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8
-    struct DBPath {
-        #[allow(dead_code)]
-        dir:  TempDir, // keep the value alive so that the directory isn't deleted prematurely
-        path: PathBuf,
-    }
-
-    impl DBPath {
-        /// Produces a fresh (non-existent) temporary path which will be
-        /// DB::destroy'ed automatically.
-        pub fn new(prefix: &str) -> Self {
-            let dir = tempfile::Builder::new().prefix(prefix).tempdir().unwrap_or_else(|err| {
-                panic!("failed to create temporary directory for DB: {err}");
-            });
-            let path = dir.path().join("db");
-            Self { dir, path }
-        }
-    }
-
-    impl Drop for DBPath {
-        fn drop(&mut self) {
-            DB::destroy(&Options::default(), &self.path).unwrap_or_else(|err| {
-                panic!("failed to destroy DB: {err}");
-            });
-        }
-    }
-
-    // implement for &DBPath (reference) instead of for DBPath (owned value)
-    // because we want to make sure the owned value lives until the end of its
-    // scope, so that the DB isn't destroyed prematurely.
-    impl AsRef<Path> for &DBPath {
-        fn as_ref(&self) -> &Path {
-            &self.path
-        }
-    }
 
     // using the same test case as in our rust-rocksdb fork:
     // https://github.com/cwsoftware123/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
@@ -589,8 +548,8 @@ mod tests {
 
     #[test]
     fn base_store_works() {
-        let path = DBPath::new("_cw_db_base_store_works");
-        let mut store = BaseStore::open(&path).unwrap();
+        let path = TempDataDir::new("_cw_db_base_store_works");
+        let store = BaseStore::open(&path).unwrap();
 
         // write a batch with version = 1
         let batch = Batch::from([

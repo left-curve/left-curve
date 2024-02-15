@@ -1,10 +1,11 @@
 use {
     cfg_if::cfg_if,
     cw_app::App,
+    cw_db::{BaseStore, TempDataDir},
     cw_mock_querier::QueryMsg,
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, Empty, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Uint64, GENESIS_SENDER,
+        QueryRequest, QueryResponse, Timestamp, Uint64, GENESIS_SENDER,
     },
     serde::ser::Serialize,
     std::{env, fs::File, io::Read, path::PathBuf},
@@ -16,7 +17,9 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
-    let app = App::new(MockStorage::new());
+    let data_dir = TempDataDir::new("_cw_app_querier");
+    let store = BaseStore::open(&data_dir)?;
+    let app = App::new(store);
 
     println!("🤖 Reading wasm byte code from file");
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
@@ -91,15 +94,18 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn query_wasm_smart<S, M>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
+fn query_wasm_smart<M>(app: &App, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
-    S: Storage + 'static,
     M: Serialize,
 {
-    let data = from_json::<QueryResponse>(app.do_query_app(&to_json(&QueryRequest::WasmSmart {
-        contract: contract.clone(),
-        msg: to_json(msg)?,
-    })?)?)?
+    let data = from_json::<QueryResponse>(app.do_query_app(
+        &to_json(&QueryRequest::WasmSmart {
+            contract: contract.clone(),
+            msg: to_json(msg)?,
+        })?,
+        0,
+        false,
+    )?)?
     .as_wasm_smart()
     .data;
 

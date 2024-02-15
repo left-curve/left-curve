@@ -14,8 +14,8 @@ cw-jmt    = { path = "../jellyfish-merkle" }
 cw-std    = { path = "../std" }
 cw-vm     = { path = "../vm" }
 rocksdb   = { workspace = true }
+tempfile  = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 hex-literal = { workspace = true }
-tempfile    = { workspace = true }

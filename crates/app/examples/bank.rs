@@ -9,10 +9,10 @@ use {
     cw_app::App,
     cw_bank::Balance,
     cw_crypto::Identity256,
+    cw_db::{BaseStore, TempDataDir},
     cw_std::{
         from_json, hash, to_json, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash,
-        Message, MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint128, Uint64,
-        GENESIS_SENDER,
+        Message, QueryRequest, QueryResponse, Timestamp, Tx, Uint128, Uint64, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     lazy_static::lazy_static,
@@ -35,7 +35,9 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     println!("🤖 Creating app");
-    let app = App::new(MockStorage::new());
+    let data_dir = TempDataDir::new("_cw_app_bank");
+    let store = BaseStore::open(&data_dir)?;
+    let app = App::new(store);
 
     println!("🤖 Reading wasm byte codes from files");
     let account_wasm = read_wasm_byte_code("cw_account")?;
@@ -274,19 +276,18 @@ fn make_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn query_all_balances<S>(app: &App<S>, accounts: &[TestAccount]) -> anyhow::Result<()>
-where
-    S: Storage + 'static,
-{
+fn query_all_balances(app: &App, accounts: &[TestAccount]) -> anyhow::Result<()> {
     let mut resps = BTreeMap::new();
     for acct in accounts {
-        let balances = from_json::<QueryResponse>(
-            &app.do_query_app(&to_json(&QueryRequest::Balances {
+        let balances = from_json::<QueryResponse>(&app.do_query_app(
+            &to_json(&QueryRequest::Balances {
                 address: acct.addr.clone(),
                 start_after: None,
                 limit: None,
-            })?)?
-        )?
+            })?,
+            0,
+            false,
+        )?)?
         .as_balances();
 
         if !balances.is_empty() {
@@ -299,16 +300,15 @@ where
     Ok(())
 }
 
-fn query_supplies<S>(app: &App<S>) -> anyhow::Result<()>
-where
-    S: Storage + 'static,
-{
-    let supplies = from_json::<QueryResponse>(
-        app.do_query_app(&to_json(&QueryRequest::Supplies {
+fn query_supplies(app: &App) -> anyhow::Result<()> {
+    let supplies = from_json::<QueryResponse>(app.do_query_app(
+        &to_json(&QueryRequest::Supplies {
             start_after: None,
             limit:       None,
-        })?)?
-    )?
+        })?,
+        0,
+        false,
+    )?)?
     .as_supplies();
 
     println!("{}", serde_json::to_string_pretty(&supplies)?);

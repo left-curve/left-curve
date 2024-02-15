@@ -8,9 +8,10 @@ use {
     cw_account::{sign_bytes, ExecuteMsg, InstantiateMsg, PubKey, QueryMsg, StateResponse},
     cw_app::App,
     cw_crypto::Identity256,
+    cw_db::{BaseStore, TempDataDir},
     cw_std::{
         from_json, hash, to_json, Addr, BlockInfo, Coins, Config, GenesisState, Message,
-        MockStorage, QueryRequest, QueryResponse, Storage, Timestamp, Tx, Uint64, GENESIS_SENDER,
+        QueryRequest, QueryResponse, Timestamp, Tx, Uint64, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
     rand::{rngs::StdRng, SeedableRng},
@@ -24,7 +25,9 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
     println!("🤖 Creating app");
-    let app = App::new(MockStorage::new());
+    let data_dir = TempDataDir::new("_cw_app_account");
+    let store = BaseStore::open(&data_dir)?;
+    let app = App::new(store);
 
     println!("🤖 Reading wasm byte code from file");
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
@@ -161,10 +164,10 @@ fn main() -> anyhow::Result<()> {
     })?;
 
     println!("🤖 Querying account 1 state");
-    query_wasm_smart::<_, _, StateResponse>(&app, &address1, &QueryMsg::State {})?;
+    query_wasm_smart::<_, StateResponse>(&app, &address1, &QueryMsg::State {})?;
 
     println!("🤖 Querying account 2 state");
-    query_wasm_smart::<_, _, StateResponse>(&app, &address2, &QueryMsg::State {})?;
+    query_wasm_smart::<_, StateResponse>(&app, &address2, &QueryMsg::State {})?;
 
     Ok(())
 }
@@ -177,18 +180,22 @@ fn mock_block_info(height: u64, timestamp: u64) -> BlockInfo {
     }
 }
 
-fn new_tx<S: Storage + 'static>(
-    app:    &App<S>,
+fn new_tx(
+    app:    &App,
     sender: &Addr,
     sk:     &SigningKey,
     msgs:   Vec<Message>,
 ) -> anyhow::Result<Tx> {
     // query account sequence
     let sequence = from_json::<StateResponse>(from_json::<QueryResponse>(app
-        .do_query_app(&to_json(&QueryRequest::WasmSmart {
-            contract: sender.clone(),
-            msg: to_json(&QueryMsg::State {})?,
-        })?)?)?
+        .do_query_app(
+            &to_json(&QueryRequest::WasmSmart {
+                contract: sender.clone(),
+                msg: to_json(&QueryMsg::State {})?,
+            })?,
+            0,
+            false,
+        )?)?
         .as_wasm_smart()
         .data)?
         .sequence;
@@ -212,26 +219,27 @@ fn new_tx<S: Storage + 'static>(
     Ok(tx)
 }
 
-fn query<S>(app: &App<S>, req: QueryRequest) -> anyhow::Result<()>
-where
-    S: Storage + 'static,
-{
-    let resp = app.do_query_app(&to_json(&req)?)?;
+fn query(app: &App, req: QueryRequest) -> anyhow::Result<()> {
+    let resp = app.do_query_app(&to_json(&req)?, 0, false)?;
     println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())
 }
 
-fn query_wasm_smart<S, M, T>(app: &App<S>, contract: &Addr, msg: &M) -> anyhow::Result<()>
+fn query_wasm_smart<M, T>(app: &App, contract: &Addr, msg: &M) -> anyhow::Result<()>
 where
-    S: Storage + 'static,
     M: Serialize,
     T: Serialize + DeserializeOwned,
 {
     let resp: T = from_json(
-        from_json::<QueryResponse>(&app.do_query_app(&to_json(&QueryRequest::WasmSmart {
-            contract: contract.clone(),
-            msg: to_json(msg)?,
-        })?)?)?
+        from_json::<QueryResponse>(
+            &app.do_query_app(
+                &to_json(&QueryRequest::WasmSmart {
+                contract: contract.clone(),
+                msg: to_json(msg)?,
+            })?,
+            0,
+            false,
+        )?)?
         .as_wasm_smart()
         .data,
     )?;

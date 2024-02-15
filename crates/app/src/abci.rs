@@ -1,24 +1,14 @@
 use {
-    crate::{App, AppResult},
-    cw_std::{Attribute, BlockInfo, Event, Hash, Storage, Timestamp, Uint64, GENESIS_BLOCK_HASH},
-    prost::bytes::Bytes,
-    std::net::ToSocketAddrs,
-    tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
-    tendermint_proto::{
+    crate::{App, AppResult}, cw_jmt::Proof, cw_std::{Attribute, BlockInfo, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH}, prost::bytes::Bytes, std::{any::type_name, net::ToSocketAddrs}, tendermint_abci::{Application, Error as ABCIError, ServerBuilder}, tendermint_proto::{
         abci::{
             Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx,
             RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx,
             ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery,
-        },
-        google::protobuf::Timestamp as TmTimestamp,
-    },
-    tracing::Value,
+        }, crypto::{ProofOp, ProofOps}, google::protobuf::Timestamp as TmTimestamp,
+    }, tracing::Value
 };
 
-impl<S> App<S>
-where
-    S: Storage + Clone + Send + Sync + 'static,
-{
+impl App {
     pub fn start_abci_server(
         self,
         read_buf_size: usize,
@@ -30,10 +20,7 @@ where
     }
 }
 
-impl<S> Application for App<S>
-where
-    S: Storage + Clone + Send + Sync + 'static,
-{
+impl Application for App {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {
             Ok((last_block_height, last_block_version)) => {
@@ -42,7 +29,7 @@ where
                     version:             env!("CARGO_PKG_VERSION").into(),
                     app_version:         1,
                     last_block_app_hash: last_block_version.into_vec().into(),
-                    last_block_height:   last_block_height.u64() as i64,
+                    last_block_height:   last_block_height as i64,
                 }
             },
             Err(err) => panic!("failed to get info: {err}"),
@@ -68,13 +55,13 @@ where
         let block = from_tm_block(req.height, req.time, Some(req.hash));
 
         match self.do_finalize_block(block, req.txs) {
-            Ok(tx_results) => {
+            Ok((app_hash, tx_results)) => {
                 ResponseFinalizeBlock {
                     events:                  vec![], // this should be begin/endblocker events, which we don't have yet
                     tx_results:              tx_results.into_iter().map(to_tm_tx_result).collect(),
                     validator_updates:       vec![],
                     consensus_param_updates: None,
-                    app_hash:                Hash::ZERO.into_vec().into(),
+                    app_hash:                app_hash.into_vec().into(),
                 }
             },
             Err(err) => panic!("failed to finalize block: {err}"),
@@ -110,33 +97,50 @@ where
     // `prove` fields, and interpret `data` as a JSON-encoded QueryRequest.
     fn query(&self, req: RequestQuery) -> ResponseQuery {
         match req.path.as_str() {
-            "/app" => match self.do_query_app(&req.data) {
+            "/app" => match self.do_query_app(&req.data, req.height as u64, req.prove) {
                 Ok(res) => {
                     ResponseQuery {
                         code:  0,
                         value: res.to_vec().into(),
-                        // TODO: more fields...
                         ..Default::default()
                     }
                 },
                 Err(err) => {
                     ResponseQuery {
-                        code:      1,            // TODO: custom error code
-                        codespace: "app".into(), // TODO: custom error codespace
+                        code:      1,
+                        codespace: "app".into(),
                         log:       err.to_string(),
                         ..Default::default()
                     }
                 },
             },
-            "/store" => {
-                let maybe_value = self.do_query_store(&req.data, req.height as u64, req.prove);
-                ResponseQuery {
-                    code:      0,
-                    value:     maybe_value.unwrap_or_default().into(),
-                    height:    req.height,
-                    proof_ops: None, // TODO
-                    ..Default::default()
-                }
+            "/store" => match self.do_query_store(&req.data, req.height as u64, req.prove) {
+                Ok((value, proof)) => {
+                    let proof_ops = proof.map(|proof| {
+                        ProofOps {
+                            ops: vec![ProofOp {
+                                r#type: type_name::<Proof>().into(),
+                                key:    req.data.into(),
+                                data:   proof.into(),
+                            }],
+                        }
+                    });
+                    ResponseQuery {
+                        code:      0,
+                        value:     value.unwrap_or_default().into(),
+                        height:    req.height,
+                        proof_ops,
+                        ..Default::default()
+                    }
+                },
+                Err(err) => {
+                    ResponseQuery {
+                        code:      1,
+                        codespace: "store".into(),
+                        log:       err.to_string(),
+                        ..Default::default()
+                    }
+                },
             }
             unknown => {
                 ResponseQuery {
