@@ -140,23 +140,20 @@ impl BaseStore {
         StateStorage {
             inner: Arc::clone(&self.inner),
             opts: OnceCell::new(),
-            version: version.unwrap_or_else(|| self.latest_version()),
+            version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
         }
     }
 
     /// Return the latest version of the state that the database stores.
-    pub fn latest_version(&self) -> u64 {
+    pub fn latest_version(&self) -> Option<u64> {
         let cf = cf_default(&self.inner.db);
-        let maybe_bytes = self.inner.db.get_cf(&cf, LATEST_VERSION_KEY).unwrap_or_else(|err| {
+        let bytes = self.inner.db.get_cf(&cf, LATEST_VERSION_KEY).unwrap_or_else(|err| {
             panic!("failed to read from default column family: {err}");
-        });
-        let Some(bytes) = maybe_bytes else {
-            return 0;
-        };
+        })?;
         let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
             panic!("latest version is of incorrect byte length: {}", bytes.len());
         });
-        u64::from_le_bytes(array)
+        Some(u64::from_le_bytes(array))
     }
 
     /// Return the Merkle root hash of the state commitment at the given version
@@ -166,14 +163,14 @@ impl BaseStore {
     /// node) or if the version has been pruned. We can't different between
     /// these two possibilities.
     pub fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
-        let version = version.unwrap_or_else(|| self.latest_version());
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
     }
 
     /// Generate Merkle proof for a key at the given version (default to latest
     /// version if not specified).
     pub fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
-        let version = version.unwrap_or_else(|| self.latest_version());
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
     }
 
@@ -190,8 +187,16 @@ impl BaseStore {
             return Err(DbError::PendingDataAlreadySet);
         }
 
-        let old_version = self.latest_version();
-        let new_version = old_version + 1;
+        let (old_version, new_version) = match self.latest_version() {
+            // an old version exist.
+            // set the new version to be the old version plus one
+            Some(v) => (v, v + 1),
+            // the old version doesn't exist. this means not a first batch has
+            // been flushed yet. in this case we set the new version to be zero.
+            // this is necessary to ensure that BaseStore version always matches
+            // the block height.
+            None => (0, 0),
+        };
 
         // commit hashed KVs to state commitment
         // the DB writes here are kept in the in-memory PendingData

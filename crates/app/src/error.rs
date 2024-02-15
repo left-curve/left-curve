@@ -19,6 +19,12 @@ pub enum AppError {
     #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
     ProofNotSupported,
 
+    #[error("Incorrect block height! expecting: {expect}, actual: {actual}")]
+    IncorrectBlockHeight {
+        expect: u64,
+        actual: u64,
+    },
+
     #[error("Owner account is not set")]
     OwnerNotSet,
 
@@ -49,6 +55,10 @@ pub enum AppError {
 }
 
 impl AppError {
+    pub fn incorrect_block_height(expect: u64, actual: u64) -> Self {
+        Self::IncorrectBlockHeight { expect, actual }
+    }
+
     pub fn not_owner(sender: Addr, owner: Addr) -> Self {
         Self::NotOwner { sender, owner }
     }

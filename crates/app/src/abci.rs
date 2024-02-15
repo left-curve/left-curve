@@ -37,7 +37,10 @@ impl Application for App {
     }
 
     fn init_chain(&self, req: RequestInitChain) -> ResponseInitChain {
-        let block = from_tm_block(req.initial_height, req.time, None);
+        // ignore req.initial_height. we always consider the block height during
+        // InitChain to be zero. this is necessary to make sure BaseStore version
+        // always matches block height.
+        let block = from_tm_block(0, req.time, None);
 
         match self.do_init_chain(req.chain_id, block, &req.app_state_bytes) {
             Ok(app_hash) => {

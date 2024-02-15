@@ -123,7 +123,7 @@ impl<'a> MerkleTree<'a> {
     ) -> StdResult<Option<Hash>> {
         // the caller must make sure that versions are strictly incremental.
         // we assert this in debug mode must skip in release to save some time...
-        debug_assert!(new_version > old_version, "version is not incremental");
+        debug_assert!(new_version == 0 || new_version > old_version, "version is not incremental");
 
         // if an old root node exists (i.e. tree isn't empty at the old version),
         // mark it as orphaned

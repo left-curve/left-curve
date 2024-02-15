@@ -118,7 +118,7 @@ fn main() -> anyhow::Result<()> {
     // we've already updated key to sk3, but we still try to sign with sk1 here.
     // this should fail authentication. account1's sequence shouldn't be
     // incremented (should be 2).
-    let block = mock_block_info(2, 2);
+    let block = mock_block_info(3, 3);
     let tx = new_tx(&app, &address1, &sk1, vec![
         Message::Execute {
             contract: address1.clone(),
@@ -135,7 +135,7 @@ fn main() -> anyhow::Result<()> {
     // only the account itself can update its own key. this should pass
     // authentication, but the execute call should fail. account2's sequence
     // number should be incremented (to 1).
-    let block = mock_block_info(2, 2);
+    let block = mock_block_info(4, 4);
     let tx = new_tx(&app, &address2, &sk2, vec![
         Message::Execute {
             contract: address1.clone(),

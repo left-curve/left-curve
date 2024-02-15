@@ -35,6 +35,12 @@ impl App {
     ) -> AppResult<Hash> {
         let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
 
+        // make sure the block height during InitChain is zero. this is necessary
+        // to ensure that block height always matches the BaseStore version.
+        if block.height.u64() != 0 {
+            return Err(AppError::incorrect_block_height(0, block.height.u64()));
+        }
+
         // deserialize the genesis state
         let genesis_state: GenesisState = from_json(app_state_bytes)?;
 
@@ -56,9 +62,8 @@ impl App {
         let (_, pending) = cached.disassemble().disassemble();
         let (version, root_hash) = self.store.flush_and_commit(pending)?;
 
-        // genesis block height and DB version should both be 1
-        debug_assert_eq!(block.height.u64(), 1);
-        debug_assert_eq!(version, 1);
+        // BaseStore version should be 0
+        debug_assert_eq!(version, 0);
         // the root hash should not be None. it's only None when the merkle tree
         // is empty, but we have written some data to it (like the chain ID and
         // the config) so it shouldn't be empty.
@@ -83,6 +88,17 @@ impl App {
     ) -> AppResult<(Hash, Vec<AppResult<Vec<Event>>>)> {
         let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
         let mut tx_results = vec![];
+
+        // make sure the new block height is exactly the last finalized height
+        // plus one. this ensures that block height always matches the BaseStore
+        // version.
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&cached)?;
+        if block.height.u64() != last_finalized_block.height.u64() + 1 {
+            return Err(AppError::incorrect_block_height(
+                last_finalized_block.height.u64() + 1,
+                block.height.u64(),
+            ));
+        }
 
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
