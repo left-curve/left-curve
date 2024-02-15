@@ -77,8 +77,8 @@ impl BaseStore {
             &new_db_options(),
             data_dir,
             [
-                (CF_NAME_DEFAULT, new_cf_options()),
-                (CF_NAME_STATE_COMMITMENT, new_cf_options()),
+                (CF_NAME_DEFAULT, Options::default()),
+                (CF_NAME_STATE_COMMITMENT, Options::default()),
                 (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
             ],
         )?;
@@ -303,6 +303,9 @@ impl Storage for StateStorage {
 
 // ---------------------------------- helpers ----------------------------------
 
+// TODO: rocksdb tuning? see:
+// https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
+// https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
 fn new_db_options() -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
@@ -310,16 +313,8 @@ fn new_db_options() -> Options {
     opts
 }
 
-fn new_cf_options() -> Options {
-    let opts = Options::default();
-    // TODO: rocksdb tuning? see:
-    // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
-    // https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
-    opts
-}
-
 fn new_cf_options_with_ts() -> Options {
-    let mut opts = new_cf_options();
+    let mut opts = Options::default();
     // must use a timestamp-enabled comparator
     opts.set_comparator_with_ts(
         U64Comparator::NAME,
