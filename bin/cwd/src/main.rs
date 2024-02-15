@@ -15,7 +15,7 @@ struct Cli {
 
     /// Directory for the physical database
     #[arg(long)]
-    pub db_dir: Option<PathBuf>,
+    pub data_dir: Option<PathBuf>,
 
     /// Buffer size for reading chunks of incoming data from client
     #[arg(long, default_value = "1048576")]
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(cli.tracing_level).init();
 
     // find DB directory
-    let data_dir = if let Some(dir) = cli.db_dir {
+    let data_dir = if let Some(dir) = cli.data_dir {
         dir
     } else {
         let home_dir = home_dir().ok_or(anyhow!("failed to find home directory"))?;
