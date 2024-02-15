@@ -1,7 +1,7 @@
 // only run this test if the "fuzzing" feature is enabled.
 // this test takes very long to run, so we don't want it to be run by Github CI.
 // we only run it manually:
-// $ cargo test -p cw-jellyfish-merkle --features fuzzing --test fuzzing -- --nocapture
+// $ cargo test -p cw-jmt --features fuzzing --test fuzzing -- --nocapture
 #![cfg(feature = "fuzzing")]
 
 //! Our fuzzing strategy is as follows:
@@ -34,7 +34,7 @@ use {
 
 const TREE:        MerkleTree  = MerkleTree::new_default();
 const SEED:        Option<u64> = None;
-const NUM_BATCHES: usize       = 100;
+const NUM_BATCHES: u64         = 100;
 
 #[test]
 fn fuzzing() -> anyhow::Result<()> {
@@ -48,15 +48,15 @@ fn fuzzing() -> anyhow::Result<()> {
     let mut store = MockStorage::new();
 
     let batch = generate_initial_batch(&mut rng);
-    TREE.apply(&mut store, batch.clone()).unwrap();
+    TREE.apply(&mut store, 0, 1, batch.clone()).unwrap();
     log.extend(batch);
     check(&store, &log, 1)?;
 
-    for i in 2..=NUM_BATCHES {
+    for version in 2..=NUM_BATCHES {
         let batch = generate_subsequent_batch(&log, &mut rng);
-        TREE.apply(&mut store, batch.clone()).unwrap();
+        TREE.apply(&mut store, version - 1, version, batch.clone()).unwrap();
         log.extend(batch);
-        check(&store, &log, i)?;
+        check(&store, &log, version)?;
     }
 
     Ok(())
@@ -116,15 +116,15 @@ fn generate_subsequent_batch<R: Rng>(log: &Batch<Hash, Hash>, rng: &mut R) -> Ve
     batch.into_iter().collect()
 }
 
-fn check(store: &dyn Storage, log: &Batch<Hash, Hash>, i: usize) -> anyhow::Result<()> {
-    let Some(root_hash) = TREE.root_hash(store, None)? else {
-        bail!("batch {i}: root hash is empty");
+fn check(store: &dyn Storage, log: &Batch<Hash, Hash>, version: u64) -> anyhow::Result<()> {
+    let Some(root_hash) = TREE.root_hash(store, version)? else {
+        bail!("version {version}: root hash is empty");
     };
 
-    println!("batch {i}: root = {root_hash}");
+    println!("version {version}: root = {root_hash}");
 
     for (key_hash, op) in log {
-        let proof = TREE.prove(store, key_hash, None)?;
+        let proof = TREE.prove(store, key_hash, version)?;
         verify_proof(&root_hash, key_hash, op.as_ref().into_option(), &proof)?;
     }
 
