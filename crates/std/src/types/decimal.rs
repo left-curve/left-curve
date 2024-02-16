@@ -298,6 +298,11 @@ mod tests {
         b"\"0\"";
         "zero"
     )]
+    #[test_case(
+        u128::MAX,
+        b"\"340282366920938463463.374607431768211455\"";
+        "max"
+    )]
     fn serialization(inner: u128, output: &[u8]) {
         let decimal = Decimal(inner.into());
         assert_eq!(to_json(&decimal).unwrap().as_ref(), output);
@@ -337,6 +342,11 @@ mod tests {
         Some(0),
         b"\"0\"";
         "zero"
+    )]
+    #[test_case(
+        Some(u128::MAX),
+        b"\"340282366920938463463.374607431768211455\"";
+        "max"
     )]
     #[test_case(
         None,
