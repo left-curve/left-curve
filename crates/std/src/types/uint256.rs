@@ -1,13 +1,13 @@
 use {
     crate::{forward_ref_partial_eq, StdError, StdResult, Uint128},
     bnum::types::U256,
-    forward_ref::{forward_ref_binop, forward_ref_op_assign, forward_ref_unop},
+    forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         fmt,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign,
-            Shr, ShrAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+            ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -37,7 +37,7 @@ impl Uint256 {
     }
 
     // this function is made private for the same reason as `new`
-    pub(crate) fn u256(self) -> U256 {
+    pub(crate) const fn u256(self) -> U256 {
         self.0
     }
 
@@ -68,7 +68,7 @@ impl Uint256 {
 
     pub fn checked_div(self, other: Self) -> StdResult<Self> {
         self.0
-            .checked_mul(other.0)
+            .checked_div(other.0)
             .map(Self::new)
             .ok_or_else(|| StdError::division_by_zero(self))
     }
@@ -99,6 +99,10 @@ impl Uint256 {
             .checked_shr(rhs)
             .map(Self::new)
             .ok_or_else(|| StdError::overflow_shr(self, rhs))
+    }
+
+    pub fn checked_multiply_ratio(self, _nominator: Self, _denominator: Self) -> StdResult<Self> {
+        todo!("need Uint512 implemented first")
     }
 
     // note: unlike Uint64/128, there is no `checked_multiply_ratio` method for
@@ -215,16 +219,6 @@ impl ShrAssign<u32> for Uint256 {
     }
 }
 
-impl Not for Uint256 {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        Self(!self.0)
-    }
-}
-
-forward_ref_unop!(impl Not, not for Uint256);
-
 forward_ref_binop!(impl Add, add for Uint256, Uint256);
 forward_ref_binop!(impl Sub, sub for Uint256, Uint256);
 forward_ref_binop!(impl Mul, mul for Uint256, Uint256);
@@ -250,7 +244,7 @@ impl From<Uint128> for Uint256 {
 impl FromStr for Uint256 {
     type Err = StdError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> StdResult<Self> {
         U256::from_str(s)
             .map(Self)
             .map_err(|err| StdError::parse_number::<Self>(s, err))
@@ -293,14 +287,13 @@ impl<'de> de::Visitor<'de> for Uint256Visitor {
     type Value = Uint256;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("A string-encoded 256-bit unsigned integer")
+        f.write_str("a string-encoded 256-bit unsigned integer")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        let number = v.parse::<U256>().map_err(E::custom)?;
-        Ok(Uint256::new(number))
+        v.parse::<U256>().map(Uint256::new).map_err(E::custom)
     }
 }

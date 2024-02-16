@@ -1,12 +1,12 @@
 use {
     crate::{forward_ref_partial_eq, StdError, StdResult, Uint128},
-    forward_ref::{forward_ref_binop, forward_ref_op_assign, forward_ref_unop},
+    forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         fmt,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign,
-            Shr, ShrAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+            ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -32,7 +32,7 @@ impl Uint64 {
         Self(value)
     }
 
-    pub fn u64(self) -> u64 {
+    pub const fn u64(self) -> u64 {
         self.0
     }
 
@@ -63,7 +63,7 @@ impl Uint64 {
 
     pub fn checked_div(self, other: Self) -> StdResult<Self> {
         self.0
-            .checked_mul(other.0)
+            .checked_div(other.0)
             .map(Self::new)
             .ok_or_else(|| StdError::division_by_zero(self))
     }
@@ -210,16 +210,6 @@ impl ShrAssign<u32> for Uint64 {
     }
 }
 
-impl Not for Uint64 {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        Self(!self.0)
-    }
-}
-
-forward_ref_unop!(impl Not, not for Uint64);
-
 forward_ref_binop!(impl Add, add for Uint64, Uint64);
 forward_ref_binop!(impl Sub, sub for Uint64, Uint64);
 forward_ref_binop!(impl Mul, mul for Uint64, Uint64);
@@ -242,6 +232,12 @@ impl From<u64> for Uint64 {
     }
 }
 
+impl From<Uint64> for u64 {
+    fn from(value: Uint64) -> Self {
+        value.0
+    }
+}
+
 impl TryFrom<Uint128> for Uint64 {
     type Error = StdError;
 
@@ -257,7 +253,7 @@ impl TryFrom<Uint128> for Uint64 {
 impl FromStr for Uint64 {
     type Err = StdError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> StdResult<Self> {
         u64::from_str(s)
             .map(Self)
             .map_err(|err| StdError::parse_number::<Self>(s, err))
@@ -300,14 +296,13 @@ impl<'de> de::Visitor<'de> for Uint64Visitor {
     type Value = Uint64;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("A string-encoded 64-bit unsigned integer")
+        f.write_str("a string-encoded 64-bit unsigned integer")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        let number = v.parse::<u64>().map_err(E::custom)?;
-        Ok(Uint64::new(number))
+        v.parse::<u64>().map(Uint64::new).map_err(E::custom)
     }
 }

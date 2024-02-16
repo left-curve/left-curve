@@ -1,12 +1,15 @@
 use {
-    super::uint256::Uint256, crate::{forward_ref_partial_eq, StdError, StdResult, Uint64}, forward_ref::{forward_ref_binop, forward_ref_op_assign, forward_ref_unop}, serde::{de, ser}, std::{
+    crate::{forward_ref_partial_eq, StdError, StdResult, Uint256, Uint64},
+    forward_ref::{forward_ref_binop, forward_ref_op_assign},
+    serde::{de, ser},
+    std::{
         fmt,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign,
-            Shr, ShrAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+            ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
-    }
+    },
 };
 
 /// A wrapper of uint128, serialized as a string.
@@ -29,7 +32,7 @@ impl Uint128 {
         Self(value)
     }
 
-    pub fn u128(self) -> u128 {
+    pub const fn u128(self) -> u128 {
         self.0
     }
 
@@ -60,7 +63,7 @@ impl Uint128 {
 
     pub fn checked_div(self, other: Self) -> StdResult<Self> {
         self.0
-            .checked_mul(other.0)
+            .checked_div(other.0)
             .map(Self::new)
             .ok_or_else(|| StdError::division_by_zero(self))
     }
@@ -207,16 +210,6 @@ impl ShrAssign<u32> for Uint128 {
     }
 }
 
-impl Not for Uint128 {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        Self(!self.0)
-    }
-}
-
-forward_ref_unop!(impl Not, not for Uint128);
-
 forward_ref_binop!(impl Add, add for Uint128, Uint128);
 forward_ref_binop!(impl Sub, sub for Uint128, Uint128);
 forward_ref_binop!(impl Mul, mul for Uint128, Uint128);
@@ -236,6 +229,12 @@ forward_ref_op_assign!(impl ShrAssign, shr_assign for Uint128, u32);
 impl From<u128> for Uint128 {
     fn from(value: u128) -> Self {
         Self(value)
+    }
+}
+
+impl From<Uint128> for u128 {
+    fn from(value: Uint128) -> Self {
+        value.0
     }
 }
 
@@ -260,7 +259,7 @@ impl TryFrom<Uint256> for Uint128 {
 impl FromStr for Uint128 {
     type Err = StdError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> StdResult<Self> {
         u128::from_str(s)
             .map(Self)
             .map_err(|err| StdError::parse_number::<Self>(s, err))
@@ -303,14 +302,13 @@ impl<'de> de::Visitor<'de> for Uint128Visitor {
     type Value = Uint128;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("A string-encoded 128-bit unsigned integer")
+        f.write_str("a string-encoded 128-bit unsigned integer")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        let number = v.parse::<u128>().map_err(E::custom)?;
-        Ok(Uint128::new(number))
+        v.parse::<u128>().map(Uint128::new).map_err(E::custom)
     }
 }

@@ -4,6 +4,7 @@ mod bank;
 mod binary;
 mod coin;
 mod context;
+mod decimal;
 mod empty;
 mod event;
 mod hash;
@@ -26,6 +27,7 @@ pub use {
         BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx,
         ReplyCtx, TransferCtx,
     },
+    decimal::Decimal,
     empty::Empty,
     event::{Attribute, Event},
     hash::{hash, Hash},
@@ -38,5 +40,6 @@ pub use {
     timestamp::Timestamp,
     tx::{Message, Tx},
     uint128::Uint128,
+    uint256::Uint256,
     uint64::Uint64,
 };

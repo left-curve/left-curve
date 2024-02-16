@@ -864,6 +864,7 @@ dependencies = [
  "serde-json-wasm",
  "serde_with",
  "sha2 0.10.8",
+ "test-case",
  "thiserror",
 ]
 
