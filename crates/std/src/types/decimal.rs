@@ -14,7 +14,7 @@ use {
 
 /// 128-bit fixed point decimal number.
 ///
-/// The low 17 digits of the number are considered to be decimal places.
+/// The number's low 18 digits are considered to be decimal places.
 /// Meaning, for example, if the inner Uint128 is
 ///
 /// ```plain
