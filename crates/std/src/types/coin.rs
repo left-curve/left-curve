@@ -15,10 +15,10 @@ pub struct Coin {
 }
 
 impl Coin {
-    pub fn new(denom: impl Into<String>, amount: u128) -> Self {
+    pub fn new(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
         Self {
             denom:  denom.into(),
-            amount: Uint128::new(amount),
+            amount: amount.into(),
         }
     }
 }
