@@ -19,7 +19,7 @@ use {
 /// Numbers beyond this range (uint64, uint128...) need to serialize as strings.
 /// https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Uint256(U256);
+pub struct Uint256(pub(crate) U256);
 
 forward_ref_partial_eq!(Uint256, Uint256);
 
@@ -29,16 +29,18 @@ impl Uint256 {
     pub const ZERO: Self = Self(U256::ZERO);
     pub const ONE:  Self = Self(U256::ONE);
 
-    // unlike Uint64/128, this function is private.
-    // we may change the implementation (using a different library than bnum)
-    // so we do not expose bnum types in the public API.
-    pub(crate) const fn new(value: U256) -> Self {
-        Self(value)
-    }
-
-    // this function is made private for the same reason as `new`
-    pub(crate) const fn u256(self) -> U256 {
-        self.0
+    pub const fn from_u128(value: u128) -> Self {
+        let bytes = value.to_le_bytes();
+        Self(U256::from_digits([
+            u64::from_le_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            ]),
+            u64::from_le_bytes([
+                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+            ]),
+            0,
+            0,
+        ]))
     }
 
     pub const fn is_zero(self) -> bool {
@@ -48,61 +50,61 @@ impl Uint256 {
     pub fn checked_add(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_add(other.0)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_add(self, other))
     }
 
     pub fn checked_sub(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_sub(other.0)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_sub(self, other))
     }
 
     pub fn checked_mul(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_mul(other.0)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_mul(self, other))
     }
 
     pub fn checked_div(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_div(other.0)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::division_by_zero(self))
     }
 
     pub fn checked_rem(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_rem(other.0)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::remainder_by_zero(self))
     }
 
     pub fn checked_pow(self, exp: u32) -> StdResult<Self> {
         self.0
             .checked_pow(exp)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_pow(self, exp))
     }
 
     pub fn checked_shl(self, rhs: u32) -> StdResult<Self> {
         self.0
             .checked_shl(rhs)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_shl(self, rhs))
     }
 
     pub fn checked_shr(self, rhs: u32) -> StdResult<Self> {
         self.0
             .checked_shr(rhs)
-            .map(Self::new)
+            .map(Self)
             .ok_or_else(|| StdError::overflow_shr(self, rhs))
     }
 
     pub fn checked_multiply_ratio(self, _nominator: Self, _denominator: Self) -> StdResult<Self> {
-        todo!("need Uint512 implemented first")
+        todo!("need Uint512")
     }
 
     // note: unlike Uint64/128, there is no `checked_multiply_ratio` method for
@@ -294,6 +296,6 @@ impl<'de> de::Visitor<'de> for Uint256Visitor {
     where
         E: de::Error,
     {
-        v.parse::<U256>().map(Uint256::new).map_err(E::custom)
+        v.parse::<U256>().map(Uint256).map_err(E::custom)
     }
 }

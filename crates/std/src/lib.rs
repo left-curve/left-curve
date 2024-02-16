@@ -19,10 +19,11 @@ pub use crate::{
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, BeforeTxCtx,
         Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context,
-        Decimal, Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash, InfoResponse,
-        InstantiateCtx, Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx,
-        ReplyCtx, ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg, Tx, Uint128,
-        Uint256, Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        Decimal, Decimal256, Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash,
+        InfoResponse, InstantiateCtx, Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse,
+        ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg,
+        Tx, Uint128, Uint256, Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH,
+        GENESIS_SENDER,
     },
 };
 

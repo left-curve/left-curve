@@ -5,6 +5,7 @@ mod binary;
 mod coin;
 mod context;
 mod decimal;
+mod decimal256;
 mod empty;
 mod event;
 mod hash;
@@ -28,6 +29,7 @@ pub use {
         ReplyCtx, TransferCtx,
     },
     decimal::Decimal,
+    decimal256::Decimal256,
     empty::Empty,
     event::{Attribute, Event},
     hash::{hash, Hash},

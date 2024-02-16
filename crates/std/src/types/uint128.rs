@@ -249,7 +249,7 @@ impl TryFrom<Uint256> for Uint128 {
 
     fn try_from(value: Uint256) -> StdResult<Self> {
         value
-            .u256()
+            .0
             .try_into()
             .map(Self)
             .map_err(|_| StdError::overflow_conversion::<_, Self>(value))
