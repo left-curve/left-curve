@@ -1,6 +1,7 @@
 // -------------------------------- all targets --------------------------------
 
 mod error;
+mod forward_ref;
 mod serde;
 mod storage;
 mod testing;

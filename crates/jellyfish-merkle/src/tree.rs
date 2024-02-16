@@ -413,7 +413,7 @@ impl<'a> MerkleTree<'a> {
                 // found it. if they don't match then we know the key doesn't
                 // doesn't exist in the tree. either way, break the loop.
                 Node::Leaf(leaf) => {
-                    if *key_hash != leaf.key_hash {
+                    if key_hash != leaf.key_hash {
                         proof_node = Some(ProofNode::Leaf {
                             key_hash:   leaf.key_hash,
                             value_hash: leaf.value_hash,

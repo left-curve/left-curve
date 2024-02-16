@@ -155,7 +155,7 @@ fn compute_and_compare_root_hash(
         }
     }
 
-    if hash != *root_hash {
+    if hash != root_hash {
         return Err(ProofError::RootHashMismatch {
             computed: hash,
             actual: root_hash.clone(),

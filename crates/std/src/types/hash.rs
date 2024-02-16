@@ -1,5 +1,5 @@
 use {
-    crate::{MapKey, RawKey, StdError, StdResult},
+    crate::{forward_ref_partial_eq, MapKey, RawKey, StdError, StdResult},
     serde::{de, ser},
     sha2::{Digest, Sha256},
     std::{
@@ -17,6 +17,8 @@ pub fn hash(data: impl AsRef<[u8]>) -> Hash {
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(pub(crate) [u8; Self::LENGTH]);
+
+forward_ref_partial_eq!(Hash, Hash);
 
 impl Hash {
     /// The length (number of bytes) of hashes.
@@ -193,7 +195,7 @@ mod tests {
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_HASH, Hash::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_HASH, from_json(MOCK_JSON).unwrap());
+        assert_eq!(MOCK_HASH, from_json::<Hash>(MOCK_JSON).unwrap());
 
         // uppercase hex strings are not accepted
         let illegal_str = MOCK_STR.to_uppercase();
