@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+bnum            = { workspace = true }
 cw-std-derive   = { path = "./derive" }
 data-encoding   = { workspace = true }
 dyn-clone       = { workspace = true }

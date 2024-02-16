@@ -13,6 +13,7 @@ mod result;
 mod timestamp;
 mod tx;
 mod uint128;
+mod uint256;
 mod uint64;
 
 pub use {

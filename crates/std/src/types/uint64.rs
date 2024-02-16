@@ -1,5 +1,5 @@
 use {
-    crate::{StdError, StdResult},
+    crate::{forward_ref_partial_eq, StdError, StdResult, Uint128},
     forward_ref::{forward_ref_binop, forward_ref_op_assign, forward_ref_unop},
     serde::{de, ser},
     std::{
@@ -20,6 +20,8 @@ use {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Uint64(u64);
 
+forward_ref_partial_eq!(Uint64, Uint64);
+
 impl Uint64 {
     pub const MAX:  Self = Self(u64::MAX);
     pub const MIN:  Self = Self(u64::MIN);
@@ -36,22 +38,6 @@ impl Uint64 {
 
     pub const fn is_zero(self) -> bool {
         self.0 == 0
-    }
-
-    pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
-        Self(u64::from_be_bytes(bytes))
-    }
-
-    pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
-        Self(u64::from_le_bytes(bytes))
-    }
-
-    pub const fn to_be_bytes(self) -> [u8; 8] {
-        self.0.to_be_bytes()
-    }
-
-    pub const fn to_le_bytes(self) -> [u8; 8] {
-        self.0.to_le_bytes()
     }
 
     pub fn checked_add(self, other: Self) -> StdResult<Self> {
@@ -110,8 +96,18 @@ impl Uint64 {
             .ok_or_else(|| StdError::overflow_shr(self, rhs))
     }
 
-    pub fn checked_multiply_ratio(self, _other: Self) -> StdResult<Self> {
-        // need Uint256 implemented
+    pub fn checked_multiply_ratio(self, nominator: Self, denominator: Self) -> StdResult<Self> {
+        (Uint128::from(self) * Uint128::from(nominator) / Uint128::from(denominator)).try_into()
+    }
+
+    /// Return the largest integer `n` such that `n * n <= self`.
+    /// In other words, take the square root and round _down_.
+    ///
+    /// Adapted from `uint` crate:
+    /// https://github.com/paritytech/parity-common/blob/uint-v0.9.5/uint/src/uint.rs#L963-L983
+    /// which utilizes the method described in:
+    /// https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
+    pub fn integer_sqrt(self) -> Self {
         todo!()
     }
 }
@@ -240,12 +236,31 @@ forward_ref_op_assign!(impl RemAssign, rem_assign for Uint64, Uint64);
 forward_ref_op_assign!(impl ShlAssign, shl_assign for Uint64, u32);
 forward_ref_op_assign!(impl ShrAssign, shr_assign for Uint64, u32);
 
+impl From<u64> for Uint64 {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl TryFrom<Uint128> for Uint64 {
+    type Error = StdError;
+
+    fn try_from(value: Uint128) -> StdResult<Self> {
+        value
+            .u128()
+            .try_into()
+            .map(Self)
+            .map_err(|_| StdError::overflow_conversion::<_, Self>(value))
+    }
+}
+
 impl FromStr for Uint64 {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let inner = u64::from_str(s)?;
-        Ok(Self::new(inner))
+        u64::from_str(s)
+            .map(Self)
+            .map_err(|err| StdError::parse_number::<Self>(s, err))
     }
 }
 

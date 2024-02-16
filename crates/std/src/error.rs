@@ -1,7 +1,7 @@
 use {
     data_encoding::BASE64,
     hex::FromHexError,
-    std::{any::type_name, array::TryFromSliceError, num::ParseIntError},
+    std::{any::type_name, array::TryFromSliceError},
     thiserror::Error,
 };
 
@@ -9,9 +9,6 @@ use {
 pub enum StdError {
     #[error(transparent)]
     FromHex(#[from] FromHexError),
-
-    #[error(transparent)]
-    ParseInt(#[from] ParseIntError),
 
     #[error(transparent)]
     TryFromSlice(#[from] TryFromSliceError),
@@ -22,6 +19,13 @@ pub enum StdError {
     // TODO: add more details to this
     #[error("Signature verification failed")]
     VerificationFailed,
+
+    #[error("Failed to parse string `{value}` into {ty}: {reason}")]
+    ParseNumber {
+        ty:     &'static str,
+        value:  String,
+        reason: String,
+    },
 
     #[error("Failed to parse into Coins: {reason}")]
     ParseCoins {
@@ -43,6 +47,13 @@ pub enum StdError {
     DataNotFound {
         ty:  &'static str,
         key: String,
+    },
+
+    #[error("Conversion overflow: {source_type}({value}) > {target_type}::MAX")]
+    OverflowConversion {
+        source_type: &'static str,
+        target_type: &'static str,
+        value:       String,
     },
 
     #[error("Addition overflow: {a} + {b} > {ty}::MAX")]
@@ -91,7 +102,7 @@ pub enum StdError {
     },
 
     #[error("Remainder by zero: {a} % 0")]
-    RemainerByZero {
+    RemainderByZero {
         a: String,
     },
 
@@ -109,6 +120,14 @@ pub enum StdError {
 }
 
 impl StdError {
+    pub fn parse_number<A>(value: impl ToString, reason: impl ToString) -> Self {
+        Self::ParseNumber {
+            ty:     type_name::<A>(),
+            value:  value.to_string(),
+            reason: reason.to_string(),
+        }
+    }
+
     pub fn parse_coins(reason: impl Into<String>) -> Self {
         Self::ParseCoins {
             reason: reason.into(),
@@ -126,6 +145,14 @@ impl StdError {
         Self::DataNotFound {
             ty:  type_name::<T>(),
             key: BASE64.encode(key),
+        }
+    }
+
+    pub fn overflow_conversion<A: ToString, B>(source: A) -> Self {
+        Self::OverflowConversion {
+            source_type: type_name::<A>(),
+            target_type: type_name::<B>(),
+            value:       source.to_string(),
         }
     }
 
@@ -182,7 +209,7 @@ impl StdError {
     }
 
     pub fn remainder_by_zero<T: ToString>(a: T) -> Self {
-        Self::RemainerByZero {
+        Self::RemainderByZero {
             a: a.to_string(),
         }
     }
