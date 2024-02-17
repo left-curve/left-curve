@@ -19,5 +19,5 @@ library = []
 
 [dependencies]
 anyhow  = { workspace = true }
-cw-bank = { path = "../../bank" }
+cw-bank = { path = "../../bank", features = ["library"] }
 cw-std  = { path = "../../../crates/std" }
