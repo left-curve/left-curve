@@ -54,7 +54,7 @@ pub enum QueryMsg {
 pub struct Config {
     /// Address of the bank contract.
     /// We need to call the bank contract to mint or burn the share token.
-    pub bank:   Addr,
+    pub bank: Addr,
     /// Denomination of the pool's first token.
     pub denom1: String,
     /// Denomination of the pool's second token.
@@ -125,11 +125,13 @@ pub fn provide_liquidity(
         //
         // however, since this is just a demo contract, we don't bother with this.
     } else {
+        // NOTE: these depths are *after* receiving the deposits, so when
+        // computing the share mint amount we need to subtract the deposit.
         let depth1 = ctx.query_balance(ctx.contract.clone(), cfg.denom1.clone())?;
         let depth2 = ctx.query_balance(ctx.contract.clone(), cfg.denom2.clone())?;
         cmp::min(
-            amount1.checked_multiply_ratio(total_shares, depth1)?,
-            amount2.checked_multiply_ratio(total_shares, depth2)?,
+            amount1.checked_multiply_ratio(total_shares, depth1.checked_sub(amount1)?)?,
+            amount2.checked_multiply_ratio(total_shares, depth2.checked_sub(amount2)?)?,
         )
     };
 
@@ -214,8 +216,11 @@ pub fn swap(ctx: ExecuteCtx, minimum_receive: Option<Uint128>) -> anyhow::Result
         bail!("must offer either {} or {}, got {}", cfg.denom1, cfg.denom2, offer.denom);
     };
 
-    // compute the swap output amount:
-    let offer_depth = ctx.query_balance(ctx.contract.clone(), offer.denom.clone())?;
+    // compute the swap output amount
+    // for the offer denom's depth, we need to subtract the deposited amount
+    let offer_depth = ctx
+        .query_balance(ctx.contract.clone(), offer.denom.clone())?
+        .checked_sub(*offer.amount)?;
     let ask_depth = ctx.query_balance(ctx.contract.clone(), ask_denom.clone())?;
     let ask_amount = compute_swap_output(*offer.amount, offer_depth, ask_depth)?;
 
