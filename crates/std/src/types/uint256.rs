@@ -1,15 +1,13 @@
 use {
-    crate::{forward_ref_partial_eq, StdError, StdResult, Uint128},
+    crate::{forward_ref_partial_eq, StdError, StdResult, Uint128, Uint512},
     bnum::types::U256,
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
-        fmt,
-        ops::{
+        fmt, mem, ops::{
             Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
             ShrAssign, Sub, SubAssign,
-        },
-        str::FromStr,
+        }, str::FromStr
     },
 };
 
@@ -41,6 +39,62 @@ impl Uint256 {
             0,
             0,
         ]))
+    }
+
+    pub const fn from_be_bytes(data: [u8; 32]) -> Self {
+        Self(U256::from_digits([
+            u64::from_le_bytes([
+                data[31], data[30], data[29], data[28], data[27], data[26], data[25], data[24],
+            ]),
+            u64::from_le_bytes([
+                data[23], data[22], data[21], data[20], data[19], data[18], data[17], data[16],
+            ]),
+            u64::from_le_bytes([
+                data[15], data[14], data[13], data[12], data[11], data[10], data[9], data[8],
+            ]),
+            u64::from_le_bytes([
+                data[7], data[6], data[5], data[4], data[3], data[2], data[1], data[0],
+            ]),
+        ]))
+    }
+
+    pub const fn from_le_bytes(data: [u8; 32]) -> Self {
+        Self(U256::from_digits([
+            u64::from_le_bytes([
+                data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+            ]),
+            u64::from_le_bytes([
+                data[8], data[9], data[10], data[11], data[12], data[13], data[14], data[15],
+            ]),
+            u64::from_le_bytes([
+                data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
+            ]),
+            u64::from_le_bytes([
+                data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31],
+            ]),
+        ]))
+    }
+
+    pub const fn to_be_bytes(self) -> [u8; 32] {
+        let words = self.0.digits();
+        let words = [
+            words[3].to_be_bytes(),
+            words[2].to_be_bytes(),
+            words[1].to_be_bytes(),
+            words[0].to_be_bytes(),
+        ];
+        unsafe { mem::transmute(words) }
+    }
+
+    pub const fn to_le_bytes(self) -> [u8; 32] {
+        let words = self.0.digits();
+        let words = [
+            words[0].to_le_bytes(),
+            words[1].to_le_bytes(),
+            words[2].to_le_bytes(),
+            words[3].to_le_bytes(),
+        ];
+        unsafe { mem::transmute(words) }
     }
 
     pub const fn is_zero(self) -> bool {
@@ -103,8 +157,8 @@ impl Uint256 {
             .ok_or_else(|| StdError::overflow_shr(self, rhs))
     }
 
-    pub fn checked_multiply_ratio(self, _nominator: Self, _denominator: Self) -> StdResult<Self> {
-        todo!("need Uint512")
+    pub fn checked_multiply_ratio(self, nominator: Self, denominator: Self) -> StdResult<Self> {
+        (Uint512::from(self) * Uint512::from(nominator) / Uint512::from(denominator)).try_into()
     }
 
     // note: unlike Uint64/128, there is no `checked_multiply_ratio` method for
@@ -240,6 +294,19 @@ forward_ref_op_assign!(impl ShrAssign, shr_assign for Uint256, u32);
 impl From<Uint128> for Uint256 {
     fn from(value: Uint128) -> Self {
         Self(value.u128().into())
+    }
+}
+
+impl TryFrom<Uint256> for Uint128 {
+    type Error = StdError;
+
+    fn try_from(value: Uint256) -> StdResult<Self> {
+        let bytes = value.to_le_bytes();
+        let (lower, higher) = bytes.split_at(16);
+        if higher != [0; 16] {
+            return Err(StdError::overflow_conversion::<_, Uint128>(value));
+        }
+        Ok(Uint128::from_le_bytes(lower.try_into().unwrap()))
     }
 }
 

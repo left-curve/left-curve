@@ -40,6 +40,22 @@ impl Uint64 {
         self.0 == 0
     }
 
+    pub const fn from_be_bytes(data: [u8; 8]) -> Self {
+        Self(u64::from_be_bytes(data))
+    }
+
+    pub const fn from_le_bytes(data: [u8; 8]) -> Self {
+        Self(u64::from_le_bytes(data))
+    }
+
+    pub const fn to_be_bytes(self) -> [u8; 8] {
+        self.0.to_be_bytes()
+    }
+
+    pub const fn to_le_bytes(self) -> [u8; 8] {
+        self.0.to_le_bytes()
+    }
+
     pub fn checked_add(self, other: Self) -> StdResult<Self> {
         self.0
             .checked_add(other.0)
@@ -235,18 +251,6 @@ impl From<u64> for Uint64 {
 impl From<Uint64> for u64 {
     fn from(value: Uint64) -> Self {
         value.0
-    }
-}
-
-impl TryFrom<Uint128> for Uint64 {
-    type Error = StdError;
-
-    fn try_from(value: Uint128) -> StdResult<Self> {
-        value
-            .u128()
-            .try_into()
-            .map(Self)
-            .map_err(|_| StdError::overflow_conversion::<_, Self>(value))
     }
 }
 

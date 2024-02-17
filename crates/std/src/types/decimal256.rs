@@ -1,5 +1,5 @@
 use {
-    crate::{forward_ref_partial_eq, StdError, StdResult, Uint256},
+    crate::{forward_ref_partial_eq, StdError, StdResult, Uint256, Uint512},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
@@ -67,10 +67,12 @@ impl Decimal256 {
 
     pub fn checked_multiply_ratio(
         self,
-        _nominator:   impl Into<Uint256>,
-        _denominator: impl Into<Uint256>,
+        nominator:   Uint256,
+        denominator: Uint256,
     ) -> StdResult<Self> {
-        todo!("need Uint256")
+        (Uint512::from(self.0) * Uint512::from(nominator) / Uint512::from(denominator))
+            .try_into()
+            .map(Self)
     }
 }
 

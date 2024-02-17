@@ -22,8 +22,8 @@ pub use crate::{
         Decimal, Decimal256, Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash,
         InfoResponse, InstantiateCtx, Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse,
         ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg,
-        Tx, Uint128, Uint256, Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH,
-        GENESIS_SENDER,
+        Tx, Uint128, Uint256, Uint512, Uint64, WasmRawResponse, WasmSmartResponse,
+        GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 

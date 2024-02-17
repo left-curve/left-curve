@@ -70,10 +70,10 @@ impl Decimal {
 
     pub fn checked_multiply_ratio(
         self,
-        nominator:   impl Into<u128>,
-        denominator: impl Into<u128>,
+        nominator:   Uint128,
+        denominator: Uint128,
     ) -> StdResult<Self> {
-        (Uint256::from(self.0) * Uint256::from_u128(nominator.into()) / Uint256::from_u128(denominator.into()))
+        (Uint256::from(self.0) * Uint256::from(nominator) / Uint256::from(denominator))
             .try_into()
             .map(Self)
     }

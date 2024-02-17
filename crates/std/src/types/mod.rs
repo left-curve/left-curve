@@ -16,6 +16,7 @@ mod timestamp;
 mod tx;
 mod uint128;
 mod uint256;
+mod uint512;
 mod uint64;
 
 pub use {
@@ -43,5 +44,6 @@ pub use {
     tx::{Message, Tx},
     uint128::Uint128,
     uint256::Uint256,
+    uint512::Uint512,
     uint64::Uint64,
 };
