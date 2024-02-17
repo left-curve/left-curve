@@ -39,7 +39,14 @@ fn _execute<S: Storage + Clone + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        transfer(store.clone(), block, sender.clone(), contract.clone(), funds.clone())?;
+        transfer(
+            store.clone(),
+            block,
+            sender.clone(),
+            contract.clone(),
+            funds.clone(),
+            false,
+        )?;
     }
 
     // load wasm code

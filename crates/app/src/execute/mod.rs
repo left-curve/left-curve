@@ -41,7 +41,7 @@ pub fn process_msg<S: Storage + Clone + 'static>(
         Message::Transfer {
             to,
             coins,
-        } => transfer(store, block, sender.clone(), to, coins),
+        } => transfer(store, block, sender.clone(), to, coins, true),
         Message::StoreCode {
             wasm_byte_code,
         } => store_code(&mut store, sender, &wasm_byte_code),

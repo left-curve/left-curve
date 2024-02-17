@@ -60,7 +60,14 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        transfer(store.clone(), block, sender.clone(), address.clone(), funds.clone())?;
+        transfer(
+            store.clone(),
+            block,
+            sender.clone(),
+            address.clone(),
+            funds.clone(),
+            false,
+        )?;
     }
 
     // create wasm host
