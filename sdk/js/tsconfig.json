@@ -4,9 +4,14 @@
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2020", "dom"],
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
     "newLine": "LF",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
@@ -14,14 +19,12 @@
     "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "outDir": "dist",
     "pretty": true,
     "removeComments": false,
     "resolveJsonModule": true,
     "rootDir": ".",
     "sourceMap": true,
     "strict": true,
-    "target": "esnext"
   },
   "include": ["src/**/*", "examples/**/*", "testdata/**/*"]
 }

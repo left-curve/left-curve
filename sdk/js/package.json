@@ -4,27 +4,47 @@
   "description": "The JavaScript SDK for Cosmos Wasm Daemon",
   "author": "Larry Lyu <gm@larry.engineer>",
   "license": "UNLICENSED",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.cts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "require": "./dist/index.cjs",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
   "files": [
     "dist/",
     "*.md",
-    "!*.spec.*",
-    "!**/examples/"
+    "./package.json"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cwsoftware123/cwd/tree/main/sdk/ts"
+    "url": "https://github.com/cwsoftware123/cwd.git",
+    "directory": "sdk/js"
   },
   "scripts": {
-    "build": "rm -rf ./dist && tsc"
+    "build": "tsup --config=tsup.config.ts",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "check-package": "npm pack && npx publint@latest --public --strict && attw --pack"
   },
   "dependencies": {
     "@cosmjs/crypto": "^0.32.2",
     "@cosmjs/tendermint-rpc": "^0.32.2"
   },
   "devDependencies": {
-    "@types/node": "^20.11.13",
+    "@types/node": "^20.11.19",
+    "tsup": "^8.0.2",
+    "publint": "^0.2.7",
+    "@arethetypeswrong/cli": "^0.13.10",
     "typescript": "^5.3.3"
   }
 }

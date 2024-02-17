@@ -1,10 +1,10 @@
-import * as crypto from "crypto";
-import * as fs from "fs";
+import * as crypto from "node:crypto";
+import * as fs from "node:fs";
 import {
   Bip39,
   EnglishMnemonic,
   Secp256k1,
-  Secp256k1Keypair,
+  type Secp256k1Keypair,
   Sha256,
   Slip10,
   Slip10Curve,
@@ -18,7 +18,7 @@ import {
   decodeHex,
   serialize,
 } from "./serde";
-import { Message, Tx } from "./types";
+import type { Message, Tx } from "./types";
 
 // parameters for keystore encryption
 const PBKDF2_ITERATIONS = 600_000;
