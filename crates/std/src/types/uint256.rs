@@ -177,7 +177,7 @@ impl Uint256 {
             return self;
         }
 
-        let shift: u32 = (self.0.bits() as u32 + 1) / 2;
+        let shift = (self.0.bits() + 1) / 2;
         let mut x_prev = Self::ONE << shift;
         loop {
             let x = (x_prev + self / x_prev) >> 1;
