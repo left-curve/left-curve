@@ -143,18 +143,24 @@ impl App {
     }
 
     // returns (last_block_height, last_block_app_hash)
+    // note that we are returning the app hash, not the block hash
     pub fn do_info(&self) -> AppResult<(u64, Hash)> {
-        match LAST_FINALIZED_BLOCK.may_load(&self.store.state_storage(None))? {
-            Some(block) => {
-                Ok((block.height.u64(), block.hash))
-            },
-            None => {
-                // last finalized block doesn't exist in the store. this is the
-                // case if the chain hasn't started yet (prior to InitChain call).
-                // in this case we just return zeroes.
-                Ok((0, Hash::ZERO))
-            },
-        }
+        let Some(version) = self.store.latest_version() else {
+            // base store doesn't have a version. this is the case if the chain
+            // hasn't started yet (prior to the InitChain call). in this case we
+            // return zero height and an all-zero zero hash.
+            return Ok((0, Hash::ZERO));
+        };
+
+        let Some(root_hash) = self.store.root_hash(Some(version))? else {
+            // root hash is None. since we know version is not zero at this
+            // point, the only way root hash is None is that state tree is empty.
+            // however this is impossible, since we always keep some data in the
+            // state (such as chain ID and config).
+            panic!("root hash not found at the latest version ({version})");
+        };
+
+        Ok((version, root_hash))
     }
 
     pub fn do_query_app(&self, raw_query: &[u8], height: u64, prove: bool) -> AppResult<Binary> {
