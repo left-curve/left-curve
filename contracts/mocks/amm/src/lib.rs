@@ -1,8 +1,7 @@
-use anyhow::ensure;
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use {
-    anyhow::bail,
+    anyhow::{bail, ensure},
     cw_std::{
         cw_serde, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
         QueryCtx, ReceiveCtx, Response, StdResult, Uint128,
@@ -62,6 +61,12 @@ pub struct Config {
     pub denom2: String,
 }
 
+/// Return the denomination of the token that represents ownership shares of the
+/// pool's liquidity.
+pub fn share_token_denom(contract: &Addr) -> String {
+    format!("amm/{contract}")
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> StdResult<Response> {
     CONFIG.save(ctx.store, &msg)?;
@@ -93,14 +98,15 @@ pub fn provide_liquidity(
     ctx: ExecuteCtx,
     minimum_receive: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    ensure!(ctx.funds.len() == 2, "must send exactly 2 coins, got: {}", ctx.funds.len());
-
+    // check the token(s) sent
+    ensure!(ctx.funds.len() == 2, "must deposit exactly 2 coins, got: {}", ctx.funds.len());
     let cfg = CONFIG.load(ctx.store)?;
     let amount1 = ctx.funds.amount_of(&cfg.denom1);
     let amount2 = ctx.funds.amount_of(&cfg.denom2);
-    ensure!(!amount1.is_zero(), "must send a non-zero amount of {}", cfg.denom1);
-    ensure!(!amount2.is_zero(), "must send a non-zero amount of {}", cfg.denom2);
+    ensure!(!amount1.is_zero(), "must deposit a non-zero amount of {}", cfg.denom1);
+    ensure!(!amount2.is_zero(), "must deposit a non-zero amount of {}", cfg.denom2);
 
+    // compute how many share tokens to mint
     let share_denom = share_token_denom(&ctx.contract);
     let total_shares = ctx.query_supply(share_denom.clone())?;
     let shares_to_mint = if total_shares.is_zero() {
@@ -126,6 +132,7 @@ pub fn provide_liquidity(
         )
     };
 
+    // check slippage tolerance
     if let Some(min) = minimum_receive {
         ensure!(shares_to_mint >= min, "too much slippage: {shares_to_mint} < {min}");
     }
@@ -149,20 +156,21 @@ pub fn withdraw_liquidity(
     ctx: ExecuteCtx,
     minimum_receive: Option<Coins>,
 ) -> anyhow::Result<Response> {
-    ensure!(ctx.funds.len() == 1, "must send exactly 1 coin, got: {}", ctx.funds.len());
-
+    // check the token(s) sent
+    ensure!(ctx.funds.len() == 1, "must deposit exactly 1 coin, got: {}", ctx.funds.len());
     let share_denom = share_token_denom(&ctx.contract);
     let shares_to_burn = ctx.funds.amount_of(&share_denom);
-    ensure!(!shares_to_burn.is_zero(), "must send a non-zero amount of share token");
+    ensure!(!shares_to_burn.is_zero(), "must deposit a non-zero amount of share token");
 
+    // compute how many of the two tokens to refund the user
     let cfg = CONFIG.load(ctx.store)?;
     let total_shares = ctx.query_supply(share_denom.clone())?;
-
     let depth1 = ctx.query_balance(ctx.contract.clone(), cfg.denom1.clone())?;
     let amount1 = depth1.checked_multiply_ratio(shares_to_burn, total_shares)?;
     let depth2 = ctx.query_balance(ctx.contract.clone(), cfg.denom2.clone())?;
     let amount2 = depth2.checked_multiply_ratio(shares_to_burn, total_shares)?;
 
+    // check slippage tolerance
     if let Some(min) = minimum_receive {
         let min1 = min.amount_of(&cfg.denom1);
         ensure!(amount1 >= min1, "too much slippage for {}: {amount1} < {min1}", cfg.denom1);
@@ -194,31 +202,43 @@ pub fn withdraw_liquidity(
 }
 
 pub fn swap(ctx: ExecuteCtx, minimum_receive: Option<Uint128>) -> anyhow::Result<Response> {
+    // check the token(s) sent
     let cfg = CONFIG.load(ctx.store)?;
-    let coin = ctx.funds.one_coin()?;
-    let (offer_denom, ask_denom) = if *coin.denom == cfg.denom1 {
-        (cfg.denom1, cfg.denom2)
-    } else if *coin.denom == cfg.denom2 {
-        (cfg.denom2, cfg.denom1)
+    let offer = ctx.funds.one_coin()?;
+    let ask_denom = if *offer.denom == cfg.denom1 {
+        cfg.denom2
+    } else if *offer.denom == cfg.denom2 {
+        cfg.denom1
     } else {
-        bail!("must send either {} or {}, got {}", cfg.denom1, cfg.denom2, coin.denom);
+        bail!("must offer either {} or {}, got {}", cfg.denom1, cfg.denom2, offer.denom);
     };
 
-    let offer_depth = ctx.query_balance(ctx.contract.clone(), offer_denom.clone());
-    let ask_depth = ctx.query_balance(ctx.contract.clone(), ask_denom.clone());
+    // compute the swap output amount:
+    let offer_depth = ctx.query_balance(ctx.contract.clone(), offer.denom.clone())?;
+    let ask_depth = ctx.query_balance(ctx.contract.clone(), ask_denom.clone())?;
+    let ask_amount = compute_swap_output(*offer.amount, offer_depth, ask_depth)?;
 
-    // let return_amount =
-    // TODO........
+    // check slippage tolerance
+    if let Some(min) = minimum_receive {
+        ensure!(ask_amount >= min, "too much slippage: {ask_amount} < {min}");
+    }
 
-    Ok(Response::new())
-}
-
-pub fn share_token_denom(contract: &Addr) -> String {
-    format!("amm/{contract}")
+    Ok(Response::new()
+        .add_attribute("method", "swap")
+        .add_attribute("offer_denom", offer.denom)
+        .add_attribute("offer_amount", offer.amount)
+        .add_attribute("offer_depth", offer_depth)
+        .add_attribute("ask_denom", &ask_denom)
+        .add_attribute("ask_amount", ask_amount)
+        .add_attribute("ask_depth", ask_depth)
+        .add_message(Message::Transfer {
+            to: ctx.sender,
+            coins: Coin::new(ask_denom, ask_amount).into(),
+        }))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     match msg {
         QueryMsg::Config {} => to_json(&query_config(ctx)?),
         QueryMsg::Simulate {
@@ -228,16 +248,71 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
             ask,
         } => to_json(&query_reverse_simulate(ctx, ask)?),
     }
+    .map_err(Into::into)
 }
 
 pub fn query_config(ctx: QueryCtx) -> StdResult<Config> {
     CONFIG.load(ctx.store)
 }
 
-pub fn query_simulate(ctx: QueryCtx, offer: Coin) -> StdResult<Coin> {
-    todo!()
+pub fn query_simulate(ctx: QueryCtx, offer: Coin) -> anyhow::Result<Coin> {
+    let cfg = CONFIG.load(ctx.store)?;
+    let ask_denom = if offer.denom == cfg.denom1 {
+        cfg.denom2
+    } else if offer.denom == cfg.denom2 {
+        cfg.denom1
+    } else {
+        bail!("must offer either {} or {}, got {}", cfg.denom1, cfg.denom2, offer.denom);
+    };
+
+    let offer_depth = ctx.query_balance(ctx.contract.clone(), offer.denom.clone())?;
+    let ask_depth = ctx.query_balance(ctx.contract.clone(), ask_denom.clone())?;
+    let ask_amount = compute_swap_output(offer.amount, offer_depth, ask_depth)?;
+
+    Ok(Coin::new(ask_denom, ask_amount))
 }
 
-pub fn query_reverse_simulate(ctx: QueryCtx, ask: Coin) -> StdResult<Coin> {
-    todo!()
+pub fn query_reverse_simulate(ctx: QueryCtx, ask: Coin) -> anyhow::Result<Coin> {
+    let cfg = CONFIG.load(ctx.store)?;
+    let offer_denom = if ask.denom == cfg.denom1 {
+        cfg.denom2
+    } else if ask.denom == cfg.denom2 {
+        cfg.denom1
+    } else {
+        bail!("must ask either {} or {}, got {}", cfg.denom1, cfg.denom2, ask.denom);
+    };
+
+    let offer_depth = ctx.query_balance(ctx.contract.clone(), offer_denom.clone())?;
+    let ask_depth = ctx.query_balance(ctx.contract.clone(), ask.denom.clone())?;
+    let offer_amount = compute_swap_input(offer_depth, ask_depth, ask.amount)?;
+
+    Ok(Coin::new(offer_denom, offer_amount))
+}
+
+// offer_depth * ask_depth = (offer_depth + offer_amount) * (ask_depth - ask_amount)
+// => ask_amount = ask_depth - offer_depth * ask_depth / (offer_depth + offer_amount)
+fn compute_swap_output(
+    offer_amount: Uint128,
+    offer_depth: Uint128,
+    ask_depth: Uint128,
+) -> StdResult<Uint128> {
+    let rhs = ask_depth.checked_multiply_ratio(
+        offer_depth,
+        offer_depth.checked_add(offer_amount)?,
+    )?;
+    ask_depth.checked_sub(rhs)
+}
+
+// offer_amount = offer_depth * ask_depth / (ask_depth - ask_amount) - offer_depth
+// TODO: should be be rounding up the division? currently it's rounding down.
+fn compute_swap_input(
+    offer_depth: Uint128,
+    ask_depth: Uint128,
+    ask_amount: Uint128,
+) -> StdResult<Uint128> {
+    let lhs = offer_depth.checked_multiply_ratio(
+        ask_depth,
+        ask_depth.checked_sub(ask_amount)?,
+    )?;
+    lhs.checked_sub(offer_depth)
 }
