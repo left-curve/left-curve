@@ -860,6 +860,7 @@ dependencies = [
  "forward_ref",
  "hex",
  "hex-literal",
+ "proptest",
  "serde",
  "serde-json-wasm",
  "serde_with",

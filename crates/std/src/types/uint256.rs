@@ -168,12 +168,24 @@ impl Uint256 {
     /// Return the largest integer `n` such that `n * n <= self`.
     /// In other words, take the square root and _round down_.
     ///
-    /// Adapted from `uint` crate:
+    /// Copied from `uint` crate:
     /// https://github.com/paritytech/parity-common/blob/uint-v0.9.5/uint/src/uint.rs#L963-L983
     /// which utilizes the method described in:
     /// https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
     pub fn integer_sqrt(self) -> Self {
-        todo!()
+        if self <= Self::ONE {
+            return self;
+        }
+
+        let shift: u32 = (self.0.bits() as u32 + 1) / 2;
+        let mut x_prev = Self::ONE << shift;
+        loop {
+            let x = (x_prev + self / x_prev) >> 1;
+            if x >= x_prev {
+                return x_prev;
+            }
+            x_prev = x;
+        }
     }
 }
 
@@ -364,5 +376,23 @@ impl<'de> de::Visitor<'de> for Uint256Visitor {
         E: de::Error,
     {
         v.parse::<U256>().map(Uint256).map_err(E::custom)
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, proptest::prelude::*};
+
+    proptest! {
+        #[test]
+        fn integer_sqrt(ref bytes in prop::array::uniform32(0..=u8::MAX)) {
+            let a = Uint256::from_le_bytes(*bytes);
+            let b = a.integer_sqrt();
+            // b is sqrt(a) **floored**, so we need to make sure: b^2 <= a AND (b+1)^2 > a
+            assert!(b * b <= a);
+            assert!((b + Uint256::ONE) * (b + Uint256::ONE) > a);
+        }
     }
 }

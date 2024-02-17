@@ -115,17 +115,6 @@ impl Uint128 {
     pub fn checked_multiply_ratio(self, nominator: Self, denominator: Self) -> StdResult<Self> {
         (Uint256::from(self) * Uint256::from(nominator) / Uint256::from(denominator)).try_into()
     }
-
-    /// Return the largest integer `n` such that `n * n <= self`.
-    /// In other words, take the square root and _round down_.
-    ///
-    /// Adapted from `uint` crate:
-    /// https://github.com/paritytech/parity-common/blob/uint-v0.9.5/uint/src/uint.rs#L963-L983
-    /// which utilizes the method described in:
-    /// https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
-    pub fn integer_sqrt(self) -> Self {
-        todo!()
-    }
 }
 
 impl Add for Uint128 {

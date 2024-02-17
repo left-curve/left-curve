@@ -4,7 +4,7 @@ use {
     anyhow::{bail, ensure},
     cw_std::{
         cw_serde, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
-        QueryCtx, ReceiveCtx, Response, StdResult, Uint128,
+        QueryCtx, ReceiveCtx, Response, StdResult, Uint128, Uint256,
     },
     std::cmp,
 };
@@ -112,7 +112,8 @@ pub fn provide_liquidity(
     let shares_to_mint = if total_shares.is_zero() {
         // this is the initial liquidity provision. in this case we define the
         // amount of shares to mint as geometric_mean(amount1, amount2)
-        amount1.checked_mul(amount2)?.integer_sqrt()
+        Uint256::from(amount1).checked_mul(Uint256::from(amount2))?
+            .integer_sqrt().try_into()?
 
         // NOTE: for production use, the contract should permanently lockup a
         // small amount of share tokens, to avoid total shares being reduced to
