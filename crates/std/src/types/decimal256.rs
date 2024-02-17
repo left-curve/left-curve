@@ -165,14 +165,14 @@ impl FromStr for Decimal256 {
         let mut parts = s.split('.');
 
         let whole_part = parts.next().unwrap(); // `.split` always return as least one part
-        let whole = if whole_part == "" {
+        let whole = if whole_part.is_empty() {
             Uint256::ZERO
         } else {
             Uint256::from_str(whole_part)?.checked_mul(Self::DECIMAL_FRACTIONAL)?
         };
 
         let fraction = if let Some(fraction_part) = parts.next() {
-            if fraction_part == "" {
+            if fraction_part.is_empty() {
                 Uint256::ZERO
             } else {
                 let exp = Self::DECIMAL_PLACES.checked_sub(fraction_part.len() as u32)
@@ -303,7 +303,7 @@ mod tests {
         "max"
     )]
     fn serialization(inner: Uint256, output: &[u8]) {
-        let decimal = Decimal256(inner.into());
+        let decimal = Decimal256(inner);
         assert_eq!(to_json(&decimal).unwrap().as_ref(), output);
     }
 

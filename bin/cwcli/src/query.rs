@@ -185,9 +185,9 @@ async fn query_store(
 ) -> anyhow::Result<()> {
     let key = hex::decode(&key_hex)?;
     let (value, proof) = client.query_store(key, height, prove).await?;
-    print_json_pretty(&PrintableQueryStoreResponse {
+    print_json_pretty(PrintableQueryStoreResponse {
         key: key_hex,
-        value: value.map(|v| hex::encode(v)),
+        value: value.map(hex::encode),
         proof,
     })
 }

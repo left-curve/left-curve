@@ -168,14 +168,14 @@ impl FromStr for Decimal {
         let mut parts = s.split('.');
 
         let whole_part = parts.next().unwrap(); // `.split` always return as least one part
-        let whole = if whole_part == "" {
+        let whole = if whole_part.is_empty() {
             Uint128::ZERO
         } else {
             Uint128::from_str(whole_part)?.checked_mul(Self::DECIMAL_FRACTIONAL)?
         };
 
         let fraction = if let Some(fraction_part) = parts.next() {
-            if fraction_part == "" {
+            if fraction_part.is_empty() {
                 Uint128::ZERO
             } else {
                 let exp = Self::DECIMAL_PLACES.checked_sub(fraction_part.len() as u32)
