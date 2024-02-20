@@ -486,7 +486,7 @@ mod tests {
     // root_hash
     // = hash(00 | 4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad | 8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394)
     // = 1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64
-    mod v1 {
+    mod v0 {
         use super::*;
 
         pub const ROOT_HASH: Hash = Hash::from_slice(hex!("1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64"));
@@ -539,7 +539,7 @@ mod tests {
     // root_hash
     // = hash(00 | 7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402 | 9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f)
     // = 05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4
-    mod v2 {
+    mod v1 {
         use super::*;
 
         pub const ROOT_HASH: Hash = Hash::from_slice(hex!("05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4"));
@@ -556,7 +556,7 @@ mod tests {
         let path = TempDataDir::new("_cw_db_base_store_works");
         let store = BaseStore::open(&path).unwrap();
 
-        // write a batch with version = 1
+        // write a batch. the very first batch have version 0
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
             (b"jake".to_vec(),   Op::Insert(b"shepherd".to_vec())),
@@ -564,31 +564,31 @@ mod tests {
             (b"larry".to_vec(),  Op::Insert(b"engineer".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 1);
-        assert_eq!(root_hash, Some(v1::ROOT_HASH));
+        assert_eq!(version, 0);
+        assert_eq!(root_hash, Some(v0::ROOT_HASH));
 
-        // write another batch with version = 2
+        // write another batch with version = 1
         let batch = Batch::from([
             (b"donald".to_vec(),  Op::Insert(b"duck".to_vec())),
             (b"joe".to_vec(),     Op::Delete),
             (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 2);
-        assert_eq!(root_hash, Some(v2::ROOT_HASH));
+        assert_eq!(version, 1);
+        assert_eq!(root_hash, Some(v1::ROOT_HASH));
 
         // try query values at the two versions, respectively, from state storage
         for (version, key, value) in [
-            (1, "donald",  Some("trump")),
+            (0, "donald",  Some("trump")),
+            (0, "jake",    Some("shepherd")),
+            (0, "joe",     Some("biden")),
+            (0, "larry",   Some("engineer")),
+            (0, "pumpkin", None),
+            (1, "donald",  Some("duck")),
             (1, "jake",    Some("shepherd")),
-            (1, "joe",     Some("biden")),
+            (1, "joe",     None),
             (1, "larry",   Some("engineer")),
-            (1, "pumpkin", None),
-            (2, "donald",  Some("duck")),
-            (2, "jake",    Some("shepherd")),
-            (2, "joe",     None),
-            (2, "larry",   Some("engineer")),
-            (2, "pumpkin", Some("cat")),
+            (1, "pumpkin", Some("cat")),
         ] {
             let found_value = store.state_storage(Some(version)).read(key.as_bytes());
             assert_eq!(found_value.map(|bz| String::from_utf8(bz).unwrap()).as_deref(), value);
@@ -596,13 +596,13 @@ mod tests {
 
         // try iterating at the two versions, respectively
         for (version, items) in [
-            (1, [
+            (0, [
                 ("donald", "trump"),
                 ("jake",   "shepherd"),
                 ("joe",    "biden"),
                 ("larry",  "engineer"),
             ]),
-            (2, [
+            (1, [
                 ("donald",  "duck"),
                 ("jake",    "shepherd"),
                 ("larry",   "engineer"),
@@ -620,19 +620,55 @@ mod tests {
         // try generating merkle proofs at the two versions, respectively; also
         // verify the proofs.
         for (version, key, value, proof) in [
-            (1, "donald", Some("trump"), Proof::Membership(MembershipProof {
+            (0, "donald", Some("trump"), Proof::Membership(MembershipProof {
                 sibling_hashes: vec![
-                    Some(v1::HASH_011),
+                    Some(v0::HASH_011),
+                    Some(v0::HASH_00),
+                    Some(v0::HASH_1),
+                ],
+            })),
+            (0, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![Some(v0::HASH_0)],
+            })),
+            (0, "joe", Some("biden"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v0::HASH_010),
+                    Some(v0::HASH_00),
+                    Some(v0::HASH_1),
+                ],
+            })),
+            (0, "larry", Some("engineer"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
+                    Some(v0::HASH_01),
+                    Some(v0::HASH_1),
+                ],
+            })),
+            (0, "pumpkin", None, Proof::NonMembership(NonMembershipProof {
+                node: ProofNode::Leaf {
+                    key_hash: hash(b"jake"),
+                    value_hash: hash(b"shepherd"),
+                },
+                sibling_hashes: vec![Some(v0::HASH_0)],
+            })),
+            (1, "donald", Some("duck"), Proof::Membership(MembershipProof {
+                sibling_hashes: vec![
                     Some(v1::HASH_00),
                     Some(v1::HASH_1),
                 ],
             })),
             (1, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![Some(v1::HASH_0)],
-            })),
-            (1, "joe", Some("biden"), Proof::Membership(MembershipProof {
                 sibling_hashes: vec![
-                    Some(v1::HASH_010),
+                    Some(v1::HASH_111),
+                    None,
+                    Some(v1::HASH_0),
+                ],
+            })),
+            (1, "joe", None, Proof::NonMembership(NonMembershipProof {
+                node: ProofNode::Leaf {
+                    key_hash: hash(b"donald"),
+                    value_hash: hash(b"duck"),
+                },
+                sibling_hashes: vec![
                     Some(v1::HASH_00),
                     Some(v1::HASH_1),
                 ],
@@ -643,47 +679,11 @@ mod tests {
                     Some(v1::HASH_1),
                 ],
             })),
-            (1, "pumpkin", None, Proof::NonMembership(NonMembershipProof {
-                node: ProofNode::Leaf {
-                    key_hash: hash(b"jake"),
-                    value_hash: hash(b"shepherd"),
-                },
-                sibling_hashes: vec![Some(v1::HASH_0)],
-            })),
-            (2, "donald", Some("duck"), Proof::Membership(MembershipProof {
+            (1, "pumpkin", Some("cat"), Proof::Membership(MembershipProof {
                 sibling_hashes: vec![
-                    Some(v2::HASH_00),
-                    Some(v2::HASH_1),
-                ],
-            })),
-            (2, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v2::HASH_111),
+                    Some(v1::HASH_110),
                     None,
-                    Some(v2::HASH_0),
-                ],
-            })),
-            (2, "joe", None, Proof::NonMembership(NonMembershipProof {
-                node: ProofNode::Leaf {
-                    key_hash: hash(b"donald"),
-                    value_hash: hash(b"duck"),
-                },
-                sibling_hashes: vec![
-                    Some(v2::HASH_00),
-                    Some(v2::HASH_1),
-                ],
-            })),
-            (2, "larry", Some("engineer"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v2::HASH_01),
-                    Some(v2::HASH_1),
-                ],
-            })),
-            (2, "pumpkin", Some("cat"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v2::HASH_110),
-                    None,
-                    Some(v2::HASH_0),
+                    Some(v1::HASH_0),
                 ],
             })),
         ] {
@@ -691,8 +691,8 @@ mod tests {
             assert_eq!(found_proof, proof);
 
             let root_hash = match version {
+                0 => v0::ROOT_HASH,
                 1 => v1::ROOT_HASH,
-                2 => v2::ROOT_HASH,
                 _ => unreachable!(),
             };
             assert!(verify_proof(
