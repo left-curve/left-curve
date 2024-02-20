@@ -6,7 +6,7 @@ A blockchain framework inspired by [CosmWasm](https://cosmwasm.com/).
 
 Prerequisites:
 
-- [Rust](https://rustup.rs/) - stable and nightly toolchains, `wasm32-unknown-unknown` target
+- [Rust](https://rustup.rs/) and `wasm32-unknown-unknown` target
 - [Just](https://just.systems/man/en/)
 - [Docker](https://docs.docker.com/engine/install/)
 

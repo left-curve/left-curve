@@ -9,7 +9,6 @@ macro_rules! forward_ref_partial_eq {
         // &T == U
         impl<'a> PartialEq<$u> for &'a $t {
             #[inline]
-            #[allow(clippy::unconditional_recursion)] // there isn't infinite recursion. clippy gets it wrong
             fn eq(&self, rhs: &$u) -> bool {
                 **self == *rhs
             }
@@ -18,7 +17,6 @@ macro_rules! forward_ref_partial_eq {
         // T == &U
         impl PartialEq<&$u> for $t {
             #[inline]
-            #[allow(clippy::unconditional_recursion)] // there isn't infinite recursion. clippy gets it wrong
             fn eq(&self, rhs: &&$u) -> bool {
                 *self == **rhs
             }
