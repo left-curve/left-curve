@@ -274,7 +274,8 @@ mod tests {
     fn division() {
         let lhs = Decimal256::from_str("74567.67567654").unwrap();
         let rhs = Decimal256::from_str("42143.34452434").unwrap();
-        assert_eq!(lhs / rhs, Decimal256::from_str("1.76938201081").unwrap());
+        // note: keep 18 decimal places
+        assert_eq!(lhs / rhs, Decimal256::from_str("1.769382010805365527").unwrap());
     }
 
     #[test_case(
