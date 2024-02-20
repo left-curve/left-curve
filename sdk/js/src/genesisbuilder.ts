@@ -1,8 +1,8 @@
-import * as fs from "fs";
-import * as os from "os";
-import { Config, Message } from "./types";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import type { Config, Message } from "./types";
 import {
-  Payload,
+  type Payload,
   decodeHex,
   encodeBase64,
   encodeHex,
@@ -11,7 +11,7 @@ import {
   serialize,
 } from "./serde";
 import { sha256 } from "@cosmjs/crypto";
-import { AdminOption, createAdmin, deriveAddress } from "./client";
+import { type AdminOption, createAdmin, deriveAddress } from "./client";
 
 export const GENESIS_SENDER = "0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a";
 export const GENESIS_BLOCK_HASH = decodeHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
