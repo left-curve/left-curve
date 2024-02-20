@@ -41,10 +41,10 @@
     "@cosmjs/tendermint-rpc": "^0.32.2"
   },
   "devDependencies": {
-    "@types/node": "^20.11.19",
-    "tsup": "^8.0.2",
-    "publint": "^0.2.7",
     "@arethetypeswrong/cli": "^0.13.10",
+    "@types/node": "^20.11.19",
+    "publint": "^0.2.7",
+    "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   }
 }

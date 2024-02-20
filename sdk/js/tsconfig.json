@@ -4,14 +4,9 @@
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": [
-      "es2020",
-      "dom"
-    ],
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "verbatimModuleSyntax": true,
+    "lib": ["es2020", "dom"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "newLine": "LF",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
@@ -25,6 +20,8 @@
     "rootDir": ".",
     "sourceMap": true,
     "strict": true,
+    "target": "esnext",
+    "verbatimModuleSyntax": true,
   },
   "include": ["src/**/*", "examples/**/*", "testdata/**/*"]
 }
