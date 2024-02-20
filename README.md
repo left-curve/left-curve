@@ -6,7 +6,7 @@ A blockchain framework inspired by [CosmWasm](https://cosmwasm.com/).
 
 Prerequisites:
 
-- [Rust](https://rustup.rs/) and `wasm32-unknown-unknown` target
+- [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target
 - [Just](https://just.systems/man/en/)
 - [Docker](https://docs.docker.com/engine/install/)
 
@@ -26,12 +26,6 @@ Lint the code:
 
 ```shell
 just lint
-```
-
-Check for unused dependencies:
-
-```shell
-just udeps
 ```
 
 Compile and optimize smart contracts:
