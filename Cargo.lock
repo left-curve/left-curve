@@ -839,6 +839,7 @@ dependencies = [
  "anyhow",
  "bip32",
  "cw-account",
+ "cw-account-factory",
  "cw-bank",
  "cw-crypto",
  "cw-jmt",

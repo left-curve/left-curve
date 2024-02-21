@@ -30,25 +30,27 @@ fn main() -> anyhow::Result<()> {
     // upload account wasm code
     let account_code_hash = builder.store_code(ARTIFACT_DIR.join("cw_account-aarch64.wasm"))?;
 
-    // register two accounts
-    let account1 = builder.instantiate(
-        account_code_hash.clone(),
-        cw_account::InstantiateMsg {
-            public_key: PublicKey::Secp256k1(test1.public_key().to_vec().into()),
-        },
-        b"test1".to_vec().into(),
-        AdminOption::SetToSelf,
-    )?;
-    let account2 = builder.instantiate(
-        account_code_hash.clone(),
-        cw_account::InstantiateMsg {
-            public_key: PublicKey::Secp256k1(test2.public_key().to_vec().into()),
-        },
-        b"test2".to_vec().into(),
-        AdminOption::SetToSelf,
+    // store and instantiate the account factory contract
+    let account_factory = builder.store_code_and_instantiate(
+        ARTIFACT_DIR.join("cw_account_factory-aarch64.wasm"),
+        cw_account_factory::InstantiateMsg {},
+        b"account-factory".to_vec().into(),
+        AdminOption::SetToNone,
     )?;
 
-    // store and instantiate and bank contract
+    // register two accounts
+    let account1 = builder.register_account(
+        account_factory.clone(),
+        account_code_hash.clone(),
+        PublicKey::Secp256k1(test1.public_key().to_vec().into()),
+    )?;
+    let account2 = builder.register_account(
+        account_factory.clone(),
+        account_code_hash,
+        PublicKey::Secp256k1(test2.public_key().to_vec().into()),
+    )?;
+
+    // store and instantiate the bank contract
     // give account1 some initial balances
     let bank = builder.store_code_and_instantiate(
         ARTIFACT_DIR.join("cw_bank-aarch64.wasm"),
@@ -81,9 +83,10 @@ fn main() -> anyhow::Result<()> {
     builder.write_to_file(None)?;
 
     println!("✅ done!");
-    println!("account1 : {account1}");
-    println!("account2 : {account2}");
-    println!("bank     : {bank}");
+    println!("account-factory : {account_factory}");
+    println!("account1        : {account1}");
+    println!("account2        : {account2}");
+    println!("bank            : {bank}");
 
     Ok(())
 }

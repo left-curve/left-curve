@@ -1,17 +1,9 @@
 use {
-    crate::AdminOption,
-    anyhow::{anyhow, ensure},
-    cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
-    home::home_dir,
-    lazy_static::lazy_static,
-    serde::ser::Serialize,
-    serde_json::Value,
-    std::{
-        fs,
-        fs::File,
+    crate::AdminOption, anyhow::{anyhow, ensure}, cw_account::PublicKey, cw_account_factory::make_salt, cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER}, home::home_dir, lazy_static::lazy_static, serde::ser::Serialize, serde_json::Value, std::{
+        fs::{self, File},
         io::Read,
         path::{Path, PathBuf},
-    },
+    }
 };
 
 lazy_static! {
@@ -25,9 +17,10 @@ lazy_static! {
 /// for an example.
 #[derive(Default)]
 pub struct GenesisBuilder {
-    cfg:        Option<Config>,
-    code_msgs:  Vec<Message>,
-    other_msgs: Vec<Message>,
+    cfg:            Option<Config>,
+    code_msgs:      Vec<Message>,
+    other_msgs:     Vec<Message>,
+    account_serial: u32,
 }
 
 impl GenesisBuilder {
@@ -91,6 +84,24 @@ impl GenesisBuilder {
         });
 
         Ok(())
+    }
+
+    pub fn register_account(
+        &mut self,
+        factory:    Addr,
+        code_hash:  Hash,
+        public_key: PublicKey,
+    ) -> anyhow::Result<Addr> {
+        let salt = make_salt(&public_key, self.account_serial);
+        let address = Addr::compute(&factory, &code_hash, &salt);
+
+        self.execute(factory, cw_account_factory::ExecuteMsg::RegisterAccount {
+            code_hash,
+            public_key,
+        })?;
+        self.account_serial += 1;
+
+        Ok(address)
     }
 
     pub fn set_config(&mut self, cfg: Config) -> anyhow::Result<()> {

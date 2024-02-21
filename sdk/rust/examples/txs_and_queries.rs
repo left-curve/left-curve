@@ -14,10 +14,10 @@ lazy_static! {
         home_dir().unwrap().join(".cwcli/keys")
     };
     static ref USER: Addr = {
-        Addr::from_str("0x14d07ffdbffefc447ccf0f2717dfe361efb557ce5754ee685b24de7f443283b0").unwrap()
+        Addr::from_str("0x2c0f529b3e736e579f6d1ac4546339f05639488987989149015d4e34a5b76125").unwrap()
     };
     static ref BANK: Addr = {
-        Addr::from_str("0xd425426cd164806ccd118961ab3354cf0f370d6dd441a88fb4369e64f1f3212c").unwrap()
+        Addr::from_str("0x3229a16558437d8d59496279be8e23e553d95dec37ac44d0881cb7e152ca6c36").unwrap()
     };
 }
 
