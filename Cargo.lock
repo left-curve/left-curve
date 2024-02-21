@@ -718,6 +718,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-account-factory"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-account",
+ "cw-std",
+ "sha2 0.10.8",
+]
+
+[[package]]
 name = "cw-app"
 version = "0.0.0"
 dependencies = [

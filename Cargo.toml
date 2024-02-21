@@ -3,9 +3,19 @@ resolver = "2"
 members  = [
   "bin/*",
   "contracts/account",
+  "contracts/account-factory",
   "contracts/bank",
-  "contracts/mocks/*",
-  "crates/*",
+  # note: consider commenting out the mock contracts to speed up compilation,
+  # if you don't need them.
+  "contracts/mocks/amm",
+  "contracts/mocks/querier",
+  "contracts/mocks/token-wrapper",
+  "crates/app",
+  "crates/crypto",
+  "crates/db",
+  "crates/jellyfish-merkle",
+  "crates/std",
+  "crates/vm",
   "sdk/rust",
 ]
 

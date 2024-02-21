@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use {
-    anyhow::ensure,
+    anyhow::bail,
     cw_std::{
-        cw_serde, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx, Item, Message,
-        QueryCtx, ReceiveCtx, Response, Tx,
+        cw_serde, split_one_key, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
+        Item, MapKey, Message, QueryCtx, RawKey, ReceiveCtx, Response, StdError, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
 
-const PUBKEY:   Item<PubKey> = Item::new("pk");
-const SEQUENCE: Item<u32>    = Item::new("seq");
+const PUBKEY: Item<PubKey> = Item::new("pk");
+const SEQUENCE: Item<u32> = Item::new("seq");
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -19,9 +19,16 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    UpdateKey {
-        new_pubkey: PubKey,
-    },
+    // not execute method is available with this contract.
+    //
+    // ideally we want to allow the account to update its public key. however
+    // adding this capability breaks the account factory contract, which
+    // maintains a registry of accounts indexed by (public_key, serial).
+    // if the account updates its public key, it needs to report it to the
+    // factory to get its record in the registry updated. this is doable but
+    // adds quite some complexity. also, maybe not that many users will need to
+    // rotate keys after all... so for now we don't have plan to support key
+    // rotation.
 }
 
 #[cw_serde]
@@ -33,7 +40,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct StateResponse {
-    pub pubkey:   PubKey,
+    pub pubkey: PubKey,
     pub sequence: u32,
 }
 
@@ -41,6 +48,45 @@ pub struct StateResponse {
 pub enum PubKey {
     Secp256k1(Binary),
     Secp256r1(Binary),
+}
+
+// implement MapKey trait, so that in account factory it can use the public key
+// as a map key.
+impl<'a> MapKey for &'a PubKey {
+    type Prefix = ();
+    type Suffix = ();
+    type Output = PubKey;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        let (ty, bytes) = match self {
+            PubKey::Secp256k1(bytes) => ("secp256k1", bytes),
+            PubKey::Secp256r1(bytes) => ("secp256r1", bytes),
+        };
+        vec![RawKey::Ref(ty.as_bytes()), RawKey::Ref(bytes)]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (ty_bytes, bytes) = split_one_key(bytes);
+        match ty_bytes {
+            b"secp256k1" => {
+                if bytes.len() != 32 {
+                    return Err(StdError::deserialize::<PubKey>(
+                        "incorrect secp256k1 public key length",
+                    ));
+                }
+                Ok(PubKey::Secp256k1(bytes.to_vec().into()))
+            },
+            b"secp256r1" => {
+                if bytes.len() != 32 {
+                    return Err(StdError::deserialize::<PubKey>(
+                        "incorrect secp256r1 public key length",
+                    ));
+                }
+                Ok(PubKey::Secp256r1(bytes.to_vec().into()))
+            },
+            _ => Err(StdError::deserialize::<PubKey>("unknown public key type: {ty_bytes:?}")),
+        }
+    }
 }
 
 /// Given details of a transaction, produce the bytes that the sender needs to
@@ -63,8 +109,8 @@ pub enum PubKey {
 /// TODO: is it efficient to do hashing in the contract? maybe move this to the
 /// host??
 pub fn sign_bytes(
-    msgs:     &[Message],
-    sender:   &Addr,
+    msgs: &[Message],
+    sender: &Addr,
     chain_id: &str,
     sequence: u32,
 ) -> anyhow::Result<[u8; 32]> {
@@ -124,34 +170,20 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
-    match msg {
-        ExecuteMsg::UpdateKey {
-            new_pubkey,
-        } => update_key(ctx, new_pubkey),
-    }
+pub fn execute(_ctx: ExecuteCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
+    bail!("no execute method is available for this contract");
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
+pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_json(&query_state(ctx)?),
     }
-    .map_err(Into::into) // TODO: remove
 }
 
-pub fn update_key(ctx: ExecuteCtx, new_pubkey: PubKey) -> anyhow::Result<Response> {
-    ensure!(ctx.sender == ctx.contract, "only the account itself can update key");
-    // TODO: ensure new pubkey is valid?
-
-    PUBKEY.save(ctx.store, &new_pubkey)?;
-
-    Ok(Response::new())
-}
-
-pub fn query_state(ctx: QueryCtx) -> anyhow::Result<StateResponse> {
+pub fn query_state(ctx: QueryCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        pubkey:   PUBKEY.load(ctx.store)?,
+        pubkey: PUBKEY.load(ctx.store)?,
         sequence: SEQUENCE.load(ctx.store)?,
     })
 }

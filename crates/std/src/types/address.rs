@@ -1,5 +1,5 @@
 use {
-    crate::{Binary, Hash, MapKey, RawKey, StdError, StdResult},
+    crate::{forward_ref_partial_eq, Binary, Hash, MapKey, RawKey, StdError, StdResult},
     serde::{de, ser},
     sha2::{Digest, Sha256},
     std::{
@@ -30,6 +30,8 @@ use {
 /// is safe to use `Addr`s in JSON messages.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr(pub(crate) Hash);
+
+forward_ref_partial_eq!(Addr, Addr);
 
 impl Addr {
     /// Addresses are encoded as lowercase hex strings, with the 0x prefix.
@@ -198,6 +200,6 @@ mod tests {
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_ADDR, from_json(MOCK_JSON).unwrap());
+        assert_eq!(MOCK_ADDR, from_json::<Addr>(MOCK_JSON).unwrap());
     }
 }
