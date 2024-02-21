@@ -6,7 +6,7 @@ use {
 
 #[derive(Parser)]
 pub enum TendermintCmd {
-    /// Get Tendermint status, including node info, pubkey, latest block hash,
+    /// Get Tendermint status, including node info, public key, latest block hash,
     /// app hash, block height, and time
     Status,
     /// Find transaction by hash

@@ -67,7 +67,7 @@
 use cw_std::entry_point;
 use {
     anyhow::bail,
-    cw_account::PubKey,
+    cw_account::PublicKey,
     cw_std::{
         cw_serde, from_json, to_json, Addr, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx, Hash,
         InstantiateCtx, Item, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
@@ -76,7 +76,7 @@ use {
 };
 
 pub const SERIAL: Item<u32> = Item::new("serial");
-pub const ACCOUNTS: Map<(&PubKey, u32), Addr> = Map::new("a");
+pub const ACCOUNTS: Map<(&PublicKey, u32), Addr> = Map::new("a");
 
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
 
@@ -88,7 +88,7 @@ pub enum ExecuteMsg {
     /// Create a new account with the given public key.
     RegisterAccount {
         code_hash: Hash,
-        public_key: PubKey,
+        public_key: PublicKey,
     },
 }
 
@@ -97,13 +97,13 @@ pub enum QueryMsg {
     /// Get the type and address of an account given its public key and serial number.
     /// Returns: Addr
     Account {
-        public_key: PubKey,
+        public_key: PublicKey,
         serial: u32,
     },
     /// Enumerate all accounts that is owned by the given public key.
     /// Returns: Vec<AccountsResponseItem>
     Accounts {
-        public_key: PubKey,
+        public_key: PublicKey,
         start_after: Option<u32>,
         limit: Option<u32>,
     },
@@ -124,7 +124,7 @@ pub fn make_message(chain_id: &str, serial: u32) -> Binary {
 }
 
 /// Create the salt taht will be used for instantiating the contract.
-pub fn make_salt(public_key: &PubKey, serial: u32) -> Binary {
+pub fn make_salt(public_key: &PublicKey, serial: u32) -> Binary {
     let mut hasher = Sha256::new();
     for raw_key in public_key.raw_keys() {
         hasher.update(raw_key);
@@ -160,10 +160,10 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let serial = SERIAL.may_load(ctx.store)?.unwrap_or(0);
     let msg_hash = make_message(&ctx.chain_id, serial);
     match public_key {
-        PubKey::Secp256k1(pk) => {
+        PublicKey::Secp256k1(pk) => {
             ctx.secp256k1_verify(msg_hash, tx.credential, pk)?;
         },
-        PubKey::Secp256r1(pk) => {
+        PublicKey::Secp256r1(pk) => {
             ctx.secp256r1_verify(msg_hash, tx.credential, pk)?;
         },
     }
@@ -184,7 +184,7 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> StdResult<Response> {
 pub fn register_account(
     ctx: ExecuteCtx,
     code_hash: Hash,
-    public_key: PubKey,
+    public_key: PublicKey,
 ) -> StdResult<Response> {
     let serial = SERIAL.may_load(ctx.store)?.unwrap_or(0);
     let salt = make_salt(&public_key, serial);
@@ -200,7 +200,7 @@ pub fn register_account(
         .add_message(Message::Instantiate {
             code_hash,
             msg: to_json(&cw_account::InstantiateMsg {
-                pubkey: public_key,
+                public_key,
             })?,
             salt,
             funds: Coins::new_empty(),
@@ -223,13 +223,13 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_account(ctx: QueryCtx, public_key: PubKey, serial: u32) -> StdResult<Addr> {
+pub fn query_account(ctx: QueryCtx, public_key: PublicKey, serial: u32) -> StdResult<Addr> {
     ACCOUNTS.load(ctx.store, (&public_key, serial))
 }
 
 pub fn query_accounts(
     ctx: QueryCtx,
-    public_key: PubKey,
+    public_key: PublicKey,
     start_after: Option<u32>,
     limit: Option<u32>,
 ) -> StdResult<Vec<AccountsResponseItem>> {

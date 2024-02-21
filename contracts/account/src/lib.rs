@@ -9,12 +9,12 @@ use {
     sha2::{Digest, Sha256},
 };
 
-const PUBKEY: Item<PubKey> = Item::new("pk");
+const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
 const SEQUENCE: Item<u32> = Item::new("seq");
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub pubkey: PubKey,
+    pub public_key: PublicKey,
 }
 
 #[cw_serde]
@@ -40,27 +40,27 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct StateResponse {
-    pub pubkey: PubKey,
+    pub public_key: PublicKey,
     pub sequence: u32,
 }
 
 #[cw_serde]
-pub enum PubKey {
+pub enum PublicKey {
     Secp256k1(Binary),
     Secp256r1(Binary),
 }
 
 // implement MapKey trait, so that in account factory it can use the public key
 // as a map key.
-impl<'a> MapKey for &'a PubKey {
+impl<'a> MapKey for &'a PublicKey {
     type Prefix = ();
     type Suffix = ();
-    type Output = PubKey;
+    type Output = PublicKey;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let (ty, bytes) = match self {
-            PubKey::Secp256k1(bytes) => ("secp256k1", bytes),
-            PubKey::Secp256r1(bytes) => ("secp256r1", bytes),
+            PublicKey::Secp256k1(bytes) => ("secp256k1", bytes),
+            PublicKey::Secp256r1(bytes) => ("secp256r1", bytes),
         };
         vec![RawKey::Ref(ty.as_bytes()), RawKey::Ref(bytes)]
     }
@@ -70,21 +70,23 @@ impl<'a> MapKey for &'a PubKey {
         match ty_bytes {
             b"secp256k1" => {
                 if bytes.len() != 32 {
-                    return Err(StdError::deserialize::<PubKey>(
+                    return Err(StdError::deserialize::<PublicKey>(
                         "incorrect secp256k1 public key length",
                     ));
                 }
-                Ok(PubKey::Secp256k1(bytes.to_vec().into()))
+                Ok(PublicKey::Secp256k1(bytes.to_vec().into()))
             },
             b"secp256r1" => {
                 if bytes.len() != 32 {
-                    return Err(StdError::deserialize::<PubKey>(
+                    return Err(StdError::deserialize::<PublicKey>(
                         "incorrect secp256r1 public key length",
                     ));
                 }
-                Ok(PubKey::Secp256r1(bytes.to_vec().into()))
+                Ok(PublicKey::Secp256r1(bytes.to_vec().into()))
             },
-            _ => Err(StdError::deserialize::<PubKey>("unknown public key type: {ty_bytes:?}")),
+            _ => {
+                Err(StdError::deserialize::<PublicKey>("unknown public key type: {ty_bytes:?}"))
+            },
         }
     }
 }
@@ -124,7 +126,7 @@ pub fn sign_bytes(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    PUBKEY.save(ctx.store, &msg.pubkey)?;
+    PUBLIC_KEY.save(ctx.store, &msg.public_key)?;
     SEQUENCE.save(ctx.store, &0)?;
 
     Ok(Response::new())
@@ -141,7 +143,7 @@ pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
-    let pubkey = PUBKEY.load(ctx.store)?;
+    let public_key = PUBLIC_KEY.load(ctx.store)?;
     let mut sequence = SEQUENCE.load(ctx.store)?;
 
     // prepare the hash that is expected to have been signed
@@ -150,11 +152,11 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     // verify the signature
     // skip if we are in simulate mode
     if !ctx.simulate {
-        match &pubkey {
-            PubKey::Secp256k1(bytes) => {
+        match &public_key {
+            PublicKey::Secp256k1(bytes) => {
                 ctx.secp256k1_verify(msg_hash, &tx.credential, bytes)?;
             },
-            PubKey::Secp256r1(bytes) => {
+            PublicKey::Secp256r1(bytes) => {
                 ctx.secp256r1_verify(msg_hash, &tx.credential, bytes)?;
             },
         }
@@ -183,7 +185,7 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_state(ctx: QueryCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        pubkey: PUBKEY.load(ctx.store)?,
+        public_key: PUBLIC_KEY.load(ctx.store)?,
         sequence: SEQUENCE.load(ctx.store)?,
     })
 }

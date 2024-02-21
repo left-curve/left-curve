@@ -1,5 +1,5 @@
 use {
-    cw_account::PubKey,
+    cw_account::PublicKey,
     cw_bank::Balance,
     cw_rs::{AdminOption, GenesisBuilder, SigningKey},
     cw_std::{Coin, Coins, Config, Uint128},
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     let account1 = builder.instantiate(
         account_code_hash.clone(),
         cw_account::InstantiateMsg {
-            pubkey: PubKey::Secp256k1(test1.pubkey().to_vec().into()),
+            public_key: PublicKey::Secp256k1(test1.public_key().to_vec().into()),
         },
         b"test1".to_vec().into(),
         AdminOption::SetToSelf,
@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
     let account2 = builder.instantiate(
         account_code_hash.clone(),
         cw_account::InstantiateMsg {
-            pubkey: PubKey::Secp256k1(test2.pubkey().to_vec().into()),
+            public_key: PublicKey::Secp256k1(test2.public_key().to_vec().into()),
         },
         b"test2".to_vec().into(),
         AdminOption::SetToSelf,

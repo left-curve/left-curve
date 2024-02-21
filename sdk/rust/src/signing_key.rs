@@ -76,11 +76,11 @@ impl SigningKey {
         // encrypt the private key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let ciphertext = cipher.encrypt(&nonce, self.privkey().as_slice())?;
+        let ciphertext = cipher.encrypt(&nonce, self.private_key().as_slice())?;
 
         // write keystore to file
         let keystore = Keystore {
-            pk:         self.pubkey().to_vec().into(),
+            pk:         self.public_key().to_vec().into(),
             salt:       salt.to_vec().into(),
             nonce:      nonce.to_vec().into(),
             ciphertext: ciphertext.into(),
@@ -108,11 +108,11 @@ impl SigningKey {
         })
     }
 
-    pub fn privkey(&self) -> [u8; 32] {
+    pub fn private_key(&self) -> [u8; 32] {
         self.inner.to_bytes().into()
     }
 
-    pub fn pubkey(&self) -> [u8; 33] {
+    pub fn public_key(&self) -> [u8; 33] {
         self.inner.verifying_key().to_bytes()
     }
 }
