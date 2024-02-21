@@ -69,7 +69,7 @@ impl<'a> MapKey for &'a PublicKey {
         let (ty_bytes, bytes) = split_one_key(bytes);
         match ty_bytes {
             b"secp256k1" => {
-                if bytes.len() != 32 {
+                if bytes.len() != 33 {
                     return Err(StdError::deserialize::<PublicKey>(
                         "incorrect secp256k1 public key length",
                     ));
@@ -77,7 +77,7 @@ impl<'a> MapKey for &'a PublicKey {
                 Ok(PublicKey::Secp256k1(bytes.to_vec().into()))
             },
             b"secp256r1" => {
-                if bytes.len() != 32 {
+                if bytes.len() != 33 {
                     return Err(StdError::deserialize::<PublicKey>(
                         "incorrect secp256r1 public key length",
                     ));
