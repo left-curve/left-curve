@@ -87,8 +87,8 @@ fn main() -> anyhow::Result<()> {
         bank:                   bank.clone(),
         begin_blockers:         vec![cron.clone()],
         end_blockers:           vec![cron.clone()],
-        store_code_permission:  Permission::Accounts([account1.clone()].into()),
-        instantiate_permission: Permission::Accounts([account1.clone(), account_factory.clone()].into()),
+        store_code_permission:  Permission::Somebodies([account1.clone()].into()),
+        instantiate_permission: Permission::Somebodies([account1.clone(), account_factory.clone()].into()),
     })?;
 
     // build the final genesis state and write to file

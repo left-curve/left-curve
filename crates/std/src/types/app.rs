@@ -48,13 +48,13 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Permission {
-    /// Any account is allowed to perform the action
-    Everybody,
     /// Only the owner can perform the action. Note, the owner is always able to
     /// upload code or instantiate contracts.
     Nobody,
-    /// Accounts in a whitelist or the owner can perform the action.
-    Accounts(BTreeSet<Addr>),
+    /// Any account is allowed to perform the action
+    Everybody,
+    /// Some whitelisted accounts or the owner can perform the action.
+    Somebodies(BTreeSet<Addr>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

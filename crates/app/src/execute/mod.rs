@@ -80,6 +80,6 @@ fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) 
     match permission {
         Permission::Nobody => false,
         Permission::Everybody => true,
-        Permission::Accounts(accounts) => accounts.contains(sender),
+        Permission::Somebodies(accounts) => accounts.contains(sender),
     }
 }
