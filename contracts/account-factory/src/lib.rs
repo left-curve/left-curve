@@ -137,7 +137,7 @@ pub struct AccountsResponseItem {
 pub fn make_message(chain_id: &str, serial: u32) -> Binary {
     let mut hasher = Sha256::new();
     hasher.update(chain_id.as_bytes());
-    hasher.update(&serial.to_be_bytes());
+    hasher.update(serial.to_be_bytes());
     hasher.finalize().to_vec().into()
 }
 
@@ -147,7 +147,7 @@ pub fn make_salt(public_key: &PublicKey, serial: u32) -> Binary {
     for raw_key in public_key.raw_keys() {
         hasher.update(raw_key);
     }
-    hasher.update(&serial.to_be_bytes());
+    hasher.update(serial.to_be_bytes());
     hasher.finalize().to_vec().into()
 }
 
@@ -158,7 +158,7 @@ pub fn instantiate(_ctx: InstantiateCtx, _msg: InstantiateMsg) -> StdResult<Resp
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
-    if tx.msgs.len() != 0 {
+    if tx.msgs.len() != 1 {
         bail!("transaction must contain exactly one message, got {}", tx.msgs.len());
     }
 
@@ -174,7 +174,7 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
         bail!("do not send funds when creating contracts");
     }
 
-    let ExecuteMsg::RegisterAccount { public_key, .. } = from_json(&msg)?;
+    let ExecuteMsg::RegisterAccount { public_key, .. } = from_json(msg)?;
     let serial = SERIALS.may_load(ctx.store, &public_key)?.unwrap_or(0);
     let msg_hash = make_message(&ctx.chain_id, serial);
     match public_key {

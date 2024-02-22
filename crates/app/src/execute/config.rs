@@ -32,7 +32,7 @@ fn _update_config(
     let Some(owner) = cfg.owner else {
         return Err(AppError::OwnerNotSet);
     };
-    if sender != &owner {
+    if sender != owner {
         return Err(AppError::not_owner(sender.clone(), owner));
     }
 
