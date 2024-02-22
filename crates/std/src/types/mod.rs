@@ -21,7 +21,9 @@ mod uint64;
 
 pub use {
     address::Addr,
-    app::{Account, BlockInfo, Config, GenesisState, GENESIS_BLOCK_HASH, GENESIS_SENDER},
+    app::{
+        Account, BlockInfo, Config, GenesisState, Permission, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+    },
     bank::{BankQuery, BankQueryResponse, TransferMsg},
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},

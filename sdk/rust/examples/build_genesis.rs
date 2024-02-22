@@ -2,7 +2,7 @@ use {
     cw_account::PublicKey,
     cw_bank::Balance,
     cw_rs::{AdminOption, GenesisBuilder, SigningKey},
-    cw_std::{Coin, Coins, Config, Empty, Uint128},
+    cw_std::{Coin, Coins, Config, Empty, Permission, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
     std::{env, path::PathBuf},
@@ -83,10 +83,12 @@ fn main() -> anyhow::Result<()> {
 
     // set config
     builder.set_config(Config {
-        owner:          None,
-        bank:           bank.clone(),
-        begin_blockers: vec![cron.clone()],
-        end_blockers:   vec![cron.clone()],
+        owner:                  None,
+        bank:                   bank.clone(),
+        begin_blockers:         vec![cron.clone()],
+        end_blockers:           vec![cron.clone()],
+        store_code_permission:  Permission::Accounts([account1.clone()].into()),
+        instantiate_permission: Permission::Accounts([account1.clone(), account_factory.clone()].into()),
     })?;
 
     // build the final genesis state and write to file

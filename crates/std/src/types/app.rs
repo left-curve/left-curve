@@ -3,6 +3,7 @@ use {
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeSet,
 };
 
 /// Genesis messages don't have senders, so we use this mock up hash as the
@@ -38,6 +39,22 @@ pub struct Config {
     /// all transactions have been processed, in order. Each of them must
     /// implement the `after_block` entry point.
     pub end_blockers: Vec<Addr>,
+    /// Which accounts are allowed to upload Wasm byte codes.
+    pub store_code_permission: Permission,
+    /// Which accounts are allowed to instantiate contracts.
+    pub instantiate_permission: Permission,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Permission {
+    /// Any account is allowed to perform the action
+    Everybody,
+    /// Only the owner can perform the action. Note, the owner is always able to
+    /// upload code or instantiate contracts.
+    Nobody,
+    /// Accounts in a whitelist or the owner can perform the action.
+    Accounts(BTreeSet<Addr>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
