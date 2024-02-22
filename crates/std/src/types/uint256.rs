@@ -4,10 +4,12 @@ use {
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
-        fmt, mem, ops::{
+        fmt, mem,
+        ops::{
             Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
             ShrAssign, Sub, SubAssign,
-        }, str::FromStr
+        },
+        str::FromStr,
     },
 };
 

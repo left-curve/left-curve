@@ -1,5 +1,6 @@
 use {
     crate::{forward_ref_partial_eq, MapKey, RawKey, StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     sha2::{Digest, Sha256},
     std::{
@@ -15,7 +16,7 @@ pub fn hash(data: impl AsRef<[u8]>) -> Hash {
     Hash(hasher.finalize().into())
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(pub(crate) [u8; Self::LENGTH]);
 
 forward_ref_partial_eq!(Hash, Hash);

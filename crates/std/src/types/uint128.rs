@@ -1,5 +1,6 @@
 use {
     crate::{forward_ref_partial_eq, StdError, StdResult, Uint256, Uint64},
+    borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
@@ -17,7 +18,7 @@ use {
 /// JSON supports integer numbers in the range of [-(2^53)+1, (2^53)-1].
 /// Numbers beyond this range (uint64, uint128...) need to serialize as strings.
 /// https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Uint128(u128);
 
 forward_ref_partial_eq!(Uint128, Uint128);

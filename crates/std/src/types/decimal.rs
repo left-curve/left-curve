@@ -1,5 +1,6 @@
 use {
     crate::{forward_ref_partial_eq, StdError, StdResult, Uint128, Uint256},
+    borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
@@ -28,7 +29,7 @@ use {
 /// ```plain
 /// Uint128::MAX / 10^18 = 340282366920938463463.374607431768211455
 /// ```
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(BorshSerialize, BorshDeserialize, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Decimal(Uint128);
 
 forward_ref_partial_eq!(Decimal, Decimal);

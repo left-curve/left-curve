@@ -20,7 +20,7 @@ pub enum QueryRequest {
     /// Enumerate an account's balances in all denoms.
     /// Returns: Coins
     Balances {
-        address: Addr,
+        address:     Addr,
         start_after: Option<String>,
         limit:       Option<u32>,
     },

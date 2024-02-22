@@ -1,12 +1,13 @@
 use {
     crate::Uint64,
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
 
 const NANOS_PER_SECOND: u64 = 1_000_000_000;
 
 /// UNIX epoch timestamp in nanosecond precision.
-#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timestamp(Uint64);
 
 impl Timestamp {

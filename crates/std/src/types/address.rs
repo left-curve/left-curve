@@ -1,5 +1,6 @@
 use {
     crate::{forward_ref_partial_eq, Binary, Hash, MapKey, RawKey, StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     sha2::{Digest, Sha256},
     std::{
@@ -28,7 +29,7 @@ use {
 /// In CWD, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr(pub(crate) Hash);
 
 forward_ref_partial_eq!(Addr, Addr);

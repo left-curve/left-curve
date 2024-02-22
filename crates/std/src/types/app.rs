@@ -1,5 +1,6 @@
 use {
     crate::{Addr, Hash, Message, Timestamp, Uint64},
+    borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -16,7 +17,8 @@ pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!("d04b98f48e8f8bcc15c6ae5ac050801c
 
 /// Chain-level configurations. Not to be confused with contract-level configs.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// The account that can update this config. Typically it's recommended to
     /// set this to a decentralized governance contract. Setting this to None
@@ -45,8 +47,8 @@ pub struct Config {
     pub instantiate_permission: Permission,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub enum Permission {
     /// Only the owner can perform the action. Note, the owner is always able to
     /// upload code or instantiate contracts.
@@ -58,12 +60,14 @@ pub enum Permission {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct GenesisState {
     pub config: Config,
     pub msgs:   Vec<Message>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct BlockInfo {
     pub height:    Uint64,
     pub timestamp: Timestamp,
@@ -71,7 +75,8 @@ pub struct BlockInfo {
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Account {
     pub code_hash: Hash,
     pub admin:     Option<Addr>,

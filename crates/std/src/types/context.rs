@@ -13,6 +13,7 @@ use {
 /// a transaction.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Context {
     pub chain_id:        String,
     pub block_height:    Uint64,

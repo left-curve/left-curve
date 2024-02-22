@@ -1,5 +1,6 @@
 use {
     crate::{StdError, StdResult, Uint128},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser, ser::SerializeSeq, Deserialize, Serialize},
     std::{
         collections::{btree_map, BTreeMap},
@@ -8,7 +9,8 @@ use {
     },
 };
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Coin {
     pub denom:  String,
     pub amount: Uint128,
