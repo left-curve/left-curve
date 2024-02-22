@@ -81,6 +81,7 @@ impl App {
         Ok(root_hash.unwrap())
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn do_finalize_block(
         &self,
         block:   BlockInfo,
