@@ -18,7 +18,7 @@ pub use {
 use {
     crate::AppResult,
     config::update_config,
-    cw_std::{Addr, BlockInfo, Event, Message, Permission, Storage},
+    cw_std::{Addr, BlockInfo, Event, Message, Permission, Storage, GENESIS_SENDER},
     events::{
         new_after_block_event, new_after_tx_event, new_before_block_event, new_before_tx_event,
         new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
@@ -70,6 +70,11 @@ pub fn process_msg<S: Storage + Clone + 'static>(
 }
 
 fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+    // the genesis sender can always store code and instantiate contracts
+    if sender == GENESIS_SENDER {
+        return true;
+    }
+
     // owner can always do anything it wants
     if let Some(owner) = owner {
         if sender == owner {
