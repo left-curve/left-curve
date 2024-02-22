@@ -42,11 +42,12 @@ pub use crate::wasm::{
 // -------------------------------- re-exports ---------------------------------
 
 // macros
-pub use cw_std_derive::{cw_serde, entry_point};
+pub use cw_std_derive::{cw_derive, entry_point};
 
 // dependencies used by the macros
 #[doc(hidden)]
 pub mod __private {
+    pub use ::borsh;
     pub use ::serde;
     pub use ::serde_with;
 }
