@@ -70,12 +70,12 @@ use {
     cw_account::PublicKey,
     cw_std::{
         cw_serde, from_json, to_json, Addr, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx, Hash,
-        InstantiateCtx, Item, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
+        InstantiateCtx, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
 
-pub const SERIAL: Item<u32> = Item::new("serial");
+pub const SERIALS: Map<&PublicKey, u32> = Map::new("s");
 pub const ACCOUNTS: Map<(&PublicKey, u32), Addr> = Map::new("a");
 
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -94,6 +94,18 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
+    /// Get the serial number of a public key. If you register a new account
+    /// with the public key, this is the serial number that will be used.
+    /// Returns: u32
+    Serial {
+        public_key: PublicKey,
+    },
+    /// Enumerate serial numbers of all public keys.
+    /// Returns: Vec<SerialsResponseItem>
+    Serials {
+        start_after: Option<PublicKey>,
+        limit: Option<u32>,
+    },
     /// Get the type and address of an account given its public key and serial number.
     /// Returns: Addr
     Account {
@@ -107,6 +119,12 @@ pub enum QueryMsg {
         start_after: Option<u32>,
         limit: Option<u32>,
     },
+}
+
+#[cw_serde]
+pub struct SerialsResponseItem {
+    pub public_key: PublicKey,
+    pub serial: u32,
 }
 
 #[cw_serde]
@@ -157,7 +175,7 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     }
 
     let ExecuteMsg::RegisterAccount { public_key, .. } = from_json(&msg)?;
-    let serial = SERIAL.may_load(ctx.store)?.unwrap_or(0);
+    let serial = SERIALS.may_load(ctx.store, &public_key)?.unwrap_or(0);
     let msg_hash = make_message(&ctx.chain_id, serial);
     match public_key {
         PublicKey::Secp256k1(pk) => {
@@ -186,11 +204,11 @@ pub fn register_account(
     code_hash: Hash,
     public_key: PublicKey,
 ) -> StdResult<Response> {
-    let serial = SERIAL.may_load(ctx.store)?.unwrap_or(0);
+    let serial = SERIALS.may_load(ctx.store, &public_key)?.unwrap_or(0);
     let salt = make_salt(&public_key, serial);
     let address = Addr::compute(&ctx.contract, &code_hash, &salt);
 
-    SERIAL.save(ctx.store, &(serial + 1))?;
+    SERIALS.save(ctx.store, &public_key, &(serial + 1))?;
     ACCOUNTS.save(ctx.store, (&public_key, serial), &address)?;
 
     Ok(Response::new()
@@ -211,6 +229,13 @@ pub fn register_account(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Serial {
+            public_key,
+        } => to_json(&query_serial(ctx, public_key)?),
+        QueryMsg::Serials {
+            start_after,
+            limit,
+        } => to_json(&query_serials(ctx, start_after, limit)?),
         QueryMsg::Account {
             public_key,
             serial,
@@ -221,6 +246,30 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_json(&query_accounts(ctx, public_key, start_after, limit)?),
     }
+}
+
+pub fn query_serial(ctx: QueryCtx, public_key: PublicKey) -> StdResult<u32> {
+    SERIALS.may_load(ctx.store, &public_key).map(|opt| opt.unwrap_or(0))
+}
+
+pub fn query_serials(
+    ctx: QueryCtx,
+    start_after: Option<PublicKey>,
+    limit: Option<u32>,
+) -> StdResult<Vec<SerialsResponseItem>> {
+    let start = start_after.as_ref().map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+    SERIALS
+        .range(ctx.store, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|item| {
+            let (public_key, serial) = item?;
+            Ok(SerialsResponseItem {
+                public_key,
+                serial,
+            })
+        })
+        .collect()
 }
 
 pub fn query_account(ctx: QueryCtx, public_key: PublicKey, serial: u32) -> StdResult<Addr> {
