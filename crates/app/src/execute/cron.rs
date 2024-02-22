@@ -4,7 +4,7 @@ use {
     cw_db::PrefixStore,
     cw_std::{Addr, BlockInfo, Context, Event, Storage},
     cw_vm::Instance,
-    tracing::{debug, warn},
+    tracing::{info, warn},
 };
 
 // ------------------------------- before block --------------------------------
@@ -16,7 +16,7 @@ pub fn before_block<S: Storage + Clone + 'static>(
 ) -> AppResult<Vec<Event>> {
     match _before_block(store, block, contract) {
         Ok(events) => {
-            debug!(contract = contract.to_string(), "Called before block hook");
+            info!(contract = contract.to_string(), "Called before block hook");
             Ok(events)
         },
         Err(err) => {
@@ -71,7 +71,7 @@ pub fn after_block<S: Storage + Clone + 'static>(
 ) -> AppResult<Vec<Event>> {
     match _after_block(store, block, contract) {
         Ok(events) => {
-            debug!(contract = contract.to_string(), "Called after block hook");
+            info!(contract = contract.to_string(), "Called after block hook");
             Ok(events)
         },
         Err(err) => {
