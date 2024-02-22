@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use cw_std::{
-    cw_serde, to_json, Addr, Coins, GenericResult, InstantiateCtx, Item, Message, ReceiveCtx,
-    ReplyCtx, Response, StdResult, SubMessage, Uint128,
+    cw_serde, to_json, Addr, Coins, InstantiateCtx, Item, Message, ReceiveCtx, Response, StdResult,
+    SubMessage, Uint128,
 };
 
 // we namespace all wrapped token denoms with this
@@ -15,13 +15,6 @@ pub const BANK: Item<Addr> = Item::new("bank");
 #[cw_serde]
 pub struct InstantiateMsg {
     pub bank: Addr,
-}
-
-#[cw_serde]
-pub enum ReplyMsg {
-    AfterMint,
-    AfterBurn,
-    AfterRefund,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -64,70 +57,41 @@ pub fn receive(ctx: ReceiveCtx) -> StdResult<Response> {
     }
 
     if !refunds.is_empty() {
-        submsgs.push(new_refund_msg(ctx.sender, refunds)?);
+        submsgs.push(new_refund_msg(ctx.sender, refunds));
     }
 
     Ok(Response::new().add_submessages(submsgs))
 }
 
-// for this demo, there is no action to be taken in the reply. we just log some
-// event attributes.
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(ctx: ReplyCtx, msg: ReplyMsg) -> StdResult<Response> {
-    let method = match msg {
-        ReplyMsg::AfterMint => "after_mint",
-        ReplyMsg::AfterBurn => "after_burn",
-        ReplyMsg::AfterRefund => "after_refund",
-    };
-
-    let submsg_result = match ctx.submsg_result {
-        GenericResult::Ok(_) => "ok",
-        GenericResult::Err(_) => "err",
-    };
-
-    Ok(Response::new()
-        .add_attribute("method", method)
-        .add_attribute("submsg_result", submsg_result))
-}
-
 fn new_mint_msg(bank: Addr, to: Addr, denom: String, amount: Uint128) -> StdResult<SubMessage> {
-    SubMessage::reply_always(
-        Message::Execute {
-            contract: bank,
-            msg: to_json(&cw_bank::ExecuteMsg::Mint {
-                to,
-                denom,
-                amount,
-            })?,
-            funds: Coins::new_empty(),
-        },
-        &ReplyMsg::AfterMint,
-    )
+    Ok(SubMessage::reply_never(Message::Execute {
+        contract: bank,
+        msg: to_json(&cw_bank::ExecuteMsg::Mint {
+            to,
+            denom,
+            amount,
+        })?,
+        funds: Coins::new_empty(),
+    }))
 }
 
 fn new_burn_msg(bank: Addr, from: Addr, denom: String, amount: Uint128) -> StdResult<SubMessage> {
-    SubMessage::reply_always(
-        Message::Execute {
-            contract: bank,
-            msg: to_json(&cw_bank::ExecuteMsg::Burn {
-                from,
-                denom,
-                amount,
-            })?,
-            funds: Coins::new_empty(),
-        },
-        &ReplyMsg::AfterBurn,
-    )
+    Ok(SubMessage::reply_never(Message::Execute {
+        contract: bank,
+        msg: to_json(&cw_bank::ExecuteMsg::Burn {
+            from,
+            denom,
+            amount,
+        })?,
+        funds: Coins::new_empty(),
+    }))
 }
 
-fn new_refund_msg(to: Addr, coins: Coins) -> StdResult<SubMessage> {
-    SubMessage::reply_always(
-        Message::Transfer {
-            to,
-            coins,
-        },
-        &ReplyMsg::AfterRefund,
-    )
+fn new_refund_msg(to: Addr, coins: Coins) -> SubMessage {
+    SubMessage::reply_never(Message::Transfer {
+        to,
+        coins,
+    })
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -203,7 +167,7 @@ mod tests {
                     Coin::new("uatom", 222),
                     Coin::new("umars", 333),
                 ]),
-            )?,
+            ),
         ]);
 
         Ok(())
