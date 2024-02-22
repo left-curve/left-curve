@@ -1,6 +1,6 @@
 use {
     crate::{hash_internal_node, hash_leaf_node, BitArray},
-    cw_std::{cw_serde, Hash, Order},
+    cw_std::{cw_derive, Hash, Order},
     thiserror::Error,
 };
 
@@ -27,18 +27,18 @@ pub enum ProofError {
     NotCommonPrefix,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum Proof {
     Membership(MembershipProof),
     NonMembership(NonMembershipProof),
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct MembershipProof {
     pub sibling_hashes: Vec<Option<Hash>>,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct NonMembershipProof {
     pub node: ProofNode,
     pub sibling_hashes: Vec<Option<Hash>>,
@@ -47,7 +47,7 @@ pub struct NonMembershipProof {
 /// `ProofNode` is just like `Node`, but for internal nodes it omits the child
 /// versions, which aren't needed for proving, only including child node hashes.
 /// This reduces proof sizes.
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum ProofNode {
     Internal {
         left_hash:  Option<Hash>,

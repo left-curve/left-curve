@@ -1,30 +1,30 @@
 use {
-    cw_std::{cw_serde, Hash},
+    cw_std::{cw_derive, Hash},
     sha2::{Digest, Sha256},
 };
 
 const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
 const LEAF_NODE_HASH_PERFIX:     &[u8] = &[1];
 
-#[cw_serde]
+#[cw_derive(borsh)]
 pub struct Child {
     pub version: u64,
     pub hash:    Hash,
 }
 
-#[cw_serde]
+#[cw_derive(borsh)]
 pub struct InternalNode {
     pub left_child:  Option<Child>,
     pub right_child: Option<Child>,
 }
 
-#[cw_serde]
+#[cw_derive(borsh)]
 pub struct LeafNode {
     pub key_hash:   Hash,
     pub value_hash: Hash,
 }
 
-#[cw_serde]
+#[cw_derive(borsh)]
 pub enum Node {
     Internal(InternalNode),
     Leaf(LeafNode),
