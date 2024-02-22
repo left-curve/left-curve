@@ -1,4 +1,4 @@
-mod auth;
+mod account;
 mod config;
 mod events;
 #[allow(clippy::module_inception)]
@@ -9,16 +9,16 @@ mod store;
 mod submessage;
 mod transfer;
 
-pub use auth::authenticate_tx;
+pub use account::{after_tx, before_tx};
 
 use {
     crate::AppResult,
     config::update_config,
     cw_std::{Addr, BlockInfo, Event, Message, Storage},
     events::{
-        new_before_tx_event, new_execute_event, new_instantiate_event, new_migrate_event,
-        new_receive_event, new_reply_event, new_store_code_event, new_transfer_event,
-        new_update_config_event,
+        new_after_tx_event, new_before_tx_event, new_execute_event, new_instantiate_event,
+        new_migrate_event, new_receive_event, new_reply_event, new_store_code_event,
+        new_transfer_event, new_update_config_event,
     },
     execute::execute,
     instantiate::instantiate,

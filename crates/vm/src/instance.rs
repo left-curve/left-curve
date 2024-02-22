@@ -124,6 +124,15 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
+    pub fn call_after_tx(
+        &mut self,
+        ctx: &Context,
+        tx:  &Tx,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json(tx)?)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
     pub fn call_transfer(
         &mut self,
         ctx: &Context,

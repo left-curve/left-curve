@@ -1,6 +1,6 @@
 use {
     crate::{
-        authenticate_tx, process_msg, process_query, AppError, AppResult, CHAIN_ID, CONFIG,
+        after_tx, before_tx, process_msg, process_query, AppError, AppResult, CHAIN_ID, CONFIG,
         LAST_FINALIZED_BLOCK,
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
@@ -222,9 +222,9 @@ where
     // create cached store for this tx
     let cached = SharedStore::new(CacheStore::new(store, None));
 
-    // first, authenticate tx by calling the sender account's before_tx method.
-    // if authentication fails, abort, discard uncommitted.
-    events.extend(authenticate_tx(cached.share(), block, &tx)?);
+    // call the sender account's `before_tx` method.
+    // if this fails, abort, discard uncommitted state changes.
+    events.extend(before_tx(cached.share(), block, &tx)?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -236,10 +236,15 @@ where
     // if any one of the msgs fails, the entire tx fails; abort, discard
     // uncommitted changes (the changes from the before_tx call earlier are
     // persisted)
-    for (idx, msg) in tx.msgs.into_iter().enumerate() {
+    for (idx, msg) in tx.msgs.iter().enumerate() {
         debug!(idx, "Processing message");
-        events.extend(process_msg(cached.share(), block, &tx.sender, msg)?);
+        events.extend(process_msg(cached.share(), block, &tx.sender, msg.clone())?);
     }
+
+    // call the sender account's `after_tx` method.
+    // if this fails, abort, discard uncommitted state changes from messages.
+    // state changes from `before_tx` are always kept.
+    events.extend(after_tx(cached.share(), block, &tx)?);
 
     // all messages succeeded. commit the state changes
     cached.write_access().commit();

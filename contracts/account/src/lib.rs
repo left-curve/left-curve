@@ -3,8 +3,9 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, split_one_key, to_json, Addr, BeforeTxCtx, Binary, ExecuteCtx, InstantiateCtx,
-        Item, MapKey, Message, QueryCtx, RawKey, ReceiveCtx, Response, StdError, StdResult, Tx,
+        cw_serde, split_one_key, to_json, Addr, AfterTxCtx, BeforeTxCtx, Binary, ExecuteCtx,
+        InstantiateCtx, Item, MapKey, Message, QueryCtx, RawKey, ReceiveCtx, Response, StdError,
+        StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -170,6 +171,12 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     Ok(Response::new()
         .add_attribute("method", "before_tx")
         .add_attribute("next_sequence", sequence.to_string()))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn after_tx(_ctx: AfterTxCtx, _tx: Tx) -> anyhow::Result<Response> {
+    // nothing to do
+    Ok(Response::new().add_attribute("method", "after_tx"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

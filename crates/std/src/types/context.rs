@@ -97,6 +97,16 @@ pub struct BeforeTxCtx<'a> {
     pub simulate:        bool,
 }
 
+pub struct AfterTxCtx<'a> {
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
+    pub contract:        Addr,
+    pub simulate:        bool,
+}
+
 pub struct TransferCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,

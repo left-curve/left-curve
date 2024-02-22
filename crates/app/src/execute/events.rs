@@ -19,6 +19,12 @@ pub fn new_before_tx_event(sender: &Addr, attrs: Vec<Attribute>) -> Event {
         .add_attributes(attrs)
 }
 
+pub fn new_after_tx_event(sender: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("after_tx")
+        .add_attribute(CONTRACT_ADDRESS_KEY, sender)
+        .add_attributes(attrs)
+}
+
 pub fn new_transfer_event(bank: &Addr, attrs: Vec<Attribute>) -> Event {
     Event::new("transfer")
         .add_attribute(CONTRACT_ADDRESS_KEY, bank)

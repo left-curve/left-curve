@@ -1,8 +1,8 @@
 use {
     crate::{
-        from_json, to_json, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context, ExecuteCtx,
-        ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region,
-        ReplyCtx, Response, TransferCtx, TransferMsg, Tx,
+        from_json, to_json, AfterTxCtx, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context,
+        ExecuteCtx, ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx,
+        ReceiveCtx, Region, ReplyCtx, Response, TransferCtx, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -344,6 +344,49 @@ where
     };
 
     before_tx_fn(ctx, tx).into()
+}
+
+// --------------------------------- after tx ----------------------------------
+
+pub fn do_after_tx<E>(
+    after_tx_fn: &dyn Fn(AfterTxCtx, Tx) -> Result<Response, E>,
+    ctx_ptr:     usize,
+    tx_ptr:      usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
+
+    let res = _do_after_tx(after_tx_fn, &ctx_bytes, &tx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_after_tx<E>(
+    after_tx_fn: &dyn Fn(AfterTxCtx, Tx) -> Result<Response, E>,
+    ctx_bytes:   &[u8],
+    tx_bytes:    &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let tx = try_into_generic_result!(from_json(tx_bytes));
+
+    let ctx = AfterTxCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+        simulate:        ctx.simulate.expect("host failed to specify whether it's simulation mode"),
+    };
+
+    after_tx_fn(ctx, tx).into()
 }
 
 // --------------------------------- transfer ----------------------------------
