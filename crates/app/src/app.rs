@@ -85,7 +85,7 @@ impl App {
         &self,
         block:   BlockInfo,
         raw_txs: Vec<impl AsRef<[u8]>>,
-    ) -> AppResult<(Hash, Vec<AppResult<Vec<Event>>>)> {
+    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
         let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
@@ -154,7 +154,7 @@ impl App {
             "Finalized block"
         );
 
-        Ok((root_hash.unwrap(), tx_results))
+        Ok((root_hash.unwrap(), events, tx_results))
     }
 
     // TODO: we need to think about what to do if the flush fails here?

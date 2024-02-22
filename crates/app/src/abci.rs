@@ -58,9 +58,9 @@ impl Application for App {
         let block = from_tm_block(req.height, req.time, Some(req.hash));
 
         match self.do_finalize_block(block, req.txs) {
-            Ok((app_hash, tx_results)) => {
+            Ok((app_hash, events, tx_results)) => {
                 ResponseFinalizeBlock {
-                    events:                  vec![], // this should be begin/endblocker events, which we don't have yet
+                    events:                  events.into_iter().map(to_tm_event).collect(),
                     tx_results:              tx_results.into_iter().map(to_tm_tx_result).collect(),
                     validator_updates:       vec![],
                     consensus_param_updates: None,
