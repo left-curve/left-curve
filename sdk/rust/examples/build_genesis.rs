@@ -2,7 +2,7 @@ use {
     cw_account::PublicKey,
     cw_bank::Balance,
     cw_rs::{AdminOption, GenesisBuilder, SigningKey},
-    cw_std::{Coin, Coins, Config, Uint128},
+    cw_std::{Coin, Coins, Config, Empty, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
     std::{env, path::PathBuf},
@@ -73,12 +73,20 @@ fn main() -> anyhow::Result<()> {
         AdminOption::SetToNone,
     )?;
 
+    // store and instantiate mock cron contract
+    let cron = builder.store_code_and_instantiate(
+        ARTIFACT_DIR.join("cw_mock_cron-aarch64.wasm"),
+        Empty {},
+        b"cron".to_vec().into(),
+        AdminOption::SetToNone,
+    )?;
+
     // set config
     builder.set_config(Config {
         owner:          None,
         bank:           bank.clone(),
-        begin_blockers: vec![],
-        end_blockers:   vec![],
+        begin_blockers: vec![cron.clone()],
+        end_blockers:   vec![cron.clone()],
     })?;
 
     // build the final genesis state and write to file
@@ -89,6 +97,7 @@ fn main() -> anyhow::Result<()> {
     println!("account1        : {account1}");
     println!("account2        : {account2}");
     println!("bank            : {bank}");
+    println!("cron            : {cron}");
 
     Ok(())
 }
