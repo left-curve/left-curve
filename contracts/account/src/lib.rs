@@ -3,7 +3,7 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, split_one_key, to_json, Addr, AfterTxCtx, BeforeTxCtx, Binary, ExecuteCtx,
+        cw_derive, split_one_key, to_json, Addr, AfterTxCtx, BeforeTxCtx, Binary, ExecuteCtx,
         InstantiateCtx, Item, MapKey, Message, QueryCtx, RawKey, ReceiveCtx, Response, StdError,
         StdResult, Tx,
     },
@@ -13,12 +13,12 @@ use {
 const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
 const SEQUENCE: Item<u32> = Item::new("seq");
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct InstantiateMsg {
     pub public_key: PublicKey,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum ExecuteMsg {
     // not execute method is available with this contract.
     //
@@ -32,20 +32,20 @@ pub enum ExecuteMsg {
     // rotation.
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum QueryMsg {
     /// Query the state of the account, including its public key and sequence.
     /// Returns: StateResponse
     State {},
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct StateResponse {
     pub public_key: PublicKey,
     pub sequence: u32,
 }
 
-#[cw_serde]
+#[cw_derive(serde, borsh)]
 #[derive(Hash)]
 pub enum PublicKey {
     Secp256k1(Binary),

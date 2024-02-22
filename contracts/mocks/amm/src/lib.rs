@@ -3,7 +3,7 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_serde, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
+        cw_derive, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
         QueryCtx, ReceiveCtx, Response, StdResult, Uint128, Uint256,
     },
     std::cmp,
@@ -13,7 +13,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 pub type InstantiateMsg = Config;
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum ExecuteMsg {
     /// Add liquidity to the pool and mint share tokens.
     /// Must send non-zero amount of the the pool's two denoms.
@@ -32,7 +32,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum QueryMsg {
     /// The contract's configuration.
     /// Returns: Config
@@ -50,7 +50,7 @@ pub enum QueryMsg {
 }
 
 /// The AMM pool's configuration.
-#[cw_serde]
+#[cw_derive(serde, borsh)]
 pub struct Config {
     /// Address of the bank contract.
     /// We need to call the bank contract to mint or burn the share token.

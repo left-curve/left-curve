@@ -3,7 +3,7 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_serde, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
+        cw_derive, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
         InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, Storage,
         TransferCtx, TransferMsg, Uint128,
     },
@@ -19,18 +19,18 @@ const SUPPLIES: Map<&str, Uint128> = Map::new("s");
 // how many items to return in a paginated query by default
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct InstantiateMsg {
     pub initial_balances: Vec<Balance>,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct Balance {
     pub address: Addr,
     pub coins:   Coins,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum ExecuteMsg {
     Mint {
         to:     Addr,

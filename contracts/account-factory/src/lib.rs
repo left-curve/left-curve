@@ -69,7 +69,7 @@ use {
     anyhow::bail,
     cw_account::PublicKey,
     cw_std::{
-        cw_serde, from_json, to_json, Addr, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx, Hash,
+        cw_derive, from_json, to_json, Addr, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx, Hash,
         InstantiateCtx, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
@@ -80,10 +80,10 @@ pub const ACCOUNTS: Map<(&PublicKey, u32), Addr> = Map::new("a");
 
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct InstantiateMsg {}
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum ExecuteMsg {
     /// Create a new account with the given public key.
     RegisterAccount {
@@ -92,7 +92,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum QueryMsg {
     /// Get the serial number of a public key. If you register a new account
     /// with the public key, this is the serial number that will be used.
@@ -121,13 +121,13 @@ pub enum QueryMsg {
     },
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct SerialsResponseItem {
     pub public_key: PublicKey,
     pub serial: u32,
 }
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct AccountsResponseItem {
     pub serial: u32,
     pub address: Addr,

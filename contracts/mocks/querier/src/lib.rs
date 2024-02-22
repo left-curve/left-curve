@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use cw_std::{
-    cw_serde, to_json, Binary, Empty, ExecuteCtx, InstantiateCtx, QueryCtx, QueryRequest,
+    cw_derive, to_json, Binary, Empty, ExecuteCtx, InstantiateCtx, QueryCtx, QueryRequest,
     ReceiveCtx, Response, StdResult,
 };
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub enum QueryMsg {
     QueryChain {
         request: QueryRequest,

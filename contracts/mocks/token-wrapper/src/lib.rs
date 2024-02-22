@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use cw_std::{
-    cw_serde, to_json, Addr, Coins, InstantiateCtx, Item, Message, ReceiveCtx, Response, StdResult,
+    cw_derive, to_json, Addr, Coins, InstantiateCtx, Item, Message, ReceiveCtx, Response, StdResult,
     SubMessage, Uint128,
 };
 
@@ -12,7 +12,7 @@ pub const DENOM_NAMESPACE: &str = "wrapped";
 // the bank contract's address
 pub const BANK: Item<Addr> = Item::new("bank");
 
-#[cw_serde]
+#[cw_derive(serde)]
 pub struct InstantiateMsg {
     pub bank: Addr,
 }
