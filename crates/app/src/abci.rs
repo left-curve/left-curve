@@ -1,11 +1,20 @@
 use {
-    crate::{App, AppResult}, cw_jmt::Proof, cw_std::{Attribute, BlockInfo, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH}, prost::bytes::Bytes, std::{any::type_name, net::ToSocketAddrs}, tendermint_abci::{Application, Error as ABCIError, ServerBuilder}, tendermint_proto::{
+    crate::{App, AppResult},
+    cw_jmt::Proof,
+    cw_std::{Attribute, BlockInfo, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH},
+    prost::bytes::Bytes,
+    std::{any::type_name, net::ToSocketAddrs},
+    tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
+    tendermint_proto::{
         abci::{
             Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx,
             RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx,
             ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery,
-        }, crypto::{ProofOp, ProofOps}, google::protobuf::Timestamp as TmTimestamp,
-    }, tracing::Value
+        },
+        crypto::{ProofOp, ProofOps},
+        google::protobuf::Timestamp as TmTimestamp,
+    },
+    tracing::Value,
 };
 
 impl App {
