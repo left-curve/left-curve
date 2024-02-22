@@ -17,13 +17,13 @@ pub use crate::{
     },
     testing::MockStorage,
     types::{
-        hash, Account, AccountResponse, Addr, AfterTxCtx, Attribute, BankQuery, BankQueryResponse,
-        BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config,
-        Context, Decimal, Decimal256, Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash,
-        InfoResponse, InstantiateCtx, Message, MigrateCtx, QueryCtx, QueryRequest, QueryResponse,
-        ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg,
-        Tx, Uint128, Uint256, Uint512, Uint64, WasmRawResponse, WasmSmartResponse,
-        GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Attribute, BankQuery,
+        BankQueryResponse, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef, Coins,
+        CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256, Empty, Event, ExecuteCtx,
+        GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message, MigrateCtx,
+        QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage,
+        Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 
@@ -34,8 +34,9 @@ mod wasm;
 
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
-    do_after_tx, do_before_tx, do_execute, do_instantiate, do_migrate, do_query, do_query_bank,
-    do_receive, do_reply, do_transfer, ExternalIterator, ExternalStorage, Region,
+    do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
+    do_migrate, do_query, do_query_bank, do_receive, do_reply, do_transfer, ExternalIterator,
+    ExternalStorage, Region,
 };
 
 // -------------------------------- re-exports ---------------------------------

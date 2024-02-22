@@ -75,8 +75,10 @@ fn main() -> anyhow::Result<()> {
 
     // set config
     builder.set_config(Config {
-        owner: None,
-        bank:  bank.clone(),
+        owner:          None,
+        bank:           bank.clone(),
+        begin_blockers: vec![],
+        end_blockers:   vec![],
     })?;
 
     // build the final genesis state and write to file

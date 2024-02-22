@@ -1,8 +1,9 @@
 use {
     crate::{
-        from_json, to_json, AfterTxCtx, BankQuery, BankQueryResponse, BeforeTxCtx, Binary, Context,
-        ExecuteCtx, ExternalStorage, GenericResult, InstantiateCtx, MigrateCtx, QueryCtx,
-        ReceiveCtx, Region, ReplyCtx, Response, TransferCtx, TransferMsg, Tx,
+        from_json, to_json, AfterBlockCtx, AfterTxCtx, BankQuery, BankQueryResponse,
+        BeforeBlockCtx, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult,
+        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, TransferCtx,
+        TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -301,6 +302,82 @@ where
     };
 
     receive_fn(ctx).into()
+}
+
+// ------------------------------- before block --------------------------------
+
+pub fn do_before_block<E>(
+    before_block_fn: &dyn Fn(BeforeBlockCtx) -> Result<Response, E>,
+    ctx_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+
+    let res = _do_before_block(before_block_fn, &ctx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_before_block<E>(
+    before_block_fn: &dyn Fn(BeforeBlockCtx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+
+    let ctx = BeforeBlockCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+    };
+
+    before_block_fn(ctx).into()
+}
+
+// -------------------------------- after block --------------------------------
+
+pub fn do_after_block<E>(
+    after_block_fn: &dyn Fn(AfterBlockCtx) -> Result<Response, E>,
+    ctx_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+
+    let res = _do_after_block(after_block_fn, &ctx_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_after_block<E>(
+    after_block_fn: &dyn Fn(AfterBlockCtx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+
+    let ctx = AfterBlockCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+    };
+
+    after_block_fn(ctx).into()
 }
 
 // --------------------------------- before tx ---------------------------------

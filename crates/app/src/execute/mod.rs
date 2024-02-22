@@ -1,5 +1,6 @@
 mod account;
 mod config;
+mod cron;
 mod events;
 #[allow(clippy::module_inception)]
 mod execute;
@@ -9,16 +10,19 @@ mod store;
 mod submessage;
 mod transfer;
 
-pub use account::{after_tx, before_tx};
+pub use {
+    account::{after_tx, before_tx},
+    cron::{after_block, before_block},
+};
 
 use {
     crate::AppResult,
     config::update_config,
     cw_std::{Addr, BlockInfo, Event, Message, Storage},
     events::{
-        new_after_tx_event, new_before_tx_event, new_execute_event, new_instantiate_event,
-        new_migrate_event, new_receive_event, new_reply_event, new_store_code_event,
-        new_transfer_event, new_update_config_event,
+        new_after_block_event, new_after_tx_event, new_before_block_event, new_before_tx_event,
+        new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
+        new_reply_event, new_store_code_event, new_transfer_event, new_update_config_event,
     },
     execute::execute,
     instantiate::instantiate,

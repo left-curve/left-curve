@@ -26,8 +26,8 @@ pub use {
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
-        AfterTxCtx, BeforeTxCtx, Context, ExecuteCtx, InstantiateCtx, MigrateCtx, QueryCtx,
-        ReceiveCtx, ReplyCtx, TransferCtx,
+        AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
+        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
     },
     decimal::Decimal,
     decimal256::Decimal256,

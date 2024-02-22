@@ -13,6 +13,18 @@ pub fn new_store_code_event(code_hash: &Hash, uploader: &Addr) -> Event {
         .add_attribute("uploader", uploader)
 }
 
+pub fn new_before_block_event(sender: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("before_block")
+        .add_attribute(CONTRACT_ADDRESS_KEY, sender)
+        .add_attributes(attrs)
+}
+
+pub fn new_after_block_event(sender: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("after_block")
+        .add_attribute(CONTRACT_ADDRESS_KEY, sender)
+        .add_attributes(attrs)
+}
+
 pub fn new_before_tx_event(sender: &Addr, attrs: Vec<Attribute>) -> Event {
     Event::new("before_tx")
         .add_attribute(CONTRACT_ADDRESS_KEY, sender)

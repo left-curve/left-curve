@@ -1,7 +1,7 @@
 use {
     crate::{
-        after_tx, before_tx, process_msg, process_query, AppError, AppResult, CHAIN_ID, CONFIG,
-        LAST_FINALIZED_BLOCK,
+        after_block, after_tx, before_block, before_tx, process_msg, process_query, AppError,
+        AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
@@ -87,12 +87,15 @@ impl App {
         raw_txs: Vec<impl AsRef<[u8]>>,
     ) -> AppResult<(Hash, Vec<AppResult<Vec<Event>>>)> {
         let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
+        let mut events = vec![];
         let mut tx_results = vec![];
+
+        let cfg = CONFIG.load(&cached)?;
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&cached)?;
 
         // make sure the new block height is exactly the last finalized height
         // plus one. this ensures that block height always matches the BaseStore
         // version.
-        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&cached)?;
         if block.height.u64() != last_finalized_block.height.u64() + 1 {
             return Err(AppError::incorrect_block_height(
                 last_finalized_block.height.u64() + 1,
@@ -100,9 +103,30 @@ impl App {
             ));
         }
 
+        // call begin blockers
+        for (idx, contract) in cfg.begin_blockers.iter().enumerate() {
+            debug!(idx, contract = contract.to_string(), "Calling begin blocker");
+            // NOTE: error in begin blocker is considered fatal error. a begin
+            // blocker erroring causes the chain to halt.
+            // TODO: we need to think whether this is the desired behavior
+            events.extend(before_block(cached.share(), &block, contract)?);
+        }
+
+        // process transactions one-by-one
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
+            // TODO: if the tx isn't properly formatted, here from_json errors,
+            // it crashes the node??
             tx_results.push(run_tx(cached.share(), &block, from_json(raw_tx)?));
+        }
+
+        // call end blockers
+        for (idx, contract) in cfg.end_blockers.iter().enumerate() {
+            debug!(idx, contract = contract.to_string(), "Calling end blocker");
+            // NOTE: error in end blocker is considered fatal error. an end
+            // blocker erroring causes the chain to halt.
+            // TODO: we need to think whether this is the desired behavior
+            events.extend(after_block(cached.share(), &block, contract)?);
         }
 
         // save the last committed block
@@ -137,7 +161,7 @@ impl App {
     pub fn do_commit(&self) -> AppResult<()> {
         self.store.commit()?;
 
-        info!(version = self.store.latest_version(), "Committed state");
+        info!(height = self.store.latest_version(), "Committed state");
 
         Ok(())
     }

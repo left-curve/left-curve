@@ -115,6 +115,16 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
+    pub fn call_before_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_0_out_1("before_block", ctx)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
+    pub fn call_after_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_0_out_1("after_block", ctx)?;
+        from_json(res_bytes).map_err(Into::into)
+    }
+
     pub fn call_before_tx(
         &mut self,
         ctx: &Context,

@@ -17,7 +17,7 @@ pub fn before_tx<S: Storage + Clone + 'static>(
     match _before_tx(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "Before transaction hook called");
+            debug!(sender = tx.sender.to_string(), "Called before transaction hook");
             Ok(events)
         },
         Err(err) => {
@@ -73,7 +73,7 @@ pub fn after_tx<S: Storage + Clone + 'static>(
     match _after_tx(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "After transaction hook called");
+            debug!(sender = tx.sender.to_string(), "Called after transaction hook");
             Ok(events)
         },
         Err(err) => {

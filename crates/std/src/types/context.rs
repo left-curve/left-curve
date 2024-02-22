@@ -87,6 +87,24 @@ pub struct ReceiveCtx<'a> {
     pub funds:           Coins,
 }
 
+pub struct BeforeBlockCtx<'a> {
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
+    pub contract:        Addr,
+}
+
+pub struct AfterBlockCtx<'a> {
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
+    pub contract:        Addr,
+}
+
 pub struct BeforeTxCtx<'a> {
     pub store:           &'a mut dyn Storage,
     pub chain_id:        String,
