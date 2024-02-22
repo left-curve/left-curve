@@ -9,6 +9,7 @@ import {
   serialize,
   type Payload,
   decodeHex,
+  encodeBigEndian32,
 } from "./serde";
 import type {
   Account,
@@ -316,7 +317,27 @@ export function createAdmin(
 }
 
 /**
+ * Derive the salt that is used by the standard account factory contract to
+ * register accounts.
+ *
+ * Mirrors the Rust function: `cw_account_factory::make_salt`.
+ */
+export function deriveSalt(
+  publicKeyType: "secp256k1" | "secp256r1",
+  publicKeyBytes: Uint8Array,
+  serial: number,
+): Uint8Array {
+  const hasher = new Sha256();
+  hasher.update(encodeUtf8(publicKeyType));
+  hasher.update(publicKeyBytes);
+  hasher.update(encodeBigEndian32(serial));
+  return hasher.digest();
+}
+
+/**
  * Derive an account address based on the deployer address, code hash, and salt.
+ *
+ * Mirrors that Rust function: `cw_std::Addr::compute`
  */
 export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint8Array): string {
   const hasher = new Sha256();

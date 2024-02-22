@@ -21,6 +21,7 @@ export {
 
 export type {
   Account,
+  AccountFactoryExecuteMsg,
   AccountResponse,
   AccountStateResponse,
   BlockInfo,
@@ -32,10 +33,11 @@ export type {
   MsgExecute,
   MsgInstantiate,
   MsgMigrate,
+  MsgRegisterAccount,
   MsgStoreCode,
   MsgTransfer,
   MsgUpdateConfig,
-  PubKey,
+  PublicKey,
   QueryAccountRequest,
   QueryAccountsRequest,
   QueryBalanceRequest,

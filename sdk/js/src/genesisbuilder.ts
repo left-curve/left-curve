@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
-import type { Config, Message } from "./types";
+import type { AccountFactoryExecuteMsg, Config, Message } from "./types";
 import {
   type Payload,
   decodeHex,
@@ -11,7 +11,7 @@ import {
   serialize,
 } from "./serde";
 import { sha256 } from "@cosmjs/crypto";
-import { type AdminOption, createAdmin, deriveAddress } from "./client";
+import { type AdminOption, createAdmin, deriveAddress, deriveSalt } from "./client";
 
 export const GENESIS_SENDER = "0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a";
 export const GENESIS_BLOCK_HASH = decodeHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
@@ -19,11 +19,13 @@ export const GENESIS_BLOCK_HASH = decodeHex("d04b98f48e8f8bcc15c6ae5ac050801cd6d
 export class GenesisBuilder {
   storeCodeMsgs: Message[];
   otherMsgs: Message[];
+  accountSerials: Map<Uint8Array, number>;
   config?: Config;
 
   public constructor() {
     this.storeCodeMsgs = [];
     this.otherMsgs = [];
+    this.accountSerials = new Map();
   }
 
   /**
@@ -88,6 +90,27 @@ export class GenesisBuilder {
         funds: [],
       },
     });
+  }
+
+  /**
+   * Create an account using the account factory contract.
+   * Note, we only support Secp256k1 keys now.
+   */
+  public registerAccount(factory: string, codeHash: Uint8Array, publicKey: Uint8Array) {
+    const serial = this.accountSerials.get(publicKey) ?? 0;
+    const salt = deriveSalt("secp256k1", publicKey, serial);
+    const address = deriveAddress(factory, codeHash, salt);
+    const msg: AccountFactoryExecuteMsg = {
+      registerAccount: {
+        codeHash: encodeBase64(codeHash),
+        publicKey: {
+          secp256k1: encodeBase64(publicKey),
+        },
+      },
+    };
+    this.execute(factory, msg);
+    this.accountSerials.set(publicKey, serial + 1);
+    return address;
   }
 
   /**

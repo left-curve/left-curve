@@ -1,6 +1,6 @@
 import * as os from "os";
 import * as path from "path";
-import { AdminOptionKind, GenesisBuilder, SigningKey, encodeBase64, encodeUtf8 } from "../src";
+import { AdminOptionKind, GenesisBuilder, SigningKey, encodeUtf8 } from "../src";
 
 const artifactDir = path.resolve(__dirname, "../../../artifacts");
 const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
@@ -17,26 +17,23 @@ const keystorePassword = "123";
   // upload account wasm code
   const accountCodeHash = builder.storeCode(path.join(artifactDir, "cw_account-aarch64.wasm"));
 
-  // register two accounts
-  const account1 = builder.instantiate(
+  // store and instantiate account factory contract
+  const accountFactory = builder.storeCodeAndInstantiate(
+    path.join(artifactDir, "cw_account_factory-aarch64.wasm"),
+    {},
+    encodeUtf8("account-factory"),
+    AdminOptionKind.SetToNone,
+  )
+
+  const account1 = builder.registerAccount(
+    accountFactory,
     accountCodeHash,
-    {
-      pubkey: {
-        secp256k1: encodeBase64(test1.pubKey()),
-      },
-    },
-    encodeUtf8("test1"),
-    AdminOptionKind.SetToSelf,
+    test1.publicKey(),
   );
-  const account2 = builder.instantiate(
+  const account2 = builder.registerAccount(
+    accountFactory,
     accountCodeHash,
-    {
-      pubkey: {
-        secp256k1: encodeBase64(test2.pubKey()),
-      },
-    },
-    encodeUtf8("test2"),
-    AdminOptionKind.SetToSelf,
+    test2.publicKey(),
   );
 
   // store and instantiate and bank contract
@@ -68,7 +65,8 @@ const keystorePassword = "123";
   builder.writeToFile();
 
   console.log("✅ done!");
-  console.log("account1 :", account1);
-  console.log("account2 :", account2);
-  console.log("bank     :", bank);
+  console.log("account-factory :", accountFactory);
+  console.log("account1        :", account1);
+  console.log("account2        :", account2);
+  console.log("bank            :", bank);
 })();

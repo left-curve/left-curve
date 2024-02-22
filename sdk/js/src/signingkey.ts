@@ -106,11 +106,11 @@ export class SigningKey {
     // encrypt the private key
     const nonce = generateRandomBytes(AES_NONCE_LEN);
     const cipher = crypto.createCipheriv(AES_ALGORITHM, passwordHash, nonce);
-    const ciphertext = cipher.update(this.privKey());
+    const ciphertext = cipher.update(this.privateKey());
 
     // write keystore to file
     const keystore = {
-      pk: encodeBase64(this.pubKey()),
+      pk: encodeBase64(this.publicKey()),
       salt: encodeBase64(salt),
       nonce: encodeBase64(nonce),
       ciphertext: encodeBase64(ciphertext),
@@ -138,11 +138,11 @@ export class SigningKey {
     };
   }
 
-  public privKey(): Uint8Array {
+  public privateKey(): Uint8Array {
     return this.keyPair.privkey;
   }
 
-  public pubKey(): Uint8Array {
+  public publicKey(): Uint8Array {
     // important: get the compressed 32-byte pubkey instead of the 64-byte one
     return Secp256k1.compressPubkey(this.keyPair.pubkey);
   }

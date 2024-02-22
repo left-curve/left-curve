@@ -7,8 +7,8 @@ const artifactDir = path.resolve(__dirname, "../../../artifacts");
 const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
 const keystorePassword = "123";
 
-const user = "0x14d07ffdbffefc447ccf0f2717dfe361efb557ce5754ee685b24de7f443283b0";
-const bank = "0xd425426cd164806ccd118961ab3354cf0f370d6dd441a88fb4369e64f1f3212c";
+const user = "0xaa07224072e473b6ef413f4cbf32a12baf94472a162b0b51435c8995c6d5ecdd";
+const bank = "0xc98ae1b34d8aa3860c026a3499624f6c2e35377e768d8c56d3f0f5b7ab27d377";
 
 async function sleep(seconds: number) {
   return new Promise(resolve => setTimeout(resolve, seconds * 1000));
