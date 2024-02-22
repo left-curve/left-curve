@@ -45,6 +45,7 @@ pub struct StateResponse {
 }
 
 #[cw_serde]
+#[derive(Hash)]
 pub enum PublicKey {
     Secp256k1(Binary),
     Secp256r1(Binary),
