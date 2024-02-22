@@ -1,6 +1,6 @@
 use {
     crate::{Bound, MapKey, Order, PathBuf, Prefix, StdError, StdResult, Storage},
-    serde::{de::DeserializeOwned, ser::Serialize},
+    borsh::{BorshDeserialize, BorshSerialize},
     std::marker::PhantomData,
 };
 
@@ -44,7 +44,7 @@ where
 impl<'a, K, T> Map<'a, K, T>
 where
     K: MapKey,
-    T: Serialize + DeserializeOwned,
+    T: BorshSerialize + BorshDeserialize,
 {
     pub fn is_empty(&self, store: &dyn Storage) -> bool {
         self.range(store, None, None, Order::Ascending).next().is_none()

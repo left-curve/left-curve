@@ -1,6 +1,6 @@
 use {
     crate::{Path, StdError, StdResult, Storage},
-    serde::{de::DeserializeOwned, ser::Serialize},
+    borsh::{BorshDeserialize, BorshSerialize},
     std::marker::PhantomData,
 };
 
@@ -24,7 +24,7 @@ impl<'a, T> Item<'a, T> {
 
 impl<'a, T> Item<'a, T>
 where
-    T: Serialize + DeserializeOwned,
+    T: BorshSerialize + BorshDeserialize,
 {
     pub fn exists(&self, store: &dyn Storage) -> bool {
         self.path().exists(store)

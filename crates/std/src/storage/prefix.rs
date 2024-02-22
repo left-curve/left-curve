@@ -1,9 +1,9 @@
 use {
     crate::{
-        concat, extend_one_byte, from_json, increment_last_byte, nested_namespaces_with_key, trim,
+        concat, extend_one_byte, from_borsh, increment_last_byte, nested_namespaces_with_key, trim,
         Bound, MapKey, Order, RawBound, RawKey, StdResult, Storage,
     },
-    serde::de::DeserializeOwned,
+    borsh::BorshDeserialize,
     std::marker::PhantomData,
 };
 
@@ -26,7 +26,7 @@ impl<K, T> Prefix<K, T> {
 impl<K, T> Prefix<K, T>
 where
     K: MapKey,
-    T: DeserializeOwned,
+    T: BorshDeserialize,
 {
     #[allow(clippy::type_complexity)]
     pub fn range<'a>(
@@ -48,7 +48,7 @@ where
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;
-            let data = from_json(v)?;
+            let data = from_borsh(v)?;
             Ok((key, data))
         });
 

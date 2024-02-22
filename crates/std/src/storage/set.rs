@@ -1,6 +1,7 @@
-use std::marker::PhantomData;
-
-use crate::{Bound, Empty, MapKey, Order, PathBuf, Prefix, StdResult, Storage};
+use {
+    crate::{Bound, Empty, MapKey, Order, PathBuf, Prefix, StdResult, Storage},
+    std::marker::PhantomData,
+};
 
 /// Mimic the behavior of HashSet or BTreeSet.
 /// Internally, this is basicaly a `Map<T, Empty>`.
