@@ -36,6 +36,7 @@ pub fn cw_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
+            #[borsh(crate = "::cw_std::__private::borsh")]
         },
         (true, false) => quote! {
             #[::cw_std::__private::serde_with::skip_serializing_none]
@@ -62,6 +63,7 @@ pub fn cw_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
                 ::std::cmp::Eq,
             )]
             #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::cw_std::__private::serde")]
+            #[borsh(crate = "::cw_std::__private::borsh")]
         },
         _ => {
             panic!("unsupported attribute combination: expecting either `serde`, `borsh`, or both");
