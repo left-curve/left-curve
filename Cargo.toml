@@ -8,6 +8,7 @@ members  = [
   # note: consider commenting out the mock contracts to speed up compilation,
   # if you don't need them.
   "contracts/mocks/amm",
+  "contracts/mocks/cron",
   "contracts/mocks/querier",
   "contracts/mocks/token-wrapper",
   "crates/app",
