@@ -1,6 +1,6 @@
 use {
-    super::new_store_code_event,
-    crate::{AppError, AppResult, CODES},
+    super::{has_permission, new_store_code_event},
+    crate::{AppError, AppResult, CODES, CONFIG},
     cw_std::{hash, Addr, Binary, Event, Hash, Storage},
     tracing::{info, warn},
 };
@@ -28,14 +28,19 @@ fn _store_code(
     uploader:       &Addr,
     wasm_byte_code: &Binary,
 ) -> AppResult<(Vec<Event>, Hash)> {
-    // TODO: static check, ensure wasm code has necessary imports/exports
-    let code_hash = hash(wasm_byte_code);
+    // make sure the user has permission to store code
+    let cfg = CONFIG.load(store)?;
+    if !has_permission(&cfg.store_code_permission, cfg.owner.as_ref(), uploader) {
+        return Err(AppError::Unauthorized);
+    }
 
     // make sure that the same code isn't uploaded twice
+    let code_hash = hash(wasm_byte_code);
     if CODES.has(store, &code_hash) {
         return Err(AppError::code_exists(code_hash));
     }
 
+    // store the code
     CODES.save(store, &code_hash, wasm_byte_code)?;
 
     Ok((vec![new_store_code_event(&code_hash, uploader)], code_hash))

@@ -19,6 +19,9 @@ pub enum AppError {
     #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
     ProofNotSupported,
 
+    #[error("The sender does not have permission to perform this action")]
+    Unauthorized,
+
     #[error("Incorrect block height! expecting: {expect}, actual: {actual}")]
     IncorrectBlockHeight {
         expect: u64,

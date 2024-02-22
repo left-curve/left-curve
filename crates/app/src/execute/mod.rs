@@ -18,7 +18,7 @@ pub use {
 use {
     crate::AppResult,
     config::update_config,
-    cw_std::{Addr, BlockInfo, Event, Message, Storage},
+    cw_std::{Addr, BlockInfo, Event, Message, Permission, Storage},
     events::{
         new_after_block_event, new_after_tx_event, new_before_block_event, new_before_tx_event,
         new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
@@ -66,5 +66,20 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             new_code_hash,
             msg,
         } => migrate(store, block, &contract, sender, new_code_hash, msg),
+    }
+}
+
+fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+    // owner can always do anything it wants
+    if let Some(owner) = owner {
+        if sender == owner {
+            return true;
+        }
+    }
+
+    match permission {
+        Permission::Nobody => false,
+        Permission::Everybody => true,
+        Permission::Accounts(accounts) => accounts.contains(sender),
     }
 }

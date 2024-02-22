@@ -1,6 +1,6 @@
 use {
-    super::{handle_submessages, new_instantiate_event, transfer},
-    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
+    super::{handle_submessages, has_permission, new_instantiate_event, transfer},
+    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash, Storage},
     cw_vm::Instance,
@@ -42,19 +42,23 @@ fn _instantiate<S: Storage + Clone + 'static>(
     funds:     Coins,
     admin:     Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)> {
-    let chain_id = CHAIN_ID.load(&store)?;
+    // make sure the user has permission to instantiate contracts
+    let cfg = CONFIG.load(&store)?;
+    if !has_permission(&cfg.instantiate_permission, cfg.owner.as_ref(), sender) {
+        return Err(AppError::Unauthorized);
+    }
 
-    // load wasm code
-    let wasm_byte_code = CODES.load(&store, &code_hash)?;
-
-    // compute contract address and save account info
+    // compute contract address and make sure there can't already be an account
+    // of the same address
     let address = Addr::compute(sender, &code_hash, &salt);
-
-    // there can't already be an account of the same address
     if ACCOUNTS.has(&store, &address) {
         return Err(AppError::account_exists(address));
     }
 
+    // load wasm code, make sure code exists
+    let wasm_byte_code = CODES.load(&store, &code_hash)?;
+
+    // save the account info now that we know there's no duplicate
     let account = Account { code_hash, admin };
     ACCOUNTS.save(&mut store, &address, &account)?;
 
@@ -77,7 +81,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // call instantiate
     let ctx = Context {
-        chain_id,
+        chain_id:        CHAIN_ID.load(&store)?,
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
