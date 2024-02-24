@@ -1,5 +1,7 @@
-/** @type {import("ts-jest").JestConfigWithTsJest} */
-export default {
+import type { Config } from "jest";
+
+const config: Config = {
+  roots: ["<rootDir>/src"],
   preset: "ts-jest",
   testEnvironment: "node",
   transform: {
@@ -15,3 +17,5 @@ export default {
     ],
   },
 };
+
+export default config;
