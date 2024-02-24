@@ -1,29 +1,27 @@
 import { Sha256, sha256 } from "@cosmjs/crypto";
 import { Comet38Client, type HttpEndpoint } from "@cosmjs/tendermint-rpc";
+import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
+  type Account,
+  type AccountResponse,
+  type AccountStateResponse,
+  type Coin,
+  type Config,
+  type InfoResponse,
+  type Message,
+  type Payload,
+  type QueryRequest,
+  type QueryResponse,
+  type SigningKey,
+  decodeHex,
   decodeUtf8,
   deserialize,
   encodeBase64,
+  encodeBigEndian32,
   encodeHex,
   encodeUtf8,
   serialize,
-  type Payload,
-  decodeHex,
-  encodeBigEndian32,
-} from "./serde";
-import type {
-  Account,
-  AccountResponse,
-  AccountStateResponse,
-  Coin,
-  Config,
-  InfoResponse,
-  Message,
-  QueryRequest,
-  QueryResponse,
-} from "./types";
-import { SigningKey } from "./signingkey";
-import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
+} from ".";
 
 /**
  * Client for interacting with a CWD blockchain via Tendermint RPC.

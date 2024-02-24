@@ -11,14 +11,15 @@ import {
   stringToPath,
 } from "@cosmjs/crypto";
 import {
+  type Message,
+  type Tx,
   encodeBase64,
   encodeBigEndian32,
   encodeUtf8,
   decodeBase64,
   decodeHex,
   serialize,
-} from "./serde";
-import type { Message, Tx } from "./types";
+} from ".";
 
 // parameters for keystore encryption
 const PBKDF2_ITERATIONS = 600_000;
