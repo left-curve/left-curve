@@ -26,6 +26,13 @@ export class Hash {
   }
 
   /**
+   * Stringify the `Hash` using the hex encoding.
+   */
+  public toHex(): string {
+    return encodeHex(this.bytes);
+  }
+
+  /**
    * Implementation for `JSON.parse`.
    */
   public static parse(json: string): Hash {
@@ -41,6 +48,6 @@ export class Hash {
    * Implementation for `JSON.stringify`.
    */
   public toJSON(): string {
-    return encodeHex(this.bytes);
+    return this.toHex();
   }
 }

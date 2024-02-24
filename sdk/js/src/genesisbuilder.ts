@@ -19,14 +19,14 @@ import {
   serialize,
 } from ".";
 
-export const GENESIS_SENDER = Addr.fromStr("0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a");
+export const GENESIS_SENDER = Addr.fromString("0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a");
 export const GENESIS_BLOCK_HASH = Hash.fromHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
 
 export class GenesisBuilder {
-  storeCodeMsgs: Message[];
-  otherMsgs: Message[];
-  accountSerials: Map<Uint8Array, number>;
-  config?: Config;
+  private storeCodeMsgs: Message[];
+  private otherMsgs: Message[];
+  private accountSerials: Map<Uint8Array, number>;
+  private config?: Config;
 
   public constructor() {
     this.storeCodeMsgs = [];

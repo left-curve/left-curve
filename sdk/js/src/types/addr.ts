@@ -18,7 +18,7 @@ export class Addr {
    * Create a new `Addr` instance from a 32-byte, lowercase, 0x-prefixed hex
    * string.
    */
-  public static fromStr(str: string): Addr {
+  public static fromString(str: string): Addr {
     // addresses must use the 0x prefix
     if (!str.startsWith("0x")) {
       throw new Error("address is not prefixed with `0x`");
@@ -33,12 +33,19 @@ export class Addr {
   }
 
   /**
+   * Stringify the `Addr`.
+   */
+  public toString(): string {
+    return "0x" + encodeHex(this.bytes);
+  }
+
+  /**
    * Implementation for `JSON.parse`.
    */
-  static parse(json: string): Addr {
+  public static parse(json: string): Addr {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
-        return Addr.fromStr(value);
+        return Addr.fromString(value);
       }
       return value;
     });
@@ -47,7 +54,7 @@ export class Addr {
   /**
    * Implementation for `JSON.stringify`.
    */
-  toJSON(): string {
-    return "0x" + encodeHex(this.bytes);
+  public toJSON(): string {
+    return this.toString();
   }
 }

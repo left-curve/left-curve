@@ -1,6 +1,9 @@
 export class Uint {
   public number: number;
 
+  /**
+   * Create a new `Uint` instance from a non-negative integer number.
+   */
   public constructor(number: number) {
     if (!Number.isInteger(number)) {
       throw new Error(`uint is not an integer: ${number}`);
@@ -11,10 +14,17 @@ export class Uint {
     this.number = number;
   }
 
+  /**
+   * Create a new `Uint` instance from a string that represents a non-negative
+   * integer number.
+   */
   public static fromString(str: string): Uint {
     return new Uint(parseInt(str));
   }
 
+  /**
+   * Stringify the `Uint`.
+   */
   public toString(): string {
     return this.number.toString();
   }
@@ -22,7 +32,7 @@ export class Uint {
   /**
    * Implementation for `JSON.parse`.
    */
-  static parse(json: string): Uint {
+  public static parse(json: string): Uint {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
         return new Number(value);
@@ -34,7 +44,7 @@ export class Uint {
   /**
    * Implementation for `JSON.stringify`.
    */
-  toJSON(): string {
+  public toJSON(): string {
     return this.toString();
   }
 }

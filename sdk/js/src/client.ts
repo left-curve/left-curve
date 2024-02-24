@@ -26,7 +26,7 @@ import {
  * Client for interacting with a CWD blockchain via Tendermint RPC.
  */
 export class Client {
-  cometClient: Comet38Client;
+  private cometClient: Comet38Client;
 
   /**
    * Do not use; use `Client.connect` instead.
