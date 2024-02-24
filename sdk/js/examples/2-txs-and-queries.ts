@@ -1,14 +1,14 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { AdminOptionKind, Client, SigningKey, encodeHex, encodeUtf8 } from "../src";
+import { Addr, AdminOptionKind, Client, SigningKey, Uint, encodeHex, encodeUtf8 } from "../src";
 
 const artifactDir = path.resolve(__dirname, "../../../artifacts");
 const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
 const keystorePassword = "123";
 
-const user = "0xaa07224072e473b6ef413f4cbf32a12baf94472a162b0b51435c8995c6d5ecdd";
-const bank = "0xc98ae1b34d8aa3860c026a3499624f6c2e35377e768d8c56d3f0f5b7ab27d377";
+const user = Addr.fromString("0xaa07224072e473b6ef413f4cbf32a12baf94472a162b0b51435c8995c6d5ecdd");
+const bank = Addr.fromString("0xc98ae1b34d8aa3860c026a3499624f6c2e35377e768d8c56d3f0f5b7ab27d377");
 
 async function sleep(seconds: number) {
   return new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -52,11 +52,11 @@ async function sleep(seconds: number) {
     [
       {
         denom: "uatom",
-        amount: "888",
+        amount: new Uint(888),
       },
       {
         denom: "uosmo",
-        amount: "999",
+        amount: new Uint(999),
       },
     ],
     signingOpts,
