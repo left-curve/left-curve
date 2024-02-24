@@ -32,12 +32,12 @@
     "directory": "sdk/js"
   },
   "scripts": {
-    "build": "tsup --config=tsup.config.ts",
-    "lint": "eslint ./src --ext .ts",
-    "test": "npx jest",
-    "typedoc": "npx typedoc ./src/index.ts",
-    "typecheck": "tsc --noEmit --project tsconfig.json",
-    "check-package": "npm pack && npx publint@latest --public --strict && attw --pack"
+    "check:type": "yarn tsc --noEmit --project tsconfig.json",
+    "check:package": "yarn pack && yarn publint --public --strict && attw --pack",
+    "build": "yarn tsup --config ./tsup.config.ts",
+    "lint": "yarn eslint ./src --ext .ts --config ./.eslintrc.cjs",
+    "test": "yarn jest --config ./jest.config.ts",
+    "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs"
   },
   "dependencies": {
     "@cosmjs/crypto": "^0.32.2",
@@ -54,6 +54,7 @@
     "jest": "^29.7.0",
     "publint": "^0.2.7",
     "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
     "tsup": "^8.0.2",
     "typedoc": "^0.25.8",
     "typescript": "^5.3.3"
