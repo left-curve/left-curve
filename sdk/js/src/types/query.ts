@@ -14,6 +14,7 @@ export type QueryRequest = {
   wasmSmart?: QueryWasmSmartRequest,
 };
 
+// https://typescript-eslint.io/rules/ban-types/#:~:text=Avoid%20the%20Object%20and%20%7B%7D%20types
 export type QueryInfoRequest = Record<string, never>;
 
 export type QueryBalanceRequest = {
