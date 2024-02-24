@@ -1,14 +1,12 @@
-import { describe } from "node:test";
 import { sha256 } from "@cosmjs/crypto";
-import { expect } from "@jest/globals";
-import each from "jest-each";
+import { describe, expect, test } from "bun:test";
 import { Hash, encodeUtf8, verifyMembershipProof, verifyNonMembershipProof } from ".";
 
 // we use the same test case as in the cw-jmt crate
 const rootHash = Hash.fromHex("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b");
 
 describe("verifying membership proofs", () => {
-  each([
+  test.each([
     {
       key: "r",
       value: "foo",
@@ -53,17 +51,17 @@ describe("verifying membership proofs", () => {
         ],
       },
     },
-  ]).test("verifying key = %key, value = %value)", (key, value, proof) => {
+  ])("verifying key = $key, value = $value)", ({ key, value, proof }) => {
     expect(() => {
       const keyHash = new Hash(sha256(encodeUtf8(key)));
       const valueHash = new Hash(sha256(encodeUtf8(value)));
       return verifyMembershipProof(rootHash, keyHash, valueHash, proof);
-    }).not.toThrowError();
+    }).not.toThrow();
   });
 });
 
 describe("verifying non-membership proofs", () => {
-  each([
+  test.each([
     {
       key: "b",
       proof: {
@@ -95,10 +93,10 @@ describe("verifying non-membership proofs", () => {
         ],
       },
     },
-  ]).test("verifying key = %key", (key, proof) => {
+  ])("verifying key = $key", ({ key, proof }) => {
     expect(() => {
       const keyHash = new Hash(sha256(encodeUtf8(key)));
       return verifyNonMembershipProof(rootHash, keyHash, proof);
-    }).not.toThrowError();
+    }).not.toThrow();
   });
 });
