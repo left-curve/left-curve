@@ -32,7 +32,8 @@
     "directory": "sdk/js"
   },
   "scripts": {
-    "build": "tsup --config=tsup.config.ts",
+    "build:browser": "bun build ./src/index.ts --outdir ./dist/browser --target browser",
+    "build:bun": "bun build ./src/index.ts --outdir ./dist/bun --target bun",
     "lint": "eslint ./src --ext .ts",
     "test": "jest",
     "typecheck": "tsc --noEmit --project tsconfig.json",
@@ -54,7 +55,6 @@
     "jest-each": "^29.7.0",
     "publint": "^0.2.7",
     "ts-jest": "^29.1.2",
-    "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   }
 }
