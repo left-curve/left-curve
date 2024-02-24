@@ -32,8 +32,9 @@
     "directory": "sdk/js"
   },
   "scripts": {
-    "lint": "eslint ./src --ext .ts",
     "build": "tsup --config=tsup.config.ts",
+    "lint": "eslint ./src --ext .ts",
+    "test": "jest",
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "check-package": "npm pack && npx publint@latest --public --strict && attw --pack"
   },
@@ -44,11 +45,15 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.13.10",
     "@stylistic/eslint-plugin": "^1.6.2",
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.19",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
     "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "jest-each": "^29.7.0",
     "publint": "^0.2.7",
+    "ts-jest": "^29.1.2",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   }

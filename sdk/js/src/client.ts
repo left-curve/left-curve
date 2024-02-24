@@ -12,6 +12,7 @@ import {
   type InfoResponse,
   type Message,
   type Payload,
+  type Proof,
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
@@ -22,7 +23,6 @@ import {
   serialize,
   encodeBase64,
 } from ".";
-import type { Proof } from "./types/proof";
 
 /**
  * Client for interacting with a CWD blockchain via Tendermint RPC.
