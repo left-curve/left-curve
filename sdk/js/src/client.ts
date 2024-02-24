@@ -20,7 +20,9 @@ import {
   encodeBigEndian32,
   encodeUtf8,
   serialize,
+  encodeBase64,
 } from ".";
+import type { Proof } from "./types/proof";
 
 /**
  * Client for interacting with a CWD blockchain via Tendermint RPC.
@@ -64,11 +66,25 @@ export class Client {
     key: Uint8Array,
     height = 0,
     prove = false,
-  ): Promise<Uint8Array | undefined> {
+  ): Promise<{ value: Uint8Array | undefined, proof: Proof | undefined }> {
     const res = await this.query("/store", key, height, prove);
     const value = res.value.length > 0 ? res.value : undefined;
-    // TODO: deserialize and return proof
-    return value;
+    let proof = undefined;
+    if (prove) {
+      const ops = res.proof!.ops;
+      // do some basic sanity check of the proof op
+      if (ops.length !== 1) {
+        throw new Error(`expecting exactly one proof op, found ${ops.length}`);
+      }
+      if (ops[0].type !== "cw_jmt::Proof") {
+        throw new Error(`unknown proof type: ${ops[0].type}`);
+      }
+      if (!arraysIdentical(ops[0].key, key)) {
+        throw new Error(`incorrect key! expecting: ${encodeBase64(key)}, found: ${encodeBase64(ops[0].key)}`);
+      }
+      proof = deserialize(ops[0].data) as Proof;
+    }
+    return { value, proof };
   }
 
   public async queryApp(req: QueryRequest, height = 0): Promise<QueryResponse> {
@@ -417,4 +433,23 @@ export function deriveAddress(deployer: Addr, codeHash: Hash, salt: Uint8Array):
   hasher.update(salt);
   const bytes = hasher.digest();
   return new Addr(bytes);
+}
+
+function arraysIdentical(a: Uint8Array, b: Uint8Array): boolean {
+  // check if the two arrays are the same instance
+  if (a === b) {
+    return true;
+  }
+
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) {
+      return false;
+    }
+  }
+
+  return true;
 }

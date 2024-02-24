@@ -4,6 +4,7 @@ export * from "./app";
 export * from "./binary";
 export * from "./coin";
 export * from "./hash";
+export * from "./proof";
 export * from "./query";
 export * from "./tx";
 export * from "./uint";
