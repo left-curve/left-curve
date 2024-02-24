@@ -1,4 +1,4 @@
-import type { Message } from ".";
+import type { Addr, Hash, Message } from ".";
 
 export type GenesisState = {
   config: Config;
@@ -6,16 +6,17 @@ export type GenesisState = {
 };
 
 export type Config = {
-  owner?: string;
-  bank: string;
+  owner?: Addr;
+  bank: Addr;
 };
 
 export type BlockInfo = {
   height: number;
   timestamp: number;
+  hash: Hash,
 };
 
 export type Account = {
-  codeHash: string;
+  codeHash: Hash;
   admin?: string;
 };

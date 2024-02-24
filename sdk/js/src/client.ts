@@ -13,12 +13,12 @@ import {
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
-  decodeHex,
+  Addr,
+  Hash,
   decodeUtf8,
   deserialize,
   encodeBase64,
   encodeBigEndian32,
-  encodeHex,
   encodeUtf8,
   serialize,
 } from ".";
@@ -82,12 +82,12 @@ export class Client {
     return res.info!;
   }
 
-  public async queryBalance(address: string, denom: string, height = 0): Promise<string> {
+  public async queryBalance(address: Addr, denom: string, height = 0): Promise<string> {
     const res = await this.queryApp({ balance: { address, denom } }, height);
     return res.balance!.amount;
   }
 
-  public async queryBalances(address: string, startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
+  public async queryBalances(address: Addr, startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
     const res = await this.queryApp({ balances: { address, startAfter, limit } }, height);
     return res.balances!;
   }
@@ -102,17 +102,17 @@ export class Client {
     return res.supplies!;
   }
 
-  public async queryCode(hash: string, height = 0): Promise<string> {
+  public async queryCode(hash: Hash, height = 0): Promise<string> {
     const res = await this.queryApp({ code: { hash } }, height);
     return res.code!;
   }
 
-  public async queryCodes(startAfter?: string, limit?: number, height = 0): Promise<string[]> {
+  public async queryCodes(startAfter?: Hash, limit?: number, height = 0): Promise<Hash[]> {
     const res = await this.queryApp({ codes: { startAfter, limit } }, height);
     return res.codes!;
   }
 
-  public async queryAccount(address: string, height = 0): Promise<Account> {
+  public async queryAccount(address: Addr, height = 0): Promise<Account> {
     const res = await this.queryApp({ account: { address } }, height);
     const accountRes = res.account!;
     return {
@@ -121,17 +121,17 @@ export class Client {
     }
   }
 
-  public async queryAccounts(startAfter?: string, limit?: number, height = 0): Promise<AccountResponse[]> {
+  public async queryAccounts(startAfter?: Addr, limit?: number, height = 0): Promise<AccountResponse[]> {
     const res = await this.queryApp({ accounts: { startAfter, limit } }, height);
     return res.accounts!;
   }
 
-  public async queryWasmRaw(contract: string, key: string, height = 0): Promise<string | undefined> {
+  public async queryWasmRaw(contract: Addr, key: string, height = 0): Promise<string | undefined> {
     const res = await this.queryApp({ wasmRaw: { contract, key } }, height);
     return res.wasmRaw!.value;
   }
 
-  public async queryWasmSmart<T>(contract: string, msg: Payload, height = 0): Promise<T> {
+  public async queryWasmSmart<T>(contract: Addr, msg: Payload, height = 0): Promise<T> {
     const res = await this.queryApp({ wasmSmart: { contract, msg: btoa(serialize(msg)) } }, height);
     const wasmRes = deserialize(atob(res.wasmSmart!.data));
     return wasmRes as T;
@@ -177,7 +177,7 @@ export class Client {
   }
 
   public async transfer(
-    to: string,
+    to: Addr,
     coins: Coin[],
     signOpts: SigningOptions,
   ): Promise<Uint8Array> {
@@ -200,17 +200,17 @@ export class Client {
   }
 
   public async instantiate(
-    codeHash: Uint8Array,
+    codeHash: Hash,
     msg: Payload,
     salt: Uint8Array,
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<[string, Uint8Array]> {
+  ): Promise<[Addr, Uint8Array]> {
     const address = deriveAddress(signOpts.sender, codeHash, salt);
     const instantiateMsg = {
       instantiate: {
-        codeHash: encodeHex(codeHash),
+        codeHash,
         msg: btoa(serialize(msg)),
         salt: encodeBase64(salt),
         funds,
@@ -228,8 +228,8 @@ export class Client {
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<[string, Uint8Array]> {
-    const codeHash = sha256(wasmByteCode);
+  ): Promise<[Addr, Uint8Array]> {
+    const codeHash = new Hash(sha256(wasmByteCode));
     const address = deriveAddress(signOpts.sender, codeHash, salt);
     const storeCodeMsg = {
       storeCode: {
@@ -238,7 +238,7 @@ export class Client {
     };
     const instantiateMsg = {
       instantiate: {
-        codeHash: encodeHex(codeHash),
+        codeHash,
         msg: btoa(serialize(msg)),
         salt: encodeBase64(salt),
         funds,
@@ -250,7 +250,7 @@ export class Client {
   }
 
   public async execute(
-    contract: string,
+    contract: Addr,
     msg: Payload,
     funds: Coin[],
     signOpts: SigningOptions,
@@ -266,15 +266,15 @@ export class Client {
   }
 
   public async migrate(
-    contract: string,
-    newCodeHash: Uint8Array,
+    contract: Addr,
+    newCodeHash: Hash,
     msg: Payload,
     signOpts: SigningOptions,
   ): Promise<Uint8Array> {
     const migrateMsg = {
       migrate: {
         contract,
-        newCodeHash: encodeHex(newCodeHash),
+        newCodeHash,
         msg: btoa(serialize(msg)),
       },
     };
@@ -284,7 +284,7 @@ export class Client {
 
 export type SigningOptions = {
   signingKey: SigningKey;
-  sender: string;
+  sender: Addr;
   chainId?: string;
   sequence?: number;
 };
@@ -294,17 +294,17 @@ export enum AdminOptionKind {
   SetToNone,
 }
 
-export type AdminOption = string | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
+export type AdminOption = Addr | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
 
 /**
  * Determine the admin address based on the given option.
  */
 export function createAdmin(
   adminOpt: AdminOption,
-  deployer: string,
-  codeHash: Uint8Array,
+  deployer: Addr,
+  codeHash: Hash,
   salt: Uint8Array,
-): string | undefined {
+): Addr | undefined {
   if (typeof adminOpt === "string") {
     return adminOpt;
   } else if (adminOpt === AdminOptionKind.SetToSelf) {
@@ -337,11 +337,11 @@ export function deriveSalt(
  *
  * Mirrors that Rust function: `cw_std::Addr::compute`
  */
-export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint8Array): string {
+export function deriveAddress(deployer: Addr, codeHash: Hash, salt: Uint8Array): Addr {
   const hasher = new Sha256();
-  hasher.update(decodeHex(deployer.slice(2))); // note: remove the 0x prefix
-  hasher.update(codeHash);
+  hasher.update(deployer.bytes);
+  hasher.update(codeHash.bytes);
   hasher.update(salt);
   const bytes = hasher.digest();
-  return "0x" + encodeHex(bytes);
+  return new Addr(bytes);
 }

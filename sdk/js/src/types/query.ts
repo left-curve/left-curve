@@ -1,4 +1,4 @@
-import type { BlockInfo, Coin, Config } from ".";
+import type { Addr, BlockInfo, Coin, Config, Hash } from ".";
 
 export type QueryRequest = {
   info?: QueryInfoRequest,
@@ -17,12 +17,12 @@ export type QueryRequest = {
 export type QueryInfoRequest = {};
 
 export type QueryBalanceRequest = {
-  address: string;
+  address: Addr;
   denom: string;
 };
 
 export type QueryBalancesRequest = {
-  address: string;
+  address: Addr;
   startAfter?: string;
   limit?: number;
 };
@@ -37,30 +37,30 @@ export type QuerySuppliesReuest = {
 };
 
 export type QueryCodeRequest = {
-  hash: string;
+  hash: Hash;
 };
 
 export type QueryCodesRequest = {
-  startAfter?: string;
+  startAfter?: Hash;
   limit?: number;
 };
 
 export type QueryAccountRequest = {
-  address: string;
+  address: Addr;
 };
 
 export type QueryAccountsRequest = {
-  startAfter?: string;
+  startAfter?: Addr;
   limit?: number;
 };
 
 export type QueryWasmRawRequest = {
-  contract: string;
+  contract: Addr;
   key: string;
 };
 
 export type QueryWasmSmartRequest = {
-  contract: string;
+  contract: Addr;
   msg: string;
 };
 
@@ -71,7 +71,7 @@ export type QueryResponse = {
   supply?: Coin,
   supplies?: Coin[],
   code?: string,
-  codes?: string[],
+  codes?: Hash[],
   account?: AccountResponse,
   accounts?: AccountResponse[],
   wasmRaw?: WasmRawResponse,
@@ -85,18 +85,18 @@ export type InfoResponse = {
 };
 
 export type AccountResponse = {
-  address: string;
-  codeHash: string;
+  address: Addr;
+  codeHash: Hash;
   admin?: string;
 };
 
 export type WasmRawResponse = {
-  contract: string;
+  contract: Addr;
   key: string;
   value?: string;
 };
 
 export type WasmSmartResponse = {
-  contract: string;
+  contract: Addr;
   data: string;
 };

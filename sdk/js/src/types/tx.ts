@@ -1,7 +1,7 @@
-import type { Coin, Config } from ".";
+import type { Addr, Coin, Config, Hash } from ".";
 
 export type Tx = {
-  sender: string;
+  sender: Addr;
   msgs: Message[];
   credential: string;
 };
@@ -20,7 +20,7 @@ export type MsgUpdateConfig = {
 };
 
 export type MsgTransfer = {
-  to: string;
+  to: Addr;
   coins: Coin[];
 }
 
@@ -29,21 +29,21 @@ export type MsgStoreCode = {
 };
 
 export type MsgInstantiate = {
-  codeHash: string;
+  codeHash: Hash;
   msg: string;
   salt: string;
   funds: Coin[];
-  admin?: string;
+  admin?: Addr;
 };
 
 export type MsgExecute = {
-  contract: string;
+  contract: Addr;
   msg: string;
   funds: Coin[];
 };
 
 export type MsgMigrate = {
-  contract: string;
-  newCodeHash: string;
+  contract: Addr;
+  newCodeHash: Hash;
   msg: string;
 };

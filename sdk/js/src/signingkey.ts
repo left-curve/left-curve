@@ -17,8 +17,8 @@ import {
   encodeBigEndian32,
   encodeUtf8,
   decodeBase64,
-  decodeHex,
   serialize,
+  Addr,
 } from ".";
 
 // parameters for keystore encryption
@@ -124,7 +124,7 @@ export class SigningKey {
    */
   public async createAndSignTx(
     msgs: Message[],
-    sender: string,
+    sender: Addr,
     chainId: string,
     sequence: number,
   ): Promise<Tx> {
@@ -154,13 +154,13 @@ export class SigningKey {
  */
 export function createSignBytes(
   msgs: Message[],
-  sender: string,
+  sender: Addr,
   chainId: string,
   sequence: number,
 ): Uint8Array {
   const hasher = new Sha256();
   hasher.update(encodeUtf8(serialize(msgs)));
-  hasher.update(decodeHex(sender.slice(2)));
+  hasher.update(sender.bytes);
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
   return hasher.digest();

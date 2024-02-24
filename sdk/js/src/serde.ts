@@ -1,8 +1,10 @@
+import type { Addr, Hash } from ".";
+
 /**
  * Represents either an JSON object, an array, a string, or a number.
  * Note that we utilize a recursive type definition here.
  */
-export type Payload = { [key: string]: Payload } | Payload[] | string | number;
+export type Payload = { [key: string]: Payload } | Payload[] | string | number | Addr | Hash;
 
 /**
  * Serialize a payload to JSON string.
