@@ -136,6 +136,7 @@ export class GenesisBuilder {
     if (!this.config) {
       throw new Error("config is not set");
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cometGen = JSON.parse(fs.readFileSync(cometGenPath, "utf8")) as { [key: string]: any };
     const appState = {
       config: this.config,

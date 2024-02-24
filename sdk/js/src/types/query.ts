@@ -14,7 +14,7 @@ export type QueryRequest = {
   wasmSmart?: QueryWasmSmartRequest,
 };
 
-export type QueryInfoRequest = {};
+export type QueryInfoRequest = Record<string, never>;
 
 export type QueryBalanceRequest = {
   address: Addr;

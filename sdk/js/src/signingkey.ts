@@ -15,10 +15,10 @@ import {
   Binary,
   type Message,
   type Tx,
+  decodeBase64,
   encodeBase64,
   encodeBigEndian32,
   encodeUtf8,
-  decodeBase64,
   serialize,
 } from ".";
 
