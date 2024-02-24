@@ -7,7 +7,7 @@ export function verifyProof(
   valueHash: Hash | null,
   proof: Proof,
 ) {
-  if (!!valueHash) {
+  if (valueHash !== null) {
     if ("membership" in proof) {
       return verifyMembershipProof(rootHash, keyHash, valueHash, proof.membership);
     } else {
@@ -81,12 +81,12 @@ function computeAndCompareRootHash(
 function hashInternalNode(leftHash: Hash | null, rightHash: Hash | null): Hash {
   const hasher = new Sha256();
   hasher.update(new Uint8Array([0])); // internal node prefix
-  if (!!leftHash) {
+  if (leftHash !== null) {
     hasher.update(leftHash.bytes);
   } else {
     hasher.update(new Uint8Array(32)); // this creates an all-zero byte array
   }
-  if (!!rightHash) {
+  if (rightHash !== null) {
     hasher.update(rightHash.bytes);
   } else {
     hasher.update(new Uint8Array(32));

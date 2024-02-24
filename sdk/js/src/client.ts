@@ -18,10 +18,10 @@ import {
   type SigningKey,
   type Uint,
   deserialize,
+  encodeBase64,
   encodeBigEndian32,
   encodeUtf8,
   serialize,
-  encodeBase64,
 } from ".";
 
 /**
