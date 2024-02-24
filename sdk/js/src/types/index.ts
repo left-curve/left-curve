@@ -6,3 +6,4 @@ export * from "./coin";
 export * from "./hash";
 export * from "./query";
 export * from "./tx";
+export * from "./uint";

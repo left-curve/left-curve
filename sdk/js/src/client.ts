@@ -19,6 +19,7 @@ import {
   encodeBigEndian32,
   encodeUtf8,
   serialize,
+  Uint,
 } from ".";
 
 /**
@@ -85,7 +86,7 @@ export class Client {
     return res.info!;
   }
 
-  public async queryBalance(address: Addr, denom: string, height = 0): Promise<string> {
+  public async queryBalance(address: Addr, denom: string, height = 0): Promise<Uint> {
     const res = await this.queryApp(
       {
         balance: { address, denom },
@@ -105,7 +106,7 @@ export class Client {
     return res.balances!;
   }
 
-  public async querySupply(denom: string, height = 0): Promise<string> {
+  public async querySupply(denom: string, height = 0): Promise<Uint> {
     const res = await this.queryApp(
       {
         supply: { denom },

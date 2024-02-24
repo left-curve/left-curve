@@ -1,4 +1,4 @@
-import type { Addr, Hash, Message } from ".";
+import type { Addr, Hash, Message, Uint } from ".";
 
 export type GenesisState = {
   config: Config;
@@ -11,7 +11,7 @@ export type Config = {
 };
 
 export type BlockInfo = {
-  height: number;
-  timestamp: number;
+  height: Uint;
+  timestamp: Uint;
   hash: Hash,
 };
