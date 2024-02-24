@@ -7,19 +7,20 @@ import type { Addr, Hash } from ".";
 export type Payload = { [key: string]: Payload } | Payload[] | string | number | Addr | Hash;
 
 /**
- * Serialize a payload to JSON string.
- * The payload should use camelCase, while the JSON string would have snale_case.
+ * Serialize a payload to binary.
+ *
+ * The payload is first converted to snake_case, encoded to a JSON string, then
+ * to UTF8 bytes.
  */
-export function serialize(payload: Payload): string {
-  return JSON.stringify(recursiveTransform(payload, camelToSnake));
+export function serialize(payload: Payload): Uint8Array {
+  return encodeUtf8(JSON.stringify(recursiveTransform(payload, camelToSnake)));
 }
 
 /**
- * Deserialize a JSON string to a payload.
- * The JSON string should use snake_case, while the payload would have camelCase.
+ * Deserialize a JSON string to a payload. The reverse operation of `serialize`.
  */
-export function deserialize(str: string): Payload {
-  return recursiveTransform(JSON.parse(str), snakeToCamel);
+export function deserialize(bytes: Uint8Array): Payload {
+  return recursiveTransform(JSON.parse(decodeUtf8(bytes)), snakeToCamel);
 }
 
 /**

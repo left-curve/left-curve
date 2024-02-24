@@ -1,9 +1,9 @@
-import type { Addr, Coin, Config, Hash } from ".";
+import type { Addr, Binary, Coin, Config, Hash } from ".";
 
 export type Tx = {
   sender: Addr;
   msgs: Message[];
-  credential: string;
+  credential: Binary;
 };
 
 export type Message = {
@@ -25,25 +25,25 @@ export type MsgTransfer = {
 }
 
 export type MsgStoreCode = {
-  wasmByteCode: string;
+  wasmByteCode: Binary;
 };
 
 export type MsgInstantiate = {
   codeHash: Hash;
-  msg: string;
-  salt: string;
+  msg: Binary;
+  salt: Binary;
   funds: Coin[];
   admin?: Addr;
 };
 
 export type MsgExecute = {
   contract: Addr;
-  msg: string;
+  msg: Binary;
   funds: Coin[];
 };
 
 export type MsgMigrate = {
   contract: Addr;
   newCodeHash: Hash;
-  msg: string;
+  msg: Binary;
 };

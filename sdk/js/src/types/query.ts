@@ -1,4 +1,4 @@
-import type { Addr, BlockInfo, Coin, Config, Hash } from ".";
+import type { Addr, Binary, BlockInfo, Coin, Config, Hash } from ".";
 
 export type QueryRequest = {
   info?: QueryInfoRequest,
@@ -56,12 +56,12 @@ export type QueryAccountsRequest = {
 
 export type QueryWasmRawRequest = {
   contract: Addr;
-  key: string;
+  key: Binary;
 };
 
 export type QueryWasmSmartRequest = {
   contract: Addr;
-  msg: string;
+  msg: Binary;
 };
 
 export type QueryResponse = {
@@ -70,7 +70,7 @@ export type QueryResponse = {
   balances?: Coin[],
   supply?: Coin,
   supplies?: Coin[],
-  code?: string,
+  code?: Binary,
   codes?: Hash[],
   account?: AccountResponse,
   accounts?: AccountResponse[],
@@ -87,16 +87,16 @@ export type InfoResponse = {
 export type AccountResponse = {
   address: Addr;
   codeHash: Hash;
-  admin?: string;
+  admin?: Addr;
 };
 
 export type WasmRawResponse = {
   contract: Addr;
-  key: string;
-  value?: string;
+  key: Binary;
+  value?: Binary;
 };
 
 export type WasmSmartResponse = {
   contract: Addr;
-  data: string;
+  data: Binary;
 };

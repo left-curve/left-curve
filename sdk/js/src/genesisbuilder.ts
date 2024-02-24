@@ -3,23 +3,24 @@ import * as os from "node:os";
 import { sha256 } from "@cosmjs/crypto";
 import {
   type AccountFactoryExecuteMsg,
+  Addr,
   type AdminOption,
+  Binary,
   type Config,
+  Hash,
   type Message,
   type Payload,
   camelToSnake,
   createAdmin,
-  decodeHex,
   deriveAddress,
   deriveSalt,
   encodeBase64,
-  encodeHex,
   recursiveTransform,
   serialize,
 } from ".";
 
-export const GENESIS_SENDER = "0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a";
-export const GENESIS_BLOCK_HASH = decodeHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
+export const GENESIS_SENDER = Addr.fromStr("0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a");
+export const GENESIS_BLOCK_HASH = Hash.fromHex("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa");
 
 export class GenesisBuilder {
   storeCodeMsgs: Message[];
@@ -38,14 +39,14 @@ export class GenesisBuilder {
    * @param path Path to the Wasm binary file
    * @returns The code's SHA-256 hash.
    */
-  public storeCode(path: string): Uint8Array {
+  public storeCode(path: string): Hash {
     const wasmByteCode = fs.readFileSync(path);
     this.storeCodeMsgs.push({
       storeCode: {
-        wasmByteCode: encodeBase64(wasmByteCode),
+        wasmByteCode: new Binary(wasmByteCode),
       },
     });
-    return sha256(wasmByteCode);
+    return new Hash(sha256(wasmByteCode));
   }
 
   /**
@@ -53,16 +54,16 @@ export class GenesisBuilder {
    * @returns The contract's address
    */
   public instantiate(
-    codeHash: Uint8Array,
+    codeHash: Hash,
     msg: Payload,
     salt: Uint8Array,
     adminOpt: AdminOption,
-  ): string {
+  ): Addr {
     this.otherMsgs.push({
       instantiate: {
-        codeHash: encodeHex(codeHash),
-        msg: btoa(serialize(msg)),
-        salt: encodeBase64(salt),
+        codeHash,
+        msg: new Binary(serialize(msg)),
+        salt: new Binary(salt),
         funds: [],
         admin: createAdmin(adminOpt, GENESIS_SENDER, codeHash, salt),
       },
@@ -79,7 +80,7 @@ export class GenesisBuilder {
     msg: Payload,
     salt: Uint8Array,
     adminOpt: AdminOption,
-  ): string {
+  ): Addr {
     const codeHash = this.storeCode(path);
     return this.instantiate(codeHash, msg, salt, adminOpt);
   }
@@ -87,11 +88,11 @@ export class GenesisBuilder {
   /**
    * Add an Execute message to genesis messages.
    */
-  public execute(contract: string, msg: Payload) {
+  public execute(contract: Addr, msg: Payload) {
     this.otherMsgs.push({
       execute: {
         contract,
-        msg: btoa(serialize(msg)),
+        msg: new Binary(serialize(msg)),
         funds: [],
       },
     });
@@ -101,20 +102,20 @@ export class GenesisBuilder {
    * Create an account using the account factory contract.
    * Note, we only support Secp256k1 keys now.
    */
-  public registerAccount(factory: string, codeHash: Uint8Array, publicKey: Uint8Array) {
-    const serial = this.accountSerials.get(publicKey) ?? 0;
-    const salt = deriveSalt("secp256k1", publicKey, serial);
+  public registerAccount(factory: Addr, codeHash: Hash, secp256k1PublicKey: Uint8Array) {
+    const serial = this.accountSerials.get(secp256k1PublicKey) ?? 0;
+    const salt = deriveSalt("secp256k1", secp256k1PublicKey, serial);
     const address = deriveAddress(factory, codeHash, salt);
     const msg: AccountFactoryExecuteMsg = {
       registerAccount: {
-        codeHash: encodeBase64(codeHash),
+        codeHash,
         publicKey: {
-          secp256k1: encodeBase64(publicKey),
+          secp256k1: encodeBase64(secp256k1PublicKey),
         },
       },
     };
     this.execute(factory, msg);
-    this.accountSerials.set(publicKey, serial + 1);
+    this.accountSerials.set(secp256k1PublicKey, serial + 1);
     return address;
   }
 

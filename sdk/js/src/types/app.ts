@@ -15,8 +15,3 @@ export type BlockInfo = {
   timestamp: number;
   hash: Hash,
 };
-
-export type Account = {
-  codeHash: Hash;
-  admin?: string;
-};

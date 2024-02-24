@@ -2,22 +2,20 @@ import { Sha256, sha256 } from "@cosmjs/crypto";
 import { Comet38Client, type HttpEndpoint } from "@cosmjs/tendermint-rpc";
 import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
-  type Account,
   type AccountResponse,
   type AccountStateResponse,
+  Addr,
+  Binary,
   type Coin,
   type Config,
+  Hash,
   type InfoResponse,
   type Message,
   type Payload,
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
-  Addr,
-  Hash,
-  decodeUtf8,
   deserialize,
-  encodeBase64,
   encodeBigEndian32,
   encodeUtf8,
   serialize,
@@ -73,68 +71,124 @@ export class Client {
   }
 
   public async queryApp(req: QueryRequest, height = 0): Promise<QueryResponse> {
-    const res = await this.query("/app", encodeUtf8(serialize(req)), height, false);
-    return deserialize(decodeUtf8(res.value)) as QueryResponse;
+    const res = await this.query("/app", serialize(req), height, false);
+    return deserialize(res.value) as QueryResponse;
   }
 
   public async queryInfo(height = 0): Promise<InfoResponse> {
-    const res = await this.queryApp({ info: {} }, height);
+    const res = await this.queryApp(
+      {
+        info: {},
+      },
+      height,
+    );
     return res.info!;
   }
 
   public async queryBalance(address: Addr, denom: string, height = 0): Promise<string> {
-    const res = await this.queryApp({ balance: { address, denom } }, height);
+    const res = await this.queryApp(
+      {
+        balance: { address, denom },
+      },
+      height,
+    );
     return res.balance!.amount;
   }
 
   public async queryBalances(address: Addr, startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
-    const res = await this.queryApp({ balances: { address, startAfter, limit } }, height);
+    const res = await this.queryApp(
+      {
+        balances: { address, startAfter, limit },
+      },
+      height,
+    );
     return res.balances!;
   }
 
   public async querySupply(denom: string, height = 0): Promise<string> {
-    const res = await this.queryApp({ supply: { denom } }, height);
+    const res = await this.queryApp(
+      {
+        supply: { denom },
+      },
+      height,
+    );
     return res.supply!.amount;
   }
 
   public async querySupplies(startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
-    const res = await this.queryApp({ supplies: { startAfter, limit } }, height);
+    const res = await this.queryApp(
+      {
+        supplies: { startAfter, limit },
+      },
+      height,
+    );
     return res.supplies!;
   }
 
-  public async queryCode(hash: Hash, height = 0): Promise<string> {
-    const res = await this.queryApp({ code: { hash } }, height);
+  public async queryCode(hash: Hash, height = 0): Promise<Binary> {
+    const res = await this.queryApp(
+      {
+        code: { hash },
+      },
+      height,
+    );
     return res.code!;
   }
 
   public async queryCodes(startAfter?: Hash, limit?: number, height = 0): Promise<Hash[]> {
-    const res = await this.queryApp({ codes: { startAfter, limit } }, height);
+    const res = await this.queryApp(
+      {
+        codes: { startAfter, limit },
+      },
+      height,
+    );
     return res.codes!;
   }
 
-  public async queryAccount(address: Addr, height = 0): Promise<Account> {
-    const res = await this.queryApp({ account: { address } }, height);
-    const accountRes = res.account!;
-    return {
-      codeHash: accountRes.codeHash,
-      admin: accountRes.admin,
-    }
+  public async queryAccount(address: Addr, height = 0): Promise<AccountResponse> {
+    const res = await this.queryApp(
+      {
+        account: { address },
+      },
+      height,
+    );
+    return res.account!;
   }
 
   public async queryAccounts(startAfter?: Addr, limit?: number, height = 0): Promise<AccountResponse[]> {
-    const res = await this.queryApp({ accounts: { startAfter, limit } }, height);
+    const res = await this.queryApp(
+      {
+        accounts: { startAfter, limit },
+      },
+      height,
+    );
     return res.accounts!;
   }
 
-  public async queryWasmRaw(contract: Addr, key: string, height = 0): Promise<string | undefined> {
-    const res = await this.queryApp({ wasmRaw: { contract, key } }, height);
-    return res.wasmRaw!.value;
+  public async queryWasmRaw(contract: Addr, key: Uint8Array, height = 0): Promise<Uint8Array | undefined> {
+    const res = await this.queryApp(
+      {
+        wasmRaw: {
+          contract,
+          key: new Binary(key),
+        },
+      },
+      height,
+    );
+    return res.wasmRaw!.value?.bytes;
   }
 
   public async queryWasmSmart<T>(contract: Addr, msg: Payload, height = 0): Promise<T> {
-    const res = await this.queryApp({ wasmSmart: { contract, msg: btoa(serialize(msg)) } }, height);
-    const wasmRes = deserialize(atob(res.wasmSmart!.data));
-    return wasmRes as T;
+    const res = await this.queryApp(
+      {
+        wasmSmart: {
+          contract,
+          msg: new Binary(serialize(msg)),
+        },
+      },
+      height,
+    );
+    return deserialize(res.wasmSmart!.data.bytes) as T;
   }
 
   // ------------------------------- tx methods --------------------------------
@@ -150,12 +204,12 @@ export class Client {
       signOpts.sequence = accountStateRes.sequence;
     }
 
-    const tx = encodeUtf8(serialize(await signOpts.signingKey.createAndSignTx(
+    const tx = serialize(await signOpts.signingKey.createAndSignTx(
       msgs,
       signOpts.sender,
       signOpts.chainId,
       signOpts.sequence,
-    )));
+    ));
 
     const { code, codespace, log, hash } = await this.cometClient.broadcastTxSync({ tx });
 
@@ -193,7 +247,7 @@ export class Client {
   ): Promise<Uint8Array> {
     const storeCodeMsg = {
       storeCode: {
-        wasmByteCode: encodeBase64(wasmByteCode),
+        wasmByteCode: new Binary(wasmByteCode),
       },
     };
     return this.sendTx([storeCodeMsg], signOpts);
@@ -211,8 +265,8 @@ export class Client {
     const instantiateMsg = {
       instantiate: {
         codeHash,
-        msg: btoa(serialize(msg)),
-        salt: encodeBase64(salt),
+        msg: new Binary(serialize(msg)),
+        salt: new Binary(salt),
         funds,
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
@@ -233,14 +287,14 @@ export class Client {
     const address = deriveAddress(signOpts.sender, codeHash, salt);
     const storeCodeMsg = {
       storeCode: {
-        wasmByteCode: encodeBase64(wasmByteCode),
+        wasmByteCode: new Binary(wasmByteCode),
       },
     };
     const instantiateMsg = {
       instantiate: {
         codeHash,
-        msg: btoa(serialize(msg)),
-        salt: encodeBase64(salt),
+        msg: new Binary(serialize(msg)),
+        salt: new Binary(salt),
         funds,
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
@@ -258,7 +312,7 @@ export class Client {
     const executeMsg = {
       execute: {
         contract,
-        msg: btoa(serialize(msg)),
+        msg: new Binary(serialize(msg)),
         funds,
       },
     };
@@ -275,7 +329,7 @@ export class Client {
       migrate: {
         contract,
         newCodeHash,
-        msg: btoa(serialize(msg)),
+        msg: new Binary(serialize(msg)),
       },
     };
     return this.sendTx([migrateMsg], signOpts);
@@ -305,7 +359,7 @@ export function createAdmin(
   codeHash: Hash,
   salt: Uint8Array,
 ): Addr | undefined {
-  if (typeof adminOpt === "string") {
+  if (adminOpt instanceof Addr) {
     return adminOpt;
   } else if (adminOpt === AdminOptionKind.SetToSelf) {
     return deriveAddress(deployer, codeHash, salt);
