@@ -63,8 +63,8 @@ function computeAndCompareRootHash(
   siblingHashes: (Hash | null)[],
   hash: Hash,
 ) {
-  for (let i = siblingHashes.length - 1; i >= 0; i--) {
-    if (getBitAtIndex(keyHash, i) == 0) {
+  for (let i = 0; i < siblingHashes.length; i++) {
+    if (getBitAtIndex(keyHash, siblingHashes.length - i - 1) == 0) {
       hash = hashInternalNode(hash, siblingHashes[i]);
     } else {
       hash = hashInternalNode(siblingHashes[i], hash);
