@@ -13,22 +13,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          cache: "npm"
-          cache-dependency-path: "sdk/js/package-lock.json"
+          cache: "yarn"
+          cache-dependency-path: "sdk/js/yarn.lock"
           node-version: "lts/*"
 
       - name: Install dependencies
         working-directory: sdk/js
-        run: npm clean-install
+        run: yarn install
 
       - name: Typecheck
         working-directory: sdk/js
-        run: npm run typecheck
+        run: yarn check:type
 
       - name: Build
         working-directory: sdk/js
-        run: npm run build
+        run: yarn build
 
       - name: Test
         working-directory: sdk/js
-        run: echo "placeholder"
+        run: yarn test
