@@ -9,6 +9,7 @@
     "node": true
   },
   "plugins": [
+    "@stylistic",
     "@typescript-eslint"
   ],
   "extends": [
@@ -30,6 +31,46 @@
           "single"
         ]
       }
+    ],
+    "@stylistic/comma-dangle": [
+      "error",
+      "always-multiline"
+    ],
+    "@stylistic/eol-last": [
+      "error",
+      "always"
+    ],
+    "@stylistic/indent": [
+      "error",
+      2
+    ],
+    "@stylistic/max-len": [
+      "warn",
+      {
+        "code": 100,
+        "tabWidth": 2,
+        "comments": 80,
+        "ignoreComments": true,
+        "ignoreTrailingComments": true,
+        "ignoreUrls": true,
+        "ignoreStrings": true
+      }
+    ],
+    "@stylistic/no-tabs": [
+      "error"
+    ],
+    "@stylistic/no-trailing-spaces": [
+      "error"
+    ],
+    "@stylistic/no-multiple-empty-lines": [
+      "error",
+      {
+        "max": 1
+      }
+    ],
+    "@stylistic/quotes": [
+      "error",
+      "double"
     ]
   }
 }

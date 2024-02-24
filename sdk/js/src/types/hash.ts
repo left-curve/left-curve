@@ -9,7 +9,7 @@ export class Hash {
    */
   public constructor(bytes: Uint8Array) {
     if (bytes.length !== 32) {
-      throw new Error(`hash is not exactly 32 bytes`);
+      throw new Error("hash is not exactly 32 bytes");
     }
     this.bytes = bytes;
   }

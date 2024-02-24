@@ -96,7 +96,12 @@ export class Client {
     return res.balance!.amount;
   }
 
-  public async queryBalances(address: Addr, startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
+  public async queryBalances(
+    address: Addr,
+    startAfter?: string,
+    limit?: number,
+    height = 0,
+  ): Promise<Coin[]> {
     const res = await this.queryApp(
       {
         balances: { address, startAfter, limit },
@@ -156,7 +161,11 @@ export class Client {
     return res.account!;
   }
 
-  public async queryAccounts(startAfter?: Addr, limit?: number, height = 0): Promise<AccountResponse[]> {
+  public async queryAccounts(
+    startAfter?: Addr,
+    limit?: number,
+    height = 0,
+  ): Promise<AccountResponse[]> {
     const res = await this.queryApp(
       {
         accounts: { startAfter, limit },
@@ -166,7 +175,11 @@ export class Client {
     return res.accounts!;
   }
 
-  public async queryWasmRaw(contract: Addr, key: Uint8Array, height = 0): Promise<Uint8Array | undefined> {
+  public async queryWasmRaw(
+    contract: Addr,
+    key: Uint8Array,
+    height = 0,
+  ): Promise<Uint8Array | undefined> {
     const res = await this.queryApp(
       {
         wasmRaw: {
@@ -201,7 +214,12 @@ export class Client {
     }
 
     if (!signOpts.sequence) {
-      const accountStateRes: AccountStateResponse = await this.queryWasmSmart(signOpts.sender, { state: {} });
+      const accountStateRes: AccountStateResponse = await this.queryWasmSmart(
+        signOpts.sender,
+        {
+          state: {},
+        },
+      );
       signOpts.sequence = accountStateRes.sequence;
     }
 
