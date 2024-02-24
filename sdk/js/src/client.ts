@@ -15,11 +15,11 @@ import {
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
+  type Uint,
   deserialize,
   encodeBigEndian32,
   encodeUtf8,
   serialize,
-  Uint,
 } from ".";
 
 /**

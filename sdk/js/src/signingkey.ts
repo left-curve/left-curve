@@ -11,6 +11,8 @@ import {
   stringToPath,
 } from "@cosmjs/crypto";
 import {
+  type Addr,
+  Binary,
   type Message,
   type Tx,
   encodeBase64,
@@ -18,7 +20,6 @@ import {
   encodeUtf8,
   decodeBase64,
   serialize,
-  Addr,
 } from ".";
 
 // parameters for keystore encryption
@@ -135,7 +136,7 @@ export class SigningKey {
     return {
       sender,
       msgs,
-      credential: encodeBase64(signature),
+      credential: new Binary(signature),
     };
   }
 
@@ -159,7 +160,7 @@ export function createSignBytes(
   sequence: number,
 ): Uint8Array {
   const hasher = new Sha256();
-  hasher.update(encodeUtf8(serialize(msgs)));
+  hasher.update(serialize(msgs));
   hasher.update(sender.bytes);
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
