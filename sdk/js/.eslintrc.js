@@ -1,22 +1,18 @@
-{
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "ecmaVersion": 2020,
-    "sourceType": "module",
-    "project": "./tsconfig.json"
+module.exports = {
+  parser: "@typescript-eslint/parser",
+  parserOptions: {
+    ecmaVersion: 2020,
+    sourceType: "module",
   },
-  "env": {
-    "node": true
-  },
-  "plugins": [
+  plugins: [
     "@stylistic",
-    "@typescript-eslint"
+    "@typescript-eslint",
   ],
-  "extends": [
+  extends: [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
   ],
-  "rules": {
+  rules: {
     "sort-imports": [
       "error",
       {
@@ -28,49 +24,49 @@
           "none",
           "all",
           "multiple",
-          "single"
-        ]
-      }
+          "single",
+        ],
+      },
     ],
     "@stylistic/comma-dangle": [
       "error",
-      "always-multiline"
+      "always-multiline",
     ],
     "@stylistic/eol-last": [
       "error",
-      "always"
+      "always",
     ],
     "@stylistic/indent": [
       "error",
-      2
+      2,
     ],
     "@stylistic/max-len": [
-      "warn",
+      "off", // we don't bother this
       {
-        "code": 100,
-        "tabWidth": 2,
-        "comments": 80,
-        "ignoreComments": true,
-        "ignoreTrailingComments": true,
-        "ignoreUrls": true,
-        "ignoreStrings": true
-      }
+        code: 100,
+        tabWidth: 2,
+        comments: 80,
+        ignoreComments: true,
+        ignoreTrailingComments: true,
+        ignoreUrls: true,
+        ignoreStrings: true,
+      },
     ],
     "@stylistic/no-tabs": [
-      "error"
+      "error",
     ],
     "@stylistic/no-trailing-spaces": [
-      "error"
+      "error",
     ],
     "@stylistic/no-multiple-empty-lines": [
       "error",
       {
-        "max": 1
-      }
+        max: 1,
+      },
     ],
     "@stylistic/quotes": [
       "error",
-      "double"
-    ]
-  }
-}
+      "double",
+    ],
+  },
+};
