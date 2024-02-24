@@ -27,7 +27,6 @@
     "sourceMap": true,
     "strict": true,
     "target": "esnext",
-    "types": ["bun-types"],
     "verbatimModuleSyntax": true,
   },
   "include": ["src/**/*", "examples/**/*", "testdata/**/*"]
