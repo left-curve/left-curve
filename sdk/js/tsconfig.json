@@ -30,6 +30,6 @@
     "target": "esnext",
     "verbatimModuleSyntax": true,
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "examples/**/*"],
   "exclude": ["dist", "node_modules"]
 }
