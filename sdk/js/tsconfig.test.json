@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmitOnError": false,
+    "verbatimModuleSyntax": false
+  },
+  "exclude": []
+}

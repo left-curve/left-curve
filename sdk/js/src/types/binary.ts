@@ -1,4 +1,4 @@
-import { decodeBase64, encodeBase64 } from "src";
+import { decodeBase64, encodeBase64 } from "..";
 
 export class Binary {
   public bytes: Uint8Array;

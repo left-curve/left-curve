@@ -19,6 +19,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "outDir": "./dist",
     "pretty": true,
     "removeComments": false,
     "resolveJsonModule": true,
@@ -29,5 +30,6 @@
     "target": "esnext",
     "verbatimModuleSyntax": true,
   },
-  "include": ["src/**/*", "examples/**/*", "testdata/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
 }

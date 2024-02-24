@@ -36,7 +36,7 @@
     "check:package": "yarn pack && yarn publint --public --strict && attw --pack",
     "build": "yarn tsup --config ./tsup.config.ts",
     "lint": "yarn eslint ./src --ext .ts --config ./.eslintrc.cjs",
-    "test": "yarn jest --config ./jest.config.ts",
+    "test": "yarn jest --config ./jest.config.cjs",
     "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs"
   },
   "dependencies": {
