@@ -66,13 +66,13 @@ export class Client {
     key: Uint8Array,
     height = 0,
     prove = false,
-  ): Promise<{ value: Uint8Array | undefined, proof: Proof | undefined }> {
+  ): Promise<{ value: Uint8Array | null, proof: Proof | null }> {
     const res = await this.query("/store", key, height, prove);
-    const value = res.value.length > 0 ? res.value : undefined;
-    let proof = undefined;
+    const value = res.value.length > 0 ? res.value : null;
+    let proof = null;
     if (prove) {
       const ops = res.proof!.ops;
-      // do some basic sanity check of the proof op
+      // do some basic sanity checks on the proof op
       if (ops.length !== 1) {
         throw new Error(`expecting exactly one proof op, found ${ops.length}`);
       }
