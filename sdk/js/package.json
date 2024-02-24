@@ -34,6 +34,7 @@
   "scripts": {
     "build": "bun run build.mjs",
     "lint": "eslint ./src --ext .ts",
+    "typedoc": "bunx typedoc ./src/index.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "check-package": "npm pack && npx publint@latest --public --strict && attw --pack"
   },
@@ -50,6 +51,7 @@
     "bun-types": "^1.0.29",
     "eslint": "^8.57.0",
     "publint": "^0.2.7",
+    "typedoc": "^0.25.8",
     "typescript": "^5.3.3"
   }
 }

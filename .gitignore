@@ -9,6 +9,7 @@
 # javascript
 **/dist/
 **/node_modules/
+sdk/js/docs/
 
 # data for test purpose
 **/testdata/
