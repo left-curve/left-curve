@@ -32,9 +32,7 @@
     "directory": "sdk/js"
   },
   "scripts": {
-    "build:browser": "bun build ./src/index.ts --outdir ./dist/browser --target browser",
-    "build:bun": "bun build ./src/index.ts --outdir ./dist/bun --target bun",
-    "build:node": "bun build ./src/index.ts --outdir ./dist/node --target node",
+    "build": "bun run build.mjs",
     "lint": "eslint ./src --ext .ts",
     "typecheck": "tsc --noEmit --project tsconfig.json",
     "check-package": "npm pack && npx publint@latest --public --strict && attw --pack"
@@ -48,6 +46,7 @@
     "@stylistic/eslint-plugin": "^1.6.2",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",
+    "bun-plugin-dts": "^0.2.1",
     "bun-types": "^1.0.29",
     "eslint": "^8.57.0",
     "publint": "^0.2.7",
