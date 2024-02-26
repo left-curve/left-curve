@@ -1,5 +1,5 @@
 import { sha256 } from "@cosmjs/crypto";
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "vitest";
 import { Hash, encodeUtf8, verifyMembershipProof, verifyNonMembershipProof } from ".";
 
 // we use the same test case as in the cw-jmt crate
