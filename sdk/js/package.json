@@ -33,9 +33,9 @@
   },
   "scripts": {
     "check:type": "yarn tsc --noEmit --project tsconfig.json",
+    "check:biome": "yarn biome check --apply ./src/*.ts ./src/types/*.ts ./examples/*.ts",
     "check:package": "yarn pack && yarn publint --public --strict && attw --pack",
     "build": "yarn tsup --config ./tsup.config.ts",
-    "lint": "yarn eslint ./src --ext .ts --config ./.eslintrc.cjs",
     "test": "yarn jest --config ./jest.config.cjs",
     "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs"
   },
@@ -45,12 +45,9 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.13.10",
-    "@stylistic/eslint-plugin": "^1.6.2",
+    "@biomejs/biome": "1.5.3",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.20",
-    "@typescript-eslint/eslint-plugin": "^7.0.2",
-    "@typescript-eslint/parser": "^7.0.2",
-    "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "publint": "^0.2.7",
     "ts-jest": "^29.1.2",
