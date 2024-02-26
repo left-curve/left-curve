@@ -48,7 +48,6 @@
     "@biomejs/biome": "1.5.3",
     "@types/node": "^20.11.20",
     "publint": "^0.2.7",
-    "ts-node": "^10.9.2",
     "tsup": "^8.0.2",
     "typedoc": "^0.25.8",
     "typescript": "^5.3.3",
