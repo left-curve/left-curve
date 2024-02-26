@@ -6,7 +6,7 @@ const artifactDir = path.resolve(__dirname, "../../../artifacts");
 const keystoreDir = path.join(os.homedir(), ".cwcli/keys");
 const keystorePassword = "123";
 
-(async function () {
+(async () => {
   // load two pubkeys from the keystore. we will register an account for each of them
   const test1 = await SigningKey.fromFile(path.join(keystoreDir, "test1.json"), keystorePassword);
   const test2 = await SigningKey.fromFile(path.join(keystoreDir, "test2.json"), keystorePassword);
@@ -23,18 +23,10 @@ const keystorePassword = "123";
     {},
     encodeUtf8("account-factory"),
     AdminOptionKind.SetToNone,
-  )
+  );
 
-  const account1 = builder.registerAccount(
-    accountFactory,
-    accountCodeHash,
-    test1.publicKey(),
-  );
-  const account2 = builder.registerAccount(
-    accountFactory,
-    accountCodeHash,
-    test2.publicKey(),
-  );
+  const account1 = builder.registerAccount(accountFactory, accountCodeHash, test1.publicKey());
+  const account2 = builder.registerAccount(accountFactory, accountCodeHash, test2.publicKey());
 
   // store and instantiate and bank contract
   // give account1 some initial balances
@@ -51,7 +43,7 @@ const keystorePassword = "123";
             },
             {
               denom: "uosmo",
-              amount: "23456"
+              amount: "23456",
             },
           ],
         },

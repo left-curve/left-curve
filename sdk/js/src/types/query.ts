@@ -1,17 +1,17 @@
 import type { Addr, Binary, BlockInfo, Coin, Config, Hash } from ".";
 
 export type QueryRequest = {
-  info?: QueryInfoRequest,
-  balance?: QueryBalanceRequest,
-  balances?: QueryBalancesRequest,
-  supply?: QuerySupplyRequest,
-  supplies?: QuerySuppliesReuest,
-  code?: QueryCodeRequest,
-  codes?: QueryCodesRequest,
-  account?: QueryAccountRequest,
-  accounts?: QueryAccountsRequest,
-  wasmRaw?: QueryWasmRawRequest,
-  wasmSmart?: QueryWasmSmartRequest,
+  info?: QueryInfoRequest;
+  balance?: QueryBalanceRequest;
+  balances?: QueryBalancesRequest;
+  supply?: QuerySupplyRequest;
+  supplies?: QuerySuppliesReuest;
+  code?: QueryCodeRequest;
+  codes?: QueryCodesRequest;
+  account?: QueryAccountRequest;
+  accounts?: QueryAccountsRequest;
+  wasmRaw?: QueryWasmRawRequest;
+  wasmSmart?: QueryWasmSmartRequest;
 };
 
 // https://typescript-eslint.io/rules/ban-types/#:~:text=Avoid%20the%20Object%20and%20%7B%7D%20types
@@ -66,17 +66,17 @@ export type QueryWasmSmartRequest = {
 };
 
 export type QueryResponse = {
-  info?: InfoResponse,
-  balance?: Coin,
-  balances?: Coin[],
-  supply?: Coin,
-  supplies?: Coin[],
-  code?: Binary,
-  codes?: Hash[],
-  account?: AccountResponse,
-  accounts?: AccountResponse[],
-  wasmRaw?: WasmRawResponse,
-  wasmSmart?: WasmSmartResponse,
+  info?: InfoResponse;
+  balance?: Coin;
+  balances?: Coin[];
+  supply?: Coin;
+  supplies?: Coin[];
+  code?: Binary;
+  codes?: Hash[];
+  account?: AccountResponse;
+  accounts?: AccountResponse[];
+  wasmRaw?: WasmRawResponse;
+  wasmSmart?: WasmSmartResponse;
 };
 
 export type InfoResponse = {

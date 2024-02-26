@@ -68,7 +68,9 @@ describe("verifying non-membership proofs", () => {
         node: {
           internal: {
             leftHash: null,
-            rightHash: Hash.fromHex("521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"),
+            rightHash: Hash.fromHex(
+              "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b",
+            ),
           },
         },
         siblingHashes: [
@@ -81,8 +83,12 @@ describe("verifying non-membership proofs", () => {
       {
         node: {
           leaf: {
-            keyHash: Hash.fromHex("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"),
-            valueHash: Hash.fromHex("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"),
+            keyHash: Hash.fromHex(
+              "62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a",
+            ),
+            valueHash: Hash.fromHex(
+              "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+            ),
           },
         },
         siblingHashes: [

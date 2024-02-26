@@ -57,7 +57,9 @@ export class Client {
   ): Promise<AbciQueryResponse> {
     const res = await this.cometClient.abciQuery({ path, data, height, prove });
     if (res.code !== 0) {
-      throw new Error(`query failed! codespace: ${res.codespace}, code: ${res.code}, log: ${res.log}`);
+      throw new Error(
+        `query failed! codespace: ${res.codespace}, code: ${res.code}, log: ${res.log}`,
+      );
     }
     return res;
   }
@@ -66,7 +68,7 @@ export class Client {
     key: Uint8Array,
     height = 0,
     prove = false,
-  ): Promise<{ value: Uint8Array | null, proof: Proof | null }> {
+  ): Promise<{ value: Uint8Array | null; proof: Proof | null }> {
     const res = await this.query("/store", key, height, prove);
     const value = res.value.length > 0 ? res.value : null;
     let proof = null;
@@ -80,7 +82,9 @@ export class Client {
         throw new Error(`unknown proof type: ${ops[0].type}`);
       }
       if (!arraysIdentical(ops[0].key, key)) {
-        throw new Error(`incorrect key! expecting: ${encodeBase64(key)}, found: ${encodeBase64(ops[0].key)}`);
+        throw new Error(
+          `incorrect key! expecting: ${encodeBase64(key)}, found: ${encodeBase64(ops[0].key)}`,
+        );
       }
       proof = deserialize(ops[0].data) as Proof;
     }
@@ -230,56 +234,47 @@ export class Client {
     }
 
     if (!signOpts.sequence) {
-      const accountStateRes: AccountStateResponse = await this.queryWasmSmart(
-        signOpts.sender,
-        {
-          state: {},
-        },
-      );
+      const accountStateRes: AccountStateResponse = await this.queryWasmSmart(signOpts.sender, {
+        state: {},
+      });
       signOpts.sequence = accountStateRes.sequence;
     }
 
-    const tx = serialize(await signOpts.signingKey.createAndSignTx(
-      msgs,
-      signOpts.sender,
-      signOpts.chainId,
-      signOpts.sequence,
-    ));
+    const tx = serialize(
+      await signOpts.signingKey.createAndSignTx(
+        msgs,
+        signOpts.sender,
+        signOpts.chainId,
+        signOpts.sequence,
+      ),
+    );
 
     const { code, codespace, log, hash } = await this.cometClient.broadcastTxSync({ tx });
 
-    if (code === 0) {
-      return hash;
-    } else {
-      throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+    if (code !== 0) {
+      throw new Error(
+        `failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`,
+      );
     }
+
+    return hash;
   }
 
-  public async updateConfig(
-    newCfg: Config,
-    signOpts: SigningOptions,
-  ): Promise<Uint8Array> {
+  public async updateConfig(newCfg: Config, signOpts: SigningOptions): Promise<Uint8Array> {
     const updateCfgMsg = {
       updateConfig: { newCfg },
     };
     return this.sendTx([updateCfgMsg], signOpts);
   }
 
-  public async transfer(
-    to: Addr,
-    coins: Coin[],
-    signOpts: SigningOptions,
-  ): Promise<Uint8Array> {
+  public async transfer(to: Addr, coins: Coin[], signOpts: SigningOptions): Promise<Uint8Array> {
     const transferMsg = {
       transfer: { to, coins },
     };
     return this.sendTx([transferMsg], signOpts);
   }
 
-  public async storeCode(
-    wasmByteCode: Uint8Array,
-    signOpts: SigningOptions,
-  ): Promise<Uint8Array> {
+  public async storeCode(wasmByteCode: Uint8Array, signOpts: SigningOptions): Promise<Uint8Array> {
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: new Binary(wasmByteCode),
@@ -379,8 +374,8 @@ export type SigningOptions = {
 };
 
 export enum AdminOptionKind {
-  SetToSelf,
-  SetToNone,
+  SetToSelf = 0,
+  SetToNone = 1,
 }
 
 export type AdminOption = Addr | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
@@ -396,11 +391,11 @@ export function createAdmin(
 ): Addr | undefined {
   if (adminOpt instanceof Addr) {
     return adminOpt;
-  } else if (adminOpt === AdminOptionKind.SetToSelf) {
-    return deriveAddress(deployer, codeHash, salt);
-  } else {
-    return undefined;
   }
+  if (adminOpt === AdminOptionKind.SetToSelf) {
+    return deriveAddress(deployer, codeHash, salt);
+  }
+  return undefined;
 }
 
 /**
@@ -446,7 +441,7 @@ function arraysIdentical(a: Uint8Array, b: Uint8Array): boolean {
   }
 
   for (let i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) {
+    if (a[i] !== b[i]) {
       return false;
     }
   }

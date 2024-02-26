@@ -13,5 +13,5 @@ export type Config = {
 export type BlockInfo = {
   height: Uint;
   timestamp: Uint;
-  hash: Hash,
+  hash: Hash;
 };

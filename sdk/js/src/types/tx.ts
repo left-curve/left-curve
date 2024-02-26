@@ -22,7 +22,7 @@ export type MsgUpdateConfig = {
 export type MsgTransfer = {
   to: Addr;
   coins: Coin[];
-}
+};
 
 export type MsgStoreCode = {
   wasmByteCode: Binary;

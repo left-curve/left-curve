@@ -20,7 +20,6 @@ import {
 } from ".";
 
 export const GENESIS_SENDER = "0x0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a";
-export const GENESIS_BLOCK_HASH = "d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa";
 
 export class GenesisBuilder {
   private storeCodeMsgs: Message[];
@@ -53,12 +52,7 @@ export class GenesisBuilder {
    * Add an Instantiate message to genesis messages.
    * @returns The contract's address
    */
-  public instantiate(
-    codeHash: Hash,
-    msg: Payload,
-    salt: Uint8Array,
-    adminOpt: AdminOption,
-  ): Addr {
+  public instantiate(codeHash: Hash, msg: Payload, salt: Uint8Array, adminOpt: AdminOption): Addr {
     this.otherMsgs.push({
       instantiate: {
         codeHash,
@@ -136,12 +130,13 @@ export class GenesisBuilder {
     if (!this.config) {
       throw new Error("config is not set");
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: reading from cometBFT genesis file which we don't have a type definition so any
     const cometGen = JSON.parse(fs.readFileSync(cometGenPath, "utf8")) as { [key: string]: any };
     const appState = {
       config: this.config,
       msgs: [...this.storeCodeMsgs, ...this.otherMsgs],
     };
+    // biome-ignore lint/complexity/useLiteralKeys: if it's snake_case then I like to use string literal key
     cometGen["app_state"] = recursiveTransform(appState, camelToSnake);
     fs.writeFileSync(cometGenPath, JSON.stringify(cometGen, null, 2) + "\n");
   }

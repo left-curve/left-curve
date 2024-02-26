@@ -11,10 +11,10 @@ const user = Addr.fromString("0xaa07224072e473b6ef413f4cbf32a12baf94472a162b0b51
 const bank = Addr.fromString("0xc98ae1b34d8aa3860c026a3499624f6c2e35377e768d8c56d3f0f5b7ab27d377");
 
 async function sleep(seconds: number) {
-  return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 }
 
-(async function () {
+(async () => {
   // load signing key
   const test1 = await SigningKey.fromFile(path.join(keystoreDir, "test1.json"), keystorePassword);
   const signingOpts = {

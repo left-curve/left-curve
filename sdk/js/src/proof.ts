@@ -1,25 +1,19 @@
 import { Sha256 } from "@cosmjs/crypto";
 import { Hash, type MembershipProof, type NonMembershipProof, type Proof } from ".";
 
-export function verifyProof(
-  rootHash: Hash,
-  keyHash: Hash,
-  valueHash: Hash | null,
-  proof: Proof,
-) {
+export function verifyProof(rootHash: Hash, keyHash: Hash, valueHash: Hash | null, proof: Proof) {
+  // value exists, the proof must be a membership proof
   if (valueHash !== null) {
     if ("membership" in proof) {
       return verifyMembershipProof(rootHash, keyHash, valueHash, proof.membership);
-    } else {
-      throw new Error("expecting membership proof, got non-membership proof");
     }
-  } else {
-    if ("nonMembership" in proof) {
-      return verifyNonMembershipProof(rootHash, keyHash, proof.nonMembership);
-    } else {
-      throw new Error("expecting non-membership proof, got membership proof");
-    }
+    throw new Error("expecting membership proof, got non-membership proof");
   }
+  // value doesn't exist, the proof must be a non-membership proof
+  if ("nonMembership" in proof) {
+    return verifyNonMembershipProof(rootHash, keyHash, proof.nonMembership);
+  }
+  throw new Error("expecting non-membership proof, got membership proof");
 }
 
 export function verifyMembershipProof(
@@ -32,11 +26,7 @@ export function verifyMembershipProof(
   return computeAndCompareRootHash(rootHash, keyHash, proof.siblingHashes, hash);
 }
 
-export function verifyNonMembershipProof(
-  rootHash: Hash,
-  keyHash: Hash,
-  proof: NonMembershipProof,
-) {
+export function verifyNonMembershipProof(rootHash: Hash, keyHash: Hash, proof: NonMembershipProof) {
   let hash: Hash;
   if ("internal" in proof.node) {
     const { leftHash, rightHash } = proof.node.internal;
@@ -64,7 +54,7 @@ function computeAndCompareRootHash(
   hash: Hash,
 ) {
   for (let i = 0; i < siblingHashes.length; i++) {
-    if (getBitAtIndex(keyHash, siblingHashes.length - i - 1) == 0) {
+    if (getBitAtIndex(keyHash, siblingHashes.length - i - 1) === 0) {
       hash = hashInternalNode(hash, siblingHashes[i]);
     } else {
       hash = hashInternalNode(siblingHashes[i], hash);
@@ -106,5 +96,5 @@ function getBitAtIndex(hash: Hash, index: number): number {
   const quotient = Math.floor(index / 8);
   const remainder = index % 8;
   const byte = hash.bytes[quotient];
-  return byte >> (7 - remainder) & 1;
+  return (byte >> (7 - remainder)) & 1;
 }
