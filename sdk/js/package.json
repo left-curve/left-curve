@@ -33,10 +33,10 @@
   },
   "scripts": {
     "check:type": "yarn tsc --noEmit --project tsconfig.json",
-    "check:biome": "yarn biome check --apply ./src ./examples",
-    "check:package": "yarn pack && yarn publint --public --strict && attw --pack",
+    "check:package": "yarn publint --public --strict && attw --pack",
     "build": "yarn tsup --config ./tsup.config.ts",
     "test": "yarn vitest run",
+    "lint": "yarn biome check --apply ./src ./examples",
     "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs"
   },
   "dependencies": {
@@ -53,5 +53,6 @@
     "typedoc": "^0.25.8",
     "typescript": "^5.3.3",
     "vitest": "^1.3.1"
-  }
+  },
+  "packageManager": "yarn@4.1.0"
 }
