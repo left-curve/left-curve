@@ -1,10 +1,10 @@
-name: JavaScript SDK
+name: JavaScript
 
 on: push
 
 jobs:
   js-sdk-checks:
-    name: JavaScript SDK Checks
+    name: JS SDK Checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -32,3 +32,7 @@ jobs:
       - name: Test
         working-directory: sdk/js
         run: yarn test
+
+      - name: Lints
+        working-directory: sdk/js
+        run: yarn biome ci ./src ./examples
