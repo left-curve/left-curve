@@ -33,7 +33,7 @@
   },
   "scripts": {
     "check:type": "yarn tsc --noEmit --project tsconfig.json",
-    "check:biome": "yarn biome check --apply ./src/*.ts ./src/types/*.ts ./examples/*.ts",
+    "check:biome": "yarn biome check --apply ./src ./examples",
     "check:package": "yarn pack && yarn publint --public --strict && attw --pack",
     "build": "yarn tsup --config ./tsup.config.ts",
     "test": "yarn vitest run",
