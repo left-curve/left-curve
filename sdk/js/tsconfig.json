@@ -1,12 +1,10 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": ["es2020"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "target": "esnext",
-    "verbatimModuleSyntax": true
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src"
   },
-  "include": ["src/**/*", "examples/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "src/**/*.test.ts", "src/**/*.spec.ts"]
 }

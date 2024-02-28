@@ -32,11 +32,10 @@
     "directory": "sdk/js"
   },
   "scripts": {
-    "check:type": "yarn tsc --noEmit --project tsconfig.json",
-    "check:package": "yarn publint --public --strict && attw --pack",
+    "check": "yarn publint --public --strict && yarn attw --pack",
     "build": "yarn tsup --config ./tsup.config.ts",
     "test": "yarn vitest run",
-    "lint": "yarn biome check --apply ./src ./examples",
+    "lint": "yarn biome check --apply ./src",
     "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs",
     "ci": "yarn biome ci ./src ./examples"
   },

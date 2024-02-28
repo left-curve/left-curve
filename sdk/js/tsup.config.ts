@@ -3,7 +3,6 @@ import { defineConfig } from "tsup";
 /**
  * @see https://tsup.egoist.dev/#usage
  */
-
 export default defineConfig({
   dts: true,
   clean: true,
@@ -16,5 +15,5 @@ export default defineConfig({
   format: ["esm", "cjs"],
   treeshake: "recommended",
   entry: ["./src/index.ts"],
-  external: ["node:fs", "node:os", "node:crypto"],
+  external: [],
 });
