@@ -1,3 +1,7 @@
+# There is an issue related to using yarn v4 with actions/setup-node.
+# A workaround is to run setup-node once, enable corepack, then run setup-node
+# again. See: https://github.com/actions/setup-node/issues/899#issuecomment-1828798029
+
 name: JavaScript
 
 on: push
@@ -11,6 +15,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup yarn
         uses: actions/setup-node@v4
         with:
           cache: "yarn"
@@ -31,6 +43,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup yarn
         uses: actions/setup-node@v4
         with:
           cache: "yarn"
