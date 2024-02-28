@@ -4,7 +4,8 @@
   "scripts": {
     "lint": "yarn workspaces foreach --all --topological-dev --parallel --verbose run lint",
     "test": "yarn workspaces foreach --all --topological-dev --parallel --verbose run test",
-    "docs": "yarn workspaces foreach --all --topological-dev --parallel --verbose run docs"
+    "docs": "yarn workspaces foreach --all --topological-dev --parallel --verbose run docs",
+    "ci": "yarn workspaces foreach --all --topological-dev --parallel --verbose run ci"
   },
   "dependencies": {
     "@cosmjs/crypto": "^0.32.2",

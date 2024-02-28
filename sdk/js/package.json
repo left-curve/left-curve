@@ -37,7 +37,8 @@
     "build": "yarn tsup --config ./tsup.config.ts",
     "test": "yarn vitest run",
     "lint": "yarn biome check --apply ./src ./examples",
-    "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs"
+    "docs": "yarn typedoc ./src/index.ts --options ./typedoc.config.cjs",
+    "ci": "yarn biome ci ./src ./examples"
   },
   "dependencies": {
     "@cosmjs/crypto": "workspace:^",

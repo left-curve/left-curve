@@ -3,7 +3,7 @@ name: Rust
 on: push
 
 jobs:
-  tests:
+  rs-tests:
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -20,8 +20,8 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
-  clippy:
-    name: Clippy
+  rs-lints:
+    name: Lints
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -33,5 +33,5 @@ jobs:
           toolchain: stable
           components: clippy
 
-      - name: Run clippy
+      - name: Run lints
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings

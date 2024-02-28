@@ -3,8 +3,8 @@ name: JavaScript
 on: push
 
 jobs:
-  js-sdk-checks:
-    name: JS SDK Checks
+  js-tests:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -14,25 +14,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           cache: "yarn"
-          cache-dependency-path: "sdk/js/yarn.lock"
+          cache-dependency-path: "yarn.lock"
           node-version: "lts/*"
 
       - name: Install dependencies
-        working-directory: sdk/js
         run: yarn install
 
-      - name: Typecheck
-        working-directory: sdk/js
-        run: yarn check:type
-
-      - name: Build
-        working-directory: sdk/js
-        run: yarn build
-
       - name: Test
-        working-directory: sdk/js
         run: yarn test
 
+  js-lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: "yarn"
+          cache-dependency-path: "yarn.lock"
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: yarn install
+
       - name: Lints
-        working-directory: sdk/js
-        run: yarn biome ci ./src ./examples
+        run: yarn ci
