@@ -44,9 +44,15 @@ importers:
 
   snap:
     dependencies:
+      '@cosmjs/crypto':
+        specifier: ^0.32.2
+        version: 0.32.2
       '@cwsoftware/cw.js':
         specifier: workspace:^
         version: link:../sdk/js
+      '@metamask/key-tree':
+        specifier: ^9.0.0
+        version: 9.0.0
       '@metamask/snaps-sdk':
         specifier: ^3.0.1
         version: 3.0.1

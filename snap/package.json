@@ -23,7 +23,9 @@
     "ci": "pnpm biome ci ./src"
   },
   "dependencies": {
+    "@cosmjs/crypto": "^0.32.2",
     "@cwsoftware/cw.js": "workspace:^",
+    "@metamask/key-tree": "^9.0.0",
     "@metamask/snaps-sdk": "^3.0.1"
   },
   "devDependencies": {
