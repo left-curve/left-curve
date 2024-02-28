@@ -1,25 +1,13 @@
 {
   "private": true,
-  "workspaces": ["sdk/js"],
+  "workspaces": [
+    "sdk/js"
+  ],
   "scripts": {
     "lint": "yarn workspaces foreach --all --topological-dev --parallel --verbose run lint",
     "test": "yarn workspaces foreach --all --topological-dev --parallel --verbose run test",
     "docs": "yarn workspaces foreach --all --topological-dev --parallel --verbose run docs",
     "ci": "yarn workspaces foreach --all --topological-dev --parallel --verbose run ci"
-  },
-  "dependencies": {
-    "@cosmjs/crypto": "^0.32.2",
-    "@cosmjs/tendermint-rpc": "^0.32.2"
-  },
-  "devDependencies": {
-    "@arethetypeswrong/cli": "^0.13.10",
-    "@biomejs/biome": "1.5.3",
-    "@types/node": "^20.11.20",
-    "publint": "^0.2.7",
-    "tsup": "^8.0.2",
-    "typedoc": "^0.25.8",
-    "typescript": "^5.3.3",
-    "vitest": "^1.3.1"
   },
   "packageManager": "yarn@4.1.0"
 }
