@@ -40,7 +40,7 @@ The developer tooling we use for this project is listed below. Finding the right
 
 | tool            | Rust         | TypeScript                                            |
 | --------------- | ------------ | ----------------------------------------------------- |
-| package manager | cargo        | yarn (v4)                                             |
+| package manager | cargo        | [pnpm](https://www.npmjs.com/package/pnpm)            |
 | bundler         | cargo build  | [tsup](https://www.npmjs.com/package/tsup)            |
 | tester          | cargo test   | [vitest](https://www.npmjs.com/package/vitest)        |
 | linter          | cargo clippy | [biome](https://www.npmjs.com/package/@biomejs/biome) |

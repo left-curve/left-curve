@@ -1,14 +1,5 @@
 {
   "private": true,
-  "workspaces": [
-    "sdk/js",
-    "snap"
-  ],
-  "scripts": {
-    "lint": "yarn workspaces foreach --all --topological-dev --parallel --verbose run lint",
-    "test": "yarn workspaces foreach --all --topological-dev --parallel --verbose run test",
-    "docs": "yarn workspaces foreach --all --topological-dev --parallel --verbose run docs",
-    "ci": "yarn workspaces foreach --all --topological-dev --parallel --verbose run ci"
-  },
-  "packageManager": "yarn@4.1.0"
+  "workspaces": ["sdk/js", "snap"],
+  "packageManager": "pnpm@8.15.4+sha256.cea6d0bdf2de3a0549582da3983c70c92ffc577ff4410cbf190817ddc35137c2"
 }

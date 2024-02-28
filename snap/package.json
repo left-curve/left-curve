@@ -18,9 +18,9 @@
     "start": "mm-snap start",
     "serve": "mm-snap serve",
     "build": "mm-snap build",
-    "test": "yarn vitest run",
-    "lint": "yarn biome check --apply ./src",
-    "ci": "yarn biome ci ./src"
+    "test": "pnpm vitest run",
+    "lint": "pnpm biome check --apply ./src",
+    "ci": "pnpm biome ci ./src"
   },
   "dependencies": {
     "@cwsoftware/cw.js": "workspace:^",
@@ -32,5 +32,5 @@
     "typescript": "^5.3.3",
     "vitest": "^1.3.1"
   },
-  "packageManager": "yarn@4.1.0"
+  "packageManager": "pnpm@8.15.4+sha256.cea6d0bdf2de3a0549582da3983c70c92ffc577ff4410cbf190817ddc35137c2"
 }

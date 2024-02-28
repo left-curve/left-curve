@@ -9,7 +9,6 @@
 # javascript
 **/dist/
 **/node_modules/
-**/.yarn/
 sdk/js/docs/
 
 # data for test purpose
