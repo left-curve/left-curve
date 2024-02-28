@@ -1,0 +1,28 @@
+{
+  "version": "0.0.0",
+  "description": "MetaMask Snap integration for Cosmos Wasm Daemon",
+  "proposedName": "Cosmos Wasm Daemon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cwsoftware123/cwd.git",
+    "directory": "snap"
+  },
+  "source": {
+    "shasum": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "packageName": "@cwsoftware/snap",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "snap_dialog": {},
+    "endowment:rpc": {
+      "dapps": true,
+      "snaps": false
+    }
+  },
+  "manifestVersion": "0.1"
+}

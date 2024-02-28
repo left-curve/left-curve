@@ -1,5 +1,12 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2020"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "verbatimModuleSyntax": true
+  },
   "include": ["src/**/*", "examples/**/*"],
   "exclude": ["dist", "node_modules"]
 }

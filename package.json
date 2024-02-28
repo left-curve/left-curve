@@ -1,7 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "sdk/js"
+    "sdk/js",
+    "snap"
   ],
   "scripts": {
     "lint": "yarn workspaces foreach --all --topological-dev --parallel --verbose run lint",

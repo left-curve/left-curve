@@ -1,0 +1,36 @@
+{
+  "name": "@cwsoftware/snap",
+  "version": "0.0.0",
+  "description": "MetaMask Snap integration for Cosmos Wasm Daemon",
+  "author": "Larry Lyu <gm@larry.engineer>",
+  "license": "UNLICENSED",
+  "main": "./dist/bundle.js",
+  "files": [
+    "dist/",
+    "snap.manifest.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cwsoftware123/cwd.git",
+    "directory": "snap"
+  },
+  "scripts": {
+    "start": "mm-snap start",
+    "serve": "mm-snap serve",
+    "build": "mm-snap build",
+    "test": "yarn vitest run",
+    "lint": "yarn biome check --apply ./src",
+    "ci": "yarn biome ci ./src"
+  },
+  "dependencies": {
+    "@cwsoftware/cw.js": "workspace:^",
+    "@metamask/snaps-sdk": "^3.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.5.3",
+    "@metamask/snaps-cli": "^6.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.3.1"
+  },
+  "packageManager": "yarn@4.1.0"
+}
