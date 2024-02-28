@@ -3,7 +3,7 @@ name: Rust
 on: push
 
 jobs:
-  rs-tests:
+  tests:
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +20,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
-  rs-lints:
+  lints:
     name: Lints
     runs-on: ubuntu-latest
     steps:

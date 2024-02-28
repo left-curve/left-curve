@@ -6,6 +6,8 @@ settings:
 
 importers:
 
+  .: {}
+
   sdk/js:
     dependencies:
       '@cosmjs/crypto':

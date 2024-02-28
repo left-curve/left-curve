@@ -1,14 +1,13 @@
-# There is an issue related to using yarn v4 with actions/setup-node.
-# A workaround is to run setup-node once, enable corepack, then run setup-node
-# again. See: https://github.com/actions/setup-node/issues/899#issuecomment-1828798029
+# Adapted from:
+# https://github.com/pnpm/action-setup?tab=readme-ov-file#use-cache-to-reduce-installation-time
 
 name: JavaScript
 
 on: push
 
 jobs:
-  js-tests:
-    name: Tests
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -19,46 +18,32 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Setup yarn
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v3
+        name: Install pnpm
         with:
-          cache: "yarn"
-          cache-dependency-path: "yarn.lock"
-          node-version: "lts/*"
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
 
-      - name: Test
-        run: yarn test
+      - name: Tests
+        run: pnpm recursive test
 
-  js-lints:
-    name: Lints
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
+      - name: Biome CI
+        run: pnpm recursive run ci
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Setup yarn
-        uses: actions/setup-node@v4
-        with:
-          cache: "yarn"
-          cache-dependency-path: "yarn.lock"
-          node-version: "lts/*"
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Lints
-        run: yarn ci
+      - name: Publish check
+        working-directory: sdk/js
+        run: pnpm build && pnpm check
