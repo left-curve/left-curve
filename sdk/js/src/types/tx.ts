@@ -6,13 +6,19 @@ export type Tx = {
   credential: Binary;
 };
 
+// biome-ignore format: biome's style of formatting union types is ugly
 export type Message = {
-  updateConfig?: MsgUpdateConfig;
-  transfer?: MsgTransfer;
-  storeCode?: MsgStoreCode;
-  instantiate?: MsgInstantiate;
-  execute?: MsgExecute;
-  migrate?: MsgMigrate;
+  updateConfig: MsgUpdateConfig;
+} | {
+  transfer: MsgTransfer;
+} | {
+  storeCode: MsgStoreCode;
+} | {
+  instantiate: MsgInstantiate;
+} | {
+  execute: MsgExecute;
+} | {
+  migrate: MsgMigrate;
 };
 
 export type MsgUpdateConfig = {

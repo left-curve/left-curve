@@ -103,7 +103,10 @@ export class Client {
       },
       height,
     );
-    return res.info!;
+    if (!("info" in res)) {
+      throw new Error(`expecting info response, got ${JSON.stringify(res)}`);
+    }
+    return res.info;
   }
 
   public async queryBalance(address: Addr, denom: string, height = 0): Promise<Uint> {
@@ -113,7 +116,10 @@ export class Client {
       },
       height,
     );
-    return res.balance!.amount;
+    if (!("balance" in res)) {
+      throw new Error(`expecting balance response, got ${JSON.stringify(res)}`);
+    }
+    return res.balance.amount;
   }
 
   public async queryBalances(
@@ -128,7 +134,10 @@ export class Client {
       },
       height,
     );
-    return res.balances!;
+    if (!("balances" in res)) {
+      throw new Error(`expecting balances response, got ${JSON.stringify(res)}`);
+    }
+    return res.balances;
   }
 
   public async querySupply(denom: string, height = 0): Promise<Uint> {
@@ -138,7 +147,10 @@ export class Client {
       },
       height,
     );
-    return res.supply!.amount;
+    if (!("supply" in res)) {
+      throw new Error(`expecting supply response, got ${JSON.stringify(res)}`);
+    }
+    return res.supply.amount;
   }
 
   public async querySupplies(startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
@@ -148,7 +160,10 @@ export class Client {
       },
       height,
     );
-    return res.supplies!;
+    if (!("supplies" in res)) {
+      throw new Error(`expecting supplies response, got ${JSON.stringify(res)}`);
+    }
+    return res.supplies;
   }
 
   public async queryCode(hash: Hash, height = 0): Promise<Binary> {
@@ -158,7 +173,10 @@ export class Client {
       },
       height,
     );
-    return res.code!;
+    if (!("code" in res)) {
+      throw new Error(`expecting code response, got ${JSON.stringify(res)}`);
+    }
+    return res.code;
   }
 
   public async queryCodes(startAfter?: Hash, limit?: number, height = 0): Promise<Hash[]> {
@@ -168,7 +186,10 @@ export class Client {
       },
       height,
     );
-    return res.codes!;
+    if (!("codes" in res)) {
+      throw new Error(`expecting codes response, got ${JSON.stringify(res)}`);
+    }
+    return res.codes;
   }
 
   public async queryAccount(address: Addr, height = 0): Promise<AccountResponse> {
@@ -178,7 +199,10 @@ export class Client {
       },
       height,
     );
-    return res.account!;
+    if (!("account" in res)) {
+      throw new Error(`expecting account response, got ${JSON.stringify(res)}`);
+    }
+    return res.account;
   }
 
   public async queryAccounts(
@@ -192,7 +216,10 @@ export class Client {
       },
       height,
     );
-    return res.accounts!;
+    if (!("accounts" in res)) {
+      throw new Error(`expecting accounts response, got ${JSON.stringify(res)}`);
+    }
+    return res.accounts;
   }
 
   public async queryWasmRaw(
@@ -209,7 +236,10 @@ export class Client {
       },
       height,
     );
-    return res.wasmRaw!.value?.bytes;
+    if (!("wasmRaw" in res)) {
+      throw new Error(`expecting wasm raw response, got ${JSON.stringify(res)}`);
+    }
+    return res.wasmRaw.value?.bytes;
   }
 
   public async queryWasmSmart<T>(contract: Addr, msg: Payload, height = 0): Promise<T> {
@@ -222,7 +252,10 @@ export class Client {
       },
       height,
     );
-    return deserialize(res.wasmSmart!.data.bytes) as T;
+    if (!("wasmSmart" in res)) {
+      throw new Error(`expecting wasm smart response, got ${JSON.stringify(res)}`);
+    }
+    return deserialize(res.wasmSmart.data.bytes) as T;
   }
 
   // ------------------------------- tx methods --------------------------------
