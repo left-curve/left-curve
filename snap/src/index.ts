@@ -143,7 +143,7 @@ export async function signTransaction({
   const deriver = await getBIP44AddressKeyDeriver(hdNode);
   const key = await deriver(0);
   if (!key.privateKeyBytes) {
-    throw new Error("failed to retrieve private key from MetaMask");
+    throw new Error("Failed to retrieve private key from MetaMask");
   }
   const signingKey = await SigningKey.fromPrivateKey(key.privateKeyBytes);
 
