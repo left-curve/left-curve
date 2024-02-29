@@ -6,7 +6,7 @@ use {
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
         from_json, hash, to_json, Binary, BlockInfo, Event, GenesisState, Hash, QueryRequest,
-        Storage, Tx, GENESIS_SENDER,
+        Storage, GENESIS_SENDER,
     },
     tracing::{debug, info},
 };
@@ -116,9 +116,7 @@ impl App {
         // process transactions one-by-one
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
-            // TODO: if the tx isn't properly formatted, here from_json errors,
-            // it crashes the node??
-            tx_results.push(run_tx(cached.share(), &block, from_json(raw_tx)?));
+            tx_results.push(run_tx(cached.share(), &block, raw_tx));
         }
 
         // call end blockers
@@ -238,10 +236,11 @@ impl App {
     }
 }
 
-fn run_tx<S>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
+fn run_tx<S>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
 {
+    let tx = from_json(raw_tx)?;
     let mut events = vec![];
 
     // create cached store for this tx
