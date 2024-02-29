@@ -21,6 +21,7 @@ import {
   encodeHex,
   encodeUtf8,
   serialize,
+  Tx,
 } from ".";
 
 /**
@@ -259,7 +260,20 @@ export class Client {
 
   // ------------------------------- tx methods --------------------------------
 
-  public async sendTx(msgs: Message[], signOpts: SigningOptions): Promise<Uint8Array> {
+  public async broadcastTx(tx: Tx): Promise<Uint8Array> {
+    const rawTx = serialize(tx);
+    const { code, codespace, log, hash } = await this.cometClient.broadcastTxSync({ tx: rawTx });
+
+    if (code !== 0) {
+      throw new Error(
+        `failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`,
+      );
+    }
+
+    return hash;
+  }
+
+  public async signAndBroadcastTx(msgs: Message[], signOpts: SigningOptions): Promise<Uint8Array> {
     if (!signOpts.chainId) {
       const infoRes = await this.queryInfo();
       signOpts.chainId = infoRes.chainId;
@@ -272,38 +286,28 @@ export class Client {
       signOpts.sequence = accountStateRes.sequence;
     }
 
-    const tx = serialize(
-      await signOpts.signingKey.createAndSignTx(
-        msgs,
-        signOpts.sender,
-        signOpts.chainId,
-        signOpts.sequence,
-      ),
+    const tx = await signOpts.signingKey.createAndSignTx(
+      msgs,
+      signOpts.sender,
+      signOpts.chainId,
+      signOpts.sequence,
     );
 
-    const { code, codespace, log, hash } = await this.cometClient.broadcastTxSync({ tx });
-
-    if (code !== 0) {
-      throw new Error(
-        `failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`,
-      );
-    }
-
-    return hash;
+    return this.broadcastTx(tx);
   }
 
   public async updateConfig(newCfg: Config, signOpts: SigningOptions): Promise<Uint8Array> {
     const updateCfgMsg = {
       updateConfig: { newCfg },
     };
-    return this.sendTx([updateCfgMsg], signOpts);
+    return this.signAndBroadcastTx([updateCfgMsg], signOpts);
   }
 
   public async transfer(to: string, coins: Coin[], signOpts: SigningOptions): Promise<Uint8Array> {
     const transferMsg = {
       transfer: { to, coins },
     };
-    return this.sendTx([transferMsg], signOpts);
+    return this.signAndBroadcastTx([transferMsg], signOpts);
   }
 
   public async storeCode(wasmByteCode: Uint8Array, signOpts: SigningOptions): Promise<Uint8Array> {
@@ -312,7 +316,7 @@ export class Client {
         wasmByteCode: encodeBase64(wasmByteCode),
       },
     };
-    return this.sendTx([storeCodeMsg], signOpts);
+    return this.signAndBroadcastTx([storeCodeMsg], signOpts);
   }
 
   public async instantiate(
@@ -333,7 +337,7 @@ export class Client {
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
-    const txhash = await this.sendTx([instantiateMsg], signOpts);
+    const txhash = await this.signAndBroadcastTx([instantiateMsg], signOpts);
     return [address, txhash];
   }
 
@@ -361,7 +365,7 @@ export class Client {
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
-    const txhash = await this.sendTx([storeCodeMsg, instantiateMsg], signOpts);
+    const txhash = await this.signAndBroadcastTx([storeCodeMsg, instantiateMsg], signOpts);
     return [address, txhash];
   }
 
@@ -378,7 +382,7 @@ export class Client {
         funds,
       },
     };
-    return this.sendTx([executeMsg], signOpts);
+    return this.signAndBroadcastTx([executeMsg], signOpts);
   }
 
   public async migrate(
@@ -394,7 +398,7 @@ export class Client {
         msg: encodeBase64(serialize(msg)),
       },
     };
-    return this.sendTx([migrateMsg], signOpts);
+    return this.signAndBroadcastTx([migrateMsg], signOpts);
   }
 }
 
