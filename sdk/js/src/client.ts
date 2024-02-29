@@ -4,11 +4,8 @@ import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
   type AccountResponse,
   type AccountStateResponse,
-  Addr,
-  Binary,
   type Coin,
   type Config,
-  Hash,
   type InfoResponse,
   type Message,
   type Payload,
@@ -16,12 +13,14 @@ import {
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
-  type Uint,
   deserialize,
   encodeBase64,
   encodeBigEndian32,
   encodeUtf8,
   serialize,
+  decodeBase64,
+  encodeHex,
+  decodeHex,
 } from ".";
 
 /**
@@ -109,7 +108,7 @@ export class Client {
     return res.info;
   }
 
-  public async queryBalance(address: Addr, denom: string, height = 0): Promise<Uint> {
+  public async queryBalance(address: string, denom: string, height = 0): Promise<number> {
     const res = await this.queryApp(
       {
         balance: { address, denom },
@@ -119,11 +118,11 @@ export class Client {
     if (!("balance" in res)) {
       throw new Error(`expecting balance response, got ${JSON.stringify(res)}`);
     }
-    return res.balance.amount;
+    return parseInt(res.balance.amount);
   }
 
   public async queryBalances(
-    address: Addr,
+    address: string,
     startAfter?: string,
     limit?: number,
     height = 0,
@@ -140,7 +139,7 @@ export class Client {
     return res.balances;
   }
 
-  public async querySupply(denom: string, height = 0): Promise<Uint> {
+  public async querySupply(denom: string, height = 0): Promise<number> {
     const res = await this.queryApp(
       {
         supply: { denom },
@@ -150,7 +149,7 @@ export class Client {
     if (!("supply" in res)) {
       throw new Error(`expecting supply response, got ${JSON.stringify(res)}`);
     }
-    return res.supply.amount;
+    return parseInt(res.supply.amount);
   }
 
   public async querySupplies(startAfter?: string, limit?: number, height = 0): Promise<Coin[]> {
@@ -166,7 +165,7 @@ export class Client {
     return res.supplies;
   }
 
-  public async queryCode(hash: Hash, height = 0): Promise<Binary> {
+  public async queryCode(hash: string, height = 0): Promise<Uint8Array> {
     const res = await this.queryApp(
       {
         code: { hash },
@@ -176,10 +175,10 @@ export class Client {
     if (!("code" in res)) {
       throw new Error(`expecting code response, got ${JSON.stringify(res)}`);
     }
-    return res.code;
+    return decodeBase64(res.code);
   }
 
-  public async queryCodes(startAfter?: Hash, limit?: number, height = 0): Promise<Hash[]> {
+  public async queryCodes(startAfter?: string, limit?: number, height = 0): Promise<Uint8Array[]> {
     const res = await this.queryApp(
       {
         codes: { startAfter, limit },
@@ -189,10 +188,10 @@ export class Client {
     if (!("codes" in res)) {
       throw new Error(`expecting codes response, got ${JSON.stringify(res)}`);
     }
-    return res.codes;
+    return res.codes.map(decodeHex);
   }
 
-  public async queryAccount(address: Addr, height = 0): Promise<AccountResponse> {
+  public async queryAccount(address: string, height = 0): Promise<AccountResponse> {
     const res = await this.queryApp(
       {
         account: { address },
@@ -206,7 +205,7 @@ export class Client {
   }
 
   public async queryAccounts(
-    startAfter?: Addr,
+    startAfter?: string,
     limit?: number,
     height = 0,
   ): Promise<AccountResponse[]> {
@@ -223,7 +222,7 @@ export class Client {
   }
 
   public async queryWasmRaw(
-    contract: Addr,
+    contract: string,
     key: Uint8Array,
     height = 0,
   ): Promise<Uint8Array | undefined> {
@@ -231,7 +230,7 @@ export class Client {
       {
         wasmRaw: {
           contract,
-          key: new Binary(key),
+          key: encodeBase64(key),
         },
       },
       height,
@@ -239,15 +238,15 @@ export class Client {
     if (!("wasmRaw" in res)) {
       throw new Error(`expecting wasm raw response, got ${JSON.stringify(res)}`);
     }
-    return res.wasmRaw.value?.bytes;
+    return res.wasmRaw.value !== undefined ? decodeBase64(res.wasmRaw.value) : undefined;
   }
 
-  public async queryWasmSmart<T>(contract: Addr, msg: Payload, height = 0): Promise<T> {
+  public async queryWasmSmart<T>(contract: string, msg: Payload, height = 0): Promise<T> {
     const res = await this.queryApp(
       {
         wasmSmart: {
           contract,
-          msg: new Binary(serialize(msg)),
+          msg: encodeBase64(serialize(msg)),
         },
       },
       height,
@@ -255,7 +254,7 @@ export class Client {
     if (!("wasmSmart" in res)) {
       throw new Error(`expecting wasm smart response, got ${JSON.stringify(res)}`);
     }
-    return deserialize(res.wasmSmart.data.bytes) as T;
+    return deserialize(decodeBase64(res.wasmSmart.data)) as T;
   }
 
   // ------------------------------- tx methods --------------------------------
@@ -300,7 +299,7 @@ export class Client {
     return this.sendTx([updateCfgMsg], signOpts);
   }
 
-  public async transfer(to: Addr, coins: Coin[], signOpts: SigningOptions): Promise<Uint8Array> {
+  public async transfer(to: string, coins: Coin[], signOpts: SigningOptions): Promise<Uint8Array> {
     const transferMsg = {
       transfer: { to, coins },
     };
@@ -310,26 +309,26 @@ export class Client {
   public async storeCode(wasmByteCode: Uint8Array, signOpts: SigningOptions): Promise<Uint8Array> {
     const storeCodeMsg = {
       storeCode: {
-        wasmByteCode: new Binary(wasmByteCode),
+        wasmByteCode: encodeBase64(wasmByteCode),
       },
     };
     return this.sendTx([storeCodeMsg], signOpts);
   }
 
   public async instantiate(
-    codeHash: Hash,
+    codeHash: Uint8Array,
     msg: Payload,
     salt: Uint8Array,
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<[Addr, Uint8Array]> {
+  ): Promise<[string, Uint8Array]> {
     const address = deriveAddress(signOpts.sender, codeHash, salt);
     const instantiateMsg = {
       instantiate: {
-        codeHash,
-        msg: new Binary(serialize(msg)),
-        salt: new Binary(salt),
+        codeHash: encodeHex(codeHash),
+        msg: encodeBase64(serialize(msg)),
+        salt: encodeBase64(salt),
         funds,
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
@@ -345,19 +344,19 @@ export class Client {
     funds: Coin[],
     adminOpt: AdminOption,
     signOpts: SigningOptions,
-  ): Promise<[Addr, Uint8Array]> {
-    const codeHash = new Hash(sha256(wasmByteCode));
+  ): Promise<[string, Uint8Array]> {
+    const codeHash = sha256(wasmByteCode);
     const address = deriveAddress(signOpts.sender, codeHash, salt);
     const storeCodeMsg = {
       storeCode: {
-        wasmByteCode: new Binary(wasmByteCode),
+        wasmByteCode: encodeBase64(wasmByteCode),
       },
     };
     const instantiateMsg = {
       instantiate: {
-        codeHash,
-        msg: new Binary(serialize(msg)),
-        salt: new Binary(salt),
+        codeHash: encodeHex(codeHash),
+        msg: encodeBase64(serialize(msg)),
+        salt: encodeBase64(salt),
         funds,
         admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
@@ -367,7 +366,7 @@ export class Client {
   }
 
   public async execute(
-    contract: Addr,
+    contract: string,
     msg: Payload,
     funds: Coin[],
     signOpts: SigningOptions,
@@ -375,7 +374,7 @@ export class Client {
     const executeMsg = {
       execute: {
         contract,
-        msg: new Binary(serialize(msg)),
+        msg: encodeBase64(serialize(msg)),
         funds,
       },
     };
@@ -383,16 +382,16 @@ export class Client {
   }
 
   public async migrate(
-    contract: Addr,
-    newCodeHash: Hash,
+    contract: string,
+    newCodeHash: Uint8Array,
     msg: Payload,
     signOpts: SigningOptions,
   ): Promise<Uint8Array> {
     const migrateMsg = {
       migrate: {
         contract,
-        newCodeHash,
-        msg: new Binary(serialize(msg)),
+        newCodeHash: encodeHex(newCodeHash),
+        msg: encodeBase64(serialize(msg)),
       },
     };
     return this.sendTx([migrateMsg], signOpts);
@@ -401,7 +400,7 @@ export class Client {
 
 export type SigningOptions = {
   signingKey: SigningKey;
-  sender: Addr;
+  sender: string;
   chainId?: string;
   sequence?: number;
 };
@@ -411,24 +410,24 @@ export enum AdminOptionKind {
   SetToNone = 1,
 }
 
-export type AdminOption = Addr | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
+export type AdminOption = string | AdminOptionKind.SetToSelf | AdminOptionKind.SetToNone;
 
 /**
  * Determine the admin address based on the given option.
  */
 export function createAdmin(
   adminOpt: AdminOption,
-  deployer: Addr,
-  codeHash: Hash,
+  deployer: string,
+  codeHash: Uint8Array,
   salt: Uint8Array,
-): Addr | undefined {
-  if (adminOpt instanceof Addr) {
-    return adminOpt;
-  }
+): string | undefined {
   if (adminOpt === AdminOptionKind.SetToSelf) {
     return deriveAddress(deployer, codeHash, salt);
   }
-  return undefined;
+  if (adminOpt === AdminOptionKind.SetToNone) {
+    return undefined;
+  }
+  return adminOpt;
 }
 
 /**
@@ -454,13 +453,13 @@ export function deriveSalt(
  *
  * Mirrors that Rust function: `cw_std::Addr::compute`
  */
-export function deriveAddress(deployer: Addr, codeHash: Hash, salt: Uint8Array): Addr {
+export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint8Array): string {
   const hasher = new Sha256();
-  hasher.update(deployer.bytes);
-  hasher.update(codeHash.bytes);
+  hasher.update(decodeHex(deployer.substring(2))); // strip the 0x prefix
+  hasher.update(codeHash);
   hasher.update(salt);
   const bytes = hasher.digest();
-  return new Addr(bytes);
+  return "0x" + encodeHex(bytes);
 }
 
 function arraysIdentical(a: Uint8Array, b: Uint8Array): boolean {

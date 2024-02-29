@@ -1,7 +1,7 @@
 import { Sha256 } from "@cosmjs/crypto";
-import { Hash, type MembershipProof, type NonMembershipProof, type Proof } from ".";
+import { decodeHex, encodeHex, type MembershipProof, type NonMembershipProof, type Proof } from ".";
 
-export function verifyProof(rootHash: Hash, keyHash: Hash, valueHash: Hash | null, proof: Proof) {
+export function verifyProof(rootHash: Uint8Array, keyHash: Uint8Array, valueHash: Uint8Array | null, proof: Proof) {
   // value exists, the proof must be a membership proof
   if (valueHash !== null) {
     if ("membership" in proof) {
@@ -17,84 +17,88 @@ export function verifyProof(rootHash: Hash, keyHash: Hash, valueHash: Hash | nul
 }
 
 export function verifyMembershipProof(
-  rootHash: Hash,
-  keyHash: Hash,
-  valueHash: Hash,
+  rootHash: Uint8Array,
+  keyHash: Uint8Array,
+  valueHash: Uint8Array,
   proof: MembershipProof,
 ) {
   const hash = hashLeafNode(keyHash, valueHash);
   return computeAndCompareRootHash(rootHash, keyHash, proof.siblingHashes, hash);
 }
 
-export function verifyNonMembershipProof(rootHash: Hash, keyHash: Hash, proof: NonMembershipProof) {
-  let hash: Hash;
+export function verifyNonMembershipProof(rootHash: Uint8Array, keyHash: Uint8Array, proof: NonMembershipProof) {
+  let hash: Uint8Array;
   if ("internal" in proof.node) {
     const { leftHash, rightHash } = proof.node.internal;
     const bit = getBitAtIndex(keyHash, proof.siblingHashes.length);
     if ((bit === 0 && !!leftHash) || (bit === 1 && !!rightHash)) {
       throw new Error("expecting child to not exist but it exists");
     }
-    hash = hashInternalNode(leftHash, rightHash);
+    hash = hashInternalNode(decodeNullableHex(leftHash), decodeNullableHex(rightHash));
   } else {
-    const { keyHash: existKeyHash, valueHash } = proof.node.leaf;
+    const existingKeyHash = decodeHex(proof.node.leaf.keyHash);
     for (let i = proof.siblingHashes.length - 1; i >= 0; i--) {
-      if (getBitAtIndex(keyHash, i) !== getBitAtIndex(existKeyHash, i)) {
+      if (getBitAtIndex(keyHash, i) !== getBitAtIndex(existingKeyHash, i)) {
         throw new Error("expecting bitarrays to share a common prefix but they do not");
       }
     }
-    hash = hashLeafNode(existKeyHash, valueHash);
+    hash = hashLeafNode(existingKeyHash, decodeHex(proof.node.leaf.valueHash));
   }
   return computeAndCompareRootHash(rootHash, keyHash, proof.siblingHashes, hash);
 }
 
 function computeAndCompareRootHash(
-  rootHash: Hash,
-  keyHash: Hash,
-  siblingHashes: (Hash | null)[],
-  hash: Hash,
+  rootHash: Uint8Array,
+  keyHash: Uint8Array,
+  siblingHashes: (string | null)[],
+  hash: Uint8Array,
 ) {
   for (let i = 0; i < siblingHashes.length; i++) {
     if (getBitAtIndex(keyHash, siblingHashes.length - i - 1) === 0) {
-      hash = hashInternalNode(hash, siblingHashes[i]);
+      hash = hashInternalNode(hash, decodeNullableHex(siblingHashes[i]));
     } else {
-      hash = hashInternalNode(siblingHashes[i], hash);
+      hash = hashInternalNode(decodeNullableHex(siblingHashes[i]), hash);
     }
   }
 
   for (let i = 0; i < 32; i++) {
-    if (rootHash.bytes[i] !== hash.bytes[i]) {
-      throw new Error(`root hash mismatch! computed: ${hash.toHex()}, actual: ${rootHash.toHex()}`);
+    if (rootHash[i] !== hash[i]) {
+      throw new Error(`root hash mismatch! computed: ${encodeHex(hash)}, actual: ${encodeHex(rootHash)}`);
     }
   }
 }
 
-function hashInternalNode(leftHash: Hash | null, rightHash: Hash | null): Hash {
+function hashInternalNode(leftHash: Uint8Array | null, rightHash: Uint8Array | null): Uint8Array {
   const hasher = new Sha256();
   hasher.update(new Uint8Array([0])); // internal node prefix
   if (leftHash !== null) {
-    hasher.update(leftHash.bytes);
+    hasher.update(leftHash);
   } else {
     hasher.update(new Uint8Array(32)); // this creates an all-zero byte array
   }
   if (rightHash !== null) {
-    hasher.update(rightHash.bytes);
+    hasher.update(rightHash);
   } else {
     hasher.update(new Uint8Array(32));
   }
-  return new Hash(hasher.digest());
+  return hasher.digest();
 }
 
-function hashLeafNode(keyHash: Hash, valueHash: Hash): Hash {
+function hashLeafNode(keyHash: Uint8Array, valueHash: Uint8Array): Uint8Array {
   const hasher = new Sha256();
   hasher.update(new Uint8Array([1])); // leaf node prefix
-  hasher.update(keyHash.bytes);
-  hasher.update(valueHash.bytes);
-  return new Hash(hasher.digest());
+  hasher.update(keyHash);
+  hasher.update(valueHash);
+  return hasher.digest();
 }
 
-function getBitAtIndex(hash: Hash, index: number): number {
+function getBitAtIndex(hash: Uint8Array, index: number): number {
   const quotient = Math.floor(index / 8);
   const remainder = index % 8;
-  const byte = hash.bytes[quotient];
+  const byte = hash[quotient];
   return (byte >> (7 - remainder)) & 1;
+}
+
+function decodeNullableHex(hexStr: string | null): Uint8Array | null {
+  return hexStr !== null ? decodeHex(hexStr) : null;
 }

@@ -1,9 +1,9 @@
-import type { Addr, Binary, Coin, Config, Hash } from ".";
+import type { Coin, Config } from ".";
 
 export type Tx = {
-  sender: Addr;
+  sender: string;
   msgs: Message[];
-  credential: Binary;
+  credential: string;
 };
 
 // biome-ignore format: biome's style of formatting union types is ugly
@@ -26,30 +26,30 @@ export type MsgUpdateConfig = {
 };
 
 export type MsgTransfer = {
-  to: Addr;
+  to: string;
   coins: Coin[];
 };
 
 export type MsgStoreCode = {
-  wasmByteCode: Binary;
+  wasmByteCode: string;
 };
 
 export type MsgInstantiate = {
-  codeHash: Hash;
-  msg: Binary;
-  salt: Binary;
+  codeHash: string;
+  msg: string;
+  salt: string;
   funds: Coin[];
-  admin?: Addr;
+  admin?: string;
 };
 
 export type MsgExecute = {
-  contract: Addr;
-  msg: Binary;
+  contract: string;
+  msg: string;
   funds: Coin[];
 };
 
 export type MsgMigrate = {
-  contract: Addr;
-  newCodeHash: Hash;
-  msg: Binary;
+  contract: string;
+  newCodeHash: string;
+  msg: string;
 };

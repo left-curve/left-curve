@@ -1,5 +1,3 @@
-import type { Hash } from ".";
-
 export type PublicKey = { secp256k1: string } | { secp256r1: string };
 
 export type AccountFactoryExecuteMsg = {
@@ -7,7 +5,7 @@ export type AccountFactoryExecuteMsg = {
 };
 
 export type MsgRegisterAccount = {
-  codeHash: Hash;
+  codeHash: string;
   publicKey: PublicKey;
 };
 

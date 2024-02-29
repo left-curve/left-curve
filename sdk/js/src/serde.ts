@@ -1,19 +1,8 @@
-import { Addr, Binary, Hash, Uint } from ".";
-
 /**
  * Represents either an JSON object, an array, a string, a number, or a boolean.
  * Note that we utilize a recursive type definition here.
  */
-export type Payload =
-  | { [key: string]: Payload }
-  | Payload[]
-  | string
-  | number
-  | boolean
-  | Addr
-  | Binary
-  | Hash
-  | Uint;
+export type Payload = { [key: string]: Payload } | Payload[] | string | number | boolean;
 
 /**
  * Serialize a payload to binary.
@@ -51,20 +40,6 @@ export function recursiveTransform(
   payload: Payload,
   transformFn: (str: string) => string,
 ): Payload {
-  // for Addr, Binary, Hash, and Uint, no transform is needed
-  if (payload instanceof Addr) {
-    return payload;
-  }
-  if (payload instanceof Binary) {
-    return payload;
-  }
-  if (payload instanceof Hash) {
-    return payload;
-  }
-  if (payload instanceof Uint) {
-    return payload;
-  }
-
   // for strings, numbers, and nulls, there's no key to be transformed
   if (typeof payload !== "object" || payload === null) {
     return payload;

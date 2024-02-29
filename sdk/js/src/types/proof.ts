@@ -1,24 +1,22 @@
-import type { Hash } from ".";
-
 export type Proof = { membership: MembershipProof } | { nonMembership: NonMembershipProof };
 
 export type MembershipProof = {
-  siblingHashes: (Hash | null)[];
+  siblingHashes: (string | null)[];
 };
 
 export type NonMembershipProof = {
   node: Node;
-  siblingHashes: (Hash | null)[];
+  siblingHashes: (string | null)[];
 };
 
 export type Node = { internal: InternalNode } | { leaf: LeafNode };
 
 export type InternalNode = {
-  leftHash: Hash | null;
-  rightHash: Hash | null;
+  leftHash: string | null;
+  rightHash: string | null;
 };
 
 export type LeafNode = {
-  keyHash: Hash;
-  valueHash: Hash;
+  keyHash: string;
+  valueHash: string;
 };

@@ -8,16 +8,7 @@ import {
   Slip10Curve,
   stringToPath,
 } from "@cosmjs/crypto";
-import {
-  type Addr,
-  Binary,
-  type Message,
-  type Tx,
-  encodeBigEndian32,
-  encodeUtf8,
-  serialize,
-  Hash,
-} from ".";
+import { type Message, type Tx, encodeBigEndian32, encodeUtf8, serialize, encodeBase64 } from ".";
 
 /**
  * An secp256k1 private key, with useful methods.
@@ -55,8 +46,8 @@ export class SigningKey {
   /**
    * Sign the given hash.
    */
-  public async signHash(hash: Hash): Promise<Uint8Array> {
-    const extendedSignature = await Secp256k1.createSignature(hash.bytes, this.keyPair.privkey);
+  public async signHash(hash: Uint8Array): Promise<Uint8Array> {
+    const extendedSignature = await Secp256k1.createSignature(hash, this.keyPair.privkey);
     // important: trim the recovery byte to get the 64-byte signature
     return Secp256k1.trimRecoveryByte(extendedSignature.toFixedLength());
   }
@@ -66,7 +57,7 @@ export class SigningKey {
    */
   public async signTx(
     msgs: Message[],
-    sender: Addr,
+    sender: string,
     chainId: string,
     sequence: number,
   ): Promise<Uint8Array> {
@@ -79,7 +70,7 @@ export class SigningKey {
    */
   public async createAndSignTx(
     msgs: Message[],
-    sender: Addr,
+    sender: string,
     chainId: string,
     sequence: number,
   ): Promise<Tx> {
@@ -87,7 +78,7 @@ export class SigningKey {
     return {
       sender,
       msgs,
-      credential: new Binary(signature),
+      credential: encodeBase64(signature),
     };
   }
 
@@ -106,14 +97,14 @@ export class SigningKey {
  */
 export function createSignBytes(
   msgs: Message[],
-  sender: Addr,
+  sender: string,
   chainId: string,
   sequence: number,
-): Hash {
+): Uint8Array {
   const hasher = new Sha256();
   hasher.update(serialize(msgs));
-  hasher.update(sender.bytes);
+  hasher.update(encodeUtf8(sender.substring(2))); // strip the 0x prefix
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
-  return new Hash(hasher.digest());
+  return hasher.digest();
 }

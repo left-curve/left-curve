@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Addr, Message, decodeUtf8, deserialize, encodeUtf8, serialize } from ".";
+import { decodeUtf8, deserialize, encodeUtf8, serialize } from ".";
 
 describe("serializing and deserializing complex types", () => {
   test.each([
@@ -8,9 +8,7 @@ describe("serializing and deserializing complex types", () => {
       {
         updateConfig: {
           newCfg: {
-            bank: Addr.fromString(
-              "0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838",
-            ),
+            bank: "0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838",
           },
         },
       },
@@ -20,16 +18,21 @@ describe("serializing and deserializing complex types", () => {
       "query balances request",
       {
         balances: {
-          address: Addr.fromString(
-            "0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838",
-          ),
+          address: "0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838",
         },
       },
-      '{"balances":{"address":"0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838"}}'
+      '{"balances":{"address":"0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838"}}',
     ],
-  ])("type = %s", (msgType, payload, json) => {
+    [
+      "account state response",
+      {
+        publicKey: "A9UPi4RnZTRm/kfjcn12SQHZZ2+J4qX+2FKnzHgDJgjH",
+        sequence: 123,
+      },
+      '{"public_key":"A9UPi4RnZTRm/kfjcn12SQHZZ2+J4qX+2FKnzHgDJgjH","sequence":123}',
+    ],
+  ])("type = %s", (type, payload, json) => {
     expect(decodeUtf8(serialize(payload))).toStrictEqual(json);
-    // TODO: deserialization doesn't work yet!!!
-    // expect(deserialize(encodeUtf8(json))).toStrictEqual(payload);
+    expect(deserialize(encodeUtf8(json))).toStrictEqual(payload);
   });
 });

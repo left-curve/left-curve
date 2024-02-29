@@ -1,4 +1,4 @@
-import type { Addr, Binary, BlockInfo, Coin, Config, Hash } from ".";
+import type { BlockInfo, Coin, Config } from ".";
 
 // biome-ignore format: biome's style of formatting union types is ugly
 export type QueryRequest = {
@@ -30,12 +30,12 @@ export type QueryRequest = {
 export type QueryInfoRequest = Record<string, never>;
 
 export type QueryBalanceRequest = {
-  address: Addr;
+  address: string;
   denom: string;
 };
 
 export type QueryBalancesRequest = {
-  address: Addr;
+  address: string;
   startAfter?: string;
   limit?: number;
 };
@@ -50,31 +50,31 @@ export type QuerySuppliesReuest = {
 };
 
 export type QueryCodeRequest = {
-  hash: Hash;
+  hash: string;
 };
 
 export type QueryCodesRequest = {
-  startAfter?: Hash;
+  startAfter?: string;
   limit?: number;
 };
 
 export type QueryAccountRequest = {
-  address: Addr;
+  address: string;
 };
 
 export type QueryAccountsRequest = {
-  startAfter?: Addr;
+  startAfter?: string;
   limit?: number;
 };
 
 export type QueryWasmRawRequest = {
-  contract: Addr;
-  key: Binary;
+  contract: string;
+  key: string;
 };
 
 export type QueryWasmSmartRequest = {
-  contract: Addr;
-  msg: Binary;
+  contract: string;
+  msg: string;
 };
 
 // biome-ignore format: biome's style of formatting union types is ugly
@@ -89,9 +89,9 @@ export type QueryResponse = {
 } | {
   supplies: Coin[];
 } | {
-  code: Binary;
+  code: string;
 } | {
-  codes: Hash[];
+  codes: string[];
 } | {
   account: AccountResponse;
 } | {
@@ -109,18 +109,18 @@ export type InfoResponse = {
 };
 
 export type AccountResponse = {
-  address: Addr;
-  codeHash: Hash;
-  admin?: Addr;
+  address: string;
+  codeHash: string;
+  admin?: string;
 };
 
 export type WasmRawResponse = {
-  contract: Addr;
-  key: Binary;
-  value?: Binary;
+  contract: string;
+  key: string;
+  value?: string;
 };
 
 export type WasmSmartResponse = {
-  contract: Addr;
-  data: Binary;
+  contract: string;
+  data: string;
 };
