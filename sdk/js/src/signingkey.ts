@@ -16,6 +16,7 @@ import {
   encodeBigEndian32,
   encodeUtf8,
   serialize,
+  Hash,
 } from ".";
 
 /**
@@ -52,6 +53,15 @@ export class SigningKey {
   }
 
   /**
+   * Sign the given hash.
+   */
+  public async signHash(hash: Hash): Promise<Uint8Array> {
+    const extendedSignature = await Secp256k1.createSignature(hash.bytes, this.keyPair.privkey);
+    // important: trim the recovery byte to get the 64-byte signature
+    return Secp256k1.trimRecoveryByte(extendedSignature.toFixedLength());
+  }
+
+  /**
    * Sign a transaction with the given parameters, return the signature.
    */
   public async signTx(
@@ -61,9 +71,7 @@ export class SigningKey {
     sequence: number,
   ): Promise<Uint8Array> {
     const signBytes = createSignBytes(msgs, sender, chainId, sequence);
-    const extendedSignature = await Secp256k1.createSignature(signBytes, this.keyPair.privkey);
-    // important: trim the recovery byte to get the 64-byte signature
-    return Secp256k1.trimRecoveryByte(extendedSignature.toFixedLength());
+    return this.signHash(signBytes);
   }
 
   /**
@@ -101,11 +109,11 @@ export function createSignBytes(
   sender: Addr,
   chainId: string,
   sequence: number,
-): Uint8Array {
+): Hash {
   const hasher = new Sha256();
   hasher.update(serialize(msgs));
   hasher.update(sender.bytes);
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
-  return hasher.digest();
+  return new Hash(hasher.digest());
 }
