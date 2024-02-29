@@ -42,7 +42,7 @@ export class Addr {
   /**
    * Implementation for `JSON.parse`.
    */
-  public static parse(json: string): Addr {
+  public static fromJSON(json: string): Addr {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
         return Addr.fromString(value);

@@ -35,7 +35,7 @@ export class Hash {
   /**
    * Implementation for `JSON.parse`.
    */
-  public static parse(json: string): Hash {
+  public static fromJSON(json: string): Hash {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
         return Hash.fromHex(value);

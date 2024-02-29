@@ -32,7 +32,7 @@ export class Uint {
   /**
    * Implementation for `JSON.parse`.
    */
-  public static parse(json: string): Uint {
+  public static fromJSON(json: string): Uint {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
         return new Number(value);

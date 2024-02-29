@@ -27,7 +27,7 @@ export class Binary {
   /**
    * Implementation for `JSON.parse`.
    */
-  public static parse(json: string): Binary {
+  public static fromJSON(json: string): Binary {
     return JSON.parse(json, (_, value) => {
       if (typeof value === "string") {
         return Binary.fromBase64(value);
