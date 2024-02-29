@@ -13,14 +13,14 @@ import {
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
+  decodeBase64,
+  decodeHex,
   deserialize,
   encodeBase64,
   encodeBigEndian32,
+  encodeHex,
   encodeUtf8,
   serialize,
-  decodeBase64,
-  encodeHex,
-  decodeHex,
 } from ".";
 
 /**

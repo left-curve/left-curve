@@ -1,7 +1,12 @@
 import { Sha256 } from "@cosmjs/crypto";
-import { decodeHex, encodeHex, type MembershipProof, type NonMembershipProof, type Proof } from ".";
+import { type MembershipProof, type NonMembershipProof, type Proof, decodeHex, encodeHex } from ".";
 
-export function verifyProof(rootHash: Uint8Array, keyHash: Uint8Array, valueHash: Uint8Array | null, proof: Proof) {
+export function verifyProof(
+  rootHash: Uint8Array,
+  keyHash: Uint8Array,
+  valueHash: Uint8Array | null,
+  proof: Proof,
+) {
   // value exists, the proof must be a membership proof
   if (valueHash !== null) {
     if ("membership" in proof) {
@@ -26,7 +31,11 @@ export function verifyMembershipProof(
   return computeAndCompareRootHash(rootHash, keyHash, proof.siblingHashes, hash);
 }
 
-export function verifyNonMembershipProof(rootHash: Uint8Array, keyHash: Uint8Array, proof: NonMembershipProof) {
+export function verifyNonMembershipProof(
+  rootHash: Uint8Array,
+  keyHash: Uint8Array,
+  proof: NonMembershipProof,
+) {
   let hash: Uint8Array;
   if ("internal" in proof.node) {
     const { leftHash, rightHash } = proof.node.internal;
@@ -63,7 +72,9 @@ function computeAndCompareRootHash(
 
   for (let i = 0; i < 32; i++) {
     if (rootHash[i] !== hash[i]) {
-      throw new Error(`root hash mismatch! computed: ${encodeHex(hash)}, actual: ${encodeHex(rootHash)}`);
+      throw new Error(
+        `root hash mismatch! computed: ${encodeHex(hash)}, actual: ${encodeHex(rootHash)}`,
+      );
     }
   }
 }

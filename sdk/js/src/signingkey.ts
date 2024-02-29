@@ -8,7 +8,7 @@ import {
   Slip10Curve,
   stringToPath,
 } from "@cosmjs/crypto";
-import { type Message, type Tx, encodeBigEndian32, encodeUtf8, serialize, encodeBase64 } from ".";
+import { type Message, type Tx, encodeBase64, encodeBigEndian32, encodeUtf8, serialize } from ".";
 
 /**
  * An secp256k1 private key, with useful methods.

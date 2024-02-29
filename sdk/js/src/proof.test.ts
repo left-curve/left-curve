@@ -46,9 +46,7 @@ describe("verifying membership proofs", () => {
       "a",
       "buzz",
       {
-        siblingHashes: [
-          "b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042",
-        ],
+        siblingHashes: ["b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"],
       },
     ],
   ])("key = %s, value = %s", (key, value, proof) => {
@@ -71,9 +69,7 @@ describe("verifying non-membership proofs", () => {
             rightHash: "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b",
           },
         },
-        siblingHashes: [
-          "cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222",
-        ],
+        siblingHashes: ["cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"],
       },
     ],
     [
