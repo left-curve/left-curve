@@ -3,12 +3,11 @@ import {
   EnglishMnemonic,
   Secp256k1,
   type Secp256k1Keypair,
-  Sha256,
   Slip10,
   Slip10Curve,
   stringToPath,
 } from "@cosmjs/crypto";
-import { type Message, type Tx, encodeBase64, encodeBigEndian32, encodeUtf8, serialize } from ".";
+import { type Message, type Tx, createSignBytes, encodeBase64 } from ".";
 
 /**
  * An secp256k1 private key, with useful methods.
@@ -90,21 +89,4 @@ export class SigningKey {
     // important: get the compressed 32-byte pubkey instead of the 64-byte one
     return Secp256k1.compressPubkey(this.keyPair.pubkey);
   }
-}
-
-/**
- * Generate sign byte that the cw-account contract expects.
- */
-export function createSignBytes(
-  msgs: Message[],
-  sender: string,
-  chainId: string,
-  sequence: number,
-): Uint8Array {
-  const hasher = new Sha256();
-  hasher.update(serialize(msgs));
-  hasher.update(encodeUtf8(sender.substring(2))); // strip the 0x prefix
-  hasher.update(encodeUtf8(chainId));
-  hasher.update(encodeBigEndian32(sequence));
-  return hasher.digest();
 }

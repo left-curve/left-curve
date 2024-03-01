@@ -1,4 +1,4 @@
-import { Sha256, sha256 } from "@cosmjs/crypto";
+import { sha256 } from "@cosmjs/crypto";
 import { Comet38Client, type HttpEndpoint } from "@cosmjs/tendermint-rpc";
 import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import {
@@ -13,13 +13,12 @@ import {
   type QueryRequest,
   type QueryResponse,
   type SigningKey,
+  createAddress,
   decodeBase64,
   decodeHex,
   deserialize,
   encodeBase64,
-  encodeBigEndian32,
   encodeHex,
-  encodeUtf8,
   serialize,
   Tx,
 } from ".";
@@ -327,14 +326,14 @@ export class Client {
     adminOpt: AdminOption,
     signOpts: SigningOptions,
   ): Promise<[string, Uint8Array]> {
-    const address = deriveAddress(signOpts.sender, codeHash, salt);
+    const address = createAddress(signOpts.sender, codeHash, salt);
     const instantiateMsg = {
       instantiate: {
         codeHash: encodeHex(codeHash),
         msg: encodeBase64(serialize(msg)),
         salt: encodeBase64(salt),
         funds,
-        admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
+        admin: determineAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
     const txhash = await this.signAndBroadcastTx([instantiateMsg], signOpts);
@@ -350,7 +349,7 @@ export class Client {
     signOpts: SigningOptions,
   ): Promise<[string, Uint8Array]> {
     const codeHash = sha256(wasmByteCode);
-    const address = deriveAddress(signOpts.sender, codeHash, salt);
+    const address = createAddress(signOpts.sender, codeHash, salt);
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: encodeBase64(wasmByteCode),
@@ -362,7 +361,7 @@ export class Client {
         msg: encodeBase64(serialize(msg)),
         salt: encodeBase64(salt),
         funds,
-        admin: createAdmin(adminOpt, signOpts.sender, codeHash, salt),
+        admin: determineAdmin(adminOpt, signOpts.sender, codeHash, salt),
       },
     };
     const txhash = await this.signAndBroadcastTx([storeCodeMsg, instantiateMsg], signOpts);
@@ -419,51 +418,19 @@ export type AdminOption = string | AdminOptionKind.SetToSelf | AdminOptionKind.S
 /**
  * Determine the admin address based on the given option.
  */
-export function createAdmin(
+export function determineAdmin(
   adminOpt: AdminOption,
   deployer: string,
   codeHash: Uint8Array,
   salt: Uint8Array,
 ): string | undefined {
   if (adminOpt === AdminOptionKind.SetToSelf) {
-    return deriveAddress(deployer, codeHash, salt);
+    return createAddress(deployer, codeHash, salt);
   }
   if (adminOpt === AdminOptionKind.SetToNone) {
     return undefined;
   }
   return adminOpt;
-}
-
-/**
- * Derive the salt that is used by the standard account factory contract to
- * register accounts.
- *
- * Mirrors the Rust function: `cw_account_factory::make_salt`.
- */
-export function deriveSalt(
-  publicKeyType: "secp256k1" | "secp256r1",
-  publicKeyBytes: Uint8Array,
-  serial: number,
-): Uint8Array {
-  const hasher = new Sha256();
-  hasher.update(encodeUtf8(publicKeyType));
-  hasher.update(publicKeyBytes);
-  hasher.update(encodeBigEndian32(serial));
-  return hasher.digest();
-}
-
-/**
- * Derive an account address based on the deployer address, code hash, and salt.
- *
- * Mirrors that Rust function: `cw_std::Addr::compute`
- */
-export function deriveAddress(deployer: string, codeHash: Uint8Array, salt: Uint8Array): string {
-  const hasher = new Sha256();
-  hasher.update(decodeHex(deployer.substring(2))); // strip the 0x prefix
-  hasher.update(codeHash);
-  hasher.update(salt);
-  const bytes = hasher.digest();
-  return "0x" + encodeHex(bytes);
 }
 
 function arraysIdentical(a: Uint8Array, b: Uint8Array): boolean {
