@@ -4,11 +4,10 @@
   "proposedName": "Cosmos Wasm Daemon",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cwsoftware123/cwd.git",
-    "directory": "snap"
+    "url": "https://github.com/cwsoftware123/cwd.git"
   },
   "source": {
-    "shasum": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "shasum": "zfgl7AKHbLNx6sNW71RlD73TYtpdU+56kuRctln9EOw=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
@@ -19,6 +18,11 @@
   },
   "initialPermissions": {
     "snap_dialog": {},
+    "snap_getBip44Entropy": [
+      {
+        "coinType": 118
+      }
+    ],
     "endowment:rpc": {
       "dapps": true,
       "snaps": false

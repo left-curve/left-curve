@@ -11,13 +11,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cwsoftware123/cwd.git",
-    "directory": "snap"
+    "url": "https://github.com/cwsoftware123/cwd.git"
   },
   "scripts": {
-    "start": "mm-snap start",
-    "serve": "mm-snap serve",
-    "build": "mm-snap build",
+    "start": "pnpm mm-snap watch",
+    "serve": "pnpm mm-snap serve",
+    "build": "pnpm mm-snap build",
     "test": "pnpm vitest run",
     "lint": "pnpm biome check --apply ./src",
     "ci": "pnpm biome ci ./src"
