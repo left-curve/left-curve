@@ -60,7 +60,7 @@ export function createSignBytes(
 ): Uint8Array {
   const hasher = new Sha256();
   hasher.update(serialize(msgs));
-  hasher.update(encodeUtf8(sender.substring(2))); // strip the 0x prefix
+  hasher.update(decodeHex(sender.substring(2))); // strip the 0x prefix
   hasher.update(encodeUtf8(chainId));
   hasher.update(encodeBigEndian32(sequence));
   return hasher.digest();
