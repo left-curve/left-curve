@@ -4,7 +4,7 @@ use {
     anyhow::{bail, ensure},
     cw_std::{
         cw_derive, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
-        QueryCtx, ReceiveCtx, Response, StdResult, Uint128, Uint256,
+        Querier, QueryCtx, ReceiveCtx, Response, StdResult, Uint128, Uint256,
     },
     std::cmp,
 };
