@@ -91,7 +91,42 @@ This contract is called after each transaction to collect gas fee from the sende
 Contracts that are to be used as IBC light clients must implement the following entry points:
 
 ```rust
-// TODO
+/// Called upon client creation. It allows the client to perform validation on
+/// the initial consensus state and set the client state, consensus state, and
+/// any client-specific metadata necessary for correct light client operation.
+#[entry_point]
+fn ibc_client_create(
+  ctx: IbcClientCreateCtx,
+  client_state: Binary,
+  consensus_state: Binary,
+) -> Result<Response, Error>;
+
+#[entry_point]
+fn ibc_client_update(
+  ctx: IbcClientUpdateCtx,
+  header: Binary,
+) -> Result<Response, Error>;
+
+#[entry_point]
+fn ibc_client_update_on_misbehavior(
+  ctx: IbcClientUpateCtx,
+  misbehavior: Binary,
+) -> Result<Response, Error>;
+
+#[entry_point]
+fn ibc_client_verify_membership(
+  ctx: IbcClientVerifyCtx,
+  path: Binary,
+  value: Binary,
+  proof: Binary,
+) -> Result<(), Error>;
+
+#[entry_point]
+fn ibc_client_verify_non_membership(
+  ctx: IbcClientVerifyCtx,
+  path: Binary,
+  proof: Binary,
+) -> Result<(), Error>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:
