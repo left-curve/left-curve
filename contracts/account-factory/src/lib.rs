@@ -69,8 +69,8 @@ use {
     anyhow::bail,
     cw_account::PublicKey,
     cw_std::{
-        cw_derive, from_json, to_json, Addr, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx, Hash,
-        InstantiateCtx, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
+        cw_derive, from_json, to_json, Addr, Api, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx,
+        Hash, InstantiateCtx, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -179,10 +179,10 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     let msg_hash = make_message(&ctx.chain_id, serial);
     match public_key {
         PublicKey::Secp256k1(pk) => {
-            ctx.secp256k1_verify(msg_hash, tx.credential, pk)?;
+            ctx.secp256k1_verify(&msg_hash, &tx.credential, &pk)?;
         },
         PublicKey::Secp256r1(pk) => {
-            ctx.secp256r1_verify(msg_hash, tx.credential, pk)?;
+            ctx.secp256r1_verify(&msg_hash, &tx.credential, &pk)?;
         },
     }
 

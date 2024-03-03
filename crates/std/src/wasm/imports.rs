@@ -184,12 +184,7 @@ macro_rules! impl_methods {
         }
 
         impl<'a> Api for $t {
-            fn secp256k1_verify(
-                &self,
-                msg_hash: impl AsRef<[u8]>,
-                sig:      impl AsRef<[u8]>,
-                pk:       impl AsRef<[u8]>,
-            ) -> StdResult<()> {
+            fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
                 let msg_hash_region = Region::build(msg_hash.as_ref());
                 let msg_hash_ptr = &*msg_hash_region as *const Region;
 
@@ -211,12 +206,7 @@ macro_rules! impl_methods {
                 }
             }
 
-            fn secp256r1_verify(
-                &self,
-                msg_hash: impl AsRef<[u8]>,
-                sig:      impl AsRef<[u8]>,
-                pk:       impl AsRef<[u8]>,
-            ) -> StdResult<()> {
+            fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
                 let msg_hash_region = Region::build(msg_hash.as_ref());
                 let msg_hash_ptr = &*msg_hash_region as *const Region;
 

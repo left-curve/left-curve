@@ -60,28 +60,22 @@ dyn_clone::clone_trait_object!(Storage);
 
 // ------------------------------------ api ------------------------------------
 
+// note: I prefer to use generics (e.g. `impl AsRef<[u8]>`) instead of `&[u8]`
+// for the method parameters, but by doing that the trait won't be object-safe
+// (i.e. we won't be able to do `&dyn Api`). traits with methods that have
+// generic methods can't be object-safe.
 pub trait Api {
     /// Verify an Secp256k1 signature with the given hashed message and public
     /// key.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
-    fn secp256k1_verify(
-        &self,
-        msg_hash: impl AsRef<[u8]>,
-        sig:      impl AsRef<[u8]>,
-        pk:       impl AsRef<[u8]>,
-    ) -> StdResult<()>;
+    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
     /// Verify an Secp256r1 signature with the given hashed message and public
     /// key.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
-    fn secp256r1_verify(
-        &self,
-        msg_hash: impl AsRef<[u8]>,
-        sig:      impl AsRef<[u8]>,
-        pk:       impl AsRef<[u8]>,
-    ) -> StdResult<()>;
+    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 }
 
 // ---------------------------------- querier ----------------------------------

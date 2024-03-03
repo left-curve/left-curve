@@ -14,7 +14,7 @@ pub use crate::{
     storage::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         split_one_key, trim, Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey,
-        Set, Storage,
+        Set,
     },
     testing::MockStorage,
     traits::{Api, Querier, Storage},

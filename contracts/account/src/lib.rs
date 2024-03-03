@@ -156,10 +156,10 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
     if !ctx.simulate {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
-                ctx.secp256k1_verify(msg_hash, &tx.credential, bytes)?;
+                ctx.secp256k1_verify(&msg_hash, &tx.credential, bytes)?;
             },
             PublicKey::Secp256r1(bytes) => {
-                ctx.secp256r1_verify(msg_hash, &tx.credential, bytes)?;
+                ctx.secp256r1_verify(&msg_hash, &tx.credential, bytes)?;
             },
         }
     }

@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Api, Coins, Event, GenericResult, Hash, Querier, Storage, Timestamp, Uint64},
+    crate::{Addr, Coins, Event, GenericResult, Hash, Storage, Timestamp, Uint64},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
