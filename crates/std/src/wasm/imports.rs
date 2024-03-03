@@ -5,7 +5,6 @@ use crate::{
     ReplyCtx, StdError, StdResult, Storage, TransferCtx,
 };
 
-
 // these are the method that the host must implement.
 // we use usize to denote memory addresses, and i32 to denote other data.
 extern "C" {
