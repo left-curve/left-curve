@@ -1,9 +1,10 @@
 use {
     crate::{
-        from_json, to_json, Account, AccountResponse, Addr, BeforeTxCtx, Binary, Coins, ExecuteCtx,
-        GenericResult, Hash, InfoResponse, InstantiateCtx, MigrateCtx, Order, QueryCtx,
-        QueryRequest, QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult,
-        Storage, TransferCtx, Uint128,
+        from_json, to_json, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx,
+        BeforeBlockCtx, BeforeTxCtx, Binary, Coins, ExecuteCtx, GenericResult, Hash,
+        IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InfoResponse, InstantiateCtx,
+        MigrateCtx, Order, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, Region,
+        ReplyCtx, StdError, StdResult, Storage, TransferCtx, Uint128,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -342,14 +343,20 @@ macro_rules! impl_methods {
 }
 
 impl_methods!(
-    BeforeTxCtx<'a>,
-    ExecuteCtx<'a>,
     InstantiateCtx<'a>,
-    MigrateCtx<'a>,
+    ExecuteCtx<'a>,
     QueryCtx<'a>,
-    ReceiveCtx<'a>,
+    MigrateCtx<'a>,
     ReplyCtx<'a>,
+    ReceiveCtx<'a>,
+    BeforeBlockCtx<'a>,
+    AfterBlockCtx<'a>,
+    BeforeTxCtx<'a>,
+    AfterTxCtx<'a>,
     TransferCtx<'a>,
+    IbcClientCreateCtx<'a>,
+    IbcClientUpdateCtx<'a>,
+    IbcClientVerifyCtx<'a>,
 );
 
 // ----------------------------------- tests -----------------------------------

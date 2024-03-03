@@ -9,6 +9,7 @@ mod decimal256;
 mod empty;
 mod event;
 mod hash;
+mod ibc;
 mod query;
 mod response;
 mod result;
@@ -29,13 +30,15 @@ pub use {
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
         AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
-        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
+        IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InstantiateCtx, MigrateCtx,
+        QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
     },
     decimal::Decimal,
     decimal256::Decimal256,
     empty::Empty,
     event::{Attribute, Event},
     hash::{hash, Hash},
+    ibc::IbcClientStatus,
     query::{
         AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
         WasmSmartResponse,

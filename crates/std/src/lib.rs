@@ -20,9 +20,10 @@ pub use crate::{
         hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Attribute, BankQuery,
         BankQueryResponse, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef, Coins,
         CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256, Empty, Event, ExecuteCtx,
-        GenericResult, GenesisState, Hash, InfoResponse, InstantiateCtx, Message, MigrateCtx,
-        Permission, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyCtx, ReplyOn, Response,
-        SubMessage, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        GenericResult, GenesisState, Hash, IbcClientCreateCtx, IbcClientStatus, IbcClientUpdateCtx,
+        IbcClientVerifyCtx, InfoResponse, InstantiateCtx, Message, MigrateCtx, Permission,
+        QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage,
+        Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
         WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
