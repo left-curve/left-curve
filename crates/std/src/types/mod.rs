@@ -4,6 +4,7 @@ mod bank;
 mod binary;
 mod coin;
 mod context;
+mod db;
 mod decimal;
 mod decimal256;
 mod empty;
@@ -29,10 +30,11 @@ pub use {
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
-        AfterBlockCtx, AfterTxCtx, Api, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
+        AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
         IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InstantiateCtx, MigrateCtx,
-        Querier, QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
+        QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
     },
+    db::{Batch, Op, Order, Record},
     decimal::Decimal,
     decimal256::Decimal256,
     empty::Empty,

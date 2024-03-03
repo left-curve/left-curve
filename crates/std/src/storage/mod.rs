@@ -7,7 +7,6 @@ mod map;
 mod path;
 mod prefix;
 mod set;
-mod traits;
 
 pub use {
     bound::{Bound, RawBound},
@@ -21,5 +20,4 @@ pub use {
     path::{Path, PathBuf},
     prefix::Prefix,
     set::Set,
-    traits::{Batch, Op, Order, Record, Storage},
 };

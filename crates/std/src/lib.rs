@@ -5,6 +5,7 @@ mod forward_ref;
 mod serde;
 mod storage;
 mod testing;
+mod traits;
 mod types;
 
 pub use crate::{
@@ -12,19 +13,20 @@ pub use crate::{
     serde::{from_borsh, from_json, to_borsh, to_json},
     storage::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
-        split_one_key, trim, Batch, Bound, Item, Map, MapKey, Op, Order, Path, PathBuf, Prefix,
-        RawBound, RawKey, Record, Set, Storage,
+        split_one_key, trim, Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey,
+        Set, Storage,
     },
     testing::MockStorage,
+    traits::{Api, Querier, Storage},
     types::{
-        hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Api, Attribute, BankQuery,
-        BankQueryResponse, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef, Coins,
-        CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256, Empty, Event, ExecuteCtx,
-        GenericResult, GenesisState, Hash, IbcClientCreateCtx, IbcClientStatus, IbcClientUpdateCtx,
-        IbcClientVerifyCtx, InfoResponse, InstantiateCtx, Message, MigrateCtx, Permission, Querier,
-        QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, ReplyCtx, ReplyOn, Response, SubMessage,
-        Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
-        WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Attribute, BankQuery,
+        BankQueryResponse, Batch, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef,
+        Coins, CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256, Empty, Event,
+        ExecuteCtx, GenericResult, GenesisState, Hash, IbcClientCreateCtx, IbcClientStatus,
+        IbcClientUpdateCtx, IbcClientVerifyCtx, InfoResponse, InstantiateCtx, Message, MigrateCtx,
+        Op, Order, Permission, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, ReplyCtx,
+        ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256,
+        Uint512, Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 
