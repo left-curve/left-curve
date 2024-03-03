@@ -1,13 +1,10 @@
-use {
-    crate::{
-        from_json, to_json, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx,
-        BeforeBlockCtx, BeforeTxCtx, Binary, Coins, ExecuteCtx, GenericResult, Hash,
-        IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InfoResponse, InstantiateCtx,
-        MigrateCtx, Order, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, Region,
-        ReplyCtx, StdError, StdResult, Storage, TransferCtx, Uint128,
-    },
-    serde::{de::DeserializeOwned, ser::Serialize},
+use crate::{
+    from_json, to_json, AfterBlockCtx, AfterTxCtx, Api, BeforeBlockCtx, BeforeTxCtx, ExecuteCtx,
+    GenericResult, IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InstantiateCtx,
+    MigrateCtx, Order, Querier, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, Region,
+    ReplyCtx, StdError, StdResult, Storage, TransferCtx,
 };
+
 
 // these are the method that the host must implement.
 // we use usize to denote memory addresses, and i32 to denote other data.
@@ -172,8 +169,8 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 
 // implement debug, query, and crypto methods for each context type
 macro_rules! impl_methods {
-    ($($t:ty),+ $(,)?) => {
-        $(impl<'a> $t {
+    ($($t:ty),+ $(,)?) => {$(
+        impl<'a> $t {
             pub fn debug(&self, msg: impl AsRef<str>) {
                 // TODO: add contract address & other info to the debug msg?
                 // TODO: ideally, only emit the debug message in debug build
@@ -184,9 +181,10 @@ macro_rules! impl_methods {
 
                 unsafe { debug(ptr as usize) }
             }
+        }
 
-            /// NOTE: This function takes the hash of the message, not the prehash.
-            pub fn secp256k1_verify(
+        impl<'a> Api for $t {
+            fn secp256k1_verify(
                 &self,
                 msg_hash: impl AsRef<[u8]>,
                 sig:      impl AsRef<[u8]>,
@@ -213,8 +211,7 @@ macro_rules! impl_methods {
                 }
             }
 
-            /// NOTE: This function takes the hash of the message, not the prehash.
-            pub fn secp256r1_verify(
+            fn secp256r1_verify(
                 &self,
                 msg_hash: impl AsRef<[u8]>,
                 sig:      impl AsRef<[u8]>,
@@ -240,8 +237,10 @@ macro_rules! impl_methods {
                     Err(StdError::VerificationFailed)
                 }
             }
+        }
 
-            pub fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
+        impl<'a> Querier for $t {
+            fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
                 let req_bytes = to_json(req)?;
                 let req_region = Region::build(&req_bytes);
                 let req_ptr = &*req_region as *const Region;
@@ -252,94 +251,8 @@ macro_rules! impl_methods {
 
                 res.into_std_result()
             }
-
-            pub fn query_info(&self) -> StdResult<InfoResponse> {
-                self.query(&QueryRequest::Info {}).map(|res| res.as_info())
-            }
-
-            pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
-                self.query(&QueryRequest::Balance { address, denom })
-                    .map(|res| res.as_balance().amount)
-            }
-
-            pub fn query_balances(
-                &self,
-                address:     Addr,
-                start_after: Option<String>,
-                limit:       Option<u32>,
-            ) -> StdResult<Coins> {
-                self.query(&QueryRequest::Balances { address, start_after, limit })
-                    .map(|res| res.as_balances())
-            }
-
-            pub fn query_supply(&self, denom: String) -> StdResult<Uint128> {
-                self.query(&QueryRequest::Supply { denom }).map(|res| res.as_supply().amount)
-            }
-
-            pub fn query_supplies(
-                &self,
-                start_after: Option<String>,
-                limit:       Option<u32>,
-            ) -> StdResult<Coins> {
-                self.query(&QueryRequest::Supplies { start_after, limit })
-                    .map(|res| res.as_supplies())
-            }
-
-            pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
-                self.query(&QueryRequest::Code { hash }).map(|res| res.as_code())
-            }
-
-            pub fn query_codes(
-                &self,
-                start_after: Option<Hash>,
-                limit:       Option<u32>,
-            ) -> StdResult<Vec<Hash>> {
-                self.query(&QueryRequest::Codes { start_after, limit }).map(|res| res.as_codes())
-            }
-
-            pub fn query_account(&self, address: Addr) -> StdResult<Account> {
-                self.query(&QueryRequest::Account { address }).map(|res| {
-                    let account_res = res.as_account();
-                    Account {
-                        code_hash: account_res.code_hash,
-                        admin:     account_res.admin,
-                    }
-                })
-            }
-
-            pub fn query_accounts(
-                &self,
-                start_after: Option<Addr>,
-                limit:       Option<u32>,
-            ) -> StdResult<Vec<AccountResponse>> {
-                self.query(&QueryRequest::Accounts { start_after, limit })
-                    .map(|res| res.as_accounts())
-            }
-
-            pub fn query_wasm_raw(
-                &self,
-                contract: Addr,
-                key:      Binary,
-            ) -> StdResult<Option<Binary>> {
-                self.query(&QueryRequest::WasmRaw { contract, key })
-                    .map(|res| res.as_wasm_raw().value)
-            }
-
-            pub fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
-                &self,
-                contract: Addr,
-                msg:      &M,
-            ) -> StdResult<R> {
-                from_json(self
-                    .query(&QueryRequest::WasmSmart {
-                        contract,
-                        msg: to_json(msg)?,
-                    })?
-                    .as_wasm_smart()
-                    .data)
-            }
-        })*
-    };
+        }
+    )*};
 }
 
 impl_methods!(
