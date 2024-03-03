@@ -24,9 +24,8 @@ extern "C" {
     fn db_write(key_ptr: usize, value_ptr: usize);
     fn db_remove(key_ptr: usize);
 
-    // print a debug message to the client's CLI output. the client must have
-    // set tracing level to DEBUG to see it.
-    fn debug(msg_ptr: usize);
+    // print a debug message to the client's CLI output.
+    fn debug(addr_ptr: usize, msg_ptr: usize);
 
     // send a query request to the chain.
     // not to be confused with the query export.
@@ -168,17 +167,19 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 
 // implement debug, query, and crypto methods for each context type
 macro_rules! impl_methods {
-    ($($t:ty),+ $(,)?) => {$(
-        impl<'a> $t {
+    ($($t:ty),+ $(,)?) => {
+        $(impl<'a> $t {
+            /// Note: Unlike Rust's built-in `dbg!` macro, which is only included
+            /// in debug builds, this `debug` method is also included in release
+            /// builds, and incurs gas cost. Make sure to comment this out before
+            /// compiling your contracts.
             pub fn debug(&self, msg: impl AsRef<str>) {
-                // TODO: add contract address & other info to the debug msg?
-                // TODO: ideally, only emit the debug message in debug build
-                // composing the debug message may consume resources (e.g. if
-                // using the format! macro), so we want to do nothing in release
-                let region = Region::build(msg.as_ref().as_bytes());
-                let ptr = &*region as *const Region;
+                let addr_region = Region::build(self.contract.as_ref());
+                let addr_ptr = &*addr_region as *const Region;
+                let msg_region = Region::build(msg.as_ref().as_bytes());
+                let msg_ptr = &*msg_region as *const Region;
 
-                unsafe { debug(ptr as usize) }
+                unsafe { debug(addr_ptr as usize, msg_ptr as usize) }
             }
         }
 
@@ -240,8 +241,8 @@ macro_rules! impl_methods {
 
                 res.into_std_result()
             }
-        }
-    )*};
+        })*
+    };
 }
 
 impl_methods!(

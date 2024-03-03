@@ -90,11 +90,27 @@ impl DerefMut for Addr {
     }
 }
 
+impl TryFrom<Vec<u8>> for Addr {
+    type Error = StdError;
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        let Ok(bytes) = bytes.try_into() else {
+            return Err(StdError::deserialize::<Self>("address is not of the correct length"));
+        };
+
+        Ok(Self(Hash(bytes)))
+    }
+}
+
 impl TryFrom<&[u8]> for Addr {
     type Error = StdError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        Hash::try_from(bytes).map(Self)
+        let Ok(bytes) = bytes.try_into() else {
+            return Err(StdError::deserialize::<Self>("address is not of the correct length"));
+        };
+
+        Ok(Self(Hash(bytes)))
     }
 }
 

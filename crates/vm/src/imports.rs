@@ -1,6 +1,6 @@
 use {
     crate::{read_from_memory, write_to_memory, BackendQuerier, BackendStorage, Environment, VmResult},
-    cw_std::{from_json, to_json, QueryRequest, Record},
+    cw_std::{from_json, to_json, Addr, QueryRequest, Record},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -116,16 +116,23 @@ where
     env.with_context_data_mut(|ctx| ctx.store.remove(&key))
 }
 
-pub fn debug<S, Q>(mut fe: FunctionEnvMut<Environment<S, Q>>, msg_ptr: u32) -> VmResult<()>
+pub fn debug<S, Q>(
+    mut fe: FunctionEnvMut<Environment<S, Q>>,
+    addr_ptr: u32,
+    msg_ptr:  u32,
+) -> VmResult<()>
 where
     S: 'static,
     Q: 'static,
 {
     let (env, wasm_store) = fe.data_and_store_mut();
 
+    let addr_bytes = read_from_memory(env, &wasm_store, addr_ptr)?;
+    let addr = Addr::try_from(addr_bytes)?;
     let msg_bytes = read_from_memory(env, &wasm_store, msg_ptr)?;
     let msg = String::from_utf8(msg_bytes)?;
-    info!(msg, "Contract emitted debug message");
+
+    info!(contract = addr.to_string(), msg, "Contract emitted debug message");
 
     Ok(())
 }
