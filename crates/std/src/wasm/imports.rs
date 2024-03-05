@@ -1,8 +1,7 @@
 use crate::{
     from_json, to_json, AfterBlockCtx, AfterTxCtx, Api, BeforeBlockCtx, BeforeTxCtx, ExecuteCtx,
-    GenericResult, IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InstantiateCtx,
-    MigrateCtx, Order, Querier, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, Region,
-    ReplyCtx, StdError, StdResult, Storage, TransferCtx,
+    GenericResult, InstantiateCtx, MigrateCtx, Order, Querier, QueryCtx, QueryRequest,
+    QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult, Storage, TransferCtx,
 };
 
 // these are the method that the host must implement.
@@ -68,8 +67,8 @@ impl Storage for ExternalStorage {
 
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // IMPORTANT: we must to keep the Regions in scope until end of the func
@@ -82,7 +81,9 @@ impl Storage for ExternalStorage {
 
         let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
 
-        Box::new(ExternalIterator { iterator_id })
+        Box::new(ExternalIterator {
+            iterator_id,
+        })
     }
 
     // note: cosmwasm doesn't allow empty values:
@@ -257,9 +258,6 @@ impl_methods!(
     BeforeTxCtx<'a>,
     AfterTxCtx<'a>,
     TransferCtx<'a>,
-    IbcClientCreateCtx<'a>,
-    IbcClientUpdateCtx<'a>,
-    IbcClientVerifyCtx<'a>,
 );
 
 // ----------------------------------- tests -----------------------------------

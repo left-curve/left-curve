@@ -6,8 +6,8 @@ use {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tx {
-    pub sender:     Addr,
-    pub msgs:       Vec<Message>,
+    pub sender: Addr,
+    pub msgs: Vec<Message>,
     pub credential: Binary,
 }
 
@@ -26,7 +26,7 @@ pub enum Message {
     /// that it's a valid 32-byte hex string. The sender is reponsible to make
     /// sure to put the correct address.
     Transfer {
-        to:    Addr,
+        to: Addr,
         coins: Coins,
     },
     /// Upload a Wasm binary code and store it in the chain's state.
@@ -36,23 +36,39 @@ pub enum Message {
     /// Register a new account.
     Instantiate {
         code_hash: Hash,
-        msg:       Binary,
-        salt:      Binary,
-        funds:     Coins,
-        admin:     Option<Addr>,
+        msg: Binary,
+        salt: Binary,
+        funds: Coins,
+        admin: Option<Addr>,
     },
     /// Execute the contract.
     Execute {
         contract: Addr,
-        msg:      Binary,
-        funds:    Coins,
+        msg: Binary,
+        funds: Coins,
     },
     /// Update the `code_hash` associated with a contract.
     /// Only the contract's `admin` is authorized to do this. If the admin is
     /// set to None, no one can update the code hash.
     Migrate {
-        contract:      Addr,
+        contract: Addr,
         new_code_hash: Hash,
-        msg:           Binary,
+        msg: Binary,
+    },
+    /// Create a new IBC light client.
+    CreateClient {
+        code_hash: Hash,
+        client_state: Binary,
+        consensus_state: Binary,
+    },
+    /// Update the state of an IBC light client.
+    UpdateClient {
+        client_id: String,
+        header: Binary,
+    },
+    /// Submit a misbehavior to get an IBC light client frozen.
+    SubmitMisbehavior {
+        client_id: String,
+        misbehavior: Binary,
     },
 }

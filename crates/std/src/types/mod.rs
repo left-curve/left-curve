@@ -31,8 +31,7 @@ pub use {
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
         AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
-        IbcClientCreateCtx, IbcClientUpdateCtx, IbcClientVerifyCtx, InstantiateCtx, MigrateCtx,
-        QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
+        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
     },
     db::{Batch, Op, Order, Record},
     decimal::Decimal,
@@ -40,10 +39,13 @@ pub use {
     empty::Empty,
     event::{Attribute, Event},
     hash::{hash, Hash},
-    ibc::IbcClientStatus,
+    ibc::{
+        IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse,
+        IbcClientStatus,
+    },
     query::{
-        AccountResponse, InfoResponse, QueryRequest, QueryResponse, WasmRawResponse,
-        WasmSmartResponse,
+        AccountResponse, ClientResponse, InfoResponse, QueryRequest, QueryResponse,
+        WasmRawResponse, WasmSmartResponse,
     },
     response::{ReplyOn, Response, SubMessage},
     result::GenericResult,

@@ -15,14 +15,14 @@ pub enum QueryRequest {
     /// Returns: Coin
     Balance {
         address: Addr,
-        denom:   String,
+        denom: String,
     },
     /// Enumerate an account's balances in all denoms.
     /// Returns: Coins
     Balances {
-        address:     Addr,
+        address: Addr,
         start_after: Option<String>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
     /// A token's total supply.
     /// Returns: Coin
@@ -33,7 +33,7 @@ pub enum QueryRequest {
     /// Returns: Coins
     Supplies {
         start_after: Option<String>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
     /// A single Wasm byte code.
     /// Returns: Binary
@@ -46,7 +46,7 @@ pub enum QueryRequest {
     /// Returns: Vec<Hash>
     Codes {
         start_after: Option<Hash>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
     /// Metadata of a single account.
     /// Returns: AccountResponse
@@ -57,49 +57,68 @@ pub enum QueryRequest {
     /// Returns: Vec<AccountResponse>
     Accounts {
         start_after: Option<Addr>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
     /// A raw key-value pair in a contract's internal state.
     /// Returns: WasmRawResponse
     WasmRaw {
         contract: Addr,
-        key:      Binary,
+        key: Binary,
     },
     /// Call the contract's query entry point with the given message.
     /// Returns: WasmSmartResponse
     WasmSmart {
         contract: Addr,
-        msg:      Binary,
+        msg: Binary,
+    },
+    /// Client and consensus states of an IBC light client.
+    /// Returns: ClientResponse
+    Client {
+        client_id: String,
+    },
+    /// Enumerate client and consensus states of an IBC light client.
+    /// Returns: Vec<ClientResponse>
+    Clients {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
-    pub chain_id:             String,
-    pub config:               Config,
+    pub chain_id: String,
+    pub config: Config,
     pub last_finalized_block: BlockInfo,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AccountResponse {
-    pub address:   Addr,
+    pub address: Addr,
     pub code_hash: Hash,
-    pub admin:     Option<Addr>,
+    pub admin: Option<Addr>,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WasmRawResponse {
     pub contract: Addr,
-    pub key:      Binary,
-    pub value:    Option<Binary>, // None if key doesn't exist
+    pub key: Binary,
+    pub value: Option<Binary>, // `None` if the key doesn't exist
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WasmSmartResponse {
     pub contract: Addr,
-    pub data:     Binary,
+    pub data: Binary,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ClientResponse {
+    pub client_id: String,
+    pub code_hash: Hash,
+    pub client_state: Binary,
+    pub consensus_state: Binary,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -116,6 +135,8 @@ pub enum QueryResponse {
     Accounts(Vec<AccountResponse>),
     WasmRaw(WasmRawResponse),
     WasmSmart(WasmSmartResponse),
+    Client(ClientResponse),
+    Clients(Vec<ClientResponse>),
 }
 
 // TODO: can we use a macro to implement these?
@@ -193,6 +214,20 @@ impl QueryResponse {
     pub fn as_wasm_smart(self) -> WasmSmartResponse {
         let Self::WasmSmart(resp) = self else {
             panic!("QueryResponse is not WasmSmart");
+        };
+        resp
+    }
+
+    pub fn as_client(self) -> ClientResponse {
+        let Self::Client(resp) = self else {
+            panic!("QueryResponse is not Client");
+        };
+        resp
+    }
+
+    pub fn as_aclient(self) -> Vec<ClientResponse> {
+        let Self::Clients(resp) = self else {
+            panic!("QueryResponse is not Clients");
         };
         resp
     }

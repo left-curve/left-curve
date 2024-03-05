@@ -134,30 +134,3 @@ pub struct TransferCtx<'a> {
     pub block_hash:      Hash,
     pub contract:        Addr,
 }
-
-pub struct IbcClientCreateCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
-    pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-}
-
-pub struct IbcClientUpdateCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
-    pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-}
-
-pub struct IbcClientVerifyCtx<'a> {
-    pub store:           &'a dyn Storage,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
-    pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-}

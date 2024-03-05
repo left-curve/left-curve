@@ -96,37 +96,16 @@ Contracts that are to be used as IBC light clients must implement the following 
 /// any client-specific metadata necessary for correct light client operation.
 #[entry_point]
 fn ibc_client_create(
-  ctx: IbcClientCreateCtx,
+  ctx: InstantiateCtx,
   client_state: Binary,
   consensus_state: Binary,
 ) -> Result<Response, Error>;
 
 #[entry_point]
-fn ibc_client_update(
-  ctx: IbcClientUpdateCtx,
-  header: Binary,
-) -> Result<Response, Error>;
+fn ibc_client_execute(ctx: ExecuteCtx, msg: IbcClientExecuteMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn ibc_client_update_on_misbehavior(
-  ctx: IbcClientUpateCtx,
-  misbehavior: Binary,
-) -> Result<Response, Error>;
-
-#[entry_point]
-fn ibc_client_verify_membership(
-  ctx: IbcClientVerifyCtx,
-  path: Binary,
-  value: Binary,
-  proof: Binary,
-) -> Result<(), Error>;
-
-#[entry_point]
-fn ibc_client_verify_non_membership(
-  ctx: IbcClientVerifyCtx,
-  path: Binary,
-  proof: Binary,
-) -> Result<(), Error>;
+fn ibc_client_query(ctx: QueryCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse, Error>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:

@@ -20,13 +20,14 @@ pub use crate::{
     traits::{Api, Querier, Storage},
     types::{
         hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Attribute, BankQuery,
-        BankQueryResponse, Batch, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, Coin, CoinRef,
-        Coins, CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256, Empty, Event,
-        ExecuteCtx, GenericResult, GenesisState, Hash, IbcClientCreateCtx, IbcClientStatus,
-        IbcClientUpdateCtx, IbcClientVerifyCtx, InfoResponse, InstantiateCtx, Message, MigrateCtx,
-        Op, Order, Permission, QueryCtx, QueryRequest, QueryResponse, ReceiveCtx, Record, ReplyCtx,
-        ReplyOn, Response, SubMessage, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256,
-        Uint512, Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        BankQueryResponse, Batch, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, ClientResponse,
+        Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256,
+        Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
+        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
+        InfoResponse, InstantiateCtx, Message, MigrateCtx, Op, Order, Permission, QueryCtx,
+        QueryRequest, QueryResponse, ReceiveCtx, Record, ReplyCtx, ReplyOn, Response, SubMessage,
+        Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 

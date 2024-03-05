@@ -41,8 +41,9 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, from_json, hash, to_borsh, Api, Binary, IbcClientCreateCtx, IbcClientStatus,
-        IbcClientUpdateCtx, IbcClientVerifyCtx, Item, Response, StdResult,
+        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, ExecuteCtx,
+        IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse,
+        IbcClientStatus, InstantiateCtx, Item, QueryCtx, Response, StdResult,
     },
 };
 
@@ -78,12 +79,6 @@ pub struct Header {
     pub record: Option<Record>,
 }
 
-#[cw_derive(borsh)]
-pub struct SignBytes {
-    pub sequence: u64,
-    pub record: Option<Record>,
-}
-
 /// A solo machine has committed a misbehavior if the key signs two different
 /// headers at the same sequence.
 #[cw_derive(serde)]
@@ -93,15 +88,24 @@ pub struct Misbehavior {
     pub header_two: Header,
 }
 
+/// A key-value pair.
 #[cw_derive(serde, borsh)]
 pub struct Record {
     pub path: Binary,
     pub data: Binary,
 }
 
+/// In order to update the client, the public key must sign the Borsh encoding
+/// of this struct.
+#[cw_derive(borsh)]
+pub struct SignBytes {
+    pub sequence: u64,
+    pub record: Option<Record>,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_create(
-    ctx: IbcClientCreateCtx,
+    ctx: InstantiateCtx,
     client_state: Binary,
     consensus_state: Binary,
 ) -> anyhow::Result<Response> {
@@ -118,7 +122,18 @@ pub fn ibc_client_create(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_update(ctx: IbcClientUpdateCtx, header: Binary) -> anyhow::Result<Response> {
+pub fn ibc_client_execute(ctx: ExecuteCtx, msg: IbcClientExecuteMsg) -> anyhow::Result<Response> {
+    match msg {
+        IbcClientExecuteMsg::Update {
+            header,
+        } => update(ctx, header),
+        IbcClientExecuteMsg::UpdateOnMisbehavior {
+            misbehavior,
+        } => update_on_misbehavior(ctx, misbehavior),
+    }
+}
+
+pub fn update(ctx: ExecuteCtx, header: Binary) -> anyhow::Result<Response> {
     let header: Header = from_json(header)?;
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let mut consensus_state = CONSENSUS_STATE.load(ctx.store)?;
@@ -139,11 +154,7 @@ pub fn ibc_client_update(ctx: IbcClientUpdateCtx, header: Binary) -> anyhow::Res
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_update_on_misbehavior(
-    ctx: IbcClientUpdateCtx,
-    misbehavior: Binary,
-) -> anyhow::Result<Response> {
+pub fn update_on_misbehavior(ctx: ExecuteCtx, misbehavior: Binary) -> anyhow::Result<Response> {
     let misbehavior: Misbehavior = from_json(misbehavior)?;
     let mut client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
@@ -174,23 +185,48 @@ pub fn ibc_client_update_on_misbehavior(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_verify_membership(
-    ctx: IbcClientVerifyCtx,
-    path: Binary,
-    data: Binary,
-    proof: Binary,
-) -> anyhow::Result<()> {
+pub fn ibc_client_query(
+    ctx: QueryCtx,
+    msg: IbcClientQueryMsg,
+) -> anyhow::Result<IbcClientQueryResponse> {
+    match msg {
+        IbcClientQueryMsg::State {} => query_state(ctx).map(IbcClientQueryResponse::State),
+        // solo machine does not utilize the height and delay period pamameters
+        // for membership verification, per ICS-06 spec. our implementation also
+        // does not use the proof.
+        IbcClientQueryMsg::VerifyMembership {
+            path,
+            data,
+            ..
+        } => verify_membership(ctx, path, data).map(|_| IbcClientQueryResponse::VerifyMembership),
+        // solo machine does not utilize the height and delay period parameters
+        // for non-membership verification, per ICS-06 spec.
+        IbcClientQueryMsg::VerifyNonMembership {
+            path,
+            ..
+        } => verify_non_membership(ctx, path).map(|_| IbcClientQueryResponse::VerifyNonMembership),
+    }
+}
+
+pub fn query_state(ctx: QueryCtx) -> anyhow::Result<IbcClientStateResponse> {
+    let client_state = CLIENT_STATE.load(ctx.store)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    Ok(IbcClientStateResponse {
+        client_state: to_json(&client_state)?,
+        consensus_state: to_json(&consensus_state)?,
+    })
+}
+
+pub fn verify_membership(ctx: QueryCtx, path: Binary, data: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
     // if the client is frozen due to a misbehavior, then its state is not
-    // trustworthy. we make all verifications fail.
+    // trustworthy. all verifications should fail in this case.
     ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
 
-    // the solo machine client does not take a proof. if the record exists and
-    // matches then it's a membership, otherwise non-membership.
-    ensure!(proof.is_empty(), "proof for solo machine client should be empty");
-
+    // a record must exist for the current sequence, and its path and data must
+    // both match the given values.
     let Some(record) = consensus_state.record else {
         bail!("expecting membership but record does not exist");
     };
@@ -209,17 +245,13 @@ pub fn ibc_client_verify_membership(
     Ok(())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_verify_non_membership(
-    ctx: IbcClientVerifyCtx,
-    path: Binary,
-    proof: Binary,
-) -> anyhow::Result<()> {
+pub fn verify_non_membership(ctx: QueryCtx, path: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
+    // if the client is frozen due to a misbehavior, then its state is not
+    // trustworthy. all verifications should fail in this case.
     ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
-    ensure!(proof.is_empty(), "proof for solo machine client should be empty");
 
     // we're verifying non-membership now, so if the record exists, the path
     // must not match, otherwise it's a membership.
