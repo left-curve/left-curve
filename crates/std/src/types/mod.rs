@@ -31,7 +31,7 @@ pub use {
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     context::{
         AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
-        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, TransferCtx,
+        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, SudoCtx, TransferCtx,
     },
     db::{Batch, Op, Order, Record},
     decimal::Decimal,

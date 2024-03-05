@@ -26,7 +26,7 @@ pub use crate::{
         IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
         InfoResponse, InstantiateCtx, Message, MigrateCtx, Op, Order, Permission, QueryCtx,
         QueryRequest, QueryResponse, ReceiveCtx, Record, ReplyCtx, ReplyOn, Response, SubMessage,
-        Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        SudoCtx, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
         WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
@@ -38,9 +38,9 @@ mod wasm;
 
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
-    do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
-    do_migrate, do_query, do_query_bank, do_receive, do_reply, do_transfer, ExternalIterator,
-    ExternalStorage, Region,
+    do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_ibc_client_create,
+    do_ibc_client_execute, do_ibc_client_query, do_instantiate, do_migrate, do_query,
+    do_query_bank, do_receive, do_reply, do_transfer, ExternalIterator, ExternalStorage, Region,
 };
 
 // -------------------------------- re-exports ---------------------------------

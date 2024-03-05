@@ -41,9 +41,9 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, ExecuteCtx,
-        IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse,
-        IbcClientStatus, InstantiateCtx, Item, QueryCtx, Response, StdResult,
+        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, IbcClientExecuteMsg,
+        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus, Item,
+        QueryCtx, Response, StdResult, SudoCtx,
     },
 };
 
@@ -105,7 +105,7 @@ pub struct SignBytes {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_create(
-    ctx: InstantiateCtx,
+    ctx: SudoCtx,
     client_state: Binary,
     consensus_state: Binary,
 ) -> anyhow::Result<Response> {
@@ -122,7 +122,7 @@ pub fn ibc_client_create(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_execute(ctx: ExecuteCtx, msg: IbcClientExecuteMsg) -> anyhow::Result<Response> {
+pub fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         IbcClientExecuteMsg::Update {
             header,
@@ -133,7 +133,7 @@ pub fn ibc_client_execute(ctx: ExecuteCtx, msg: IbcClientExecuteMsg) -> anyhow::
     }
 }
 
-pub fn update(ctx: ExecuteCtx, header: Binary) -> anyhow::Result<Response> {
+pub fn update(ctx: SudoCtx, header: Binary) -> anyhow::Result<Response> {
     let header: Header = from_json(header)?;
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let mut consensus_state = CONSENSUS_STATE.load(ctx.store)?;
@@ -154,7 +154,7 @@ pub fn update(ctx: ExecuteCtx, header: Binary) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-pub fn update_on_misbehavior(ctx: ExecuteCtx, misbehavior: Binary) -> anyhow::Result<Response> {
+pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Result<Response> {
     let misbehavior: Misbehavior = from_json(misbehavior)?;
     let mut client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;

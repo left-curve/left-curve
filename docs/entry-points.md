@@ -95,14 +95,10 @@ Contracts that are to be used as IBC light clients must implement the following 
 /// the initial consensus state and set the client state, consensus state, and
 /// any client-specific metadata necessary for correct light client operation.
 #[entry_point]
-fn ibc_client_create(
-  ctx: InstantiateCtx,
-  client_state: Binary,
-  consensus_state: Binary,
-) -> Result<Response, Error>;
+fn ibc_client_create(ctx: SudoCtx, client_state: Binary, consensus_state: Binary) -> Result<Response, Error>;
 
 #[entry_point]
-fn ibc_client_execute(ctx: ExecuteCtx, msg: IbcClientExecuteMsg) -> Result<Response, Error>;
+fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> Result<Response, Error>;
 
 #[entry_point]
 fn ibc_client_query(ctx: QueryCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse, Error>;

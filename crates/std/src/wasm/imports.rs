@@ -1,7 +1,8 @@
 use crate::{
     from_json, to_json, AfterBlockCtx, AfterTxCtx, Api, BeforeBlockCtx, BeforeTxCtx, ExecuteCtx,
     GenericResult, InstantiateCtx, MigrateCtx, Order, Querier, QueryCtx, QueryRequest,
-    QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult, Storage, TransferCtx,
+    QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult, Storage, SudoCtx,
+    TransferCtx,
 };
 
 // these are the method that the host must implement.
@@ -258,6 +259,7 @@ impl_methods!(
     BeforeTxCtx<'a>,
     AfterTxCtx<'a>,
     TransferCtx<'a>,
+    SudoCtx<'a>,
 );
 
 // ----------------------------------- tests -----------------------------------

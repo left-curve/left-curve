@@ -48,6 +48,21 @@ pub struct ExecuteCtx<'a> {
     pub funds:           Coins,
 }
 
+/// Sudo context is a state-mutable context. This is used when a contract is
+/// called by the chain, instead of by a message sent by another account.
+/// Therefore, compared to `MutableCtx`, it lacks the `sender` and `funds` fields.
+///
+/// The name is derived from the "sudo" entry point in the vanilla CosmWasm.
+/// There isn't such an entry point in CWD, but we keep the name nonetheless.
+pub struct SudoCtx<'a> {
+    pub store:           &'a mut dyn Storage,
+    pub chain_id:        String,
+    pub block_height:    Uint64,
+    pub block_timestamp: Timestamp,
+    pub block_hash:      Hash,
+    pub contract:        Addr,
+}
+
 pub struct QueryCtx<'a> {
     pub store:           &'a dyn Storage,
     pub chain_id:        String,

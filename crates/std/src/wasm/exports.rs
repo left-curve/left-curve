@@ -1,9 +1,6 @@
 use {
     crate::{
-        from_json, to_json, AfterBlockCtx, AfterTxCtx, BankQuery, BankQueryResponse,
-        BeforeBlockCtx, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult,
-        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, TransferCtx,
-        TransferMsg, Tx,
+        from_json, to_json, AfterBlockCtx, AfterTxCtx, BankQuery, BankQueryResponse, BeforeBlockCtx, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, SudoCtx, TransferCtx, TransferMsg, Tx
     },
     serde::de::DeserializeOwned,
 };
@@ -550,4 +547,137 @@ where
     query_bank_fn(ctx, msg).into()
 }
 
+// ----------------------------- ibc client create -----------------------------
 
+pub fn do_ibc_client_create<E>(
+    create_fn: &dyn Fn(SudoCtx, Binary, Binary) -> Result<Response, E>,
+    ctx_ptr: usize,
+    client_state_ptr: usize,
+    consensus_state_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let client_state_bytes = unsafe { Region::consume(client_state_ptr as *mut Region) };
+    let consensus_state_bytes = unsafe { Region::consume(consensus_state_ptr as *mut Region) };
+
+    let res = _do_ibc_client_create(
+        create_fn,
+        &ctx_bytes,
+        &client_state_bytes,
+        &consensus_state_bytes,
+    );
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_ibc_client_create<E>(
+    create_fn: &dyn Fn(SudoCtx, Binary, Binary) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    client_state_bytes: &[u8],
+    consensus_state_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let client_state_bytes = try_into_generic_result!(from_json(client_state_bytes));
+    let consensus_state_bytes = try_into_generic_result!(from_json(consensus_state_bytes));
+
+    let ctx = SudoCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+    };
+
+    create_fn(ctx, client_state_bytes, consensus_state_bytes).into()
+}
+
+// ---------------------------- ibc client execute -----------------------------
+
+pub fn do_ibc_client_execute<E>(
+    execute_fn: &dyn Fn(SudoCtx, IbcClientExecuteMsg) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_ibc_client_execute(execute_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_ibc_client_execute<E>(
+    execute_fn: &dyn Fn(SudoCtx, IbcClientExecuteMsg) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = SudoCtx {
+        store:           &mut ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+    };
+
+    execute_fn(ctx, msg).into()
+}
+
+// ----------------------------- ibc client query ------------------------------
+
+pub fn do_ibc_client_query<E>(
+    query_fn: &dyn Fn(QueryCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+    ctx_ptr:  usize,
+    msg_ptr:  usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+
+    let res = _do_ibc_client_query(query_fn, &ctx_bytes, &msg_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_ibc_client_query<E>(
+    query_fn:  &dyn Fn(QueryCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
+) -> GenericResult<IbcClientQueryResponse>
+where
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+
+    let ctx = QueryCtx {
+        store:           &ExternalStorage,
+        chain_id:        ctx.chain_id,
+        block_height:    ctx.block_height,
+        block_timestamp: ctx.block_timestamp,
+        block_hash:      ctx.block_hash,
+        contract:        ctx.contract,
+    };
+
+    query_fn(ctx, msg).into()
+}
