@@ -4,7 +4,7 @@ use {
     },
     cw_db::PrefixStore,
     cw_std::{
-        AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
+        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
         Context, GenericResult, Hash, InfoResponse, Order, QueryRequest, QueryResponse, StdResult,
         Storage, WasmRawResponse, WasmSmartResponse,
     },
@@ -103,7 +103,7 @@ fn query_balance<S: Storage + Clone + 'static>(
     address: Addr,
     denom:   String,
 ) -> AppResult<Coin> {
-    _query_bank(store, block, &BankQuery::Balance { address, denom })
+    _query_bank(store, block, &BankQueryMsg::Balance { address, denom })
         .map(|res| res.as_balance())
 }
 
@@ -114,7 +114,7 @@ fn query_balances<S: Storage + Clone + 'static>(
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> AppResult<Coins> {
-    _query_bank(store, block, &BankQuery::Balances { address, start_after, limit })
+    _query_bank(store, block, &BankQueryMsg::Balances { address, start_after, limit })
         .map(|res| res.as_balances())
 }
 
@@ -123,7 +123,7 @@ fn query_supply<S: Storage + Clone + 'static>(
     block: &BlockInfo,
     denom: String,
 ) -> AppResult<Coin> {
-    _query_bank(store, block, &BankQuery::Supply { denom })
+    _query_bank(store, block, &BankQueryMsg::Supply { denom })
         .map(|res| res.as_supply())
 }
 
@@ -133,14 +133,14 @@ fn query_supplies<S: Storage + Clone + 'static>(
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> AppResult<Coins> {
-    _query_bank(store, block, &BankQuery::Supplies { start_after, limit })
+    _query_bank(store, block, &BankQueryMsg::Supplies { start_after, limit })
         .map(|res| res.as_supplies())
 }
 
 fn _query_bank<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
-    msg:   &BankQuery,
+    msg:   &BankQueryMsg,
 ) -> AppResult<BankQueryResponse> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;

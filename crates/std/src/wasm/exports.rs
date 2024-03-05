@@ -1,6 +1,6 @@
 use {
     crate::{
-        from_json, to_json, AuthCtx, BankQuery, BankQueryResponse, Binary, Context, Event,
+        from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context, Event,
         ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg,
         IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SudoCtx,
         TransferMsg, Tx,
@@ -483,7 +483,7 @@ where
 // -------------------------------- bank query ---------------------------------
 
 pub fn do_bank_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    query_fn: &dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -500,7 +500,7 @@ where
 }
 
 fn _do_bank_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    query_fn: &dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<BankQueryResponse>

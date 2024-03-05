@@ -5,7 +5,7 @@ use {
         Environment, VmError, VmResult,
     },
     cw_std::{
-        from_json, to_json, BankQuery, BankQueryResponse, Binary, Context, Event, GenericResult,
+        from_json, to_json, BankQueryMsg, BankQueryResponse, Binary, Context, Event, GenericResult,
         Response, TransferMsg, Tx,
     },
     wasmer::{
@@ -148,7 +148,7 @@ where
     pub fn call_bank_query(
         &mut self,
         ctx: &Context,
-        msg: &BankQuery,
+        msg: &BankQueryMsg,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
         let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)

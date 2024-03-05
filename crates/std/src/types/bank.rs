@@ -52,7 +52,7 @@ pub struct TransferMsg {
 // caution when creating their own custom bank contracts.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum BankQuery {
+pub enum BankQueryMsg {
     Balance {
         address: Addr,
         denom:   String,

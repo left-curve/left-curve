@@ -3,7 +3,7 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_derive, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
+        cw_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
         MutableCtx, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
     },
     std::collections::{HashMap, HashSet},
@@ -230,21 +230,21 @@ fn decrease_balance(
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
+pub fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQuery::Balance {
+        BankQueryMsg::Balance {
             address,
             denom,
         } => query_balance(ctx, address, denom).map(BankQueryResponse::Balance),
-        BankQuery::Balances {
+        BankQueryMsg::Balances {
             address,
             start_after,
             limit,
         } => query_balances(ctx, address, start_after, limit).map(BankQueryResponse::Balances),
-        BankQuery::Supply {
+        BankQueryMsg::Supply {
             denom,
         } => query_supply(ctx, denom).map(BankQueryResponse::Supply),
-        BankQuery::Supplies {
+        BankQueryMsg::Supplies {
             start_after,
             limit,
         } => query_supplies(ctx, start_after, limit).map(BankQueryResponse::Supplies),

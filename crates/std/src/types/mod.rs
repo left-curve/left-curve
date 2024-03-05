@@ -25,7 +25,7 @@ pub use {
     app::{
         Account, BlockInfo, Config, GenesisState, Permission, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
-    bank::{BankQuery, BankQueryResponse, TransferMsg},
+    bank::{BankQueryMsg, BankQueryResponse, TransferMsg},
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
     db::{Batch, Op, Order, Record},

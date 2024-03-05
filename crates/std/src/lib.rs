@@ -21,7 +21,7 @@ pub use crate::{
     testing::MockStorage,
     traits::{Api, Querier, Storage},
     types::{
-        hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, Batch,
+        hash, Account, AccountResponse, Addr, Attribute, BankQueryMsg, BankQueryResponse, Batch,
         Binary, BlockInfo, ClientResponse, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config,
         Decimal, Decimal256, Empty, Event, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
         IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
