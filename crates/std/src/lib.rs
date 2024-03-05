@@ -26,8 +26,8 @@ pub use crate::{
         Decimal, Decimal256, Empty, Event, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
         IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
         InfoResponse, Message, Op, Order, Permission, QueryRequest, QueryResponse, Record, ReplyOn,
-        Response, SubMessage, Timestamp, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
-        WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        Response, SubMessage, SubMsgResult, Timestamp, TransferMsg, Tx, Uint128, Uint256, Uint512,
+        Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 

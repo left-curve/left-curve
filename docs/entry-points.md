@@ -34,7 +34,7 @@ fn migrate(ctx: MutableCtx, msg: MigrateMsg) -> Result<Response, Error>;
 fn receive(ctx: MutableCtx) -> Result<Response, Error>;
 
 #[entry_point]
-fn reply(ctx: SudoCtx, msg: ReplyMsg, events: GenericResult<Vec<Event>>) -> Result<Response, Error>;
+fn reply(ctx: SudoCtx, msg: ReplyMsg, submsg_res: SubMsgResult) -> Result<Response, Error>;
 
 #[entry_point]
 fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary, Error>;

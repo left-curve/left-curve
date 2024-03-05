@@ -43,7 +43,7 @@ pub use {
         WasmRawResponse, WasmSmartResponse,
     },
     response::{ReplyOn, Response, SubMessage},
-    result::GenericResult,
+    result::{GenericResult, SubMsgResult},
     timestamp::Timestamp,
     tx::{Message, Tx},
     uint128::Uint128,

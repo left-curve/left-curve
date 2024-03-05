@@ -1,9 +1,9 @@
 use {
     crate::{
-        from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context, Event,
+        from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context,
         ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg,
-        IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SudoCtx,
-        TransferMsg, Tx,
+        IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SubMsgResult,
+        SudoCtx, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -251,7 +251,7 @@ where
 // ----------------------------------- reply -----------------------------------
 
 pub fn do_reply<M, E>(
-    reply_fn: &dyn Fn(SudoCtx, M, GenericResult<Vec<Event>>) -> Result<Response, E>,
+    reply_fn: &dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
     events_ptr: usize,
@@ -271,7 +271,7 @@ where
 }
 
 fn _do_reply<M, E>(
-    reply_fn: &dyn Fn(SudoCtx, M, GenericResult<Vec<Event>>) -> Result<Response, E>,
+    reply_fn: &dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
     events_bytes: &[u8],

@@ -1,7 +1,11 @@
 use {
-    crate::{StdError, StdResult},
+    crate::{Event, StdError, StdResult},
     serde::{Deserialize, Serialize},
 };
+
+/// The result for executing a submessage, provided to the contract in the `reply`
+/// entry point.
+pub type SubMsgResult = GenericResult<Vec<Event>>;
 
 /// A result type that can be serialized into a string and thus passed over the
 /// FFI boundary.

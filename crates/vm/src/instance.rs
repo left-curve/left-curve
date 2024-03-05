@@ -5,8 +5,8 @@ use {
         Environment, VmError, VmResult,
     },
     cw_std::{
-        from_json, to_json, BankQueryMsg, BankQueryResponse, Binary, Context, Event, GenericResult,
-        Response, TransferMsg, Tx,
+        from_json, to_json, BankQueryMsg, BankQueryResponse, Binary, Context, GenericResult,
+        Response, SubMsgResult, TransferMsg, Tx,
     },
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -105,7 +105,7 @@ where
         &mut self,
         ctx: &Context,
         msg: impl AsRef<[u8]>,
-        events: &GenericResult<Vec<Event>>,
+        events: &SubMsgResult,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_2_out_1("reply", ctx, msg, to_json(events)?)?;
         from_json(res_bytes).map_err(Into::into)
