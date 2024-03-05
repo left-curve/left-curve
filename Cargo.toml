@@ -5,6 +5,7 @@ members  = [
   "contracts/account",
   "contracts/account-factory",
   "contracts/bank",
+  "contracts/ibc/clients/solomachine",
   # note: consider commenting out the mock contracts to speed up compilation,
   # if you don't need them.
   "contracts/mocks/amm",

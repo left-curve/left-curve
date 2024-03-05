@@ -820,6 +820,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-ibc-solomachine"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cw-std",
+]
+
+[[package]]
 name = "cw-jmt"
 version = "0.0.0"
 dependencies = [
