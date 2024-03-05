@@ -5,8 +5,8 @@ use {
         Environment, VmError, VmResult,
     },
     cw_std::{
-        from_json, to_json, BankQueryMsg, BankQueryResponse, Binary, Context, GenericResult,
-        Response, SubMsgResult, TransferMsg, Tx,
+        from_json, to_borsh, to_json, BankQueryMsg, BankQueryResponse, Binary, Context,
+        GenericResult, Response, SubMsgResult, TransferMsg, Tx,
     },
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -160,7 +160,7 @@ where
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh(ctx)?)?;
         let res_ptr: u32 = env
             .call_function1(&mut wasm_store, name, &[ctx_ptr.into()])?
             .try_into()
@@ -180,7 +180,7 @@ where
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh(ctx)?)?;
         let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
         let res_ptr: u32 = env
             .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), param1_ptr.into()])?
@@ -202,7 +202,7 @@ where
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh(ctx)?)?;
         let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut wasm_store, param2.as_ref())?;
         let res_ptr: u32 = env

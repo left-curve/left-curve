@@ -1,14 +1,11 @@
 use {
     crate::{Addr, Coins, Hash, Storage, Timestamp, Uint64},
-    serde::{Deserialize, Serialize},
-    serde_with::skip_serializing_none,
+    borsh::{BorshDeserialize, BorshSerialize},
 };
 
 /// This is a union of all context types. When doing a Wasm function call, the
 /// host constructs this, serialize to bytes, and pass it to the Wasm module.
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct Context {
     pub chain_id:        String,
     pub block_height:    Uint64,

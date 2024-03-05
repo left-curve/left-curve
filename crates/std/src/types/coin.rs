@@ -58,7 +58,7 @@ pub struct CoinRef<'a> {
     pub amount: &'a Uint128,
 }
 
-#[derive(Default, Clone, PartialEq, Eq)]
+#[derive(BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq)]
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {

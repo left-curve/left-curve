@@ -1,6 +1,6 @@
 use {
     crate::{
-        from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context,
+        from_borsh, from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context,
         ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg,
         IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SubMsgResult,
         SudoCtx, TransferMsg, Tx,
@@ -133,7 +133,7 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -169,7 +169,7 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -205,7 +205,7 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -241,7 +241,7 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -280,7 +280,7 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
     let events = try_into_generic_result!(from_json(events_bytes));
@@ -312,7 +312,7 @@ fn _do_receive<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
 
     receive_fn(mutable_ctx).into()
@@ -342,7 +342,7 @@ fn _do_before_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     before_block_fn(sudo_ctx).into()
@@ -372,7 +372,7 @@ fn _do_after_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     after_block_fn(sudo_ctx).into()
@@ -405,7 +405,7 @@ fn _do_before_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
     let tx = try_into_generic_result!(from_json(tx_bytes));
 
@@ -439,7 +439,7 @@ fn _do_after_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
     let tx = try_into_generic_result!(from_json(tx_bytes));
 
@@ -473,7 +473,7 @@ fn _do_bank_transfer<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -507,7 +507,7 @@ fn _do_bank_query<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -549,7 +549,7 @@ fn _do_ibc_client_create<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
     let client_state_bytes = try_into_generic_result!(from_json(client_state_bytes));
     let consensus_state_bytes = try_into_generic_result!(from_json(consensus_state_bytes));
@@ -584,7 +584,7 @@ fn _do_ibc_client_execute<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
@@ -618,7 +618,7 @@ fn _do_ibc_client_query<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
