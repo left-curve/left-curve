@@ -51,7 +51,6 @@ fn _before_block<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_before_block(&ctx)?.into_std_result()?;
 
@@ -106,7 +105,6 @@ fn _after_block<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_after_block(&ctx)?.into_std_result()?;
 

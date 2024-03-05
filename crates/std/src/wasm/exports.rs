@@ -1,6 +1,9 @@
 use {
     crate::{
-        from_json, to_json, AfterBlockCtx, AfterTxCtx, BankQuery, BankQueryResponse, BeforeBlockCtx, BeforeTxCtx, Binary, Context, ExecuteCtx, ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, Region, ReplyCtx, Response, SudoCtx, TransferCtx, TransferMsg, Tx
+        from_json, to_json, AuthCtx, BankQuery, BankQueryResponse, Binary, Context, Event,
+        ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg,
+        IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SudoCtx,
+        TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -35,12 +38,78 @@ macro_rules! try_into_generic_result {
     };
 }
 
+macro_rules! try_unwrap_field {
+    ($field:expr, $name:literal) => {
+        match $field {
+            Some(field) => field,
+            None => {
+                return Err(StdError::missing_context($name)).into();
+            },
+        }
+    }
+}
+
+macro_rules! make_immutable_ctx {
+    ($ctx:ident) => {
+        ImmutableCtx {
+            store:           &ExternalStorage,
+            chain_id:        $ctx.chain_id,
+            block_height:    $ctx.block_height,
+            block_timestamp: $ctx.block_timestamp,
+            block_hash:      $ctx.block_hash,
+            contract:        $ctx.contract,
+        }
+    }
+}
+
+macro_rules! make_mutable_ctx {
+    ($ctx:ident) => {
+        MutableCtx {
+            store:           &mut ExternalStorage,
+            chain_id:        $ctx.chain_id,
+            block_height:    $ctx.block_height,
+            block_timestamp: $ctx.block_timestamp,
+            block_hash:      $ctx.block_hash,
+            contract:        $ctx.contract,
+            sender:          try_unwrap_field!($ctx.sender, "sender"),
+            funds:           try_unwrap_field!($ctx.funds, "funds"),
+        }
+    }
+}
+
+macro_rules! make_sudo_ctx {
+    ($ctx:ident) => {
+        SudoCtx {
+            store:           &mut ExternalStorage,
+            chain_id:        $ctx.chain_id,
+            block_height:    $ctx.block_height,
+            block_timestamp: $ctx.block_timestamp,
+            block_hash:      $ctx.block_hash,
+            contract:        $ctx.contract,
+        }
+    }
+}
+
+macro_rules! make_auth_ctx {
+    ($ctx:ident) => {
+        AuthCtx {
+            store:           &mut ExternalStorage,
+            chain_id:        $ctx.chain_id,
+            block_height:    $ctx.block_height,
+            block_timestamp: $ctx.block_timestamp,
+            block_hash:      $ctx.block_hash,
+            contract:        $ctx.contract,
+            simulate:        try_unwrap_field!($ctx.simulate, "simulate"),
+        }
+    }
+}
+
 // -------------------------------- instantiate --------------------------------
 
 pub fn do_instantiate<M, E>(
-    instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
-    ctx_ptr:        usize,
-    msg_ptr:        usize,
+    instantiate_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     M: DeserializeOwned,
@@ -56,37 +125,27 @@ where
 }
 
 fn _do_instantiate<M, E>(
-    instantiate_fn: &dyn Fn(InstantiateCtx, M) -> Result<Response, E>,
-    ctx_bytes:      &[u8],
-    msg_bytes:      &[u8],
+    instantiate_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = InstantiateCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to provide a sender"),
-        funds:           ctx.funds.expect("host failed to provide funds"),
-    };
-
-    instantiate_fn(ctx, msg).into()
+    instantiate_fn(mutable_ctx, msg).into()
 }
 
 // ---------------------------------- execute ----------------------------------
 
 pub fn do_execute<M, E>(
-    execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
-    ctx_ptr:    usize,
-    msg_ptr:    usize,
+    execute_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     M: DeserializeOwned,
@@ -102,37 +161,27 @@ where
 }
 
 fn _do_execute<M, E>(
-    execute_fn: &dyn Fn(ExecuteCtx, M) -> Result<Response, E>,
-    ctx_bytes:  &[u8],
-    msg_bytes:  &[u8],
+    execute_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     M: DeserializeOwned,
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = ExecuteCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to provide a sender"),
-        funds:           ctx.funds.expect("host failed to provide funds"),
-    };
-
-    execute_fn(ctx, msg).into()
+    execute_fn(mutable_ctx, msg).into()
 }
 
 // ----------------------------------- query -----------------------------------
 
 pub fn do_query<M, E>(
-    query_fn: &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
-    ctx_ptr:  usize,
-    msg_ptr:  usize,
+    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Binary, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     M: DeserializeOwned,
@@ -148,7 +197,7 @@ where
 }
 
 fn _do_query<M, E>(
-    query_fn:  &dyn Fn(QueryCtx, M) -> Result<Binary, E>,
+    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Binary, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<Binary>
@@ -157,26 +206,18 @@ where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = QueryCtx {
-        store:           &ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    query_fn(ctx, msg).into()
+    query_fn(immutable_ctx, msg).into()
 }
 
 // ---------------------------------- migrate ----------------------------------
 
 pub fn do_migrate<M, E>(
-    migrate_fn: &dyn Fn(MigrateCtx, M) -> Result<Response, E>,
-    ctx_ptr:    usize,
-    msg_ptr:    usize,
+    migrate_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     M: DeserializeOwned,
@@ -192,52 +233,7 @@ where
 }
 
 fn _do_migrate<M, E>(
-    migrate_fn: &dyn Fn(MigrateCtx, M) -> Result<Response, E>,
-    ctx_bytes:  &[u8],
-    msg_bytes:  &[u8],
-) -> GenericResult<Response>
-where
-    M: DeserializeOwned,
-    E: ToString,
-{
-    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
-    let msg = try_into_generic_result!(from_json(msg_bytes));
-
-    let ctx = MigrateCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to provide a sender"),
-    };
-
-    migrate_fn(ctx, msg).into()
-}
-
-// ----------------------------------- reply -----------------------------------
-
-pub fn do_reply<M, E>(
-    reply_fn: &dyn Fn(ReplyCtx, M) -> Result<Response, E>,
-    ctx_ptr:  usize,
-    msg_ptr:  usize,
-) -> usize
-where
-    M: DeserializeOwned,
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
-
-    let res = _do_reply(reply_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
-
-    Region::release_buffer(res_bytes.into()) as usize
-}
-
-fn _do_reply<M, E>(
-    reply_fn:  &dyn Fn(ReplyCtx, M) -> Result<Response, E>,
+    migrate_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<Response>
@@ -246,26 +242,57 @@ where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let mutable_ctx = make_mutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = ReplyCtx {
-        store: &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        submsg_result:   ctx.submsg_result.expect("host failed to specify submsg result"),
-    };
+    migrate_fn(mutable_ctx, msg).into()
+}
 
-    reply_fn(ctx, msg).into()
+// ----------------------------------- reply -----------------------------------
+
+pub fn do_reply<M, E>(
+    reply_fn: &dyn Fn(SudoCtx, M, GenericResult<Vec<Event>>) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
+    events_ptr: usize,
+) -> usize
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
+    let events_bytes = unsafe { Region::consume(events_ptr as *mut Region) };
+
+    let res = _do_reply(reply_fn, &ctx_bytes, &msg_bytes, &events_bytes);
+    let res_bytes = to_json(&res).unwrap();
+
+    Region::release_buffer(res_bytes.into()) as usize
+}
+
+fn _do_reply<M, E>(
+    reply_fn: &dyn Fn(SudoCtx, M, GenericResult<Vec<Event>>) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
+    events_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    M: DeserializeOwned,
+    E: ToString,
+{
+    let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
+    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let events = try_into_generic_result!(from_json(events_bytes));
+
+    reply_fn(sudo_ctx, msg, events).into()
 }
 
 // ---------------------------------- receive ----------------------------------
 
 pub fn do_receive<E>(
-    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
-    ctx_ptr:    usize,
+    receive_fn: &dyn Fn(MutableCtx) -> Result<Response, E>,
+    ctx_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -279,32 +306,22 @@ where
 }
 
 fn _do_receive<E>(
-    receive_fn: &dyn Fn(ReceiveCtx) -> Result<Response, E>,
-    ctx_bytes:  &[u8],
+    receive_fn: &dyn Fn(MutableCtx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let mutable_ctx = make_mutable_ctx!(ctx);
 
-    let ctx = ReceiveCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        sender:          ctx.sender.expect("host failed to specify sender"),
-        funds:           ctx.funds.expect("host failed to specify funds"),
-    };
-
-    receive_fn(ctx).into()
+    receive_fn(mutable_ctx).into()
 }
 
 // ------------------------------- before block --------------------------------
 
 pub fn do_before_block<E>(
-    before_block_fn: &dyn Fn(BeforeBlockCtx) -> Result<Response, E>,
+    before_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_ptr: usize,
 ) -> usize
 where
@@ -319,30 +336,22 @@ where
 }
 
 fn _do_before_block<E>(
-    before_block_fn: &dyn Fn(BeforeBlockCtx) -> Result<Response, E>,
+    before_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
 
-    let ctx = BeforeBlockCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    before_block_fn(ctx).into()
+    before_block_fn(sudo_ctx).into()
 }
 
 // -------------------------------- after block --------------------------------
 
 pub fn do_after_block<E>(
-    after_block_fn: &dyn Fn(AfterBlockCtx) -> Result<Response, E>,
+    after_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_ptr: usize,
 ) -> usize
 where
@@ -357,32 +366,24 @@ where
 }
 
 fn _do_after_block<E>(
-    after_block_fn: &dyn Fn(AfterBlockCtx) -> Result<Response, E>,
+    after_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
 
-    let ctx = AfterBlockCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    after_block_fn(ctx).into()
+    after_block_fn(sudo_ctx).into()
 }
 
 // --------------------------------- before tx ---------------------------------
 
 pub fn do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_ptr:      usize,
-    tx_ptr:       usize,
+    before_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
+    ctx_ptr: usize,
+    tx_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -397,35 +398,26 @@ where
 }
 
 fn _do_before_tx<E>(
-    before_tx_fn: &dyn Fn(BeforeTxCtx, Tx) -> Result<Response, E>,
-    ctx_bytes:    &[u8],
-    tx_bytes:     &[u8],
+    before_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    tx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let auth_ctx = make_auth_ctx!(ctx);
     let tx = try_into_generic_result!(from_json(tx_bytes));
 
-    let ctx = BeforeTxCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        simulate:        ctx.simulate.expect("host failed to specify whether it's simulation mode"),
-    };
-
-    before_tx_fn(ctx, tx).into()
+    before_tx_fn(auth_ctx, tx).into()
 }
 
 // --------------------------------- after tx ----------------------------------
 
 pub fn do_after_tx<E>(
-    after_tx_fn: &dyn Fn(AfterTxCtx, Tx) -> Result<Response, E>,
-    ctx_ptr:     usize,
-    tx_ptr:      usize,
+    after_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
+    ctx_ptr: usize,
+    tx_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -440,35 +432,26 @@ where
 }
 
 fn _do_after_tx<E>(
-    after_tx_fn: &dyn Fn(AfterTxCtx, Tx) -> Result<Response, E>,
-    ctx_bytes:   &[u8],
-    tx_bytes:    &[u8],
+    after_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    tx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let auth_ctx = make_auth_ctx!(ctx);
     let tx = try_into_generic_result!(from_json(tx_bytes));
 
-    let ctx = AfterTxCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-        simulate:        ctx.simulate.expect("host failed to specify whether it's simulation mode"),
-    };
-
-    after_tx_fn(ctx, tx).into()
+    after_tx_fn(auth_ctx, tx).into()
 }
 
 // --------------------------------- transfer ----------------------------------
 
 pub fn do_transfer<E>(
-    transfer_fn: &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
-    ctx_ptr:     usize,
-    msg_ptr:     usize,
+    transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -483,34 +466,26 @@ where
 }
 
 fn _do_transfer<E>(
-    transfer_fn:  &dyn Fn(TransferCtx, TransferMsg) -> Result<Response, E>,
-    ctx_bytes:    &[u8],
-    msg_bytes:    &[u8],
+    transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
 ) -> GenericResult<Response>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = TransferCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    transfer_fn(ctx, msg).into()
+    transfer_fn(sudo_ctx, msg).into()
 }
 
 // -------------------------------- bank query ---------------------------------
 
 pub fn do_query_bank<E>(
-    query_bank_fn: &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
-    ctx_ptr:       usize,
-    msg_ptr:       usize,
+    query_bank_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -525,26 +500,18 @@ where
 }
 
 fn _do_query_bank<E>(
-    query_bank_fn:  &dyn Fn(QueryCtx, BankQuery) -> Result<BankQueryResponse, E>,
-    ctx_bytes:      &[u8],
-    msg_bytes:      &[u8],
+    query_bank_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+    ctx_bytes: &[u8],
+    msg_bytes: &[u8],
 ) -> GenericResult<BankQueryResponse>
 where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = QueryCtx {
-        store:           &ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    query_bank_fn(ctx, msg).into()
+    query_bank_fn(immutable_ctx, msg).into()
 }
 
 // ----------------------------- ibc client create -----------------------------
@@ -583,19 +550,11 @@ where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
     let client_state_bytes = try_into_generic_result!(from_json(client_state_bytes));
     let consensus_state_bytes = try_into_generic_result!(from_json(consensus_state_bytes));
 
-    let ctx = SudoCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    create_fn(ctx, client_state_bytes, consensus_state_bytes).into()
+    create_fn(sudo_ctx, client_state_bytes, consensus_state_bytes).into()
 }
 
 // ---------------------------- ibc client execute -----------------------------
@@ -626,26 +585,18 @@ where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = SudoCtx {
-        store:           &mut ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    execute_fn(ctx, msg).into()
+    execute_fn(sudo_ctx, msg).into()
 }
 
 // ----------------------------- ibc client query ------------------------------
 
 pub fn do_ibc_client_query<E>(
-    query_fn: &dyn Fn(QueryCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
-    ctx_ptr:  usize,
-    msg_ptr:  usize,
+    query_fn: &dyn Fn(ImmutableCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+    ctx_ptr: usize,
+    msg_ptr: usize,
 ) -> usize
 where
     E: ToString,
@@ -660,7 +611,7 @@ where
 }
 
 fn _do_ibc_client_query<E>(
-    query_fn:  &dyn Fn(QueryCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+    query_fn: &dyn Fn(ImmutableCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<IbcClientQueryResponse>
@@ -668,16 +619,8 @@ where
     E: ToString,
 {
     let ctx: Context = try_into_generic_result!(from_json(ctx_bytes));
+    let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    let ctx = QueryCtx {
-        store:           &ExternalStorage,
-        chain_id:        ctx.chain_id,
-        block_height:    ctx.block_height,
-        block_timestamp: ctx.block_timestamp,
-        block_hash:      ctx.block_hash,
-        contract:        ctx.contract,
-    };
-
-    query_fn(ctx, msg).into()
+    query_fn(immutable_ctx, msg).into()
 }

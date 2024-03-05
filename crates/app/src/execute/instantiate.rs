@@ -89,7 +89,6 @@ fn _instantiate<S: Storage + Clone + 'static>(
         sender:          Some(sender.clone()),
         funds:           Some(funds),
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 

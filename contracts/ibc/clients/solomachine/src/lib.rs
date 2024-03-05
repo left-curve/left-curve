@@ -42,8 +42,8 @@ use {
     anyhow::{bail, ensure},
     cw_std::{
         cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, IbcClientExecuteMsg,
-        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus, Item,
-        QueryCtx, Response, StdResult, SudoCtx,
+        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
+        ImmutableCtx, Item, Response, StdResult, SudoCtx,
     },
 };
 
@@ -186,7 +186,7 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Resul
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_query(
-    ctx: QueryCtx,
+    ctx: ImmutableCtx,
     msg: IbcClientQueryMsg,
 ) -> anyhow::Result<IbcClientQueryResponse> {
     match msg {
@@ -208,7 +208,7 @@ pub fn ibc_client_query(
     }
 }
 
-pub fn query_state(ctx: QueryCtx) -> anyhow::Result<IbcClientStateResponse> {
+pub fn query_state(ctx: ImmutableCtx) -> anyhow::Result<IbcClientStateResponse> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
     Ok(IbcClientStateResponse {
@@ -217,7 +217,7 @@ pub fn query_state(ctx: QueryCtx) -> anyhow::Result<IbcClientStateResponse> {
     })
 }
 
-pub fn verify_membership(ctx: QueryCtx, path: Binary, data: Binary) -> anyhow::Result<()> {
+pub fn verify_membership(ctx: ImmutableCtx, path: Binary, data: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
@@ -245,7 +245,7 @@ pub fn verify_membership(ctx: QueryCtx, path: Binary, data: Binary) -> anyhow::R
     Ok(())
 }
 
-pub fn verify_non_membership(ctx: QueryCtx, path: Binary) -> anyhow::Result<()> {
+pub fn verify_non_membership(ctx: ImmutableCtx, path: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 

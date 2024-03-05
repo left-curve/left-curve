@@ -79,6 +79,13 @@ pub fn process_query<S: Storage + Clone + 'static>(
             contract,
             msg
         } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
+        QueryRequest::Client {
+            client_id: _,
+        } => todo!(),
+        QueryRequest::Clients {
+            start_after: _,
+            limit: _,
+        } => todo!(),
     }
 }
 
@@ -156,7 +163,6 @@ fn _query_bank<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     instance.call_query_bank(&ctx, msg)?.into_std_result().map_err(Into::into)
 }
@@ -251,7 +257,6 @@ fn query_wasm_smart<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     let data = instance.call_query(&ctx, msg)?.into_std_result()?;
 

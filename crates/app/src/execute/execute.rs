@@ -68,7 +68,6 @@ fn _execute<S: Storage + Clone + 'static>(
         sender:          Some(sender.clone()),
         funds:           Some(funds),
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 

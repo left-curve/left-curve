@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use cw_std::{
-    cw_derive, to_json, Addr, Coins, InstantiateCtx, Item, Message, ReceiveCtx, Response, StdResult,
-    SubMessage, Uint128,
+    cw_derive, to_json, Addr, Coins, Item, Message, MutableCtx, Response, StdResult, SubMessage,
+    Uint128,
 };
 
 // we namespace all wrapped token denoms with this
@@ -18,14 +18,14 @@ pub struct InstantiateMsg {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     BANK.save(ctx.store, &msg.bank)?;
 
     Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn receive(ctx: ReceiveCtx) -> StdResult<Response> {
+pub fn receive(ctx: MutableCtx) -> StdResult<Response> {
     let bank = BANK.load(ctx.store)?;
 
     let mut submsgs = vec![];
@@ -114,7 +114,7 @@ mod tests {
         BANK.save(&mut store, &mock_bank)?;
 
         // TODO: this should be a helper function, something like ReceiveCtx::mock
-        let ctx = ReceiveCtx {
+        let ctx = MutableCtx {
             store:           &mut store,
             chain_id:        "dev-1".into(),
             block_height:    Uint64::new(0),

@@ -3,8 +3,8 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, to_json, Addr, Binary, Coin, Coins, ExecuteCtx, InstantiateCtx, Item, Message,
-        Querier, QueryCtx, ReceiveCtx, Response, StdResult, Uint128, Uint256,
+        cw_derive, to_json, Addr, Binary, Coin, Coins, ImmutableCtx, Item, Message, MutableCtx,
+        Querier, Response, StdResult, Uint128, Uint256,
     },
     std::cmp,
 };
@@ -68,19 +68,19 @@ pub fn share_token_denom(contract: &Addr) -> String {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     CONFIG.save(ctx.store, &msg)?;
 
     Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn receive(_: ReceiveCtx) -> anyhow::Result<Response> {
+pub fn receive(_: MutableCtx) -> anyhow::Result<Response> {
     bail!("do not send tokens directly to this contract");
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::ProvideLiquidity {
             minimum_receive,
@@ -95,7 +95,7 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 pub fn provide_liquidity(
-    ctx: ExecuteCtx,
+    ctx: MutableCtx,
     minimum_receive: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // check the token(s) sent
@@ -156,7 +156,7 @@ pub fn provide_liquidity(
 }
 
 pub fn withdraw_liquidity(
-    ctx: ExecuteCtx,
+    ctx: MutableCtx,
     minimum_receive: Option<Coins>,
 ) -> anyhow::Result<Response> {
     // check the token(s) sent
@@ -204,7 +204,7 @@ pub fn withdraw_liquidity(
         }))
 }
 
-pub fn swap(ctx: ExecuteCtx, minimum_receive: Option<Uint128>) -> anyhow::Result<Response> {
+pub fn swap(ctx: MutableCtx, minimum_receive: Option<Uint128>) -> anyhow::Result<Response> {
     // check the token(s) sent
     let cfg = CONFIG.load(ctx.store)?;
     let offer = ctx.funds.one_coin()?;
@@ -244,7 +244,7 @@ pub fn swap(ctx: ExecuteCtx, minimum_receive: Option<Uint128>) -> anyhow::Result
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     match msg {
         QueryMsg::Config {} => to_json(&query_config(ctx)?),
         QueryMsg::Simulate {
@@ -257,11 +257,11 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
     .map_err(Into::into)
 }
 
-pub fn query_config(ctx: QueryCtx) -> StdResult<Config> {
+pub fn query_config(ctx: ImmutableCtx) -> StdResult<Config> {
     CONFIG.load(ctx.store)
 }
 
-pub fn query_simulate(ctx: QueryCtx, offer: Coin) -> anyhow::Result<Coin> {
+pub fn query_simulate(ctx: ImmutableCtx, offer: Coin) -> anyhow::Result<Coin> {
     let cfg = CONFIG.load(ctx.store)?;
     let ask_denom = if offer.denom == cfg.denom1 {
         cfg.denom2
@@ -278,7 +278,7 @@ pub fn query_simulate(ctx: QueryCtx, offer: Coin) -> anyhow::Result<Coin> {
     Ok(Coin::new(ask_denom, ask_amount))
 }
 
-pub fn query_reverse_simulate(ctx: QueryCtx, ask: Coin) -> anyhow::Result<Coin> {
+pub fn query_reverse_simulate(ctx: ImmutableCtx, ask: Coin) -> anyhow::Result<Coin> {
     let cfg = CONFIG.load(ctx.store)?;
     let offer_denom = if ask.denom == cfg.denom1 {
         cfg.denom2

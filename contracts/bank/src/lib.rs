@@ -3,9 +3,8 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_derive, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ExecuteCtx,
-        InstantiateCtx, Map, Order, QueryCtx, ReceiveCtx, Response, StdResult, Storage,
-        TransferCtx, TransferMsg, Uint128,
+        cw_derive, Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
+        MutableCtx, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
     },
     std::collections::{HashMap, HashSet},
 };
@@ -45,7 +44,7 @@ pub enum ExecuteMsg {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     // need to make sure there are no duplicate address in initial balances.
     // we don't need to dedup denoms however. if there's duplicate denoms, the
     // deserialization setup should have already thrown an error.
@@ -90,7 +89,7 @@ fn accumulate_supply(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
+pub fn transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.store, &msg.from, coin.denom, *coin.amount)?;
         increase_balance(ctx.store, &msg.to, coin.denom, *coin.amount)?;
@@ -104,14 +103,14 @@ pub fn transfer(ctx: TransferCtx, msg: TransferMsg) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn receive(_ctx: ReceiveCtx) -> anyhow::Result<Response> {
+pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     // we do not expect anyone to send any fund to this contract.
     // throw an error to revert the transfer.
     bail!("do not send funds to this contract");
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Mint {
             to,
@@ -129,7 +128,7 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 // NOTE: we haven't implement gatekeeping for minting/burning yet. for now
 // anyone can mint any denom to any account, or burn any token from any account.
 pub fn mint(
-    ctx:    ExecuteCtx,
+    ctx:    MutableCtx,
     to:     Addr,
     denom:  String,
     amount: Uint128,
@@ -147,7 +146,7 @@ pub fn mint(
 // NOTE: we haven't implement gatekeeping for minting/burning yet. for now
 // anyone can mint any denom to any account, or burn any token from any account.
 pub fn burn(
-    ctx:    ExecuteCtx,
+    ctx:    MutableCtx,
     from:   Addr,
     denom:  String,
     amount: Uint128,
@@ -231,7 +230,7 @@ fn decrease_balance(
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query_bank(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
+pub fn query_bank(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance {
             address,
@@ -252,7 +251,7 @@ pub fn query_bank(ctx: QueryCtx, msg: BankQuery) -> StdResult<BankQueryResponse>
     }
 }
 
-pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> StdResult<Coin> {
+pub fn query_balance(ctx: ImmutableCtx, address: Addr, denom: String) -> StdResult<Coin> {
     let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
     Ok(Coin {
         denom,
@@ -261,7 +260,7 @@ pub fn query_balance(ctx: QueryCtx, address: Addr, denom: String) -> StdResult<C
 }
 
 pub fn query_balances(
-    ctx:         QueryCtx,
+    ctx:         ImmutableCtx,
     address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
@@ -275,7 +274,7 @@ pub fn query_balances(
     Coins::from_iter_unchecked(&mut iter)
 }
 
-pub fn query_supply(ctx: QueryCtx, denom: String) -> StdResult<Coin> {
+pub fn query_supply(ctx: ImmutableCtx, denom: String) -> StdResult<Coin> {
     let maybe_supply = SUPPLIES.may_load(ctx.store, &denom)?;
     Ok(Coin {
         denom,
@@ -284,7 +283,7 @@ pub fn query_supply(ctx: QueryCtx, denom: String) -> StdResult<Coin> {
 }
 
 pub fn query_supplies(
-    ctx:         QueryCtx,
+    ctx:         ImmutableCtx,
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> StdResult<Coins> {

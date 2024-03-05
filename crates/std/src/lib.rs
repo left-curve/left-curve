@@ -1,5 +1,6 @@
 // -------------------------------- all targets --------------------------------
 
+mod context;
 mod error;
 mod forward_ref;
 mod serde;
@@ -9,6 +10,7 @@ mod traits;
 mod types;
 
 pub use crate::{
+    context::{AuthCtx, Context, ImmutableCtx, MutableCtx, SudoCtx},
     error::{StdError, StdResult},
     serde::{from_borsh, from_json, to_borsh, to_json},
     storage::{
@@ -19,14 +21,12 @@ pub use crate::{
     testing::MockStorage,
     traits::{Api, Querier, Storage},
     types::{
-        hash, Account, AccountResponse, Addr, AfterBlockCtx, AfterTxCtx, Attribute, BankQuery,
-        BankQueryResponse, Batch, BeforeBlockCtx, BeforeTxCtx, Binary, BlockInfo, ClientResponse,
-        Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config, Context, Decimal, Decimal256,
-        Empty, Event, ExecuteCtx, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
+        hash, Account, AccountResponse, Addr, Attribute, BankQuery, BankQueryResponse, Batch,
+        Binary, BlockInfo, ClientResponse, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config,
+        Decimal, Decimal256, Empty, Event, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
         IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
-        InfoResponse, InstantiateCtx, Message, MigrateCtx, Op, Order, Permission, QueryCtx,
-        QueryRequest, QueryResponse, ReceiveCtx, Record, ReplyCtx, ReplyOn, Response, SubMessage,
-        SudoCtx, Timestamp, TransferCtx, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        InfoResponse, Message, Op, Order, Permission, QueryRequest, QueryResponse, Record, ReplyOn,
+        Response, SubMessage, Timestamp, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
         WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };

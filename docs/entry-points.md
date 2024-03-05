@@ -22,22 +22,22 @@ These are basic entry points that pretty much every contract may need to impleme
 
 ```rust
 #[entry_point]
-fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> Result<Response, Error>;
+fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> Result<Response, Error>;
+fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn query(ctx: QueryCtx, msg: QueryMsg) -> Result<Binary, Error>;
+fn migrate(ctx: MutableCtx, msg: MigrateMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn migrate(ctx: MigrateCtx, msg: MigrateMsg) -> Result<Response, Error>;
+fn receive(ctx: MutableCtx) -> Result<Response, Error>;
 
 #[entry_point]
-fn reply(ctx: ReplyCtx, msg: ReplyMsg) -> Result<Response, Error>;
+fn reply(ctx: SudoCtx, msg: ReplyMsg, events: GenericResult<Vec<Event>>) -> Result<Response, Error>;
 
 #[entry_point]
-fn receive(ctx: ReceiveCtx) -> Result<Response, Error>;
+fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary, Error>;
 ```
 
 ## Account
@@ -46,10 +46,10 @@ These are entry points that a contract needs in order to be able to initiate tra
 
 ```rust
 #[entry_point]
-fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> Result<Response, Error>;
+fn before_tx(ctx: AuthCtx, tx: Tx) -> Result<Response, Error>;
 
 #[entry_point]
-fn after_tx(ctx: AfterTxCtx, tx: Tx) -> Result<Response, Error>;
+fn after_tx(ctx: AuthCtx, tx: Tx) -> Result<Response, Error>;
 ```
 
 ## Cronjobs
@@ -58,10 +58,10 @@ Each chain can optionally have one _begin blocker_ contract and an _end blocker_
 
 ```rust
 #[entry_point]
-fn before_block(ctx: BeforeBlockCtx) -> Result<Response, Error>;
+fn before_block(ctx: SudoCtx) -> Result<Response, Error>;
 
 #[entry_point]
-fn after_block(ctx: AfterBlockCtx) -> Result<Response, Error>;
+fn after_block(ctx: SudoCtx) -> Result<Response, Error>;
 ```
 
 ## Bank
@@ -70,10 +70,10 @@ These are mandatory entry points for the chain's **bank** contract.
 
 ```rust
 #[entry_point]
-fn transfer(ctx: TransferCtx, msg: TransferMsg) -> Result<Response, Error>;
+fn bank_execute(ctx: SudoCtx, msg: BankExecuteMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn query_bank(ctx: QueryCtx, msg: BankQueryMsg) -> Result<BankQueryResponse, Error>;
+fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> Result<BankQueryResponse, Error>;
 ```
 
 ## Gas
@@ -101,7 +101,7 @@ fn ibc_client_create(ctx: SudoCtx, client_state: Binary, consensus_state: Binary
 fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> Result<Response, Error>;
 
 #[entry_point]
-fn ibc_client_query(ctx: QueryCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse, Error>;
+fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse, Error>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:

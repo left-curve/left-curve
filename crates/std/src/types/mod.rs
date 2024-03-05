@@ -3,7 +3,6 @@ mod app;
 mod bank;
 mod binary;
 mod coin;
-mod context;
 mod db;
 mod decimal;
 mod decimal256;
@@ -29,10 +28,6 @@ pub use {
     bank::{BankQuery, BankQueryResponse, TransferMsg},
     binary::Binary,
     coin::{Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter},
-    context::{
-        AfterBlockCtx, AfterTxCtx, BeforeBlockCtx, BeforeTxCtx, Context, ExecuteCtx,
-        InstantiateCtx, MigrateCtx, QueryCtx, ReceiveCtx, ReplyCtx, SudoCtx, TransferCtx,
-    },
     db::{Batch, Op, Order, Record},
     decimal::Decimal,
     decimal256::Decimal256,

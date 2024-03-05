@@ -3,9 +3,8 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_derive, split_one_key, to_json, Addr, AfterTxCtx, Api, BeforeTxCtx, Binary, ExecuteCtx,
-        InstantiateCtx, Item, MapKey, Message, QueryCtx, RawKey, ReceiveCtx, Response, StdError,
-        StdResult, Tx,
+        cw_derive, split_one_key, to_json, Addr, Api, AuthCtx, Binary, ImmutableCtx, Item, MapKey,
+        Message, MutableCtx, RawKey, Response, StdError, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -127,7 +126,7 @@ pub fn sign_bytes(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     PUBLIC_KEY.save(ctx.store, &msg.public_key)?;
     SEQUENCE.save(ctx.store, &0)?;
 
@@ -135,7 +134,7 @@ pub fn instantiate(ctx: InstantiateCtx, msg: InstantiateMsg) -> anyhow::Result<R
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
+pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
     // do nothing, accept all transfers. log the receipt to events
     Ok(Response::new()
         .add_attribute("method", "receive")
@@ -144,7 +143,7 @@ pub fn receive(ctx: ReceiveCtx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
+pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.store)?;
     let mut sequence = SEQUENCE.load(ctx.store)?;
 
@@ -174,24 +173,24 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn after_tx(_ctx: AfterTxCtx, _tx: Tx) -> anyhow::Result<Response> {
+pub fn after_tx(_ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     // nothing to do
     Ok(Response::new().add_attribute("method", "after_tx"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(_ctx: ExecuteCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
+pub fn execute(_ctx: MutableCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
     bail!("no execute method is available for this contract");
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_json(&query_state(ctx)?),
     }
 }
 
-pub fn query_state(ctx: QueryCtx) -> StdResult<StateResponse> {
+pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
         public_key: PUBLIC_KEY.load(ctx.store)?,
         sequence: SEQUENCE.load(ctx.store)?,

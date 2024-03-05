@@ -5,8 +5,8 @@ use {
         Environment, VmError, VmResult,
     },
     cw_std::{
-        from_json, to_json, BankQuery, BankQueryResponse, Binary, Context, GenericResult, Response,
-        TransferMsg, Tx,
+        from_json, to_json, BankQuery, BankQueryResponse, Binary, Context, Event, GenericResult,
+        Response, TransferMsg, Tx,
     },
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -15,8 +15,8 @@ use {
 
 pub struct Instance<S, Q> {
     _wasm_instance: Box<WasmerInstance>,
-    wasm_store:     Store,
-    fe:             FunctionEnv<Environment<S, Q>>,
+    wasm_store: Store,
+    fe: FunctionEnv<Environment<S, Q>>,
 }
 
 impl<S, Q> Instance<S, Q>
@@ -105,8 +105,9 @@ where
         &mut self,
         ctx: &Context,
         msg: impl AsRef<[u8]>,
+        events: &GenericResult<Vec<Event>>,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("reply", ctx, msg)?;
+        let res_bytes = self.call_in_2_out_1("reply", ctx, msg, to_json(events)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
@@ -125,20 +126,12 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_before_tx(
-        &mut self,
-        ctx: &Context,
-        tx:  &Tx,
-    ) -> VmResult<GenericResult<Response>> {
+    pub fn call_before_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("before_tx", ctx, to_json(tx)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_after_tx(
-        &mut self,
-        ctx: &Context,
-        tx:  &Tx,
-    ) -> VmResult<GenericResult<Response>> {
+    pub fn call_after_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json(tx)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
@@ -161,8 +154,8 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
-    /// Call the a Wasm export function. This method expects no input (besides
-    /// the context) and exactly 1 output.
+    /// Call a Wasm export function that takes exactly 0 input parameter (other
+    /// than the context) and produces exactly 1 output.
     fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
@@ -176,21 +169,48 @@ where
         read_then_wipe(env, &mut wasm_store, res_ptr)
     }
 
-    /// Call the a Wasm export function. This method expects exactly 1 input
-    /// (besides the context) and exactly 1 output.
+    /// Call a Wasm export function that takes exactly 1 input parameter (other
+    /// than the context) and produces exactly 1 output.
     fn call_in_1_out_1(
         &mut self,
         name: &str,
-        ctx:  &Context,
-        msg:  impl AsRef<[u8]>,
+        ctx: &Context,
+        param1: impl AsRef<[u8]>,
     ) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
-        let msg_ptr = write_to_memory(env, &mut wasm_store, msg.as_ref())?;
+        let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
         let res_ptr: u32 = env
-            .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), msg_ptr.into()])?
+            .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), param1_ptr.into()])?
+            .try_into()
+            .map_err(VmError::ReturnType)?;
+
+        read_then_wipe(env, &mut wasm_store, res_ptr)
+    }
+
+    /// Call a Wasm export function that takes exactly 2 input parameters (other
+    /// than the context) and produces exactly 1 output.
+    fn call_in_2_out_1(
+        &mut self,
+        name: &str,
+        ctx: &Context,
+        param1: impl AsRef<[u8]>,
+        param2: impl AsRef<[u8]>,
+    ) -> VmResult<Vec<u8>> {
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
+        let (env, mut wasm_store) = fe_mut.data_and_store_mut();
+
+        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_json(ctx)?)?;
+        let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
+        let param2_ptr = write_to_memory(env, &mut wasm_store, param2.as_ref())?;
+        let res_ptr: u32 = env
+            .call_function1(
+                &mut wasm_store,
+                name,
+                &[ctx_ptr.into(), param1_ptr.into(), param2_ptr.into()],
+            )?
             .try_into()
             .map_err(VmError::ReturnType)?;
 

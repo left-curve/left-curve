@@ -89,13 +89,13 @@ pub fn handle_submessages(
 }
 
 fn reply<S: Storage + Clone + 'static>(
-    store:         S,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    payload:       Binary,
-    submsg_result: GenericResult<Vec<Event>>,
+    store:    S,
+    block:    &BlockInfo,
+    contract: &Addr,
+    payload:  Binary,
+    events:   GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
-    match _reply(store, block, contract, payload, submsg_result) {
+    match _reply(store, block, contract, payload, events) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
@@ -108,11 +108,11 @@ fn reply<S: Storage + Clone + 'static>(
 }
 
 fn _reply<S: Storage + Clone + 'static>(
-    store:         S,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    payload:       Binary,
-    submsg_result: GenericResult<Vec<Event>>,
+    store:    S,
+    block:    &BlockInfo,
+    contract: &Addr,
+    payload:  Binary,
+    events:   GenericResult<Vec<Event>>,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
@@ -134,9 +134,8 @@ fn _reply<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   Some(submsg_result),
     };
-    let resp = instance.call_reply(&ctx, payload)?.into_std_result()?;
+    let resp = instance.call_reply(&ctx, payload, &events)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];

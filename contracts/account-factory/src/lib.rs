@@ -69,8 +69,8 @@ use {
     anyhow::bail,
     cw_account::PublicKey,
     cw_std::{
-        cw_derive, from_json, to_json, Addr, Api, BeforeTxCtx, Binary, Bound, Coins, ExecuteCtx,
-        Hash, InstantiateCtx, Map, MapKey, Message, Order, QueryCtx, Response, StdResult, Tx,
+        cw_derive, from_json, to_json, Addr, Api, AuthCtx, Binary, Bound, Coins, Hash,
+        ImmutableCtx, Map, MapKey, Message, MutableCtx, Order, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -152,12 +152,12 @@ pub fn make_salt(public_key: &PublicKey, serial: u32) -> Binary {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(_ctx: InstantiateCtx, _msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response> {
     Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
+pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     if tx.msgs.len() != 1 {
         bail!("transaction must contain exactly one message, got {}", tx.msgs.len());
     }
@@ -190,7 +190,7 @@ pub fn before_tx(ctx: BeforeTxCtx, tx: Tx) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::RegisterAccount {
             code_hash,
@@ -200,7 +200,7 @@ pub fn execute(ctx: ExecuteCtx, msg: ExecuteMsg) -> StdResult<Response> {
 }
 
 pub fn register_account(
-    ctx: ExecuteCtx,
+    ctx: MutableCtx,
     code_hash: Hash,
     public_key: PublicKey,
 ) -> StdResult<Response> {
@@ -227,7 +227,7 @@ pub fn register_account(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Serial {
             public_key,
@@ -248,12 +248,12 @@ pub fn query(ctx: QueryCtx, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_serial(ctx: QueryCtx, public_key: PublicKey) -> StdResult<u32> {
+pub fn query_serial(ctx: ImmutableCtx, public_key: PublicKey) -> StdResult<u32> {
     SERIALS.may_load(ctx.store, &public_key).map(|opt| opt.unwrap_or(0))
 }
 
 pub fn query_serials(
-    ctx: QueryCtx,
+    ctx: ImmutableCtx,
     start_after: Option<PublicKey>,
     limit: Option<u32>,
 ) -> StdResult<Vec<SerialsResponseItem>> {
@@ -272,12 +272,12 @@ pub fn query_serials(
         .collect()
 }
 
-pub fn query_account(ctx: QueryCtx, public_key: PublicKey, serial: u32) -> StdResult<Addr> {
+pub fn query_account(ctx: ImmutableCtx, public_key: PublicKey, serial: u32) -> StdResult<Addr> {
     ACCOUNTS.load(ctx.store, (&public_key, serial))
 }
 
 pub fn query_accounts(
-    ctx: QueryCtx,
+    ctx: ImmutableCtx,
     public_key: PublicKey,
     start_after: Option<u32>,
     limit: Option<u32>,

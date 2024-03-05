@@ -1,8 +1,7 @@
 use crate::{
-    from_json, to_json, AfterBlockCtx, AfterTxCtx, Api, BeforeBlockCtx, BeforeTxCtx, ExecuteCtx,
-    GenericResult, InstantiateCtx, MigrateCtx, Order, Querier, QueryCtx, QueryRequest,
-    QueryResponse, ReceiveCtx, Record, Region, ReplyCtx, StdError, StdResult, Storage, SudoCtx,
-    TransferCtx,
+    from_json, to_json, Api,
+    GenericResult, Order, Querier, QueryRequest,
+    QueryResponse, Record, Region, StdError, StdResult, Storage, ImmutableCtx, MutableCtx, AuthCtx, SudoCtx
 };
 
 // these are the method that the host must implement.
@@ -169,8 +168,8 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 
 // implement debug, query, and crypto methods for each context type
 macro_rules! impl_methods {
-    ($($t:ty),+ $(,)?) => {
-        $(impl<'a> $t {
+    ($t:ty) => {
+        impl<'a> $t {
             /// Note: Unlike Rust's built-in `dbg!` macro, which is only included
             /// in debug builds, this `debug` method is also included in release
             /// builds, and incurs gas cost. Make sure to comment this out before
@@ -243,24 +242,14 @@ macro_rules! impl_methods {
 
                 res.into_std_result()
             }
-        })*
+        }
     };
 }
 
-impl_methods!(
-    InstantiateCtx<'a>,
-    ExecuteCtx<'a>,
-    QueryCtx<'a>,
-    MigrateCtx<'a>,
-    ReplyCtx<'a>,
-    ReceiveCtx<'a>,
-    BeforeBlockCtx<'a>,
-    AfterBlockCtx<'a>,
-    BeforeTxCtx<'a>,
-    AfterTxCtx<'a>,
-    TransferCtx<'a>,
-    SudoCtx<'a>,
-);
+impl_methods!(ImmutableCtx<'a>);
+impl_methods!(MutableCtx<'a>);
+impl_methods!(SudoCtx<'a>);
+impl_methods!(AuthCtx<'a>);
 
 // ----------------------------------- tests -----------------------------------
 

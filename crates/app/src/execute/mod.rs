@@ -66,6 +66,19 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             new_code_hash,
             msg,
         } => migrate(store, block, &contract, sender, new_code_hash, msg),
+        Message::CreateClient {
+            code_hash: _,
+            client_state: _,
+            consensus_state: _,
+        } => todo!(),
+        Message::UpdateClient {
+            client_id: _,
+            header: _,
+        } => todo!(),
+        Message::SubmitMisbehavior {
+            client_id: _,
+            misbehavior: _,
+        } => todo!(),
     }
 }
 

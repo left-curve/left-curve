@@ -52,7 +52,6 @@ fn _before_tx<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        Some(false),
-        submsg_result:   None,
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 
@@ -108,7 +107,6 @@ fn _after_tx<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        Some(false),
-        submsg_result:   None,
     };
     let resp = instance.call_after_tx(&ctx, tx)?.into_std_result()?;
 

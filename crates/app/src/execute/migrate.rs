@@ -69,7 +69,6 @@ fn _migrate<S: Storage + Clone + 'static>(
         sender:          Some(sender.clone()),
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 

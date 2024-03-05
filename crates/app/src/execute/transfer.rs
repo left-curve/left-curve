@@ -63,7 +63,6 @@ fn _transfer<S: Storage + Clone + 'static>(
         sender:          None,
         funds:           None,
         simulate:        None,
-        submsg_result:   None,
     };
     let msg = TransferMsg {
         from,
@@ -113,7 +112,6 @@ fn _receive<S: Storage + Clone + 'static>(
         sender:          Some(msg.from.clone()),
         funds:           Some(msg.coins.clone()),
         simulate:        None,
-        submsg_result:   None,
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 

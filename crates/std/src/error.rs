@@ -20,6 +20,11 @@ pub enum StdError {
     #[error("Signature verification failed")]
     VerificationFailed,
 
+    #[error("Host failed to specify `{field}` in context")]
+    MissingContext {
+        field: &'static str,
+    },
+
     #[error("Failed to parse string `{value}` into {ty}: {reason}")]
     ParseNumber {
         ty:     &'static str,
@@ -120,6 +125,12 @@ pub enum StdError {
 }
 
 impl StdError {
+    pub const fn missing_context(field: &'static str) -> Self {
+        Self::MissingContext {
+            field,
+        }
+    }
+
     pub fn parse_number<A>(value: impl ToString, reason: impl ToString) -> Self {
         Self::ParseNumber {
             ty:     type_name::<A>(),
