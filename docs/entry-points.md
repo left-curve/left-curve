@@ -70,7 +70,7 @@ These are mandatory entry points for the chain's **bank** contract.
 
 ```rust
 #[entry_point]
-fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> Result<Response, Error>;
+fn bank_transfer(ctx: SudoCtx, msg: BankTransferMsg) -> Result<Response, Error>;
 
 #[entry_point]
 fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> Result<BankQueryResponse, Error>;
@@ -83,7 +83,8 @@ In CWD, gas fees are handled by a smart contract.
 This contract is called after each transaction to collect gas fee from the sender. Develops can program arbitrary rules for collecting gas fees; for example, for an orderbook exchange, it may make sense to make the first few orders of each day free of charge, as a way to incentivize trading activity. Another use case is MEV capture. Osmosis is known to backrun certain DEX trades to perform arbitrage via its [ProtoRev module](https://github.com/osmosis-labs/osmosis/tree/main/x/protorev); this is something that can be realized using the gas contract, since it's automatically called after each transaction.
 
 ```rust
-// TODO
+#[entry_point]
+fn handle_fee(ctx: SudoCtx, report: GasReport) -> Result<Response>;
 ```
 
 ## IBC
@@ -95,17 +96,30 @@ Contracts that are to be used as IBC light clients must implement the following 
 /// the initial consensus state and set the client state, consensus state, and
 /// any client-specific metadata necessary for correct light client operation.
 #[entry_point]
-fn ibc_client_create(ctx: SudoCtx, client_state: Binary, consensus_state: Binary) -> Result<Response, Error>;
+fn ibc_client_create(ctx: SudoCtx, msg: IbcClientCreateMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> Result<Response, Error>;
+fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse, Error>;
+fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:
 
 ```rust
-// TODO
+#[entry_point]
+fn ibc_channel_open(ctx: SudoCtx, msg: IbcChannelOpenMsg) -> Result<Response>;
+
+#[entry_point]
+fn ibc_channel_close(ctx: SudoCtx, msg: IbcChannelCloseMsg) -> Result<Response>;
+
+#[entry_point]
+fn ibc_packet_receive(ctx: SudoCtx, msg: IbcPacketReceiveMsg) -> Result<Response>;
+
+#[entry_point]
+fn ibc_packet_ack(ctx: SudoCtx, msg: IbcPacketAckMsg) -> Result<Response>;
+
+#[entry_point]
+fn ibc_packet_timeout(ctx: SudoCtx, msg: IbcPacketTimeoutMsg) -> Result<Response>;
 ```
