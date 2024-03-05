@@ -89,7 +89,7 @@ fn accumulate_supply(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
+pub fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.store, &msg.from, coin.denom, *coin.amount)?;
         increase_balance(ctx.store, &msg.to, coin.denom, *coin.amount)?;
@@ -230,7 +230,7 @@ fn decrease_balance(
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query_bank(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
+pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance {
             address,

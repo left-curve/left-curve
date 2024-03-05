@@ -70,7 +70,7 @@ These are mandatory entry points for the chain's **bank** contract.
 
 ```rust
 #[entry_point]
-fn bank_execute(ctx: SudoCtx, msg: BankExecuteMsg) -> Result<Response, Error>;
+fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> Result<Response, Error>;
 
 #[entry_point]
 fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> Result<BankQueryResponse, Error>;

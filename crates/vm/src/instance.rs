@@ -136,21 +136,21 @@ where
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_transfer(
+    pub fn call_bank_transfer(
         &mut self,
         ctx: &Context,
         msg: &TransferMsg,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("transfer", ctx, to_json(msg)?)?;
+        let res_bytes = self.call_in_1_out_1("bank_transfer", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 
-    pub fn call_query_bank(
+    pub fn call_bank_query(
         &mut self,
         ctx: &Context,
         msg: &BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
-        let res_bytes = self.call_in_1_out_1("query_bank", ctx, to_json(msg)?)?;
+        let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json(msg)?)?;
         from_json(res_bytes).map_err(Into::into)
     }
 

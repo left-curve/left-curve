@@ -446,9 +446,9 @@ where
     after_tx_fn(auth_ctx, tx).into()
 }
 
-// --------------------------------- transfer ----------------------------------
+// ------------------------------- bank transfer -------------------------------
 
-pub fn do_transfer<E>(
+pub fn do_bank_transfer<E>(
     transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
@@ -459,13 +459,13 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
+    let res = _do_bank_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
 
-fn _do_transfer<E>(
+fn _do_bank_transfer<E>(
     transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
@@ -482,8 +482,8 @@ where
 
 // -------------------------------- bank query ---------------------------------
 
-pub fn do_query_bank<E>(
-    query_bank_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+pub fn do_bank_query<E>(
+    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -493,14 +493,14 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_query_bank(query_bank_fn, &ctx_bytes, &msg_bytes);
+    let res = _do_bank_query(query_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
 
-fn _do_query_bank<E>(
-    query_bank_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
+fn _do_bank_query<E>(
+    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<BankQueryResponse>
@@ -511,7 +511,7 @@ where
     let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    query_bank_fn(immutable_ctx, msg).into()
+    query_fn(immutable_ctx, msg).into()
 }
 
 // ----------------------------- ibc client create -----------------------------

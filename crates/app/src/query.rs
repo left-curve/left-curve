@@ -164,7 +164,7 @@ fn _query_bank<S: Storage + Clone + 'static>(
         funds:           None,
         simulate:        None,
     };
-    instance.call_query_bank(&ctx, msg)?.into_std_result().map_err(Into::into)
+    instance.call_bank_query(&ctx, msg)?.into_std_result().map_err(Into::into)
 }
 
 fn query_code(store: &dyn Storage, hash: Hash) -> AppResult<Binary> {
