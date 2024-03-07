@@ -5,7 +5,7 @@ use {
     cw_std::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
-    std::{collections::BTreeSet, env, path::PathBuf},
+    std::{env, path::PathBuf},
 };
 
 lazy_static! {
@@ -115,6 +115,9 @@ fn main() -> anyhow::Result<()> {
         AdminOption::SetToNone,
     )?;
 
+    // upload the solo machine code
+    let solomachine_hash = builder.store_code(ARTIFACT_DIR.join("cw_ibc_solomachine-aarch64.wasm"))?;
+
     // set config
     let permissions = Permissions {
         store_code:        Permission::Somebodies([account1.clone(), account2.clone(), account3.clone()].into()),
@@ -128,7 +131,7 @@ fn main() -> anyhow::Result<()> {
         bank:            bank.clone(),
         begin_blockers:  vec![cron.clone()],
         end_blockers:    vec![cron.clone()],
-        allowed_clients: BTreeSet::new(),
+        allowed_clients: [solomachine_hash].into(),
         permissions,
     })?;
 
