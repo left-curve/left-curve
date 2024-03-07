@@ -78,6 +78,31 @@ pub enum TxCmd {
         /// Migrate message as a JSON string
         msg: String,
     },
+    /// Create an IBC light client
+    CreateClient {
+        /// Hash of the Wasm byte code to be associated with the contract
+        code_hash: Hash,
+        /// Client state as a JSON string
+        client_state: String,
+        /// Consensus state as a JSON string
+        consensus_state: String,
+        /// Salt in UTF-8 encoding
+        salt: String,
+    },
+    /// Update the state of an IBC light client
+    UpdateClient {
+        /// Address of the client contract
+        client: Addr,
+        /// Block header as a JSON string
+        header: String,
+    },
+    /// Submit proof of a misbehavior to an IBC light client
+    SubmitMishebavior {
+        /// Address of the client contract
+        client: Addr,
+        /// Misbehavior as a JSON string
+        misbehavior: String,
+    },
 }
 
 impl TxCmd {
@@ -155,6 +180,26 @@ impl TxCmd {
                     msg: msg.into_bytes().into(),
                     new_code_hash,
                     contract,
+                }]
+            },
+            TxCmd::CreateClient { code_hash, client_state, consensus_state, salt } => {
+                vec![Message::CreateClient {
+                    code_hash,
+                    client_state:    client_state.into_bytes().into(),
+                    consensus_state: consensus_state.into_bytes().into(),
+                    salt:            salt.into_bytes().into(),
+                }]
+            },
+            TxCmd::UpdateClient { client, header } => {
+                vec![Message::UpdateClient {
+                    client,
+                    header: header.into_bytes().into(),
+                }]
+            },
+            TxCmd::SubmitMishebavior { client, misbehavior } => {
+                vec![Message::SubmitMisbehavior {
+                    client,
+                    misbehavior: misbehavior.into_bytes().into(),
                 }]
             },
         };
