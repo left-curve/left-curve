@@ -125,7 +125,7 @@ fn _do_update_client<S: Storage + Clone + 'static>(
     header: Binary,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
-    let account = ACCOUNTS.load(&store, &client)?;
+    let account = ACCOUNTS.load(&store, client)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
@@ -185,7 +185,7 @@ fn _do_submit_misbehavior<S: Storage + Clone + 'static>(
     misbehavior: Binary,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
-    let account = ACCOUNTS.load(&store, &client)?;
+    let account = ACCOUNTS.load(&store, client)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
