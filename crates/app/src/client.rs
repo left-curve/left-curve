@@ -150,7 +150,7 @@ fn _do_update_client<S: Storage + Clone + 'static>(
     let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_update_client_event(&ctx.contract, resp.attributes)];
+    let mut events = vec![new_update_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
     events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
@@ -210,7 +210,7 @@ fn _do_submit_misbehavior<S: Storage + Clone + 'static>(
     let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_client_misbehavior_event(&ctx.contract, resp.attributes)];
+    let mut events = vec![new_client_misbehavior_event(&ctx.contract, &account.code_hash, resp.attributes)];
     events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)

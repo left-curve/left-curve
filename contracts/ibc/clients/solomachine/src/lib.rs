@@ -130,7 +130,7 @@ pub fn ibc_client_create(
     CLIENT_STATE.save(ctx.store, &client_state)?;
     CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -163,7 +163,7 @@ pub fn update(ctx: SudoCtx, header: Binary) -> anyhow::Result<Response> {
 
     CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
 pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Result<Response> {
