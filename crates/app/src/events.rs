@@ -93,3 +93,9 @@ pub fn new_update_client_event(client: &Addr, attrs: Vec<Attribute>) -> Event {
         .add_attribute(CONTRACT_ADDRESS_KEY, client)
         .add_attributes(attrs)
 }
+
+pub fn new_client_misbehavior_event(client: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("client_misbehavior")
+        .add_attribute(CONTRACT_ADDRESS_KEY, client)
+        .add_attributes(attrs)
+}

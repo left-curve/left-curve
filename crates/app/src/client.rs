@@ -1,8 +1,11 @@
 use {
-    super::{handle_submessages, has_permission, new_create_client_event, new_update_client_event},
+    super::{
+        handle_submessages, has_permission, new_client_misbehavior_event, new_create_client_event,
+        new_update_client_event,
+    },
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
-    cw_std::{Account, Addr, Binary, BlockInfo, Context, Event, Hash, Storage},
+    cw_std::{Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -141,9 +144,11 @@ fn _do_update_client<S: Storage + Clone + 'static>(
         funds:           None,
         simulate:        None,
     };
-    let resp = instance.call_ibc_client_update(&ctx, &header)?.into_std_result()?;
+    let msg = IbcClientUpdateMsg::Update {
+        header,
+    };
+    let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
 
-    // handle submessages
     // handle submessages
     let mut events = vec![new_update_client_event(&ctx.contract, resp.attributes)];
     events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
@@ -152,3 +157,61 @@ fn _do_update_client<S: Storage + Clone + 'static>(
 }
 
 // ---------------------------- submit misbehavior -----------------------------
+
+pub fn do_submit_misbehavior<S: Storage + Clone + 'static>(
+    store:       S,
+    block:       &BlockInfo,
+    sender:      &Addr,
+    client:      &Addr,
+    misbehavior: Binary,
+) -> AppResult<Vec<Event>> {
+    match _do_submit_misbehavior(store, block, sender, client, misbehavior) {
+        Ok(events) => {
+            warn!(client = client.to_string(), "Froze IBC client due to misbehavior");
+            Ok(events)
+        },
+        Err(err) => {
+            warn!(err = err.to_string(), "Failed to freeze IBC client due to misbehavior");
+            Err(err)
+        },
+    }
+}
+
+fn _do_submit_misbehavior<S: Storage + Clone + 'static>(
+    store:       S,
+    block:       &BlockInfo,
+    sender:      &Addr,
+    client:      &Addr,
+    misbehavior: Binary,
+) -> AppResult<Vec<Event>> {
+    // load wasm code
+    let account = ACCOUNTS.load(&store, &client)?;
+    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
+
+    // create wasm host
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client]);
+    let querier = Querier::new(store.clone(), block.clone());
+    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+
+    // call `ibc_client_update` entry point
+    let ctx = Context {
+        chain_id:        CHAIN_ID.load(&store)?,
+        block_height:    block.height,
+        block_timestamp: block.timestamp,
+        block_hash:      block.hash.clone(),
+        contract:        client.clone(),
+        sender:          Some(sender.clone()),
+        funds:           None,
+        simulate:        None,
+    };
+    let msg = IbcClientUpdateMsg::UpdateOnMisbehavior {
+        misbehavior,
+    };
+    let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
+
+    // handle submessages
+    let mut events = vec![new_client_misbehavior_event(&ctx.contract, resp.attributes)];
+    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+
+    Ok(events)
+}

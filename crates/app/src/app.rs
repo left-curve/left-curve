@@ -1,10 +1,11 @@
 use {
     crate::{
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_create_client, do_execute,
-        do_instantiate, do_migrate, do_store_code, do_transfer, do_update_client, do_update_config,
-        query_account, query_accounts, query_balance, query_balances, query_code, query_codes,
-        query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError,
-        AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        do_instantiate, do_migrate, do_store_code, do_submit_misbehavior, do_transfer,
+        do_update_client, do_update_config, query_account, query_accounts, query_balance,
+        query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
+        query_wasm_raw, query_wasm_smart, AppError, AppResult, CHAIN_ID, CONFIG,
+        LAST_FINALIZED_BLOCK,
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
@@ -323,11 +324,10 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             client,
             header,
         } => do_update_client(store, block, sender, &client, header),
-        _ => todo!(),
-        // Message::SubmitMisbehavior {
-        //     client,
-        //     misbehavior,
-        // } => do_submit_misbehavior(store, block, sender, client, misbehavior),
+        Message::SubmitMisbehavior {
+            client,
+            misbehavior,
+        } => do_submit_misbehavior(store, block, sender, &client, misbehavior),
     }
 }
 

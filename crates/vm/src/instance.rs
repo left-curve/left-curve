@@ -5,8 +5,7 @@ use {
         Environment, VmError, VmResult,
     },
     cw_std::{
-        from_json, to_borsh, to_json, BankQueryMsg, BankQueryResponse, Binary, Context,
-        GenericResult, Response, SubMsgResult, TransferMsg, Tx,
+        from_json, to_borsh, to_json, BankQueryMsg, BankQueryResponse, Binary, Context, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Response, SubMsgResult, TransferMsg, Tx
     },
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -172,9 +171,18 @@ where
     pub fn call_ibc_client_update(
         &mut self,
         ctx: &Context,
-        header: &Binary,
+        msg: &IbcClientUpdateMsg,
     ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("ibc_client_update", ctx, to_json(header)?)?;
+        let res_bytes = self.call_in_1_out_1("ibc_client_update", ctx, to_json(msg)?)?;
+        Ok(from_json(res_bytes)?)
+    }
+
+    pub fn call_ibc_client_verify(
+        &mut self,
+        ctx: &Context,
+        msg: &IbcClientVerifyMsg,
+    ) -> VmResult<GenericResult<()>> {
+        let res_bytes = self.call_in_1_out_1("ibc_client_verify", ctx, to_json(msg)?)?;
         Ok(from_json(res_bytes)?)
     }
 
