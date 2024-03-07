@@ -5,6 +5,7 @@ use {
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum IbcClientStatus {
     /// Under the `Active` state, the client can be updated, and can perform
     /// proof verifications.
