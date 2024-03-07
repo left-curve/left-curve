@@ -71,17 +71,6 @@ pub enum QueryRequest {
         contract: Addr,
         msg: Binary,
     },
-    /// Client and consensus states of an IBC light client.
-    /// Returns: ClientResponse
-    Client {
-        client_id: String,
-    },
-    /// Enumerate client and consensus states of an IBC light client.
-    /// Returns: Vec<ClientResponse>
-    Clients {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -135,8 +124,6 @@ pub enum QueryResponse {
     Accounts(Vec<AccountResponse>),
     WasmRaw(WasmRawResponse),
     WasmSmart(WasmSmartResponse),
-    Client(ClientResponse),
-    Clients(Vec<ClientResponse>),
 }
 
 // TODO: can we use a macro to implement these?
@@ -214,20 +201,6 @@ impl QueryResponse {
     pub fn as_wasm_smart(self) -> WasmSmartResponse {
         let Self::WasmSmart(resp) = self else {
             panic!("QueryResponse is not WasmSmart");
-        };
-        resp
-    }
-
-    pub fn as_client(self) -> ClientResponse {
-        let Self::Client(resp) = self else {
-            panic!("QueryResponse is not Client");
-        };
-        resp
-    }
-
-    pub fn as_aclient(self) -> Vec<ClientResponse> {
-        let Self::Clients(resp) = self else {
-            panic!("QueryResponse is not Clients");
         };
         resp
     }

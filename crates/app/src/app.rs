@@ -376,13 +376,6 @@ pub fn process_query<S: Storage + Clone + 'static>(
             contract,
             msg
         } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
-        QueryRequest::Client {
-            client_id: _,
-        } => todo!(),
-        QueryRequest::Clients {
-            start_after: _,
-            limit: _,
-        } => todo!(),
     }
 }
 
