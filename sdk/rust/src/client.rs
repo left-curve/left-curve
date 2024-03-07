@@ -298,10 +298,12 @@ impl Client {
         funds: Coins,
         admin: AdminOption,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<tx_sync::Response> {
+    ) -> anyhow::Result<(Addr, tx_sync::Response)> {
+        let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let msg = to_json(msg)?;
         let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
-        self.send_tx(vec![Message::Instantiate { code_hash, msg, salt, funds, admin }], sign_opts).await
+        let res = self.send_tx(vec![Message::Instantiate { code_hash, msg, salt, funds, admin }], sign_opts).await?;
+        Ok((address, res))
     }
 
     pub async fn store_code_and_instantiate<M: Serialize>(
@@ -314,8 +316,8 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)> {
         let code_hash = hash(&wasm_byte_code);
-        let msg = to_json(msg)?;
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
+        let msg = to_json(msg)?;
         let admin = admin.decide(&address);
         let store_code_msg = Message::StoreCode { wasm_byte_code };
         let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
@@ -343,5 +345,52 @@ impl Client {
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = to_json(msg)?;
         self.send_tx(vec![Message::Migrate { contract, new_code_hash, msg }], sign_opts).await
+    }
+
+    pub async fn create_client<A: Serialize, B: Serialize>(
+        &self,
+        code_hash: Hash,
+        client_state: &A,
+        consensus_state: &B,
+        salt: Binary,
+        sign_opts: &SigningOptions,
+    ) -> anyhow::Result<(Addr, tx_sync::Response)> {
+        let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
+        let client_state = to_json(client_state)?;
+        let consensus_state = to_json(consensus_state)?;
+        let msg = Message::CreateClient {
+            code_hash,
+            client_state,
+            consensus_state,
+            salt,
+        };
+        let res = self.send_tx(vec![msg], sign_opts).await?;
+        Ok((address, res))
+    }
+
+    pub async fn update_client(
+        &self,
+        client: Addr,
+        header: Binary,
+        sign_opts: &SigningOptions,
+    ) -> anyhow::Result<tx_sync::Response> {
+        let msg = Message::UpdateClient {
+            client,
+            header,
+        };
+        self.send_tx(vec![msg], sign_opts).await
+    }
+
+    pub async fn submit_misbehavior(
+        &self,
+        client: Addr,
+        misbehavior: Binary,
+        sign_opts: &SigningOptions,
+    ) -> anyhow::Result<tx_sync::Response> {
+        let msg = Message::SubmitMisbehavior {
+            client,
+            misbehavior,
+        };
+        self.send_tx(vec![msg], sign_opts).await
     }
 }

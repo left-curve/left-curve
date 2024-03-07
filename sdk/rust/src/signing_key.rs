@@ -25,6 +25,7 @@ pub struct Keystore {
 }
 
 /// A wrapper over k256 SigningKey, providing a handy API to work with.
+#[derive(Debug, Clone)]
 pub struct SigningKey {
     pub(crate) inner: k256::ecdsa::SigningKey,
 }
@@ -91,6 +92,12 @@ impl SigningKey {
         Ok(keystore)
     }
 
+    pub fn sign_digest(&self, digest: &[u8; 32]) -> Vec<u8> {
+        let digest = Identity256::from_bytes(digest);
+        let signature: Signature = self.inner.sign_digest(digest);
+        signature.to_vec()
+    }
+
     pub fn create_and_sign_tx(
         &self,
         msgs:     Vec<Message>,
@@ -99,12 +106,11 @@ impl SigningKey {
         sequence: u32,
     ) -> anyhow::Result<Tx> {
         let sign_bytes = cw_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
-        let sign_bytes = Identity256::from_bytes(&sign_bytes);
-        let signature: Signature = self.inner.sign_digest(sign_bytes);
+        let signature = self.sign_digest(&sign_bytes);
         Ok(Tx {
             sender,
             msgs,
-            credential: signature.to_vec().into(),
+            credential: signature.into(),
         })
     }
 

@@ -34,5 +34,7 @@ tendermint-rpc     = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
 cw-bank               = { path = "../../contracts/bank", features = ["library"] }
+cw-ibc-solomachine    = { path = "../../contracts/ibc/clients/solomachine", features = ["library"] }
 cw-mock-token-wrapper = { path = "../../contracts/mocks/token-wrapper", features = ["library"] }
+hex-literal           = { workspace = true }
 tokio                 = { workspace = true }
