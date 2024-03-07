@@ -1,5 +1,5 @@
 use {
-    super::{handle_submessages, has_permission, new_instantiate_event, transfer},
+    super::{do_transfer, handle_submessages, has_permission, new_instantiate_event},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{Account, Addr, Binary, BlockInfo, Coins, Context, Event, Hash, Storage},
@@ -8,7 +8,7 @@ use {
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn instantiate<S: Storage + Clone + 'static>(
+pub fn do_instantiate<S: Storage + Clone + 'static>(
     store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
@@ -18,7 +18,7 @@ pub fn instantiate<S: Storage + Clone + 'static>(
     funds:     Coins,
     admin:     Option<Addr>,
 ) -> AppResult<Vec<Event>> {
-    match _instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
+    match _do_instantiate(store, block, sender, code_hash, msg, salt, funds, admin) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Instantiated contract");
             Ok(events)
@@ -32,7 +32,7 @@ pub fn instantiate<S: Storage + Clone + 'static>(
 
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
-fn _instantiate<S: Storage + Clone + 'static>(
+fn _do_instantiate<S: Storage + Clone + 'static>(
     mut store: S,
     block:     &BlockInfo,
     sender:    &Addr,
@@ -64,7 +64,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        transfer(
+        do_transfer(
             store.clone(),
             block,
             sender.clone(),

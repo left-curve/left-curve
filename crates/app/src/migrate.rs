@@ -7,7 +7,7 @@ use {
     tracing::{info, warn},
 };
 
-pub fn migrate<S: Storage + Clone + 'static>(
+pub fn do_migrate<S: Storage + Clone + 'static>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,
@@ -15,7 +15,7 @@ pub fn migrate<S: Storage + Clone + 'static>(
     new_code_hash: Hash,
     msg:           Binary,
 ) -> AppResult<Vec<Event>> {
-    match _migrate(store, block, contract, sender, new_code_hash, msg) {
+    match _do_migrate(store, block, contract, sender, new_code_hash, msg) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Migrated contract");
             Ok(events)
@@ -27,7 +27,7 @@ pub fn migrate<S: Storage + Clone + 'static>(
     }
 }
 
-fn _migrate<S: Storage + Clone + 'static>(
+fn _do_migrate<S: Storage + Clone + 'static>(
     mut store:     S,
     block:         &BlockInfo,
     contract:      &Addr,

@@ -7,7 +7,7 @@ use {
     tracing::{info, warn},
 };
 
-pub fn transfer<S: Storage + Clone + 'static>(
+pub fn do_transfer<S: Storage + Clone + 'static>(
     store:   S,
     block:   &BlockInfo,
     from:    Addr,
@@ -15,7 +15,7 @@ pub fn transfer<S: Storage + Clone + 'static>(
     coins:   Coins,
     receive: bool,
 ) -> AppResult<Vec<Event>> {
-    match _transfer(store, block, from, to, coins, receive) {
+    match _do_transfer(store, block, from, to, coins, receive) {
         Ok((events, msg)) => {
             info!(
                 from  = msg.from.to_string(),
@@ -34,7 +34,7 @@ pub fn transfer<S: Storage + Clone + 'static>(
 
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
-fn _transfer<S: Storage + Clone + 'static>(
+fn _do_transfer<S: Storage + Clone + 'static>(
     store:   S,
     block:   &BlockInfo,
     from:    Addr,
@@ -78,7 +78,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     if receive {
         // call the recipient contract's `receive` entry point to inform it of
         // this transfer. we do this when handing the Message::Transfer.
-        _receive(store, block, msg, events)
+        _do_receive(store, block, msg, events)
     } else {
         // do not call the `receive` entry point. we do this when handling
         // Message::Instantiate and Execute.
@@ -86,7 +86,7 @@ fn _transfer<S: Storage + Clone + 'static>(
     }
 }
 
-fn _receive<S: Storage + Clone + 'static>(
+fn _do_receive<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     msg:        TransferMsg,

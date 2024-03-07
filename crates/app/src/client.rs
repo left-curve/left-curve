@@ -9,7 +9,7 @@ use {
 
 // ------------------------------- create client -------------------------------
 
-pub fn create_client<S: Storage + Clone + 'static>(
+pub fn do_create_client<S: Storage + Clone + 'static>(
     store:           S,
     block:           &BlockInfo,
     sender:          &Addr,
@@ -18,7 +18,7 @@ pub fn create_client<S: Storage + Clone + 'static>(
     consensus_state: Binary,
     salt:            Binary,
 ) -> AppResult<Vec<Event>> {
-    match _create_client(store, block, sender, code_hash, client_state, consensus_state, salt) {
+    match _do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Create IBC client");
             Ok(events)
@@ -30,7 +30,7 @@ pub fn create_client<S: Storage + Clone + 'static>(
     }
 }
 
-pub fn _create_client<S: Storage + Clone + 'static>(
+pub fn _do_create_client<S: Storage + Clone + 'static>(
     mut store:       S,
     block:           &BlockInfo,
     sender:          &Addr,

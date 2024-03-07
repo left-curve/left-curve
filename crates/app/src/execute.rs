@@ -1,5 +1,5 @@
 use {
-    super::{handle_submessages, new_execute_event, transfer},
+    super::{do_transfer, handle_submessages, new_execute_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
     cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event, Storage},
@@ -7,7 +7,7 @@ use {
     tracing::{info, warn},
 };
 
-pub fn execute<S: Storage + Clone + 'static>(
+pub fn do_execute<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -15,7 +15,7 @@ pub fn execute<S: Storage + Clone + 'static>(
     msg:      Binary,
     funds:    Coins,
 ) -> AppResult<Vec<Event>> {
-    match _execute(store, block, contract, sender, msg, funds) {
+    match _do_execute(store, block, contract, sender, msg, funds) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Executed contract");
             Ok(events)
@@ -27,7 +27,7 @@ pub fn execute<S: Storage + Clone + 'static>(
     }
 }
 
-fn _execute<S: Storage + Clone + 'static>(
+fn _do_execute<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -39,7 +39,7 @@ fn _execute<S: Storage + Clone + 'static>(
 
     // make the coin transfers
     if !funds.is_empty() {
-        transfer(
+        do_transfer(
             store.clone(),
             block,
             sender.clone(),

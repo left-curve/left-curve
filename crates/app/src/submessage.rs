@@ -56,7 +56,7 @@ pub fn handle_submessages(
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 cached.disassemble().consume();
                 events.extend(submsg_events.clone());
-                events.extend(reply(
+                events.extend(do_reply(
                     store.clone(),
                     block,
                     sender,
@@ -67,7 +67,7 @@ pub fn handle_submessages(
             // error - callback requested
             // discard uncommitted state changes, give callback
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                events.extend(reply(
+                events.extend(do_reply(
                     store.clone(),
                     block,
                     sender,
@@ -91,14 +91,14 @@ pub fn handle_submessages(
     Ok(events)
 }
 
-fn reply<S: Storage + Clone + 'static>(
+pub fn do_reply<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    Binary,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>> {
-    match _reply(store, block, contract, payload, submsg_res) {
+    match _do_reply(store, block, contract, payload, submsg_res) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
@@ -110,7 +110,7 @@ fn reply<S: Storage + Clone + 'static>(
     }
 }
 
-fn _reply<S: Storage + Clone + 'static>(
+fn _do_reply<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,

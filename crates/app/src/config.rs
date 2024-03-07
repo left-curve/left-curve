@@ -5,12 +5,12 @@ use {
     tracing::{info, warn},
 };
 
-pub fn update_config(
+pub fn do_update_config(
     store:   &mut dyn Storage,
     sender:  &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
-    match _update_config(store, sender, new_cfg) {
+    match _do_update_config(store, sender, new_cfg) {
         Ok(events) => {
             info!("Config updated");
             Ok(events)
@@ -22,7 +22,7 @@ pub fn update_config(
     }
 }
 
-fn _update_config(
+fn _do_update_config(
     store:   &mut dyn Storage,
     sender:  &Addr,
     new_cfg: &Config,

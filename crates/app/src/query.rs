@@ -1,95 +1,20 @@
 use {
     crate::{
-        AppResult, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
+        LAST_FINALIZED_BLOCK,
     },
     cw_db::PrefixStore,
     cw_std::{
-        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins,
-        Context, GenericResult, Hash, InfoResponse, Order, QueryRequest, QueryResponse, StdResult,
-        Storage, WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Bound, Coin,
+        Coins, Context, Hash, InfoResponse, Order, StdResult, Storage, WasmRawResponse,
+        WasmSmartResponse,
     },
-    cw_vm::{BackendQuerier, BackendStorage, Instance, VmResult},
+    cw_vm::{BackendStorage, Instance},
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-// ------------------------------ backend querier ------------------------------
-
-pub struct Querier<S> {
-    store: S,
-    block: BlockInfo,
-}
-
-impl<S> Querier<S> {
-    pub fn new(store: S, block: BlockInfo) -> Self {
-        Self { store, block }
-    }
-}
-
-impl<S: Storage + Clone + 'static> BackendQuerier for Querier<S> {
-    fn query_chain(&self, req: QueryRequest) -> VmResult<GenericResult<QueryResponse>> {
-        Ok(process_query(self.store.clone(), &self.block, req).into())
-    }
-}
-
-// ------------------------------- process query -------------------------------
-
-pub fn process_query<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    req:   QueryRequest,
-) -> AppResult<QueryResponse> {
-    match req {
-        QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
-        QueryRequest::Balance {
-            address,
-            denom,
-        } => query_balance(store, block, address, denom).map(QueryResponse::Balance),
-        QueryRequest::Balances {
-            address,
-            start_after,
-            limit,
-        } => query_balances(store, block, address, start_after, limit).map(QueryResponse::Balances),
-        QueryRequest::Supply {
-            denom,
-        } => query_supply(store, block, denom).map(QueryResponse::Supply),
-        QueryRequest::Supplies {
-            start_after,
-            limit,
-        } => query_supplies(store, block, start_after, limit).map(QueryResponse::Supplies),
-        QueryRequest::Code {
-            hash,
-        } => query_code(&store, hash).map(QueryResponse::Code),
-        QueryRequest::Codes {
-            start_after,
-            limit,
-        } => query_codes(&store, start_after, limit).map(QueryResponse::Codes),
-        QueryRequest::Account {
-            address,
-        } => query_account(&store, address).map(QueryResponse::Account),
-        QueryRequest::Accounts {
-            start_after,
-            limit,
-        } => query_accounts(&store, start_after, limit).map(QueryResponse::Accounts),
-        QueryRequest::WasmRaw {
-            contract,
-            key,
-        } => query_wasm_raw(store, contract, key).map(QueryResponse::WasmRaw),
-        QueryRequest::WasmSmart {
-            contract,
-            msg
-        } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
-        QueryRequest::Client {
-            client_id: _,
-        } => todo!(),
-        QueryRequest::Clients {
-            start_after: _,
-            limit: _,
-        } => todo!(),
-    }
-}
-
-fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
+pub fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     Ok(InfoResponse {
         chain_id:             CHAIN_ID.load(store)?,
         config:               CONFIG.load(store)?,
@@ -97,7 +22,7 @@ fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     })
 }
 
-fn query_balance<S: Storage + Clone + 'static>(
+pub fn query_balance<S: Storage + Clone + 'static>(
     store:   S,
     block:   &BlockInfo,
     address: Addr,
@@ -107,7 +32,7 @@ fn query_balance<S: Storage + Clone + 'static>(
         .map(|res| res.as_balance())
 }
 
-fn query_balances<S: Storage + Clone + 'static>(
+pub fn query_balances<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     address:     Addr,
@@ -118,7 +43,7 @@ fn query_balances<S: Storage + Clone + 'static>(
         .map(|res| res.as_balances())
 }
 
-fn query_supply<S: Storage + Clone + 'static>(
+pub fn query_supply<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     denom: String,
@@ -127,7 +52,7 @@ fn query_supply<S: Storage + Clone + 'static>(
         .map(|res| res.as_supply())
 }
 
-fn query_supplies<S: Storage + Clone + 'static>(
+pub fn query_supplies<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     start_after: Option<String>,
@@ -137,7 +62,7 @@ fn query_supplies<S: Storage + Clone + 'static>(
         .map(|res| res.as_supplies())
 }
 
-fn _query_bank<S: Storage + Clone + 'static>(
+pub fn _query_bank<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     msg:   &BankQueryMsg,
@@ -167,11 +92,11 @@ fn _query_bank<S: Storage + Clone + 'static>(
     instance.call_bank_query(&ctx, msg)?.into_std_result().map_err(Into::into)
 }
 
-fn query_code(store: &dyn Storage, hash: Hash) -> AppResult<Binary> {
+pub fn query_code(store: &dyn Storage, hash: Hash) -> AppResult<Binary> {
     CODES.load(store, &hash).map_err(Into::into)
 }
 
-fn query_codes(
+pub fn query_codes(
     store:       &dyn Storage,
     start_after: Option<Hash>,
     limit:       Option<u32>,
@@ -186,7 +111,7 @@ fn query_codes(
         .map_err(Into::into)
 }
 
-fn query_account(store: &dyn Storage, address: Addr) -> AppResult<AccountResponse> {
+pub fn query_account(store: &dyn Storage, address: Addr) -> AppResult<AccountResponse> {
     let account = ACCOUNTS.load(store, &address)?;
     Ok(AccountResponse {
         address,
@@ -195,7 +120,7 @@ fn query_account(store: &dyn Storage, address: Addr) -> AppResult<AccountRespons
     })
 }
 
-fn query_accounts(
+pub fn query_accounts(
     store:       &dyn Storage,
     start_after: Option<Addr>,
     limit:       Option<u32>,
@@ -217,7 +142,7 @@ fn query_accounts(
         .collect()
 }
 
-fn query_wasm_raw<S: Storage + 'static>(
+pub fn query_wasm_raw<S: Storage + 'static>(
     store:    S,
     contract: Addr,
     key:      Binary,
@@ -231,7 +156,7 @@ fn query_wasm_raw<S: Storage + 'static>(
     })
 }
 
-fn query_wasm_smart<S: Storage + Clone + 'static>(
+pub fn query_wasm_smart<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: Addr,

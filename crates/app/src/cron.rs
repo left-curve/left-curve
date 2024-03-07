@@ -9,12 +9,12 @@ use {
 
 // ------------------------------- before block --------------------------------
 
-pub fn before_block<S: Storage + Clone + 'static>(
+pub fn do_before_block<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>> {
-    match _before_block(store, block, contract) {
+    match _do_before_block(store, block, contract) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Called before block hook");
             Ok(events)
@@ -26,7 +26,7 @@ pub fn before_block<S: Storage + Clone + 'static>(
     }
 }
 
-fn _before_block<S: Storage + Clone + 'static>(
+fn _do_before_block<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
@@ -63,12 +63,12 @@ fn _before_block<S: Storage + Clone + 'static>(
 
 // -------------------------------- after block --------------------------------
 
-pub fn after_block<S: Storage + Clone + 'static>(
+pub fn do_after_block<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>> {
-    match _after_block(store, block, contract) {
+    match _do_after_block(store, block, contract) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Called after block hook");
             Ok(events)
@@ -80,7 +80,7 @@ pub fn after_block<S: Storage + Clone + 'static>(
     }
 }
 
-fn _after_block<S: Storage + Clone + 'static>(
+fn _do_after_block<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,

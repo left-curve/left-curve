@@ -1,6 +1,8 @@
 use {
-    super::{handle_submessages, new_after_tx_event, new_before_tx_event},
-    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
+    crate::{
+        handle_submessages, new_after_tx_event, new_before_tx_event, AppResult, Querier, ACCOUNTS,
+        CHAIN_ID, CODES, CONTRACT_NAMESPACE,
+    },
     cw_db::PrefixStore,
     cw_std::{BlockInfo, Context, Event, Storage, Tx},
     cw_vm::Instance,
@@ -9,12 +11,12 @@ use {
 
 // --------------------------------- before tx ---------------------------------
 
-pub fn before_tx<S: Storage + Clone + 'static>(
+pub fn do_before_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
 ) -> AppResult<Vec<Event>> {
-    match _before_tx(store, block, tx) {
+    match _do_before_tx(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called before transaction hook");
@@ -27,7 +29,7 @@ pub fn before_tx<S: Storage + Clone + 'static>(
     }
 }
 
-fn _before_tx<S: Storage + Clone + 'static>(
+fn _do_before_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
@@ -64,12 +66,12 @@ fn _before_tx<S: Storage + Clone + 'static>(
 
 // --------------------------------- after tx ----------------------------------
 
-pub fn after_tx<S: Storage + Clone + 'static>(
+pub fn do_after_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,
 ) -> AppResult<Vec<Event>> {
-    match _after_tx(store, block, tx) {
+    match _do_after_tx(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called after transaction hook");
@@ -82,7 +84,7 @@ pub fn after_tx<S: Storage + Clone + 'static>(
     }
 }
 
-fn _after_tx<S: Storage + Clone + 'static>(
+fn _do_after_tx<S: Storage + Clone + 'static>(
     store: S,
     block: &BlockInfo,
     tx:    &Tx,

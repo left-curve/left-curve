@@ -5,12 +5,12 @@ use {
     tracing::{info, warn},
 };
 
-pub fn store_code(
+pub fn do_store_code(
     store:          &mut dyn Storage,
     uploader:       &Addr,
     wasm_byte_code: &Binary,
 ) -> AppResult<Vec<Event>> {
-    match _store_code(store, uploader, wasm_byte_code) {
+    match _do_store_code(store, uploader, wasm_byte_code) {
         Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");
             Ok(events)
@@ -23,7 +23,7 @@ pub fn store_code(
 }
 
 // return the hash of the code that is stored, for purpose of tracing/logging
-fn _store_code(
+fn _do_store_code(
     store:          &mut dyn Storage,
     uploader:       &Addr,
     wasm_byte_code: &Binary,

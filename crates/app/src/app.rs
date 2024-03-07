@@ -1,12 +1,15 @@
 use {
     crate::{
-        after_block, after_tx, before_block, before_tx, process_msg, process_query, AppError,
-        AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        do_after_block, do_after_tx, do_before_block, do_before_tx, do_create_client, do_execute,
+        do_instantiate, do_migrate, do_store_code, do_transfer, do_update_config, query_account,
+        query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
+        query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
+        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
-        from_json, hash, to_json, Binary, BlockInfo, Event, GenesisState, Hash, QueryRequest,
-        Storage, GENESIS_SENDER,
+        from_json, hash, to_json, Addr, Binary, BlockInfo, Event, GenesisState, Hash, Message,
+        Permission, QueryRequest, QueryResponse, Storage, GENESIS_SENDER,
     },
     tracing::{debug, info},
 };
@@ -110,13 +113,13 @@ impl App {
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(before_block(cached.share(), &block, contract)?);
+            events.extend(do_before_block(cached.share(), &block, contract)?);
         }
 
         // process transactions one-by-one
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
-            tx_results.push(run_tx(cached.share(), &block, raw_tx));
+            tx_results.push(process_tx(cached.share(), &block, raw_tx));
         }
 
         // call end blockers
@@ -125,7 +128,7 @@ impl App {
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(after_block(cached.share(), &block, contract)?);
+            events.extend(do_after_block(cached.share(), &block, contract)?);
         }
 
         // save the last committed block
@@ -236,7 +239,7 @@ impl App {
     }
 }
 
-fn run_tx<S>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
+fn process_tx<S>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
 {
@@ -248,7 +251,7 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(before_tx(cached.share(), block, &tx)?);
+    events.extend(do_before_tx(cached.share(), block, &tx)?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -268,10 +271,137 @@ where
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(after_tx(cached.share(), block, &tx)?);
+    events.extend(do_after_tx(cached.share(), block, &tx)?);
 
     // all messages succeeded. commit the state changes
     cached.write_access().commit();
 
     Ok(events)
+}
+
+pub fn process_msg<S: Storage + Clone + 'static>(
+    mut store: S,
+    block: &BlockInfo,
+    sender: &Addr,
+    msg: Message,
+) -> AppResult<Vec<Event>> {
+    match msg {
+        Message::UpdateConfig {
+            new_cfg,
+        } => do_update_config(&mut store, sender, &new_cfg),
+        Message::Transfer {
+            to,
+            coins,
+        } => do_transfer(store, block, sender.clone(), to, coins, true),
+        Message::StoreCode {
+            wasm_byte_code,
+        } => do_store_code(&mut store, sender, &wasm_byte_code),
+        Message::Instantiate {
+            code_hash,
+            msg,
+            salt,
+            funds,
+            admin,
+        } => do_instantiate(store, block, sender, code_hash, msg, salt, funds, admin),
+        Message::Execute {
+            contract,
+            msg,
+            funds,
+        } => do_execute(store, block, &contract, sender, msg, funds),
+        Message::Migrate {
+            contract,
+            new_code_hash,
+            msg,
+        } => do_migrate(store, block, &contract, sender, new_code_hash, msg),
+        Message::CreateClient {
+            code_hash,
+            client_state,
+            consensus_state,
+            salt,
+        } => do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt),
+        _ => todo!(),
+        // Message::UpdateClient {
+        //     client,
+        //     header,
+        // } => do_update_client(store, block, sender, client, header),
+        // Message::SubmitMisbehavior {
+        //     client,
+        //     misbehavior,
+        // } => do_submit_misbehavior(store, block, sender, client, misbehavior),
+    }
+}
+
+pub fn process_query<S: Storage + Clone + 'static>(
+    store: S,
+    block: &BlockInfo,
+    req:   QueryRequest,
+) -> AppResult<QueryResponse> {
+    match req {
+        QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
+        QueryRequest::Balance {
+            address,
+            denom,
+        } => query_balance(store, block, address, denom).map(QueryResponse::Balance),
+        QueryRequest::Balances {
+            address,
+            start_after,
+            limit,
+        } => query_balances(store, block, address, start_after, limit).map(QueryResponse::Balances),
+        QueryRequest::Supply {
+            denom,
+        } => query_supply(store, block, denom).map(QueryResponse::Supply),
+        QueryRequest::Supplies {
+            start_after,
+            limit,
+        } => query_supplies(store, block, start_after, limit).map(QueryResponse::Supplies),
+        QueryRequest::Code {
+            hash,
+        } => query_code(&store, hash).map(QueryResponse::Code),
+        QueryRequest::Codes {
+            start_after,
+            limit,
+        } => query_codes(&store, start_after, limit).map(QueryResponse::Codes),
+        QueryRequest::Account {
+            address,
+        } => query_account(&store, address).map(QueryResponse::Account),
+        QueryRequest::Accounts {
+            start_after,
+            limit,
+        } => query_accounts(&store, start_after, limit).map(QueryResponse::Accounts),
+        QueryRequest::WasmRaw {
+            contract,
+            key,
+        } => query_wasm_raw(store, contract, key).map(QueryResponse::WasmRaw),
+        QueryRequest::WasmSmart {
+            contract,
+            msg
+        } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
+        QueryRequest::Client {
+            client_id: _,
+        } => todo!(),
+        QueryRequest::Clients {
+            start_after: _,
+            limit: _,
+        } => todo!(),
+    }
+}
+
+pub fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+    // the genesis sender can always store code and instantiate contracts
+    if sender == GENESIS_SENDER {
+        return true;
+    }
+
+    // owner can always do anything it wants
+    if let Some(owner) = owner {
+        if sender == owner {
+            return true;
+        }
+    }
+
+    match permission {
+        Permission::Nobody => false,
+        Permission::Everybody => true,
+        Permission::Somebodies(accounts) => accounts.contains(sender),
+    }
 }
