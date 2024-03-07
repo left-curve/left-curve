@@ -60,15 +60,16 @@ pub enum Message {
         code_hash: Hash,
         client_state: Binary,
         consensus_state: Binary,
+        salt: Binary,
     },
     /// Update the state of an IBC light client.
     UpdateClient {
-        client_id: String,
+        client: Addr,
         header: Binary,
     },
     /// Submit a misbehavior to get an IBC light client frozen.
     SubmitMisbehavior {
-        client_id: String,
+        client: Addr,
         misbehavior: Binary,
     },
 }

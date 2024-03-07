@@ -1,5 +1,8 @@
 mod account;
+mod channel;
+mod client;
 mod config;
+mod connection;
 mod cron;
 mod events;
 #[allow(clippy::module_inception)]
@@ -17,12 +20,14 @@ pub use {
 
 use {
     crate::AppResult,
+    client::create_client,
     config::update_config,
     cw_std::{Addr, BlockInfo, Event, Message, Permission, Storage, GENESIS_SENDER},
     events::{
         new_after_block_event, new_after_tx_event, new_before_block_event, new_before_tx_event,
-        new_execute_event, new_instantiate_event, new_migrate_event, new_receive_event,
-        new_reply_event, new_store_code_event, new_transfer_event, new_update_config_event,
+        new_create_client_event, new_execute_event, new_instantiate_event, new_migrate_event,
+        new_receive_event, new_reply_event, new_store_code_event, new_transfer_event,
+        new_update_config_event,
     },
     execute::execute,
     instantiate::instantiate,
@@ -67,18 +72,20 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             msg,
         } => migrate(store, block, &contract, sender, new_code_hash, msg),
         Message::CreateClient {
-            code_hash: _,
-            client_state: _,
-            consensus_state: _,
-        } => todo!(),
-        Message::UpdateClient {
-            client_id: _,
-            header: _,
-        } => todo!(),
-        Message::SubmitMisbehavior {
-            client_id: _,
-            misbehavior: _,
-        } => todo!(),
+            code_hash,
+            client_state,
+            consensus_state,
+            salt,
+        } => create_client(store, block, sender, code_hash, client_state, consensus_state, salt),
+        _ => todo!(),
+        // Message::UpdateClient {
+        //     client,
+        //     header,
+        // } => update_client(store, block, sender, client, header),
+        // Message::SubmitMisbehavior {
+        //     client,
+        //     misbehavior,
+        // } => submit_misbehavior(store, block, sender, client, misbehavior),
     }
 }
 

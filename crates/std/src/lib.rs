@@ -23,11 +23,11 @@ pub use crate::{
     types::{
         hash, Account, AccountResponse, Addr, Attribute, BankQueryMsg, BankQueryResponse, Batch,
         Binary, BlockInfo, ClientResponse, Coin, CoinRef, Coins, CoinsIntoIter, CoinsIter, Config,
-        Decimal, Decimal256, Empty, Event, GenericResult, GenesisState, Hash, IbcClientExecuteMsg,
-        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
-        InfoResponse, Message, Op, Order, Permission, QueryRequest, QueryResponse, Record, ReplyOn,
-        Response, SubMessage, SubMsgResult, Timestamp, TransferMsg, Tx, Uint128, Uint256, Uint512,
-        Uint64, WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        Decimal, Decimal256, Empty, Event, GenericResult, GenesisState, Hash, IbcClientStatus,
+        IbcClientUpdateMsg, IbcClientVerifyMsg, InfoResponse, Message, Op, Order, Permission,
+        Permissions, QueryRequest, QueryResponse, Record, ReplyOn, Response, SubMessage,
+        SubMsgResult, Timestamp, TransferMsg, Tx, Uint128, Uint256, Uint512, Uint64,
+        WasmRawResponse, WasmSmartResponse, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
 };
 
@@ -39,7 +39,7 @@ mod wasm;
 // #[cfg(target_arch = "wasm32")]
 pub use crate::wasm::{
     do_after_block, do_after_tx, do_bank_query, do_bank_transfer, do_before_block, do_before_tx,
-    do_execute, do_ibc_client_create, do_ibc_client_execute, do_ibc_client_query, do_instantiate,
+    do_execute, do_ibc_client_create, do_ibc_client_update, do_ibc_client_verify, do_instantiate,
     do_migrate, do_query, do_receive, do_reply, ExternalIterator, ExternalStorage, Region,
 };
 

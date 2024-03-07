@@ -15,6 +15,6 @@ pub const CODES: Map<&Hash, Binary> = Map::new("code");
 /// Account metadata: address => account
 pub const ACCOUNTS: Map<&Addr, Account> = Map::new("account");
 
-/// Each contract has its own storage called, which we term the "substore".
-/// A key in a contract's substore is prefixed by this namespace + contract address.
+/// Each contract has its own storage space, which we term the "substore".
+/// A key in a contract's substore is prefixed by the word "wasm" + contract address.
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";

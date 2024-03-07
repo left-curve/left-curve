@@ -30,7 +30,7 @@ fn _store_code(
 ) -> AppResult<(Vec<Event>, Hash)> {
     // make sure the user has permission to store code
     let cfg = CONFIG.load(store)?;
-    if !has_permission(&cfg.store_code_permission, cfg.owner.as_ref(), uploader) {
+    if !has_permission(&cfg.permissions.store_code, cfg.owner.as_ref(), uploader) {
         return Err(AppError::Unauthorized);
     }
 

@@ -21,64 +21,39 @@ pub enum IbcClientStatus {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum IbcClientExecuteMsg {
+pub enum IbcClientUpdateMsg {
     /// Present the client with a new header. The client will verify it and
     /// perform updates to the client and consensus states.
     Update {
-        /// The `header` is given as an opaque bytes. It is up to the client
-        /// implementation to interpret it and perform the client state update.
         header: Binary,
     },
     /// Present the client with a proof of misbehavior. The client will verify
     /// it and freeze itself.
     UpdateOnMisbehavior {
-        /// Similar to the `header`, the `misbehavior` is opaque. It is up to
-        /// the client implementation to interpret it.
         misbehavior: Binary,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum IbcClientQueryMsg {
-    /// Query the client and consensus states.
-    /// Returns: IbcClientStateResponse
-    State {},
-    /// Verify a Merkle memership proof of the given path and value.
-    /// Returns: ()
+pub enum IbcClientVerifyMsg {
+    /// Verify a Merkle memership proof of the given key and value.
+    /// Returns nothing if verification succeeds; returns error otherwise.
     VerifyMembership {
         height: u64,
         delay_time_period: u64,
         delay_block_period: u64,
-        path: Binary,
-        data: Binary,
-        /// Similar to `header` and `misbehavior`, the `proof` is opaque. It is
-        /// up to the client implementation to interpret it.
+        key: Binary,
+        value: Binary,
         proof: Binary,
     },
-    /// Verify a Merkle non-membership proof of the given path.
-    /// Returns: ()
+    /// Verify a Merkle non-membership proof of the given key.
+    /// Returns nothing if verification succeeds; returns error otherwise.
     VerifyNonMembership {
         height: u64,
         delay_time_period: u64,
         delay_block_period: u64,
-        path: Binary,
+        key: Binary,
         proof: Binary,
     },
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum IbcClientQueryResponse {
-    State(IbcClientStateResponse),
-    // the verify methods do not have return values. if the query succeeds then
-    // it means the proof is verified; otherwise, an error is thrown.
-    VerifyMembership,
-    VerifyNonMembership,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct IbcClientStateResponse {
-    pub client_state: Binary,
-    pub consensus_state: Binary,
 }

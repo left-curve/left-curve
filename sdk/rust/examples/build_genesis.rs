@@ -2,10 +2,10 @@ use {
     cw_account::PublicKey,
     cw_bank::Balance,
     cw_rs::{AdminOption, GenesisBuilder, SigningKey},
-    cw_std::{Coin, Coins, Config, Empty, Permission, Uint128},
+    cw_std::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
-    std::{env, path::PathBuf},
+    std::{collections::BTreeSet, env, path::PathBuf},
 };
 
 lazy_static! {
@@ -116,13 +116,20 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // set config
+    let permissions = Permissions {
+        store_code:        Permission::Somebodies([account1.clone(), account2.clone(), account3.clone()].into()),
+        instantiate:       Permission::Everybody,
+        create_client:     Permission::Everybody,
+        create_connection: Permission::Everybody,
+        create_channel:    Permission::Everybody,
+    };
     builder.set_config(Config {
-        owner:                  None,
-        bank:                   bank.clone(),
-        begin_blockers:         vec![cron.clone()],
-        end_blockers:           vec![cron.clone()],
-        store_code_permission:  Permission::Somebodies([account1.clone(), account2.clone(), account3.clone()].into()),
-        instantiate_permission: Permission::Everybody,
+        owner:           None,
+        bank:            bank.clone(),
+        begin_blockers:  vec![cron.clone()],
+        end_blockers:    vec![cron.clone()],
+        allowed_clients: BTreeSet::new(),
+        permissions,
     })?;
 
     // build the final genesis state and write to file

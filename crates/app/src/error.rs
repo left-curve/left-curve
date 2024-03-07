@@ -55,6 +55,11 @@ pub enum AppError {
     AccountExists {
         address: Addr,
     },
+
+    #[error("Code hash is not allowed as IBC client: `{code_hash}`")]
+    NotAllowedClient {
+        code_hash: Hash,
+    },
 }
 
 impl AppError {
@@ -76,6 +81,10 @@ impl AppError {
 
     pub fn account_exists(address: Addr) -> Self {
         Self::AccountExists { address }
+    }
+
+    pub fn not_allowed_client(code_hash: Hash) -> Self {
+        Self::NotAllowedClient { code_hash }
     }
 }
 

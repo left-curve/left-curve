@@ -15,6 +15,15 @@ pub const GENESIS_SENDER: Addr = Addr(Hash(hex!("0a367b92cf0b037dfd89960ee832d56
 /// block hash. It is the SHA-256 hash of the UTF-8 string `hash`.
 pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"));
 
+/// The chain's genesis state. To be included in the `app_state` field of
+/// CometBFT's `genesis.json`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GenesisState {
+    pub config: Config,
+    pub msgs:   Vec<Message>,
+}
+
 /// Chain-level configurations. Not to be confused with contract-level configs.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -41,10 +50,20 @@ pub struct Config {
     /// all transactions have been processed, in order. Each of them must
     /// implement the `after_block` entry point.
     pub end_blockers: Vec<Addr>,
-    /// Which accounts are allowed to upload Wasm byte codes.
-    pub store_code_permission: Permission,
-    /// Which accounts are allowed to instantiate contracts.
-    pub instantiate_permission: Permission,
+    /// Permissions for certain gated actions.
+    pub permissions: Permissions,
+    /// Code hashes that are allowed as IBC light clients.
+    pub allowed_clients: BTreeSet<Hash>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields, rename_all = "snake_case")]
+pub struct Permissions {
+    pub store_code:        Permission,
+    pub instantiate:       Permission,
+    pub create_client:     Permission,
+    pub create_connection: Permission,
+    pub create_channel:    Permission,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -57,13 +76,6 @@ pub enum Permission {
     Everybody,
     /// Some whitelisted accounts or the owner can perform the action.
     Somebodies(BTreeSet<Addr>),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct GenesisState {
-    pub config: Config,
-    pub msgs:   Vec<Message>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

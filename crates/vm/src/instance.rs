@@ -71,7 +71,7 @@ where
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("instantiate", ctx, msg)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_execute(
@@ -80,7 +80,7 @@ where
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("execute", ctx, msg)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_query(
@@ -89,7 +89,7 @@ where
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Binary>> {
         let res_bytes = self.call_in_1_out_1("query", ctx, msg)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_migrate(
@@ -98,7 +98,7 @@ where
         msg: impl AsRef<[u8]>,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("migrate", ctx, msg)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_reply(
@@ -108,32 +108,32 @@ where
         events: &SubMsgResult,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_2_out_1("reply", ctx, msg, to_json(events)?)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_receive(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_0_out_1("receive", ctx)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_before_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_0_out_1("before_block", ctx)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_after_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_0_out_1("after_block", ctx)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_before_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("before_tx", ctx, to_json(tx)?)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_after_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json(tx)?)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_bank_transfer(
@@ -142,7 +142,7 @@ where
         msg: &TransferMsg,
     ) -> VmResult<GenericResult<Response>> {
         let res_bytes = self.call_in_1_out_1("bank_transfer", ctx, to_json(msg)?)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
     }
 
     pub fn call_bank_query(
@@ -151,7 +151,22 @@ where
         msg: &BankQueryMsg,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
         let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json(msg)?)?;
-        from_json(res_bytes).map_err(Into::into)
+        Ok(from_json(res_bytes)?)
+    }
+
+    pub fn call_ibc_client_create(
+        &mut self,
+        ctx: &Context,
+        client_state: &Binary,
+        consensus_state: &Binary,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_2_out_1(
+            "ibc_client_create",
+            ctx,
+            to_json(client_state)?,
+            to_json(consensus_state)?,
+        )?;
+        Ok(from_json(res_bytes)?)
     }
 
     /// Call a Wasm export function that takes exactly 0 input parameter (other

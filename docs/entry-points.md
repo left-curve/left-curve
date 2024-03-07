@@ -96,30 +96,30 @@ Contracts that are to be used as IBC light clients must implement the following 
 /// the initial consensus state and set the client state, consensus state, and
 /// any client-specific metadata necessary for correct light client operation.
 #[entry_point]
-fn ibc_client_create(ctx: SudoCtx, msg: IbcClientCreateMsg) -> Result<Response>;
+fn ibc_client_create(ctx: MutableCtx, client_state: Binary, consensus_state: Binary) -> Result<Response>;
 
 #[entry_point]
-fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> Result<Response>;
+fn ibc_client_update(ctx: MutableCtx, msg: IbcClientUpdateMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQueryMsg) -> Result<IbcClientQueryResponse>;
+fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> Result<()>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:
 
 ```rust
 #[entry_point]
-fn ibc_channel_open(ctx: SudoCtx, msg: IbcChannelOpenMsg) -> Result<Response>;
+fn ibc_channel_open(ctx: MutableCtx, msg: IbcChannelOpenMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_channel_close(ctx: SudoCtx, msg: IbcChannelCloseMsg) -> Result<Response>;
+fn ibc_channel_close(ctx: MutableCtx, msg: IbcChannelCloseMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_packet_receive(ctx: SudoCtx, msg: IbcPacketReceiveMsg) -> Result<Response>;
+fn ibc_packet_receive(ctx: MutableCtx, msg: IbcPacketReceiveMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_packet_ack(ctx: SudoCtx, msg: IbcPacketAckMsg) -> Result<Response>;
+fn ibc_packet_ack(ctx: MutableCtx, msg: IbcPacketAckMsg) -> Result<Response>;
 
 #[entry_point]
-fn ibc_packet_timeout(ctx: SudoCtx, msg: IbcPacketTimeoutMsg) -> Result<Response>;
+fn ibc_packet_timeout(ctx: MutableCtx, msg: IbcPacketTimeoutMsg) -> Result<Response>;
 ```

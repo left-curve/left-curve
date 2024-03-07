@@ -80,3 +80,10 @@ pub fn new_reply_event(contract: &Addr, attrs: Vec<Attribute>) -> Event {
         .add_attribute(CONTRACT_ADDRESS_KEY, contract)
         .add_attributes(attrs)
 }
+
+pub fn new_create_client_event(contract: &Addr, code_hash: &Hash, attrs: Vec<Attribute>) -> Event {
+    Event::new("create_client")
+        .add_attribute(CONTRACT_ADDRESS_KEY, contract)
+        .add_attribute("code_hash", code_hash)
+        .add_attributes(attrs)
+}

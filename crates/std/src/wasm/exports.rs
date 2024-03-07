@@ -1,9 +1,8 @@
 use {
     crate::{
         from_borsh, from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context,
-        ExternalStorage, GenericResult, IbcClientExecuteMsg, IbcClientQueryMsg,
-        IbcClientQueryResponse, ImmutableCtx, MutableCtx, Region, Response, StdError, SubMsgResult,
-        SudoCtx, TransferMsg, Tx,
+        ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx,
+        MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -557,10 +556,10 @@ where
     create_fn(sudo_ctx, client_state_bytes, consensus_state_bytes).into()
 }
 
-// ---------------------------- ibc client execute -----------------------------
+// ----------------------------- ibc client update -----------------------------
 
-pub fn do_ibc_client_execute<E>(
-    execute_fn: &dyn Fn(SudoCtx, IbcClientExecuteMsg) -> Result<Response, E>,
+pub fn do_ibc_client_update<E>(
+    update_fn: &dyn Fn(SudoCtx, IbcClientUpdateMsg) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -570,14 +569,14 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_ibc_client_execute(execute_fn, &ctx_bytes, &msg_bytes);
+    let res = _do_ibc_client_update(update_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
 
-fn _do_ibc_client_execute<E>(
-    execute_fn: &dyn Fn(SudoCtx, IbcClientExecuteMsg) -> Result<Response, E>,
+fn _do_ibc_client_update<E>(
+    update_fn: &dyn Fn(SudoCtx, IbcClientUpdateMsg) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<Response>
@@ -588,13 +587,13 @@ where
     let sudo_ctx = make_sudo_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    execute_fn(sudo_ctx, msg).into()
+    update_fn(sudo_ctx, msg).into()
 }
 
-// ----------------------------- ibc client query ------------------------------
+// ----------------------------- ibc client verify -----------------------------
 
-pub fn do_ibc_client_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+pub fn do_ibc_client_verify<E>(
+    verify_fn: &dyn Fn(ImmutableCtx, IbcClientVerifyMsg) -> Result<(), E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -604,17 +603,17 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_ibc_client_query(query_fn, &ctx_bytes, &msg_bytes);
+    let res = _do_ibc_client_verify(verify_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
 
-fn _do_ibc_client_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, IbcClientQueryMsg) -> Result<IbcClientQueryResponse, E>,
+fn _do_ibc_client_verify<E>(
+    verify_fn: &dyn Fn(ImmutableCtx, IbcClientVerifyMsg) -> Result<(), E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
-) -> GenericResult<IbcClientQueryResponse>
+) -> GenericResult<()>
 where
     E: ToString,
 {
@@ -622,5 +621,5 @@ where
     let immutable_ctx = make_immutable_ctx!(ctx);
     let msg = try_into_generic_result!(from_json(msg_bytes));
 
-    query_fn(immutable_ctx, msg).into()
+    verify_fn(immutable_ctx, msg).into()
 }

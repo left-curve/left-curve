@@ -44,7 +44,7 @@ fn _instantiate<S: Storage + Clone + 'static>(
 ) -> AppResult<(Vec<Event>, Addr)> {
     // make sure the user has permission to instantiate contracts
     let cfg = CONFIG.load(&store)?;
-    if !has_permission(&cfg.instantiate_permission, cfg.owner.as_ref(), sender) {
+    if !has_permission(&cfg.permissions.instantiate, cfg.owner.as_ref(), sender) {
         return Err(AppError::Unauthorized);
     }
 

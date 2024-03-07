@@ -23,7 +23,8 @@ mod uint64;
 pub use {
     address::Addr,
     app::{
-        Account, BlockInfo, Config, GenesisState, Permission, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        Account, BlockInfo, Config, GenesisState, Permission, Permissions, GENESIS_BLOCK_HASH,
+        GENESIS_SENDER,
     },
     bank::{BankQueryMsg, BankQueryResponse, TransferMsg},
     binary::Binary,
@@ -34,10 +35,7 @@ pub use {
     empty::Empty,
     event::{Attribute, Event},
     hash::{hash, Hash},
-    ibc::{
-        IbcClientExecuteMsg, IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse,
-        IbcClientStatus,
-    },
+    ibc::{IbcClientStatus, IbcClientUpdateMsg, IbcClientVerifyMsg},
     query::{
         AccountResponse, ClientResponse, InfoResponse, QueryRequest, QueryResponse,
         WasmRawResponse, WasmSmartResponse,

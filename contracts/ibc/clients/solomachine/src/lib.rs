@@ -41,9 +41,8 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, IbcClientExecuteMsg,
-        IbcClientQueryMsg, IbcClientQueryResponse, IbcClientStateResponse, IbcClientStatus,
-        ImmutableCtx, Item, Response, StdResult, SudoCtx,
+        cw_derive, from_json, hash, to_borsh, Api, Binary, IbcClientStatus, IbcClientUpdateMsg,
+        IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx,
     },
 };
 
@@ -91,8 +90,8 @@ pub struct Misbehavior {
 /// A key-value pair.
 #[cw_derive(serde, borsh)]
 pub struct Record {
-    pub path: Binary,
-    pub data: Binary,
+    pub key: Binary,
+    pub value: Binary,
 }
 
 /// In order to update the client, the public key must sign the Borsh encoding
@@ -122,12 +121,12 @@ pub fn ibc_client_create(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_execute(ctx: SudoCtx, msg: IbcClientExecuteMsg) -> anyhow::Result<Response> {
+pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Result<Response> {
     match msg {
-        IbcClientExecuteMsg::Update {
+        IbcClientUpdateMsg::Update {
             header,
         } => update(ctx, header),
-        IbcClientExecuteMsg::UpdateOnMisbehavior {
+        IbcClientUpdateMsg::UpdateOnMisbehavior {
             misbehavior,
         } => update_on_misbehavior(ctx, misbehavior),
     }
@@ -187,37 +186,27 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Resul
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_query(
     ctx: ImmutableCtx,
-    msg: IbcClientQueryMsg,
-) -> anyhow::Result<IbcClientQueryResponse> {
+    msg: IbcClientVerifyMsg,
+) -> anyhow::Result<()> {
     match msg {
-        IbcClientQueryMsg::State {} => query_state(ctx).map(IbcClientQueryResponse::State),
         // solo machine does not utilize the height and delay period pamameters
         // for membership verification, per ICS-06 spec. our implementation also
         // does not use the proof.
-        IbcClientQueryMsg::VerifyMembership {
-            path,
-            data,
+        IbcClientVerifyMsg::VerifyMembership {
+            key,
+            value,
             ..
-        } => verify_membership(ctx, path, data).map(|_| IbcClientQueryResponse::VerifyMembership),
+        } => verify_membership(ctx, key, value),
         // solo machine does not utilize the height and delay period parameters
         // for non-membership verification, per ICS-06 spec.
-        IbcClientQueryMsg::VerifyNonMembership {
-            path,
+        IbcClientVerifyMsg::VerifyNonMembership {
+            key,
             ..
-        } => verify_non_membership(ctx, path).map(|_| IbcClientQueryResponse::VerifyNonMembership),
+        } => verify_non_membership(ctx, key),
     }
 }
 
-pub fn query_state(ctx: ImmutableCtx) -> anyhow::Result<IbcClientStateResponse> {
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
-    Ok(IbcClientStateResponse {
-        client_state: to_json(&client_state)?,
-        consensus_state: to_json(&consensus_state)?,
-    })
-}
-
-pub fn verify_membership(ctx: ImmutableCtx, path: Binary, data: Binary) -> anyhow::Result<()> {
+pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
@@ -225,27 +214,27 @@ pub fn verify_membership(ctx: ImmutableCtx, path: Binary, data: Binary) -> anyho
     // trustworthy. all verifications should fail in this case.
     ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
 
-    // a record must exist for the current sequence, and its path and data must
+    // a record must exist for the current sequence, and its key and value must
     // both match the given values.
     let Some(record) = consensus_state.record else {
         bail!("expecting membership but record does not exist");
     };
 
     ensure!(
-        record.path == path,
-        "record exists but path does not match: {} != {path}",
-        record.path
+        record.key == key,
+        "record exists but key does not match: {} != {key}",
+        record.key
     );
     ensure!(
-        record.data == data,
-        "record exists but data does not match: {} != {data}",
-        record.data
+        record.value == value,
+        "record exists but value does not match: {} != {value}",
+        record.value
     );
 
     Ok(())
 }
 
-pub fn verify_non_membership(ctx: ImmutableCtx, path: Binary) -> anyhow::Result<()> {
+pub fn verify_non_membership(ctx: ImmutableCtx, key: Binary) -> anyhow::Result<()> {
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
@@ -253,10 +242,10 @@ pub fn verify_non_membership(ctx: ImmutableCtx, path: Binary) -> anyhow::Result<
     // trustworthy. all verifications should fail in this case.
     ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
 
-    // we're verifying non-membership now, so if the record exists, the path
+    // we're verifying non-membership now, so if the record exists, the key
     // must not match, otherwise it's a membership.
     if let Some(record) = consensus_state.record {
-        ensure!(record.path != path, "expecting non-membership but record exists");
+        ensure!(record.key != key, "expecting non-membership but record exists");
     }
 
     Ok(())
