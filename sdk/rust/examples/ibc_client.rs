@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
     // query the client's state again
     query_client_state(&client, &address).await?;
 
-    // -------------------------- submit misbehavior ---------------------------
+    // ----------------------------- freeze client -----------------------------
 
     // sign two headers at the same sequence and submit misbehavior
     let header_one = create_header(b"foo", b"bar", 1, &test1)?;
@@ -92,8 +92,8 @@ async fn main() -> anyhow::Result<()> {
         header_one,
         header_two,
     };
-    let tx3 = client.submit_misbehavior(address.clone(), to_json(&misbehavior)?, &sign_opts).await?;
-    println!("\nSubmitting misbehavior...");
+    let tx3 = client.freeze_client(address.clone(), to_json(&misbehavior)?, &sign_opts).await?;
+    println!("\nFreezing client on misbehavior...");
     println!("txhash: {}", tx3.hash);
 
     // wait 1 second for tx to settle

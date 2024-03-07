@@ -14,12 +14,12 @@ mod migrate;
 mod querier;
 mod query;
 mod state;
-mod store;
+mod upload;
 mod submessage;
 mod transfer;
 
 pub use crate::{
     app::*, auth::*, client::*, config::*, cron::*, error::*, events::*, execute::*,
-    instantiate::*, migrate::*, querier::*, query::*, state::*, store::*, submessage::*,
+    instantiate::*, migrate::*, querier::*, query::*, state::*, upload::*, submessage::*,
     transfer::*,
 };

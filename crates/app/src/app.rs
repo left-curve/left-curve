@@ -1,11 +1,10 @@
 use {
     crate::{
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_create_client, do_execute,
-        do_instantiate, do_migrate, do_store_code, do_submit_misbehavior, do_transfer,
-        do_update_client, do_update_config, query_account, query_accounts, query_balance,
-        query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_smart, AppError, AppResult, CHAIN_ID, CONFIG,
-        LAST_FINALIZED_BLOCK,
+        do_freeze_client, do_instantiate, do_migrate, do_set_config, do_transfer, do_update_client,
+        do_upload, query_account, query_accounts, query_balance, query_balances, query_code,
+        query_codes, query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart,
+        AppError, AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
@@ -287,16 +286,16 @@ pub fn process_msg<S: Storage + Clone + 'static>(
     msg: Message,
 ) -> AppResult<Vec<Event>> {
     match msg {
-        Message::UpdateConfig {
+        Message::SetConfig {
             new_cfg,
-        } => do_update_config(&mut store, sender, &new_cfg),
+        } => do_set_config(&mut store, sender, &new_cfg),
         Message::Transfer {
             to,
             coins,
         } => do_transfer(store, block, sender.clone(), to, coins, true),
-        Message::StoreCode {
+        Message::Upload {
             wasm_byte_code,
-        } => do_store_code(&mut store, sender, &wasm_byte_code),
+        } => do_upload(&mut store, sender, &wasm_byte_code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -324,10 +323,10 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             client,
             header,
         } => do_update_client(store, block, sender, &client, header),
-        Message::SubmitMisbehavior {
+        Message::FreezeClient {
             client,
             misbehavior,
-        } => do_submit_misbehavior(store, block, sender, &client, misbehavior),
+        } => do_freeze_client(store, block, sender, &client, misbehavior),
     }
 }
 

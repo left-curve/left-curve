@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
 
     // store and instantiate token wrapper contract
     let wrapper_wasm = fs::read(ARTIFACT_DIR.join("cw_mock_token_wrapper-aarch64.wasm"))?;
-    let (wrapper, tx1) = client.store_code_and_instantiate(
+    let (wrapper, tx1) = client.upload_and_instantiate(
         wrapper_wasm.into(),
         &cw_mock_token_wrapper::InstantiateMsg {
             bank: BANK.clone(),

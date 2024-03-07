@@ -156,16 +156,16 @@ fn _do_update_client<S: Storage + Clone + 'static>(
     Ok(events)
 }
 
-// ---------------------------- submit misbehavior -----------------------------
+// ------------------------------- freeze client -------------------------------
 
-pub fn do_submit_misbehavior<S: Storage + Clone + 'static>(
+pub fn do_freeze_client<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,
     client:      &Addr,
     misbehavior: Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_submit_misbehavior(store, block, sender, client, misbehavior) {
+    match _do_freeze_client(store, block, sender, client, misbehavior) {
         Ok(events) => {
             warn!(client = client.to_string(), "Froze IBC client due to misbehavior");
             Ok(events)
@@ -177,7 +177,7 @@ pub fn do_submit_misbehavior<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_submit_misbehavior<S: Storage + Clone + 'static>(
+fn _do_freeze_client<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,

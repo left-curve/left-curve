@@ -17,7 +17,7 @@ pub struct Tx {
 pub enum Message {
     /// Update the chain-level configurations. Only the `owner` can do this.
     /// If `owner` is set to None, no one can update the config.
-    UpdateConfig {
+    SetConfig {
         new_cfg: Config,
     },
     /// Send coins to the given recipient address.
@@ -30,7 +30,7 @@ pub enum Message {
         coins: Coins,
     },
     /// Upload a Wasm binary code and store it in the chain's state.
-    StoreCode {
+    Upload {
         wasm_byte_code: Binary,
     },
     /// Register a new account.
@@ -68,7 +68,7 @@ pub enum Message {
         header: Binary,
     },
     /// Submit a misbehavior to get an IBC light client frozen.
-    SubmitMisbehavior {
+    FreezeClient {
         client: Addr,
         misbehavior: Binary,
     },

@@ -265,12 +265,12 @@ impl Client {
         }
     }
 
-    pub async fn update_config(
+    pub async fn set_config(
         &self,
         new_cfg: Config,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::UpdateConfig { new_cfg }], sign_opts).await
+        self.send_tx(vec![Message::SetConfig { new_cfg }], sign_opts).await
     }
 
     pub async fn transfer(
@@ -282,12 +282,12 @@ impl Client {
         self.send_tx(vec![Message::Transfer { to, coins }], sign_opts).await
     }
 
-    pub async fn store_code(
+    pub async fn upload(
         &self,
         wasm_byte_code: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::StoreCode { wasm_byte_code }], sign_opts).await
+        self.send_tx(vec![Message::Upload { wasm_byte_code }], sign_opts).await
     }
 
     pub async fn instantiate<M: Serialize>(
@@ -306,7 +306,7 @@ impl Client {
         Ok((address, res))
     }
 
-    pub async fn store_code_and_instantiate<M: Serialize>(
+    pub async fn upload_and_instantiate<M: Serialize>(
         &self,
         wasm_byte_code: Binary,
         msg: &M,
@@ -319,9 +319,9 @@ impl Client {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let msg = to_json(msg)?;
         let admin = admin.decide(&address);
-        let store_code_msg = Message::StoreCode { wasm_byte_code };
+        let upload_msg = Message::Upload { wasm_byte_code };
         let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
-        let res = self.send_tx(vec![store_code_msg, instantiate_msg], sign_opts).await?;
+        let res = self.send_tx(vec![upload_msg, instantiate_msg], sign_opts).await?;
         Ok((address, res))
     }
 
@@ -381,13 +381,13 @@ impl Client {
         self.send_tx(vec![msg], sign_opts).await
     }
 
-    pub async fn submit_misbehavior(
+    pub async fn freeze_client(
         &self,
         client: Addr,
         misbehavior: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::SubmitMisbehavior {
+        let msg = Message::FreezeClient {
             client,
             misbehavior,
         };

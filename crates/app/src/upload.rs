@@ -1,16 +1,16 @@
 use {
-    super::{has_permission, new_store_code_event},
+    super::{has_permission, new_upload_event},
     crate::{AppError, AppResult, CODES, CONFIG},
     cw_std::{hash, Addr, Binary, Event, Hash, Storage},
     tracing::{info, warn},
 };
 
-pub fn do_store_code(
+pub fn do_upload(
     store:          &mut dyn Storage,
     uploader:       &Addr,
     wasm_byte_code: &Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_store_code(store, uploader, wasm_byte_code) {
+    match _do_upload(store, uploader, wasm_byte_code) {
         Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");
             Ok(events)
@@ -23,14 +23,14 @@ pub fn do_store_code(
 }
 
 // return the hash of the code that is stored, for purpose of tracing/logging
-fn _do_store_code(
+fn _do_upload(
     store:          &mut dyn Storage,
     uploader:       &Addr,
     wasm_byte_code: &Binary,
 ) -> AppResult<(Vec<Event>, Hash)> {
     // make sure the user has permission to store code
     let cfg = CONFIG.load(store)?;
-    if !has_permission(&cfg.permissions.store_code, cfg.owner.as_ref(), uploader) {
+    if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
         return Err(AppError::Unauthorized);
     }
 
@@ -43,5 +43,5 @@ fn _do_store_code(
     // store the code
     CODES.save(store, &code_hash, wasm_byte_code)?;
 
-    Ok((vec![new_store_code_event(&code_hash, uploader)], code_hash))
+    Ok((vec![new_upload_event(&code_hash, uploader)], code_hash))
 }

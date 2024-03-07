@@ -29,10 +29,10 @@ fn main() -> anyhow::Result<()> {
     let mut builder = GenesisBuilder::new();
 
     // upload account wasm code
-    let account_code_hash = builder.store_code(ARTIFACT_DIR.join("cw_account-aarch64.wasm"))?;
+    let account_code_hash = builder.upload(ARTIFACT_DIR.join("cw_account-aarch64.wasm"))?;
 
     // store and instantiate the account factory contract
-    let account_factory = builder.store_code_and_instantiate(
+    let account_factory = builder.upload_and_instantiate(
         ARTIFACT_DIR.join("cw_account_factory-aarch64.wasm"),
         cw_account_factory::InstantiateMsg {},
         b"account-factory".to_vec().into(),
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
 
     // store and instantiate the bank contract
     // give each account some initial balances
-    let bank = builder.store_code_and_instantiate(
+    let bank = builder.upload_and_instantiate(
         ARTIFACT_DIR.join("cw_bank-aarch64.wasm"),
         cw_bank::InstantiateMsg {
             initial_balances: vec![
@@ -108,7 +108,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // store and instantiate mock cron contract
-    let cron = builder.store_code_and_instantiate(
+    let cron = builder.upload_and_instantiate(
         ARTIFACT_DIR.join("cw_mock_cron-aarch64.wasm"),
         Empty {},
         b"cron".to_vec().into(),
@@ -116,11 +116,11 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // upload the solo machine code
-    let solomachine_hash = builder.store_code(ARTIFACT_DIR.join("cw_ibc_solomachine-aarch64.wasm"))?;
+    let solomachine_hash = builder.upload(ARTIFACT_DIR.join("cw_ibc_solomachine-aarch64.wasm"))?;
 
     // set config
     let permissions = Permissions {
-        store_code:        Permission::Somebodies([account1.clone(), account2.clone(), account3.clone()].into()),
+        upload:            Permission::Somebodies([account1.clone(), account2.clone(), account3.clone()].into()),
         instantiate:       Permission::Everybody,
         create_client:     Permission::Everybody,
         create_connection: Permission::Everybody,

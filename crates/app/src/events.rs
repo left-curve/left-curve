@@ -28,13 +28,13 @@ const CLIENT_ID_KEY: &str = "client_id";
 /// the client contract's Wasm code hash.
 const CLIENT_TYPE_KEY: &str = "client_type";
 
-pub fn new_update_config_event(sender: &Addr) -> Event {
-    Event::new("update_config")
+pub fn new_set_config_event(sender: &Addr) -> Event {
+    Event::new("set_config")
         .add_attribute("sender", sender)
 }
 
-pub fn new_store_code_event(code_hash: &Hash, uploader: &Addr) -> Event {
-    Event::new("store_code")
+pub fn new_upload_event(code_hash: &Hash, uploader: &Addr) -> Event {
+    Event::new("upload")
         .add_attribute("hash", code_hash)
         .add_attribute("uploader", uploader)
 }

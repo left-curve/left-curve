@@ -38,7 +38,7 @@ impl GenesisBuilder {
         Self::default()
     }
 
-    pub fn store_code(&mut self, path: impl AsRef<Path>) -> anyhow::Result<Hash> {
+    pub fn upload(&mut self, path: impl AsRef<Path>) -> anyhow::Result<Hash> {
         // read Wasm byte code from file
         let mut file = File::open(path)?;
         let mut wasm_byte_code = vec![];
@@ -48,7 +48,7 @@ impl GenesisBuilder {
         let code_hash = hash(&wasm_byte_code);
 
         // push the message into queue
-        self.code_msgs.push(Message::StoreCode {
+        self.code_msgs.push(Message::Upload {
             wasm_byte_code: wasm_byte_code.into(),
         });
 
@@ -75,14 +75,14 @@ impl GenesisBuilder {
         Ok(contract)
     }
 
-    pub fn store_code_and_instantiate<M: Serialize>(
+    pub fn upload_and_instantiate<M: Serialize>(
         &mut self,
         path:  impl AsRef<Path>,
         msg:   M,
         salt:  Binary,
         admin: AdminOption,
     ) -> anyhow::Result<Addr> {
-        let code_hash = self.store_code(path)?;
+        let code_hash = self.upload(path)?;
         self.instantiate(code_hash, msg, salt, admin)
     }
 

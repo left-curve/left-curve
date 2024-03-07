@@ -1,33 +1,33 @@
 use {
-    super::new_update_config_event,
+    super::new_set_config_event,
     crate::{AppError, AppResult, CONFIG},
     cw_std::{Addr, Config, Event, Storage},
     tracing::{info, warn},
 };
 
-pub fn do_update_config(
+pub fn do_set_config(
     store:   &mut dyn Storage,
     sender:  &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
-    match _do_update_config(store, sender, new_cfg) {
+    match _do_set_config(store, sender, new_cfg) {
         Ok(events) => {
-            info!("Config updated");
+            info!("Config set");
             Ok(events)
         },
         Err(err) => {
-            warn!(err = err.to_string(), "Failed to update config");
+            warn!(err = err.to_string(), "Failed to set config");
             Err(err)
         },
     }
 }
 
-fn _do_update_config(
+fn _do_set_config(
     store:   &mut dyn Storage,
     sender:  &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
-    // make sure the sender is authorized to update the config
+    // make sure the sender is authorized to set the config
     let cfg = CONFIG.load(store)?;
     let Some(owner) = cfg.owner else {
         return Err(AppError::OwnerNotSet);
@@ -39,5 +39,5 @@ fn _do_update_config(
     // save the new config
     CONFIG.save(store, new_cfg)?;
 
-    Ok(vec![new_update_config_event(sender)])
+    Ok(vec![new_set_config_event(sender)])
 }

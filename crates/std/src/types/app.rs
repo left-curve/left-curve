@@ -59,7 +59,7 @@ pub struct Config {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Permissions {
-    pub store_code:        Permission,
+    pub upload:            Permission,
     pub instantiate:       Permission,
     pub create_client:     Permission,
     pub create_connection: Permission,

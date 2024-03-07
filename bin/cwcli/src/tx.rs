@@ -13,7 +13,7 @@ use {
 #[derive(Parser)]
 pub enum TxCmd {
     /// Update the chain-level configurations
-    UpdateConfig {
+    SetConfig {
         /// New configurations as a JSON string
         new_cfg: String,
     },
@@ -97,7 +97,7 @@ pub enum TxCmd {
         header: String,
     },
     /// Submit proof of a misbehavior to an IBC light client
-    SubmitMishebavior {
+    FreezeClient {
         /// Address of the client contract
         client: Addr,
         /// Misbehavior as a JSON string
@@ -120,9 +120,9 @@ impl TxCmd {
 
         // compose the message
         let msgs = match self {
-            TxCmd::UpdateConfig { new_cfg } => {
+            TxCmd::SetConfig { new_cfg } => {
                 let new_cfg: Config = from_json(new_cfg.as_bytes())?;
-                vec![Message::UpdateConfig {
+                vec![Message::SetConfig {
                     new_cfg,
                 }]
             },
@@ -137,7 +137,7 @@ impl TxCmd {
                 let mut file = File::open(path)?;
                 let mut wasm_byte_code = vec![];
                 file.read_to_end(&mut wasm_byte_code)?;
-                vec![Message::StoreCode {
+                vec![Message::Upload {
                     wasm_byte_code: wasm_byte_code.into(),
                 }]
             },
@@ -156,7 +156,7 @@ impl TxCmd {
                 file.read_to_end(&mut wasm_byte_code)?;
                 let code_hash = hash(&wasm_byte_code);
                 vec![
-                    Message::StoreCode {
+                    Message::Upload {
                         wasm_byte_code: wasm_byte_code.into(),
                     },
                     Message::Instantiate {
@@ -196,8 +196,8 @@ impl TxCmd {
                     header: header.into_bytes().into(),
                 }]
             },
-            TxCmd::SubmitMishebavior { client, misbehavior } => {
-                vec![Message::SubmitMisbehavior {
+            TxCmd::FreezeClient { client, misbehavior } => {
+                vec![Message::FreezeClient {
                     client,
                     misbehavior: misbehavior.into_bytes().into(),
                 }]
