@@ -81,9 +81,15 @@ pub fn new_reply_event(contract: &Addr, attrs: Vec<Attribute>) -> Event {
         .add_attributes(attrs)
 }
 
-pub fn new_create_client_event(contract: &Addr, code_hash: &Hash, attrs: Vec<Attribute>) -> Event {
+pub fn new_create_client_event(client: &Addr, code_hash: &Hash, attrs: Vec<Attribute>) -> Event {
     Event::new("create_client")
-        .add_attribute(CONTRACT_ADDRESS_KEY, contract)
+        .add_attribute(CONTRACT_ADDRESS_KEY, client)
         .add_attribute("code_hash", code_hash)
+        .add_attributes(attrs)
+}
+
+pub fn new_update_client_event(client: &Addr, attrs: Vec<Attribute>) -> Event {
+    Event::new("update_client")
+        .add_attribute(CONTRACT_ADDRESS_KEY, client)
         .add_attributes(attrs)
 }

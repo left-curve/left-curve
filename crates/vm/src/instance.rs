@@ -169,6 +169,15 @@ where
         Ok(from_json(res_bytes)?)
     }
 
+    pub fn call_ibc_client_update(
+        &mut self,
+        ctx: &Context,
+        header: &Binary,
+    ) -> VmResult<GenericResult<Response>> {
+        let res_bytes = self.call_in_1_out_1("ibc_client_update", ctx, to_json(header)?)?;
+        Ok(from_json(res_bytes)?)
+    }
+
     /// Call a Wasm export function that takes exactly 0 input parameter (other
     /// than the context) and produces exactly 1 output.
     fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
