@@ -22,7 +22,7 @@ lazy_static! {
 
 const USER: Addr = Addr::from_slice(hex!("5f93cc3ed709beb4d0b105d43f65818fafc943cb10adc06f4f82cce82313069d"));
 
-const SOLOMACHINE_HASH: Hash = Hash::from_slice(hex!("57af38f120183d53b4e2cc0c7f98e8c0fee1982f4d998a7b3880fbce1525ea12"));
+const SOLOMACHINE_HASH: Hash = Hash::from_slice(hex!("33a296379077e3b2ef62d63f9db1d92bc8955643ea66b7c3a13388526f0cf39e"));
 
 const KEYSTORE_PASSWORD: &str = "123";
 
