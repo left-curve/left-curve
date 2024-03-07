@@ -38,9 +38,9 @@ impl Addr {
     /// Addresses are encoded as lowercase hex strings, with the 0x prefix.
     pub const PREFIX: &'static str = "0x";
 
-    /// Create a new address from a hash.
-    pub fn new(hash: Hash) -> Self {
-        Self(hash)
+    /// Create a new address from a 32-byte byte slice.
+    pub const fn from_slice(slice: [u8; Hash::LENGTH]) -> Self {
+        Self(Hash::from_slice(slice))
     }
 
     /// Compute a contract address as:
