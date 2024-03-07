@@ -41,8 +41,8 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, from_json, hash, to_borsh, Api, Binary, IbcClientStatus, IbcClientUpdateMsg,
-        IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx,
+        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, IbcClientStatus,
+        IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx,
     },
 };
 
@@ -85,6 +85,19 @@ pub struct Misbehavior {
     pub sequence: u64,
     pub header_one: Header,
     pub header_two: Header,
+}
+
+#[cw_derive(serde)]
+pub enum QueryMsg {
+    /// Query the client and consensus states.
+    /// Returns: StateResponse
+    State {},
+}
+
+#[cw_derive(serde)]
+pub struct StateResponse {
+    pub client_state: ClientState,
+    pub consensus_state: ConsensusState,
 }
 
 /// A key-value pair.
@@ -184,10 +197,7 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Resul
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn ibc_client_query(
-    ctx: ImmutableCtx,
-    msg: IbcClientVerifyMsg,
-) -> anyhow::Result<()> {
+pub fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> anyhow::Result<()> {
     match msg {
         // solo machine does not utilize the height and delay period pamameters
         // for membership verification, per ICS-06 spec. our implementation also
@@ -264,4 +274,18 @@ fn verify_signature(
     };
     let sign_bytes_hash = hash(to_borsh(&sign_bytes)?);
     api.secp256k1_verify(&sign_bytes_hash, &header.signature, public_key)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::State {} => to_json(&query_state(ctx)?),
+    }
+}
+
+pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
+    Ok(StateResponse {
+        client_state: CLIENT_STATE.load(ctx.store)?,
+        consensus_state: CONSENSUS_STATE.load(ctx.store)?,
+    })
 }
