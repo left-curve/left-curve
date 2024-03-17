@@ -1,7 +1,7 @@
 use {
     crate::{StdError, StdResult, Uint128},
     borsh::{BorshDeserialize, BorshSerialize},
-    serde::{de, ser, ser::SerializeSeq, Deserialize, Serialize},
+    serde::{Deserialize, Serialize},
     std::{
         collections::{btree_map, BTreeMap},
         fmt,
@@ -58,7 +58,7 @@ pub struct CoinRef<'a> {
     pub amount: &'a Uint128,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq)]
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
@@ -318,58 +318,6 @@ impl fmt::Debug for Coins {
     }
 }
 
-// although we store coins in a BTreeMap, cw-serde-json doesn't support
-// serializing maps, so we have to serialize it to an array.
-impl ser::Serialize for Coins {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
-        for (denom, amount) in &self.0 {
-            seq.serialize_element(&CoinRef { denom, amount })?;
-        }
-        seq.end()
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Coins {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(CoinsVisitor)
-    }
-}
-
-struct CoinsVisitor;
-
-impl<'de> de::Visitor<'de> for CoinsVisitor {
-    type Value = Coins;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("A sequence of coins")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: de::SeqAccess<'de>,
-    {
-        let mut map = BTreeMap::new();
-        // note: we ensure that there is no duplicate denom or zero amounts.
-        // unlike in cosmos-sdk, we don't ensure that denoms are sorted.
-        while let Some(Coin { denom, amount }) = seq.next_element()? {
-            if amount.is_zero() {
-                return Err(de::Error::custom("Coin amount is zero"));
-            }
-            if map.insert(denom, amount).is_some() {
-                return Err(de::Error::custom("Duplicate denom found"));
-            }
-        }
-        Ok(Coins(map))
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -380,23 +328,6 @@ mod tests {
         serde_json::json,
     };
 
-    fn mock_coins_json() -> Json {
-        json!([
-            {
-                "denom": "uatom",
-                "amount": "123",
-            },
-            {
-                "denom": "umars",
-                "amount": "456",
-            },
-            {
-                "denom": "uosmo",
-                "amount": "789",
-            },
-        ])
-    }
-
     fn mock_coins() -> Coins {
         Coins([
             (String::from("uatom"), Uint128::new(123)),
@@ -404,6 +335,14 @@ mod tests {
             (String::from("uosmo"), Uint128::new(789)),
         ]
         .into())
+    }
+
+    fn mock_coins_json() -> Json {
+        json!({
+            "uatom": "123",
+            "umars": "456",
+            "uosmo": "789",
+        })
     }
 
     #[test]
