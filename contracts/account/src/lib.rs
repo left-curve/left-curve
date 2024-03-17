@@ -3,8 +3,9 @@ use cw_std::entry_point;
 use {
     anyhow::bail,
     cw_std::{
-        cw_derive, split_one_key, to_json, Addr, Api, AuthCtx, Binary, ImmutableCtx, Item, MapKey,
-        Message, MutableCtx, RawKey, Response, StdError, StdResult, Tx,
+        cw_derive, split_one_key, to_json_value, to_json_vec, Addr, Api, AuthCtx, Binary,
+        ImmutableCtx, Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError,
+        StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -118,7 +119,7 @@ pub fn sign_bytes(
     sequence: u32,
 ) -> anyhow::Result<[u8; 32]> {
     let mut hasher = Sha256::new();
-    hasher.update(&to_json(&msgs)?);
+    hasher.update(&to_json_vec(&msgs)?);
     hasher.update(sender);
     hasher.update(chain_id.as_bytes());
     hasher.update(sequence.to_be_bytes());
@@ -184,9 +185,9 @@ pub fn execute(_ctx: MutableCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::State {} => to_json(&query_state(ctx)?),
+        QueryMsg::State {} => to_json_value(&query_state(ctx)?),
     }
 }
 

@@ -1,7 +1,7 @@
 use {
     crate::{
-        from_json, to_json, AccountResponse, Addr, Batch, Binary, Coins, Hash, InfoResponse, Op,
-        Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
+        from_json_value, to_json_value, AccountResponse, Addr, Batch, Binary, Coins, Hash,
+        InfoResponse, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -26,8 +26,8 @@ pub trait Storage: DynClone {
     /// NOTE: Rust's BTreeMap panics if max > max. We don't want this behavior.
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a>;
 
@@ -175,8 +175,8 @@ pub trait Querier {
     ) -> StdResult<R> {
         self.query(&QueryRequest::WasmSmart {
             contract,
-            msg: to_json(msg)?,
+            msg: to_json_value(msg)?,
         })
-        .and_then(|res| from_json(res.as_wasm_smart().data))
+        .and_then(|res| from_json_value(res.as_wasm_smart().data))
     }
 }

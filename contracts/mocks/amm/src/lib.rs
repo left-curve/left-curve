@@ -3,7 +3,7 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, to_json, Addr, Binary, Coin, Coins, ImmutableCtx, Item, Message, MutableCtx,
+        cw_derive, to_json_value, Addr, Coin, Coins, ImmutableCtx, Item, Json, Message, MutableCtx,
         Querier, Response, StdResult, Uint128, Uint256,
     },
     std::cmp,
@@ -146,7 +146,7 @@ pub fn provide_liquidity(
         .add_attribute("shares_minted", shares_to_mint)
         .add_message(Message::Execute {
             contract: cfg.bank,
-            msg: to_json(&cw_bank::ExecuteMsg::Mint {
+            msg: to_json_value(&cw_bank::ExecuteMsg::Mint {
                 to:     ctx.sender,
                 denom:  share_denom,
                 amount: shares_to_mint,
@@ -191,7 +191,7 @@ pub fn withdraw_liquidity(
         .add_attribute("funds_returned", &refunds)
         .add_message(Message::Execute {
             contract: cfg.bank.clone(),
-            msg: to_json(&cw_bank::ExecuteMsg::Burn {
+            msg: to_json_value(&cw_bank::ExecuteMsg::Burn {
                 from:   ctx.contract,
                 denom:  share_denom,
                 amount: shares_to_burn,
@@ -244,15 +244,15 @@ pub fn swap(ctx: MutableCtx, minimum_receive: Option<Uint128>) -> anyhow::Result
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
-        QueryMsg::Config {} => to_json(&query_config(ctx)?),
+        QueryMsg::Config {} => to_json_value(&query_config(ctx)?),
         QueryMsg::Simulate {
             offer,
-        } => to_json(&query_simulate(ctx, offer)?),
+        } => to_json_value(&query_simulate(ctx, offer)?),
         QueryMsg::ReverseSimulate {
             ask,
-        } => to_json(&query_reverse_simulate(ctx, ask)?),
+        } => to_json_value(&query_reverse_simulate(ctx, ask)?),
     }
     .map_err(Into::into)
 }

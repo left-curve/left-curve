@@ -1,8 +1,9 @@
 use {
     crate::{
-        from_borsh, from_json, to_json, AuthCtx, BankQueryMsg, BankQueryResponse, Binary, Context,
-        ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx,
-        MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx, TransferMsg, Tx,
+        from_borsh_slice, from_json_slice, to_json_vec, AuthCtx, BankQueryMsg, BankQueryResponse,
+        Binary, Context, ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg,
+        ImmutableCtx, MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx, TransferMsg,
+        Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -118,9 +119,9 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_instantiate(instantiate_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_instantiate<M, E>(
@@ -132,9 +133,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     instantiate_fn(mutable_ctx, msg).into()
 }
@@ -154,9 +155,9 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_execute(execute_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_execute<M, E>(
@@ -168,9 +169,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     execute_fn(mutable_ctx, msg).into()
 }
@@ -190,9 +191,9 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_query(query_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_query<M, E>(
@@ -204,9 +205,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
 }
@@ -226,7 +227,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_migrate(migrate_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -240,9 +241,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     migrate_fn(mutable_ctx, msg).into()
 }
@@ -264,7 +265,7 @@ where
     let events_bytes = unsafe { Region::consume(events_ptr as *mut Region) };
 
     let res = _do_reply(reply_fn, &ctx_bytes, &msg_bytes, &events_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -279,10 +280,10 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
-    let events = try_into_generic_result!(from_json(events_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let events = try_into_generic_result!(from_json_slice(events_bytes));
 
     reply_fn(sudo_ctx, msg, events).into()
 }
@@ -299,7 +300,7 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
     let res = _do_receive(receive_fn, &ctx_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -311,7 +312,7 @@ fn _do_receive<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
 
     receive_fn(mutable_ctx).into()
@@ -329,7 +330,7 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
     let res = _do_before_block(before_block_fn, &ctx_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -341,7 +342,7 @@ fn _do_before_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     before_block_fn(sudo_ctx).into()
@@ -359,7 +360,7 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
     let res = _do_after_block(after_block_fn, &ctx_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -371,7 +372,7 @@ fn _do_after_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     after_block_fn(sudo_ctx).into()
@@ -391,7 +392,7 @@ where
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
 
     let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -404,9 +405,9 @@ fn _do_before_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
-    let tx = try_into_generic_result!(from_json(tx_bytes));
+    let tx = try_into_generic_result!(from_json_slice(tx_bytes));
 
     before_tx_fn(auth_ctx, tx).into()
 }
@@ -425,7 +426,7 @@ where
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
 
     let res = _do_after_tx(after_tx_fn, &ctx_bytes, &tx_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -438,9 +439,9 @@ fn _do_after_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
-    let tx = try_into_generic_result!(from_json(tx_bytes));
+    let tx = try_into_generic_result!(from_json_slice(tx_bytes));
 
     after_tx_fn(auth_ctx, tx).into()
 }
@@ -459,7 +460,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_bank_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -472,9 +473,9 @@ fn _do_bank_transfer<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     transfer_fn(sudo_ctx, msg).into()
 }
@@ -493,7 +494,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_bank_query(query_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -506,9 +507,9 @@ fn _do_bank_query<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
 }
@@ -534,7 +535,7 @@ where
         &client_state_bytes,
         &consensus_state_bytes,
     );
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -548,10 +549,10 @@ fn _do_ibc_client_create<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let client_state_bytes = try_into_generic_result!(from_json(client_state_bytes));
-    let consensus_state_bytes = try_into_generic_result!(from_json(consensus_state_bytes));
+    let client_state_bytes = try_into_generic_result!(from_json_slice(client_state_bytes));
+    let consensus_state_bytes = try_into_generic_result!(from_json_slice(consensus_state_bytes));
 
     create_fn(sudo_ctx, client_state_bytes, consensus_state_bytes).into()
 }
@@ -570,7 +571,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_ibc_client_update(update_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -583,9 +584,9 @@ fn _do_ibc_client_update<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     update_fn(sudo_ctx, msg).into()
 }
@@ -604,7 +605,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_ibc_client_verify(verify_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json(&res).unwrap();
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes.into()) as usize
 }
@@ -617,9 +618,9 @@ fn _do_ibc_client_verify<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh(ctx_bytes));
+    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json(msg_bytes));
+    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
 
     verify_fn(immutable_ctx, msg).into()
 }

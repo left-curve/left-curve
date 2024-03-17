@@ -1,5 +1,5 @@
 use {
-    crate::Binary,
+    crate::{Binary, Json},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -26,12 +26,12 @@ pub enum IbcClientUpdateMsg {
     /// Present the client with a new header. The client will verify it and
     /// perform updates to the client and consensus states.
     Update {
-        header: Binary,
+        header: Json,
     },
     /// Present the client with a proof of misbehavior. The client will verify
     /// it and freeze itself.
     UpdateOnMisbehavior {
-        misbehavior: Binary,
+        misbehavior: Json,
     },
 }
 
@@ -46,7 +46,7 @@ pub enum IbcClientVerifyMsg {
         delay_block_period: u64,
         key: Binary,
         value: Binary,
-        proof: Binary,
+        proof: Json,
     },
     /// Verify a Merkle non-membership proof of the given key.
     /// Returns nothing if verification succeeds; returns error otherwise.
@@ -55,6 +55,6 @@ pub enum IbcClientVerifyMsg {
         delay_time_period: u64,
         delay_block_period: u64,
         key: Binary,
-        proof: Binary,
+        proof: Json,
     },
 }

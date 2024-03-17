@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, ensure},
     cw_account::PublicKey,
     cw_account_factory::make_salt,
-    cw_std::{hash, to_json, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
+    cw_std::{hash, to_json_value, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
     home::home_dir,
     lazy_static::lazy_static,
     serde::ser::Serialize,
@@ -67,7 +67,7 @@ impl GenesisBuilder {
         let admin = admin.decide(&contract);
         self.other_msgs.push(Message::Instantiate {
             code_hash,
-            msg: to_json(&msg)?,
+            msg: to_json_value(&msg)?,
             salt,
             funds: Coins::new_empty(),
             admin,
@@ -89,7 +89,7 @@ impl GenesisBuilder {
     pub fn execute<M: Serialize>(&mut self, contract: Addr, msg: M) -> anyhow::Result<()> {
         self.other_msgs.push(Message::Execute {
             contract,
-            msg:  to_json(&msg)?,
+            msg: to_json_value(&msg)?,
             funds: Coins::new_empty(),
         });
 

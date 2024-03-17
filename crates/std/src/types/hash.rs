@@ -178,33 +178,33 @@ impl<'de> de::Visitor<'de> for HashVisitor {
 mod tests {
     use {
         super::*,
-        crate::{from_json, to_json},
+        crate::{from_json_value, to_json_value},
         hex_literal::hex,
+        serde_json::json,
     };
 
     // just a random block hash I grabbed from MintScan
-    const MOCK_STR:  &str = "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
-    const MOCK_JSON: &str = "\"299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b\"";
+    const MOCK_JSON: &str = "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
     const MOCK_HASH: Hash = Hash(hex!("299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"));
 
     #[test]
     fn serializing() {
-        assert_eq!(MOCK_STR, MOCK_HASH.to_string());
-        assert_eq!(MOCK_JSON.as_bytes(), to_json(&MOCK_HASH).unwrap().as_ref());
+        assert_eq!(MOCK_JSON, MOCK_HASH.to_string());
+        assert_eq!(json!(MOCK_JSON), to_json_value(&MOCK_HASH).unwrap());
     }
 
     #[test]
     fn deserializing() {
-        assert_eq!(MOCK_HASH, Hash::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_HASH, from_json::<Hash>(MOCK_JSON).unwrap());
+        assert_eq!(MOCK_HASH, Hash::from_str(MOCK_JSON).unwrap());
+        assert_eq!(MOCK_HASH, from_json_value::<Hash>(json!(MOCK_JSON)).unwrap());
 
         // uppercase hex strings are not accepted
-        let illegal_str = MOCK_STR.to_uppercase();
-        assert!(from_json::<Hash>(illegal_str.as_bytes()).is_err());
+        let illegal_json = json!(MOCK_JSON.to_uppercase());
+        assert!(from_json_value::<Hash>(illegal_json).is_err());
 
         // incorrect length
         // trim the last two characters, so the string only represents 31 bytes
-        let illegal_str = &MOCK_STR[..MOCK_STR.len() - 2];
-        assert!(from_json::<Hash>(illegal_str.as_bytes()).is_err());
+        let illegal_json = json!(MOCK_JSON[..MOCK_JSON.len() - 2]);
+        assert!(from_json_value::<Hash>(illegal_json).is_err());
     }
 }

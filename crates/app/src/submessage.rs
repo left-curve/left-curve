@@ -3,7 +3,7 @@ use {
     crate::{process_msg, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::{CacheStore, PrefixStore, SharedStore},
     cw_std::{
-        Addr, Binary, BlockInfo, Context, Event, GenericResult, ReplyOn, Storage, SubMessage,
+        Addr, BlockInfo, Context, Event, GenericResult, Json, ReplyOn, Storage, SubMessage,
         SubMsgResult,
     },
     cw_vm::Instance,
@@ -60,7 +60,7 @@ pub fn handle_submessages(
                     store.clone(),
                     block,
                     sender,
-                    payload,
+                    &payload,
                     GenericResult::Ok(submsg_events),
                 )?);
             },
@@ -71,7 +71,7 @@ pub fn handle_submessages(
                     store.clone(),
                     block,
                     sender,
-                    payload,
+                    &payload,
                     GenericResult::Err(err.to_string()),
                 )?);
             },
@@ -95,7 +95,7 @@ pub fn do_reply<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,
-    payload:    Binary,
+    payload:    &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>> {
     match _do_reply(store, block, contract, payload, submsg_res) {
@@ -114,7 +114,7 @@ fn _do_reply<S: Storage + Clone + 'static>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,
-    payload:    Binary,
+    payload:    &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>> {
     // load wasm code

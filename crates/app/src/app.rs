@@ -8,7 +8,7 @@ use {
     },
     cw_db::{BaseStore, CacheStore, SharedStore},
     cw_std::{
-        from_json, hash, to_json, Addr, Binary, BlockInfo, Event, GenesisState, Hash, Message,
+        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
         Permission, QueryRequest, QueryResponse, Storage, GENESIS_SENDER,
     },
     tracing::{debug, info},
@@ -45,7 +45,7 @@ impl App {
         }
 
         // deserialize the genesis state
-        let genesis_state: GenesisState = from_json(app_state_bytes)?;
+        let genesis_state: GenesisState = from_json_slice(app_state_bytes)?;
 
         // save the config and genesis block. some genesis messages may need it
         CHAIN_ID.save(&mut cached, &chain_id)?;
@@ -189,7 +189,7 @@ impl App {
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(&self, raw_query: &[u8], height: u64, prove: bool) -> AppResult<Binary> {
+    pub fn do_query_app(&self, raw_query: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
         if prove {
             // we can't do merkle proof for smart queries. only raw store query
             // can be merkle proved.
@@ -207,18 +207,22 @@ impl App {
         // use the state storage at the given version to perform the query
         let store = self.store.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
-        let req: QueryRequest = from_json(raw_query)?;
+        let req: QueryRequest = from_json_slice(raw_query)?;
         let res = process_query(store, &block, req)?;
 
-        Ok(to_json(&res)?)
+        Ok(to_json_vec(&res)?)
     }
 
+    /// Performs a raw query of the app's underlying key-value store.
+    /// Returns two values:
+    /// - the value corresponding to the given key; `None` if the key doesn't exist;
+    /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
     pub fn do_query_store(
         &self,
         key:    &[u8],
         height: u64,
         prove:  bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Binary>)> {
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let version = if height == 0 {
             // height being zero means unspecified (protobuf doesn't have a null
             // type) in which case we use the latest version.
@@ -228,7 +232,7 @@ impl App {
         };
 
         let proof = if prove {
-            Some(to_json(&self.store.prove(key, version)?)?)
+            Some(to_json_vec(&self.store.prove(key, version)?)?)
         } else {
             None
         };
@@ -243,7 +247,7 @@ fn process_tx<S>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppRe
 where
     S: Storage + Clone + 'static,
 {
-    let tx = from_json(raw_tx)?;
+    let tx = from_json_slice(raw_tx)?;
     let mut events = vec![];
 
     // create cached store for this tx
@@ -302,17 +306,17 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             salt,
             funds,
             admin,
-        } => do_instantiate(store, block, sender, code_hash, msg, salt, funds, admin),
+        } => do_instantiate(store, block, sender, code_hash, &msg, salt, funds, admin),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => do_execute(store, block, &contract, sender, msg, funds),
+        } => do_execute(store, block, &contract, sender, &msg, funds),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate(store, block, &contract, sender, new_code_hash, msg),
+        } => do_migrate(store, block, &contract, sender, new_code_hash, &msg),
         Message::CreateClient {
             code_hash,
             client_state,

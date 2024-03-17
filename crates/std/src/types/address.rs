@@ -199,24 +199,24 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
 mod tests {
     use {
         super::*,
-        crate::{from_json, to_json},
+        crate::{from_json_value, to_json_value},
         hex_literal::hex,
+        serde_json::json,
     };
 
     // the same as the mock hash from the Hash unit tests, except with 0x prefix
-    const MOCK_STR:  &str = "0x299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
-    const MOCK_JSON: &str = "\"0x299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b\"";
+    const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
     const MOCK_ADDR: Addr = Addr(Hash(hex!("299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b")));
 
     #[test]
     fn serializing() {
         assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
-        assert_eq!(MOCK_JSON.as_bytes(), to_json(&MOCK_ADDR).unwrap().as_ref());
+        assert_eq!(json!(MOCK_STR), to_json_value(&MOCK_ADDR).unwrap());
     }
 
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_ADDR, from_json::<Addr>(MOCK_JSON).unwrap());
+        assert_eq!(MOCK_ADDR, from_json_value::<Addr>(json!(MOCK_STR)).unwrap());
     }
 }

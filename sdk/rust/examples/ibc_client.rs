@@ -4,7 +4,7 @@ use {
         StateResponse,
     },
     cw_rs::{Client, SigningKey, SigningOptions},
-    cw_std::{hash, to_borsh, to_json, Addr, Hash, IbcClientStatus, StdResult},
+    cw_std::{hash, to_borsh_vec, Addr, Hash, IbcClientStatus, StdResult},
     hex_literal::hex,
     home::home_dir,
     lazy_static::lazy_static,
@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
 
     // sign a header and update client state
     let header = create_header(b"foo", b"bar", 0, &test1)?;
-    let tx2 = client.update_client(address.clone(), to_json(&header)?, &sign_opts).await?;
+    let tx2 = client.update_client(address.clone(), &header, &sign_opts).await?;
     println!("\nUpdating IBC client...");
     println!("txhash: {}", tx2.hash);
 
@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
         header_one,
         header_two,
     };
-    let tx3 = client.freeze_client(address.clone(), to_json(&misbehavior)?, &sign_opts).await?;
+    let tx3 = client.freeze_client(address.clone(), &misbehavior, &sign_opts).await?;
     println!("\nFreezing client on misbehavior...");
     println!("txhash: {}", tx3.hash);
 
@@ -125,7 +125,7 @@ fn create_header(key: &[u8], value: &[u8], sequence: u64, sk: &SigningKey) -> St
         sequence,
         record: record.clone(),
     };
-    let sign_bytes_hash = hash(to_borsh(&sign_bytes)?);
+    let sign_bytes_hash = hash(to_borsh_vec(&sign_bytes)?);
     let signature = sk.sign_digest(&sign_bytes_hash.into_slice());
     Ok(Header {
         signature: signature.into(),

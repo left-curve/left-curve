@@ -259,7 +259,8 @@ impl<'de> de::Visitor<'de> for Decimal256Visitor {
 mod tests {
     use {
         super::*,
-        crate::{from_json, to_json},
+        crate::{from_json_value, to_json_value, Json},
+        serde_json::json,
         test_case::test_case,
     };
 
@@ -280,91 +281,91 @@ mod tests {
 
     #[test_case(
         Uint256::from_u128(1230000000000000000),
-        b"\"1.23\"";
+        json!("1.23");
         "both whole and fraction"
     )]
     #[test_case(
         Uint256::from_u128(1000000000000000000),
-        b"\"1\"";
+        json!("1");
         "only whole"
     )]
     #[test_case(
         Uint256::from_u128(230000000000000000),
-        b"\"0.23\"";
+        json!("0.23");
         "only fraction"
     )]
     #[test_case(
         Uint256::ZERO,
-        b"\"0\"";
+        json!("0");
         "zero"
     )]
     #[test_case(
         Uint256::MAX,
-        b"\"115792089237316195423570985008687907853269984665640564039457.584007913129639935\"";
+        json!("115792089237316195423570985008687907853269984665640564039457.584007913129639935");
         "max"
     )]
-    fn serialization(inner: Uint256, output: &[u8]) {
+    fn serialization(inner: Uint256, output: Json) {
         let decimal = Decimal256(inner);
-        assert_eq!(to_json(&decimal).unwrap().as_ref(), output);
+        assert_eq!(to_json_value(&decimal).unwrap(), output);
     }
 
     #[test_case(
         Some(Uint256::from_u128(1230000000000000000)),
-        b"\"1.23\"";
+        json!("1.23");
         "both whole and fraction"
     )]
     #[test_case(
         Some(Uint256::from_u128(1000000000000000000)),
-        b"\"1\"";
+        json!("1");
         "only whole no decimal point"
     )]
     #[test_case(
         Some(Uint256::from_u128(1000000000000000000)),
-        b"\"1.\"";
+        json!("1.");
         "only whole with decimal point"
     )]
     #[test_case(
         Some(Uint256::from_u128(230000000000000000)),
-        b"\".23\"";
+        json!(".23");
         "only fraction with decimal point"
     )]
     #[test_case(
         Some(Uint256::from_u128(1230000000000000000)),
-        b"\"00001.23\"";
+        json!("00001.23");
         "leading zeros"
     )]
     #[test_case(
         Some(Uint256::from_u128(1230000000000000000)),
-        b"\"1.230000\"";
+        json!("1.230000");
         "trailing zeros"
     )]
     #[test_case(
         Some(Uint256::ZERO),
-        b"\"0\"";
+        json!("0");
         "zero"
     )]
     #[test_case(
         Some(Uint256::MAX),
-        b"\"115792089237316195423570985008687907853269984665640564039457.584007913129639935\"";
+        json!("115792089237316195423570985008687907853269984665640564039457.584007913129639935");
         "max"
     )]
     #[test_case(
         None,
-        b"\"1.2.3\"";
+        json!("1.2.3");
         "incorrect number of dots"
     )]
     #[test_case(
         None,
-        b"\"larry.123\"";
+        json!("larry.123");
         "invalid whole part"
     )]
     #[test_case(
         None,
-        b"\"123.larry\"";
+        json!("123.larry");
         "invalid fraction part"
     )]
-    fn deserialization(inner: Option<Uint256>, input: &[u8]) {
-        let result = from_json::<Decimal256>(input);
+    fn deserialization(inner: Option<Uint256>, input: Json) {
+        let result = from_json_value::<Decimal256>(input);
         if let Some(inner) = inner {
             let decimal = Decimal256(inner);
             assert_eq!(result.unwrap(), decimal);

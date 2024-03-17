@@ -4,8 +4,9 @@ use {
     cw_account::{QueryMsg, StateResponse},
     cw_jmt::Proof,
     cw_std::{
-        from_json, hash, to_json, AccountResponse, Addr, Binary, Coin, Coins, Config, Hash,
-        InfoResponse, Message, QueryRequest, QueryResponse, Tx, WasmRawResponse,
+        from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
+        Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx,
+        WasmRawResponse,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
@@ -103,7 +104,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(from_json(&proof.ops[0].data)?)
+            Some(from_json_slice(&proof.ops[0].data)?)
         } else {
             None
         };
@@ -115,8 +116,8 @@ impl Client {
         req: &QueryRequest,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
-        let res = self.query("/app", to_json(req)?.to_vec(), height, false).await?;
-        Ok(from_json(res.value)?)
+        let res = self.query("/app", to_json_vec(req)?.to_vec(), height, false).await?;
+        Ok(from_json_slice(res.value)?)
     }
 
     pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
@@ -206,9 +207,9 @@ impl Client {
         msg: &M,
         height: Option<u64>,
     ) -> anyhow::Result<R> {
-        let msg = to_json(msg)?;
+        let msg = to_json_value(msg)?;
         let res = self.query_app(&QueryRequest::WasmSmart { contract, msg }, height).await?;
-        Ok(from_json(res.as_wasm_smart().data)?)
+        Ok(from_json_value(res.as_wasm_smart().data)?)
     }
 
     // ------------------------------ tx methods -------------------------------
@@ -258,7 +259,7 @@ impl Client {
         )?;
 
         if confirm_fn(&tx)? {
-            let tx_bytes = to_json(&tx)?;
+            let tx_bytes = to_json_vec(&tx)?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)
@@ -300,7 +301,7 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)> {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let msg = to_json(msg)?;
+        let msg = to_json_value(msg)?;
         let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
         let res = self.send_tx(vec![Message::Instantiate { code_hash, msg, salt, funds, admin }], sign_opts).await?;
         Ok((address, res))
@@ -317,7 +318,7 @@ impl Client {
     ) -> anyhow::Result<(Addr, tx_sync::Response)> {
         let code_hash = hash(&wasm_byte_code);
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let msg = to_json(msg)?;
+        let msg = to_json_value(msg)?;
         let admin = admin.decide(&address);
         let upload_msg = Message::Upload { wasm_byte_code };
         let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
@@ -332,7 +333,7 @@ impl Client {
         funds: Coins,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = to_json(msg)?;
+        let msg = to_json_value(msg)?;
         self.send_tx(vec![Message::Execute { contract, msg, funds }], sign_opts).await
     }
 
@@ -343,7 +344,7 @@ impl Client {
         msg: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = to_json(msg)?;
+        let msg = to_json_value(msg)?;
         self.send_tx(vec![Message::Migrate { contract, new_code_hash, msg }], sign_opts).await
     }
 
@@ -356,8 +357,8 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)> {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let client_state = to_json(client_state)?;
-        let consensus_state = to_json(consensus_state)?;
+        let client_state = to_json_value(client_state)?;
+        let consensus_state = to_json_value(consensus_state)?;
         let msg = Message::CreateClient {
             code_hash,
             client_state,
@@ -368,28 +369,28 @@ impl Client {
         Ok((address, res))
     }
 
-    pub async fn update_client(
+    pub async fn update_client<M: Serialize>(
         &self,
         client_id: Addr,
-        header: Binary,
+        header: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = Message::UpdateClient {
             client_id,
-            header,
+            header: to_json_value(header)?,
         };
         self.send_tx(vec![msg], sign_opts).await
     }
 
-    pub async fn freeze_client(
+    pub async fn freeze_client<M: Serialize>(
         &self,
         client_id: Addr,
-        misbehavior: Binary,
+        misbehavior: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = Message::FreezeClient {
             client_id,
-            misbehavior,
+            misbehavior: to_json_value(misbehavior)?,
         };
         self.send_tx(vec![msg], sign_opts).await
     }

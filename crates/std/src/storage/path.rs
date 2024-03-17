@@ -1,5 +1,8 @@
 use {
-    crate::{from_borsh, nested_namespaces_with_key, to_borsh, RawKey, StdError, StdResult, Storage},
+    crate::{
+        from_borsh_slice, nested_namespaces_with_key, to_borsh_vec, RawKey, StdError, StdResult,
+        Storage,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     std::marker::PhantomData,
 };
@@ -48,14 +51,14 @@ where
     }
 
     pub fn may_load(&self, store: &dyn Storage) -> StdResult<Option<T>> {
-        store.read(self.storage_key).map(from_borsh).transpose()
+        store.read(self.storage_key).map(from_borsh_slice).transpose()
     }
 
     pub fn load(&self, store: &dyn Storage) -> StdResult<T> {
         store
             .read(self.storage_key)
             .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
-            .and_then(from_borsh)
+            .and_then(from_borsh_slice)
     }
 
     // compared to the original cosmwasm, we require `action` to return an
@@ -77,7 +80,7 @@ where
     }
 
     pub fn save(&self, store: &mut dyn Storage, data: &T) -> StdResult<()> {
-        let bytes = to_borsh(data)?;
+        let bytes = to_borsh_vec(data)?;
         store.write(self.storage_key, &bytes);
         Ok(())
     }

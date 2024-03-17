@@ -4,7 +4,7 @@ use {
     clap::Parser,
     colored::Colorize,
     cw_rs::{Client, SigningKey, SigningOptions},
-    cw_std::{from_json, hash, Addr, Binary, Coins, Config, Hash, Message},
+    cw_std::{from_json_slice, hash, Addr, Binary, Coins, Config, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -121,7 +121,7 @@ impl TxCmd {
         // compose the message
         let msgs = match self {
             TxCmd::SetConfig { new_cfg } => {
-                let new_cfg: Config = from_json(new_cfg.as_bytes())?;
+                let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
                 vec![Message::SetConfig {
                     new_cfg,
                 }]

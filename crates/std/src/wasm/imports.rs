@@ -1,7 +1,6 @@
 use crate::{
-    from_json, to_json, Api,
-    GenericResult, Order, Querier, QueryRequest,
-    QueryResponse, Record, Region, StdError, StdResult, Storage, ImmutableCtx, MutableCtx, AuthCtx, SudoCtx
+    from_json_slice, to_json_vec, Api, AuthCtx, GenericResult, ImmutableCtx, MutableCtx, Order,
+    Querier, QueryRequest, QueryResponse, Record, Region, StdError, StdResult, Storage, SudoCtx,
 };
 
 // these are the method that the host must implement.
@@ -232,13 +231,13 @@ macro_rules! impl_methods {
 
         impl<'a> Querier for $t {
             fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
-                let req_bytes = to_json(req)?;
+                let req_bytes = to_json_vec(req)?;
                 let req_region = Region::build(&req_bytes);
                 let req_ptr = &*req_region as *const Region;
 
                 let res_ptr = unsafe { query_chain(req_ptr as usize) };
                 let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-                let res: GenericResult<QueryResponse> = from_json(&res_bytes)?;
+                let res: GenericResult<QueryResponse> = from_json_slice(&res_bytes)?;
 
                 res.into_std_result()
             }

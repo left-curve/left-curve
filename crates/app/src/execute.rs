@@ -2,7 +2,7 @@ use {
     super::{do_transfer, handle_submessages, new_execute_event},
     crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
-    cw_std::{Addr, Binary, BlockInfo, Coins, Context, Event, Storage},
+    cw_std::{Addr, BlockInfo, Coins, Context, Event, Json, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -12,7 +12,7 @@ pub fn do_execute<S: Storage + Clone + 'static>(
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
-    msg:      Binary,
+    msg:      &Json,
     funds:    Coins,
 ) -> AppResult<Vec<Event>> {
     match _do_execute(store, block, contract, sender, msg, funds) {
@@ -32,7 +32,7 @@ fn _do_execute<S: Storage + Clone + 'static>(
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
-    msg:      Binary,
+    msg:      &Json,
     funds:    Coins,
 ) -> AppResult<Vec<Event>> {
     let chain_id = CHAIN_ID.load(&store)?;

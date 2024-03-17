@@ -376,10 +376,26 @@ impl<'de> de::Visitor<'de> for CoinsVisitor {
 mod tests {
     use {
         super::*,
-        crate::{from_json, to_json},
+        crate::{from_json_value, to_json_value, Json},
+        serde_json::json,
     };
 
-    const MOCK_COINS_STR: &[u8] = br#"[{"denom":"uatom","amount":"123"},{"denom":"umars","amount":"456"},{"denom":"uosmo","amount":"789"}]"#;
+    fn mock_coins_json() -> Json {
+        json!([
+            {
+                "denom": "uatom",
+                "amount": "123",
+            },
+            {
+                "denom": "umars",
+                "amount": "456",
+            },
+            {
+                "denom": "uosmo",
+                "amount": "789",
+            },
+        ])
+    }
 
     fn mock_coins() -> Coins {
         Coins([
@@ -392,21 +408,35 @@ mod tests {
 
     #[test]
     fn serializing_coins() {
-        assert_eq!(to_json(&mock_coins()).unwrap().as_ref(), MOCK_COINS_STR);
+        assert_eq!(to_json_value(&mock_coins()).unwrap(), mock_coins_json());
     }
 
     #[test]
     fn deserializing_coins() {
         // valid string
-        assert_eq!(from_json::<Coins>(MOCK_COINS_STR).unwrap(), mock_coins());
+        assert_eq!(from_json_value::<Coins>(mock_coins_json()).unwrap(), mock_coins());
 
-        // invalid string: contains zero amount
-        let s = br#"[{"denom":"uatom","amount":"0"}]"#;
-        assert!(from_json::<Coins>(s).is_err());
+        // invalid json: contains zero amount
+        let illegal_json = json!([
+            {
+                "denom": "uatom",
+                "amount": "0",
+            },
+        ]);
+        assert!(from_json_value::<Coins>(illegal_json).is_err());
 
-        // invalid string: contains duplicate
-        let s = br#"[{"denom":"uatom","amount":"123"},{"denom":"uatom","amount":"456"}]"#;
-        assert!(from_json::<Coins>(s).is_err());
+        // invalid json: contains duplicate
+        let illegal_json = json!([
+            {
+                "denom": "uatom",
+                "amount": "123",
+            },
+            {
+                "denom": "uatom",
+                "amount": "456",
+            },
+        ]);
+        assert!(from_json_value::<Coins>(illegal_json).is_err());
     }
 
     #[test]

@@ -12,7 +12,10 @@ mod types;
 pub use crate::{
     context::{AuthCtx, Context, ImmutableCtx, MutableCtx, SudoCtx},
     error::{StdError, StdResult},
-    serde::{from_borsh, from_json, to_borsh, to_json},
+    serde::{
+        from_borsh_slice, from_json_slice, from_json_value, to_borsh_vec, to_json_value,
+        to_json_vec,
+    },
     storage::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         split_one_key, trim, Bound, Item, Map, MapKey, Path, PathBuf, Prefix, RawBound, RawKey,
@@ -45,7 +48,14 @@ pub use crate::wasm::{
 
 // -------------------------------- re-exports ---------------------------------
 
-// macros
+/// Represents any valid JSON value, including numbers, booleans, strings,
+/// objects, and arrays.
+///
+/// This is a re-export of `serde_json::Value`, but we name it to "Json" to be
+/// clearer what it is.
+pub use serde_json::Value as Json;
+
+// proc macros
 pub use cw_std_derive::{cw_derive, entry_point};
 
 // dependencies used by the macros

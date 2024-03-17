@@ -2,7 +2,7 @@ use {
     super::{handle_submessages, new_migrate_event},
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
-    cw_std::{Addr, Binary, BlockInfo, Context, Event, Hash, Storage},
+    cw_std::{Addr, BlockInfo, Context, Event, Hash, Json, Storage},
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -13,7 +13,7 @@ pub fn do_migrate<S: Storage + Clone + 'static>(
     contract:      &Addr,
     sender:        &Addr,
     new_code_hash: Hash,
-    msg:           Binary,
+    msg:           &Json,
 ) -> AppResult<Vec<Event>> {
     match _do_migrate(store, block, contract, sender, new_code_hash, msg) {
         Ok(events) => {
@@ -33,7 +33,7 @@ fn _do_migrate<S: Storage + Clone + 'static>(
     contract:      &Addr,
     sender:        &Addr,
     new_code_hash: Hash,
-    msg:           Binary,
+    msg:           &Json,
 ) -> AppResult<Vec<Event>> {
     let chain_id = CHAIN_ID.load(&store)?;
     let mut account = ACCOUNTS.load(&store, contract)?;

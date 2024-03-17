@@ -96,7 +96,7 @@ Contracts that are to be used as IBC light clients must implement the following 
 /// the initial consensus state and set the client state, consensus state, and
 /// any client-specific metadata necessary for correct light client operation.
 #[entry_point]
-fn ibc_client_create(ctx: MutableCtx, client_state: Binary, consensus_state: Binary) -> Result<Response>;
+fn ibc_client_create(ctx: MutableCtx, client_state: Json, consensus_state: Json) -> Result<Response>;
 
 #[entry_point]
 fn ibc_client_update(ctx: MutableCtx, msg: IbcClientUpdateMsg) -> Result<Response>;

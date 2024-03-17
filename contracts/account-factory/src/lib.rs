@@ -69,8 +69,8 @@ use {
     anyhow::bail,
     cw_account::PublicKey,
     cw_std::{
-        cw_derive, from_json, to_json, Addr, Api, AuthCtx, Binary, Bound, Coins, Hash,
-        ImmutableCtx, Map, MapKey, Message, MutableCtx, Order, Response, StdResult, Tx,
+        cw_derive, from_json_value, to_json_value, Addr, Api, AuthCtx, Binary, Bound, Coins, Hash,
+        ImmutableCtx, Json, Map, MapKey, Message, MutableCtx, Order, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -162,7 +162,8 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         bail!("transaction must contain exactly one message, got {}", tx.msgs.len());
     }
 
-    let Message::Execute { contract, msg, funds } = &tx.msgs[0] else {
+    // get the first message in the vector
+    let Message::Execute { contract, msg, funds } = tx.msgs.into_iter().next().unwrap() else {
         bail!("message is not execute");
     };
 
@@ -174,7 +175,7 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         bail!("do not send funds when creating contracts");
     }
 
-    let ExecuteMsg::RegisterAccount { public_key, .. } = from_json(msg)?;
+    let ExecuteMsg::RegisterAccount { public_key, .. } = from_json_value(msg)?;
     let serial = SERIALS.may_load(ctx.store, &public_key)?.unwrap_or(0);
     let msg_hash = make_message(&ctx.chain_id, serial);
     match public_key {
@@ -217,7 +218,7 @@ pub fn register_account(
         .add_attribute("address", &address)
         .add_message(Message::Instantiate {
             code_hash,
-            msg: to_json(&cw_account::InstantiateMsg {
+            msg: to_json_value(&cw_account::InstantiateMsg {
                 public_key,
             })?,
             salt,
@@ -227,24 +228,24 @@ pub fn register_account(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Serial {
             public_key,
-        } => to_json(&query_serial(ctx, public_key)?),
+        } => to_json_value(&query_serial(ctx, public_key)?),
         QueryMsg::Serials {
             start_after,
             limit,
-        } => to_json(&query_serials(ctx, start_after, limit)?),
+        } => to_json_value(&query_serials(ctx, start_after, limit)?),
         QueryMsg::Account {
             public_key,
             serial,
-        } => to_json(&query_account(ctx, public_key, serial)?),
+        } => to_json_value(&query_account(ctx, public_key, serial)?),
         QueryMsg::Accounts {
             public_key,
             start_after,
             limit,
-        } => to_json(&query_accounts(ctx, public_key, start_after, limit)?),
+        } => to_json_value(&query_accounts(ctx, public_key, start_after, limit)?),
     }
 }
 

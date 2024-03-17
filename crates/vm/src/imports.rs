@@ -1,6 +1,6 @@
 use {
     crate::{read_from_memory, write_to_memory, BackendQuerier, BackendStorage, Environment, VmResult},
-    cw_std::{from_json, to_json, Addr, QueryRequest, Record},
+    cw_std::{from_json_slice, to_json_vec, Addr, QueryRequest, Record},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -145,10 +145,10 @@ where
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let req_bytes = read_from_memory(env, &wasm_store, req_ptr)?;
-    let req: QueryRequest = from_json(req_bytes)?;
+    let req: QueryRequest = from_json_slice(req_bytes)?;
 
     let res = env.with_context_data(|ctx| ctx.querier.query_chain(req))?;
-    let res_bytes = to_json(&res)?;
+    let res_bytes = to_json_vec(&res)?;
 
     write_to_memory(env, &mut wasm_store, &res_bytes)
 }

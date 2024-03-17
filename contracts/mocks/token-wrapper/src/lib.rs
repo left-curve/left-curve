@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cw_std::entry_point;
 use cw_std::{
-    cw_derive, to_json, Addr, Coins, Item, Message, MutableCtx, Response, StdResult, SubMessage,
+    cw_derive, to_json_value, Addr, Coins, Item, Message, MutableCtx, Response, StdResult, SubMessage,
     Uint128,
 };
 
@@ -66,7 +66,7 @@ pub fn receive(ctx: MutableCtx) -> StdResult<Response> {
 fn new_mint_msg(bank: Addr, to: Addr, denom: String, amount: Uint128) -> StdResult<SubMessage> {
     Ok(SubMessage::reply_never(Message::Execute {
         contract: bank,
-        msg: to_json(&cw_bank::ExecuteMsg::Mint {
+        msg: to_json_value(&cw_bank::ExecuteMsg::Mint {
             to,
             denom,
             amount,
@@ -78,7 +78,7 @@ fn new_mint_msg(bank: Addr, to: Addr, denom: String, amount: Uint128) -> StdResu
 fn new_burn_msg(bank: Addr, from: Addr, denom: String, amount: Uint128) -> StdResult<SubMessage> {
     Ok(SubMessage::reply_never(Message::Execute {
         contract: bank,
-        msg: to_json(&cw_bank::ExecuteMsg::Burn {
+        msg: to_json_value(&cw_bank::ExecuteMsg::Burn {
             from,
             denom,
             amount,

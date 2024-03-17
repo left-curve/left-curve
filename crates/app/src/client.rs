@@ -5,7 +5,9 @@ use {
     },
     crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
     cw_db::PrefixStore,
-    cw_std::{Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Storage},
+    cw_std::{
+        Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Json, Storage,
+    },
     cw_vm::Instance,
     tracing::{info, warn},
 };
@@ -17,8 +19,8 @@ pub fn do_create_client<S: Storage + Clone + 'static>(
     block:           &BlockInfo,
     sender:          &Addr,
     code_hash:       Hash,
-    client_state:    Binary,
-    consensus_state: Binary,
+    client_state:    Json,
+    consensus_state: Json,
     salt:            Binary,
 ) -> AppResult<Vec<Event>> {
     match _do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt) {
@@ -38,8 +40,8 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
     block:           &BlockInfo,
     sender:          &Addr,
     code_hash:       Hash,
-    client_state:    Binary,
-    consensus_state: Binary,
+    client_state:    Json,
+    consensus_state: Json,
     salt:            Binary,
 ) -> AppResult<(Vec<Event>, Addr)> {
     // make sure:
@@ -103,7 +105,7 @@ pub fn do_update_client<S: Storage + Clone + 'static>(
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
-    header:    Binary,
+    header:    Json,
 ) -> AppResult<Vec<Event>> {
     match _do_update_client(store, block, sender, client_id, header) {
         Ok(events) => {
@@ -122,7 +124,7 @@ fn _do_update_client<S: Storage + Clone + 'static>(
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
-    header:    Binary,
+    header:    Json,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
     let account = ACCOUNTS.load(&store, client_id)?;
@@ -163,7 +165,7 @@ pub fn do_freeze_client<S: Storage + Clone + 'static>(
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
-    misbehavior: Binary,
+    misbehavior: Json,
 ) -> AppResult<Vec<Event>> {
     match _do_freeze_client(store, block, sender, client_id, misbehavior) {
         Ok(events) => {
@@ -182,7 +184,7 @@ fn _do_freeze_client<S: Storage + Clone + 'static>(
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
-    misbehavior: Binary,
+    misbehavior: Json,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
     let account = ACCOUNTS.load(&store, client_id)?;

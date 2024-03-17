@@ -1,5 +1,5 @@
 use {
-    crate::{to_json, Attribute, Binary, Message, StdResult},
+    crate::{to_json_value, Attribute, Json, Message, StdResult},
     serde::{Deserialize, Serialize},
 };
 
@@ -54,9 +54,9 @@ impl Response {
 /// payload data to the contract.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ReplyOn {
-    Success(Binary),
-    Error(Binary),
-    Always(Binary),
+    Success(Json),
+    Error(Json),
+    Always(Json),
     Never,
 }
 
@@ -77,21 +77,21 @@ impl SubMessage {
     pub fn reply_always<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Always(to_json(payload)?),
+            reply_on: ReplyOn::Always(to_json_value(payload)?),
         })
     }
 
     pub fn reply_on_success<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Success(to_json(payload)?),
+            reply_on: ReplyOn::Success(to_json_value(payload)?),
         })
     }
 
     pub fn reply_on_error<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Error(to_json(payload)?),
+            reply_on: ReplyOn::Error(to_json_value(payload)?),
         })
     }
 }

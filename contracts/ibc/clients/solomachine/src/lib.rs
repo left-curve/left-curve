@@ -41,8 +41,8 @@ use cw_std::entry_point;
 use {
     anyhow::{bail, ensure},
     cw_std::{
-        cw_derive, from_json, hash, to_borsh, to_json, Api, Binary, IbcClientStatus,
-        IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx,
+        cw_derive, from_json_value, hash, to_borsh_vec, to_json_value, Api, Binary, IbcClientStatus,
+        IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx, Json,
     },
 };
 
@@ -118,11 +118,11 @@ pub struct SignBytes {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_create(
     ctx: SudoCtx,
-    client_state: Binary,
-    consensus_state: Binary,
+    client_state: Json,
+    consensus_state: Json,
 ) -> anyhow::Result<Response> {
-    let client_state: ClientState = from_json(client_state)?;
-    let consensus_state: ConsensusState = from_json(consensus_state)?;
+    let client_state: ClientState = from_json_value(client_state)?;
+    let consensus_state: ConsensusState = from_json_value(consensus_state)?;
 
     ensure!(client_state.status == IbcClientStatus::Active, "new client must be active");
     ensure!(consensus_state.sequence == 0, "sequence must start from zero");
@@ -145,8 +145,8 @@ pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Resul
     }
 }
 
-pub fn update(ctx: SudoCtx, header: Binary) -> anyhow::Result<Response> {
-    let header: Header = from_json(header)?;
+pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
+    let header: Header = from_json_value(header)?;
     let client_state = CLIENT_STATE.load(ctx.store)?;
     let mut consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
@@ -166,8 +166,8 @@ pub fn update(ctx: SudoCtx, header: Binary) -> anyhow::Result<Response> {
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
-pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Binary) -> anyhow::Result<Response> {
-    let misbehavior: Misbehavior = from_json(misbehavior)?;
+pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<Response> {
+    let misbehavior: Misbehavior = from_json_value(misbehavior)?;
     let mut client_state = CLIENT_STATE.load(ctx.store)?;
     let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
 
@@ -272,14 +272,14 @@ fn verify_signature(
         sequence,
         record: header.record.clone(), // TODO: avoid this cloning
     };
-    let sign_bytes_hash = hash(to_borsh(&sign_bytes)?);
+    let sign_bytes_hash = hash(to_borsh_vec(&sign_bytes)?);
     api.secp256k1_verify(&sign_bytes_hash, &header.signature, public_key)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::State {} => to_json(&query_state(ctx)?),
+        QueryMsg::State {} => to_json_value(&query_state(ctx)?),
     }
 }
 

@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash},
+    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash, Json},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -69,7 +69,7 @@ pub enum QueryRequest {
     /// Returns: WasmSmartResponse
     WasmSmart {
         contract: Addr,
-        msg: Binary,
+        msg: Json,
     },
 }
 
@@ -99,7 +99,7 @@ pub struct WasmRawResponse {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct WasmSmartResponse {
     pub contract: Addr,
-    pub data: Binary,
+    pub data: Json,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

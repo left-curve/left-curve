@@ -1,7 +1,7 @@
 use {
     crate::{
-        concat, extend_one_byte, from_borsh, increment_last_byte, nested_namespaces_with_key, trim,
-        Bound, MapKey, Order, RawBound, RawKey, StdResult, Storage,
+        concat, extend_one_byte, from_borsh_slice, increment_last_byte, nested_namespaces_with_key,
+        trim, Bound, MapKey, Order, RawBound, RawKey, StdResult, Storage,
     },
     borsh::BorshDeserialize,
     std::marker::PhantomData,
@@ -48,7 +48,7 @@ where
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;
-            let data = from_borsh(v)?;
+            let data = from_borsh_slice(v)?;
             Ok((key, data))
         });
 

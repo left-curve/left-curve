@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, Coins, Config, Hash},
+    crate::{Addr, Binary, Coins, Config, Hash, Json},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -36,7 +36,7 @@ pub enum Message {
     /// Register a new account.
     Instantiate {
         code_hash: Hash,
-        msg: Binary,
+        msg: Json,
         salt: Binary,
         funds: Coins,
         admin: Option<Addr>,
@@ -44,7 +44,7 @@ pub enum Message {
     /// Execute the contract.
     Execute {
         contract: Addr,
-        msg: Binary,
+        msg: Json,
         funds: Coins,
     },
     /// Update the `code_hash` associated with a contract.
@@ -53,23 +53,23 @@ pub enum Message {
     Migrate {
         contract: Addr,
         new_code_hash: Hash,
-        msg: Binary,
+        msg: Json,
     },
     /// Create a new IBC light client.
     CreateClient {
         code_hash: Hash,
-        client_state: Binary,
-        consensus_state: Binary,
+        client_state: Json,
+        consensus_state: Json,
         salt: Binary,
     },
     /// Update the state of an IBC light client by submitting a new header.
     UpdateClient {
         client_id: Addr,
-        header: Binary,
+        header: Json,
     },
     /// Freeze an IBC light client by submitting evidence of a misbehavior.
     FreezeClient {
         client_id: Addr,
-        misbehavior: Binary,
+        misbehavior: Json,
     },
 }

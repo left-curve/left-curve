@@ -6,7 +6,7 @@ use {
     cw_db::PrefixStore,
     cw_std::{
         AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Bound, Coin,
-        Coins, Context, Hash, InfoResponse, Order, StdResult, Storage, WasmRawResponse,
+        Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
         WasmSmartResponse,
     },
     cw_vm::{BackendStorage, Instance},
@@ -160,7 +160,7 @@ pub fn query_wasm_smart<S: Storage + Clone + 'static>(
     store:    S,
     block:    &BlockInfo,
     contract: Addr,
-    msg:      Binary,
+    msg:      Json,
 ) -> AppResult<WasmSmartResponse> {
     // load wasm code
     let chain_id = CHAIN_ID.load(&store)?;
@@ -183,7 +183,7 @@ pub fn query_wasm_smart<S: Storage + Clone + 'static>(
         funds:           None,
         simulate:        None,
     };
-    let data = instance.call_query(&ctx, msg)?.into_std_result()?;
+    let data = instance.call_query(&ctx, &msg)?.into_std_result()?;
 
     Ok(WasmSmartResponse {
         contract: ctx.contract,

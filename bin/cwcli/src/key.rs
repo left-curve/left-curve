@@ -5,7 +5,7 @@ use {
     clap::Parser,
     colored::Colorize,
     cw_rs::{Keystore, SigningKey},
-    cw_std::from_json,
+    cw_std::from_json_slice,
     rand::rngs::OsRng,
     std::{
         fs,
@@ -112,7 +112,7 @@ fn show(dir: &Path, name: &str) -> anyhow::Result<()> {
     ensure!(filename.exists(), "file {filename:?} not found");
 
     let keystore_str = fs::read_to_string(filename)?;
-    let keystore: Keystore = from_json(keystore_str)?;
+    let keystore: Keystore = from_json_slice(keystore_str)?;
 
     print_json_pretty(keystore)
 }
