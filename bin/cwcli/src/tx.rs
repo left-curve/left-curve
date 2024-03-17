@@ -89,17 +89,17 @@ pub enum TxCmd {
         /// Salt in UTF-8 encoding
         salt: String,
     },
-    /// Update the state of an IBC light client
+    /// Update the state of an IBC light client by submitting a header
     UpdateClient {
         /// Address of the client contract
-        client: Addr,
+        client_id: Addr,
         /// Block header as a JSON string
         header: String,
     },
-    /// Submit proof of a misbehavior to an IBC light client
+    /// Freeze an IBC light client by submitting evidence of a misbehavior
     FreezeClient {
         /// Address of the client contract
-        client: Addr,
+        client_id: Addr,
         /// Misbehavior as a JSON string
         misbehavior: String,
     },
@@ -190,15 +190,15 @@ impl TxCmd {
                     salt:            salt.into_bytes().into(),
                 }]
             },
-            TxCmd::UpdateClient { client, header } => {
+            TxCmd::UpdateClient { client_id, header } => {
                 vec![Message::UpdateClient {
-                    client,
+                    client_id,
                     header: header.into_bytes().into(),
                 }]
             },
-            TxCmd::FreezeClient { client, misbehavior } => {
+            TxCmd::FreezeClient { client_id, misbehavior } => {
                 vec![Message::FreezeClient {
-                    client,
+                    client_id,
                     misbehavior: misbehavior.into_bytes().into(),
                 }]
             },

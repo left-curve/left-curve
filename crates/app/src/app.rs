@@ -320,13 +320,13 @@ pub fn process_msg<S: Storage + Clone + 'static>(
             salt,
         } => do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt),
         Message::UpdateClient {
-            client,
+            client_id,
             header,
-        } => do_update_client(store, block, sender, &client, header),
+        } => do_update_client(store, block, sender, &client_id, header),
         Message::FreezeClient {
-            client,
+            client_id,
             misbehavior,
-        } => do_freeze_client(store, block, sender, &client, misbehavior),
+        } => do_freeze_client(store, block, sender, &client_id, misbehavior),
     }
 }
 

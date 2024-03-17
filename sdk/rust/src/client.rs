@@ -370,12 +370,12 @@ impl Client {
 
     pub async fn update_client(
         &self,
-        client: Addr,
+        client_id: Addr,
         header: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = Message::UpdateClient {
-            client,
+            client_id,
             header,
         };
         self.send_tx(vec![msg], sign_opts).await
@@ -383,12 +383,12 @@ impl Client {
 
     pub async fn freeze_client(
         &self,
-        client: Addr,
+        client_id: Addr,
         misbehavior: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = Message::FreezeClient {
-            client,
+            client_id,
             misbehavior,
         };
         self.send_tx(vec![msg], sign_opts).await

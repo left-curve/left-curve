@@ -99,15 +99,15 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
 // ------------------------------- update client -------------------------------
 
 pub fn do_update_client<S: Storage + Clone + 'static>(
-    store:  S,
-    block:  &BlockInfo,
-    sender: &Addr,
-    client: &Addr,
-    header: Binary,
+    store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
+    client_id: &Addr,
+    header:    Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_update_client(store, block, sender, client, header) {
+    match _do_update_client(store, block, sender, client_id, header) {
         Ok(events) => {
-            info!(client = client.to_string(), "Update IBC client");
+            info!(client_id = client_id.to_string(), "Update IBC client");
             Ok(events)
         },
         Err(err) => {
@@ -118,18 +118,18 @@ pub fn do_update_client<S: Storage + Clone + 'static>(
 }
 
 fn _do_update_client<S: Storage + Clone + 'static>(
-    store:  S,
-    block:  &BlockInfo,
-    sender: &Addr,
-    client: &Addr,
-    header: Binary,
+    store:     S,
+    block:     &BlockInfo,
+    sender:    &Addr,
+    client_id: &Addr,
+    header:    Binary,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
-    let account = ACCOUNTS.load(&store, client)?;
+    let account = ACCOUNTS.load(&store, client_id)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client_id]);
     let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
@@ -139,7 +139,7 @@ fn _do_update_client<S: Storage + Clone + 'static>(
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
-        contract:        client.clone(),
+        contract:        client_id.clone(),
         sender:          Some(sender.clone()),
         funds:           None,
         simulate:        None,
@@ -162,12 +162,12 @@ pub fn do_freeze_client<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,
-    client:      &Addr,
+    client_id:   &Addr,
     misbehavior: Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_freeze_client(store, block, sender, client, misbehavior) {
+    match _do_freeze_client(store, block, sender, client_id, misbehavior) {
         Ok(events) => {
-            warn!(client = client.to_string(), "Froze IBC client due to misbehavior");
+            warn!(client = client_id.to_string(), "Froze IBC client due to misbehavior");
             Ok(events)
         },
         Err(err) => {
@@ -181,15 +181,15 @@ fn _do_freeze_client<S: Storage + Clone + 'static>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,
-    client:      &Addr,
+    client_id:   &Addr,
     misbehavior: Binary,
 ) -> AppResult<Vec<Event>> {
     // load wasm code
-    let account = ACCOUNTS.load(&store, client)?;
+    let account = ACCOUNTS.load(&store, client_id)?;
     let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
     // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client]);
+    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client_id]);
     let querier = Querier::new(store.clone(), block.clone());
     let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
 
@@ -199,7 +199,7 @@ fn _do_freeze_client<S: Storage + Clone + 'static>(
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
-        contract:        client.clone(),
+        contract:        client_id.clone(),
         sender:          Some(sender.clone()),
         funds:           None,
         simulate:        None,

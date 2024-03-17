@@ -62,14 +62,14 @@ pub enum Message {
         consensus_state: Binary,
         salt: Binary,
     },
-    /// Update the state of an IBC light client.
+    /// Update the state of an IBC light client by submitting a new header.
     UpdateClient {
-        client: Addr,
+        client_id: Addr,
         header: Binary,
     },
-    /// Submit a misbehavior to get an IBC light client frozen.
+    /// Freeze an IBC light client by submitting evidence of a misbehavior.
     FreezeClient {
-        client: Addr,
+        client_id: Addr,
         misbehavior: Binary,
     },
 }
