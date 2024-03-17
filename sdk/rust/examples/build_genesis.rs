@@ -1,11 +1,10 @@
 use {
     cw_account::PublicKey,
-    cw_bank::Balance,
     cw_rs::{AdminOption, GenesisBuilder, SigningKey},
     cw_std::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
-    std::{env, path::PathBuf},
+    std::{collections::BTreeMap, env, path::PathBuf},
 };
 
 lazy_static! {
@@ -58,50 +57,24 @@ fn main() -> anyhow::Result<()> {
 
     // store and instantiate the bank contract
     // give each account some initial balances
+    let coins = Coins::from_vec_unchecked(vec![
+        Coin {
+            denom: "uatom".into(),
+            amount: Uint128::new(20000),
+        },
+        Coin {
+            denom: "uosmo".into(),
+            amount: Uint128::new(20000),
+        },
+    ]);
     let bank = builder.upload_and_instantiate(
         ARTIFACT_DIR.join("cw_bank-aarch64.wasm"),
         cw_bank::InstantiateMsg {
-            initial_balances: vec![
-                Balance {
-                    address: account1.clone(),
-                    coins: Coins::from_vec_unchecked(vec![
-                        Coin {
-                            denom: "uatom".into(),
-                            amount: Uint128::new(20000),
-                        },
-                        Coin {
-                            denom: "uosmo".into(),
-                            amount: Uint128::new(20000),
-                        },
-                    ]),
-                },
-                Balance {
-                    address: account2.clone(),
-                    coins: Coins::from_vec_unchecked(vec![
-                        Coin {
-                            denom: "uatom".into(),
-                            amount: Uint128::new(20000),
-                        },
-                        Coin {
-                            denom: "uosmo".into(),
-                            amount: Uint128::new(20000),
-                        },
-                    ]),
-                },
-                Balance {
-                    address: account3.clone(),
-                    coins: Coins::from_vec_unchecked(vec![
-                        Coin {
-                            denom: "uatom".into(),
-                            amount: Uint128::new(20000),
-                        },
-                        Coin {
-                            denom: "uosmo".into(),
-                            amount: Uint128::new(20000),
-                        },
-                    ]),
-                },
-            ],
+            initial_balances: BTreeMap::from([
+                (account1.clone(), coins.clone()),
+                (account2.clone(), coins.clone()),
+                (account3.clone(), coins.clone()),
+            ]),
         },
         b"bank".to_vec().into(),
         AdminOption::SetToNone,

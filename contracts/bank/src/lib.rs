@@ -6,7 +6,7 @@ use {
         cw_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
         MutableCtx, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
     },
-    std::collections::{HashMap, HashSet},
+    std::collections::{BTreeMap, HashMap},
 };
 
 // (address, denom) => balance
@@ -20,13 +20,7 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cw_derive(serde)]
 pub struct InstantiateMsg {
-    pub initial_balances: Vec<Balance>,
-}
-
-#[cw_derive(serde)]
-pub struct Balance {
-    pub address: Addr,
-    pub coins:   Coins,
+    pub initial_balances: BTreeMap<Addr, Coins>,
 }
 
 #[cw_derive(serde)]
@@ -48,20 +42,13 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     // need to make sure there are no duplicate address in initial balances.
     // we don't need to dedup denoms however. if there's duplicate denoms, the
     // deserialization setup should have already thrown an error.
-    let mut seen_addrs = HashSet::new();
     let mut supplies = HashMap::new();
 
-    for Balance { address, coins } in msg.initial_balances {
-        if seen_addrs.contains(&address) {
-            bail!("Duplicate address in initial balances");
-        }
-
+    for (address, coins) in msg.initial_balances {
         for coin in coins {
             BALANCES.save(ctx.store, (&address, &coin.denom), &coin.amount)?;
             accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
-
-        seen_addrs.insert(address);
     }
 
     for (denom, amount) in supplies {
