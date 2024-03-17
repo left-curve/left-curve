@@ -217,6 +217,7 @@ impl App {
     /// Returns two values:
     /// - the value corresponding to the given key; `None` if the key doesn't exist;
     /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
+    #[allow(clippy::type_complexity)]
     pub fn do_query_store(
         &self,
         key:    &[u8],

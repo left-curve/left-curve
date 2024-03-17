@@ -229,7 +229,7 @@ where
     let res = _do_migrate(migrate_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_migrate<M, E>(
@@ -267,7 +267,7 @@ where
     let res = _do_reply(reply_fn, &ctx_bytes, &msg_bytes, &events_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_reply<M, E>(
@@ -302,7 +302,7 @@ where
     let res = _do_receive(receive_fn, &ctx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_receive<E>(
@@ -332,7 +332,7 @@ where
     let res = _do_before_block(before_block_fn, &ctx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_before_block<E>(
@@ -362,7 +362,7 @@ where
     let res = _do_after_block(after_block_fn, &ctx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_after_block<E>(
@@ -394,7 +394,7 @@ where
     let res = _do_before_tx(before_tx_fn, &ctx_bytes, &tx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_before_tx<E>(
@@ -428,7 +428,7 @@ where
     let res = _do_after_tx(after_tx_fn, &ctx_bytes, &tx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_after_tx<E>(
@@ -462,7 +462,7 @@ where
     let res = _do_bank_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_bank_transfer<E>(
@@ -496,7 +496,7 @@ where
     let res = _do_bank_query(query_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_bank_query<E>(
@@ -537,7 +537,7 @@ where
     );
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_ibc_client_create<E>(
@@ -573,7 +573,7 @@ where
     let res = _do_ibc_client_update(update_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_ibc_client_update<E>(
@@ -607,7 +607,7 @@ where
     let res = _do_ibc_client_verify(verify_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
-    Region::release_buffer(res_bytes.into()) as usize
+    Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_ibc_client_verify<E>(

@@ -133,14 +133,14 @@ impl Application for App {
                             ops: vec![ProofOp {
                                 r#type: type_name::<Proof>().into(),
                                 key:    req.data.into(),
-                                data:   proof.into(),
+                                data:   proof,
                             }],
                         }
                     });
                     ResponseQuery {
-                        code:      0,
-                        value:     value.unwrap_or_default().into(),
-                        height:    req.height,
+                        code:   0,
+                        value:  value.unwrap_or_default().into(),
+                        height: req.height,
                         proof_ops,
                         ..Default::default()
                     }
