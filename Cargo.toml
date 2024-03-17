@@ -69,7 +69,6 @@ rand               = "0.8"
 rocksdb            = { git = "https://github.com/cwsoftware123/rust-rocksdb", rev = "9015972" }
 serde              = "1"
 serde_json         = "1"
-serde-json-wasm    = "1"
 serde_with         = "3"
 sha2               = "0.10"
 signature          = "2"

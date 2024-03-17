@@ -920,7 +920,7 @@ dependencies = [
  "hex-literal",
  "proptest",
  "serde",
- "serde-json-wasm",
+ "serde_json",
  "serde_with",
  "sha2 0.10.8",
  "test-case",
@@ -2785,15 +2785,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb1c873e1b9b056a4dc4c0c198b24c3ffa059243875552b2bd0933b1aee4ce2"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-json-wasm"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f05da0d153dd4595bdffd5099dc0e9ce425b205ee648eb93437ff7302af8c9a5"
-dependencies = [
- "serde",
 ]
 
 [[package]]
