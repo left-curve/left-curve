@@ -1,9 +1,9 @@
 use {
     crate::{
         from_borsh_slice, from_json_slice, to_json_vec, AuthCtx, BankQueryMsg, BankQueryResponse,
-        Binary, Context, ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg,
-        ImmutableCtx, MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx, TransferMsg,
-        Tx,
+        Context, ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg,
+        ImmutableCtx, Json, MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx,
+        TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -119,7 +119,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_instantiate(instantiate_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -155,7 +155,7 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_execute(execute_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -179,7 +179,7 @@ where
 // ----------------------------------- query -----------------------------------
 
 pub fn do_query<M, E>(
-    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Binary, E>,
+    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Json, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -191,16 +191,16 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = _do_query(query_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json_vec(&res).unwrap(); // TODO: switch to borsh
+    let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
 
 fn _do_query<M, E>(
-    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Binary, E>,
+    query_fn: &dyn Fn(ImmutableCtx, M) -> Result<Json, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
-) -> GenericResult<Binary>
+) -> GenericResult<Json>
 where
     M: DeserializeOwned,
     E: ToString,
@@ -517,7 +517,7 @@ where
 // ----------------------------- ibc client create -----------------------------
 
 pub fn do_ibc_client_create<E>(
-    create_fn: &dyn Fn(SudoCtx, Binary, Binary) -> Result<Response, E>,
+    create_fn: &dyn Fn(SudoCtx, Json, Json) -> Result<Response, E>,
     ctx_ptr: usize,
     client_state_ptr: usize,
     consensus_state_ptr: usize,
@@ -541,7 +541,7 @@ where
 }
 
 fn _do_ibc_client_create<E>(
-    create_fn: &dyn Fn(SudoCtx, Binary, Binary) -> Result<Response, E>,
+    create_fn: &dyn Fn(SudoCtx, Json, Json) -> Result<Response, E>,
     ctx_bytes: &[u8],
     client_state_bytes: &[u8],
     consensus_state_bytes: &[u8],
