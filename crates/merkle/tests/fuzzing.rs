@@ -27,7 +27,7 @@
 
 use {
     anyhow::bail,
-    cw_jmt::{verify_proof, MerkleTree},
+    cw_merkle::{verify_proof, MerkleTree},
     cw_std::{Batch, Hash, MockStorage, Op, Storage},
     rand::{rngs::StdRng, thread_rng, Rng, RngCore, SeedableRng},
 };
