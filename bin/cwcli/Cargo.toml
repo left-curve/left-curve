@@ -15,7 +15,7 @@ bip32          = { workspace = true }
 clap           = { workspace = true, features = ["derive", "wrap_help"] }
 colored        = { workspace = true }
 colored_json   = { workspace = true }
-cw-jmt         = { path = "../../crates/jellyfish-merkle" }
+cw-merkle      = { path = "../../crates/merkle" }
 cw-rs          = { path = "../../sdk/rust" }
 cw-std         = { path = "../../crates/std" }
 dialoguer      = { workspace = true }

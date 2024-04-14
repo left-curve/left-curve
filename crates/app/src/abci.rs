@@ -1,6 +1,6 @@
 use {
     crate::{App, AppResult},
-    cw_jmt::Proof,
+    cw_merkle::Proof,
     cw_std::{Attribute, BlockInfo, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH},
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},

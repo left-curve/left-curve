@@ -2,7 +2,7 @@ use {
     crate::prompt::print_json_pretty,
     anyhow::ensure,
     clap::Parser,
-    cw_jmt::Proof,
+    cw_merkle::Proof,
     cw_rs::Client,
     cw_std::{Addr, Binary, Hash},
     serde::Serialize,

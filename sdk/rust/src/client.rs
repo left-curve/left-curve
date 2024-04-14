@@ -2,7 +2,7 @@ use {
     crate::{AdminOption, SigningKey},
     anyhow::{bail, ensure},
     cw_account::{QueryMsg, StateResponse},
-    cw_jmt::Proof,
+    cw_merkle::Proof,
     cw_std::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
         Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx,

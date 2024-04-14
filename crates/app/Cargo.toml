@@ -11,7 +11,7 @@ categories    = { workspace = true }
 
 [dependencies]
 cw-db            = { path = "../db" }
-cw-jmt           = { path = "../jellyfish-merkle" }
+cw-merkle        = { path = "../merkle" }
 cw-std           = { path = "../std" }
 cw-vm            = { path = "../vm" }
 dyn-clone        = { workspace = true }
