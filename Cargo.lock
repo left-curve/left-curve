@@ -842,7 +842,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-std",
- "cw-testing",
  "hex-literal",
  "proptest",
  "rand",

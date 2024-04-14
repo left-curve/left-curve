@@ -23,7 +23,6 @@ tracing   = { workspace = true }
 
 [dev-dependencies]
 anyhow       = { workspace = true }
-cw-testing   = { path = "../testing" }
 hex-literal  = { workspace = true }
 proptest     = { workspace = true }
 rand         = { workspace = true }

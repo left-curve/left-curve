@@ -684,7 +684,7 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 #[cfg(test)]
 mod tests {
     use {
-        super::*, cw_testing::MockStorage, hex_literal::hex, test_case::test_case,
+        super::*, cw_std::MockStorage, hex_literal::hex, test_case::test_case,
         tracing_test::traced_test,
     };
 
