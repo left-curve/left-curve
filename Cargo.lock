@@ -833,6 +833,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cw-std",
+ "cw-testing",
  "hex-literal",
  "proptest",
  "rand",
@@ -841,6 +842,15 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-test",
+]
+
+[[package]]
+name = "cw-macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -910,9 +920,38 @@ dependencies = [
 name = "cw-std"
 version = "0.0.0"
 dependencies = [
+ "borsh",
+ "cw-macros",
+ "cw-storage",
+ "cw-testing",
+ "cw-types",
+ "cw-wasm",
+ "serde",
+ "serde_json",
+ "serde_with",
+]
+
+[[package]]
+name = "cw-storage"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "cw-types",
+]
+
+[[package]]
+name = "cw-testing"
+version = "0.0.0"
+dependencies = [
+ "cw-types",
+]
+
+[[package]]
+name = "cw-types"
+version = "0.0.0"
+dependencies = [
  "bnum",
  "borsh",
- "cw-std-derive",
  "data-encoding",
  "dyn-clone",
  "forward_ref",
@@ -925,15 +964,6 @@ dependencies = [
  "sha2 0.10.8",
  "test-case",
  "thiserror",
-]
-
-[[package]]
-name = "cw-std-derive"
-version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -953,6 +983,15 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wasmer",
+]
+
+[[package]]
+name = "cw-wasm"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "cw-types",
+ "serde",
 ]
 
 [[package]]

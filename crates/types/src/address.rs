@@ -1,5 +1,5 @@
 use {
-    crate::{forward_ref_partial_eq, Binary, Hash, MapKey, RawKey, StdError, StdResult},
+    crate::{forward_ref_partial_eq, Binary, Hash, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     sha2::{Digest, Sha256},
@@ -123,20 +123,6 @@ impl FromStr for Addr {
         };
 
         Hash::from_str(hex_str).map(Self)
-    }
-}
-
-impl MapKey for &Addr {
-    type Prefix = ();
-    type Suffix = ();
-    type Output = Addr;
-
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Ref(self.0.as_ref())]
-    }
-
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        bytes.try_into()
     }
 }
 

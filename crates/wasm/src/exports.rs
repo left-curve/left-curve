@@ -1,9 +1,9 @@
 use {
-    crate::{
-        from_borsh_slice, from_json_slice, to_json_vec, AuthCtx, BankQueryMsg, BankQueryResponse,
-        Context, ExternalStorage, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg,
-        ImmutableCtx, Json, MutableCtx, Region, Response, StdError, SubMsgResult, SudoCtx,
-        TransferMsg, Tx,
+    crate::{AuthCtx, ExternalStorage, ImmutableCtx, MutableCtx, Region, SudoCtx},
+    cw_types::{
+        from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
+        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
+        SubMsgResult, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };

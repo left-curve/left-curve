@@ -1,5 +1,5 @@
 use {
-    crate::{nested_namespaces_with_key, split_one_key, StdError, StdResult},
+    cw_types::{nested_namespaces_with_key, split_one_key, Addr, Hash, StdError, StdResult},
     std::mem,
 };
 
@@ -101,6 +101,34 @@ impl MapKey for &str {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
+    }
+}
+
+impl MapKey for &Addr {
+    type Prefix = ();
+    type Suffix = ();
+    type Output = Addr;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Ref(self.as_ref())]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        bytes.try_into()
+    }
+}
+
+impl MapKey for &Hash {
+    type Prefix = ();
+    type Suffix = ();
+    type Output = Hash;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Ref(self.as_ref())]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        bytes.try_into()
     }
 }
 

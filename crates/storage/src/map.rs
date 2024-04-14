@@ -1,6 +1,7 @@
 use {
-    crate::{Bound, MapKey, Order, PathBuf, Prefix, StdError, StdResult, Storage},
+    crate::{Bound, MapKey, PathBuf, Prefix},
     borsh::{BorshDeserialize, BorshSerialize},
+    cw_types::{Order, StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
 

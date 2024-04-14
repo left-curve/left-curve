@@ -10,20 +10,14 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-bnum          = { workspace = true }
-borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-std-derive = { path = "./derive" }
-data-encoding = { workspace = true }
-dyn-clone     = { workspace = true }
-forward_ref   = { workspace = true }
-hex           = { workspace = true }
-hex-literal   = { workspace = true }
-serde         = { workspace = true, features = ["derive"] }
-serde_json    = { workspace = true }
-serde_with    = { workspace = true }
-sha2          = { workspace = true }
-thiserror     = { workspace = true }
+borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
+cw-macros  = { path = "../macros" }
+cw-storage = { path = "../storage" }
+cw-testing = { path = "../testing" }
+cw-types   = { path = "../types" }
+cw-wasm    = { path = "../wasm" }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
 
 [dev-dependencies]
-proptest  = { workspace = true }
-test-case = { workspace = true }

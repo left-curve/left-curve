@@ -1,0 +1,15 @@
+[package]
+name          = "cw-testing"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+cw-types = { path = "../types" }
+
+[dev-dependencies]

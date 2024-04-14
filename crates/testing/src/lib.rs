@@ -1,5 +1,5 @@
 use {
-    crate::{Order, Record, Storage},
+    cw_types::{Order, Record, Storage},
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 

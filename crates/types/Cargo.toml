@@ -1,0 +1,28 @@
+[package]
+name          = "cw-types"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+bnum          = { workspace = true }
+borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
+data-encoding = { workspace = true }
+hex           = { workspace = true }
+hex-literal   = { workspace = true }
+dyn-clone     = { workspace = true }
+forward_ref   = { workspace = true }
+serde         = { workspace = true, features = ["derive"] }
+serde_json    = { workspace = true }
+serde_with    = { workspace = true }
+sha2          = { workspace = true }
+thiserror     = { workspace = true }
+
+[dev-dependencies]
+proptest  = { workspace = true }
+test-case = { workspace = true }

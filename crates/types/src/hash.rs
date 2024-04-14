@@ -1,5 +1,5 @@
 use {
-    crate::{forward_ref_partial_eq, MapKey, RawKey, StdError, StdResult},
+    crate::{forward_ref_partial_eq, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     sha2::{Digest, Sha256},
@@ -108,20 +108,6 @@ impl FromStr for Hash {
         }
 
         hex::decode(s)?.as_slice().try_into()
-    }
-}
-
-impl MapKey for &Hash {
-    type Prefix = ();
-    type Suffix = ();
-    type Output = Hash;
-
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Ref(&self.0)]
-    }
-
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        bytes.try_into()
     }
 }
 

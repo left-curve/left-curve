@@ -1,6 +1,7 @@
 use {
-    crate::{Path, StdError, StdResult, Storage},
+    crate::Path,
     borsh::{BorshDeserialize, BorshSerialize},
+    cw_types::{StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
 

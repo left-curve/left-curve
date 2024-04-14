@@ -17,7 +17,11 @@ members  = [
   "crates/db",
   "crates/jellyfish-merkle",
   "crates/std",
+  "crates/storage",
+  "crates/testing",
+  "crates/types",
   "crates/vm",
+  "crates/wasm",
   "sdk/rust",
 ]
 

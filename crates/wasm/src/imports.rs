@@ -1,6 +1,9 @@
-use crate::{
-    from_json_slice, to_json_vec, Api, AuthCtx, GenericResult, ImmutableCtx, MutableCtx, Order,
-    Querier, QueryRequest, QueryResponse, Record, Region, StdError, StdResult, Storage, SudoCtx,
+use {
+    crate::{AuthCtx, ImmutableCtx, MutableCtx, Region, SudoCtx},
+    cw_types::{
+        from_json_slice, to_json_vec, Api, GenericResult, Order, Querier, QueryRequest,
+        QueryResponse, Record, StdError, StdResult, Storage,
+    },
 };
 
 // these are the method that the host must implement.
