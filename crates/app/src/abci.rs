@@ -1,7 +1,7 @@
 use {
-    crate::{App, AppResult},
+    crate::{App, AppError, AppResult},
     cw_merkle::Proof,
-    cw_std::{Attribute, BlockInfo, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH},
+    cw_std::{Attribute, BlockInfo, Db, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH},
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
@@ -17,7 +17,11 @@ use {
     tracing::Value,
 };
 
-impl App {
+impl<DB> App<DB>
+where
+    DB: Db + Clone + Send + 'static,
+    AppError: From<DB::Error>,
+{
     pub fn start_abci_server(
         self,
         read_buf_size: usize,
@@ -29,7 +33,11 @@ impl App {
     }
 }
 
-impl Application for App {
+impl<DB> Application for App<DB>
+where
+    DB: Db + Clone + Send + 'static,
+    AppError: From<DB::Error>,
+{
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {
             Ok((last_block_height, last_block_version)) => {

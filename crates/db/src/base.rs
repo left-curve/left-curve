@@ -1,7 +1,7 @@
 use {
     crate::{CacheStore, DbError, DbResult, U64Comparator, U64Timestamp},
     cw_merkle::{MerkleTree, Proof},
-    cw_std::{hash, Batch, Hash, Op, Order, Record, Storage},
+    cw_std::{hash, Batch, Db, Hash, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -86,14 +86,6 @@ pub(crate) struct PendingData {
     state_storage:    Batch,
 }
 
-impl Clone for BaseStore {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
-    }
-}
-
 impl BaseStore {
     /// Create a BaseStore instance by opening a physical RocksDB instance.
     pub fn open(data_dir: impl AsRef<Path>) -> DbResult<Self> {
@@ -116,27 +108,27 @@ impl BaseStore {
             }),
         })
     }
+}
 
-    /// Return a `StateCommitment` object which implements the `Storage` trait,
-    /// which can be used by the MerkleTree.
-    ///
-    /// NOTE:
-    /// 1. This is only used internally.
-    /// 2. `StateCommitment` is read-only. Attempting to call write/remove/flush
-    /// leads to panicking. Wrap it in a `CacheStore` instead.
-    fn state_commitment(&self) -> StateCommitment {
+impl Clone for BaseStore {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
+impl Db for BaseStore {
+    type Error = DbError;
+    type Proof = Proof;
+
+    fn state_commitment(&self) -> impl Storage + Clone + 'static {
         StateCommitment {
             inner: Arc::clone(&self.inner),
         }
     }
 
-    /// Return a `StateStorage` object at the given version (default to the
-    /// latest version if unspecified). It implements the `Storage` trait which
-    /// can be used by the Wasm host to execute contracts.
-    ///
-    /// NOTE: `StateStorage` is read-only. Attempting to call write/remove/flush
-    /// leads to panicking. Wrap it in a `CacheStore` instead.
-    pub fn state_storage(&self, version: Option<u64>) -> StateStorage {
+    fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
         StateStorage {
             inner: Arc::clone(&self.inner),
             opts: OnceCell::new(),
@@ -144,8 +136,7 @@ impl BaseStore {
         }
     }
 
-    /// Return the latest version of the state that the database stores.
-    pub fn latest_version(&self) -> Option<u64> {
+    fn latest_version(&self) -> Option<u64> {
         let cf = cf_default(&self.inner.db);
         let bytes = self.inner.db.get_cf(&cf, LATEST_VERSION_KEY).unwrap_or_else(|err| {
             panic!("failed to read from default column family: {err}");
@@ -156,30 +147,17 @@ impl BaseStore {
         Some(u64::from_le_bytes(array))
     }
 
-    /// Return the Merkle root hash of the state commitment at the given version
-    /// (default to latest version if not specified).
-    ///
-    /// NOTE: Return `None` the tree is empty at the version (there isn't a root
-    /// node) or if the version has been pruned. We can't different between
-    /// these two possibilities.
-    pub fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
+    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
     }
 
-    /// Generate Merkle proof for a key at the given version (default to latest
-    /// version if not specified).
-    pub fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
+    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
     }
 
-    /// Flush a batch of ops (inserts/deletes) into a write batch, incrementing
-    /// the version. Return the updated version and hash. However, do not persist
-    /// the batch to disk yet; just keep it in memory. Call `commit` to persist
-    /// it to disk. This behavior to for intended for use in this ABCI
-    /// `FinalizeBlock` call.
-    pub fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
         // a write batch must not already exist. if it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
@@ -212,8 +190,7 @@ impl BaseStore {
         Ok((new_version, root_hash))
     }
 
-    /// Persist pending data to the physical DB.
-    pub fn commit(&self) -> DbResult<()> {
+    fn commit(&self) -> DbResult<()> {
         let pending = self.inner.pending_data.write()?.take().ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
 
@@ -243,16 +220,6 @@ impl BaseStore {
         }
 
         Ok(self.inner.db.write(batch)?)
-    }
-
-    /// Do `flush_but_not_commit` and `commit` in one go.
-    ///
-    /// This is used in ABCI InitChain call. For the FinalizeBlock call, we flush
-    /// but don't commit; only commit in the Commit call.
-    pub fn flush_and_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
-        let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
-        self.commit()?;
-        Ok((new_version, root_hash))
     }
 }
 

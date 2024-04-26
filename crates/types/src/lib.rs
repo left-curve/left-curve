@@ -18,7 +18,8 @@ mod response;
 mod result;
 mod serde;
 mod timestamp;
-mod traits;
+mod traits_guest;
+mod traits_host;
 mod tx;
 mod uint128;
 mod uint256;
@@ -29,7 +30,8 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, decimal::*, decimal256::*,
     empty::*, error::*, event::*, hash::*, ibc::*, query::*, response::*, result::*, serde::*,
-    timestamp::*, traits::*, tx::*, uint128::*, uint256::*, uint512::*, uint64::*, utils::*,
+    timestamp::*, traits_guest::*, traits_host::*, tx::*, uint128::*, uint256::*, uint512::*,
+    uint64::*, utils::*,
 };
 
 /// Represents any valid JSON value, including numbers, booleans, strings,

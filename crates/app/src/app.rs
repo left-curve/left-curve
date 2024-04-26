@@ -6,9 +6,9 @@ use {
         query_codes, query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart,
         AppError, AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
-    cw_db::{BaseStore, CacheStore, SharedStore},
+    cw_db::{CacheStore, SharedStore},
     cw_std::{
-        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
+        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Db, Event, GenesisState, Hash, Message,
         Permission, QueryRequest, QueryResponse, Storage, GENESIS_SENDER,
     },
     tracing::{debug, info},
@@ -19,24 +19,28 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25
 #[derive(Clone)]
-pub struct App {
-    store: BaseStore,
+pub struct App<DB> {
+    db: DB,
 }
 
-impl App {
-    pub fn new(store: BaseStore) -> Self {
-        Self { store }
+impl<DB> App<DB> {
+    pub fn new(db: DB) -> Self {
+        Self { db }
     }
 }
 
-impl App {
+impl<DB> App<DB>
+where
+    DB: Db,
+    AppError: From<DB::Error>,
+{
     pub fn do_init_chain(
         &self,
         chain_id:        String,
         block:           BlockInfo,
         app_state_bytes: &[u8],
     ) -> AppResult<Hash> {
-        let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
+        let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
 
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
@@ -63,7 +67,7 @@ impl App {
 
         // persist the state changes to disk
         let (_, pending) = cached.disassemble().disassemble();
-        let (version, root_hash) = self.store.flush_and_commit(pending)?;
+        let (version, root_hash) = self.db.flush_and_commit(pending)?;
 
         // BaseStore version should be 0
         debug_assert_eq!(version, 0);
@@ -90,7 +94,7 @@ impl App {
         block:   BlockInfo,
         raw_txs: Vec<impl AsRef<[u8]>>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
-        let mut cached = SharedStore::new(CacheStore::new(self.store.state_storage(None), None));
+        let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
 
@@ -141,7 +145,7 @@ impl App {
         // flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. it will be done in the ABCI `Commit` call.
         let (_, batch) = cached.disassemble().disassemble();
-        let (version, root_hash) = self.store.flush_but_not_commit(batch)?;
+        let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
 
         // block height should match the DB version
         debug_assert_eq!(block.height.u64(), version);
@@ -161,9 +165,9 @@ impl App {
 
     // TODO: we need to think about what to do if the flush fails here?
     pub fn do_commit(&self) -> AppResult<()> {
-        self.store.commit()?;
+        self.db.commit()?;
 
-        info!(height = self.store.latest_version(), "Committed state");
+        info!(height = self.db.latest_version(), "Committed state");
 
         Ok(())
     }
@@ -171,14 +175,14 @@ impl App {
     // returns (last_block_height, last_block_app_hash)
     // note that we are returning the app hash, not the block hash
     pub fn do_info(&self) -> AppResult<(u64, Hash)> {
-        let Some(version) = self.store.latest_version() else {
+        let Some(version) = self.db.latest_version() else {
             // base store doesn't have a version. this is the case if the chain
             // hasn't started yet (prior to the InitChain call). in this case we
             // return zero height and an all-zero zero hash.
             return Ok((0, Hash::ZERO));
         };
 
-        let Some(root_hash) = self.store.root_hash(Some(version))? else {
+        let Some(root_hash) = self.db.root_hash(Some(version))? else {
             // root hash is None. since we know version is not zero at this
             // point, the only way root hash is None is that state tree is empty.
             // however this is impossible, since we always keep some data in the
@@ -205,7 +209,7 @@ impl App {
         };
 
         // use the state storage at the given version to perform the query
-        let store = self.store.state_storage(version);
+        let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
         let req: QueryRequest = from_json_slice(raw_query)?;
         let res = process_query(store, &block, req)?;
@@ -233,12 +237,12 @@ impl App {
         };
 
         let proof = if prove {
-            Some(to_json_vec(&self.store.prove(key, version)?)?)
+            Some(to_json_vec(&self.db.prove(key, version)?)?)
         } else {
             None
         };
 
-        let value = self.store.state_storage(version).read(key);
+        let value = self.db.state_storage(version).read(key);
 
         Ok((value, proof))
     }
