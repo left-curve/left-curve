@@ -5,7 +5,7 @@ use {
 
 pub fn load_program<VM: Vm>(store: &dyn Storage, code_hash: &Hash) -> AppResult<VM::Program> {
     let code = CODES.load(store, code_hash)?;
-    Ok(from_borsh_slice(&code)?)
+    Ok(from_borsh_slice(code)?)
 }
 
 pub fn save_program<VM: Vm>(store: &mut dyn Storage, program: &VM::Program) -> AppResult<Hash> {

@@ -30,7 +30,7 @@ fn _do_upload(
     }
 
     // make sure that the same code isn't uploaded twice
-    let code_hash = hash(&code);
+    let code_hash = hash(code);
     if CODES.has(store, &code_hash) {
         return Err(AppError::code_exists(code_hash));
     }
@@ -38,7 +38,7 @@ fn _do_upload(
     // TODO: deserialize the code to make sure it's a valid program?
 
     // store the code
-    CODES.save(store, &code_hash, &code)?;
+    CODES.save(store, &code_hash, code)?;
 
     Ok((vec![new_upload_event(&code_hash, uploader)], code_hash))
 }

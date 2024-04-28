@@ -29,7 +29,7 @@ impl Vm for Instance {
         let mut wasm_store = Store::new(Singlepass::default());
 
         // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, &program)?;
+        let module = Module::new(&wasm_store, program)?;
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
