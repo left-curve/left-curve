@@ -69,11 +69,11 @@ const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 /// it's just because we're having here is sort of a quick hack and we don't
 /// have time to look into those advanced features yet. We will keep experimenting
 /// and maybe our implementation will converge with Sei's some time later.
-pub struct BaseStore {
-    inner: Arc<BaseStoreInner>,
+pub struct DiskDb {
+    inner: Arc<DiskDbInner>,
 }
 
-struct BaseStoreInner {
+struct DiskDbInner {
     db: DBWithThreadMode<MultiThreaded>,
     // data that are ready to be persisted to the physical database.
     // ideally we want to just use a rocksdb::WriteBatch here, but it's not
@@ -87,8 +87,8 @@ pub(crate) struct PendingData {
     state_storage:    Batch,
 }
 
-impl BaseStore {
-    /// Create a BaseStore instance by opening a physical RocksDB instance.
+impl DiskDb {
+    /// Create a DiskDb instance by opening a physical RocksDB instance.
     pub fn open(data_dir: impl AsRef<Path>) -> DbResult<Self> {
         // note: for default and state commitment CFs, don't enable timestamping;
         // for state storage column family, enable timestamping.
@@ -103,7 +103,7 @@ impl BaseStore {
         )?;
 
         Ok(Self {
-            inner: Arc::new(BaseStoreInner {
+            inner: Arc::new(DiskDbInner {
                 db,
                 pending_data: RwLock::new(None),
             }),
@@ -111,7 +111,7 @@ impl BaseStore {
     }
 }
 
-impl Clone for BaseStore {
+impl Clone for DiskDb {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -119,7 +119,7 @@ impl Clone for BaseStore {
     }
 }
 
-impl Db for BaseStore {
+impl Db for DiskDb {
     type Error = DbError;
     type Proof = Proof;
 
@@ -228,7 +228,7 @@ impl Db for BaseStore {
 // ----------------------------- state commitment ------------------------------
 
 pub struct StateCommitment {
-    inner: Arc<BaseStoreInner>,
+    inner: Arc<DiskDbInner>,
 }
 
 impl Clone for StateCommitment {
@@ -271,7 +271,7 @@ impl Storage for StateCommitment {
 // ------------------------------- state storage -------------------------------
 
 pub struct StateStorage {
-    inner:   Arc<BaseStoreInner>,
+    inner:   Arc<DiskDbInner>,
     opts:    OnceCell<ReadOptions>,
     version: u64,
 }
@@ -523,7 +523,7 @@ mod tests {
     #[test]
     fn base_store_works() {
         let path = TempDataDir::new("_cw_db_base_store_works");
-        let store = BaseStore::open(&path).unwrap();
+        let store = DiskDb::open(&path).unwrap();
 
         // write a batch. the very first batch have version 0
         let batch = Batch::from([

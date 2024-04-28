@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::BaseStore, cw_vm::WasmVm, home::home_dir,
+    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::DiskDb, cw_vm::WasmVm, home::home_dir,
     std::path::PathBuf, tracing::metadata::LevelFilter,
 };
 
@@ -42,8 +42,8 @@ fn main() -> anyhow::Result<()> {
     };
 
     // create DB backend
-    let store = BaseStore::open(data_dir)?;
+    let db = DiskDb::open(data_dir)?;
 
     // start the ABCI server
-    Ok(App::<BaseStore, WasmVm>::new(store).start_abci_server(cli.read_buf_size, cli.addr)?)
+    Ok(App::<DiskDb, WasmVm>::new(db).start_abci_server(cli.read_buf_size, cli.addr)?)
 }
