@@ -1,10 +1,10 @@
 use {
     crate::{has_permission, new_upload_event, AppError, AppResult, CODES, CONFIG},
-    cw_std::{hash, Addr, Binary, Event, Hash, Storage},
+    cw_std::{hash, Addr, Event, Hash, Storage},
     tracing::{info, warn},
 };
 
-pub fn do_upload(store: &mut dyn Storage, uploader: &Addr, code: &Binary) -> AppResult<Vec<Event>> {
+pub fn do_upload(store: &mut dyn Storage, uploader: &Addr, code: Vec<u8>) -> AppResult<Vec<Event>> {
     match _do_upload(store, uploader, code) {
         Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");
@@ -21,7 +21,7 @@ pub fn do_upload(store: &mut dyn Storage, uploader: &Addr, code: &Binary) -> App
 fn _do_upload(
     store: &mut dyn Storage,
     uploader: &Addr,
-    code: &Binary,
+    code: Vec<u8>,
 ) -> AppResult<(Vec<Event>, Hash)> {
     // make sure the user has permission to store code
     let cfg = CONFIG.load(store)?;
@@ -30,7 +30,7 @@ fn _do_upload(
     }
 
     // make sure that the same code isn't uploaded twice
-    let code_hash = hash(code);
+    let code_hash = hash(&code);
     if CODES.has(store, &code_hash) {
         return Err(AppError::code_exists(code_hash));
     }
@@ -38,7 +38,7 @@ fn _do_upload(
     // TODO: deserialize the code to make sure it's a valid program?
 
     // store the code
-    CODES.save(store, &code_hash, code)?;
+    CODES.save(store, &code_hash, &code)?;
 
     Ok((vec![new_upload_event(&code_hash, uploader)], code_hash))
 }

@@ -331,7 +331,7 @@ where
         } => do_transfer::<S, VM>(store, block, sender.clone(), to, coins, true),
         Message::Upload {
             code,
-        } => do_upload(&mut store, sender, &code),
+        } => do_upload(&mut store, sender, code.into()),
         Message::Instantiate {
             code_hash,
             msg,

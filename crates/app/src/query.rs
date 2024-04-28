@@ -114,7 +114,7 @@ where
 }
 
 pub fn query_code(store: &dyn Storage, hash: Hash) -> AppResult<Binary> {
-    CODES.load(store, &hash).map_err(Into::into)
+    Ok(CODES.load(store, &hash)?.into())
 }
 
 pub fn query_codes(

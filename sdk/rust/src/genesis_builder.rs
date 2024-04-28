@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, ensure},
     cw_account::PublicKey,
     cw_account_factory::make_salt,
-    cw_std::{hash, to_json_value, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
+    cw_std::{hash, to_borsh_vec, to_json_value, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
     home::home_dir,
     lazy_static::lazy_static,
     serde::ser::Serialize,
@@ -41,10 +41,11 @@ impl GenesisBuilder {
     pub fn upload(&mut self, path: impl AsRef<Path>) -> anyhow::Result<Hash> {
         // read Wasm byte code from file
         let mut file = File::open(path)?;
-        let mut code = vec![];
-        file.read_to_end(&mut code)?;
+        let mut program = vec![];
+        file.read_to_end(&mut program)?;
 
-        // compute hash
+        // encode to binary code and compute hash
+        let code = to_borsh_vec(&program)?;
         let code_hash = hash(&code);
 
         // push the message into queue

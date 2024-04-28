@@ -1,4 +1,4 @@
-use cw_std::{Account, Addr, Binary, BlockInfo, Config, Hash, Item, Map};
+use cw_std::{Account, Addr, BlockInfo, Config, Hash, Item, Map};
 
 /// A string that identifies the chain
 pub const CHAIN_ID: Item<String> = Item::new("chain_id");
@@ -10,7 +10,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");
 
 /// Wasm contract byte codes: code_hash => byte_code
-pub const CODES: Map<&Hash, Binary> = Map::new("code");
+pub const CODES: Map<&Hash, Vec<u8>> = Map::new("code");
 
 /// Account metadata: address => account
 pub const ACCOUNTS: Map<&Addr, Account> = Map::new("account");
