@@ -9,7 +9,7 @@ use {
 /// https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8
 pub struct TempDataDir {
     #[allow(dead_code)]
-    dir:  TempDir, // keep the value alive so that the directory isn't deleted prematurely
+    dir: TempDir, // keep the value alive so that the directory isn't deleted prematurely
     path: PathBuf,
 }
 

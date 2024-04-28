@@ -1,5 +1,5 @@
 use {
-    cw_std::{
+    cw_types::{
         BackendQuerier, BackendStorage, GenericResult, Order, QueryRequest, QueryResponse, Record,
         StdError, StdResult,
     },
@@ -11,6 +11,8 @@ use {
     },
 };
 
+// ---------------------------------- querier ----------------------------------
+
 pub struct MockBackendQuerier;
 
 impl BackendQuerier for MockBackendQuerier {
@@ -18,6 +20,8 @@ impl BackendQuerier for MockBackendQuerier {
         todo!("MockBackendQuerier isn't implemented")
     }
 }
+
+// ---------------------------------- storage ----------------------------------
 
 #[derive(Default, Debug, Clone)]
 pub struct MockBackendStorage {
