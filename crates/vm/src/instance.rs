@@ -9,13 +9,13 @@ use {
     },
 };
 
-pub struct Instance {
+pub struct WasmVm {
     _wasm_instance: Box<WasmerInstance>,
     wasm_store: Store,
     fe: FunctionEnv<Environment>,
 }
 
-impl Vm for Instance {
+impl Vm for WasmVm {
     type Error = VmError;
     type Program = Vec<u8>;
 
