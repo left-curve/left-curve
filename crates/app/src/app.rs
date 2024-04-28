@@ -4,13 +4,13 @@ use {
         do_freeze_client, do_instantiate, do_migrate, do_set_config, do_transfer, do_update_client,
         do_upload, query_account, query_accounts, query_balance, query_balances, query_code,
         query_codes, query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart,
-        AppError, AppResult, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        AppError, AppResult, CacheStore, SharedStore, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
-    cw_db::{CacheStore, SharedStore},
     cw_std::{
-        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Db, Event, GenesisState, Hash, Message,
-        Permission, QueryRequest, QueryResponse, Storage, GENESIS_SENDER,
+        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Db, Event, GenesisState, Hash,
+        Message, Permission, QueryRequest, QueryResponse, Storage, Vm, GENESIS_SENDER,
     },
+    std::marker::PhantomData,
     tracing::{debug, info},
 };
 
@@ -18,26 +18,46 @@ use {
 ///
 /// Must be clonable which is required by `tendermint-abci` library:
 /// https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25
-#[derive(Clone)]
-pub struct App<DB> {
+pub struct App<DB, VM> {
     db: DB,
+    vm: PhantomData<VM>,
 }
 
-impl<DB> App<DB> {
+impl<DB, VM> App<DB, VM> {
     pub fn new(db: DB) -> Self {
-        Self { db }
+        Self {
+            db,
+            vm: PhantomData,
+        }
     }
 }
 
-impl<DB> App<DB>
+// For some reason, using a derive macro `#[derive(Clone)]` on App doesn't work.
+// The compiler demands that VM implements Clone before it will implement Clone
+// for App; which doesn't make any sense because VM is just a PhantomData inside
+// App...????
+impl<DB, VM> Clone for App<DB, VM>
+where
+    DB: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db.clone(),
+            vm: PhantomData,
+        }
+    }
+}
+
+impl<DB, VM> App<DB, VM>
 where
     DB: Db,
-    AppError: From<DB::Error>,
+    VM: Vm + 'static,
+    AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn do_init_chain(
         &self,
-        chain_id:        String,
-        block:           BlockInfo,
+        chain_id: String,
+        block: BlockInfo,
         app_state_bytes: &[u8],
     ) -> AppResult<Hash> {
         let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
@@ -62,7 +82,7 @@ where
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             info!(idx, "Processing genesis message");
-            process_msg(cached.clone(), &block, &GENESIS_SENDER, msg)?;
+            process_msg::<_, VM>(cached.clone(), &block, &GENESIS_SENDER, msg)?;
         }
 
         // persist the state changes to disk
@@ -79,7 +99,7 @@ where
         info!(
             chain_id,
             timestamp = block.timestamp.seconds(),
-            app_hash  = root_hash.as_ref().unwrap().to_string(),
+            app_hash = root_hash.as_ref().unwrap().to_string(),
             "Completed genesis"
         );
 
@@ -91,7 +111,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn do_finalize_block(
         &self,
-        block:   BlockInfo,
+        block: BlockInfo,
         raw_txs: Vec<impl AsRef<[u8]>>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
         let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
@@ -117,13 +137,13 @@ where
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_before_block(cached.share(), &block, contract)?);
+            events.extend(do_before_block::<_, VM>(cached.share(), &block, contract)?);
         }
 
         // process transactions one-by-one
         for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
             debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
-            tx_results.push(process_tx(cached.share(), &block, raw_tx));
+            tx_results.push(process_tx::<_, VM>(cached.share(), &block, raw_tx));
         }
 
         // call end blockers
@@ -132,7 +152,7 @@ where
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_after_block(cached.share(), &block, contract)?);
+            events.extend(do_after_block::<_, VM>(cached.share(), &block, contract)?);
         }
 
         // save the last committed block
@@ -154,9 +174,9 @@ where
         debug_assert!(root_hash.is_some());
 
         info!(
-            height    = block.height.u64(),
+            height = block.height.u64(),
             timestamp = block.timestamp.seconds(),
-            app_hash  = root_hash.as_ref().unwrap().to_string(),
+            app_hash = root_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
 
@@ -212,7 +232,7 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
         let req: QueryRequest = from_json_slice(raw_query)?;
-        let res = process_query(store, &block, req)?;
+        let res = process_query::<_, VM>(store, &block, req)?;
 
         Ok(to_json_vec(&res)?)
     }
@@ -224,9 +244,9 @@ where
     #[allow(clippy::type_complexity)]
     pub fn do_query_store(
         &self,
-        key:    &[u8],
+        key: &[u8],
         height: u64,
-        prove:  bool,
+        prove: bool,
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let version = if height == 0 {
             // height being zero means unspecified (protobuf doesn't have a null
@@ -248,9 +268,11 @@ where
     }
 }
 
-fn process_tx<S>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
 {
     let tx = from_json_slice(raw_tx)?;
     let mut events = vec![];
@@ -260,7 +282,7 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(do_before_tx(cached.share(), block, &tx)?);
+    events.extend(do_before_tx::<_, VM>(cached.share(), block, &tx)?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -274,13 +296,13 @@ where
     // persisted)
     for (idx, msg) in tx.msgs.iter().enumerate() {
         debug!(idx, "Processing message");
-        events.extend(process_msg(cached.share(), block, &tx.sender, msg.clone())?);
+        events.extend(process_msg::<_, VM>(cached.share(), block, &tx.sender, msg.clone())?);
     }
 
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx(cached.share(), block, &tx)?);
+    events.extend(do_after_tx::<_, VM>(cached.share(), block, &tx)?);
 
     // all messages succeeded. commit the state changes
     cached.write_access().commit();
@@ -288,12 +310,17 @@ where
     Ok(events)
 }
 
-pub fn process_msg<S: Storage + Clone + 'static>(
+pub fn process_msg<S, VM>(
     mut store: S,
     block: &BlockInfo,
     sender: &Addr,
     msg: Message,
-) -> AppResult<Vec<Event>> {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     match msg {
         Message::SetConfig {
             new_cfg,
@@ -301,67 +328,72 @@ pub fn process_msg<S: Storage + Clone + 'static>(
         Message::Transfer {
             to,
             coins,
-        } => do_transfer(store, block, sender.clone(), to, coins, true),
+        } => do_transfer::<S, VM>(store, block, sender.clone(), to, coins, true),
         Message::Upload {
-            wasm_byte_code,
-        } => do_upload(&mut store, sender, &wasm_byte_code),
+            code,
+        } => do_upload(&mut store, sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
             salt,
             funds,
             admin,
-        } => do_instantiate(store, block, sender, code_hash, &msg, salt, funds, admin),
+        } => do_instantiate::<S, VM>(store, block, sender, code_hash, &msg, salt, funds, admin),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => do_execute(store, block, &contract, sender, &msg, funds),
+        } => do_execute::<S, VM>(store, block, &contract, sender, &msg, funds),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate(store, block, &contract, sender, new_code_hash, &msg),
+        } => do_migrate::<S, VM>(store, block, &contract, sender, new_code_hash, &msg),
         Message::CreateClient {
             code_hash,
             client_state,
             consensus_state,
             salt,
-        } => do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt),
+        } => do_create_client::<S, VM>(store, block, sender, code_hash, client_state, consensus_state, salt),
         Message::UpdateClient {
             client_id,
             header,
-        } => do_update_client(store, block, sender, &client_id, header),
+        } => do_update_client::<S, VM>(store, block, sender, &client_id, header),
         Message::FreezeClient {
             client_id,
             misbehavior,
-        } => do_freeze_client(store, block, sender, &client_id, misbehavior),
+        } => do_freeze_client::<S, VM>(store, block, sender, &client_id, misbehavior),
     }
 }
 
-pub fn process_query<S: Storage + Clone + 'static>(
+pub fn process_query<S, VM>(
     store: S,
     block: &BlockInfo,
-    req:   QueryRequest,
-) -> AppResult<QueryResponse> {
+    req: QueryRequest,
+) -> AppResult<QueryResponse>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     match req {
         QueryRequest::Info {} => query_info(&store).map(QueryResponse::Info),
         QueryRequest::Balance {
             address,
             denom,
-        } => query_balance(store, block, address, denom).map(QueryResponse::Balance),
+        } => query_balance::<S, VM>(store, block, address, denom).map(QueryResponse::Balance),
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances(store, block, address, start_after, limit).map(QueryResponse::Balances),
+        } => query_balances::<S, VM>(store, block, address, start_after, limit).map(QueryResponse::Balances),
         QueryRequest::Supply {
             denom,
-        } => query_supply(store, block, denom).map(QueryResponse::Supply),
+        } => query_supply::<S, VM>(store, block, denom).map(QueryResponse::Supply),
         QueryRequest::Supplies {
             start_after,
             limit,
-        } => query_supplies(store, block, start_after, limit).map(QueryResponse::Supplies),
+        } => query_supplies::<S, VM>(store, block, start_after, limit).map(QueryResponse::Supplies),
         QueryRequest::Code {
             hash,
         } => query_code(&store, hash).map(QueryResponse::Code),
@@ -382,8 +414,8 @@ pub fn process_query<S: Storage + Clone + 'static>(
         } => query_wasm_raw(store, contract, key).map(QueryResponse::WasmRaw),
         QueryRequest::WasmSmart {
             contract,
-            msg
-        } => query_wasm_smart(store, block, contract, msg).map(QueryResponse::WasmSmart),
+            msg,
+        } => query_wasm_smart::<S, VM>(store, block, contract, msg).map(QueryResponse::WasmSmart),
     }
 }
 

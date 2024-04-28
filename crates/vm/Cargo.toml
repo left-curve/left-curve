@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+cw-app        = { path = "../app" }
 cw-crypto     = { path = "../crypto" }
 cw-std        = { path = "../std" }
 data-encoding = { workspace = true }

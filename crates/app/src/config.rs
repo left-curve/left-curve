@@ -1,6 +1,5 @@
 use {
-    super::new_set_config_event,
-    crate::{AppError, AppResult, CONFIG},
+    crate::{new_set_config_event, AppError, AppResult, CONFIG},
     cw_std::{Addr, Config, Event, Storage},
     tracing::{info, warn},
 };

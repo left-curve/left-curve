@@ -1,21 +1,26 @@
 use {
-    super::{handle_submessages, new_migrate_event},
-    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, BlockInfo, Context, Event, Hash, Json, Storage},
-    cw_vm::Instance,
+    crate::{
+        create_vm_instance, handle_submessages, load_program, new_migrate_event, AppError,
+        AppResult, ACCOUNTS, CHAIN_ID,
+    },
+    cw_std::{Addr, BlockInfo, Context, Event, Hash, Json, Storage, Vm},
     tracing::{info, warn},
 };
 
-pub fn do_migrate<S: Storage + Clone + 'static>(
+pub fn do_migrate<S, VM>(
     store:         S,
     block:         &BlockInfo,
     contract:      &Addr,
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           &Json,
-) -> AppResult<Vec<Event>> {
-    match _do_migrate(store, block, contract, sender, new_code_hash, msg) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_migrate::<S, VM>(store, block, contract, sender, new_code_hash, msg) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Migrated contract");
             Ok(events)
@@ -27,14 +32,19 @@ pub fn do_migrate<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_migrate<S: Storage + Clone + 'static>(
+fn _do_migrate<S, VM>(
     mut store:     S,
     block:         &BlockInfo,
     contract:      &Addr,
     sender:        &Addr,
     new_code_hash: Hash,
     msg:           &Json,
-) -> AppResult<Vec<Event>> {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let mut account = ACCOUNTS.load(&store, contract)?;
 
@@ -51,13 +61,9 @@ fn _do_migrate<S: Storage + Clone + 'static>(
     account.code_hash = new_code_hash;
     ACCOUNTS.save(&mut store, contract, &account)?;
 
-    // load wasm code
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
-
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    // create VM instance
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), contract, program)?;
 
     // call the contract's migrate entry point
     let ctx = Context {
@@ -79,7 +85,7 @@ fn _do_migrate<S: Storage + Clone + 'static>(
         &account.code_hash,
         resp.attributes,
     )];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

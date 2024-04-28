@@ -5,7 +5,6 @@ mod instance;
 mod memory;
 mod region;
 mod testing;
-mod traits;
 
 pub use {
     environment::{ContextData, Environment},
@@ -18,5 +17,4 @@ pub use {
     memory::{read_from_memory, read_then_wipe, write_to_memory},
     region::Region,
     testing::{MockBackendQuerier, MockBackendStorage},
-    traits::{BackendQuerier, BackendStorage},
 };

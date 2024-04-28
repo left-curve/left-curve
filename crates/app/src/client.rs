@@ -1,20 +1,19 @@
 use {
-    super::{
-        handle_submessages, has_permission, new_client_misbehavior_event, new_create_client_event,
-        new_update_client_event,
+    crate::{
+        create_vm_instance, handle_submessages, has_permission, load_program,
+        new_client_misbehavior_event, new_create_client_event, new_update_client_event, AppError,
+        AppResult, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    crate::{AppError, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
     cw_std::{
         Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Json, Storage,
+        Vm,
     },
-    cw_vm::Instance,
     tracing::{info, warn},
 };
 
 // ------------------------------- create client -------------------------------
 
-pub fn do_create_client<S: Storage + Clone + 'static>(
+pub fn do_create_client<S, VM>(
     store:           S,
     block:           &BlockInfo,
     sender:          &Addr,
@@ -22,8 +21,13 @@ pub fn do_create_client<S: Storage + Clone + 'static>(
     client_state:    Json,
     consensus_state: Json,
     salt:            Binary,
-) -> AppResult<Vec<Event>> {
-    match _do_create_client(store, block, sender, code_hash, client_state, consensus_state, salt) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_create_client::<S, VM>(store, block, sender, code_hash, client_state, consensus_state, salt) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Create IBC client");
             Ok(events)
@@ -35,7 +39,7 @@ pub fn do_create_client<S: Storage + Clone + 'static>(
     }
 }
 
-pub fn _do_create_client<S: Storage + Clone + 'static>(
+pub fn _do_create_client<S, VM>(
     mut store:       S,
     block:           &BlockInfo,
     sender:          &Addr,
@@ -43,7 +47,14 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
     client_state:    Json,
     consensus_state: Json,
     salt:            Binary,
-) -> AppResult<(Vec<Event>, Addr)> {
+) -> AppResult<(Vec<Event>, Addr)>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    let chain_id = CHAIN_ID.load(&store)?;
+
     // make sure:
     // 1. the sender has the permission to create clients
     // 2. the code hash is allowed as IBC client
@@ -62,9 +73,6 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
         return Err(AppError::account_exists(address));
     }
 
-    // load wasm code
-    let wasm_byte_code = CODES.load(&store, &code_hash)?;
-
     // save the account info now that we know there's no duplicate
     let account = Account {
         code_hash,
@@ -73,14 +81,12 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
     };
     ACCOUNTS.save(&mut store, &address, &account)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &address, program)?;
 
     // call `ibc_client_create` entry point
     let ctx = Context {
-        chain_id:        CHAIN_ID.load(&store)?,
+        chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
@@ -93,21 +99,26 @@ pub fn _do_create_client<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_create_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, sender, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, sender, resp.submsgs)?);
 
     Ok((events, ctx.contract))
 }
 
 // ------------------------------- update client -------------------------------
 
-pub fn do_update_client<S: Storage + Clone + 'static>(
+pub fn do_update_client<S, VM>(
     store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
     header:    Json,
-) -> AppResult<Vec<Event>> {
-    match _do_update_client(store, block, sender, client_id, header) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_update_client::<S, VM>(store, block, sender, client_id, header) {
         Ok(events) => {
             info!(client_id = client_id.to_string(), "Update IBC client");
             Ok(events)
@@ -119,25 +130,27 @@ pub fn do_update_client<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_update_client<S: Storage + Clone + 'static>(
+fn _do_update_client<S, VM>(
     store:     S,
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
     header:    Json,
-) -> AppResult<Vec<Event>> {
-    // load wasm code
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, client_id)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client_id]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
-        chain_id:        CHAIN_ID.load(&store)?,
+        chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
@@ -153,21 +166,26 @@ fn _do_update_client<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_update_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
 
 // ------------------------------- freeze client -------------------------------
 
-pub fn do_freeze_client<S: Storage + Clone + 'static>(
+pub fn do_freeze_client<S, VM>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
     misbehavior: Json,
-) -> AppResult<Vec<Event>> {
-    match _do_freeze_client(store, block, sender, client_id, misbehavior) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_freeze_client::<S, VM>(store, block, sender, client_id, misbehavior) {
         Ok(events) => {
             warn!(client = client_id.to_string(), "Froze IBC client due to misbehavior");
             Ok(events)
@@ -179,25 +197,27 @@ pub fn do_freeze_client<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_freeze_client<S: Storage + Clone + 'static>(
+fn _do_freeze_client<S, VM>(
     store:       S,
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
     misbehavior: Json,
-) -> AppResult<Vec<Event>> {
-    // load wasm code
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, client_id)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &client_id]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
-        chain_id:        CHAIN_ID.load(&store)?,
+        chain_id,
         block_height:    block.height,
         block_timestamp: block.timestamp,
         block_hash:      block.hash.clone(),
@@ -213,7 +233,7 @@ fn _do_freeze_client<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_client_misbehavior_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

@@ -1,5 +1,6 @@
 use {
     crate::base::PendingData,
+    cw_app::AppError,
     cw_std::StdError,
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
     thiserror::Error,
@@ -32,6 +33,12 @@ impl<'a> From<PoisonError<RwLockReadGuard<'a, Option<PendingData>>>> for DbError
 impl<'a> From<PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>> for DbError {
     fn from(_: PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>) -> Self {
         Self::PendingDataPoisoned
+    }
+}
+
+impl From<DbError> for AppError {
+    fn from(err: DbError) -> Self {
+        AppError::Db(err.to_string())
     }
 }
 

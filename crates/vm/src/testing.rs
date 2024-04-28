@@ -1,6 +1,8 @@
 use {
-    crate::{BackendQuerier, BackendStorage, VmError, VmResult},
-    cw_std::{GenericResult, Order, QueryRequest, QueryResponse, Record},
+    cw_std::{
+        BackendQuerier, BackendStorage, GenericResult, Order, QueryRequest, QueryResponse, Record,
+        StdError, StdResult,
+    },
     std::{
         collections::{BTreeMap, HashMap},
         iter::Peekable,
@@ -12,7 +14,7 @@ use {
 pub struct MockBackendQuerier;
 
 impl BackendQuerier for MockBackendQuerier {
-    fn query_chain(&self, _req: QueryRequest) -> VmResult<GenericResult<QueryResponse>> {
+    fn query_chain(&self, _req: QueryRequest) -> StdResult<GenericResult<QueryResponse>> {
         todo!("MockBackendQuerier isn't implemented")
     }
 }
@@ -29,17 +31,15 @@ impl MockBackendStorage {
         Self::default()
     }
 
-    fn get_iterator_mut(&mut self, iterator_id: i32) -> VmResult<&mut MockBackendIter> {
+    fn get_iterator_mut(&mut self, iterator_id: i32) -> StdResult<&mut MockBackendIter> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or(VmError::IteratorNotFound { iterator_id })
+            .ok_or(StdError::IteratorNotFound { iterator_id })
     }
 }
 
 impl BackendStorage for MockBackendStorage {
-    type Err = VmError;
-
-    fn read(&self, key: &[u8]) -> VmResult<Option<Vec<u8>>> {
+    fn read(&self, key: &[u8]) -> StdResult<Option<Vec<u8>>> {
         Ok(self.data.get(key).cloned())
     }
 
@@ -48,7 +48,7 @@ impl BackendStorage for MockBackendStorage {
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
-    ) -> VmResult<i32> {
+    ) -> StdResult<i32> {
         let iterator_id = self.next_iter_id;
         self.next_iter_id += 1;
 
@@ -58,11 +58,11 @@ impl BackendStorage for MockBackendStorage {
         Ok(iterator_id)
     }
 
-    fn next(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
+    fn next(&mut self, iterator_id: i32) -> StdResult<Option<Record>> {
         self.get_iterator_mut(iterator_id).map(|iterator| iterator.next())
     }
 
-    fn write(&mut self, key: &[u8], value: &[u8]) -> VmResult<()> {
+    fn write(&mut self, key: &[u8], value: &[u8]) -> StdResult<()> {
         self.data.insert(key.to_vec(), value.to_vec());
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -72,7 +72,7 @@ impl BackendStorage for MockBackendStorage {
         Ok(())
     }
 
-    fn remove(&mut self, key: &[u8]) -> VmResult<()> {
+    fn remove(&mut self, key: &[u8]) -> StdResult<()> {
         self.data.remove(key);
 
         // whenever KV data is mutated, delete all existing iterators to avoid
@@ -141,7 +141,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn backend_iterator_works() -> VmResult<()> {
+    fn backend_iterator_works() -> StdResult<()> {
         let mut store = MockBackendStorage::new();
         store.write(&[1], &[1])?;
         store.write(&[2], &[2])?;

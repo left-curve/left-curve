@@ -10,9 +10,9 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+cw-app    = { path = "../app" }
 cw-merkle = { path = "../merkle" }
 cw-std    = { path = "../std" }
-cw-vm     = { path = "../vm" }
 rocksdb   = { workspace = true }
 tempfile  = { workspace = true }
 thiserror = { workspace = true }

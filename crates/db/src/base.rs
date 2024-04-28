@@ -1,5 +1,6 @@
 use {
-    crate::{CacheStore, DbError, DbResult, U64Comparator, U64Timestamp},
+    crate::{DbError, DbResult, U64Comparator, U64Timestamp},
+    cw_app::CacheStore,
     cw_merkle::{MerkleTree, Proof},
     cw_std::{hash, Batch, Db, Hash, Op, Order, Record, Storage},
     rocksdb::{
@@ -180,10 +181,11 @@ impl Db for BaseStore {
         // the DB writes here are kept in the in-memory PendingData
         let mut cache = CacheStore::new(self.state_commitment(), None);
         let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
+        let (_, pending) = cache.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version:          new_version,
-            state_commitment: cache.pending,
+            state_commitment: pending,
             state_storage:    batch,
         });
 

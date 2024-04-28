@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::BaseStore, home::home_dir,
+    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::BaseStore, cw_vm::Instance, home::home_dir,
     std::path::PathBuf, tracing::metadata::LevelFilter,
 };
 
@@ -45,5 +45,5 @@ fn main() -> anyhow::Result<()> {
     let store = BaseStore::open(data_dir)?;
 
     // start the ABCI server
-    App::new(store).start_abci_server(cli.read_buf_size, cli.addr).map_err(Into::into)
+    Ok(App::<BaseStore, Instance>::new(store).start_abci_server(cli.read_buf_size, cli.addr)?)
 }

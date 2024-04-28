@@ -135,10 +135,10 @@ impl TxCmd {
             },
             TxCmd::Store { path } => {
                 let mut file = File::open(path)?;
-                let mut wasm_byte_code = vec![];
-                file.read_to_end(&mut wasm_byte_code)?;
+                let mut code = vec![];
+                file.read_to_end(&mut code)?;
                 vec![Message::Upload {
-                    wasm_byte_code: wasm_byte_code.into(),
+                    code: code.into(),
                 }]
             },
             TxCmd::Instantiate { code_hash, msg, salt, funds, admin } => {
@@ -152,12 +152,12 @@ impl TxCmd {
             },
             TxCmd::StoreAndInstantiate { path, msg, salt, funds, admin } => {
                 let mut file = File::open(path)?;
-                let mut wasm_byte_code = vec![];
-                file.read_to_end(&mut wasm_byte_code)?;
-                let code_hash = hash(&wasm_byte_code);
+                let mut code = vec![];
+                file.read_to_end(&mut code)?;
+                let code_hash = hash(&code);
                 vec![
                     Message::Upload {
-                        wasm_byte_code: wasm_byte_code.into(),
+                        code: code.into(),
                     },
                     Message::Instantiate {
                         msg:   msg.into_bytes().into(),

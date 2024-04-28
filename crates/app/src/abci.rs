@@ -1,7 +1,6 @@
 use {
     crate::{App, AppError, AppResult},
-    cw_merkle::Proof,
-    cw_std::{Attribute, BlockInfo, Db, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH},
+    cw_std::{Attribute, BlockInfo, Db, Event, Hash, Timestamp, Uint64, Vm, GENESIS_BLOCK_HASH},
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
@@ -17,10 +16,11 @@ use {
     tracing::Value,
 };
 
-impl<DB> App<DB>
+impl<DB, VM> App<DB, VM>
 where
     DB: Db + Clone + Send + 'static,
-    AppError: From<DB::Error>,
+    VM: Vm + Send + 'static,
+    AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn start_abci_server(
         self,
@@ -33,10 +33,11 @@ where
     }
 }
 
-impl<DB> Application for App<DB>
+impl<DB, VM> Application for App<DB, VM>
 where
     DB: Db + Clone + Send + 'static,
-    AppError: From<DB::Error>,
+    VM: Vm + Send + 'static,
+    AppError: From<DB::Error> + From<VM::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {
@@ -139,7 +140,7 @@ where
                     let proof_ops = proof.map(|proof| {
                         ProofOps {
                             ops: vec![ProofOp {
-                                r#type: type_name::<Proof>().into(),
+                                r#type: type_name::<DB::Proof>().into(),
                                 key:    req.data.into(),
                                 data:   proof,
                             }],

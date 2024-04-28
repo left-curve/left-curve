@@ -1,21 +1,26 @@
 use {
-    super::{handle_submessages, new_receive_event, new_transfer_event},
-    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
-    cw_vm::Instance,
+    crate::{
+        create_vm_instance, handle_submessages, load_program, new_receive_event,
+        new_transfer_event, AppError, AppResult, ACCOUNTS, CHAIN_ID, CONFIG,
+    },
+    cw_std::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg, Vm},
     tracing::{info, warn},
 };
 
-pub fn do_transfer<S: Storage + Clone + 'static>(
+pub fn do_transfer<S, VM>(
     store:   S,
     block:   &BlockInfo,
     from:    Addr,
     to:      Addr,
     coins:   Coins,
     receive: bool,
-) -> AppResult<Vec<Event>> {
-    match _do_transfer(store, block, from, to, coins, receive) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_transfer::<S, VM>(store, block, from, to, coins, receive) {
         Ok((events, msg)) => {
             info!(
                 from  = msg.from.to_string(),
@@ -34,24 +39,25 @@ pub fn do_transfer<S: Storage + Clone + 'static>(
 
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
-fn _do_transfer<S: Storage + Clone + 'static>(
+fn _do_transfer<S, VM>(
     store:   S,
     block:   &BlockInfo,
     from:    Addr,
     to:      Addr,
     coins:   Coins,
     receive: bool,
-) -> AppResult<(Vec<Event>, TransferMsg)> {
-    // load wasm code
+) -> AppResult<(Vec<Event>, TransferMsg)>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &cfg.bank]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call transfer
     let ctx = Context {
@@ -73,12 +79,12 @@ fn _do_transfer<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store.clone()), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store.clone()), block, &ctx.contract, resp.submsgs)?);
 
     if receive {
         // call the recipient contract's `receive` entry point to inform it of
         // this transfer. we do this when handing the Message::Transfer.
-        _do_receive(store, block, msg, events)
+        _do_receive::<_, VM>(store, block, msg, events)
     } else {
         // do not call the `receive` entry point. we do this when handling
         // Message::Instantiate and Execute.
@@ -86,21 +92,22 @@ fn _do_transfer<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_receive<S: Storage + Clone + 'static>(
+fn _do_receive<S, VM>(
     store:      S,
     block:      &BlockInfo,
     msg:        TransferMsg,
     mut events: Vec<Event>,
-) -> AppResult<(Vec<Event>, TransferMsg)> {
-    // load wasm code
+) -> AppResult<(Vec<Event>, TransferMsg)>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &msg.to)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &msg.to]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &msg.to, program)?;
 
     // call the recipient contract's `receive` entry point
     let ctx = Context {
@@ -117,7 +124,7 @@ fn _do_receive<S: Storage + Clone + 'static>(
 
     // handle submessages
     events.push(new_receive_event(&msg.to, resp.attributes));
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, msg))
 }

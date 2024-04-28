@@ -1,7 +1,8 @@
 use {
-    thiserror::Error,
+    cw_app::AppError,
     cw_std::StdError,
     std::string::FromUtf8Error,
+    thiserror::Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
 
@@ -43,21 +44,18 @@ pub enum VmError {
     #[error("Failed to write lock ContextData")]
     FailedWriteLock,
 
-    #[error("Cannot find iterator with ID {iterator_id}")]
-    IteratorNotFound {
-        iterator_id: i32,
-    },
-
     #[error("Region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
     RegionTooSmall {
-        offset:   u32,
+        offset: u32,
         capacity: u32,
-        data:     String,
+        data: String,
     },
 
-    #[error("Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}")]
+    #[error(
+        "Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}"
+    )]
     ReturnCount {
-        name:   String,
+        name: String,
         expect: usize,
         actual: usize,
     },
@@ -80,8 +78,14 @@ impl From<InstantiationError> for VmError {
 
 // required such that VmError can be used in import function signatures
 impl From<VmError> for RuntimeError {
-    fn from(vm_err: VmError) -> Self {
-        RuntimeError::new(vm_err.to_string())
+    fn from(err: VmError) -> Self {
+        RuntimeError::new(err.to_string())
+    }
+}
+
+impl From<VmError> for AppError {
+    fn from(err: VmError) -> Self {
+        AppError::Vm(err.to_string())
     }
 }
 

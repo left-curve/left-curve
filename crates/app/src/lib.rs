@@ -1,6 +1,7 @@
 mod abci;
 mod app;
 mod auth;
+mod cache;
 mod channel;
 mod client;
 mod config;
@@ -11,15 +12,18 @@ mod events;
 mod execute;
 mod instantiate;
 mod migrate;
+mod prefix;
 mod querier;
 mod query;
+mod shared;
 mod state;
-mod upload;
 mod submessage;
 mod transfer;
+mod upload;
+mod vm;
 
 pub use crate::{
-    app::*, auth::*, client::*, config::*, cron::*, error::*, events::*, execute::*,
-    instantiate::*, migrate::*, querier::*, query::*, state::*, upload::*, submessage::*,
-    transfer::*,
+    app::*, auth::*, cache::*, client::*, config::*, cron::*, error::*, events::*, execute::*,
+    instantiate::*, migrate::*, prefix::*, querier::*, query::*, shared::*, state::*,
+    submessage::*, transfer::*, upload::*, vm::*,
 };

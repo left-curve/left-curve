@@ -1,15 +1,13 @@
 use {
     crate::{
-        AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
-        LAST_FINALIZED_BLOCK,
+        create_vm_instance, load_program, AppError, AppResult, PrefixStore, ACCOUNTS, CHAIN_ID,
+        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
-    cw_db::PrefixStore,
     cw_std::{
-        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Bound, Coin,
-        Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
-        WasmSmartResponse,
+        AccountResponse, Addr, BackendStorage, BankQueryMsg, BankQueryResponse, Binary, BlockInfo,
+        Bound, Coin, Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, Vm,
+        WasmRawResponse, WasmSmartResponse,
     },
-    cw_vm::{BackendStorage, Instance},
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -22,61 +20,84 @@ pub fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     })
 }
 
-pub fn query_balance<S: Storage + Clone + 'static>(
+pub fn query_balance<S, VM>(
     store:   S,
     block:   &BlockInfo,
     address: Addr,
     denom:   String,
-) -> AppResult<Coin> {
-    _query_bank(store, block, &BankQueryMsg::Balance { address, denom })
+) -> AppResult<Coin>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    _query_bank::<S, VM>(store, block, &BankQueryMsg::Balance { address, denom })
         .map(|res| res.as_balance())
 }
 
-pub fn query_balances<S: Storage + Clone + 'static>(
+pub fn query_balances<S, VM>(
     store:       S,
     block:       &BlockInfo,
     address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> AppResult<Coins> {
-    _query_bank(store, block, &BankQueryMsg::Balances { address, start_after, limit })
+) -> AppResult<Coins>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    _query_bank::<S, VM>(store, block, &BankQueryMsg::Balances { address, start_after, limit })
         .map(|res| res.as_balances())
 }
 
-pub fn query_supply<S: Storage + Clone + 'static>(
+pub fn query_supply<S, VM>(
     store: S,
     block: &BlockInfo,
     denom: String,
-) -> AppResult<Coin> {
-    _query_bank(store, block, &BankQueryMsg::Supply { denom })
+) -> AppResult<Coin>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    _query_bank::<S, VM>(store, block, &BankQueryMsg::Supply { denom })
         .map(|res| res.as_supply())
 }
 
-pub fn query_supplies<S: Storage + Clone + 'static>(
+pub fn query_supplies<S, VM>(
     store:       S,
     block:       &BlockInfo,
     start_after: Option<String>,
     limit:       Option<u32>,
-) -> AppResult<Coins> {
-    _query_bank(store, block, &BankQueryMsg::Supplies { start_after, limit })
+) -> AppResult<Coins>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    _query_bank::<S, VM>(store, block, &BankQueryMsg::Supplies { start_after, limit })
         .map(|res| res.as_supplies())
 }
 
-pub fn _query_bank<S: Storage + Clone + 'static>(
+pub fn _query_bank<S, VM>(
     store: S,
     block: &BlockInfo,
     msg:   &BankQueryMsg,
-) -> AppResult<BankQueryResponse> {
-    // load wasm code
+) -> AppResult<BankQueryResponse>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    // load program code
     let chain_id = CHAIN_ID.load(&store)?;
     let cfg = CONFIG.load(&store)?;
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &cfg.bank]);
-    let querier = Querier::new(store, block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    // create VM instance
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call query
     let ctx = Context {
@@ -156,21 +177,22 @@ pub fn query_wasm_raw<S: Storage + 'static>(
     })
 }
 
-pub fn query_wasm_smart<S: Storage + Clone + 'static>(
+pub fn query_wasm_smart<S, VM>(
     store:    S,
     block:    &BlockInfo,
     contract: Addr,
     msg:      Json,
-) -> AppResult<WasmSmartResponse> {
-    // load wasm code
+) -> AppResult<WasmSmartResponse>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &contract)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store, block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &contract, program)?;
 
     // call query
     let ctx = Context {

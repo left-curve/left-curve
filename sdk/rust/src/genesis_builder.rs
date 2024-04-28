@@ -41,15 +41,15 @@ impl GenesisBuilder {
     pub fn upload(&mut self, path: impl AsRef<Path>) -> anyhow::Result<Hash> {
         // read Wasm byte code from file
         let mut file = File::open(path)?;
-        let mut wasm_byte_code = vec![];
-        file.read_to_end(&mut wasm_byte_code)?;
+        let mut code = vec![];
+        file.read_to_end(&mut code)?;
 
         // compute hash
-        let code_hash = hash(&wasm_byte_code);
+        let code_hash = hash(&code);
 
         // push the message into queue
         self.code_msgs.push(Message::Upload {
-            wasm_byte_code: wasm_byte_code.into(),
+            code: code.into(),
         });
 
         Ok(code_hash)

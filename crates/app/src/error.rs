@@ -1,7 +1,5 @@
 use {
-    cw_db::DbError,
     cw_std::{Addr, Hash, StdError},
-    cw_vm::VmError,
     thiserror::Error,
 };
 
@@ -10,11 +8,11 @@ pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error(transparent)]
-    Vm(#[from] VmError),
+    #[error("VM error: {0}")]
+    Vm(String),
 
-    #[error(transparent)]
-    Db(#[from] DbError),
+    #[error("DB error: {0}")]
+    Db(String),
 
     #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
     ProofNotSupported,

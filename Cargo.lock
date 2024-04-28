@@ -765,11 +765,8 @@ dependencies = [
  "cw-account",
  "cw-bank",
  "cw-crypto",
- "cw-db",
- "cw-merkle",
  "cw-mock-querier",
  "cw-std",
- "cw-vm",
  "dyn-clone",
  "hex",
  "k256",
@@ -810,9 +807,9 @@ dependencies = [
 name = "cw-db"
 version = "0.0.0"
 dependencies = [
+ "cw-app",
  "cw-merkle",
  "cw-std",
- "cw-vm",
  "hex-literal",
  "rocksdb",
  "tempfile",
@@ -971,6 +968,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cfg-if",
+ "cw-app",
  "cw-bank",
  "cw-crypto",
  "cw-std",
@@ -1023,6 +1021,7 @@ dependencies = [
  "clap",
  "cw-app",
  "cw-db",
+ "cw-vm",
  "home",
  "tracing",
  "tracing-subscriber",

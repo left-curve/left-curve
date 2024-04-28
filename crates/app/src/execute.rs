@@ -1,21 +1,26 @@
 use {
-    super::{do_transfer, handle_submessages, new_execute_event},
-    crate::{AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::PrefixStore,
-    cw_std::{Addr, BlockInfo, Coins, Context, Event, Json, Storage},
-    cw_vm::Instance,
+    crate::{
+        create_vm_instance, do_transfer, handle_submessages, load_program, new_execute_event,
+        AppError, AppResult, ACCOUNTS, CHAIN_ID,
+    },
+    cw_std::{Addr, BlockInfo, Coins, Context, Event, Json, Storage, Vm},
     tracing::{info, warn},
 };
 
-pub fn do_execute<S: Storage + Clone + 'static>(
+pub fn do_execute<S, VM>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
     msg:      &Json,
     funds:    Coins,
-) -> AppResult<Vec<Event>> {
-    match _do_execute(store, block, contract, sender, msg, funds) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_execute::<S, VM>(store, block, contract, sender, msg, funds) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Executed contract");
             Ok(events)
@@ -27,19 +32,25 @@ pub fn do_execute<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_execute<S: Storage + Clone + 'static>(
+fn _do_execute<S, VM>(
     store:    S,
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
     msg:      &Json,
     funds:    Coins,
-) -> AppResult<Vec<Event>> {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
+    let account = ACCOUNTS.load(&store, contract)?;
 
     // make the coin transfers
     if !funds.is_empty() {
-        do_transfer(
+        do_transfer::<_, VM>(
             store.clone(),
             block,
             sender.clone(),
@@ -49,14 +60,8 @@ fn _do_execute<S: Storage + Clone + 'static>(
         )?;
     }
 
-    // load wasm code
-    let account = ACCOUNTS.load(&store, contract)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
-
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), contract, program)?;
 
     // call execute
     let ctx = Context {
@@ -73,7 +78,7 @@ fn _do_execute<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

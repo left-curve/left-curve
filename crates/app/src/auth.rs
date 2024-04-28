@@ -1,22 +1,21 @@
 use {
     crate::{
-        handle_submessages, new_after_tx_event, new_before_tx_event, AppResult, Querier, ACCOUNTS,
-        CHAIN_ID, CODES, CONTRACT_NAMESPACE,
+        create_vm_instance, handle_submessages, load_program, new_after_tx_event,
+        new_before_tx_event, AppError, AppResult, ACCOUNTS, CHAIN_ID,
     },
-    cw_db::PrefixStore,
-    cw_std::{BlockInfo, Context, Event, Storage, Tx},
-    cw_vm::Instance,
+    cw_std::{BlockInfo, Context, Event, Storage, Tx, Vm},
     tracing::{debug, warn},
 };
 
 // --------------------------------- before tx ---------------------------------
 
-pub fn do_before_tx<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> AppResult<Vec<Event>> {
-    match _do_before_tx(store, block, tx) {
+pub fn do_before_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_before_tx::<S, VM>(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called before transaction hook");
@@ -29,20 +28,17 @@ pub fn do_before_tx<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_before_tx<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> AppResult<Vec<Event>> {
-    // load wasm code
+fn _do_before_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &tx.sender)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &tx.sender]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `before_tx` entry point
     let ctx = Context {
@@ -59,19 +55,20 @@ fn _do_before_tx<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_before_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
 
 // --------------------------------- after tx ----------------------------------
 
-pub fn do_after_tx<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> AppResult<Vec<Event>> {
-    match _do_after_tx(store, block, tx) {
+pub fn do_after_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_after_tx::<S, VM>(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called after transaction hook");
@@ -84,20 +81,17 @@ pub fn do_after_tx<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_after_tx<S: Storage + Clone + 'static>(
-    store: S,
-    block: &BlockInfo,
-    tx:    &Tx,
-) -> AppResult<Vec<Event>> {
-    // load wasm code
+fn _do_after_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, &tx.sender)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &tx.sender]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `after_tx` entry point
     let ctx = Context {
@@ -114,7 +108,7 @@ fn _do_after_tx<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_after_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

@@ -1,12 +1,12 @@
 use {
-    super::new_reply_event,
-    crate::{process_msg, AppResult, Querier, ACCOUNTS, CHAIN_ID, CODES, CONTRACT_NAMESPACE},
-    cw_db::{CacheStore, PrefixStore, SharedStore},
+    crate::{
+        create_vm_instance, load_program, new_reply_event, process_msg, AppError, AppResult,
+        CacheStore, SharedStore, ACCOUNTS, CHAIN_ID,
+    },
     cw_std::{
         Addr, BlockInfo, Context, Event, GenericResult, Json, ReplyOn, Storage, SubMessage,
-        SubMsgResult,
+        SubMsgResult, Vm,
     },
-    cw_vm::Instance,
     tracing::{info, warn},
 };
 
@@ -15,7 +15,7 @@ use {
 ///
 /// Note: The `sender` in this function signature is the contract, i.e. the
 /// account that emitted the submessages, not the transaction's sender.
-pub fn handle_submessages(
+pub fn handle_submessages<VM>(
     // This function takes a boxed store instead of using a generic like others.
     //
     // This is because this function is recursive: every layer of recursion, it
@@ -39,24 +39,25 @@ pub fn handle_submessages(
     //
     // Instead, we use the `dyn_clone::DynClone` trait:
     // https://docs.rs/dyn-clone/1.0.16/dyn_clone/
-    //
-    // TODO: these wrapping and boxing for sure has impact on performance.
-    // This is probably fine for now, but we should think about optimizing this.
     store:   Box<dyn Storage>,
     block:   &BlockInfo,
     sender:  &Addr,
     submsgs: Vec<SubMessage>,
-) -> AppResult<Vec<Event>> {
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let mut events = vec![];
     for submsg in submsgs {
         let cached = SharedStore::new(CacheStore::new(store.clone(), None));
-        match (submsg.reply_on, process_msg(cached.share(), block, sender, submsg.msg)) {
+        match (submsg.reply_on, process_msg::<_, VM>(cached.share(), block, sender, submsg.msg)) {
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 cached.disassemble().consume();
                 events.extend(submsg_events.clone());
-                events.extend(do_reply(
+                events.extend(do_reply::<_, VM>(
                     store.clone(),
                     block,
                     sender,
@@ -67,7 +68,7 @@ pub fn handle_submessages(
             // error - callback requested
             // discard uncommitted state changes, give callback
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                events.extend(do_reply(
+                events.extend(do_reply::<_, VM>(
                     store.clone(),
                     block,
                     sender,
@@ -91,14 +92,19 @@ pub fn handle_submessages(
     Ok(events)
 }
 
-pub fn do_reply<S: Storage + Clone + 'static>(
+pub fn do_reply<S, VM>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
     submsg_res: SubMsgResult,
-) -> AppResult<Vec<Event>> {
-    match _do_reply(store, block, contract, payload, submsg_res) {
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
+    match _do_reply::<S, VM>(store, block, contract, payload, submsg_res) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
@@ -110,22 +116,23 @@ pub fn do_reply<S: Storage + Clone + 'static>(
     }
 }
 
-fn _do_reply<S: Storage + Clone + 'static>(
+fn _do_reply<S, VM>(
     store:      S,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
     submsg_res: SubMsgResult,
-) -> AppResult<Vec<Event>> {
-    // load wasm code
+) -> AppResult<Vec<Event>>
+where
+    S: Storage + Clone + 'static,
+    VM: Vm + 'static,
+    AppError: From<VM::Error>,
+{
     let chain_id = CHAIN_ID.load(&store)?;
     let account = ACCOUNTS.load(&store, contract)?;
-    let wasm_byte_code = CODES.load(&store, &account.code_hash)?;
 
-    // create wasm host
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &contract]);
-    let querier = Querier::new(store.clone(), block.clone());
-    let mut instance = Instance::build_from_code(substore, querier, &wasm_byte_code)?;
+    let program = load_program::<VM>(&store, &account.code_hash)?;
+    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), contract, program)?;
 
     // call reply
     let ctx = Context {
@@ -142,7 +149,7 @@ fn _do_reply<S: Storage + Clone + 'static>(
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages(Box::new(store), block, contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(Box::new(store), block, contract, resp.submsgs)?);
 
     Ok(events)
 }

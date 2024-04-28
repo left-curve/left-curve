@@ -29,7 +29,7 @@ pub enum Message {
     },
     /// Upload a Wasm binary code and store it in the chain's state.
     Upload {
-        wasm_byte_code: Binary,
+        code: Binary,
     },
     /// Register a new account.
     Instantiate {

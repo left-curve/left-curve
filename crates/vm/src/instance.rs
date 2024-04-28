@@ -1,41 +1,39 @@
 use {
     crate::{
         db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
-        secp256k1_verify, secp256r1_verify, write_to_memory, BackendQuerier, BackendStorage,
-        Environment, VmError, VmResult,
+        secp256k1_verify, secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
-    cw_std::{
-        from_json_slice, to_borsh_vec, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
-        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, SubMsgResult,
-        TransferMsg, Tx,
-    },
+    cw_std::{to_borsh_vec, BackendQuerier, BackendStorage, Context, Vm},
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
     },
 };
 
-pub struct Instance<S, Q> {
+pub struct Instance {
     _wasm_instance: Box<WasmerInstance>,
     wasm_store: Store,
-    fe: FunctionEnv<Environment<S, Q>>,
+    fe: FunctionEnv<Environment>,
 }
 
-impl<S, Q> Instance<S, Q>
-where
-    S: BackendStorage + 'static,
-    Q: BackendQuerier + 'static,
-{
-    pub fn build_from_code(store: S, querier: Q, wasm_byte_code: &[u8]) -> VmResult<Self> {
+impl Vm for Instance {
+    type Error = VmError;
+    type Program = Vec<u8>;
+
+    fn build_instance(
+        storage: Box<dyn BackendStorage>,
+        querier: Box<dyn BackendQuerier>,
+        program: Vec<u8>,
+    ) -> Result<Self, Self::Error> {
         // create Wasm store
         // for now we use the singlepass compiler
         let mut wasm_store = Store::new(Singlepass::default());
 
         // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, wasm_byte_code)?;
+        let module = Module::new(&wasm_store, &program)?;
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
-        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(store, querier));
+        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(storage, querier));
         let import_obj = imports! {
             "env" => {
                 "db_read" => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
@@ -66,130 +64,6 @@ where
         })
     }
 
-    pub fn call_instantiate(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("instantiate", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_execute(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("execute", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_query(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> VmResult<GenericResult<Json>> {
-        let res_bytes = self.call_in_1_out_1("query", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_migrate(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("migrate", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_reply(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-        events: &SubMsgResult,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_2_out_1("reply", ctx, to_json_vec(msg)?, to_json_vec(events)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_receive(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_0_out_1("receive", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_before_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_0_out_1("before_block", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_after_block(&mut self, ctx: &Context) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_0_out_1("after_block", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_before_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("before_tx", ctx, to_json_vec(tx)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_after_tx(&mut self, ctx: &Context, tx: &Tx) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json_vec(tx)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_bank_transfer(
-        &mut self,
-        ctx: &Context,
-        msg: &TransferMsg,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("bank_transfer", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_bank_query(
-        &mut self,
-        ctx: &Context,
-        msg: &BankQueryMsg,
-    ) -> VmResult<GenericResult<BankQueryResponse>> {
-        let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_ibc_client_create(
-        &mut self,
-        ctx: &Context,
-        client_state: &Json,
-        consensus_state: &Json,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_2_out_1(
-            "ibc_client_create",
-            ctx,
-            to_json_vec(client_state)?,
-            to_json_vec(consensus_state)?,
-        )?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_ibc_client_update(
-        &mut self,
-        ctx: &Context,
-        msg: &IbcClientUpdateMsg,
-    ) -> VmResult<GenericResult<Response>> {
-        let res_bytes = self.call_in_1_out_1("ibc_client_update", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    pub fn call_ibc_client_verify(
-        &mut self,
-        ctx: &Context,
-        msg: &IbcClientVerifyMsg,
-    ) -> VmResult<GenericResult<()>> {
-        let res_bytes = self.call_in_1_out_1("ibc_client_verify", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    /// Call a Wasm export function that takes exactly 0 input parameter (other
-    /// than the context) and produces exactly 1 output.
     fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
@@ -203,8 +77,6 @@ where
         read_then_wipe(env, &mut wasm_store, res_ptr)
     }
 
-    /// Call a Wasm export function that takes exactly 1 input parameter (other
-    /// than the context) and produces exactly 1 output.
     fn call_in_1_out_1(
         &mut self,
         name: &str,
@@ -224,8 +96,6 @@ where
         read_then_wipe(env, &mut wasm_store, res_ptr)
     }
 
-    /// Call a Wasm export function that takes exactly 2 input parameters (other
-    /// than the context) and produces exactly 1 output.
     fn call_in_2_out_1(
         &mut self,
         name: &str,

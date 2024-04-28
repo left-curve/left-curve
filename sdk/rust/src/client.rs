@@ -285,10 +285,10 @@ impl Client {
 
     pub async fn upload(
         &self,
-        wasm_byte_code: Binary,
+        code: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Upload { wasm_byte_code }], sign_opts).await
+        self.send_tx(vec![Message::Upload { code }], sign_opts).await
     }
 
     pub async fn instantiate<M: Serialize>(
@@ -309,18 +309,18 @@ impl Client {
 
     pub async fn upload_and_instantiate<M: Serialize>(
         &self,
-        wasm_byte_code: Binary,
+        code: Binary,
         msg: &M,
         salt: Binary,
         funds: Coins,
         admin: AdminOption,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)> {
-        let code_hash = hash(&wasm_byte_code);
+        let code_hash = hash(&code);
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let msg = to_json_value(msg)?;
         let admin = admin.decide(&address);
-        let upload_msg = Message::Upload { wasm_byte_code };
+        let upload_msg = Message::Upload { code };
         let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
         let res = self.send_tx(vec![upload_msg, instantiate_msg], sign_opts).await?;
         Ok((address, res))

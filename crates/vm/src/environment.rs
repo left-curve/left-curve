@@ -1,5 +1,6 @@
 use {
     crate::{VmError, VmResult},
+    cw_std::{BackendQuerier, BackendStorage},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -9,14 +10,14 @@ use {
 };
 
 // TODO: add explaination on why these fields need to be Options
-pub struct ContextData<S, Q> {
-    pub store:     S,
-    pub querier:   Q,
+pub struct ContextData {
+    pub store: Box<dyn BackendStorage>,
+    pub querier: Box<dyn BackendQuerier>,
     wasm_instance: Option<NonNull<Instance>>,
 }
 
-impl<S, Q> ContextData<S, Q> {
-    pub fn new(store: S, querier: Q) -> Self {
+impl ContextData {
+    pub fn new(store: Box<dyn BackendStorage>, querier: Box<dyn BackendQuerier>) -> Self {
         Self {
             store,
             querier,
@@ -25,18 +26,19 @@ impl<S, Q> ContextData<S, Q> {
     }
 }
 
-pub struct Environment<S, Q> {
+pub struct Environment {
     memory: Option<Memory>,
-    data:   Arc<RwLock<ContextData<S, Q>>>,
+    data: Arc<RwLock<ContextData>>,
 }
 
-unsafe impl<S, Q> Send for Environment<S, Q> {}
+// TODO: think about this
+unsafe impl Send for Environment {}
 
-impl<S, Q> Environment<S, Q> {
-    pub fn new(store: S, querier: Q) -> Self {
+impl Environment {
+    pub fn new(store: Box<dyn BackendStorage>, querier: Box<dyn BackendQuerier>) -> Self {
         Self {
             memory: None,
-            data:   Arc::new(RwLock::new(ContextData::new(store, querier))),
+            data: Arc::new(RwLock::new(ContextData::new(store, querier))),
         }
     }
 
@@ -49,7 +51,7 @@ impl<S, Q> Environment<S, Q> {
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&ContextData<S, Q>) -> Result<T, E>,
+        C: FnOnce(&ContextData) -> Result<T, E>,
         E: Into<VmError>,
     {
         let guard = self.data.read().map_err(|_| VmError::FailedReadLock)?;
@@ -58,7 +60,7 @@ impl<S, Q> Environment<S, Q> {
 
     pub fn with_context_data_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
     where
-        C: FnOnce(&mut ContextData<S, Q>) -> Result<T, E>,
+        C: FnOnce(&mut ContextData) -> Result<T, E>,
         E: Into<VmError>,
     {
         let mut guard = self.data.write().map_err(|_| VmError::FailedWriteLock)?;
@@ -93,8 +95,8 @@ impl<S, Q> Environment<S, Q> {
     pub fn call_function1(
         &self,
         wasm_store: &mut impl AsStoreMut,
-        name:       &str,
-        args:       &[Value],
+        name: &str,
+        args: &[Value],
     ) -> VmResult<Value> {
         let ret = self.call_function(wasm_store, name, args)?;
         if ret.len() != 1 {
@@ -110,8 +112,8 @@ impl<S, Q> Environment<S, Q> {
     pub fn call_function0(
         &self,
         wasm_store: &mut impl AsStoreMut,
-        name:       &str,
-        args:       &[Value],
+        name: &str,
+        args: &[Value],
     ) -> VmResult<()> {
         let ret = self.call_function(wasm_store, name, args)?;
         if ret.len() != 0 {
@@ -127,8 +129,8 @@ impl<S, Q> Environment<S, Q> {
     fn call_function(
         &self,
         wasm_store: &mut impl AsStoreMut,
-        name:       &str,
-        args:       &[Value],
+        name: &str,
+        args: &[Value],
     ) -> VmResult<Box<[Value]>> {
         // note: calling with_wasm_instance creates a read lock on the
         // ContextData. we must drop this lock before calling the function,

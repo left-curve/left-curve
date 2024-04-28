@@ -54,6 +54,11 @@ pub enum StdError {
         key: String,
     },
 
+    #[error("Cannot find iterator with ID {iterator_id}")]
+    IteratorNotFound {
+        iterator_id: i32,
+    },
+
     #[error("Conversion overflow: {source_type}({value}) > {target_type}::MAX")]
     OverflowConversion {
         source_type: &'static str,
