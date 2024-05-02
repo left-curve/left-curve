@@ -979,19 +979,13 @@ dependencies = [
 name = "cw-vm-wasm"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "cfg-if",
  "cw-app",
- "cw-bank",
  "cw-crypto",
  "cw-types",
  "data-encoding",
- "lazy_static",
  "serde",
- "serde_json",
  "thiserror",
  "tracing",
- "tracing-subscriber",
  "wasmer",
 ]
 
