@@ -20,15 +20,3 @@ thiserror        = { workspace = true }
 tracing          = { workspace = true }
 
 [dev-dependencies]
-anyhow             = { workspace = true }
-cfg-if             = { workspace = true }
-cw-account         = { path = "../../contracts/account", features = ["library"] }
-cw-bank            = { path = "../../contracts/bank", features = ["library"] }
-cw-crypto          = { path = "../../crates/crypto" }
-cw-mock-querier    = { path = "../../contracts/mocks/querier" }
-k256               = { workspace = true }
-lazy_static        = { workspace = true }
-rand               = { workspace = true }
-serde              = { workspace = true }
-serde_json         = { workspace = true }
-tracing-subscriber = { workspace = true }

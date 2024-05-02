@@ -761,26 +761,14 @@ dependencies = [
 name = "cw-app"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "cfg-if",
- "cw-account",
- "cw-bank",
- "cw-crypto",
- "cw-mock-querier",
  "cw-std",
  "dyn-clone",
  "hex",
- "k256",
- "lazy_static",
  "prost",
- "rand",
- "serde",
- "serde_json",
  "tendermint-abci",
  "tendermint-proto",
  "thiserror",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
