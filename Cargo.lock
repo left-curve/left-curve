@@ -800,7 +800,7 @@ version = "0.0.0"
 dependencies = [
  "cw-app",
  "cw-merkle",
- "cw-std",
+ "cw-types",
  "hex-literal",
  "rocksdb",
  "tempfile",
@@ -813,7 +813,7 @@ version = "0.0.0"
 dependencies = [
  "cw-app",
  "cw-merkle",
- "cw-std",
+ "cw-types",
 ]
 
 [[package]]
