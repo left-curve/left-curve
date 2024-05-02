@@ -3,7 +3,7 @@ use {
         db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
         secp256k1_verify, secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
-    cw_std::{to_borsh_vec, BackendQuerier, BackendStorage, Context, Vm},
+    cw_types::{to_borsh_vec, BackendQuerier, BackendStorage, Context, Vm},
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
     },

@@ -972,7 +972,7 @@ version = "0.0.0"
 dependencies = [
  "cw-app",
  "cw-crypto",
- "cw-std",
+ "cw-types",
 ]
 
 [[package]]
@@ -984,7 +984,7 @@ dependencies = [
  "cw-app",
  "cw-bank",
  "cw-crypto",
- "cw-std",
+ "cw-types",
  "data-encoding",
  "lazy_static",
  "serde",

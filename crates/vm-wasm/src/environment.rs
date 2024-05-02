@@ -1,6 +1,6 @@
 use {
     crate::{VmError, VmResult},
-    cw_std::{BackendQuerier, BackendStorage},
+    cw_types::{BackendQuerier, BackendStorage},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,

@@ -1,6 +1,6 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, VmResult},
-    cw_std::{from_json_slice, to_json_vec, Addr, QueryRequest, Record},
+    cw_types::{from_json_slice, to_json_vec, Addr, QueryRequest, Record},
     tracing::info,
     wasmer::FunctionEnvMut,
 };

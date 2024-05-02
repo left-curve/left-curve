@@ -12,7 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 cw-app        = { path = "../app" }
 cw-crypto     = { path = "../crypto" }
-cw-std        = { path = "../std" }
+cw-types      = { path = "../types" }
 data-encoding = { workspace = true }
 serde         = { workspace = true }
 thiserror     = { workspace = true }

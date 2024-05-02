@@ -12,6 +12,6 @@ categories    = { workspace = true }
 [dependencies]
 cw-app    = { path = "../app" }
 cw-crypto = { path = "../crypto" }
-cw-std    = { path = "../std" }
+cw-types  = { path = "../types" }
 
 [dev-dependencies]
