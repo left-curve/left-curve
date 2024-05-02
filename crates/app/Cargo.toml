@@ -10,7 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-std           = { path = "../std" }
+cw-storage       = { path = "../storage" }
+cw-types         = { path = "../types" }
 dyn-clone        = { workspace = true }
 hex              = { workspace = true }
 prost            = { workspace = true }
@@ -20,3 +21,4 @@ thiserror        = { workspace = true }
 tracing          = { workspace = true }
 
 [dev-dependencies]
+cw-testing = { path = "../testing" }

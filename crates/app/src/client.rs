@@ -4,7 +4,7 @@ use {
         new_client_misbehavior_event, new_create_client_event, new_update_client_event, AppError,
         AppResult, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    cw_std::{
+    cw_types::{
         Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Json, Storage,
         Vm,
     },

@@ -1,5 +1,5 @@
 use {
-    cw_std::{Addr, Hash, StdError},
+    cw_types::{Addr, Hash, StdError},
     thiserror::Error,
 };
 

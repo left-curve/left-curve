@@ -1,6 +1,6 @@
 use {
     crate::{process_query, AppError},
-    cw_std::{
+    cw_types::{
         BackendQuerier, BlockInfo, GenericResult, QueryRequest, QueryResponse, StdResult, Storage,
         Vm,
     },

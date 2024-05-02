@@ -1,4 +1,4 @@
-use cw_std::{Addr, Attribute, Event, Hash};
+use cw_types::{Addr, Attribute, Event, Hash};
 
 // Event attribute keys emitted by the state machine are prefixed by an
 // underscore. Contracts are not allowed to emit event attributes whose keys are

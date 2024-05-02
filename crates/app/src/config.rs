@@ -1,6 +1,6 @@
 use {
     crate::{new_set_config_event, AppError, AppResult, CONFIG},
-    cw_std::{Addr, Config, Event, Storage},
+    cw_types::{Addr, Config, Event, Storage},
     tracing::{info, warn},
 };
 

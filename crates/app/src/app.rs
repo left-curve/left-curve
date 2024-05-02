@@ -6,7 +6,7 @@ use {
         query_codes, query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart,
         AppError, AppResult, CacheStore, SharedStore, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
-    cw_std::{
+    cw_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Db, Event, GenesisState, Hash,
         Message, Permission, QueryRequest, QueryResponse, Storage, Vm, GENESIS_SENDER,
     },

@@ -761,7 +761,9 @@ dependencies = [
 name = "cw-app"
 version = "0.0.0"
 dependencies = [
- "cw-std",
+ "cw-storage",
+ "cw-testing",
+ "cw-types",
  "dyn-clone",
  "hex",
  "prost",

@@ -1,6 +1,6 @@
 use {
     crate::{AppError, AppResult, PrefixStore, Querier, CODES, CONTRACT_NAMESPACE},
-    cw_std::{from_borsh_slice, Addr, BlockInfo, Hash, Storage, Vm},
+    cw_types::{from_borsh_slice, Addr, BlockInfo, Hash, Storage, Vm},
 };
 
 pub fn load_program<VM: Vm>(store: &dyn Storage, code_hash: &Hash) -> AppResult<VM::Program> {

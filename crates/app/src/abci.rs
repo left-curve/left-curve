@@ -1,6 +1,6 @@
 use {
     crate::{App, AppError, AppResult},
-    cw_std::{Attribute, BlockInfo, Db, Event, Hash, Timestamp, Uint64, Vm, GENESIS_BLOCK_HASH},
+    cw_types::{Attribute, BlockInfo, Db, Event, Hash, Timestamp, Uint64, Vm, GENESIS_BLOCK_HASH},
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},

@@ -3,9 +3,10 @@ use {
         create_vm_instance, load_program, AppError, AppResult, PrefixStore, ACCOUNTS, CHAIN_ID,
         CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
-    cw_std::{
+    cw_storage::Bound,
+    cw_types::{
         AccountResponse, Addr, BackendStorage, BankQueryMsg, BankQueryResponse, Binary, BlockInfo,
-        Bound, Coin, Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, Vm,
+        Coin, Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, Vm,
         WasmRawResponse, WasmSmartResponse,
     },
 };

@@ -1,4 +1,7 @@
-use cw_std::{Account, Addr, BlockInfo, Config, Hash, Item, Map};
+use {
+    cw_storage::{Item, Map},
+    cw_types::{Account, Addr, BlockInfo, Config, Hash},
+};
 
 /// A string that identifies the chain
 pub const CHAIN_ID: Item<String> = Item::new("chain_id");

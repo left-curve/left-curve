@@ -1,5 +1,5 @@
 use {
-    cw_std::{
+    cw_types::{
         concat, increment_last_byte, trim, BackendStorage, Order, Record, StdError, StdResult,
         Storage,
     },
