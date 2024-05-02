@@ -1,0 +1,17 @@
+[package]
+name          = "cw-db-memory"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+cw-app    = { path = "../app" }
+cw-merkle = { path = "../merkle" }
+cw-std    = { path = "../std" }
+
+[dev-dependencies]

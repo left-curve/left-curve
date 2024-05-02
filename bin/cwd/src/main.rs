@@ -1,6 +1,6 @@
 use {
-    anyhow::anyhow, clap::Parser, cw_app::App, cw_db::DiskDb, cw_vm::WasmVm, home::home_dir,
-    std::path::PathBuf, tracing::metadata::LevelFilter,
+    anyhow::anyhow, clap::Parser, cw_app::App, cw_db_disk::DiskDb, cw_vm_wasm::WasmVm,
+    home::home_dir, std::path::PathBuf, tracing::metadata::LevelFilter,
 };
 
 // relative to user home directory (~)

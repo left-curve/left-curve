@@ -13,8 +13,8 @@ categories    = { workspace = true }
 anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
 cw-app             = { path = "../../crates/app" }
-cw-db              = { path = "../../crates/db" }
-cw-vm              = { path = "../../crates/vm" }
+cw-db-disk         = { path = "../../crates/db-disk" }
+cw-vm-wasm         = { path = "../../crates/vm-wasm" }
 home               = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

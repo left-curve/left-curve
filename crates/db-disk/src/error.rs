@@ -1,5 +1,5 @@
 use {
-    crate::base::PendingData,
+    crate::PendingData,
     cw_app::AppError,
     cw_std::StdError,
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},

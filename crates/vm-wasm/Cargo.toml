@@ -1,5 +1,5 @@
 [package]
-name          = "cw-vm"
+name          = "cw-vm-wasm"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

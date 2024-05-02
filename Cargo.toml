@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members  = [
-  "bin/*",
+  "bin/cwcli",
+  "bin/cwd",
   "contracts/account",
   "contracts/account-factory",
   "contracts/bank",
@@ -14,14 +15,16 @@ members  = [
   "contracts/mocks/token-wrapper",
   "crates/app",
   "crates/crypto",
-  "crates/db",
+  "crates/db-disk",
+  "crates/db-memory",
   "crates/macros",
   "crates/merkle",
   "crates/std",
   "crates/storage",
   "crates/testing",
   "crates/types",
-  "crates/vm",
+  "crates/vm-rust",
+  "crates/vm-wasm",
   "crates/wasm",
   "sdk/rust",
 ]
