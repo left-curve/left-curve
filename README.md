@@ -8,8 +8,8 @@ The CWD project consists of the following Rust crates:
 
 | crate                           | description                                                                |
 | ------------------------------- | -------------------------------------------------------------------------- |
-| [cw-app](./crates/app)          | state machine transition logics and [Tendermint ABCI][abci] implementation |
-| [cw-crypto](./crates/crypto)    | cryptography functionalities                                               |
+| [app](./crates/app)             | state machine transition logics and [Tendermint ABCI][abci] implementation |
+| [crypto](./crates/crypto)       | cryptography functionalities                                               |
 | [db-disk](./crates/db-disk)     | an on-disk, persisted DB backend                                           |
 | [db-memory](./crates/db-memory) | an in-memory, temporary DB backend; used for testing                       |
 | [macros](./crates/macros)       | macros for reducing boilerplates in contract developments                  |
