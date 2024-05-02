@@ -3,7 +3,7 @@
 
 name: JavaScript
 
-on: push
+on: workflow_dispatch
 
 jobs:
   checks:
