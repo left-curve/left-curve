@@ -838,10 +838,14 @@ name = "cw-merkle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "cw-std",
+ "borsh",
+ "cw-storage",
+ "cw-testing",
+ "cw-types",
  "hex-literal",
  "proptest",
  "rand",
+ "serde",
  "sha2 0.10.8",
  "test-case",
  "thiserror",

@@ -1,6 +1,8 @@
 use {
     crate::{hash_internal_node, hash_leaf_node, BitArray},
-    cw_std::{cw_derive, Hash, Order},
+    borsh::{BorshDeserialize, BorshSerialize},
+    cw_types::{Hash, Order},
+    serde::{Deserialize, Serialize},
     thiserror::Error,
 };
 
@@ -27,18 +29,18 @@ pub enum ProofError {
     NotCommonPrefix,
 }
 
-#[cw_derive(serde)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Proof {
     Membership(MembershipProof),
     NonMembership(NonMembershipProof),
 }
 
-#[cw_derive(serde)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MembershipProof {
     pub sibling_hashes: Vec<Option<Hash>>,
 }
 
-#[cw_derive(serde)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct NonMembershipProof {
     pub node: ProofNode,
     pub sibling_hashes: Vec<Option<Hash>>,
@@ -47,7 +49,7 @@ pub struct NonMembershipProof {
 /// `ProofNode` is just like `Node`, but for internal nodes it omits the child
 /// versions, which aren't needed for proving, only including child node hashes.
 /// This reduces proof sizes.
-#[cw_derive(serde)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ProofNode {
     Internal {
         left_hash:  Option<Hash>,
@@ -171,7 +173,7 @@ fn compute_and_compare_root_hash(
 mod tests {
     use {
         super::*,
-        cw_std::{hash, Hash},
+        cw_types::{hash, Hash},
         hex_literal::hex,
         test_case::test_case,
     };

@@ -1,30 +1,31 @@
 use {
-    cw_std::{cw_derive, Hash},
+    borsh::{BorshDeserialize, BorshSerialize},
+    cw_types::Hash,
     sha2::{Digest, Sha256},
 };
 
 const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
 const LEAF_NODE_HASH_PERFIX:     &[u8] = &[1];
 
-#[cw_derive(borsh)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Child {
     pub version: u64,
     pub hash:    Hash,
 }
 
-#[cw_derive(borsh)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InternalNode {
     pub left_child:  Option<Child>,
     pub right_child: Option<Child>,
 }
 
-#[cw_derive(borsh)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LeafNode {
     pub key_hash:   Hash,
     pub value_hash: Hash,
 }
 
-#[cw_derive(borsh)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Node {
     Internal(InternalNode),
     Leaf(LeafNode),

@@ -16,13 +16,17 @@ default = []
 fuzzing = []
 
 [dependencies]
-cw-std    = { path = "../std" }
-sha2      = { workspace = true }
-thiserror = { workspace = true }
-tracing   = { workspace = true }
+borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
+cw-storage = { path = "../storage" }
+cw-types   = { path = "../types" }
+serde      = { workspace = true, features = ["derive"] }
+sha2       = { workspace = true }
+thiserror  = { workspace = true }
+tracing    = { workspace = true }
 
 [dev-dependencies]
 anyhow       = { workspace = true }
+cw-testing   = { path = "../testing" }
 hex-literal  = { workspace = true }
 proptest     = { workspace = true }
 rand         = { workspace = true }
