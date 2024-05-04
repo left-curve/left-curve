@@ -252,7 +252,7 @@ impl Storage for StateCommitment {
         _max:   Option<&[u8]>,
         _order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        unimplemented!("this isn't used by the MerkleTree")
+        unimplemented!("this isn't used by the Merkle tree");
     }
 
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
@@ -260,10 +260,6 @@ impl Storage for StateCommitment {
     }
 
     fn remove(&mut self, _key: &[u8]) {
-        unreachable!("write function called on read-only storage");
-    }
-
-    fn flush(&mut self, _batch: Batch) {
         unreachable!("write function called on read-only storage");
     }
 }
