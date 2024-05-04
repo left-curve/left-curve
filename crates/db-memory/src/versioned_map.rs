@@ -26,6 +26,12 @@ impl<K, V> VersionedMap<K, V> {
     }
 }
 
+impl<K, V> Default for VersionedMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, V> VersionedMap<K, V>
 where
     K: Ord,
@@ -62,11 +68,11 @@ where
         })
     }
 
-    pub fn range<'a, R, T: ?Sized>(
-        &'a self,
+    pub fn range<R, T: ?Sized>(
+        &self,
         range: R,
         version: u64,
-    ) -> VersionedIterator<'a, K, V, R, T>
+    ) -> VersionedIterator<'_, K, V, R, T>
     where
         K: Borrow<T>,
         T: Ord,
@@ -107,11 +113,9 @@ where
         };
 
         for (key, inner_map) in self.nested_map.range((start, self.range.end_bound())) {
-            if let Some((_, op)) = inner_map.range(0..=self.version).last() {
-                if let Op::Insert(value) = op {
-                    self.last_visited_key = Some(key);
-                    return Some((key, value));
-                }
+            if let Some((_, Op::Insert(value))) = inner_map.range(0..=self.version).last() {
+                self.last_visited_key = Some(key);
+                return Some((key, value));
             }
         }
 
@@ -132,11 +136,9 @@ where
         };
 
         for (key, inner_map) in self.nested_map.range((self.range.start_bound(), end)) {
-            if let Some((_, op)) = inner_map.range(0..=self.version).last() {
-                if let Op::Insert(value) = op {
-                    self.last_visited_key = Some(key);
-                    return Some((key, value));
-                }
+            if let Some((_, Op::Insert(value))) = inner_map.range(0..=self.version).last() {
+                self.last_visited_key = Some(key);
+                return Some((key, value));
             }
         }
 

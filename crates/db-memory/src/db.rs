@@ -71,6 +71,12 @@ impl MemDb {
     }
 }
 
+impl Default for MemDb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Clone for MemDb {
     fn clone(&self) -> Self {
         Self {
