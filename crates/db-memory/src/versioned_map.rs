@@ -1,6 +1,11 @@
 use {
     cw_types::Op,
-    std::{collections::BTreeMap, ops::Bound},
+    std::{
+        borrow::Borrow,
+        collections::BTreeMap,
+        marker::PhantomData,
+        ops::{Bound, RangeBounds},
+    },
 };
 
 pub struct VersionedMap<K, V> {
@@ -45,7 +50,11 @@ where
         }
     }
 
-    pub fn get(&self, key: &K, version: u64) -> Option<&V> {
+    pub fn get<T>(&self, key: &T, version: u64) -> Option<&V>
+    where
+        T: Ord + ?Sized,
+        K: Borrow<T>,
+    {
         assert!(self.latest_version.is_some());
         assert!(version <= self.latest_version.unwrap());
         self.nested_map.get(key).and_then(|inner_map| {
@@ -53,45 +62,51 @@ where
         })
     }
 
-    pub fn range<'a, 'b>(
+    pub fn range<'a, R, T: ?Sized>(
         &'a self,
-        min: Bound<&'b K>,
-        max: Bound<&'b K>,
+        range: R,
         version: u64,
-    ) -> VersionedIterator<'a, 'b, K, V> {
+    ) -> VersionedIterator<'a, K, V, R, T>
+    where
+        K: Borrow<T>,
+        T: Ord,
+        R: RangeBounds<T>,
+    {
         assert!(self.latest_version.is_some());
         assert!(version <= self.latest_version.unwrap());
         VersionedIterator {
             nested_map: &self.nested_map,
-            min,
-            max,
+            range,
             version,
             last_visited_key: None,
+            phantom: PhantomData,
         }
     }
 }
 
-pub struct VersionedIterator<'a, 'b, K, V> {
+pub struct VersionedIterator<'a, K, V, R, T: ?Sized> {
     nested_map: &'a BTreeMap<K, BTreeMap<u64, Op<V>>>,
-    min: Bound<&'b K>,
-    max: Bound<&'b K>,
+    range: R,
     version: u64,
     last_visited_key: Option<&'a K>,
+    phantom: PhantomData<T>,
 }
 
-impl<'a, 'b, K, V> Iterator for VersionedIterator<'a, 'b, K, V>
+impl<'a, K, V, R, T: ?Sized> Iterator for VersionedIterator<'a, K, V, R, T>
 where
-    K: Ord,
+    K: Borrow<T> + Ord,
+    T: Ord,
+    R: RangeBounds<T>,
 {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
         let start = match self.last_visited_key {
-            Some(key) => Bound::Excluded(key),
-            None => self.min,
+            Some(key) => Bound::Excluded(key.borrow()),
+            None => self.range.start_bound(),
         };
 
-        for (key, inner_map) in self.nested_map.range((start, self.max)) {
+        for (key, inner_map) in self.nested_map.range((start, self.range.end_bound())) {
             if let Some((_, op)) = inner_map.range(0..=self.version).last() {
                 if let Op::Insert(value) = op {
                     self.last_visited_key = Some(key);
@@ -104,17 +119,19 @@ where
     }
 }
 
-impl<'a, 'b, K, V> DoubleEndedIterator for VersionedIterator<'a, 'b, K, V>
+impl<'a, K, V, R, T: ?Sized> DoubleEndedIterator for VersionedIterator<'a, K, V, R, T>
 where
-    K: Ord,
+    K: Borrow<T> + Ord,
+    T: Ord,
+    R: RangeBounds<T>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         let end = match self.last_visited_key {
-            Some(key) => Bound::Excluded(key),
-            None => self.max,
+            Some(key) => Bound::Excluded(key.borrow()),
+            None => self.range.end_bound(),
         };
 
-        for (key, inner_map) in self.nested_map.range((self.min, end)) {
+        for (key, inner_map) in self.nested_map.range((self.range.start_bound(), end)) {
             if let Some((_, op)) = inner_map.range(0..=self.version).last() {
                 if let Op::Insert(value) = op {
                     self.last_visited_key = Some(key);
@@ -162,21 +179,21 @@ mod tests {
             map.write_batch(batch);
         }
 
-        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 0).map(|(k, v)| (*k, *v)).eq([
+        assert!(map.range::<_, str>(.., 0).map(|(k, v)| (*k, *v)).eq([
             ("donald", "trump"),
             ("joe", "biden"),
             ("larry", "engineer"),
             ("pumpkin", "cat"),
             ("satoshi", "nakamoto")
         ]));
-        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 1).map(|(k, v)| (*k, *v)).eq([
+        assert!(map.range::<_, str>(.., 1).map(|(k, v)| (*k, *v)).eq([
             ("donald", "duck"),
             ("joe", "biden"),
             ("larry", "engineer"),
             ("satoshi", "nakamoto"),
             ("ulfric", "stormcloak"),
         ]));
-        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 2).map(|(k, v)| (*k, *v)).eq([
+        assert!(map.range::<_, str>(.., 2).map(|(k, v)| (*k, *v)).eq([
             ("donald", "duck"),
             ("jake", "shepherd"),
             ("larry", "founder"),
