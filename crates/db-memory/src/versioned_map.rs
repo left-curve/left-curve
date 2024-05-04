@@ -1,0 +1,187 @@
+use {
+    cw_types::Op,
+    std::{collections::BTreeMap, ops::Bound},
+};
+
+pub struct VersionedMap<K, V> {
+    // initialized to None
+    // set to 0 the first time a batch is written
+    // incremented by 1 each following batch write
+    pub latest_version: Option<u64>,
+    // key => (version => op)
+    nested_map: BTreeMap<K, BTreeMap<u64, Op<V>>>,
+}
+
+impl<K, V> VersionedMap<K, V> {
+    pub fn new() -> Self {
+        Self {
+            latest_version: None,
+            nested_map: BTreeMap::new(),
+        }
+    }
+}
+
+impl<K, V> VersionedMap<K, V>
+where
+    K: Ord,
+{
+    pub fn write_batch<B>(&mut self, batch: B)
+    where
+        B: IntoIterator<Item = (K, Op<V>)>,
+    {
+        let version = match self.latest_version.as_mut() {
+            None => {
+                self.latest_version = Some(0);
+                0
+            },
+            Some(version) => {
+                *version += 1;
+                *version
+            },
+        };
+
+        for (key, op) in batch {
+            self.nested_map.entry(key).or_default().insert(version, op);
+        }
+    }
+
+    pub fn get(&self, key: &K, version: u64) -> Option<&V> {
+        assert!(self.latest_version.is_some());
+        assert!(version <= self.latest_version.unwrap());
+        self.nested_map.get(key).and_then(|inner_map| {
+            inner_map.range(0..=version).last().and_then(|(_, op)| op.as_ref().into_option())
+        })
+    }
+
+    pub fn range<'a, 'b>(
+        &'a self,
+        min: Bound<&'b K>,
+        max: Bound<&'b K>,
+        version: u64,
+    ) -> VersionedIterator<'a, 'b, K, V> {
+        assert!(self.latest_version.is_some());
+        assert!(version <= self.latest_version.unwrap());
+        VersionedIterator {
+            nested_map: &self.nested_map,
+            min,
+            max,
+            version,
+            last_visited_key: None,
+        }
+    }
+}
+
+pub struct VersionedIterator<'a, 'b, K, V> {
+    nested_map: &'a BTreeMap<K, BTreeMap<u64, Op<V>>>,
+    min: Bound<&'b K>,
+    max: Bound<&'b K>,
+    version: u64,
+    last_visited_key: Option<&'a K>,
+}
+
+impl<'a, 'b, K, V> Iterator for VersionedIterator<'a, 'b, K, V>
+where
+    K: Ord,
+{
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let start = match self.last_visited_key {
+            Some(key) => Bound::Excluded(key),
+            None => self.min,
+        };
+
+        for (key, inner_map) in self.nested_map.range((start, self.max)) {
+            if let Some((_, op)) = inner_map.range(0..=self.version).last() {
+                if let Op::Insert(value) = op {
+                    self.last_visited_key = Some(key);
+                    return Some((key, value));
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl<'a, 'b, K, V> DoubleEndedIterator for VersionedIterator<'a, 'b, K, V>
+where
+    K: Ord,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let end = match self.last_visited_key {
+            Some(key) => Bound::Excluded(key),
+            None => self.max,
+        };
+
+        for (key, inner_map) in self.nested_map.range((self.min, end)) {
+            if let Some((_, op)) = inner_map.range(0..=self.version).last() {
+                if let Op::Insert(value) = op {
+                    self.last_visited_key = Some(key);
+                    return Some((key, value));
+                }
+            }
+        }
+
+        None
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn iterating() {
+        let mut map = VersionedMap::<&str, &str>::new();
+        // apply some batches
+        for batch in [
+            // version: 0
+            vec![
+                ("larry", Op::Insert("engineer")),
+                ("pumpkin", Op::Insert("cat")),
+                ("donald", Op::Insert("trump")),
+                ("joe", Op::Insert("biden")),
+                ("satoshi", Op::Insert("nakamoto")),
+            ],
+            // version: 1
+            vec![
+                ("donald", Op::Insert("duck")),
+                ("pumpkin", Op::Delete),
+                ("ulfric", Op::Insert("stormcloak")),
+            ],
+            // version: 2
+            vec![
+                ("jake", Op::Insert("shepherd")),
+                ("larry", Op::Insert("founder")),
+                ("joe", Op::Delete),
+            ],
+        ] {
+            map.write_batch(batch);
+        }
+
+        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 0).map(|(k, v)| (*k, *v)).eq([
+            ("donald", "trump"),
+            ("joe", "biden"),
+            ("larry", "engineer"),
+            ("pumpkin", "cat"),
+            ("satoshi", "nakamoto")
+        ]));
+        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 1).map(|(k, v)| (*k, *v)).eq([
+            ("donald", "duck"),
+            ("joe", "biden"),
+            ("larry", "engineer"),
+            ("satoshi", "nakamoto"),
+            ("ulfric", "stormcloak"),
+        ]));
+        assert!(map.range(Bound::Unbounded, Bound::Unbounded, 2).map(|(k, v)| (*k, *v)).eq([
+            ("donald", "duck"),
+            ("jake", "shepherd"),
+            ("larry", "founder"),
+            ("satoshi", "nakamoto"),
+            ("ulfric", "stormcloak"),
+        ]));
+    }
+}
