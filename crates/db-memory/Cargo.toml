@@ -13,5 +13,6 @@ categories    = { workspace = true }
 cw-app    = { path = "../app" }
 cw-merkle = { path = "../merkle" }
 cw-types  = { path = "../types" }
+thiserror = { workspace = true }
 
 [dev-dependencies]

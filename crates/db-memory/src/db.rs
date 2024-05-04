@@ -1,0 +1,236 @@
+use {
+    crate::{DbError, DbResult, VersionedMap},
+    cw_app::CacheStore,
+    cw_merkle::{MerkleTree, Proof},
+    cw_types::{hash, Batch, Db, Hash, Op, Order, Record, Storage},
+    std::{
+        collections::HashMap,
+        ops::Bound,
+        sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    },
+};
+
+const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
+
+struct ChangeSet {
+    version: u64,
+    state_commitment: Batch,
+    state_storage: Batch,
+}
+
+struct MemDbInner {
+    /// Version of the DB. Initilialized to `None` when the DB instance is
+    /// created. Set of 0 the first time a batch of data is committed, and
+    /// incremented by 1 each time afterwards.
+    latest_version: Option<u64>,
+    /// A key-value store backing the Merkle tree.
+    ///
+    /// A HashMap is chosen over BTreeMap because our Merkle tree implementation
+    /// does not need to iterate raw keys in this store.
+    state_commitment: HashMap<Vec<u8>, Vec<u8>>,
+    /// A versioned key-value store: key => (version => value)
+    state_storage: VersionedMap<Vec<u8>, Vec<u8>>,
+    /// Uncommitted changes
+    changeset: Option<ChangeSet>,
+}
+
+pub struct MemDb {
+    inner: Arc<RwLock<MemDbInner>>,
+}
+
+impl MemDb {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(MemDbInner {
+                latest_version: None,
+                state_commitment: HashMap::new(),
+                state_storage: VersionedMap::new(),
+                changeset: None,
+            })),
+        }
+    }
+
+    fn with_read<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(RwLockReadGuard<MemDbInner>) -> T,
+    {
+        let lock = self.inner.read().unwrap_or_else(|err| {
+            panic!("MemDb is poisoned: {err:?}");
+        });
+        callback(lock)
+    }
+
+    fn with_write<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(RwLockWriteGuard<MemDbInner>) -> T,
+    {
+        let lock = self.inner.write().unwrap_or_else(|err| {
+            panic!("MemDb is poisoned: {err:?}");
+        });
+        callback(lock)
+    }
+}
+
+impl Clone for MemDb {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
+impl Db for MemDb {
+    type Error = DbError;
+    type Proof = Proof;
+
+    fn state_commitment(&self) -> impl Storage + Clone + 'static {
+        StateCommitment {
+            db: self.clone(),
+        }
+    }
+
+    fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
+        StateStorage {
+            db: self.clone(),
+            version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
+        }
+    }
+
+    fn latest_version(&self) -> Option<u64> {
+        self.with_read(|inner| inner.latest_version)
+    }
+
+    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
+        Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
+    }
+
+    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
+        Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
+    }
+
+    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+        self.with_write(|mut inner| {
+            if inner.changeset.is_some() {
+                return Err(DbError::ChangeSetAlreadySet);
+            }
+
+            let (old_version, new_version) = match self.latest_version() {
+                Some(v) => (v, v + 1),
+                None => (0, 0),
+            };
+
+            let mut cache = CacheStore::new(self.state_commitment(), None);
+            let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
+            let (_, changeset) = cache.disassemble();
+
+            inner.changeset = Some(ChangeSet {
+                version: new_version,
+                state_commitment: changeset,
+                state_storage: batch,
+            });
+
+            Ok((new_version, root_hash))
+        })
+    }
+
+    fn commit(&self) -> DbResult<()> {
+        self.with_write(|mut inner| {
+            let changeset = inner.changeset.take().ok_or(DbError::ChangeSetNotSet)?;
+
+            // update the version
+            inner.latest_version = Some(changeset.version);
+
+            // write changes to state commitment
+            for (key, op) in changeset.state_commitment {
+                if let Op::Insert(value) = op {
+                    inner.state_commitment.insert(key, value);
+                } else {
+                    inner.state_commitment.remove(&key);
+                }
+            }
+
+            // write changes to state storage
+            inner.state_storage.write_batch(changeset.state_storage);
+
+            Ok(())
+        })
+    }
+}
+
+// ----------------------------- state commitment ------------------------------
+
+#[derive(Clone)]
+pub struct StateCommitment {
+    db: MemDb,
+}
+
+impl Storage for StateCommitment {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.db.with_read(|inner| inner.state_commitment.get(key).cloned())
+    }
+
+    fn scan<'a>(
+        &'a self,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        unimplemented!("this isn't used by the Merkle tree");
+    }
+
+    fn write(&mut self, _key: &[u8], _value: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+
+    fn remove(&mut self, _key: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+}
+
+// ------------------------------- state storage -------------------------------
+
+#[derive(Clone)]
+pub struct StateStorage {
+    db: MemDb,
+    version: u64,
+}
+
+impl Storage for StateStorage {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.db.with_read(|inner| inner.state_storage.get(key, self.version).cloned())
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let min = min.map_or(Bound::Unbounded, Bound::Included);
+        let max = max.map_or(Bound::Unbounded, Bound::Excluded);
+        let vec = self.db.with_read(|inner| {
+            // TODO: here we must collect the items into a Vec, instead of
+            // returning the iterator, otherwise we get a lifetime error which
+            // I can't comprehend.
+            inner
+                .state_storage
+                .range::<_, [u8]>((min, max), self.version)
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn write(&mut self, _key: &[u8], _value: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+
+    fn remove(&mut self, _key: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+}
