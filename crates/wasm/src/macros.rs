@@ -1,6 +1,6 @@
 // TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
 #[macro_export]
-macro_rules! try_into_generic_result {
+macro_rules! unwrap_into_generic_result {
     ($expr:expr) => {
         match $expr {
             Ok(val) => val,
@@ -12,7 +12,7 @@ macro_rules! try_into_generic_result {
 }
 
 #[macro_export]
-macro_rules! try_unwrap_field {
+macro_rules! unwrap_optional_field {
     ($field:expr, $name:literal) => {
         match $field {
             Some(field) => field,
@@ -47,8 +47,8 @@ macro_rules! make_mutable_ctx {
             block_timestamp: $ctx.block_timestamp,
             block_hash:      $ctx.block_hash,
             contract:        $ctx.contract,
-            sender:          try_unwrap_field!($ctx.sender, "sender"),
-            funds:           try_unwrap_field!($ctx.funds, "funds"),
+            sender:          unwrap_optional_field!($ctx.sender, "sender"),
+            funds:           unwrap_optional_field!($ctx.funds, "funds"),
         }
     }
 }
@@ -77,7 +77,7 @@ macro_rules! make_auth_ctx {
             block_timestamp: $ctx.block_timestamp,
             block_hash:      $ctx.block_hash,
             contract:        $ctx.contract,
-            simulate:        try_unwrap_field!($ctx.simulate, "simulate"),
+            simulate:        unwrap_optional_field!($ctx.simulate, "simulate"),
         }
     }
 }

@@ -1,13 +1,13 @@
 use {
     crate::{
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
-        try_into_generic_result, try_unwrap_field, AuthCtx, ImmutableCtx, MutableCtx, Region,
-        SudoCtx, ExternalStorage
+        unwrap_into_generic_result, unwrap_optional_field, AuthCtx, ExternalStorage, ImmutableCtx,
+        MutableCtx, Region, SudoCtx,
     },
     cw_types::{
         from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
-        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, SubMsgResult,
-        TransferMsg, Tx, StdError
+        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
+        SubMsgResult, TransferMsg, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -61,9 +61,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     instantiate_fn(mutable_ctx, msg).into()
 }
@@ -97,9 +97,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     execute_fn(mutable_ctx, msg).into()
 }
@@ -133,9 +133,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
 }
@@ -169,9 +169,9 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     migrate_fn(mutable_ctx, msg).into()
 }
@@ -208,10 +208,10 @@ where
     M: DeserializeOwned,
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
-    let events = try_into_generic_result!(from_json_slice(events_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+    let events = unwrap_into_generic_result!(from_json_slice(events_bytes));
 
     reply_fn(sudo_ctx, msg, events).into()
 }
@@ -240,7 +240,7 @@ fn _do_receive<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let mutable_ctx = make_mutable_ctx!(ctx);
 
     receive_fn(mutable_ctx).into()
@@ -270,7 +270,7 @@ fn _do_before_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     before_block_fn(sudo_ctx).into()
@@ -300,7 +300,7 @@ fn _do_after_block<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
 
     after_block_fn(sudo_ctx).into()
@@ -333,9 +333,9 @@ fn _do_before_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
-    let tx = try_into_generic_result!(from_json_slice(tx_bytes));
+    let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
 
     before_tx_fn(auth_ctx, tx).into()
 }
@@ -367,9 +367,9 @@ fn _do_after_tx<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let auth_ctx = make_auth_ctx!(ctx);
-    let tx = try_into_generic_result!(from_json_slice(tx_bytes));
+    let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
 
     after_tx_fn(auth_ctx, tx).into()
 }
@@ -401,9 +401,9 @@ fn _do_bank_transfer<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     transfer_fn(sudo_ctx, msg).into()
 }
@@ -435,9 +435,9 @@ fn _do_bank_query<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
 }
@@ -477,10 +477,10 @@ fn _do_ibc_client_create<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let client_state_bytes = try_into_generic_result!(from_json_slice(client_state_bytes));
-    let consensus_state_bytes = try_into_generic_result!(from_json_slice(consensus_state_bytes));
+    let client_state_bytes = unwrap_into_generic_result!(from_json_slice(client_state_bytes));
+    let consensus_state_bytes = unwrap_into_generic_result!(from_json_slice(consensus_state_bytes));
 
     create_fn(sudo_ctx, client_state_bytes, consensus_state_bytes).into()
 }
@@ -512,9 +512,9 @@ fn _do_ibc_client_update<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     update_fn(sudo_ctx, msg).into()
 }
@@ -546,9 +546,9 @@ fn _do_ibc_client_verify<E>(
 where
     E: ToString,
 {
-    let ctx: Context = try_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let immutable_ctx = make_immutable_ctx!(ctx);
-    let msg = try_into_generic_result!(from_json_slice(msg_bytes));
+    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     verify_fn(immutable_ctx, msg).into()
 }
