@@ -1,3 +1,13 @@
+#[macro_export]
+macro_rules! return_into_generic_result {
+    ($expr:expr) => {
+        match $expr {
+            Ok(val) => GenericResult::Ok(val),
+            Err(err) => GenericResult::Err(err.to_string()),
+        }
+    }
+}
+
 // TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
 #[macro_export]
 macro_rules! unwrap_into_generic_result {
@@ -8,7 +18,7 @@ macro_rules! unwrap_into_generic_result {
                 return GenericResult::Err(err.to_string());
             },
         }
-    };
+    }
 }
 
 #[macro_export]
