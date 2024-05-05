@@ -1,12 +1,18 @@
 use {
-    crate::{AuthCtx, ExternalStorage, ImmutableCtx, MutableCtx, Region, SudoCtx},
+    crate::{
+        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        try_into_generic_result, try_unwrap_field, AuthCtx, ImmutableCtx, MutableCtx, Region,
+        SudoCtx, ExternalStorage
+    },
     cw_types::{
         from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
-        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
-        SubMsgResult, TransferMsg, Tx,
+        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, SubMsgResult,
+        TransferMsg, Tx, StdError
     },
     serde::de::DeserializeOwned,
 };
+
+// ----------------------------------- alloc -----------------------------------
 
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was
@@ -24,84 +30,6 @@ extern "C" fn allocate(capacity: usize) -> usize {
 extern "C" fn deallocate(region_addr: usize) {
     let _ = unsafe { Region::consume(region_addr as *mut Region) };
     // data is dropped here, which calls Vec<u8> destructor, freeing the memory
-}
-
-// TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
-macro_rules! try_into_generic_result {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => val,
-            Err(err) => {
-                return GenericResult::Err(err.to_string());
-            },
-        }
-    };
-}
-
-macro_rules! try_unwrap_field {
-    ($field:expr, $name:literal) => {
-        match $field {
-            Some(field) => field,
-            None => {
-                return Err(StdError::missing_context($name)).into();
-            },
-        }
-    }
-}
-
-macro_rules! make_immutable_ctx {
-    ($ctx:ident) => {
-        ImmutableCtx {
-            store:           &ExternalStorage,
-            chain_id:        $ctx.chain_id,
-            block_height:    $ctx.block_height,
-            block_timestamp: $ctx.block_timestamp,
-            block_hash:      $ctx.block_hash,
-            contract:        $ctx.contract,
-        }
-    }
-}
-
-macro_rules! make_mutable_ctx {
-    ($ctx:ident) => {
-        MutableCtx {
-            store:           &mut ExternalStorage,
-            chain_id:        $ctx.chain_id,
-            block_height:    $ctx.block_height,
-            block_timestamp: $ctx.block_timestamp,
-            block_hash:      $ctx.block_hash,
-            contract:        $ctx.contract,
-            sender:          try_unwrap_field!($ctx.sender, "sender"),
-            funds:           try_unwrap_field!($ctx.funds, "funds"),
-        }
-    }
-}
-
-macro_rules! make_sudo_ctx {
-    ($ctx:ident) => {
-        SudoCtx {
-            store:           &mut ExternalStorage,
-            chain_id:        $ctx.chain_id,
-            block_height:    $ctx.block_height,
-            block_timestamp: $ctx.block_timestamp,
-            block_hash:      $ctx.block_hash,
-            contract:        $ctx.contract,
-        }
-    }
-}
-
-macro_rules! make_auth_ctx {
-    ($ctx:ident) => {
-        AuthCtx {
-            store:           &mut ExternalStorage,
-            chain_id:        $ctx.chain_id,
-            block_height:    $ctx.block_height,
-            block_timestamp: $ctx.block_timestamp,
-            block_hash:      $ctx.block_hash,
-            contract:        $ctx.contract,
-            simulate:        try_unwrap_field!($ctx.simulate, "simulate"),
-        }
-    }
 }
 
 // -------------------------------- instantiate --------------------------------
