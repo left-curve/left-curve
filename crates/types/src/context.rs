@@ -5,7 +5,7 @@ use {
 
 /// This is a union of all context types. When doing a Wasm function call, the
 /// host constructs this, serialize to bytes, and pass it to the Wasm module.
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct Context {
     pub chain_id:        String,
     pub block_height:    Uint64,

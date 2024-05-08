@@ -1,0 +1,121 @@
+use {
+    crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
+    borsh::{BorshDeserialize, BorshSerialize},
+    cw_types::{from_json_value, Context, GenericResult, Json, Response, StdError, SubMsgResult},
+    cw_wasm::{
+        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
+        unwrap_into_generic_result, unwrap_optional_field, ExternalStorage, ImmutableCtx,
+        MutableCtx, SudoCtx,
+    },
+    elsa::FrozenVec,
+    serde::de::DeserializeOwned,
+    std::cell::OnceCell,
+};
+
+pub(crate) const CONTRACTS: OnceCell<FrozenVec<Box<dyn Contract>>> = OnceCell::new();
+
+// ---------------------------------- wrapper ----------------------------------
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContractWrapper {
+    pub(crate) index: usize,
+}
+
+impl ContractWrapper {
+    pub fn new<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6>(
+        instantiate_fn: InstantiateFn<M1, E1>,
+        execute_fn: Option<ExecuteFn<M2, E2>>,
+        migrate_fn: Option<MigrateFn<M3, E3>>,
+        receive_fn: Option<ReceiveFn<E4>>,
+        reply_fn: Option<ReplyFn<M5, E5>>,
+        query_fn: Option<QueryFn<M6, E6>>,
+    ) -> Self
+    where
+        M1: DeserializeOwned + 'static,
+        M2: DeserializeOwned + 'static,
+        M3: DeserializeOwned + 'static,
+        M5: DeserializeOwned + 'static,
+        M6: DeserializeOwned + 'static,
+        E1: ToString + 'static,
+        E2: ToString + 'static,
+        E3: ToString + 'static,
+        E4: ToString + 'static,
+        E5: ToString + 'static,
+        E6: ToString + 'static,
+    {
+        CONTRACTS.get_or_init(Default::default).push(Box::new(ContractImpl {
+            instantiate_fn,
+            execute_fn,
+            migrate_fn,
+            receive_fn,
+            reply_fn,
+            query_fn,
+        }));
+
+        Self {
+            index: CONTRACTS.get().unwrap().len() - 1,
+        }
+    }
+}
+
+// ----------------------------------- impl ------------------------------------
+
+pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6> {
+    instantiate_fn: InstantiateFn<M1, E1>,
+    execute_fn: Option<ExecuteFn<M2, E2>>,
+    migrate_fn: Option<MigrateFn<M3, E3>>,
+    receive_fn: Option<ReceiveFn<E4>>,
+    reply_fn: Option<ReplyFn<M5, E5>>,
+    query_fn: Option<QueryFn<M6, E6>>,
+}
+
+impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6> Contract
+    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6>
+where
+    M1: DeserializeOwned,
+    M2: DeserializeOwned,
+    M3: DeserializeOwned,
+    M5: DeserializeOwned,
+    M6: DeserializeOwned,
+    E1: ToString,
+    E2: ToString,
+    E3: ToString,
+    E4: ToString,
+    E5: ToString,
+    E6: ToString,
+{
+    fn instantiate(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx);
+        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        return_into_generic_result!((self.instantiate_fn)(mutable_ctx, msg))
+    }
+
+    fn execute(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx);
+        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        return_into_generic_result!(self.execute_fn.as_ref().unwrap()(mutable_ctx, msg))
+    }
+
+    fn migrate(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx);
+        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        return_into_generic_result!(self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg))
+    }
+
+    fn receive(&self, ctx: Context) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx);
+        return_into_generic_result!(self.receive_fn.as_ref().unwrap()(mutable_ctx))
+    }
+
+    fn reply(&self, ctx: Context, msg: Json, submsg_res: SubMsgResult) -> GenericResult<Response> {
+        let sudo_ctx = make_sudo_ctx!(ctx);
+        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        return_into_generic_result!(self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res))
+    }
+
+    fn query(&self, ctx: Context, msg: Json) -> GenericResult<Json> {
+        let immutable_ctx = make_immutable_ctx!(ctx);
+        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        return_into_generic_result!(self.query_fn.as_ref().unwrap()(immutable_ctx, msg))
+    }
+}

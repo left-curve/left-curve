@@ -10,8 +10,13 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
 cw-app    = { path = "../app" }
 cw-crypto = { path = "../crypto" }
 cw-types  = { path = "../types" }
+cw-wasm   = { path = "../wasm" }
+elsa      = { workspace = true }
+serde     = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]

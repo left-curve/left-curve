@@ -971,9 +971,14 @@ dependencies = [
 name = "cw-vm-rust"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "cw-app",
  "cw-crypto",
  "cw-types",
+ "cw-wasm",
+ "elsa",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -1248,6 +1253,15 @@ dependencies = [
  "sec1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "elsa"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d98e71ae4df57d214182a2e5cb90230c0192c6ddfcaa05c36453d46a54713e10"
+dependencies = [
+ "stable_deref_trait",
 ]
 
 [[package]]

@@ -144,9 +144,9 @@ pub trait Vm: Sized {
 
     /// The type of programs intended to be run in this VM.
     ///
-    /// It must be hashable and serializable with Borsh, so that it can be
-    /// stored in such a mapping: hash(program) => program.
-    type Program: std::hash::Hash + BorshSerialize + BorshDeserialize;
+    /// It must be serializable with Borsh, so that it can be saved in a KV store
+    /// in such a mapping: hash(program) => program.
+    type Program: BorshSerialize + BorshDeserialize;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
