@@ -1,10 +1,6 @@
 use {
-    crate::{
-        from_json_value, to_json_value, AccountResponse, Addr, Batch, Binary, Coins, Hash,
-        InfoResponse, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
-    },
+    crate::{Batch, Op, Order, QueryRequest, QueryResponse, Record, StdResult},
     dyn_clone::DynClone,
-    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 // ---------------------------------- storage ----------------------------------
@@ -95,6 +91,16 @@ dyn_clone::clone_trait_object!(Storage);
 // (i.e. we won't be able to do `&dyn Api`). traits with methods that have
 // generic methods can't be object-safe.
 pub trait Api {
+    /// Send a message to the host, which will be printed to the host's logging.
+    /// Takes two arguments: the contract's address as raw bytes, and the message
+    /// as UTF-8 bytes.
+    ///
+    /// Note: unlike Rust's built-in `dbg!` macro, which is only included in
+    /// debug builds, this `debug` method is also included in release builds,
+    /// and incurs gas cost. Make sure to comment this out before compiling your
+    /// contracts.
+    fn debug(&self, addr: &[u8], msg: &[u8]);
+
     /// Verify an Secp256k1 signature with the given hashed message and public
     /// key.
     ///
@@ -113,100 +119,5 @@ pub trait Api {
 pub trait Querier {
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
-    fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse>;
-
-    fn query_info(&self) -> StdResult<InfoResponse> {
-        self.query(&QueryRequest::Info {}).map(|res| res.as_info())
-    }
-
-    fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
-        self.query(&QueryRequest::Balance {
-            address,
-            denom,
-        })
-        .map(|res| res.as_balance().amount)
-    }
-
-    fn query_balances(
-        &self,
-        address: Addr,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> StdResult<Coins> {
-        self.query(&QueryRequest::Balances {
-            address,
-            start_after,
-            limit,
-        })
-        .map(|res| res.as_balances())
-    }
-
-    fn query_supply(&self, denom: String) -> StdResult<Uint128> {
-        self.query(&QueryRequest::Supply {
-            denom,
-        })
-        .map(|res| res.as_supply().amount)
-    }
-
-    fn query_supplies(&self, start_after: Option<String>, limit: Option<u32>) -> StdResult<Coins> {
-        self.query(&QueryRequest::Supplies {
-            start_after,
-            limit,
-        })
-        .map(|res| res.as_supplies())
-    }
-
-    fn query_code(&self, hash: Hash) -> StdResult<Binary> {
-        self.query(&QueryRequest::Code {
-            hash,
-        })
-        .map(|res| res.as_code())
-    }
-
-    fn query_codes(&self, start_after: Option<Hash>, limit: Option<u32>) -> StdResult<Vec<Hash>> {
-        self.query(&QueryRequest::Codes {
-            start_after,
-            limit,
-        })
-        .map(|res| res.as_codes())
-    }
-
-    fn query_account(&self, address: Addr) -> StdResult<AccountResponse> {
-        self.query(&QueryRequest::Account {
-            address,
-        })
-        .map(|res| res.as_account())
-    }
-
-    fn query_accounts(
-        &self,
-        start_after: Option<Addr>,
-        limit: Option<u32>,
-    ) -> StdResult<Vec<AccountResponse>> {
-        self.query(&QueryRequest::Accounts {
-            start_after,
-            limit,
-        })
-        .map(|res| res.as_accounts())
-    }
-
-    fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
-        self.query(&QueryRequest::WasmRaw {
-            contract,
-            key,
-        })
-        .map(|res| res.as_wasm_raw().value)
-    }
-
-    fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
-        &self,
-        contract: Addr,
-        msg: &M,
-    ) -> StdResult<R> {
-        self.query(&QueryRequest::WasmSmart {
-            contract,
-            msg: to_json_value(msg)?,
-        })
-        .and_then(|res| from_json_value(res.as_wasm_smart().data))
-    }
+    fn query_chain(&self, req: &QueryRequest) -> StdResult<QueryResponse>;
 }

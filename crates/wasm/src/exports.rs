@@ -1,8 +1,8 @@
 use {
     crate::{
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
-        unwrap_into_generic_result, unwrap_optional_field, AuthCtx, ExternalStorage, ImmutableCtx,
-        MutableCtx, Region, SudoCtx,
+        unwrap_into_generic_result, unwrap_optional_field, AuthCtx, ExternalApi, ExternalQuerier,
+        ExternalStorage, ImmutableCtx, MutableCtx, Region, SudoCtx,
     },
     cw_types::{
         from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,

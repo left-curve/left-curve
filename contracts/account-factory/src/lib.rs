@@ -69,7 +69,7 @@ use {
     anyhow::bail,
     cw_account::PublicKey,
     cw_std::{
-        cw_derive, from_json_value, to_json_value, Addr, Api, AuthCtx, Binary, Bound, Coins, Hash,
+        cw_derive, from_json_value, to_json_value, Addr, AuthCtx, Binary, Bound, Coins, Hash,
         ImmutableCtx, Json, Map, MapKey, Message, MutableCtx, Order, Response, StdResult, Tx,
     },
     sha2::{Digest, Sha256},

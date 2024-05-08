@@ -1,5 +1,5 @@
 use {
-    crate::{AuthCtx, ImmutableCtx, MutableCtx, Region, SudoCtx},
+    crate::Region,
     cw_types::{
         from_json_slice, to_json_vec, Api, GenericResult, Order, Querier, QueryRequest,
         QueryResponse, Record, StdError, StdResult, Storage,
@@ -37,6 +37,8 @@ extern "C" {
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
 }
+
+// ---------------------------------- storage ----------------------------------
 
 /// A zero-size convenience wrapper around the database imports. Provides more
 /// ergonomic functions.
@@ -168,90 +170,82 @@ fn split_tail(mut data: Vec<u8>) -> Record {
     (data, value)
 }
 
-// implement debug, query, and crypto methods for each context type
-macro_rules! impl_methods {
-    ($t:ty) => {
-        impl<'a> $t {
-            /// Note: Unlike Rust's built-in `dbg!` macro, which is only included
-            /// in debug builds, this `debug` method is also included in release
-            /// builds, and incurs gas cost. Make sure to comment this out before
-            /// compiling your contracts.
-            pub fn debug(&self, msg: impl AsRef<str>) {
-                let addr_region = Region::build(self.contract.as_ref());
-                let addr_ptr = &*addr_region as *const Region;
-                let msg_region = Region::build(msg.as_ref().as_bytes());
-                let msg_ptr = &*msg_region as *const Region;
+// ------------------------------------ api ------------------------------------
 
-                unsafe { debug(addr_ptr as usize, msg_ptr as usize) }
-            }
+pub struct ExternalApi;
+
+impl Api for ExternalApi {
+    fn debug(&self, addr: &[u8], msg: &[u8]) {
+        let addr_region = Region::build(addr);
+        let addr_ptr = &*addr_region as *const Region;
+        let msg_region = Region::build(msg);
+        let msg_ptr = &*msg_region as *const Region;
+
+        unsafe { debug(addr_ptr as usize, msg_ptr as usize) }
+    }
+
+    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        let msg_hash_region = Region::build(msg_hash.as_ref());
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let sig_region = Region::build(sig.as_ref());
+        let sig_ptr = &*sig_region as *const Region;
+
+        let pk_region = Region::build(pk.as_ref());
+        let pk_ptr = &*pk_region as *const Region;
+
+        let return_value = unsafe {
+            secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
+        };
+
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
         }
+    }
 
-        impl<'a> Api for $t {
-            fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-                let msg_hash_region = Region::build(msg_hash.as_ref());
-                let msg_hash_ptr = &*msg_hash_region as *const Region;
+    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        let msg_hash_region = Region::build(msg_hash.as_ref());
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
 
-                let sig_region = Region::build(sig.as_ref());
-                let sig_ptr = &*sig_region as *const Region;
+        let sig_region = Region::build(sig.as_ref());
+        let sig_ptr = &*sig_region as *const Region;
 
-                let pk_region = Region::build(pk.as_ref());
-                let pk_ptr = &*pk_region as *const Region;
+        let pk_region = Region::build(pk.as_ref());
+        let pk_ptr = &*pk_region as *const Region;
 
-                let return_value = unsafe {
-                    secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
-                };
+        let return_value = unsafe {
+            secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
+        };
 
-                if return_value == 0 {
-                    Ok(())
-                } else {
-                    // TODO: more useful error codes
-                    Err(StdError::VerificationFailed)
-                }
-            }
-
-            fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-                let msg_hash_region = Region::build(msg_hash.as_ref());
-                let msg_hash_ptr = &*msg_hash_region as *const Region;
-
-                let sig_region = Region::build(sig.as_ref());
-                let sig_ptr = &*sig_region as *const Region;
-
-                let pk_region = Region::build(pk.as_ref());
-                let pk_ptr = &*pk_region as *const Region;
-
-                let return_value = unsafe {
-                    secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
-                };
-
-                if return_value == 0 {
-                    Ok(())
-                } else {
-                    // TODO: more useful error codes
-                    Err(StdError::VerificationFailed)
-                }
-            }
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
         }
-
-        impl<'a> Querier for $t {
-            fn query(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
-                let req_bytes = to_json_vec(req)?;
-                let req_region = Region::build(&req_bytes);
-                let req_ptr = &*req_region as *const Region;
-
-                let res_ptr = unsafe { query_chain(req_ptr as usize) };
-                let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-                let res: GenericResult<QueryResponse> = from_json_slice(&res_bytes)?;
-
-                res.into_std_result()
-            }
-        }
-    };
+    }
 }
 
-impl_methods!(ImmutableCtx<'a>);
-impl_methods!(MutableCtx<'a>);
-impl_methods!(SudoCtx<'a>);
-impl_methods!(AuthCtx<'a>);
+// ---------------------------------- querier ----------------------------------
+
+pub struct ExternalQuerier;
+
+impl Querier for ExternalQuerier {
+    fn query_chain(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
+        let req_bytes = to_json_vec(req)?;
+        let req_region = Region::build(&req_bytes);
+        let req_ptr = &*req_region as *const Region;
+
+        let res_ptr = unsafe { query_chain(req_ptr as usize) };
+        let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
+        let res: GenericResult<QueryResponse> = from_json_slice(&res_bytes)?;
+
+        res.into_std_result()
+    }
+}
 
 // ----------------------------------- tests -----------------------------------
 

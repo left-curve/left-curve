@@ -38,6 +38,8 @@ macro_rules! make_immutable_ctx {
     ($ctx:ident) => {
         ImmutableCtx {
             store:           &ExternalStorage,
+            api:             &ExternalApi,
+            querier:         &ExternalQuerier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
@@ -52,6 +54,8 @@ macro_rules! make_mutable_ctx {
     ($ctx:ident) => {
         MutableCtx {
             store:           &mut ExternalStorage,
+            api:             &ExternalApi,
+            querier:         &ExternalQuerier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
@@ -68,6 +72,8 @@ macro_rules! make_sudo_ctx {
     ($ctx:ident) => {
         SudoCtx {
             store:           &mut ExternalStorage,
+            api:             &ExternalApi,
+            querier:         &ExternalQuerier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
@@ -82,6 +88,8 @@ macro_rules! make_auth_ctx {
     ($ctx:ident) => {
         AuthCtx {
             store:           &mut ExternalStorage,
+            api:             &ExternalApi,
+            querier:         &ExternalQuerier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
