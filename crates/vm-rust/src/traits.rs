@@ -5,24 +5,66 @@
 
 use {
     cw_types::{
-        BankQueryMsg, BankQueryResponse, Context, Empty, GenericResult, Json, Response, StdError,
-        SubMsgResult, TransferMsg, Tx,
+        Api, BankQueryMsg, BankQueryResponse, Context, Empty, GenericResult, Json, Querier,
+        Response, StdError, Storage, SubMsgResult, TransferMsg, Tx,
     },
     cw_wasm::{AuthCtx, ImmutableCtx, MutableCtx, SudoCtx},
 };
 
 pub trait Contract {
-    fn instantiate(&self, ctx: Context, msg: Json) -> GenericResult<Response>;
+    fn instantiate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response>;
 
-    fn execute(&self, ctx: Context, msg: Json) -> GenericResult<Response>;
+    fn execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response>;
 
-    fn migrate(&self, ctx: Context, msg: Json) -> GenericResult<Response>;
+    fn migrate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response>;
 
-    fn receive(&self, ctx: Context) -> GenericResult<Response>;
+    fn receive(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response>;
 
-    fn reply(&self, ctx: Context, msg: Json, submsg_res: SubMsgResult) -> GenericResult<Response>;
+    fn reply(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+        submsg_res: SubMsgResult,
+    ) -> GenericResult<Response>;
 
-    fn query(&self, ctx: Context, msg: Json) -> GenericResult<Json>;
+    fn query(
+        &self,
+        ctx: Context,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Json>;
 }
 
 pub type InstantiateFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E>>;

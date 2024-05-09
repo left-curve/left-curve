@@ -11,32 +11,38 @@ use {
 /// A context that contians an immutable store. The contract is allowed to read
 /// data from the store, but not write to it. This is used in query calls.
 pub struct ImmutableCtx<'a> {
-    pub store:           &'a dyn Storage,
-    // Unlike `store`, we keep `api` and `querier` private, and have user access
-    // these methods using the methods that are implemented using the macro below.
-    // Imo this is more ergonomic for users.
-    pub(crate) api:      &'a dyn Api,
-    pub(crate) querier:  &'a dyn Querier,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
+    pub store: &'a dyn Storage,
+    // Unlike `store`, we hide `api` and `querier`, and let user access their
+    // functionalities using the methods implemented on `ctx`, for example:
+    // `ctx.secp256k1_verify` instead of `ctx.api.secp256k1_verify`,
+    // `ctx.query_wasm_smart` instead of `ctx.querier.query_chain`.
+    // In our opinion, this is more ergonomic for users.
+    #[doc(hidden)]
+    pub api: &'a dyn Api,
+    #[doc(hidden)]
+    pub querier: &'a dyn Querier,
+    pub chain_id: String,
+    pub block_height: Uint64,
     pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
+    pub block_hash: Hash,
+    pub contract: Addr,
 }
 
 /// A context that contains a mutable store. This is used for entry points where
 /// the contract is allowed to mutate the state, such as instantiate and execute.
 pub struct MutableCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub(crate) api:      &'a dyn Api,
-    pub(crate) querier:  &'a dyn Querier,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
+    pub store: &'a mut dyn Storage,
+    #[doc(hidden)]
+    pub api: &'a dyn Api,
+    #[doc(hidden)]
+    pub querier: &'a dyn Querier,
+    pub chain_id: String,
+    pub block_height: Uint64,
     pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-    pub sender:          Addr,
-    pub funds:           Coins,
+    pub block_hash: Hash,
+    pub contract: Addr,
+    pub sender: Addr,
+    pub funds: Coins,
 }
 
 /// Sudo context is a state-mutable context. This is used when a contract is
@@ -46,14 +52,16 @@ pub struct MutableCtx<'a> {
 /// The name is derived from the "sudo" entry point in the vanilla CosmWasm.
 /// There isn't such an entry point in CWD, but we keep the name nonetheless.
 pub struct SudoCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub(crate) api:      &'a dyn Api,
-    pub(crate) querier:  &'a dyn Querier,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
+    pub store: &'a mut dyn Storage,
+    #[doc(hidden)]
+    pub api: &'a dyn Api,
+    #[doc(hidden)]
+    pub querier: &'a dyn Querier,
+    pub chain_id: String,
+    pub block_height: Uint64,
     pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
+    pub block_hash: Hash,
+    pub contract: Addr,
 }
 
 /// Similar to `SudoCtx`, but with an additional parameter `simulate` which
@@ -66,15 +74,17 @@ pub struct SudoCtx<'a> {
 /// The typical use of the `simulate` parameter is to skip certain authentication
 /// steps (e.g. verifying a cryptographic signature) if it's in simulation mode.
 pub struct AuthCtx<'a> {
-    pub store:           &'a mut dyn Storage,
-    pub(crate) api:      &'a dyn Api,
-    pub(crate) querier:  &'a dyn Querier,
-    pub chain_id:        String,
-    pub block_height:    Uint64,
+    pub store: &'a mut dyn Storage,
+    #[doc(hidden)]
+    pub api: &'a dyn Api,
+    #[doc(hidden)]
+    pub querier: &'a dyn Querier,
+    pub chain_id: String,
+    pub block_height: Uint64,
     pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-    pub simulate:        bool,
+    pub block_hash: Hash,
+    pub contract: Addr,
+    pub simulate: bool,
 }
 
 // ---------------------------------- methods ----------------------------------

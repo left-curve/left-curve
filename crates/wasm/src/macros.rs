@@ -22,24 +22,12 @@ macro_rules! unwrap_into_generic_result {
 }
 
 #[macro_export]
-macro_rules! unwrap_optional_field {
-    ($field:expr, $name:literal) => {
-        match $field {
-            Some(field) => field,
-            None => {
-                return Err(StdError::missing_context($name)).into();
-            },
-        }
-    }
-}
-
-#[macro_export]
 macro_rules! make_immutable_ctx {
-    ($ctx:ident) => {
+    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
         ImmutableCtx {
-            store:           &ExternalStorage,
-            api:             &ExternalApi,
-            querier:         &ExternalQuerier,
+            store:           $store,
+            api:             $api,
+            querier:         $querier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
@@ -51,29 +39,29 @@ macro_rules! make_immutable_ctx {
 
 #[macro_export]
 macro_rules! make_mutable_ctx {
-    ($ctx:ident) => {
+    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
         MutableCtx {
-            store:           &mut ExternalStorage,
-            api:             &ExternalApi,
-            querier:         &ExternalQuerier,
+            store:           $store,
+            api:             $api,
+            querier:         $querier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
             block_hash:      $ctx.block_hash,
             contract:        $ctx.contract,
-            sender:          unwrap_optional_field!($ctx.sender, "sender"),
-            funds:           unwrap_optional_field!($ctx.funds, "funds"),
+            sender:          $ctx.sender.unwrap(),
+            funds:           $ctx.funds.unwrap(),
         }
     }
 }
 
 #[macro_export]
 macro_rules! make_sudo_ctx {
-    ($ctx:ident) => {
+    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
         SudoCtx {
-            store:           &mut ExternalStorage,
-            api:             &ExternalApi,
-            querier:         &ExternalQuerier,
+            store:           $store,
+            api:             $api,
+            querier:         $querier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
@@ -85,17 +73,17 @@ macro_rules! make_sudo_ctx {
 
 #[macro_export]
 macro_rules! make_auth_ctx {
-    ($ctx:ident) => {
+    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
         AuthCtx {
-            store:           &mut ExternalStorage,
-            api:             &ExternalApi,
-            querier:         &ExternalQuerier,
+            store:           $store,
+            api:             $api,
+            querier:         $querier,
             chain_id:        $ctx.chain_id,
             block_height:    $ctx.block_height,
             block_timestamp: $ctx.block_timestamp,
             block_hash:      $ctx.block_hash,
             contract:        $ctx.contract,
-            simulate:        unwrap_optional_field!($ctx.simulate, "simulate"),
+            simulate:        $ctx.simulate.unwrap(),
         }
     }
 }

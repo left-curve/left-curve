@@ -1,11 +1,13 @@
 use {
     crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{from_json_value, Context, GenericResult, Json, Response, StdError, SubMsgResult},
+    cw_types::{
+        from_json_value, Api, Context, GenericResult, Json, Querier, Response, Storage,
+        SubMsgResult,
+    },
     cw_wasm::{
         make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
-        unwrap_into_generic_result, unwrap_optional_field, ExternalStorage, ImmutableCtx,
-        MutableCtx, SudoCtx,
+        unwrap_into_generic_result, ImmutableCtx, MutableCtx, SudoCtx,
     },
     elsa::FrozenVec,
     serde::de::DeserializeOwned,
@@ -84,37 +86,79 @@ where
     E5: ToString,
     E6: ToString,
 {
-    fn instantiate(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
-        let mutable_ctx = make_mutable_ctx!(ctx);
+    fn instantiate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
         let msg = unwrap_into_generic_result!(from_json_value(msg));
         return_into_generic_result!((self.instantiate_fn)(mutable_ctx, msg))
     }
 
-    fn execute(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
-        let mutable_ctx = make_mutable_ctx!(ctx);
+    fn execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
         let msg = unwrap_into_generic_result!(from_json_value(msg));
         return_into_generic_result!(self.execute_fn.as_ref().unwrap()(mutable_ctx, msg))
     }
 
-    fn migrate(&self, ctx: Context, msg: Json) -> GenericResult<Response> {
-        let mutable_ctx = make_mutable_ctx!(ctx);
+    fn migrate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
         let msg = unwrap_into_generic_result!(from_json_value(msg));
         return_into_generic_result!(self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg))
     }
 
-    fn receive(&self, ctx: Context) -> GenericResult<Response> {
-        let mutable_ctx = make_mutable_ctx!(ctx);
+    fn receive(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response> {
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
         return_into_generic_result!(self.receive_fn.as_ref().unwrap()(mutable_ctx))
     }
 
-    fn reply(&self, ctx: Context, msg: Json, submsg_res: SubMsgResult) -> GenericResult<Response> {
-        let sudo_ctx = make_sudo_ctx!(ctx);
+    fn reply(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+        submsg_res: SubMsgResult,
+    ) -> GenericResult<Response> {
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         let msg = unwrap_into_generic_result!(from_json_value(msg));
         return_into_generic_result!(self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res))
     }
 
-    fn query(&self, ctx: Context, msg: Json) -> GenericResult<Json> {
-        let immutable_ctx = make_immutable_ctx!(ctx);
+    fn query(
+        &self,
+        ctx: Context,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: Json,
+    ) -> GenericResult<Json> {
+        let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
         let msg = unwrap_into_generic_result!(from_json_value(msg));
         return_into_generic_result!(self.query_fn.as_ref().unwrap()(immutable_ctx, msg))
     }
