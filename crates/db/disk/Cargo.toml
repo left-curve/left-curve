@@ -11,7 +11,7 @@ categories    = { workspace = true }
 
 [dependencies]
 cw-app    = { path = "../../app" }
-cw-merkle = { path = "../../merkle" }
+cw-jmt    = { path = "../../jellyfish-merkle" }
 cw-types  = { path = "../../types" }
 rocksdb   = { workspace = true }
 tempfile  = { workspace = true }

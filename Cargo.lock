@@ -801,7 +801,7 @@ name = "cw-db-disk"
 version = "0.0.0"
 dependencies = [
  "cw-app",
- "cw-merkle",
+ "cw-jmt",
  "cw-types",
  "hex-literal",
  "rocksdb",
@@ -814,7 +814,7 @@ name = "cw-db-memory"
 version = "0.0.0"
 dependencies = [
  "cw-app",
- "cw-merkle",
+ "cw-jmt",
  "cw-types",
  "thiserror",
 ]
@@ -828,16 +828,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-macros"
-version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "cw-merkle"
+name = "cw-jmt"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -854,6 +845,15 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-test",
+]
+
+[[package]]
+name = "cw-macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -900,7 +900,7 @@ dependencies = [
  "cw-bank",
  "cw-crypto",
  "cw-ibc-solomachine",
- "cw-merkle",
+ "cw-jmt",
  "cw-mock-token-wrapper",
  "cw-std",
  "hex",
@@ -1015,7 +1015,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
- "cw-merkle",
+ "cw-jmt",
  "cw-rs",
  "cw-std",
  "dialoguer",

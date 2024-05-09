@@ -1,7 +1,7 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     cw_app::{CacheStore, Db},
-    cw_merkle::{MerkleTree, Proof},
+    cw_jmt::{MerkleTree, Proof},
     cw_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
@@ -396,7 +396,7 @@ mod tests {
     use {
         super::*,
         crate::TempDataDir,
-        cw_merkle::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
+        cw_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
         cw_types::Hash,
         hex_literal::hex,
     };

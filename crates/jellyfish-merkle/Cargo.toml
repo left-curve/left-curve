@@ -1,5 +1,5 @@
 [package]
-name          = "cw-merkle"
+name          = "cw-jmt"
 description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
 version       = { workspace = true }
 authors       = { workspace = true }
