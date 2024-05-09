@@ -9,13 +9,12 @@ use {
 
 // --------------------------------- before tx ---------------------------------
 
-pub fn do_before_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+pub fn do_before_tx<VM>(store: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_before_tx::<S, VM>(store, block, tx) {
+    match _do_before_tx::<VM>(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called before transaction hook");
@@ -28,9 +27,8 @@ where
     }
 }
 
-fn _do_before_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+fn _do_before_tx<VM>(store: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -38,7 +36,7 @@ where
     let account = ACCOUNTS.load(&store, &tx.sender)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &tx.sender, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `before_tx` entry point
     let ctx = Context {
@@ -55,20 +53,19 @@ where
 
     // handle submessages
     let mut events = vec![new_before_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
 
 // --------------------------------- after tx ----------------------------------
 
-pub fn do_after_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+pub fn do_after_tx<VM>(store: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_after_tx::<S, VM>(store, block, tx) {
+    match _do_after_tx::<VM>(store, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             debug!(sender = tx.sender.to_string(), "Called after transaction hook");
@@ -81,9 +78,8 @@ where
     }
 }
 
-fn _do_after_tx<S, VM>(store: S, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+fn _do_after_tx<VM>(store: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -91,7 +87,7 @@ where
     let account = ACCOUNTS.load(&store, &tx.sender)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &tx.sender, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `after_tx` entry point
     let ctx = Context {
@@ -108,7 +104,7 @@ where
 
     // handle submessages
     let mut events = vec![new_after_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

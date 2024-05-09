@@ -51,13 +51,13 @@ where
     let mut events = vec![];
     for submsg in submsgs {
         let cached = SharedStore::new(CacheStore::new(store.clone(), None));
-        match (submsg.reply_on, process_msg::<_, VM>(cached.share(), block, sender, submsg.msg)) {
+        match (submsg.reply_on, process_msg::<VM>(Box::new(cached.share()), block, sender, submsg.msg)) {
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 cached.disassemble().consume();
                 events.extend(submsg_events.clone());
-                events.extend(do_reply::<_, VM>(
+                events.extend(do_reply::<VM>(
                     store.clone(),
                     block,
                     sender,
@@ -68,7 +68,7 @@ where
             // error - callback requested
             // discard uncommitted state changes, give callback
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                events.extend(do_reply::<_, VM>(
+                events.extend(do_reply::<VM>(
                     store.clone(),
                     block,
                     sender,
@@ -92,19 +92,18 @@ where
     Ok(events)
 }
 
-pub fn do_reply<S, VM>(
-    store:      S,
+pub fn do_reply<VM>(
+    store:      Box<dyn Storage>,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_reply::<S, VM>(store, block, contract, payload, submsg_res) {
+    match _do_reply::<VM>(store, block, contract, payload, submsg_res) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
@@ -116,15 +115,14 @@ where
     }
 }
 
-fn _do_reply<S, VM>(
-    store:      S,
+fn _do_reply<VM>(
+    store:      Box<dyn Storage>,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -132,7 +130,7 @@ where
     let account = ACCOUNTS.load(&store, contract)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), contract, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
 
     // call reply
     let ctx = Context {
@@ -149,7 +147,7 @@ where
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(Box::new(store), block, contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(store, block, contract, resp.submsgs)?);
 
     Ok(events)
 }

@@ -1,6 +1,6 @@
 use {
-    crate::{VmError, VmResult},
-    cw_types::{BackendQuerier, BackendStorage},
+    crate::{VmError, VmResult, WasmVm},
+    cw_app::{PrefixStore, Querier},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -11,13 +11,13 @@ use {
 
 // TODO: add explaination on why these fields need to be Options
 pub struct ContextData {
-    pub store: Box<dyn BackendStorage>,
-    pub querier: Box<dyn BackendQuerier>,
+    pub store: PrefixStore,
+    pub querier: Querier<WasmVm>,
     wasm_instance: Option<NonNull<Instance>>,
 }
 
 impl ContextData {
-    pub fn new(store: Box<dyn BackendStorage>, querier: Box<dyn BackendQuerier>) -> Self {
+    pub fn new(store: PrefixStore, querier: Querier<WasmVm>) -> Self {
         Self {
             store,
             querier,
@@ -35,7 +35,7 @@ pub struct Environment {
 unsafe impl Send for Environment {}
 
 impl Environment {
-    pub fn new(store: Box<dyn BackendStorage>, querier: Box<dyn BackendQuerier>) -> Self {
+    pub fn new(store: PrefixStore, querier: Querier<WasmVm>) -> Self {
         Self {
             memory: None,
             data: Arc::new(RwLock::new(ContextData::new(store, querier))),
@@ -43,10 +43,7 @@ impl Environment {
     }
 
     pub fn memory<'a>(&self, wasm_store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
-        self.memory
-            .as_ref()
-            .ok_or(VmError::MemoryNotSet)
-            .map(|mem| mem.view(wasm_store))
+        self.memory.as_ref().ok_or(VmError::MemoryNotSet).map(|mem| mem.view(wasm_store))
     }
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
@@ -101,7 +98,7 @@ impl Environment {
         let ret = self.call_function(wasm_store, name, args)?;
         if ret.len() != 1 {
             return Err(VmError::ReturnCount {
-                name:   name.into(),
+                name: name.into(),
                 expect: 1,
                 actual: ret.len(),
             });
@@ -118,7 +115,7 @@ impl Environment {
         let ret = self.call_function(wasm_store, name, args)?;
         if ret.len() != 0 {
             return Err(VmError::ReturnCount {
-                name:   name.into(),
+                name: name.into(),
                 expect: 0,
                 actual: ret.len(),
             });

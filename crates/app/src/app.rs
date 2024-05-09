@@ -83,7 +83,7 @@ where
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             info!(idx, "Processing genesis message");
-            process_msg::<_, VM>(cached.clone(), &block, &GENESIS_SENDER, msg)?;
+            process_msg::<VM>(Box::new(cached.clone()), &block, &GENESIS_SENDER, msg)?;
         }
 
         // persist the state changes to disk
@@ -138,7 +138,7 @@ where
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_before_block::<_, VM>(cached.share(), &block, contract)?);
+            events.extend(do_before_block::<VM>(Box::new(cached.share()), &block, contract)?);
         }
 
         // process transactions one-by-one
@@ -153,7 +153,7 @@ where
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_after_block::<_, VM>(cached.share(), &block, contract)?);
+            events.extend(do_after_block::<VM>(Box::new(cached.share()), &block, contract)?);
         }
 
         // save the last committed block
@@ -233,7 +233,7 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
         let req: QueryRequest = from_json_slice(raw_query)?;
-        let res = process_query::<_, VM>(store, &block, req)?;
+        let res = process_query::<VM>(Box::new(store), &block, req)?;
 
         Ok(to_json_vec(&res)?)
     }
@@ -283,7 +283,7 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(do_before_tx::<_, VM>(cached.share(), block, &tx)?);
+    events.extend(do_before_tx::<VM>(Box::new(cached.share()), block, &tx)?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -297,13 +297,13 @@ where
     // persisted)
     for (idx, msg) in tx.msgs.iter().enumerate() {
         debug!(idx, "Processing message");
-        events.extend(process_msg::<_, VM>(cached.share(), block, &tx.sender, msg.clone())?);
+        events.extend(process_msg::<VM>(Box::new(cached.share()), block, &tx.sender, msg.clone())?);
     }
 
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx::<_, VM>(cached.share(), block, &tx)?);
+    events.extend(do_after_tx::<VM>(Box::new(cached.share()), block, &tx)?);
 
     // all messages succeeded. commit the state changes
     cached.write_access().commit();
@@ -311,14 +311,13 @@ where
     Ok(events)
 }
 
-pub fn process_msg<S, VM>(
-    mut store: S,
+pub fn process_msg<VM>(
+    mut store: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -329,7 +328,7 @@ where
         Message::Transfer {
             to,
             coins,
-        } => do_transfer::<S, VM>(store, block, sender.clone(), to, coins, true),
+        } => do_transfer::<VM>(store, block, sender.clone(), to, coins, true),
         Message::Upload {
             code,
         } => do_upload(&mut store, sender, code.into()),
@@ -339,41 +338,40 @@ where
             salt,
             funds,
             admin,
-        } => do_instantiate::<S, VM>(store, block, sender, code_hash, &msg, salt, funds, admin),
+        } => do_instantiate::<VM>(store, block, sender, code_hash, &msg, salt, funds, admin),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => do_execute::<S, VM>(store, block, &contract, sender, &msg, funds),
+        } => do_execute::<VM>(store, block, &contract, sender, &msg, funds),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate::<S, VM>(store, block, &contract, sender, new_code_hash, &msg),
+        } => do_migrate::<VM>(store, block, &contract, sender, new_code_hash, &msg),
         Message::CreateClient {
             code_hash,
             client_state,
             consensus_state,
             salt,
-        } => do_create_client::<S, VM>(store, block, sender, code_hash, client_state, consensus_state, salt),
+        } => do_create_client::<VM>(store, block, sender, code_hash, client_state, consensus_state, salt),
         Message::UpdateClient {
             client_id,
             header,
-        } => do_update_client::<S, VM>(store, block, sender, &client_id, header),
+        } => do_update_client::<VM>(store, block, sender, &client_id, header),
         Message::FreezeClient {
             client_id,
             misbehavior,
-        } => do_freeze_client::<S, VM>(store, block, sender, &client_id, misbehavior),
+        } => do_freeze_client::<VM>(store, block, sender, &client_id, misbehavior),
     }
 }
 
-pub fn process_query<S, VM>(
-    store: S,
+pub fn process_query<VM>(
+    store: Box<dyn Storage>,
     block: &BlockInfo,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -382,19 +380,19 @@ where
         QueryRequest::Balance {
             address,
             denom,
-        } => query_balance::<S, VM>(store, block, address, denom).map(QueryResponse::Balance),
+        } => query_balance::<VM>(store, block, address, denom).map(QueryResponse::Balance),
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances::<S, VM>(store, block, address, start_after, limit).map(QueryResponse::Balances),
+        } => query_balances::<VM>(store, block, address, start_after, limit).map(QueryResponse::Balances),
         QueryRequest::Supply {
             denom,
-        } => query_supply::<S, VM>(store, block, denom).map(QueryResponse::Supply),
+        } => query_supply::<VM>(store, block, denom).map(QueryResponse::Supply),
         QueryRequest::Supplies {
             start_after,
             limit,
-        } => query_supplies::<S, VM>(store, block, start_after, limit).map(QueryResponse::Supplies),
+        } => query_supplies::<VM>(store, block, start_after, limit).map(QueryResponse::Supplies),
         QueryRequest::Code {
             hash,
         } => query_code(&store, hash).map(QueryResponse::Code),
@@ -416,7 +414,7 @@ where
         QueryRequest::WasmSmart {
             contract,
             msg,
-        } => query_wasm_smart::<S, VM>(store, block, contract, msg).map(QueryResponse::WasmSmart),
+        } => query_wasm_smart::<VM>(store, block, contract, msg).map(QueryResponse::WasmSmart),
     }
 }
 

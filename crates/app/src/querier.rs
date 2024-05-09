@@ -24,6 +24,6 @@ where
     }
 
     pub fn query_chain(&self, req: QueryRequest) -> StdResult<GenericResult<QueryResponse>> {
-        Ok(process_query::<_, VM>(self.store.clone(), &self.block, req).into())
+        Ok(process_query::<VM>(self.store.clone(), &self.block, req).into())
     }
 }

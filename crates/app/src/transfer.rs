@@ -7,8 +7,8 @@ use {
     tracing::{info, warn},
 };
 
-pub fn do_transfer<S, VM>(
-    store:   S,
+pub fn do_transfer<VM>(
+    store:   Box<dyn Storage>,
     block:   &BlockInfo,
     from:    Addr,
     to:      Addr,
@@ -16,11 +16,10 @@ pub fn do_transfer<S, VM>(
     receive: bool,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_transfer::<S, VM>(store, block, from, to, coins, receive) {
+    match _do_transfer::<VM>(store, block, from, to, coins, receive) {
         Ok((events, msg)) => {
             info!(
                 from  = msg.from.to_string(),
@@ -39,8 +38,8 @@ where
 
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
-fn _do_transfer<S, VM>(
-    store:   S,
+fn _do_transfer<VM>(
+    store:   Box<dyn Storage>,
     block:   &BlockInfo,
     from:    Addr,
     to:      Addr,
@@ -48,7 +47,6 @@ fn _do_transfer<S, VM>(
     receive: bool,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -84,7 +82,7 @@ where
     if receive {
         // call the recipient contract's `receive` entry point to inform it of
         // this transfer. we do this when handing the Message::Transfer.
-        _do_receive::<_, VM>(store, block, msg, events)
+        _do_receive::<VM>(store, block, msg, events)
     } else {
         // do not call the `receive` entry point. we do this when handling
         // Message::Instantiate and Execute.
@@ -92,14 +90,13 @@ where
     }
 }
 
-fn _do_receive<S, VM>(
-    store:      S,
+fn _do_receive<VM>(
+    store:      Box<dyn Storage>,
     block:      &BlockInfo,
     msg:        TransferMsg,
     mut events: Vec<Event>,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -107,7 +104,7 @@ where
     let account = ACCOUNTS.load(&store, &msg.to)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &msg.to, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &msg.to, program)?;
 
     // call the recipient contract's `receive` entry point
     let ctx = Context {

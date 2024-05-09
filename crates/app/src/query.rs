@@ -21,73 +21,68 @@ pub fn query_info(store: &dyn Storage) -> AppResult<InfoResponse> {
     })
 }
 
-pub fn query_balance<S, VM>(
-    store:   S,
+pub fn query_balance<VM>(
+    store:   Box<dyn Storage>,
     block:   &BlockInfo,
     address: Addr,
     denom:   String,
 ) -> AppResult<Coin>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    _query_bank::<S, VM>(store, block, &BankQueryMsg::Balance { address, denom })
+    _query_bank::<VM>(store, block, &BankQueryMsg::Balance { address, denom })
         .map(|res| res.as_balance())
 }
 
-pub fn query_balances<S, VM>(
-    store:       S,
+pub fn query_balances<VM>(
+    store:       Box<dyn Storage>,
     block:       &BlockInfo,
     address:     Addr,
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> AppResult<Coins>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    _query_bank::<S, VM>(store, block, &BankQueryMsg::Balances { address, start_after, limit })
+    _query_bank::<VM>(store, block, &BankQueryMsg::Balances { address, start_after, limit })
         .map(|res| res.as_balances())
 }
 
-pub fn query_supply<S, VM>(
-    store: S,
+pub fn query_supply<VM>(
+    store: Box<dyn Storage>,
     block: &BlockInfo,
     denom: String,
 ) -> AppResult<Coin>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    _query_bank::<S, VM>(store, block, &BankQueryMsg::Supply { denom })
+    _query_bank::<VM>(store, block, &BankQueryMsg::Supply { denom })
         .map(|res| res.as_supply())
 }
 
-pub fn query_supplies<S, VM>(
-    store:       S,
+pub fn query_supplies<VM>(
+    store:       Box<dyn Storage>,
     block:       &BlockInfo,
     start_after: Option<String>,
     limit:       Option<u32>,
 ) -> AppResult<Coins>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    _query_bank::<S, VM>(store, block, &BankQueryMsg::Supplies { start_after, limit })
+    _query_bank::<VM>(store, block, &BankQueryMsg::Supplies { start_after, limit })
         .map(|res| res.as_supplies())
 }
 
-pub fn _query_bank<S, VM>(
-    store: S,
+pub fn _query_bank<VM>(
+    store: Box<dyn Storage>,
     block: &BlockInfo,
     msg:   &BankQueryMsg,
 ) -> AppResult<BankQueryResponse>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -98,7 +93,7 @@ where
 
     // create VM instance
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &cfg.bank, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call query
     let ctx = Context {
@@ -164,8 +159,8 @@ pub fn query_accounts(
         .collect()
 }
 
-pub fn query_wasm_raw<S: Storage + 'static>(
-    store:    S,
+pub fn query_wasm_raw(
+    store:    Box<dyn Storage>,
     contract: Addr,
     key:      Binary,
 ) -> AppResult<WasmRawResponse> {
@@ -178,14 +173,13 @@ pub fn query_wasm_raw<S: Storage + 'static>(
     })
 }
 
-pub fn query_wasm_smart<S, VM>(
-    store:    S,
+pub fn query_wasm_smart<VM>(
+    store:    Box<dyn Storage>,
     block:    &BlockInfo,
     contract: Addr,
     msg:      Json,
 ) -> AppResult<WasmSmartResponse>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -193,7 +187,7 @@ where
     let account = ACCOUNTS.load(&store, &contract)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &contract, program)?;
+    let mut instance = create_vm_instance::<VM>(store, block.clone(), &contract, program)?;
 
     // call query
     let ctx = Context {

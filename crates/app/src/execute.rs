@@ -7,8 +7,8 @@ use {
     tracing::{info, warn},
 };
 
-pub fn do_execute<S, VM>(
-    store:    S,
+pub fn do_execute<VM>(
+    store:    Box<dyn Storage>,
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
@@ -16,11 +16,10 @@ pub fn do_execute<S, VM>(
     funds:    Coins,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_execute::<S, VM>(store, block, contract, sender, msg, funds) {
+    match _do_execute::<VM>(store, block, contract, sender, msg, funds) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Executed contract");
             Ok(events)
@@ -32,8 +31,8 @@ where
     }
 }
 
-fn _do_execute<S, VM>(
-    store:    S,
+fn _do_execute<VM>(
+    store:    Box<dyn Storage>,
     block:    &BlockInfo,
     contract: &Addr,
     sender:   &Addr,
@@ -41,7 +40,6 @@ fn _do_execute<S, VM>(
     funds:    Coins,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -50,7 +48,7 @@ where
 
     // make the coin transfers
     if !funds.is_empty() {
-        do_transfer::<_, VM>(
+        do_transfer::<VM>(
             store.clone(),
             block,
             sender.clone(),
@@ -61,7 +59,7 @@ where
     }
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), contract, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
 
     // call execute
     let ctx = Context {
@@ -78,7 +76,7 @@ where
 
     // handle submessages
     let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

@@ -1,8 +1,8 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    cw_app::CacheStore,
+    cw_app::{CacheStore, Db},
     cw_merkle::{MerkleTree, Proof},
-    cw_types::{hash, Batch, Db, Hash, Op, Order, Record, Storage},
+    cw_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,

@@ -1,21 +1,22 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    cw_types::{to_json_vec, BackendQuerier, BackendStorage, Context, Vm},
+    cw_app::{PrefixStore, Querier, Vm},
+    cw_types::{to_json_vec, Context},
 };
 
 pub struct RustVm {
-    storage: Box<dyn BackendStorage>,
-    querier: Box<dyn BackendQuerier>,
+    storage: PrefixStore,
+    querier: Querier<Self>,
     program: ContractWrapper,
 }
 
 impl Vm for RustVm {
-    type Error = VmError; //TODO
+    type Error = VmError;
     type Program = ContractWrapper;
 
     fn build_instance(
-        storage: Box<dyn BackendStorage>,
-        querier: Box<dyn BackendQuerier>,
+        storage: PrefixStore,
+        querier: Querier<Self>,
         program: Self::Program,
     ) -> VmResult<Self> {
         Ok(Self {

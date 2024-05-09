@@ -8,8 +8,8 @@ use {
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn do_instantiate<S, VM>(
-    store:     S,
+pub fn do_instantiate<VM>(
+    store:     Box<dyn Storage>,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -19,11 +19,10 @@ pub fn do_instantiate<S, VM>(
     admin:     Option<Addr>,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_instantiate::<S, VM>(store, block, sender, code_hash, msg, salt, funds, admin) {
+    match _do_instantiate::<VM>(store, block, sender, code_hash, msg, salt, funds, admin) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Instantiated contract");
             Ok(events)
@@ -37,8 +36,8 @@ where
 
 // return the address of the contract that is instantiated.
 #[allow(clippy::too_many_arguments)]
-fn _do_instantiate<S, VM>(
-    mut store: S,
+fn _do_instantiate<VM>(
+    mut store: Box<dyn Storage>,
     block:     &BlockInfo,
     sender:    &Addr,
     code_hash: Hash,
@@ -48,7 +47,6 @@ fn _do_instantiate<S, VM>(
     admin:     Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
@@ -71,7 +69,7 @@ where
 
     // make the coin transfers
     if !funds.is_empty() {
-        do_transfer::<_, VM>(
+        do_transfer::<VM>(
             store.clone(),
             block,
             sender.clone(),
@@ -83,7 +81,7 @@ where
 
     // create VM instance
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &address, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
 
     // call instantiate
     let ctx = Context {
@@ -100,7 +98,7 @@ where
 
     // handle submessages
     let mut events = vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(Box::new(store), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
 
     Ok((events, ctx.contract))
 }
