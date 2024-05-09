@@ -10,9 +10,9 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-app    = { path = "../app" }
-cw-merkle = { path = "../merkle" }
-cw-types  = { path = "../types" }
+cw-app    = { path = "../../app" }
+cw-merkle = { path = "../../merkle" }
+cw-types  = { path = "../../types" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

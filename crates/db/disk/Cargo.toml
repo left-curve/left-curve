@@ -1,5 +1,5 @@
 [package]
-name          = "cw-vm-rust"
+name          = "cw-db-disk"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,13 +10,12 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-app    = { path = "../app" }
-cw-crypto = { path = "../crypto" }
-cw-types  = { path = "../types" }
-cw-wasm   = { path = "../wasm" }
-elsa      = { workspace = true }
-serde     = { workspace = true }
+cw-app    = { path = "../../app" }
+cw-merkle = { path = "../../merkle" }
+cw-types  = { path = "../../types" }
+rocksdb   = { workspace = true }
+tempfile  = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+hex-literal = { workspace = true }
