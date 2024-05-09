@@ -1,9 +1,9 @@
 use {
     crate::{
         create_vm_instance, handle_submessages, load_program, new_receive_event,
-        new_transfer_event, AppError, AppResult, ACCOUNTS, CHAIN_ID, CONFIG,
+        new_transfer_event, AppError, AppResult, Vm, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    cw_types::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg, Vm},
+    cw_types::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
     tracing::{info, warn},
 };
 
@@ -57,7 +57,7 @@ where
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<S, VM>(store.clone(), block.clone(), &cfg.bank, program)?;
+    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call transfer
     let ctx = Context {

@@ -1,9 +1,9 @@
 use {
     crate::{
         create_vm_instance, do_transfer, handle_submessages, load_program, new_execute_event,
-        AppError, AppResult, ACCOUNTS, CHAIN_ID,
+        AppError, AppResult, Vm, ACCOUNTS, CHAIN_ID,
     },
-    cw_types::{Addr, BlockInfo, Coins, Context, Event, Json, Storage, Vm},
+    cw_types::{Addr, BlockInfo, Coins, Context, Event, Json, Storage},
     tracing::{info, warn},
 };
 

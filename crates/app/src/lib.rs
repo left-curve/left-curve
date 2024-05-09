@@ -18,6 +18,7 @@ mod query;
 mod shared;
 mod state;
 mod submessage;
+mod traits;
 mod transfer;
 mod upload;
 mod vm;
@@ -25,5 +26,5 @@ mod vm;
 pub use crate::{
     app::*, auth::*, cache::*, client::*, config::*, cron::*, error::*, events::*, execute::*,
     instantiate::*, migrate::*, prefix::*, querier::*, query::*, shared::*, state::*,
-    submessage::*, transfer::*, upload::*, vm::*,
+    submessage::*, traits::*, transfer::*, upload::*, vm::*,
 };

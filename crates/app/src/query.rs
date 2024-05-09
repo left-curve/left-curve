@@ -1,13 +1,13 @@
 use {
     crate::{
-        create_vm_instance, load_program, AppError, AppResult, PrefixStore, ACCOUNTS, CHAIN_ID,
+        create_vm_instance, load_program, AppError, AppResult, PrefixStore, Vm, ACCOUNTS, CHAIN_ID,
         CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     cw_storage::Bound,
     cw_types::{
-        AccountResponse, Addr, BackendStorage, BankQueryMsg, BankQueryResponse, Binary, BlockInfo,
-        Coin, Coins, Context, Hash, InfoResponse, Json, Order, StdResult, Storage, Vm,
-        WasmRawResponse, WasmSmartResponse,
+        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
+        Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
+        WasmSmartResponse,
     },
 };
 

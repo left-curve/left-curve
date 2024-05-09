@@ -1,11 +1,11 @@
 use {
     crate::{
         create_vm_instance, load_program, new_reply_event, process_msg, AppError, AppResult,
-        CacheStore, SharedStore, ACCOUNTS, CHAIN_ID,
+        CacheStore, SharedStore, Vm, ACCOUNTS, CHAIN_ID,
     },
     cw_types::{
         Addr, BlockInfo, Context, Event, GenericResult, Json, ReplyOn, Storage, SubMessage,
-        SubMsgResult, Vm,
+        SubMsgResult,
     },
     tracing::{info, warn},
 };

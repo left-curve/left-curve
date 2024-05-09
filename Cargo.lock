@@ -761,12 +761,14 @@ dependencies = [
 name = "cw-app"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "cw-storage",
  "cw-testing",
  "cw-types",
  "dyn-clone",
  "hex",
  "prost",
+ "serde",
  "tendermint-abci",
  "tendermint-proto",
  "thiserror",
