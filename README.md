@@ -6,19 +6,19 @@ An execution environment for blockchains.
 
 The CWD project consists of the following Rust crates:
 
-| crate                           | description                                                                |
-| ------------------------------- | -------------------------------------------------------------------------- |
-| [app](./crates/app)             | state machine transition logics and [Tendermint ABCI][abci] implementation |
-| [crypto](./crates/crypto)       | cryptography functionalities                                               |
-| [db-disk](./crates/db-disk)     | an on-disk, persisted DB backend                                           |
-| [db-memory](./crates/db-memory) | an in-memory, temporary DB backend; used for testing                       |
-| [macros](./crates/macros)       | macros for reducing boilerplates in contract developments                  |
-| [merkle](./crates/merkle)       | [Jellyfish Merkle Tree][jmt] (JMT) implementation                          |
-| [storage](./crates/storage)     | an ergonomic API for interacting with key-value stores                     |
-| [types](./crates/types)         | types, traits, and helper functions                                        |
-| [vm-rust](./crates/vm)          | a VM that runs native Rust codes; used for testing                         |
-| [vm-wasm](./crates/vm)          | a VM that runs Wasm byte codes                                             |
-| [wasm](./crates/wasm)           | an ergonomic API for building Wasm modules                                 |
+| crate                                         | description                                                                |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| [app](./crates/app)                           | state machine transition logics and [Tendermint ABCI][abci] implementation |
+| [crypto](./crates/crypto)                     | cryptography functionalities                                               |
+| [db/disk](./crates/db/disk)                   | an on-disk, persisted DB backend                                           |
+| [db/memory](./crates/db/memory)               | an in-memory, temporary DB backend; used for testing                       |
+| [macros](./crates/macros)                     | macros for reducing boilerplates in contract developments                  |
+| [jellyfish-merkle](./crates/jellyfish-merkle) | [Jellyfish Merkle Tree][jmt] (JMT) implementation                          |
+| [storage](./crates/storage)                   | an ergonomic API for interacting with key-value stores                     |
+| [types](./crates/types)                       | types, traits, and helper functions                                        |
+| [vm/rust](./crates/vm/rust)                   | a VM that runs native Rust codes; used for testing                         |
+| [vm/wasm](./crates/vm/wasm)                   | a VM that runs Wasm byte codes                                             |
+| [wasm](./crates/wasm)                         | an ergonomic API for building Wasm modules                                 |
 
 Additionally, there are [cw-testing](./crates/testing) which provides testing utilities, and [cw-std](./crates/std), a "meta package", which re-exports contents from the above crates, for the convenience of contract developers.
 
@@ -56,8 +56,7 @@ Prerequisites:
 - [Just][just]
 - [Docker][docker]
 
-Install the **cwd** and **cwcli** command line s
-oftware:
+Install the **cwd** and **cwcli** command line software:
 
 ```shell
 just install
