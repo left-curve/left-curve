@@ -1,5 +1,0 @@
-packages:
-  # JavaScript SDK for building webapps that interact with CWD
-  - sdk/js
-  # MetaMask Snap wallet plugin
-  - snap
