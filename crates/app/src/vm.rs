@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, AppResult, PrefixStore, Querier, Vm, CODES, CONTRACT_NAMESPACE},
+    crate::{AppError, AppResult, PrefixStore, QueryProvider, Vm, CODES, CONTRACT_NAMESPACE},
     cw_types::{from_borsh_slice, Addr, BlockInfo, Hash, Storage},
 };
 
@@ -18,7 +18,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let substore = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
-    let querier = Querier::new(store, block);
-    Ok(VM::build_instance(substore, querier, program)?)
+    let storage = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
+    let querier = QueryProvider::new(store, block);
+    Ok(VM::build_instance(storage, querier, program)?)
 }

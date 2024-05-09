@@ -4,13 +4,13 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct Querier<VM> {
+pub struct QueryProvider<VM> {
     store: Box<dyn Storage>,
     block: BlockInfo,
     vm: PhantomData<VM>,
 }
 
-impl<VM> Querier<VM>
+impl<VM> QueryProvider<VM>
 where
     VM: Vm + 'static,
     AppError: From<VM::Error>,

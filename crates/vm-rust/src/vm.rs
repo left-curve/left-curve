@@ -1,12 +1,12 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    cw_app::{PrefixStore, Querier, Vm},
+    cw_app::{PrefixStore, QueryProvider, Vm},
     cw_types::{to_json_vec, Context},
 };
 
 pub struct RustVm {
     storage: PrefixStore,
-    querier: Querier<Self>,
+    querier: QueryProvider<Self>,
     program: ContractWrapper,
 }
 
@@ -16,7 +16,7 @@ impl Vm for RustVm {
 
     fn build_instance(
         storage: PrefixStore,
-        querier: Querier<Self>,
+        querier: QueryProvider<Self>,
         program: Self::Program,
     ) -> VmResult<Self> {
         Ok(Self {

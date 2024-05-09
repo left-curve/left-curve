@@ -1,6 +1,6 @@
 use {
     crate::{VmError, VmResult, WasmVm},
-    cw_app::{PrefixStore, Querier},
+    cw_app::{PrefixStore, QueryProvider},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,
@@ -12,12 +12,12 @@ use {
 // TODO: add explaination on why these fields need to be Options
 pub struct ContextData {
     pub store: PrefixStore,
-    pub querier: Querier<WasmVm>,
+    pub querier: QueryProvider<WasmVm>,
     wasm_instance: Option<NonNull<Instance>>,
 }
 
 impl ContextData {
-    pub fn new(store: PrefixStore, querier: Querier<WasmVm>) -> Self {
+    pub fn new(store: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
         Self {
             store,
             querier,
@@ -35,7 +35,7 @@ pub struct Environment {
 unsafe impl Send for Environment {}
 
 impl Environment {
-    pub fn new(store: PrefixStore, querier: Querier<WasmVm>) -> Self {
+    pub fn new(store: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
         Self {
             memory: None,
             data: Arc::new(RwLock::new(ContextData::new(store, querier))),

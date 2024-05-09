@@ -3,7 +3,7 @@ use {
         db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
         secp256k1_verify, secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
-    cw_app::{PrefixStore, Querier, Vm},
+    cw_app::{PrefixStore, QueryProvider, Vm},
     cw_types::{to_borsh_vec, Context},
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -22,7 +22,7 @@ impl Vm for WasmVm {
 
     fn build_instance(
         storage: PrefixStore,
-        querier: Querier<Self>,
+        querier: QueryProvider<Self>,
         program: Vec<u8>,
     ) -> Result<Self, Self::Error> {
         // create Wasm store

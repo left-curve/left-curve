@@ -1,5 +1,5 @@
 use {
-    crate::{PrefixStore, Querier},
+    crate::{PrefixStore, QueryProvider},
     borsh::{BorshDeserialize, BorshSerialize},
     cw_types::{
         from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Batch, Context,
@@ -104,7 +104,7 @@ pub trait Vm: Sized {
     /// program.
     fn build_instance(
         storage: PrefixStore,
-        querier: Querier<Self>,
+        querier: QueryProvider<Self>,
         program: Self::Program,
     ) -> Result<Self, Self::Error>;
 
