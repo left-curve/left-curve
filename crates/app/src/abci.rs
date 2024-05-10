@@ -60,7 +60,7 @@ where
         // always matches block height.
         let block = from_tm_block(0, req.time, None);
 
-        match self.do_init_chain(req.chain_id, block, &req.app_state_bytes) {
+        match self.do_init_chain_raw(req.chain_id, block, &req.app_state_bytes) {
             Ok(app_hash) => {
                 ResponseInitChain {
                     consensus_params: req.consensus_params,
@@ -75,7 +75,7 @@ where
     fn finalize_block(&self, req: RequestFinalizeBlock) -> ResponseFinalizeBlock {
         let block = from_tm_block(req.height, req.time, Some(req.hash));
 
-        match self.do_finalize_block(block, req.txs) {
+        match self.do_finalize_block_raw(block, req.txs) {
             Ok((app_hash, events, tx_results)) => {
                 ResponseFinalizeBlock {
                     events:                  events.into_iter().map(to_tm_event).collect(),
@@ -118,7 +118,7 @@ where
     // `prove` fields, and interpret `data` as a JSON-encoded QueryRequest.
     fn query(&self, req: RequestQuery) -> ResponseQuery {
         match req.path.as_str() {
-            "/app" => match self.do_query_app(&req.data, req.height as u64, req.prove) {
+            "/app" => match self.do_query_app_raw(&req.data, req.height as u64, req.prove) {
                 Ok(res) => {
                     ResponseQuery {
                         code:  0,

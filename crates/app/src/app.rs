@@ -9,7 +9,7 @@ use {
     },
     cw_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
-        Permission, QueryRequest, QueryResponse, Storage, GENESIS_SENDER,
+        Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },
     std::marker::PhantomData,
     tracing::{debug, info},
@@ -55,11 +55,21 @@ where
     VM: Vm + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
+    pub fn do_init_chain_raw(
+        &self,
+        chain_id: String,
+        block: BlockInfo,
+        raw_genesis_state: &[u8],
+    ) -> AppResult<Hash> {
+        let genesis_state = from_json_slice(raw_genesis_state)?;
+        self.do_init_chain(chain_id, block, genesis_state)
+    }
+
     pub fn do_init_chain(
         &self,
         chain_id: String,
         block: BlockInfo,
-        app_state_bytes: &[u8],
+        genesis_state: GenesisState,
     ) -> AppResult<Hash> {
         let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
 
@@ -68,9 +78,6 @@ where
         if block.height.u64() != 0 {
             return Err(AppError::incorrect_block_height(0, block.height.u64()));
         }
-
-        // deserialize the genesis state
-        let genesis_state: GenesisState = from_json_slice(app_state_bytes)?;
 
         // save the config and genesis block. some genesis messages may need it
         CHAIN_ID.save(&mut cached, &chain_id)?;
@@ -109,11 +116,27 @@ where
         Ok(root_hash.unwrap())
     }
 
+    pub fn do_finalize_block_raw(
+        &self,
+        block: BlockInfo,
+        raw_txs: Vec<impl AsRef<[u8]>>,
+    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+        let txs = raw_txs
+            .into_iter()
+            .map(|raw_tx| {
+                let tx_hash = hash(raw_tx.as_ref());
+                let tx = from_json_slice(raw_tx.as_ref())?;
+                Ok((tx_hash, tx))
+            })
+            .collect::<StdResult<Vec<_>>>()?;
+        self.do_finalize_block(block, txs)
+    }
+
     #[allow(clippy::type_complexity)]
     pub fn do_finalize_block(
         &self,
         block: BlockInfo,
-        raw_txs: Vec<impl AsRef<[u8]>>,
+        txs: Vec<(Hash, Tx)>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
         let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
         let mut events = vec![];
@@ -142,9 +165,9 @@ where
         }
 
         // process transactions one-by-one
-        for (idx, raw_tx) in raw_txs.into_iter().enumerate() {
-            debug!(idx, tx_hash = hash(raw_tx.as_ref()).to_string(), "Processing transaction");
-            tx_results.push(process_tx::<_, VM>(cached.share(), &block, raw_tx));
+        for (idx, (tx_hash, tx)) in txs.into_iter().enumerate() {
+            debug!(idx, ?tx_hash, "Processing transaction");
+            tx_results.push(process_tx::<_, VM>(cached.share(), &block, tx));
         }
 
         // call end blockers
@@ -214,7 +237,13 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(&self, raw_query: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let req = from_json_slice(raw_req)?;
+        let res = self.do_query_app(req, height, prove)?;
+        Ok(to_json_vec(&res)?)
+    }
+
+    pub fn do_query_app(&self, req: QueryRequest, height: u64, prove: bool) -> AppResult<QueryResponse> {
         if prove {
             // we can't do merkle proof for smart queries. only raw store query
             // can be merkle proved.
@@ -232,10 +261,8 @@ where
         // use the state storage at the given version to perform the query
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
-        let req: QueryRequest = from_json_slice(raw_query)?;
-        let res = process_query::<VM>(Box::new(store), &block, req)?;
 
-        Ok(to_json_vec(&res)?)
+        process_query::<VM>(Box::new(store), &block, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -269,13 +296,12 @@ where
     }
 }
 
-fn process_tx<S, VM>(store: S, block: &BlockInfo, raw_tx: impl AsRef<[u8]>) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(store: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let tx = from_json_slice(raw_tx)?;
     let mut events = vec![];
 
     // create cached store for this tx
