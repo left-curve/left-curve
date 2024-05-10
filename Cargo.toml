@@ -1,18 +1,18 @@
 [workspace]
 resolver = "2"
 members  = [
-  "bin/cwcli",
-  "bin/cwd",
-  "contracts/account",
-  "contracts/account-factory",
-  "contracts/bank",
-  "contracts/ibc/clients/solomachine",
-  # note: consider commenting out the mock contracts to speed up compilation,
-  # if you don't need them.
-  "contracts/mocks/amm",
-  "contracts/mocks/cron",
-  "contracts/mocks/querier",
-  "contracts/mocks/token-wrapper",
+  # "bin/cwcli",
+  # "bin/cwd",
+  # "contracts/account",
+  # "contracts/account-factory",
+  # "contracts/bank",
+  # "contracts/ibc/clients/solomachine",
+  # # note: consider commenting out the mock contracts to speed up compilation,
+  # # if you don't need them.
+  # "contracts/mocks/amm",
+  # "contracts/mocks/cron",
+  # "contracts/mocks/querier",
+  # "contracts/mocks/token-wrapper",
   "crates/app",
   "crates/crypto",
   "crates/db/disk",
@@ -24,9 +24,9 @@ members  = [
   "crates/testing",
   "crates/types",
   "crates/vm/rust",
-  "crates/vm/wasm",
+  # "crates/vm/wasm",
   "crates/wasm",
-  "sdk/rust",
+  # "sdk/rust",
 ]
 
 [workspace.package]

@@ -75,8 +75,7 @@ pub type MigrateFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Resul
 
 pub type ReceiveFn<E> = Box<dyn Fn(MutableCtx) -> Result<Response, E>>;
 
-pub type ReplyFn<M = Empty, E = StdError> =
-    Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E>>;
+pub type ReplyFn<M = Empty, E = StdError> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E>>;
 
 pub type QueryFn<M = Empty, E = StdError> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E>>;
 
@@ -90,5 +89,4 @@ pub type AfterBlockFn<E = StdError> = Box<dyn Fn(SudoCtx) -> Result<Response, E>
 
 pub type BankTransferFn<E = StdError> = Box<dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>>;
 
-pub type BankQueryFn<E = StdError> =
-    Box<dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>>;
+pub type BankQueryFn<E = StdError> = Box<dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>>;
