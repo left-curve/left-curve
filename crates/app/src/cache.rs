@@ -159,7 +159,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_testing::MockStorage};
+    use {super::*, cw_types::MockStorage};
 
     // illustration of this test case:
     //

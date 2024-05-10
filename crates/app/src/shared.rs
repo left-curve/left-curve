@@ -176,7 +176,7 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_testing::MockStorage};
+    use {super::*, cw_types::MockStorage};
 
     fn mock_records(min: u32, max: u32, order: Order) -> Vec<Record> {
         let mut records = vec![];

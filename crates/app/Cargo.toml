@@ -23,4 +23,3 @@ thiserror        = { workspace = true }
 tracing          = { workspace = true }
 
 [dev-dependencies]
-cw-testing = { path = "../testing" }

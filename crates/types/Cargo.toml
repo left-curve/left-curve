@@ -12,6 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 bnum          = { workspace = true }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
+cw-crypto     = { path = "../crypto" }
 data-encoding = { workspace = true }
 hex           = { workspace = true }
 hex-literal   = { workspace = true }

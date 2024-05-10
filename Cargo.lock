@@ -272,7 +272,6 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "cw-storage",
- "cw-testing",
  "cw-types",
  "dyn-clone",
  "hex",
@@ -327,7 +326,6 @@ dependencies = [
  "anyhow",
  "borsh",
  "cw-storage",
- "cw-testing",
  "cw-types",
  "hex-literal",
  "proptest",
@@ -385,6 +383,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
+ "cw-crypto",
  "data-encoding",
  "dyn-clone",
  "forward_ref",
