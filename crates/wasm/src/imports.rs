@@ -1,7 +1,7 @@
 use {
     crate::Region,
     cw_types::{
-        from_json_slice, to_json_vec, Api, GenericResult, Order, Querier, QueryRequest,
+        from_json_slice, to_json_vec, Addr, Api, GenericResult, Order, Querier, QueryRequest,
         QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
@@ -175,10 +175,10 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 pub struct ExternalApi;
 
 impl Api for ExternalApi {
-    fn debug(&self, addr: &[u8], msg: &[u8]) {
+    fn debug(&self, addr: &Addr, msg: &str) {
         let addr_region = Region::build(addr);
         let addr_ptr = &*addr_region as *const Region;
-        let msg_region = Region::build(msg);
+        let msg_region = Region::build(msg.as_bytes());
         let msg_ptr = &*msg_region as *const Region;
 
         unsafe { debug(addr_ptr as usize, msg_ptr as usize) }

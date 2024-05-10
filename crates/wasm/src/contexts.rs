@@ -94,7 +94,7 @@ macro_rules! impl_methods {
         impl<'a> $t {
             #[inline]
             pub fn debug(&self, msg: impl AsRef<str>) {
-                self.api.debug(self.contract.as_ref(), msg.as_ref().as_bytes())
+                self.api.debug(&self.contract, msg.as_ref())
             }
 
             #[inline]

@@ -1,5 +1,5 @@
 use {
-    crate::{Batch, Op, Order, QueryRequest, QueryResponse, Record, StdResult},
+    crate::{Addr, Batch, Op, Order, QueryRequest, QueryResponse, Record, StdResult},
     dyn_clone::DynClone,
 };
 
@@ -99,7 +99,7 @@ pub trait Api {
     /// debug builds, this `debug` method is also included in release builds,
     /// and incurs gas cost. Make sure to comment this out before compiling your
     /// contracts.
-    fn debug(&self, addr: &[u8], msg: &[u8]);
+    fn debug(&self, addr: &Addr, msg: &str);
 
     /// Verify an Secp256k1 signature with the given hashed message and public
     /// key.
