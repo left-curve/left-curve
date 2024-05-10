@@ -61,11 +61,16 @@ where
         T: Ord + ?Sized,
         K: Borrow<T>,
     {
-        assert!(self.latest_version.is_some());
-        assert!(version <= self.latest_version.unwrap());
-        self.nested_map.get(key).and_then(|inner_map| {
-            inner_map.range(0..=version).last().and_then(|(_, op)| op.as_ref().into_option())
-        })
+        let Some(latest_version) = self.latest_version else {
+            return None;
+        };
+        if version > latest_version {
+            panic!("version that is newer than the latest ({version} > {latest_version})");
+        }
+        let Some(inner_map) = self.nested_map.get(key) else {
+            return None;
+        };
+        inner_map.range(0..=version).last().and_then(|(_, op)| op.as_ref().into_option())
     }
 
     pub fn range<R, T: ?Sized>(
@@ -78,8 +83,11 @@ where
         T: Ord,
         R: RangeBounds<T>,
     {
-        assert!(self.latest_version.is_some());
-        assert!(version <= self.latest_version.unwrap());
+        if let Some(latest_version) = self.latest_version {
+            if version > latest_version {
+                panic!("version that is newer than the latest ({version} > {latest_version})");
+            }
+        };
         VersionedIterator {
             nested_map: &self.nested_map,
             range,
