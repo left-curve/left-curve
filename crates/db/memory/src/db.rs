@@ -116,8 +116,17 @@ impl Db for MemDb {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
     }
 
+    // Note on implementing this function: We must make sure that we don't
+    // attempt to lock the DB (either read or write) inside the `with_write`
+    // callback. Doing so will result in error:
+    //
+    // > rwlock read lock would result in deadlock
+    //
+    // The best way to avoid this is to do everything that requires a read lock
+    // first (using a `with_read` callback) and do everything that requires a
+    // write lock in the end (using a `with_write` callback).
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
-        self.with_write(|mut inner| {
+        let (new_version, root_hash, changeset) = self.with_read(|inner| {
             if inner.changeset.is_some() {
                 return Err(DbError::ChangeSetAlreadySet);
             }
@@ -131,14 +140,18 @@ impl Db for MemDb {
             let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
             let (_, changeset) = cache.disassemble();
 
+            Ok((new_version, root_hash, changeset))
+        })?;
+
+        self.with_write(|mut inner| {
             inner.changeset = Some(ChangeSet {
                 version: new_version,
                 state_commitment: changeset,
                 state_storage: batch,
             });
+        });
 
-            Ok((new_version, root_hash))
-        })
+        Ok((new_version, root_hash))
     }
 
     fn commit(&self) -> DbResult<()> {
@@ -163,6 +176,8 @@ impl Db for MemDb {
             Ok(())
         })
     }
+
+    // TODO: add a more performant implementation of `flush_and_commit`
 }
 
 // ----------------------------- state commitment ------------------------------
