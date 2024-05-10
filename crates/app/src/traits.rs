@@ -108,14 +108,19 @@ pub trait Vm: Sized {
         program: Self::Program,
     ) -> Result<Self, Self::Error>;
 
+    // Note: A VM instance is intended to be "single-use", meaning an instance
+    // is created, one call to the program is performed, then the instance is
+    // dropped. For this reason, see each of the call_* methods below takes a
+    // `self` instead of a reference.
+
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
+    fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
 
     /// Call a function that takes exactly 1 input parameter (other than the
     /// context) and returns exactly 1 output.
     fn call_in_1_out_1(
-        &mut self,
+        self,
         name: &str,
         ctx: &Context,
         param1: impl AsRef<[u8]>,
@@ -124,7 +129,7 @@ pub trait Vm: Sized {
     /// Call a function that takes exactly 2 input parameters (other than the
     /// context) and returns exactly 1 output.
     fn call_in_2_out_1(
-        &mut self,
+        self,
         name: &str,
         ctx: &Context,
         param1: impl AsRef<[u8]>,
@@ -132,7 +137,7 @@ pub trait Vm: Sized {
     ) -> Result<Vec<u8>, Self::Error>;
 
     fn call_instantiate(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &Json,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -141,7 +146,7 @@ pub trait Vm: Sized {
     }
 
     fn call_execute(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &Json,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -149,17 +154,13 @@ pub trait Vm: Sized {
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_query(
-        &mut self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> Result<GenericResult<Json>, Self::Error> {
+    fn call_query(self, ctx: &Context, msg: &Json) -> Result<GenericResult<Json>, Self::Error> {
         let res_bytes = self.call_in_1_out_1("query", ctx, to_json_vec(msg)?)?;
         Ok(from_json_slice(res_bytes)?)
     }
 
     fn call_migrate(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &Json,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -168,7 +169,7 @@ pub trait Vm: Sized {
     }
 
     fn call_reply(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &Json,
         events: &SubMsgResult,
@@ -178,23 +179,23 @@ pub trait Vm: Sized {
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_receive(&mut self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
+    fn call_receive(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
         let res_bytes = self.call_in_0_out_1("receive", ctx)?;
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_before_block(&mut self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
+    fn call_before_block(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
         let res_bytes = self.call_in_0_out_1("before_block", ctx)?;
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_after_block(&mut self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
+    fn call_after_block(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
         let res_bytes = self.call_in_0_out_1("after_block", ctx)?;
         Ok(from_json_slice(res_bytes)?)
     }
 
     fn call_before_tx(
-        &mut self,
+        self,
         ctx: &Context,
         tx: &Tx,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -202,17 +203,13 @@ pub trait Vm: Sized {
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_after_tx(
-        &mut self,
-        ctx: &Context,
-        tx: &Tx,
-    ) -> Result<GenericResult<Response>, Self::Error> {
+    fn call_after_tx(self, ctx: &Context, tx: &Tx) -> Result<GenericResult<Response>, Self::Error> {
         let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json_vec(tx)?)?;
         Ok(from_json_slice(res_bytes)?)
     }
 
     fn call_bank_transfer(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &TransferMsg,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -221,7 +218,7 @@ pub trait Vm: Sized {
     }
 
     fn call_bank_query(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &BankQueryMsg,
     ) -> Result<GenericResult<BankQueryResponse>, Self::Error> {
@@ -230,7 +227,7 @@ pub trait Vm: Sized {
     }
 
     fn call_ibc_client_create(
-        &mut self,
+        self,
         ctx: &Context,
         client_state: &Json,
         consensus_state: &Json,
@@ -245,7 +242,7 @@ pub trait Vm: Sized {
     }
 
     fn call_ibc_client_update(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &IbcClientUpdateMsg,
     ) -> Result<GenericResult<Response>, Self::Error> {
@@ -254,7 +251,7 @@ pub trait Vm: Sized {
     }
 
     fn call_ibc_client_verify(
-        &mut self,
+        self,
         ctx: &Context,
         msg: &IbcClientVerifyMsg,
     ) -> Result<GenericResult<()>, Self::Error> {

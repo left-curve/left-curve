@@ -43,7 +43,7 @@ where
     let account = ACCOUNTS.load(&store, contract)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
 
     // call the recipient contract's `before_block` entry point
     let ctx = Context {
@@ -101,7 +101,7 @@ where
     let account = ACCOUNTS.load(&store, contract)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
 
     // call the recipient contract's `after_block` entry point
     let ctx = Context {

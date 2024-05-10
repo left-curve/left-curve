@@ -81,7 +81,7 @@ where
 
     // create VM instance
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
 
     // call instantiate
     let ctx = Context {

@@ -36,7 +36,7 @@ where
     let account = ACCOUNTS.load(&store, &tx.sender)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `before_tx` entry point
     let ctx = Context {
@@ -87,7 +87,7 @@ where
     let account = ACCOUNTS.load(&store, &tx.sender)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &tx.sender, program)?;
 
     // call `after_tx` entry point
     let ctx = Context {

@@ -55,7 +55,7 @@ where
     let account = ACCOUNTS.load(&store, &cfg.bank)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call transfer
     let ctx = Context {
@@ -104,7 +104,7 @@ where
     let account = ACCOUNTS.load(&store, &msg.to)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &msg.to, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &msg.to, program)?;
 
     // call the recipient contract's `receive` entry point
     let ctx = Context {

@@ -61,7 +61,7 @@ where
 
     // create VM instance
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
 
     // call the contract's migrate entry point
     let ctx = Context {

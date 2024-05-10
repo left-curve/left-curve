@@ -93,7 +93,7 @@ where
 
     // create VM instance
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &cfg.bank, program)?;
 
     // call query
     let ctx = Context {
@@ -187,7 +187,7 @@ where
     let account = ACCOUNTS.load(&store, &contract)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store, block.clone(), &contract, program)?;
+    let instance = create_vm_instance::<VM>(store, block.clone(), &contract, program)?;
 
     // call query
     let ctx = Context {

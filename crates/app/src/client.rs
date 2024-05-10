@@ -79,7 +79,7 @@ where
     ACCOUNTS.save(&mut store, &address, &account)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
 
     // call `ibc_client_create` entry point
     let ctx = Context {
@@ -141,7 +141,7 @@ where
     let account = ACCOUNTS.load(&store, client_id)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
@@ -206,7 +206,7 @@ where
     let account = ACCOUNTS.load(&store, client_id)?;
 
     let program = load_program::<VM>(&store, &account.code_hash)?;
-    let mut instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
+    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
