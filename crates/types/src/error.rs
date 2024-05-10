@@ -13,6 +13,8 @@ pub enum StdError {
     #[error(transparent)]
     TryFromSlice(#[from] TryFromSliceError),
 
+    // TODO: rename this. this means an error is thrown by the host over the FFI.
+    // something like `StdError::Host` may be more appropriate.
     #[error("Generic error: {0}")]
     Generic(String),
 

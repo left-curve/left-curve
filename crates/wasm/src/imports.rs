@@ -234,8 +234,8 @@ impl Api for ExternalApi {
 pub struct ExternalQuerier;
 
 impl Querier for ExternalQuerier {
-    fn query_chain(&self, req: &QueryRequest) -> StdResult<QueryResponse> {
-        let req_bytes = to_json_vec(req)?;
+    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+        let req_bytes = to_json_vec(&req)?;
         let req_region = Region::build(&req_bytes);
         let req_ptr = &*req_region as *const Region;
 

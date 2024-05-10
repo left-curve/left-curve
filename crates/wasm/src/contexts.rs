@@ -109,12 +109,12 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_info(&self) -> StdResult<InfoResponse> {
-                self.querier.query_chain(&QueryRequest::Info {}).map(|res| res.as_info())
+                self.querier.query_chain(QueryRequest::Info {}).map(|res| res.as_info())
             }
 
             #[inline]
             pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
-                self.querier.query_chain(&QueryRequest::Balance {
+                self.querier.query_chain(QueryRequest::Balance {
                     address,
                     denom,
                 })
@@ -128,7 +128,7 @@ macro_rules! impl_methods {
                 start_after: Option<String>,
                 limit: Option<u32>,
             ) -> StdResult<Coins> {
-                self.querier.query_chain(&QueryRequest::Balances {
+                self.querier.query_chain(QueryRequest::Balances {
                     address,
                     start_after,
                     limit,
@@ -138,7 +138,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_supply(&self, denom: String) -> StdResult<Uint128> {
-                self.querier.query_chain(&QueryRequest::Supply {
+                self.querier.query_chain(QueryRequest::Supply {
                     denom,
                 })
                 .map(|res| res.as_supply().amount)
@@ -146,7 +146,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_supplies(&self, start_after: Option<String>, limit: Option<u32>) -> StdResult<Coins> {
-                self.querier.query_chain(&QueryRequest::Supplies {
+                self.querier.query_chain(QueryRequest::Supplies {
                     start_after,
                     limit,
                 })
@@ -155,7 +155,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
-                self.querier.query_chain(&QueryRequest::Code {
+                self.querier.query_chain(QueryRequest::Code {
                     hash,
                 })
                 .map(|res| res.as_code())
@@ -163,7 +163,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_codes(&self, start_after: Option<Hash>, limit: Option<u32>) -> StdResult<Vec<Hash>> {
-                self.querier.query_chain(&QueryRequest::Codes {
+                self.querier.query_chain(QueryRequest::Codes {
                     start_after,
                     limit,
                 })
@@ -172,7 +172,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_account(&self, address: Addr) -> StdResult<AccountResponse> {
-                self.querier.query_chain(&QueryRequest::Account {
+                self.querier.query_chain(QueryRequest::Account {
                     address,
                 })
                 .map(|res| res.as_account())
@@ -184,7 +184,7 @@ macro_rules! impl_methods {
                 start_after: Option<Addr>,
                 limit: Option<u32>,
             ) -> StdResult<Vec<AccountResponse>> {
-                self.querier.query_chain(&QueryRequest::Accounts {
+                self.querier.query_chain(QueryRequest::Accounts {
                     start_after,
                     limit,
                 })
@@ -193,7 +193,7 @@ macro_rules! impl_methods {
 
             #[inline]
             pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
-                self.querier.query_chain(&QueryRequest::WasmRaw {
+                self.querier.query_chain(QueryRequest::WasmRaw {
                     contract,
                     key,
                 })
@@ -206,7 +206,7 @@ macro_rules! impl_methods {
                 contract: Addr,
                 msg: &M,
             ) -> StdResult<R> {
-                self.querier.query_chain(&QueryRequest::WasmSmart {
+                self.querier.query_chain(QueryRequest::WasmSmart {
                     contract,
                     msg: to_json_value(msg)?,
                 })

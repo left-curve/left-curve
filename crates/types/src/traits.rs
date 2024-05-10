@@ -119,5 +119,5 @@ pub trait Api {
 pub trait Querier {
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
-    fn query_chain(&self, req: &QueryRequest) -> StdResult<QueryResponse>;
+    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse>;
 }
