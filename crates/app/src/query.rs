@@ -165,7 +165,7 @@ pub fn query_wasm_raw(
     key:      Binary,
 ) -> AppResult<WasmRawResponse> {
     let substore = PrefixStore::new(store, &[CONTRACT_NAMESPACE, &contract]);
-    let value = substore.read(&key)?;
+    let value = substore.read(&key);
     Ok(WasmRawResponse {
         contract,
         key,
