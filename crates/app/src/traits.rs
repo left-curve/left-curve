@@ -174,8 +174,12 @@ pub trait Vm: Sized {
         msg: &Json,
         events: &SubMsgResult,
     ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes =
-            self.call_in_2_out_1("reply", ctx, to_json_vec(msg)?, to_json_vec(events)?)?;
+        let res_bytes = self.call_in_2_out_1(
+            "reply",
+            ctx,
+            to_json_vec(msg)?,
+            to_json_vec(events)?,
+        )?;
         Ok(from_json_slice(res_bytes)?)
     }
 
