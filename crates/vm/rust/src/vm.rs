@@ -4,6 +4,14 @@ use {
     cw_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
+macro_rules! get_contract {
+    ($index:expr) => {
+        CONTRACTS.get().and_then(|contracts| contracts.get($index)).unwrap_or_else(|| {
+            panic!("can't find contract with index {}", $index); // TODO: throw an VmError instead of panicking?
+        })
+    }
+}
+
 pub struct RustVm {
     storage: PrefixStore,
     querier: QueryProvider<Self>,
@@ -27,8 +35,7 @@ impl Vm for RustVm {
     }
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let cell = CONTRACTS; // unclear why this is necessary?
-        let contract = &cell.get().unwrap()[self.program.index];
+        let contract = get_contract!(self.program.index);
         let out = match name {
             "receive" => {
                 let res = contract
@@ -52,8 +59,7 @@ impl Vm for RustVm {
         ctx: &Context,
         param1: impl AsRef<[u8]>,
     ) -> VmResult<Vec<u8>> {
-        let cell = CONTRACTS; // unclear why this is necessary?
-        let contract = &cell.get().unwrap()[self.program.index];
+        let contract = get_contract!(self.program.index);
         let out = match name {
             "instantiate" => {
                 let msg = from_json_slice(param1)?;
@@ -100,8 +106,7 @@ impl Vm for RustVm {
         param1: impl AsRef<[u8]>,
         param2: impl AsRef<[u8]>,
     ) -> VmResult<Vec<u8>> {
-        let cell = CONTRACTS; // unclear why this is necessary?
-        let contract = &cell.get().unwrap()[self.program.index];
+        let contract = get_contract!(self.program.index);
         let out = match name {
             "reply" => {
                 let msg = from_json_slice(param1)?;

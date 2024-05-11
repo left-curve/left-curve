@@ -9,12 +9,12 @@ use {
         make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
         unwrap_into_generic_result, ImmutableCtx, MutableCtx, SudoCtx,
     },
-    elsa::FrozenVec,
+    elsa::sync::FrozenVec,
     serde::de::DeserializeOwned,
-    std::cell::OnceCell,
+    std::sync::OnceLock,
 };
 
-pub(crate) const CONTRACTS: OnceCell<FrozenVec<Box<dyn Contract>>> = OnceCell::new();
+pub(crate) static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
 
 // ---------------------------------- wrapper ----------------------------------
 
@@ -45,7 +45,9 @@ impl ContractWrapper {
         E5: ToString + 'static,
         E6: ToString + 'static,
     {
-        CONTRACTS.get_or_init(Default::default).push(Box::new(ContractImpl {
+        let contracts = CONTRACTS.get_or_init(Default::default);
+        let index = contracts.len();
+        contracts.push(Box::new(ContractImpl {
             instantiate_fn,
             execute_fn,
             migrate_fn,
@@ -53,10 +55,7 @@ impl ContractWrapper {
             reply_fn,
             query_fn,
         }));
-
-        Self {
-            index: CONTRACTS.get().unwrap().len() - 1,
-        }
+        Self { index }
     }
 }
 
