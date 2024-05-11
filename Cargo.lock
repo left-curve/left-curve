@@ -374,7 +374,11 @@ dependencies = [
 name = "cw-testing"
 version = "0.0.0"
 dependencies = [
+ "cw-app",
+ "cw-db-memory",
  "cw-types",
+ "cw-vm-rust",
+ "cw-wasm",
 ]
 
 [[package]]

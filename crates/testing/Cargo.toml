@@ -10,6 +10,10 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-types = { path = "../types" }
+cw-app       = { path = "../app" }
+cw-db-memory = { path = "../db/memory" }
+cw-types     = { path = "../types" }
+cw-vm-rust   = { path = "../vm/rust" }
 
 [dev-dependencies]
+cw-wasm = { path = "../wasm" }
