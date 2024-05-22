@@ -1,12 +1,16 @@
 mod keys;
 mod prompt;
 mod query;
+mod reset;
 mod start;
 mod tendermint;
 mod tx;
 
 use {
-    crate::{keys::KeysCmd, query::QueryCmd, start::StartCmd, tendermint::StatusCmd, tx::TxCmd},
+    crate::{
+        keys::KeysCmd, query::QueryCmd, reset::ResetCmd, start::StartCmd, tendermint::StatusCmd,
+        tx::TxCmd,
+    },
     anyhow::anyhow,
     clap::Parser,
     home::home_dir,
@@ -51,6 +55,9 @@ enum Command {
     /// Send a transaction
     #[command(next_display_order = None)]
     Tx(TxCmd),
+
+    /// Delete node data
+    UnsafeResetAll(ResetCmd),
 }
 
 #[tokio::main]
@@ -73,5 +80,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Start(cmd) => cmd.run(data_dir).await,
         Command::Status(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(keys_dir).await,
+        Command::UnsafeResetAll(cmd) => cmd.run(data_dir),
     }
 }
