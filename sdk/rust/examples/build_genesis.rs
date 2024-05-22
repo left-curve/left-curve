@@ -1,6 +1,6 @@
 use {
     grug_account::PublicKey,
-    grug_rs::{AdminOption, GenesisBuilder, SigningKey},
+    grug_sdk::{AdminOption, GenesisBuilder, SigningKey},
     grug::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
     home::home_dir,
     lazy_static::lazy_static,

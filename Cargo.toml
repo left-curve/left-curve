@@ -1,8 +1,7 @@
 [workspace]
 resolver = "2"
 members  = [
-  "bin/cwcli",
-  "bin/cwd",
+  "bin",
   "contracts/account",
   "contracts/bank",
   "contracts/ibc/clients/solomachine",

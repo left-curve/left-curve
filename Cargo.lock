@@ -739,42 +739,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cwcli"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "bip32",
- "clap",
- "colored",
- "colored_json",
- "dialoguer",
- "grug",
- "grug-jmt",
- "grug-sdk",
- "hex",
- "home",
- "rand",
- "serde",
- "serde_json",
- "tendermint-rpc",
- "tokio",
-]
-
-[[package]]
-name = "cwd"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap",
- "grug-app",
- "grug-db-disk",
- "grug-vm-wasm",
- "home",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "darling"
 version = "0.20.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1324,6 +1288,33 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
+]
+
+[[package]]
+name = "grug-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "bip32",
+ "clap",
+ "colored",
+ "colored_json",
+ "dialoguer",
+ "grug-app",
+ "grug-db-disk",
+ "grug-jmt",
+ "grug-sdk",
+ "grug-types",
+ "grug-vm-wasm",
+ "hex",
+ "home",
+ "rand",
+ "serde",
+ "serde_json",
+ "tendermint-rpc",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

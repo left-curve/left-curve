@@ -1,5 +1,5 @@
 use {
-    grug_rs::{AdminOption, Client, SigningKey, SigningOptions},
+    grug_sdk::{AdminOption, Client, SigningKey, SigningOptions},
     grug::{Addr, Coin, Coins, Uint128},
     home::home_dir,
     lazy_static::lazy_static,

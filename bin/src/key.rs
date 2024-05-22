@@ -4,8 +4,8 @@ use {
     bip32::{Language, Mnemonic},
     clap::Parser,
     colored::Colorize,
-    grug_rs::{Keystore, SigningKey},
-    grug::from_json_slice,
+    grug_sdk::{Keystore, SigningKey},
+    grug_types::from_json_slice,
     rand::rngs::OsRng,
     std::{
         fs,

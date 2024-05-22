@@ -3,7 +3,7 @@ use {
         ClientState, ConsensusState, Header, Misbehavior, QueryMsg, Record, SignBytes,
         StateResponse,
     },
-    grug_rs::{Client, SigningKey, SigningOptions},
+    grug_sdk::{Client, SigningKey, SigningOptions},
     grug::{hash, to_borsh_vec, Addr, Hash, IbcClientStatus, StdResult},
     hex_literal::hex,
     home::home_dir,
