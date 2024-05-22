@@ -18,7 +18,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let storage = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, &address]);
+    let storage = PrefixStore::new(store.clone(), &[CONTRACT_NAMESPACE, address]);
     let querier = QueryProvider::new(store, block);
     Ok(VM::build_instance(storage, querier, program)?)
 }

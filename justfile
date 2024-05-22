@@ -12,7 +12,7 @@ test:
 
 # Perform linting
 lint:
-  cargo clippy --bins --tests --benches --examples --all-features --all-targets
+  cargo +nightly clippy --bins --tests --benches --examples --all-features --all-targets
 
 # Compile and optimize contracts (https://github.com/CosmWasm/rust-optimizer)
 optimize:

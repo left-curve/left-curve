@@ -115,7 +115,7 @@ impl Coins {
 
     /// Return whether there is a non-zero amount of the given denom.
     pub fn has(&self, denom: &str) -> bool {
-        self.0.get(denom).is_some()
+        self.0.contains_key(denom)
     }
 
     /// Get the amount of the given denom.

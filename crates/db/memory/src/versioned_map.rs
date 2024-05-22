@@ -61,16 +61,15 @@ where
         T: Ord + ?Sized,
         K: Borrow<T>,
     {
-        let Some(latest_version) = self.latest_version else {
-            return None;
-        };
+        let latest_version = self.latest_version?;
         if version > latest_version {
             panic!("version that is newer than the latest ({version} > {latest_version})");
         }
-        let Some(inner_map) = self.nested_map.get(key) else {
-            return None;
-        };
-        inner_map.range(0..=version).last().and_then(|(_, op)| op.as_ref().into_option())
+        self.nested_map
+            .get(key)?
+            .range(0..=version)
+            .last()
+            .and_then(|(_, op)| op.as_ref().into_option())
     }
 
     pub fn range<R, T: ?Sized>(
