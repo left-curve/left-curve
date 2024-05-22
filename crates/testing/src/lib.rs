@@ -20,6 +20,14 @@ pub struct MockApp {
     inner: App<MemDb, RustVm>,
 }
 
+// need to implement this to make clippy not complain
+// TODO: create a clippy.toml to disable this
+impl Default for MockApp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockApp {
     pub fn new() -> Self {
         Self {

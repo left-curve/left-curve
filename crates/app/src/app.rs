@@ -116,6 +116,7 @@ where
         Ok(root_hash.unwrap())
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn do_finalize_block_raw(
         &self,
         block: BlockInfo,

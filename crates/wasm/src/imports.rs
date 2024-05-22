@@ -185,13 +185,13 @@ impl Api for ExternalApi {
     }
 
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        let msg_hash_region = Region::build(msg_hash.as_ref());
+        let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
 
-        let sig_region = Region::build(sig.as_ref());
+        let sig_region = Region::build(sig);
         let sig_ptr = &*sig_region as *const Region;
 
-        let pk_region = Region::build(pk.as_ref());
+        let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
         let return_value = unsafe {
@@ -207,13 +207,13 @@ impl Api for ExternalApi {
     }
 
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        let msg_hash_region = Region::build(msg_hash.as_ref());
+        let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
 
-        let sig_region = Region::build(sig.as_ref());
+        let sig_region = Region::build(sig);
         let sig_ptr = &*sig_region as *const Region;
 
-        let pk_region = Region::build(pk.as_ref());
+        let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
         let return_value = unsafe {
@@ -241,7 +241,7 @@ impl Querier for ExternalQuerier {
 
         let res_ptr = unsafe { query_chain(req_ptr as usize) };
         let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-        let res: GenericResult<QueryResponse> = from_json_slice(&res_bytes)?;
+        let res: GenericResult<QueryResponse> = from_json_slice(res_bytes)?;
 
         res.into_std_result()
     }
