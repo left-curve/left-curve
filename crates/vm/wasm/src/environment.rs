@@ -19,7 +19,7 @@ pub struct ContextData {
     pub next_iterator_id: i32,
     /// A non-owning link to the wasmer instance. Need this for doing function
     /// calls (see Environment::call_function).
-    wasm_instance: Option<NonNull<Instance>>,
+    wasmer_instance: Option<NonNull<Instance>>,
 }
 
 // Wasmer instance isn't Send/Sync. We manually mark it to be.
@@ -43,7 +43,7 @@ impl Environment {
                 querier,
                 iterators: HashMap::new(),
                 next_iterator_id: 0,
-                wasm_instance: None,
+                wasmer_instance: None,
             })),
         }
     }
@@ -76,7 +76,7 @@ impl Environment {
         E: Into<VmError>,
     {
         self.with_context_data(|ctx| {
-            let instance_ptr = ctx.wasm_instance.ok_or(VmError::WasmerInstanceNotSet)?;
+            let instance_ptr = ctx.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
             let instance_ref = unsafe { instance_ptr.as_ref() };
             callback(instance_ref).map_err(Into::into)
         })
@@ -90,7 +90,7 @@ impl Environment {
 
     pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) -> VmResult<()> {
         self.with_context_data_mut(|ctx| -> VmResult<_> {
-            ctx.wasm_instance = Some(NonNull::from(wasm_instance));
+            ctx.wasmer_instance = Some(NonNull::from(wasm_instance));
             Ok(())
         })
     }
