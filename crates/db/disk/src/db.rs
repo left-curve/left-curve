@@ -8,7 +8,6 @@ use {
         WriteBatch,
     },
     std::{
-        cell::OnceCell,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -132,7 +131,6 @@ impl Db for DiskDb {
     fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
         StateStorage {
             inner: Arc::clone(&self.inner),
-            opts: OnceCell::new(),
             version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
         }
     }
@@ -266,31 +264,16 @@ impl Storage for StateCommitment {
 
 // ------------------------------- state storage -------------------------------
 
+#[derive(Clone)]
 pub struct StateStorage {
-    inner:   Arc<DiskDbInner>,
-    opts:    OnceCell<ReadOptions>,
+    inner: Arc<DiskDbInner>,
     version: u64,
-}
-
-impl StateStorage {
-    fn read_opts(&self) -> &ReadOptions {
-        self.opts.get_or_init(|| new_read_options(Some(self.version), None, None))
-    }
-}
-
-impl Clone for StateStorage {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-            opts: OnceCell::new(),
-            version: self.version,
-        }
-    }
 }
 
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner.db.get_cf_opt(&cf_state_storage(&self.inner.db), key, self.read_opts()).unwrap_or_else(|err| {
+        let opts = new_read_options(Some(self.version), None, None);
+        self.inner.db.get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts).unwrap_or_else(|err| {
             panic!("failed to read from state storage: {err}");
         })
     }

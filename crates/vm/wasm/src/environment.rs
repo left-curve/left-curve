@@ -17,16 +17,22 @@ pub struct ContextData {
     pub querier: QueryProvider<WasmVm>,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
+    /// A non-owning link to the wasmer instance. Need this for doing function
+    /// calls (see Environment::call_function).
     wasm_instance: Option<NonNull<Instance>>,
 }
+
+// Wasmer instance isn't Send/Sync. We manually mark it to be.
+// cosmwasm_vm does the same:
+// https://github.com/CosmWasm/cosmwasm/blob/v2.0.3/packages/vm/src/environment.rs#L120-L122
+// TODO: need to think about whether this is safe
+unsafe impl Send for ContextData {}
+unsafe impl Sync for ContextData {}
 
 pub struct Environment {
     memory: Option<Memory>,
     data: Arc<RwLock<ContextData>>,
 }
-
-// TODO: think about this
-unsafe impl Send for Environment {}
 
 impl Environment {
     pub fn new(store: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
@@ -129,10 +135,10 @@ impl Environment {
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        // note: calling with_wasm_instance creates a read lock on the
-        // ContextData. we must drop this lock before calling the function,
+        // Note: Calling with_wasm_instance creates a read lock on the
+        // ContextData. We must drop this lock before calling the function,
         // otherwise we get a deadlock (calling require a write lock which has
-        // to wait for the previous read lock being dropped)
+        // to wait for the previous read lock being dropped).
         let func = self.with_wasm_instance(|wasm_instance| -> VmResult<_> {
             let f = wasm_instance.exports.get_function(name)?;
             Ok(f.clone())

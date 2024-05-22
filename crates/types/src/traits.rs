@@ -12,7 +12,9 @@ use {
 /// We use DynClone (https://crates.io/crates/dyn-clone) instead, which is
 /// object-safe, and use the `clone_trait_object!` macro below to derive std
 /// Clone trait for any type that implements Storage.
-pub trait Storage: DynClone {
+///
+/// The object must also be Send and Sync, which is required by Wasmer runtime.
+pub trait Storage: DynClone + Send + Sync {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>>;
 
     /// Iterate over data in the KV store under the given bounds and order.
