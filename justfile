@@ -2,9 +2,9 @@
 default:
   @just --list
 
-# Compile and install cwd and cwcli executables
+# Compile and install the Grug node software
 install:
-  cargo install --path bin/cwd && cargo install --path bin/cwcli
+  cargo install --path bin
 
 # Run tests
 test:
