@@ -156,7 +156,7 @@ pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
         client_state.status
     );
 
-    verify_signature(&ctx, &consensus_state.public_key, consensus_state.sequence, &header)?;
+    verify_signature(ctx.api, &consensus_state.public_key, consensus_state.sequence, &header)?;
 
     consensus_state.record = header.record;
     consensus_state.sequence += 1;
@@ -177,13 +177,13 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<
     );
 
     verify_signature(
-        &ctx,
+        ctx.api,
         &consensus_state.public_key,
         misbehavior.sequence,
         &misbehavior.header_one,
     )?;
     verify_signature(
-        &ctx,
+        ctx.api,
         &consensus_state.public_key,
         misbehavior.sequence,
         &misbehavior.header_two,
