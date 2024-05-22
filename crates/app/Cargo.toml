@@ -9,6 +9,9 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
+[features]
+abci = ["tendermint-abci", "tendermint-proto"]
+
 [dependencies]
 borsh            = { workspace = true, features = ["de_strict_order"] }
 dyn-clone        = { workspace = true }
@@ -17,8 +20,8 @@ grug-types       = { path = "../types" }
 hex              = { workspace = true }
 prost            = { workspace = true }
 serde            = { workspace = true }
-tendermint-proto = { workspace = true }
-tendermint-abci  = { workspace = true }
+tendermint-abci  = { workspace = true, optional = true }
+tendermint-proto = { workspace = true, optional = true }
 thiserror        = { workspace = true }
 tracing          = { workspace = true }
 

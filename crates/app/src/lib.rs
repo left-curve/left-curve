@@ -1,3 +1,4 @@
+#[cfg(feature = "abci")]
 mod abci;
 mod app;
 mod auth;
