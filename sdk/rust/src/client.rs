@@ -1,9 +1,9 @@
 use {
     crate::{AdminOption, SigningKey},
     anyhow::{bail, ensure},
-    cw_account::{QueryMsg, StateResponse},
-    cw_jmt::Proof,
-    cw_std::{
+    grug_account::{QueryMsg, StateResponse},
+    grug_jmt::Proof,
+    grug::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
         Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx,
         WasmRawResponse,

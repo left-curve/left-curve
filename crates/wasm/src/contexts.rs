@@ -1,5 +1,5 @@
 use {
-    cw_types::{
+    grug_types::{
         from_json_value, to_json_value, AccountResponse, Addr, Api, Binary, Coins, Hash,
         InfoResponse, Querier, QueryRequest, StdResult, Storage, Timestamp, Uint128, Uint64,
     },

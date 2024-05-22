@@ -3,8 +3,8 @@ use {
         BitArray, Child, InternalNode, LeafNode, MembershipProof, Node, NonMembershipProof, Proof,
         ProofNode,
     },
-    cw_storage::{Map, Set},
-    cw_types::{hash, Batch, Hash, Op, Order, StdResult, Storage},
+    grug_storage::{Map, Set},
+    grug_types::{hash, Batch, Hash, Op, Order, StdResult, Storage},
     tracing::trace,
 };
 
@@ -685,7 +685,7 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 #[cfg(test)]
 mod tests {
     use {
-        super::*, cw_types::MockStorage, hex_literal::hex, test_case::test_case,
+        super::*, grug_types::MockStorage, hex_literal::hex, test_case::test_case,
         tracing_test::traced_test,
     };
 

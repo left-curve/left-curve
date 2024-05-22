@@ -1,8 +1,8 @@
 use {
-    cw_app::App,
-    cw_db_memory::MemDb,
-    cw_types::{BlockInfo, GenesisState, Hash, QueryRequest, QueryResponse, Timestamp, Uint64},
-    cw_vm_rust::RustVm,
+    grug_app::App,
+    grug_db_memory::MemDb,
+    grug_types::{BlockInfo, GenesisState, Hash, QueryRequest, QueryResponse, Timestamp, Uint64},
+    grug_vm_rust::RustVm,
     std::time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -47,12 +47,12 @@ impl MockApp {
 mod tests {
     use {
         super::*,
-        cw_types::{
+        grug_types::{
             hash, to_borsh_vec, to_json_value, Addr, Coins, Config, Empty, Message, Permission,
             Permissions, Response, StdResult,
         },
-        cw_vm_rust::{ContractWrapper, ExecuteFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
-        cw_wasm::MutableCtx,
+        grug_vm_rust::{ContractWrapper, ExecuteFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
+        grug_wasm::MutableCtx,
         std::collections::BTreeSet,
     };
 

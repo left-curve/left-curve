@@ -1,18 +1,11 @@
 [workspace]
 resolver = "2"
 members  = [
-  # "bin/cwcli",
-  # "bin/cwd",
-  # "contracts/account",
-  # "contracts/account-factory",
-  # "contracts/bank",
-  # "contracts/ibc/clients/solomachine",
-  # # note: consider commenting out the mock contracts to speed up compilation,
-  # # if you don't need them.
-  # "contracts/mocks/amm",
-  # "contracts/mocks/cron",
-  # "contracts/mocks/querier",
-  # "contracts/mocks/token-wrapper",
+  "bin/cwcli",
+  "bin/cwd",
+  "contracts/account",
+  "contracts/bank",
+  "contracts/ibc/clients/solomachine",
   "crates/app",
   "crates/crypto",
   "crates/db/disk",
@@ -24,9 +17,9 @@ members  = [
   "crates/testing",
   "crates/types",
   "crates/vm/rust",
-  # "crates/vm/wasm",
+  "crates/vm/wasm",
   "crates/wasm",
-  # "sdk/rust",
+  "sdk/rust",
 ]
 
 [workspace.package]
@@ -34,8 +27,8 @@ version       = "0.0.0"
 authors       = ["Larry Lyu <gm@larry.engineer>"]
 edition       = "2021"
 rust-version  = "1.73"
-documentation = "https://larry.engineer/cwd" # TODO: update this once we have a docs site
-repository    = "https://github.com/cwsoftware123/cwd"
+documentation = "https://leftcurve.software/grug"
+repository    = "https://github.com/left-curve/grug"
 license       = "TBD"
 keywords      = ["blockchain", "wasm"]
 categories    = ["cryptography::cryptocurrencies"]
@@ -74,8 +67,8 @@ rand               = "0.8"
 # https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
 #
 # see the `v0.21.0-cw` branch. comparison:
-# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...cwsoftware123:v0.21.0-cw
-rocksdb            = { git = "https://github.com/cwsoftware123/rust-rocksdb", rev = "9015972" }
+# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...left-curve:v0.21.0-cw
+rocksdb            = { git = "https://github.com/left-curve/rust-rocksdb", rev = "9015972" }
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"

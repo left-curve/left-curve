@@ -77,7 +77,7 @@ export class Client {
       if (ops.length !== 1) {
         throw new Error(`expecting exactly one proof op, found ${ops.length}`);
       }
-      if (ops[0].type !== "cw_jmt::Proof") {
+      if (ops[0].type !== "grug_jmt::Proof") {
         throw new Error(`unknown proof type: ${ops[0].type}`);
       }
       if (!arraysIdentical(ops[0].key, key)) {

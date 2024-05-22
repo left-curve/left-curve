@@ -1,6 +1,6 @@
 use {
     crate::{Addr, Api, Order, Record, StdError, StdResult, Storage},
-    cw_crypto::{secp256k1_verify, secp256r1_verify},
+    grug_crypto::{secp256k1_verify, secp256r1_verify},
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 

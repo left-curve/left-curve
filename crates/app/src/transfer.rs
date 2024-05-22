@@ -3,7 +3,7 @@ use {
         create_vm_instance, handle_submessages, load_program, new_receive_event,
         new_transfer_event, AppError, AppResult, Vm, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    cw_types::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
+    grug_types::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
     tracing::{info, warn},
 };
 

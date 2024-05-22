@@ -1,7 +1,7 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    cw_app::{PrefixStore, QueryProvider, Vm},
-    cw_types::{from_json_slice, to_json_vec, Context, MockApi},
+    grug_app::{PrefixStore, QueryProvider, Vm},
+    grug_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
 macro_rules! get_contract {

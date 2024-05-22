@@ -1,5 +1,5 @@
 use {
-    cw_types::{increment_last_byte, Batch, Order, Record, Storage},
+    grug_types::{increment_last_byte, Batch, Order, Record, Storage},
     std::{
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
@@ -176,7 +176,7 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_types::MockStorage};
+    use {super::*, grug_types::MockStorage};
 
     fn mock_records(min: u32, max: u32, order: Order) -> Vec<Record> {
         let mut records = vec![];

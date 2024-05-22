@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow, clap::Parser, cw_app::App, cw_db_disk::DiskDb, cw_vm_wasm::WasmVm,
+    anyhow::anyhow, clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm,
     home::home_dir, std::path::PathBuf, tracing::metadata::LevelFilter,
 };
 

@@ -1,4 +1,4 @@
-use cw_types::{concat, increment_last_byte, Order, Record, Storage};
+use grug_types::{concat, increment_last_byte, Order, Record, Storage};
 
 #[derive(Clone)]
 pub struct PrefixStore {

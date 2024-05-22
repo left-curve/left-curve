@@ -1,4 +1,4 @@
-use {cw_app::AppError, cw_types::StdError, thiserror::Error};
+use {grug_app::AppError, grug_types::StdError, thiserror::Error};
 
 #[derive(Debug, Error)]
 pub enum VmError {

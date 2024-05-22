@@ -5,7 +5,7 @@ import { type Message, decodeHex, encodeBigEndian32, encodeHex, encodeUtf8, seri
  * Given parameters used while instantiating a new contract, compute what the
  * contract address would be.
  *
- * Mirrors that Rust function: `cw_std::Addr::compute`.
+ * Mirrors that Rust function: `grug::Addr::compute`.
  *
  * @param deployer Address of the deployer, that it, the account that sends the
  * `Message::Instantiate`.
@@ -26,7 +26,7 @@ export function createAddress(deployer: string, codeHash: Uint8Array, salt: Uint
  * Derive the salt that is used by the standard account factory contract to
  * register accounts.
  *
- * Mirrors the Rust function: `cw_account_factory::make_salt`.
+ * Mirrors the Rust function: `grug_account_factory::make_salt`.
  *
  * @param publicKeyType A string identifying the type of public key. Can either
  * be `secp256k1` or `secp256r1`.
@@ -48,9 +48,9 @@ export function createSalt(
 }
 
 /**
- * Generate sign byte that the cw-account contract expects.
+ * Generate sign byte that the grug-account contract expects.
  *
- * Mirrors the Rust function: `cw_account::sign_bytes`.
+ * Mirrors the Rust function: `grug_account::sign_bytes`.
  */
 export function createSignBytes(
   msgs: Message[],

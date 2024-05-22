@@ -4,11 +4,11 @@
 //! Using boxes is a temporary workaround.
 
 use {
-    cw_types::{
+    grug_types::{
         Api, BankQueryMsg, BankQueryResponse, Context, Empty, GenericResult, Json, Querier,
         Response, StdError, Storage, SubMsgResult, TransferMsg, Tx,
     },
-    cw_wasm::{AuthCtx, ImmutableCtx, MutableCtx, SudoCtx},
+    grug_wasm::{AuthCtx, ImmutableCtx, MutableCtx, SudoCtx},
 };
 
 pub trait Contract {

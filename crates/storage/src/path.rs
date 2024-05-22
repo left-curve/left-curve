@@ -1,7 +1,7 @@
 use {
     crate::RawKey,
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{
+    grug_types::{
         from_borsh_slice, nested_namespaces_with_key, to_borsh_vec, StdError, StdResult, Storage,
     },
     std::marker::PhantomData,

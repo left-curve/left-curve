@@ -1,6 +1,6 @@
 use {
     crate::{process_query, AppError, Vm},
-    cw_types::{BlockInfo, Querier, QueryRequest, QueryResponse, StdError, StdResult, Storage},
+    grug_types::{BlockInfo, Querier, QueryRequest, QueryResponse, StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
 

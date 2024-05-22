@@ -1,7 +1,7 @@
 use {
     crate::PendingData,
-    cw_app::AppError,
-    cw_types::StdError,
+    grug_app::AppError,
+    grug_types::StdError,
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
     thiserror::Error,
 };

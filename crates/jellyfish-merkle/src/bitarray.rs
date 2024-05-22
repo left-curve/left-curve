@@ -1,6 +1,6 @@
 use {
-    cw_storage::{MapKey, RawKey},
-    cw_types::{split_one_key, Hash, Order, StdResult},
+    grug_storage::{MapKey, RawKey},
+    grug_types::{split_one_key, Hash, Order, StdResult},
     std::fmt,
 };
 

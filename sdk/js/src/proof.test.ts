@@ -2,7 +2,7 @@ import { sha256 } from "@cosmjs/crypto";
 import { describe, expect, test } from "vitest";
 import { decodeHex, encodeUtf8, verifyMembershipProof, verifyNonMembershipProof } from ".";
 
-// we use the same test case as in the cw-jmt crate
+// we use the same test case as in the JMT crate
 const rootHash = decodeHex("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b");
 
 describe("verifying membership proofs", () => {

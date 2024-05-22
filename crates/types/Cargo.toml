@@ -1,5 +1,5 @@
 [package]
-name          = "cw-types"
+name          = "grug-types"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -12,8 +12,8 @@ categories    = { workspace = true }
 [dependencies]
 bnum          = { workspace = true }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-crypto     = { path = "../crypto" }
 data-encoding = { workspace = true }
+grug-crypto   = { path = "../crypto" }
 hex           = { workspace = true }
 hex-literal   = { workspace = true }
 dyn-clone     = { workspace = true }

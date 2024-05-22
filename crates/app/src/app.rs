@@ -7,7 +7,7 @@ use {
         AppError, AppResult, CacheStore, Db, SharedStore, Vm, CHAIN_ID, CONFIG,
         LAST_FINALIZED_BLOCK,
     },
-    cw_types::{
+    grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
         Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },

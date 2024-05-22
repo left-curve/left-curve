@@ -1,4 +1,4 @@
-use cw_std::Addr;
+use grug::Addr;
 
 pub enum AdminOption {
     SetToAddr(Addr),

@@ -1,5 +1,5 @@
 [package]
-name          = "cw-jmt"
+name          = "grug-jmt"
 description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
 version       = { workspace = true }
 authors       = { workspace = true }
@@ -16,13 +16,13 @@ default = []
 fuzzing = []
 
 [dependencies]
-borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-storage = { path = "../storage" }
-cw-types   = { path = "../types" }
-serde      = { workspace = true, features = ["derive"] }
-sha2       = { workspace = true }
-thiserror  = { workspace = true }
-tracing    = { workspace = true }
+borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-storage = { path = "../storage" }
+grug-types   = { path = "../types" }
+serde        = { workspace = true, features = ["derive"] }
+sha2         = { workspace = true }
+thiserror    = { workspace = true }
+tracing      = { workspace = true }
 
 [dev-dependencies]
 anyhow       = { workspace = true }

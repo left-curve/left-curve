@@ -3,8 +3,8 @@ use {
         create_vm_instance, load_program, AppError, AppResult, PrefixStore, Vm, ACCOUNTS, CHAIN_ID,
         CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
-    cw_storage::Bound,
-    cw_types::{
+    grug_storage::Bound,
+    grug_types::{
         AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
         Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
         WasmSmartResponse,

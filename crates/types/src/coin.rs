@@ -64,7 +64,7 @@ pub struct Coins(BTreeMap<String, Uint128>);
 impl Coins {
     // There are two ways to stringify a Coins:
     //
-    // 1. Use `cw_std::{to_json,from_json}`
+    // 1. Use `grug::{to_json,from_json}`
     //    This is used in contract messages and responses.
     //    > [{"denom":"uatom","amount":"12345"},{"denom":"uosmo","amount":"67890"}]
     //

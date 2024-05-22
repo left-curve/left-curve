@@ -6,7 +6,7 @@ use {
 };
 
 #[proc_macro_attribute]
-pub fn cw_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn grug_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(attr as AttributeArgs);
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -29,41 +29,41 @@ pub fn cw_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
     let derives = match (derive_serde, derive_borsh) {
         (false, true) => quote! {
             #[derive(
-                ::cw_std::__private::borsh::BorshSerialize,
-                ::cw_std::__private::borsh::BorshDeserialize,
+                ::grug::__private::borsh::BorshSerialize,
+                ::grug::__private::borsh::BorshDeserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[borsh(crate = "::cw_std::__private::borsh")]
+            #[borsh(crate = "::grug::__private::borsh")]
         },
         (true, false) => quote! {
-            #[::cw_std::__private::serde_with::skip_serializing_none]
+            #[::grug::__private::serde_with::skip_serializing_none]
             #[derive(
-                ::cw_std::__private::serde::Serialize,
-                ::cw_std::__private::serde::Deserialize,
+                ::grug::__private::serde::Serialize,
+                ::grug::__private::serde::Deserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::cw_std::__private::serde")]
+            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::grug::__private::serde")]
         },
         (true, true) => quote! {
-            #[::cw_std::__private::serde_with::skip_serializing_none]
+            #[::grug::__private::serde_with::skip_serializing_none]
             #[derive(
-                ::cw_std::__private::serde::Serialize,
-                ::cw_std::__private::serde::Deserialize,
-                ::cw_std::__private::borsh::BorshSerialize,
-                ::cw_std::__private::borsh::BorshDeserialize,
+                ::grug::__private::serde::Serialize,
+                ::grug::__private::serde::Deserialize,
+                ::grug::__private::borsh::BorshSerialize,
+                ::grug::__private::borsh::BorshDeserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::cw_std::__private::serde")]
-            #[borsh(crate = "::cw_std::__private::borsh")]
+            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::grug::__private::serde")]
+            #[borsh(crate = "::grug::__private::borsh")]
         },
         _ => {
             panic!("unsupported attribute combination: expecting either `serde`, `borsh`, or both");
@@ -101,7 +101,7 @@ pub fn entry_point(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
         mod __wasm_export_{name} {{
             #[no_mangle]
             extern "C" fn {name}({typed_ptrs}) -> usize {{
-                cw_std::do_{name}(&super::{name}, {ptrs})
+                grug::do_{name}(&super::{name}, {ptrs})
             }}
         }}
     "##);

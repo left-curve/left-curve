@@ -1,5 +1,5 @@
 [package]
-name          = "cw-wasm"
+name          = "grug-wasm"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,8 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh    = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-types = { path = "../types" }
-serde    = { workspace = true }
+borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-types = { path = "../types" }
+serde      = { workspace = true }
 
 [dev-dependencies]

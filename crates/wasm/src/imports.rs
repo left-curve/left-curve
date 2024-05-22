@@ -1,6 +1,6 @@
 use {
     crate::Region,
-    cw_types::{
+    grug_types::{
         from_json_slice, to_json_vec, Addr, Api, GenericResult, Order, Querier, QueryRequest,
         QueryResponse, Record, StdError, StdResult, Storage,
     },

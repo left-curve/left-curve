@@ -1,5 +1,5 @@
 use {
-    cw_types::{Batch, Op, Order, Record, Storage},
+    grug_types::{Batch, Op, Order, Record, Storage},
     std::{cmp::Ordering, iter, iter::Peekable, mem, ops::Bound},
 };
 
@@ -159,7 +159,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, cw_types::MockStorage};
+    use {super::*, grug_types::MockStorage};
 
     // illustration of this test case:
     //

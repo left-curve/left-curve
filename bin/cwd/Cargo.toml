@@ -12,9 +12,9 @@ categories    = { workspace = true }
 [dependencies]
 anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
-cw-app             = { path = "../../crates/app" }
-cw-db-disk         = { path = "../../crates/db/disk" }
-cw-vm-wasm         = { path = "../../crates/vm/wasm" }
+grug-app           = { path = "../../crates/app" }
+grug-db-disk       = { path = "../../crates/db/disk" }
+grug-vm-wasm       = { path = "../../crates/vm/wasm" }
 home               = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

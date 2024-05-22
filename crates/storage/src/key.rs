@@ -1,5 +1,5 @@
 use {
-    cw_types::{nested_namespaces_with_key, split_one_key, Addr, Hash, StdError, StdResult},
+    grug_types::{nested_namespaces_with_key, split_one_key, Addr, Hash, StdError, StdResult},
     std::mem,
 };
 

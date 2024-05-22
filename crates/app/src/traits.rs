@@ -1,7 +1,7 @@
 use {
     crate::{PrefixStore, QueryProvider},
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{
+    grug_types::{
         from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Batch, Context,
         GenericResult, Hash, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
         Storage, SubMsgResult, TransferMsg, Tx,
@@ -23,7 +23,7 @@ use {
 /// instance of the storage object (see the required `'static` lifetime). This
 /// is required by the Wasm runtime. Additionally, storage object should be
 /// _read only_. The host should write changes to an in-memory caching layer
-/// (e.g. using `cw_db::CacheStore`) and then use the `flush` and `commit`
+/// (e.g. using `grug_db::CacheStore`) and then use the `flush` and `commit`
 /// methods to persist them.
 ///
 /// The two mutable methods `flush` and `commit` take an immutable reference

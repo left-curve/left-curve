@@ -1,6 +1,6 @@
 use {
-    cw_rs::{AdminOption, Client, SigningKey, SigningOptions},
-    cw_std::{Addr, Coin, Coins, Uint128},
+    grug_rs::{AdminOption, Client, SigningKey, SigningOptions},
+    grug::{Addr, Coin, Coins, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
     std::{env, fs, path::PathBuf, str::FromStr, thread, time::Duration},
@@ -38,10 +38,10 @@ async fn main() -> anyhow::Result<()> {
     let client = Client::connect("http://127.0.0.1:26657")?;
 
     // store and instantiate token wrapper contract
-    let wrapper_wasm = fs::read(ARTIFACT_DIR.join("cw_mock_token_wrapper-aarch64.wasm"))?;
+    let wrapper_wasm = fs::read(ARTIFACT_DIR.join("grug_mock_token_wrapper-aarch64.wasm"))?;
     let (wrapper, tx1) = client.upload_and_instantiate(
         wrapper_wasm.into(),
-        &cw_mock_token_wrapper::InstantiateMsg {
+        &grug_mock_token_wrapper::InstantiateMsg {
             bank: BANK.clone(),
         },
         b"wrapper".to_vec().into(),

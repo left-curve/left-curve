@@ -1,7 +1,7 @@
 use {
     crate::{hash_internal_node, hash_leaf_node, BitArray},
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{Hash, Order},
+    grug_types::{Hash, Order},
     serde::{Deserialize, Serialize},
     thiserror::Error,
 };
@@ -173,7 +173,7 @@ fn compute_and_compare_root_hash(
 mod tests {
     use {
         super::*,
-        cw_types::{hash, Hash},
+        grug_types::{hash, Hash},
         hex_literal::hex,
         test_case::test_case,
     };

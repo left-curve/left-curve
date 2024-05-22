@@ -1,6 +1,6 @@
-# @cwsoftware/cw.js
+# grug
 
-The JavaScript SDK for [Cosmos Wasm Daemon](https://github.com/cwsoftware123/cwd) (CWD).
+The JavaScript SDK for [Grug](https://github.com/left-curve/grug).
 
 ## License
 

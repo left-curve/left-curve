@@ -4,7 +4,7 @@ use {
         new_client_misbehavior_event, new_create_client_event, new_update_client_event, AppError,
         AppResult, Vm, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    cw_types::{
+    grug_types::{
         Account, Addr, Binary, BlockInfo, Context, Event, Hash, IbcClientUpdateMsg, Json, Storage,
     },
     tracing::{info, warn},

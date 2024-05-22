@@ -1,7 +1,7 @@
 use {
     crate::{Bound, MapKey, RawBound, RawKey},
     borsh::BorshDeserialize,
-    cw_types::{
+    grug_types::{
         concat, extend_one_byte, from_borsh_slice, increment_last_byte, nested_namespaces_with_key,
         trim, Order, StdResult, Storage,
     },

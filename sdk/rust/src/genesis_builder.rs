@@ -1,9 +1,9 @@
 use {
     crate::AdminOption,
     anyhow::{anyhow, ensure},
-    cw_account::PublicKey,
-    cw_account_factory::make_salt,
-    cw_std::{hash, to_borsh_vec, to_json_value, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
+    grug_account::PublicKey,
+    grug_account_factory::make_salt,
+    grug::{hash, to_borsh_vec, to_json_value, Addr, Binary, Coins, Config, GenesisState, Hash, Message, GENESIS_SENDER},
     home::home_dir,
     lazy_static::lazy_static,
     serde::ser::Serialize,
@@ -107,7 +107,7 @@ impl GenesisBuilder {
         let salt = make_salt(&public_key, serial);
         let address = Addr::compute(&factory, &code_hash, &salt);
 
-        self.execute(factory, cw_account_factory::ExecuteMsg::RegisterAccount {
+        self.execute(factory, grug_account_factory::ExecuteMsg::RegisterAccount {
             code_hash,
             public_key: public_key.clone(),
         })?;

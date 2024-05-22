@@ -1,5 +1,5 @@
 [package]
-name          = "cw-vm-rust"
+name          = "grug-vm-rust"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,13 +10,13 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
-cw-app    = { path = "../../app" }
-cw-crypto = { path = "../../crypto" }
-cw-types  = { path = "../../types" }
-cw-wasm   = { path = "../../wasm" }
-elsa      = { workspace = true }
-serde     = { workspace = true }
-thiserror = { workspace = true }
+borsh       = { workspace = true, features = ["derive", "de_strict_order"] }
+elsa        = { workspace = true }
+grug-app    = { path = "../../app" }
+grug-crypto = { path = "../../crypto" }
+grug-types  = { path = "../../types" }
+grug-wasm   = { path = "../../wasm" }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
 
 [dev-dependencies]

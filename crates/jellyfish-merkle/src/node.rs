@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::Hash,
+    grug_types::Hash,
     sha2::{Digest, Sha256},
 };
 

@@ -1,5 +1,5 @@
 use {
-    cw_types::Op,
+    grug_types::Op,
     std::{
         borrow::Borrow,
         collections::BTreeMap,

@@ -1,7 +1,7 @@
 use {
     crate::prompt::print_json_pretty,
     clap::Parser,
-    cw_rs::Client,
+    grug_rs::Client,
 };
 
 #[derive(Parser)]

@@ -1,5 +1,5 @@
 [package]
-name          = "cw-vm-wasm"
+name          = "grug-vm-wasm"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,10 +10,10 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-app        = { path = "../../app" }
-cw-crypto     = { path = "../../crypto" }
-cw-types      = { path = "../../types" }
 data-encoding = { workspace = true }
+grug-app      = { path = "../../app" }
+grug-crypto   = { path = "../../crypto" }
+grug-types    = { path = "../../types" }
 serde         = { workspace = true }
 thiserror     = { workspace = true }
 tracing       = { workspace = true }

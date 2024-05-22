@@ -1,7 +1,7 @@
 use {
-    cw_account::PublicKey,
-    cw_rs::{AdminOption, GenesisBuilder, SigningKey},
-    cw_std::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
+    grug_account::PublicKey,
+    grug_rs::{AdminOption, GenesisBuilder, SigningKey},
+    grug::{Coin, Coins, Config, Empty, Permission, Permissions, Uint128},
     home::home_dir,
     lazy_static::lazy_static,
     std::{collections::BTreeMap, env, path::PathBuf},
@@ -28,12 +28,12 @@ fn main() -> anyhow::Result<()> {
     let mut builder = GenesisBuilder::new();
 
     // upload account wasm code
-    let account_code_hash = builder.upload(ARTIFACT_DIR.join("cw_account-aarch64.wasm"))?;
+    let account_code_hash = builder.upload(ARTIFACT_DIR.join("grug_account-aarch64.wasm"))?;
 
     // store and instantiate the account factory contract
     let account_factory = builder.upload_and_instantiate(
-        ARTIFACT_DIR.join("cw_account_factory-aarch64.wasm"),
-        cw_account_factory::InstantiateMsg {},
+        ARTIFACT_DIR.join("grug_account_factory-aarch64.wasm"),
+        grug_account_factory::InstantiateMsg {},
         b"account-factory".to_vec().into(),
         AdminOption::SetToNone,
     )?;
@@ -68,8 +68,8 @@ fn main() -> anyhow::Result<()> {
         },
     ]);
     let bank = builder.upload_and_instantiate(
-        ARTIFACT_DIR.join("cw_bank-aarch64.wasm"),
-        cw_bank::InstantiateMsg {
+        ARTIFACT_DIR.join("grug_bank-aarch64.wasm"),
+        grug_bank::InstantiateMsg {
             initial_balances: BTreeMap::from([
                 (account1.clone(), coins.clone()),
                 (account2.clone(), coins.clone()),
@@ -82,14 +82,14 @@ fn main() -> anyhow::Result<()> {
 
     // store and instantiate mock cron contract
     let cron = builder.upload_and_instantiate(
-        ARTIFACT_DIR.join("cw_mock_cron-aarch64.wasm"),
+        ARTIFACT_DIR.join("grug_mock_cron-aarch64.wasm"),
         Empty {},
         b"cron".to_vec().into(),
         AdminOption::SetToNone,
     )?;
 
     // upload the solo machine code
-    let solomachine_hash = builder.upload(ARTIFACT_DIR.join("cw_ibc_solomachine-aarch64.wasm"))?;
+    let solomachine_hash = builder.upload(ARTIFACT_DIR.join("grug_ibc_solomachine-aarch64.wasm"))?;
 
     // set config
     let permissions = Permissions {

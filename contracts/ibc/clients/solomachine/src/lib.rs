@@ -37,11 +37,11 @@
 //! please let us know.
 
 #[cfg(not(feature = "library"))]
-use cw_std::entry_point;
+use grug::entry_point;
 use {
     anyhow::{bail, ensure},
-    cw_std::{
-        cw_derive, from_json_value, hash, to_borsh_vec, to_json_value, Api, Binary, IbcClientStatus,
+    grug::{
+        grug_derive, from_json_value, hash, to_borsh_vec, to_json_value, Api, Binary, IbcClientStatus,
         IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx, Json,
     },
 };
@@ -49,7 +49,7 @@ use {
 pub const CLIENT_STATE: Item<ClientState> = Item::new("client_state");
 pub const CONSENSUS_STATE: Item<ConsensusState> = Item::new("consensus_state");
 
-#[cw_derive(serde, borsh)]
+#[grug_derive(serde, borsh)]
 pub struct ConsensusState {
     /// Secp256k1 public key for this solo machine.
     pub public_key: Binary,
@@ -63,14 +63,14 @@ pub struct ConsensusState {
     pub record: Option<Record>,
 }
 
-#[cw_derive(serde, borsh)]
+#[grug_derive(serde, borsh)]
 pub struct ClientState {
     /// Client status is set to `Frozen` on misbehavior, otherwise `Active`.
     /// The solo machine client never expires.
     pub status: IbcClientStatus,
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct Header {
     /// The key holder must sign the SHA-256 hash of the Borsh encoding of `SignBytes`.
     pub signature: Binary,
@@ -80,28 +80,28 @@ pub struct Header {
 
 /// A solo machine has committed a misbehavior if the key signs two different
 /// headers at the same sequence.
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct Misbehavior {
     pub sequence: u64,
     pub header_one: Header,
     pub header_two: Header,
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub enum QueryMsg {
     /// Query the client and consensus states.
     /// Returns: StateResponse
     State {},
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct StateResponse {
     pub client_state: ClientState,
     pub consensus_state: ConsensusState,
 }
 
 /// A key-value pair.
-#[cw_derive(serde, borsh)]
+#[grug_derive(serde, borsh)]
 pub struct Record {
     pub key: Binary,
     pub value: Binary,
@@ -109,7 +109,7 @@ pub struct Record {
 
 /// In order to update the client, the public key must sign the Borsh encoding
 /// of this struct.
-#[cw_derive(borsh)]
+#[grug_derive(borsh)]
 pub struct SignBytes {
     pub sequence: u64,
     pub record: Option<Record>,

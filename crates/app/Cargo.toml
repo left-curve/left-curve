@@ -1,5 +1,5 @@
 [package]
-name          = "cw-app"
+name          = "grug-app"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -11,9 +11,9 @@ categories    = { workspace = true }
 
 [dependencies]
 borsh            = { workspace = true, features = ["de_strict_order"] }
-cw-storage       = { path = "../storage" }
-cw-types         = { path = "../types" }
 dyn-clone        = { workspace = true }
+grug-storage     = { path = "../storage" }
+grug-types       = { path = "../types" }
 hex              = { workspace = true }
 prost            = { workspace = true }
 serde            = { workspace = true }

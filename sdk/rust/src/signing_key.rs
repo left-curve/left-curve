@@ -1,8 +1,8 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
-    cw_crypto::Identity256,
-    cw_std::{Addr, Binary, Message, Tx},
+    grug_crypto::Identity256,
+    grug::{Addr, Binary, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -105,7 +105,7 @@ impl SigningKey {
         chain_id: &str,
         sequence: u32,
     ) -> anyhow::Result<Tx> {
-        let sign_bytes = cw_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
+        let sign_bytes = grug_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
         let signature = self.sign_digest(&sign_bytes);
         Ok(Tx {
             sender,

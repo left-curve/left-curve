@@ -1,5 +1,5 @@
 [package]
-name          = "cw-db-memory"
+name          = "grug-db-memory"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,9 +10,9 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-app    = { path = "../../app" }
-cw-jmt    = { path = "../../jellyfish-merkle" }
-cw-types  = { path = "../../types" }
-thiserror = { workspace = true }
+grug-app   = { path = "../../app" }
+grug-jmt   = { path = "../../jellyfish-merkle" }
+grug-types = { path = "../../types" }
+thiserror  = { workspace = true }
 
 [dev-dependencies]

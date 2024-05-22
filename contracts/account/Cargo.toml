@@ -1,5 +1,5 @@
 [package]
-name          = "cw-account"
+name          = "grug-account"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -19,5 +19,5 @@ library = []
 
 [dependencies]
 anyhow = { workspace = true }
-cw-std = { path = "../../crates/std" }
+grug   = { path = "../../crates/std" }
 sha2   = { workspace = true }

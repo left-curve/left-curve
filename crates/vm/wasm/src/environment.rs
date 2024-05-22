@@ -1,6 +1,6 @@
 use {
     crate::{VmError, VmResult, WasmVm},
-    cw_app::{PrefixStore, QueryProvider},
+    grug_app::{PrefixStore, QueryProvider},
     std::{
         borrow::{Borrow, BorrowMut},
         ptr::NonNull,

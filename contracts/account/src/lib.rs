@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
-use cw_std::entry_point;
+use grug::entry_point;
 use {
     anyhow::bail,
-    cw_std::{
-        cw_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary, ImmutableCtx,
+    grug::{
+        grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary, ImmutableCtx,
         Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
@@ -12,12 +12,12 @@ use {
 const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
 const SEQUENCE: Item<u32> = Item::new("seq");
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct InstantiateMsg {
     pub public_key: PublicKey,
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub enum ExecuteMsg {
     // not execute method is available with this contract.
     //
@@ -31,20 +31,20 @@ pub enum ExecuteMsg {
     // rotation.
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub enum QueryMsg {
     /// Query the state of the account, including its public key and sequence.
     /// Returns: StateResponse
     State {},
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct StateResponse {
     pub public_key: PublicKey,
     pub sequence: u32,
 }
 
-#[cw_derive(serde, borsh)]
+#[grug_derive(serde, borsh)]
 #[derive(Hash)]
 pub enum PublicKey {
     Secp256k1(Binary),

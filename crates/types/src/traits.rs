@@ -52,7 +52,7 @@ pub trait Storage: DynClone {
 }
 
 // a boxed storage is also a storage.
-// this is necessary for use in `cw_app::execute::handle_submessage` (see the
+// this is necessary for use in `grug_app::execute::handle_submessage` (see the
 // comment there for an explanation)
 impl Storage for Box<dyn Storage> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {

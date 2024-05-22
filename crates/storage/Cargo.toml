@@ -1,5 +1,5 @@
 [package]
-name          = "cw-storage"
+name          = "grug-storage"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,7 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh    = { workspace = true }
-cw-types = { path = "../types" }
+borsh      = { workspace = true }
+grug-types = { path = "../types" }
 
 [dev-dependencies]

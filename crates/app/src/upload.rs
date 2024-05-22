@@ -1,6 +1,6 @@
 use {
     crate::{has_permission, new_upload_event, AppError, AppResult, CODES, CONFIG},
-    cw_types::{hash, Addr, Event, Hash, Storage},
+    grug_types::{hash, Addr, Event, Hash, Storage},
     tracing::{info, warn},
 };
 

@@ -1,7 +1,7 @@
 use {
     crate::{Bound, MapKey, PathBuf, Prefix},
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{Order, StdError, StdResult, Storage},
+    grug_types::{Order, StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
 

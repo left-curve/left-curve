@@ -1,11 +1,11 @@
 use {
     crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
     borsh::{BorshDeserialize, BorshSerialize},
-    cw_types::{
+    grug_types::{
         from_json_value, Api, Context, GenericResult, Json, Querier, Response, Storage,
         SubMsgResult,
     },
-    cw_wasm::{
+    grug_wasm::{
         make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
         unwrap_into_generic_result, ImmutableCtx, MutableCtx, SudoCtx,
     },

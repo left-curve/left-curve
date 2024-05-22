@@ -3,7 +3,7 @@ use {
         create_vm_instance, load_program, new_reply_event, process_msg, AppError, AppResult,
         CacheStore, SharedStore, Vm, ACCOUNTS, CHAIN_ID,
     },
-    cw_types::{
+    grug_types::{
         Addr, BlockInfo, Context, Event, GenericResult, Json, ReplyOn, Storage, SubMessage,
         SubMsgResult,
     },

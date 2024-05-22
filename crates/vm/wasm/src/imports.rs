@@ -1,6 +1,6 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, VmResult},
-    cw_types::{from_json_slice, to_json_vec, Addr, QueryRequest, Record},
+    grug_types::{from_json_slice, to_json_vec, Addr, QueryRequest, Record},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -120,7 +120,7 @@ pub fn secp256k1_verify(
     let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
     let pk = read_from_memory(env, &wasm_store, pk_ptr)?;
 
-    match cw_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
+    match grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
         Err(_) => Ok(1),
     }
@@ -138,7 +138,7 @@ pub fn secp256r1_verify(
     let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
     let pk = read_from_memory(env, &wasm_store, pk_ptr)?;
 
-    match cw_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
+    match grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
         Err(_) => Ok(1),
     }

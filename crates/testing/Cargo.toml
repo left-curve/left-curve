@@ -1,5 +1,5 @@
 [package]
-name          = "cw-testing"
+name          = "grug-testing"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,10 +10,10 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-cw-app       = { path = "../app" }
-cw-db-memory = { path = "../db/memory" }
-cw-types     = { path = "../types" }
-cw-vm-rust   = { path = "../vm/rust" }
+grug-app       = { path = "../app" }
+grug-db-memory = { path = "../db/memory" }
+grug-types     = { path = "../types" }
+grug-vm-rust   = { path = "../vm/rust" }
 
 [dev-dependencies]
-cw-wasm = { path = "../wasm" }
+grug-wasm = { path = "../wasm" }

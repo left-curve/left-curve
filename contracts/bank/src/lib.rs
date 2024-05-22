@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
-use cw_std::entry_point;
+use grug::entry_point;
 use {
     anyhow::bail,
-    cw_std::{
-        cw_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
+    grug::{
+        grug_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
         MutableCtx, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
@@ -18,12 +18,12 @@ const SUPPLIES: Map<&str, Uint128> = Map::new("s");
 // how many items to return in a paginated query by default
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub struct InstantiateMsg {
     pub initial_balances: BTreeMap<Addr, Coins>,
 }
 
-#[cw_derive(serde)]
+#[grug_derive(serde)]
 pub enum ExecuteMsg {
     Mint {
         to:     Addr,

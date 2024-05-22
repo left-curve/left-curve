@@ -1,6 +1,6 @@
 use {
     crate::{Bound, MapKey, PathBuf, Prefix},
-    cw_types::{Empty, Order, StdResult, Storage},
+    grug_types::{Empty, Order, StdResult, Storage},
     std::marker::PhantomData,
 };
 

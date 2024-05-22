@@ -1,6 +1,6 @@
 use {
-    cw_storage::{Item, Map},
-    cw_types::{Account, Addr, BlockInfo, Config, Hash},
+    grug_storage::{Item, Map},
+    grug_types::{Account, Addr, BlockInfo, Config, Hash},
 };
 
 /// A string that identifies the chain

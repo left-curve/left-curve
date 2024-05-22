@@ -1,10 +1,10 @@
 use {
-    cw_ibc_solomachine::{
+    grug_ibc_solomachine::{
         ClientState, ConsensusState, Header, Misbehavior, QueryMsg, Record, SignBytes,
         StateResponse,
     },
-    cw_rs::{Client, SigningKey, SigningOptions},
-    cw_std::{hash, to_borsh_vec, Addr, Hash, IbcClientStatus, StdResult},
+    grug_rs::{Client, SigningKey, SigningOptions},
+    grug::{hash, to_borsh_vec, Addr, Hash, IbcClientStatus, StdResult},
     hex_literal::hex,
     home::home_dir,
     lazy_static::lazy_static,
@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
         sequence:    None,
     };
 
-    // create cw-rs client
+    // create client
     let client = Client::connect("http://127.0.0.1:26657")?;
 
     // ----------------------------- create client -----------------------------

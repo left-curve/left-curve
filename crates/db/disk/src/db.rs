@@ -1,8 +1,8 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    cw_app::{CacheStore, Db},
-    cw_jmt::{MerkleTree, Proof},
-    cw_types::{hash, Batch, Hash, Op, Order, Record, Storage},
+    grug_app::{CacheStore, Db},
+    grug_jmt::{MerkleTree, Proof},
+    grug_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -396,8 +396,8 @@ mod tests {
     use {
         super::*,
         crate::TempDataDir,
-        cw_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
-        cw_types::Hash,
+        grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
+        grug_types::Hash,
         hex_literal::hex,
     };
 
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn base_store_works() {
-        let path = TempDataDir::new("_cw_db_base_store_works");
+        let path = TempDataDir::new("_grug_db_base_store_works");
         let store = DiskDb::open(&path).unwrap();
 
         // write a batch. the very first batch have version 0

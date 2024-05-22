@@ -1,6 +1,6 @@
 use {
-    cw_app::AppError,
-    cw_types::StdError,
+    grug_app::AppError,
+    grug_types::StdError,
     std::string::FromUtf8Error,
     thiserror::Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},

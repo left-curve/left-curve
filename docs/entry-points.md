@@ -1,12 +1,12 @@
 # Entry points
 
-Each CWD smart contract presents several predefined Wasm export functions known as **entry points**. The state machine (also referred to as the **host**) executes or makes queries at contracts by calling these functions. Some of the entry points are mandatory, while the others are optional. The CWD standard library provides an `#[entry_point]` macro which helps defining entry points.
+Each Grug smart contract presents several predefined Wasm export functions known as **entry points**. The state machine (also referred to as the **host**) executes or makes queries at contracts by calling these functions. Some of the entry points are mandatory, while the others are optional. The Grug standard library provides an `#[entry_point]` macro which helps defining entry points.
 
 This page lists all supported entry points, in _Rust pseudo-code_.
 
 ## Memory
 
-These two are automatically implemented by the cw-std library. They are used by the host to load data into the Wasm memory. The contract programmer should not try modifying them.
+These two are auto-implemented. They are used by the host to load data into the Wasm memory. The contract programmer should not try modifying them.
 
 ```rust
 #[no_mangle]

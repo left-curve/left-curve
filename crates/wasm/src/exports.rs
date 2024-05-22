@@ -4,7 +4,7 @@ use {
         unwrap_into_generic_result, AuthCtx, ExternalApi, ExternalQuerier, ExternalStorage,
         ImmutableCtx, MutableCtx, Region, SudoCtx,
     },
-    cw_types::{
+    grug_types::{
         from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
         GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, SubMsgResult,
         TransferMsg, Tx,

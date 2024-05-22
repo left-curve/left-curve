@@ -1,7 +1,7 @@
 {
-  "name": "@cwsoftware/cw.js",
+  "name": "grug",
   "version": "0.0.0",
-  "description": "The JavaScript SDK for Cosmos Wasm Daemon",
+  "description": "The JavaScript SDK for Grug",
   "author": "Larry Lyu <gm@larry.engineer>",
   "license": "UNLICENSED",
   "type": "module",
@@ -28,7 +28,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cwsoftware123/cwd.git",
+    "url": "https://github.com/left-curve/grug.git",
     "directory": "sdk/js"
   },
   "scripts": {

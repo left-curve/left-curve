@@ -8,7 +8,7 @@ use {
     crate::{key::KeyCmd, query::QueryCmd, tendermint::TendermintCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
-    cw_std::Addr,
+    grug::Addr,
     home::home_dir,
     std::path::PathBuf,
 };
