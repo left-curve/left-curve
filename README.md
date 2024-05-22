@@ -1,10 +1,14 @@
-# Cosmos Wasm Daemon
+<div align="center">
+  <img src="https://left-curve.github.io/homepage/grug.jpg" alt="grug" width="200">
+</div>
+
+# Grug
 
 An execution environment for blockchains.
 
 ## Crates
 
-The CWD project consists of the following Rust crates:
+Grug consists of the following Rust crates:
 
 | crate                                         | description                                                                |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
@@ -20,11 +24,11 @@ The CWD project consists of the following Rust crates:
 | [vm/wasm](./crates/vm/wasm)                   | a VM that runs Wasm byte codes                                             |
 | [wasm](./crates/wasm)                         | an ergonomic API for building Wasm modules                                 |
 
-Additionally, there are [cw-testing](./crates/testing) which provides testing utilities, and [cw-std](./crates/std), a "meta package", which re-exports contents from the above crates, for the convenience of contract developers.
+Additionally, there are [grug-testing](./crates/testing) which provides testing utilities, and [grug-std](./crates/std), a "meta package", which re-exports contents from the above crates, for the convenience of contract developers.
 
 ### Modularity
 
-At the heart of the project is the `cw_app::App` type. Fundamentally, a blockchain is a state machine that consists of 1) the state, typically represented by a key-value database, and 2) the state transition rule, which typically involves a virtual machine that runs smart contracts. Therefore, our `App` takes two generics, representing the DB and the VM, respectively:
+At the heart of the project is the `grug_app::App` type. Fundamentally, a blockchain is a state machine that consists of 1) the state, typically represented by a key-value database, and 2) the state transition rule, which typically involves a virtual machine that runs smart contracts. Therefore, our `App` takes two generics, representing the DB and the VM, respectively:
 
 ```rust
 struct App<DB, VM> {
@@ -33,7 +37,7 @@ struct App<DB, VM> {
 }
 ```
 
-Here, `DB` must implement the `cw_types::Db` trait, while `VM` must implement the `cw_types::Vm` trait.
+Here, `DB` must implement the `grug_types::Db` trait, while `VM` must implement the `grug_types::Vm` trait.
 
 We will ship two `Db` and two `Vm` implementations, for different use cases:
 
@@ -56,7 +60,7 @@ Prerequisites:
 - [Just][just]
 - [Docker][docker]
 
-Install the **cwd** and **cwcli** command line software:
+Install the **grug** command line software:
 
 ```shell
 just install
