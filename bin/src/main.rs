@@ -9,7 +9,7 @@ use {
     crate::{key::KeyCmd, query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
-    grug::Addr,
+    grug_types::Addr,
     home::home_dir,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
@@ -72,7 +72,6 @@ enum Command {
     Query(QueryCmd),
 
     /// Start the node
-    #[command(subcommand, next_display_order = None)]
     Start(StartCmd),
 
     /// Interact with Tendermint consensus engine [alias: tm]
@@ -105,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Start(cmd) => cmd.run(&cli.node, data_dir).await,
         Command::Tendermint(cmd) => cmd.run(&cli.node).await,
         Command::Tx(cmd) => {
-            cmd.run(&cli.node, keys_dir, cli.key_name, cli.sender, cli.chain_id, cli.sequence).await
+            cmd.run(&cli.node, keys_dir, cli.key, cli.sender, cli.chain_id, cli.sequence).await
         },
     }
 }

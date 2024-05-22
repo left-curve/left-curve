@@ -1,14 +1,10 @@
 use {
-    anyhow::anyhow, clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm,
+    clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm,
     std::path::PathBuf,
 };
 
 #[derive(Parser)]
 pub struct StartCmd {
-    /// ABCI listening address
-    #[arg(long, default_value = "127.0.0.1:26658")]
-    pub addr: String,
-
     /// Buffer size for reading chunks of incoming data from client
     #[arg(long, default_value = "1048576")]
     pub read_buf_size: usize,
@@ -20,6 +16,6 @@ impl StartCmd {
         let db = DiskDb::open(data_dir)?;
 
         // start the ABCI server
-        Ok(App::<DiskDb, WasmVm>::new(db).start_abci_server(cli.read_buf_size, cli.addr)?)
+        Ok(App::<DiskDb, WasmVm>::new(db).start_abci_server(self.read_buf_size, rpc_addr)?)
     }
 }
