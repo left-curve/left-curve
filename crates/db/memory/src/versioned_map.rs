@@ -72,14 +72,14 @@ where
             .and_then(|(_, op)| op.as_ref().into_option())
     }
 
-    pub fn range<R, T: ?Sized>(
+    pub fn range<R, T>(
         &self,
         range: R,
         version: u64,
     ) -> VersionedIterator<'_, K, V, R, T>
     where
         K: Borrow<T>,
-        T: Ord,
+        T: Ord + ?Sized,
         R: RangeBounds<T>,
     {
         if let Some(latest_version) = self.latest_version {
@@ -105,10 +105,10 @@ pub struct VersionedIterator<'a, K, V, R, T: ?Sized> {
     phantom: PhantomData<T>,
 }
 
-impl<'a, K, V, R, T: ?Sized> Iterator for VersionedIterator<'a, K, V, R, T>
+impl<'a, K, V, R, T> Iterator for VersionedIterator<'a, K, V, R, T>
 where
     K: Borrow<T> + Ord,
-    T: Ord,
+    T: Ord + ?Sized,
     R: RangeBounds<T>,
 {
     type Item = (&'a K, &'a V);
@@ -130,10 +130,10 @@ where
     }
 }
 
-impl<'a, K, V, R, T: ?Sized> DoubleEndedIterator for VersionedIterator<'a, K, V, R, T>
+impl<'a, K, V, R, T> DoubleEndedIterator for VersionedIterator<'a, K, V, R, T>
 where
     K: Borrow<T> + Ord,
-    T: Ord,
+    T: Ord + ?Sized,
     R: RangeBounds<T>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
