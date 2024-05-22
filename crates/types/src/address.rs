@@ -10,7 +10,7 @@ use {
     },
 };
 
-/// In CWD, addresses are of 32-byte length, in lowercase Hex encoding with the
+/// In Grug, addresses are of 32-byte length, in lowercase Hex encoding with the
 /// `0x` prefix. There is no checksum bytes. This is the same address format
 /// used by Aptos and Sui.
 ///
@@ -26,7 +26,7 @@ use {
 /// versions of the same type, one "unchecked" version with `String`s, one
 /// "checked" version with `Addr`s.
 ///
-/// In CWD, addresses are validated during deserialization. If deserialization
+/// In Grug, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

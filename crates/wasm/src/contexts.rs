@@ -50,7 +50,7 @@ pub struct MutableCtx<'a> {
 /// Therefore, compared to `MutableCtx`, it lacks the `sender` and `funds` fields.
 ///
 /// The name is derived from the "sudo" entry point in the vanilla CosmWasm.
-/// There isn't such an entry point in CWD, but we keep the name nonetheless.
+/// There isn't such an entry point in Grug, but we keep the name nonetheless.
 pub struct SudoCtx<'a> {
     pub store: &'a mut dyn Storage,
     #[doc(hidden)]

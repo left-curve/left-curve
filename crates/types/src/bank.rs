@@ -1,4 +1,4 @@
-//! The bank contract is one of the two "core" contracts required by CWD,
+//! The bank contract is one of the two "core" contracts required by Grug,
 //! meaning contracts that provide core functionalities of the chain, the other
 //! being the tax man, which levies transaction fees.
 //!

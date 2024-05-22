@@ -24,7 +24,7 @@ import {
 } from ".";
 
 /**
- * Client for interacting with a CWD blockchain via Tendermint RPC.
+ * Client for interacting with a Grug chain via Tendermint RPC.
  */
 export class Client {
   private cometClient: Comet38Client;
@@ -37,7 +37,7 @@ export class Client {
   }
 
   /**
-   * Create a new CWD client for the given endpoint.
+   * Create a new Grug client for the given endpoint.
    *
    * Uses HTTP when the URL schema is http or https. Uses WebSockets otherwise.
    */

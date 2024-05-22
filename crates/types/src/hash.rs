@@ -24,7 +24,7 @@ forward_ref_partial_eq!(Hash, Hash);
 impl Hash {
     /// The length (number of bytes) of hashes.
     ///
-    /// In CWD, we use SHA-256 hash everywhere, of which the length is 32 bytes.
+    /// In Grug, we use SHA-256 hash everywhere, of which the length is 32 bytes.
     ///
     /// Do not confuse length in terms of bytes and in terms of ASCII characters.
     /// We use Hex encoding, which uses 2 ASCII characters per byte, so the

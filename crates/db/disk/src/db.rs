@@ -32,7 +32,7 @@ const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 ///
 /// Unfortunately the Rust API for RocksDB does not support timestamping,
 /// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
-/// https://github.com/cwsoftware123/rust-rocksdb/tree/v0.21.0-cw
+/// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
 const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
@@ -385,7 +385,7 @@ mod tests {
     };
 
     // using the same test case as in our rust-rocksdb fork:
-    // https://github.com/cwsoftware123/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
+    // https://github.com/left-curve/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
     //
     // hash(donald)  = 01000001...
     // hash(jake)    = 11001101...

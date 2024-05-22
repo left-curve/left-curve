@@ -78,7 +78,7 @@ fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> Result<BankQueryResponse,
 
 ## Gas
 
-In CWD, gas fees are handled by a smart contract.
+In Grug, gas fees are handled by a smart contract.
 
 This contract is called after each transaction to collect gas fee from the sender. Develops can program arbitrary rules for collecting gas fees; for example, for an orderbook exchange, it may make sense to make the first few orders of each day free of charge, as a way to incentivize trading activity. Another use case is MEV capture. Osmosis is known to backrun certain DEX trades to perform arbitrage via its [ProtoRev module](https://github.com/osmosis-labs/osmosis/tree/main/x/protorev); this is something that can be realized using the gas contract, since it's automatically called after each transaction.
 
