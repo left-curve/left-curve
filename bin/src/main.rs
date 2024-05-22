@@ -1,4 +1,4 @@
-mod key;
+mod keys;
 mod prompt;
 mod query;
 mod start;
@@ -6,7 +6,7 @@ mod tendermint;
 mod tx;
 
 use {
-    crate::{key::KeyCmd, query::QueryCmd, start::StartCmd, tendermint::StatusCmd, tx::TxCmd},
+    crate::{keys::KeysCmd, query::QueryCmd, start::StartCmd, tendermint::StatusCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
     home::home_dir,
@@ -36,7 +36,7 @@ struct Cli {
 enum Command {
     /// Manage keys [alias: k]
     #[command(subcommand, next_display_order = None, alias = "k")]
-    Key(KeyCmd),
+    Keys(KeysCmd),
 
     /// Make a query [alias: q]
     #[command(alias = "q")]
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     let keys_dir = app_dir.join("keys");
 
     match cli.command {
-        Command::Key(cmd) => cmd.run(keys_dir),
+        Command::Keys(cmd) => cmd.run(keys_dir),
         Command::Query(cmd) => cmd.run().await,
         Command::Start(cmd) => cmd.run(data_dir).await,
         Command::Status(cmd) => cmd.run().await,

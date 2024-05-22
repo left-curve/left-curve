@@ -1,7 +1,7 @@
 use {
     crate::prompt::{confirm, print_json_pretty, read_password},
     anyhow::anyhow,
-    clap::Parser,
+    clap::{Parser, Subcommand},
     colored::Colorize,
     grug_sdk::{Client, SigningKey, SigningOptions},
     grug_types::{from_json_slice, hash, Addr, Binary, Coins, Config, Hash, Message},
@@ -36,7 +36,7 @@ pub struct TxCmd {
     subcmd: SubCmd,
 }
 
-#[derive(Parser)]
+#[derive(Subcommand)]
 enum SubCmd {
     /// Update the chain-level configurations
     SetConfig {

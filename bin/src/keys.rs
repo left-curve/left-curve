@@ -2,7 +2,7 @@ use {
     crate::prompt::{confirm, print_json_pretty, read_password, read_text},
     anyhow::ensure,
     bip32::{Language, Mnemonic},
-    clap::Parser,
+    clap::Subcommand,
     colored::Colorize,
     grug_sdk::{Keystore, SigningKey},
     grug_types::from_json_slice,
@@ -17,8 +17,8 @@ use {
 /// https://github.com/satoshilabs/slips/blob/master/slip-0044.md
 const DEFAULT_COIN_TYPE: usize = 60;
 
-#[derive(Parser)]
-pub enum KeyCmd {
+#[derive(Subcommand)]
+pub enum KeysCmd {
     /// Create a new or recover an existing secp256k1 private key an save it to
     /// an encrypted file.
     Add {
@@ -47,21 +47,21 @@ pub enum KeyCmd {
     List,
 }
 
-impl KeyCmd {
+impl KeysCmd {
     pub fn run(self, dir: PathBuf) -> anyhow::Result<()> {
         match self {
-            KeyCmd::Add {
+            KeysCmd::Add {
                 name,
                 recover,
                 coin_type,
             } => add(&dir, &name, recover, coin_type),
-            KeyCmd::Delete {
+            KeysCmd::Delete {
                 name,
             } => delete(&dir, &name),
-            KeyCmd::Show {
+            KeysCmd::Show {
                 name,
             } => show(&dir, &name),
-            KeyCmd::List => list(&dir),
+            KeysCmd::List => list(&dir),
         }
     }
 }
