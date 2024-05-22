@@ -65,7 +65,7 @@ impl Vm for WasmVm {
         })
     }
 
-    fn call_in_0_out_1(&mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
@@ -79,7 +79,7 @@ impl Vm for WasmVm {
     }
 
     fn call_in_1_out_1(
-        &mut self,
+        mut self,
         name: &str,
         ctx: &Context,
         param1: impl AsRef<[u8]>,
@@ -98,7 +98,7 @@ impl Vm for WasmVm {
     }
 
     fn call_in_2_out_1(
-        &mut self,
+        mut self,
         name: &str,
         ctx: &Context,
         param1: impl AsRef<[u8]>,

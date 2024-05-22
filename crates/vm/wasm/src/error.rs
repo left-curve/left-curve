@@ -29,6 +29,12 @@ pub enum VmError {
     #[error("Failed to instantiate Wasm module: {0}")]
     Instantiation(String),
 
+    #[error("Failed to read lock ContextData")]
+    FailedReadLock,
+
+    #[error("Failed to write lock ContextData")]
+    FailedWriteLock,
+
     #[error("Memory is not set in Environment")]
     MemoryNotSet,
 
@@ -38,11 +44,10 @@ pub enum VmError {
     #[error("Wasmer instance is not set in ContextData")]
     WasmerInstanceNotSet,
 
-    #[error("Failed to read lock ContextData")]
-    FailedReadLock,
-
-    #[error("Failed to write lock ContextData")]
-    FailedWriteLock,
+    #[error("Iterator with ID `{iterator_id}` not found")]
+    IteratorNotFound {
+        iterator_id: i32,
+    },
 
     #[error("Region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
     RegionTooSmall {
@@ -51,9 +56,7 @@ pub enum VmError {
         data: String,
     },
 
-    #[error(
-        "Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}"
-    )]
+    #[error("Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}")]
     ReturnCount {
         name: String,
         expect: usize,
