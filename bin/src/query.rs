@@ -1,7 +1,7 @@
 use {
     crate::prompt::print_json_pretty,
     anyhow::ensure,
-    clap::Parser,
+    clap::{Parser, Subcommand},
     grug_jmt::Proof,
     grug_sdk::Client,
     grug_types::{Addr, Binary, Hash},
@@ -11,7 +11,21 @@ use {
 };
 
 #[derive(Parser)]
-pub enum QueryCmd {
+pub struct QueryCmd {
+    /// Tendermint RPC address
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
+    node: String,
+
+    /// The block height at which to perform queries [default: last finalized height]
+    #[arg(long, global = true)]
+    height: Option<u64>,
+
+    #[command(subcommand, next_display_order = None)]
+    subcmd: SubCmd,
+}
+
+#[derive(Subcommand)]
+enum SubCmd {
     /// Query the chain's global information
     Info,
     /// Query an account's balance in a single denom
@@ -83,55 +97,75 @@ pub enum QueryCmd {
     Store {
         /// Key in hex encoding
         key: String,
+        /// Whether to request Merkle proof for raw store queries [default: false]
+        #[arg(long, global = true, default_value_t = false)]
+        prove: bool,
+    },
+    /// Get transaction by hash
+    Tx {
+        /// Transaction hash
+        hash: String,
+    },
+    /// Get block by height
+    Block {
+        /// Block height [default: latest]
+        height: Option<u64>,
     },
 }
 
 impl QueryCmd {
-    pub async fn run(self, rpc_addr: &str, height: Option<u64>, prove: bool) -> anyhow::Result<()> {
-        let client = Client::connect(rpc_addr)?;
-        match self {
-            QueryCmd::Info => print_json_pretty(client.query_info(height).await?),
-            QueryCmd::Balance {
+    pub async fn run(self) -> anyhow::Result<()> {
+        let client = Client::connect(&self.node)?;
+        match self.subcmd {
+            SubCmd::Info => print_json_pretty(client.query_info(self.height).await?),
+            SubCmd::Balance {
                 address,
                 denom,
-            } => print_json_pretty(client.query_balance(address, denom, height).await?),
-            QueryCmd::Balances {
+            } => print_json_pretty(client.query_balance(address, denom, self.height).await?),
+            SubCmd::Balances {
                 address,
                 start_after,
                 limit,
-            } => print_json_pretty(client.query_balances(address, start_after, limit, height).await?),
-            QueryCmd::Supply {
+            } => print_json_pretty(client.query_balances(address, start_after, limit, self.height).await?),
+            SubCmd::Supply {
                 denom,
-            } => print_json_pretty(client.query_supply(denom, height).await?),
-            QueryCmd::Supplies {
+            } => print_json_pretty(client.query_supply(denom, self.height).await?),
+            SubCmd::Supplies {
                 start_after,
                 limit,
-            } => print_json_pretty(client.query_supplies(start_after, limit, height).await?),
-            QueryCmd::Code {
+            } => print_json_pretty(client.query_supplies(start_after, limit, self.height).await?),
+            SubCmd::Code {
                 hash,
-            } => query_code(&client, hash, height).await,
-            QueryCmd::Codes {
+            } => query_code(&client, hash, self.height).await,
+            SubCmd::Codes {
                 start_after,
                 limit,
-            } => print_json_pretty(client.query_codes(start_after, limit, height).await?),
-            QueryCmd::Account {
+            } => print_json_pretty(client.query_codes(start_after, limit, self.height).await?),
+            SubCmd::Account {
                 address,
-            } => print_json_pretty(client.query_account(address, height).await?),
-            QueryCmd::Accounts {
+            } => print_json_pretty(client.query_account(address, self.height).await?),
+            SubCmd::Accounts {
                 start_after,
                 limit,
-            } => print_json_pretty(client.query_accounts(start_after, limit, height).await?),
-            QueryCmd::WasmRaw {
+            } => print_json_pretty(client.query_accounts(start_after, limit, self.height).await?),
+            SubCmd::WasmRaw {
                 contract,
                 key_hex,
-            } => query_wasm_raw(&client, contract, key_hex, height).await,
-            QueryCmd::WasmSmart {
+            } => query_wasm_raw(&client, contract, key_hex, self.height).await,
+            SubCmd::WasmSmart {
                 contract,
                 msg,
-            } => query_wasm_smart(&client, contract, msg, height).await,
-            QueryCmd::Store {
+            } => query_wasm_smart(&client, contract, msg, self.height).await,
+            SubCmd::Store {
                 key,
-            } => query_store(&client, key, height, prove).await,
+                prove,
+            } => query_store(&client, key, self.height, prove).await,
+            SubCmd::Tx {
+                hash,
+            } => print_json_pretty(client.tx(&hash).await?),
+            SubCmd::Block {
+                height,
+            } => print_json_pretty(client.block_result(height).await?),
         }
     }
 }

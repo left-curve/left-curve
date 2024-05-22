@@ -1,46 +1,15 @@
-use {
-    crate::prompt::print_json_pretty,
-    clap::Parser,
-    grug_sdk::Client,
-};
+use {crate::prompt::print_json_pretty, clap::Parser, grug_sdk::Client};
 
 #[derive(Parser)]
-pub enum TendermintCmd {
-    /// Get Tendermint status, including node info, public key, latest block hash,
-    /// app hash, block height, and time
-    Status,
-    /// Find transaction by hash
-    Tx {
-        /// Transaction hash
-        hash: String,
-    },
-    /// Get block at a given height
-    Block {
-        /// Block height [default: latest]
-        height: Option<u64>,
-    },
-    /// Get block, including transaction execution results and events, at a given
-    /// height
-    BlockResults {
-        /// Block height [default: latest]
-        height: Option<u64>,
-    },
+pub struct StatusCmd {
+    /// Tendermint RPC address
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
+    node: String,
 }
 
-impl TendermintCmd {
-    pub async fn run(self, rpc_addr: &str) -> anyhow::Result<()> {
-        let client = Client::connect(rpc_addr)?;
-        match self {
-            TendermintCmd::Status => print_json_pretty(client.status().await?),
-            TendermintCmd::Tx {
-                hash,
-            } => print_json_pretty(client.tx(&hash).await?),
-            TendermintCmd::Block {
-                height,
-            } => print_json_pretty(client.block(height).await?),
-            TendermintCmd::BlockResults {
-                height,
-            } => print_json_pretty(client.block_result(height).await?),
-        }
+impl StatusCmd {
+    pub async fn run(self) -> anyhow::Result<()> {
+        let client = Client::connect(&self.node)?;
+        print_json_pretty(client.status().await?)
     }
 }

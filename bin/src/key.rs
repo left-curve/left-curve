@@ -48,20 +48,20 @@ pub enum KeyCmd {
 }
 
 impl KeyCmd {
-    pub fn run(self, key_dir: PathBuf) -> anyhow::Result<()> {
+    pub fn run(self, dir: PathBuf) -> anyhow::Result<()> {
         match self {
             KeyCmd::Add {
                 name,
                 recover,
                 coin_type,
-            } => add(&key_dir, &name, recover, coin_type),
+            } => add(&dir, &name, recover, coin_type),
             KeyCmd::Delete {
                 name,
-            } => delete(&key_dir, &name),
+            } => delete(&dir, &name),
             KeyCmd::Show {
                 name,
-            } => show(&key_dir, &name),
-            KeyCmd::List => list(&key_dir),
+            } => show(&dir, &name),
+            KeyCmd::List => list(&dir),
         }
     }
 }

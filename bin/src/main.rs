@@ -6,10 +6,9 @@ mod tendermint;
 mod tx;
 
 use {
-    crate::{key::KeyCmd, query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd},
+    crate::{key::KeyCmd, query::QueryCmd, start::StartCmd, tendermint::StatusCmd, tx::TxCmd},
     anyhow::anyhow,
     clap::Parser,
-    grug_types::Addr,
     home::home_dir,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
@@ -21,44 +20,16 @@ const DEFAULT_APP_DIR: &str = ".grug";
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
 struct Cli {
-    #[command(subcommand)]
-    command: Command,
-
-    /// Tendermint RPC address
-    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
-    node: String,
-
     /// Directory for the physical database
     #[arg(long, global = true)]
-    app_dir: Option<PathBuf>,
-
-    /// Name of the key to sign transactions
-    #[arg(long, global = true)]
-    key: Option<String>,
-
-    /// Transaction sender address
-    #[arg(long, global = true)]
-    sender: Option<Addr>,
-
-    /// Chain identifier [default: query from chain]
-    #[arg(long, global = true)]
-    chain_id: Option<String>,
-
-    /// Account sequence number [default: query from chain]
-    #[arg(long, global = true)]
-    sequence: Option<u32>,
-
-    /// The block height at which to perform queries [default: last finalized height]
-    #[arg(long, global = true)]
-    height: Option<u64>,
-
-    /// Whether to request Merkle proof for raw store queries [default: false]
-    #[arg(long, global = true, default_value_t = false)]
-    prove: bool,
+    home: Option<PathBuf>,
 
     /// Logging verbosity: error|warn|info|debug|trace
     #[arg(long, global = true, default_value = "info")]
     tracing_level: LevelFilter,
+
+    #[command(subcommand)]
+    command: Command,
 }
 
 #[derive(Parser)]
@@ -68,18 +39,16 @@ enum Command {
     Key(KeyCmd),
 
     /// Make a query [alias: q]
-    #[command(subcommand, next_display_order = None, alias = "q")]
+    #[command(alias = "q")]
     Query(QueryCmd),
 
     /// Start the node
     Start(StartCmd),
 
-    /// Interact with Tendermint consensus engine [alias: tm]
-    #[command(subcommand, next_display_order = None, alias = "tm")]
-    Tendermint(TendermintCmd),
+    /// Tendermint status
+    Status(StatusCmd),
 
     /// Send a transaction
-    #[command(subcommand, next_display_order = None)]
     Tx(TxCmd),
 }
 
@@ -89,22 +58,19 @@ async fn main() -> anyhow::Result<()> {
 
     tracing_subscriber::fmt().with_max_level(cli.tracing_level).init();
 
-    let app_dir = if let Some(dir) = cli.app_dir {
+    let app_dir = if let Some(dir) = cli.home {
         dir
     } else {
-        let home_dir = home_dir().ok_or(anyhow!("Failed to find home directory"))?;
-        home_dir.join(DEFAULT_APP_DIR)
+        home_dir().ok_or(anyhow!("Failed to find home directory"))?.join(DEFAULT_APP_DIR)
     };
     let data_dir = app_dir.join("data");
     let keys_dir = app_dir.join("keys");
 
     match cli.command {
         Command::Key(cmd) => cmd.run(keys_dir),
-        Command::Query(cmd) => cmd.run(&cli.node, cli.height, cli.prove).await,
-        Command::Start(cmd) => cmd.run(&cli.node, data_dir).await,
-        Command::Tendermint(cmd) => cmd.run(&cli.node).await,
-        Command::Tx(cmd) => {
-            cmd.run(&cli.node, keys_dir, cli.key, cli.sender, cli.chain_id, cli.sequence).await
-        },
+        Command::Query(cmd) => cmd.run().await,
+        Command::Start(cmd) => cmd.run(data_dir).await,
+        Command::Status(cmd) => cmd.run().await,
+        Command::Tx(cmd) => cmd.run(keys_dir).await,
     }
 }
