@@ -13,26 +13,26 @@ use {
 #[derive(Parser)]
 pub struct TxCmd {
     /// Tendermint RPC address
-    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
+    #[arg(long, default_value = "http://127.0.0.1:26657")]
     node: String,
 
     /// Name of the key to sign transactions
-    #[arg(long, global = true)]
+    #[arg(long)]
     key: Option<String>,
 
     /// Transaction sender address
-    #[arg(long, global = true)]
+    #[arg(long)]
     sender: Option<Addr>,
 
     /// Chain identifier [default: query from chain]
-    #[arg(long, global = true)]
+    #[arg(long)]
     chain_id: Option<String>,
 
     /// Account sequence number [default: query from chain]
-    #[arg(long, global = true)]
+    #[arg(long)]
     sequence: Option<u32>,
 
-    #[command(subcommand, next_display_order = None)]
+    #[command(subcommand)]
     subcmd: SubCmd,
 }
 

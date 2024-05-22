@@ -39,7 +39,7 @@ enum Command {
     Keys(KeysCmd),
 
     /// Make a query [alias: q]
-    #[command(alias = "q")]
+    #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
     /// Start the node
@@ -49,6 +49,7 @@ enum Command {
     Status(StatusCmd),
 
     /// Send a transaction
+    #[command(next_display_order = None)]
     Tx(TxCmd),
 }
 
