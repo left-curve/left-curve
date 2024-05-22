@@ -7,6 +7,7 @@ pub enum AdminOption {
 }
 
 impl AdminOption {
+    // TODO: make the self_addr lazy (only compute it if SelfToSelf)
     pub fn decide(self, self_addr: &Addr) -> Option<Addr> {
         match self {
             AdminOption::SetToAddr(addr) => Some(addr),
