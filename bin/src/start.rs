@@ -6,7 +6,7 @@ use {
 #[derive(Parser)]
 pub struct StartCmd {
     /// Tendermint ABCI listening address
-    #[arg(long, default_value = "http://127.0.0.1:26658")]
+    #[arg(long, default_value = "127.0.0.1:26658")]
     abci_addr: String,
 
     /// Buffer size for reading chunks of incoming data from client
