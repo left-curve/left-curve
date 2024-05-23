@@ -13,11 +13,13 @@ categories    = { workspace = true }
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-macros  = { path = "../macros" }
 grug-storage = { path = "../storage" }
-grug-testing = { path = "../testing" }
 grug-types   = { path = "../types" }
 grug-wasm    = { path = "../wasm" }
 serde        = { workspace = true, features = ["derive"] }
 serde_json   = { workspace = true }
 serde_with   = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+grug-testing = { path = "../testing" }
 
 [dev-dependencies]

@@ -13,7 +13,6 @@ categories    = { workspace = true }
 bnum          = { workspace = true }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
 data-encoding = { workspace = true }
-grug-crypto   = { path = "../crypto" }
 hex           = { workspace = true }
 hex-literal   = { workspace = true }
 dyn-clone     = { workspace = true }
@@ -23,6 +22,9 @@ serde_json    = { workspace = true }
 serde_with    = { workspace = true }
 sha2          = { workspace = true }
 thiserror     = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+grug-crypto = { path = "../crypto" }
 
 [dev-dependencies]
 proptest  = { workspace = true }

@@ -13,6 +13,7 @@ mod event;
 mod forward_ref;
 mod hash;
 mod ibc;
+#[cfg(not(target_arch = "wasm32"))]
 mod mocks;
 mod query;
 mod response;
@@ -29,10 +30,15 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, decimal::*, decimal256::*,
-    empty::*, error::*, event::*, hash::*, ibc::*, mocks::*, query::*, response::*, result::*,
+    empty::*, error::*, event::*, hash::*, ibc::*, query::*, response::*, result::*,
     serde::*, timestamp::*, traits::*, tx::*, uint128::*, uint256::*, uint512::*, uint64::*,
     utils::*,
 };
+
+// Mocks need to be excluded in Wasm builds because they depend on k256/p256
+// crates, which includes random operators.
+#[cfg(not(target_arch = "wasm32"))]
+pub use mocks::*;
 
 /// Represents any valid JSON value, including numbers, booleans, strings,
 /// objects, and arrays.
