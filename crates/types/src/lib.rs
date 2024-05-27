@@ -22,6 +22,8 @@ mod serde;
 mod timestamp;
 mod traits;
 mod tx;
+mod uint;
+mod uint64g;
 mod uint128;
 mod uint256;
 mod uint512;
