@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use bnum::types::{U256, U512};
+use bnum::types::{I256, I512, U256, U512};
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{de, ser};
 
@@ -257,7 +257,9 @@ where
     }
 }
 
-use crate::{impl_bytable_std, impl_checked_ops, impl_number_bound, impl_bytable_bnum};
+use crate::{
+    impl_bytable_bnum, impl_bytable_ibnum, impl_bytable_std, impl_checked_ops, impl_number_bound,
+};
 
 // Uint64
 generate_grug_number!(
@@ -315,3 +317,60 @@ generate_grug_number!(
 impl_next!(Uint64, Uint128);
 impl_next!(Uint128, Uint256);
 impl_next!(Uint256, Uint512);
+
+// Int64
+generate_grug_number!(
+    name = Int64,
+    inner_type = i64,
+    min = i64::MIN,
+    max = i64::MAX,
+    zero = 0,
+    one = 1,
+    byte_len = 8,
+    impl_bytable = std,
+    from = []
+);
+
+// Int128
+generate_grug_number!(
+    name = Int128,
+    inner_type = i128,
+    min = i128::MIN,
+    max = i128::MAX,
+    zero = 0,
+    one = 1,
+    byte_len = 16,
+    impl_bytable = std,
+    from = [Int64]
+);
+
+// Int256
+generate_grug_number!(
+    name = Int256,
+    inner_type = I256,
+    min = I256::MIN,
+    max = I256::MAX,
+    zero = I256::ZERO,
+    one = I256::ONE,
+    byte_len = 32,
+    impl_bytable = ibnum unsigned U256,
+    from = [Int64, Int128]
+);
+
+// Int512
+generate_grug_number!(
+    name = Int512,
+    inner_type = I512,
+    min = I512::MIN,
+    max = I512::MAX,
+    zero = I512::ZERO,
+    one = I512::ONE,
+    byte_len = 64,
+    impl_bytable = ibnum unsigned U512,
+    from = [Int64, Int128, Int256]
+);
+
+// Implementations of [`Next`] has to be done after all the types are defined.
+impl_next!(Int64, Int128);
+impl_next!(Int128, Int256);
+impl_next!(Int256, Int512);

@@ -1,4 +1,3 @@
-
 /// Generate a [`Unit`](super::Uint) type for a given inner type.
 ///
 /// ### Example:
@@ -21,6 +20,7 @@
 ///     // (Optional)
 ///     // If std, impl_bytable_std be will call
 ///     // If bnum, impl_bytable_bnum be will call
+///     // If ibnum, impl_bytable_ibnum be will call. unsigned has to be specify
 ///     // If skipped, no impl_bytable will be called.
 ///     // This require to implement the Bytable trait manually
 ///     impl_bytable = std,
@@ -66,6 +66,30 @@ macro_rules! generate_grug_number {
             from = [$($from:ty),*]
         ) => {
             impl_bytable_bnum!($inner, $byte_len);
+            generate_grug_number!(
+                name = $name,
+                inner_type = $inner,
+                min = $min,
+                max = $max,
+                zero = $zero,
+                one = $one,
+                byte_len = $byte_len,
+                from = [$($from),*]
+            );
+        };
+        // impl_bytable = ibnum
+        (
+            name = $name:ident,
+            inner_type = $inner:ty,
+            min = $min:expr,
+            max = $max:expr,
+            zero = $zero:expr,
+            one = $one:expr,
+            byte_len = $byte_len:literal,
+            impl_bytable = ibnum unsigned $unsigned:ty,
+            from = [$($from:ty),*]
+        ) => {
+            impl_bytable_ibnum!($inner, $byte_len, $unsigned);
             generate_grug_number!(
                 name = $name,
                 inner_type = $inner,
@@ -271,6 +295,69 @@ macro_rules! impl_bytable_bnum {
 
             fn to_le_bytes(self) -> [u8; $rot] {
                 let words = self.digits();
+                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = words[i].to_le_bytes();
+                }
+
+                unsafe { std::mem::transmute(bytes) }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_bytable_ibnum {
+    ($t:ty, $rot:literal, $unsigned:ty) => {
+        impl Bytable<$rot> for $t {
+            fn from_be_bytes(data: [u8; $rot]) -> Self {
+                let mut bytes = [0u64; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = u64::from_le_bytes([
+                        data[($rot / 8 - i - 1) * 8 + 7],
+                        data[($rot / 8 - i - 1) * 8 + 6],
+                        data[($rot / 8 - i - 1) * 8 + 5],
+                        data[($rot / 8 - i - 1) * 8 + 4],
+                        data[($rot / 8 - i - 1) * 8 + 3],
+                        data[($rot / 8 - i - 1) * 8 + 2],
+                        data[($rot / 8 - i - 1) * 8 + 1],
+                        data[($rot / 8 - i - 1) * 8],
+                    ])
+                }
+                Self::from_bits(<$unsigned>::from_digits(bytes))
+            }
+
+            fn from_le_bytes(data: [u8; $rot]) -> Self {
+                let mut bytes = [0u64; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = u64::from_le_bytes([
+                        data[i * 8],
+                        data[i * 8 + 1],
+                        data[i * 8 + 2],
+                        data[i * 8 + 3],
+                        data[i * 8 + 4],
+                        data[i * 8 + 5],
+                        data[i * 8 + 6],
+                        data[i * 8 + 7],
+                    ])
+                }
+                Self::from_bits(<$unsigned>::from_digits(bytes))
+            }
+
+            fn to_be_bytes(self) -> [u8; $rot] {
+                let words = self.to_bits();
+                let words = words.digits();
+                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
+                }
+
+                unsafe { std::mem::transmute(bytes) }
+            }
+
+            fn to_le_bytes(self) -> [u8; $rot] {
+                let words = self.to_bits();
+                let words = words.digits();
                 let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
                 for i in 0..$rot / 8 {
                     bytes[i] = words[i].to_le_bytes();
