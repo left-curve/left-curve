@@ -1,5 +1,6 @@
 #[cfg(not(feature = "library"))]
 use grug::entry_point;
+use grug::CheckedOps;
 use {
     anyhow::bail,
     grug::{

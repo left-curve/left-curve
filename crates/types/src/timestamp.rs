@@ -7,7 +7,20 @@ use {
 const NANOS_PER_SECOND: u64 = 1_000_000_000;
 
 /// UNIX epoch timestamp in nanosecond precision.
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Default,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 pub struct Timestamp(Uint64);
 
 impl Timestamp {
@@ -31,16 +44,16 @@ impl Timestamp {
 
     #[inline]
     pub fn nanos(&self) -> u64 {
-        self.0.u64()
+        self.0.number()
     }
 
     #[inline]
     pub fn seconds(&self) -> u64 {
-        self.0.u64() / NANOS_PER_SECOND
+        self.0.number() / NANOS_PER_SECOND
     }
 
     #[inline]
     pub fn subsec_nanos(&self) -> u64 {
-        self.0.u64() % NANOS_PER_SECOND
+        self.0.number() % NANOS_PER_SECOND
     }
 }

@@ -24,8 +24,8 @@ pub enum StdError {
 
     #[error("Failed to parse string `{value}` into {ty}: {reason}")]
     ParseNumber {
-        ty:     &'static str,
-        value:  String,
+        ty: &'static str,
+        value: String,
         reason: String,
     },
 
@@ -47,7 +47,7 @@ pub enum StdError {
 
     #[error("Data not found! type: {ty}, storage key: {key}")]
     DataNotFound {
-        ty:  &'static str,
+        ty: &'static str,
         key: String,
     },
 
@@ -60,48 +60,51 @@ pub enum StdError {
     OverflowConversion {
         source_type: &'static str,
         target_type: &'static str,
-        value:       String,
+        value: String,
     },
 
     #[error("Addition overflow: {a} + {b} > {ty}::MAX")]
     OverflowAdd {
         ty: &'static str,
-        a:  String,
-        b:  String,
+        a: String,
+        b: String,
     },
 
     #[error("Subtraction overflow: {a} - {b} < {ty}::MIN")]
     OverflowSub {
         ty: &'static str,
-        a:  String,
-        b:  String,
+        a: String,
+        b: String,
     },
 
     #[error("Multiplication overflow: {a} * {b} > {ty}::MAX")]
     OverflowMul {
         ty: &'static str,
-        a:  String,
-        b:  String,
+        a: String,
+        b: String,
     },
 
     #[error("Power overflow: {a} ^ {b} > {ty}::MAX")]
     OverflowPow {
         ty: &'static str,
-        a:  String,
-        b:  String,
+        a: String,
+        b: String,
     },
 
     #[error("Left shift overflow: {a} << {b}")]
     OverflowShl {
-        a:  String,
-        b:  u32,
+        a: String,
+        b: u32,
     },
 
     #[error("Right shift overflow: {a} >> {b}")]
     OverflowShr {
-        a:  String,
-        b:  u32,
+        a: String,
+        b: u32,
     },
+
+    #[error("Invalid 0 log")]
+    ZeroLog {},
 
     #[error("Division by zero: {a} / 0")]
     DivisionByZero {
@@ -115,13 +118,13 @@ pub enum StdError {
 
     #[error("Failed to serialize into json! type: {ty}, reason: {reason}")]
     Serialize {
-        ty:     &'static str,
+        ty: &'static str,
         reason: String,
     },
 
     #[error("Failed to deserialize from json! type: {ty}, reason: {reason}")]
     Deserialize {
-        ty:     &'static str,
+        ty: &'static str,
         reason: String,
     },
 }
@@ -129,8 +132,8 @@ pub enum StdError {
 impl StdError {
     pub fn parse_number<A>(value: impl ToString, reason: impl ToString) -> Self {
         Self::ParseNumber {
-            ty:     type_name::<A>(),
-            value:  value.to_string(),
+            ty: type_name::<A>(),
+            value: value.to_string(),
             reason: reason.to_string(),
         }
     }
@@ -150,7 +153,7 @@ impl StdError {
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {
         Self::DataNotFound {
-            ty:  type_name::<T>(),
+            ty: type_name::<T>(),
             key: BASE64.encode(key),
         }
     }
@@ -159,39 +162,39 @@ impl StdError {
         Self::OverflowConversion {
             source_type: type_name::<A>(),
             target_type: type_name::<B>(),
-            value:       source.to_string(),
+            value: source.to_string(),
         }
     }
 
     pub fn overflow_add<T: ToString>(a: T, b: T) -> Self {
         Self::OverflowAdd {
             ty: type_name::<T>(),
-            a:  a.to_string(),
-            b:  b.to_string(),
+            a: a.to_string(),
+            b: b.to_string(),
         }
     }
 
     pub fn overflow_sub<T: ToString>(a: T, b: T) -> Self {
         Self::OverflowSub {
             ty: type_name::<T>(),
-            a:  a.to_string(),
-            b:  b.to_string(),
+            a: a.to_string(),
+            b: b.to_string(),
         }
     }
 
     pub fn overflow_mul<T: ToString>(a: T, b: T) -> Self {
         Self::OverflowMul {
             ty: type_name::<T>(),
-            a:  a.to_string(),
-            b:  b.to_string(),
+            a: a.to_string(),
+            b: b.to_string(),
         }
     }
 
     pub fn overflow_pow<T: ToString>(a: T, b: u32) -> Self {
         Self::OverflowPow {
             ty: type_name::<T>(),
-            a:  a.to_string(),
-            b:  b.to_string(),
+            a: a.to_string(),
+            b: b.to_string(),
         }
     }
 
@@ -209,6 +212,10 @@ impl StdError {
         }
     }
 
+    pub fn zero_log() -> Self {
+        Self::ZeroLog {}
+    }
+
     pub fn division_by_zero<T: ToString>(a: T) -> Self {
         Self::DivisionByZero {
             a: a.to_string(),
@@ -223,14 +230,14 @@ impl StdError {
 
     pub fn serialize<T>(reason: impl ToString) -> Self {
         Self::Serialize {
-            ty:     type_name::<T>(),
+            ty: type_name::<T>(),
             reason: reason.to_string(),
         }
     }
 
     pub fn deserialize<T>(reason: impl ToString) -> Self {
         Self::Deserialize {
-            ty:     type_name::<T>(),
+            ty: type_name::<T>(),
             reason: reason.to_string(),
         }
     }
