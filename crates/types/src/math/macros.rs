@@ -29,99 +29,12 @@
 /// );
 #[macro_export]
 macro_rules! generate_int {
-        // impl_bytable = std
-        (
-            name = $name:ident,
-            inner_type = $inner:ty,
-            min = $min:expr,
-            max = $max:expr,
-            zero = $zero:expr,
-            one = $one:expr,
-            ten = $ten:expr,
-            byte_len = $byte_len:literal,
-            impl_bytable = std,
-            from = [$($from:ty),*]
-        ) => {
-            impl_bytable_std!($inner, $byte_len);
-            generate_int!(
-                name = $name,
-                inner_type = $inner,
-                min = $min,
-                max = $max,
-                zero = $zero,
-                one = $one,
-                ten = $ten,
-                byte_len = $byte_len,
-                from = [$($from),*]
-            );
-        };
-        // impl_bytable = bnum
-        (
-            name = $name:ident,
-            inner_type = $inner:ty,
-            min = $min:expr,
-            max = $max:expr,
-            zero = $zero:expr,
-            one = $one:expr,
-            ten = $ten:expr,
-            byte_len = $byte_len:literal,
-            impl_bytable = bnum,
-            from = [$($from:ty),*]
-        ) => {
-            impl_bytable_bnum!($inner, $byte_len);
-            generate_int!(
-                name = $name,
-                inner_type = $inner,
-                min = $min,
-                max = $max,
-                zero = $zero,
-                one = $one,
-                ten = $ten,
-                byte_len = $byte_len,
-                from = [$($from),*]
-            );
-        };
-        // impl_bytable = ibnum
-        (
-            name = $name:ident,
-            inner_type = $inner:ty,
-            min = $min:expr,
-            max = $max:expr,
-            zero = $zero:expr,
-            one = $one:expr,
-            ten = $ten:expr,
-            byte_len = $byte_len:literal,
-            impl_bytable = ibnum unsigned $unsigned:ty,
-            from = [$($from:ty),*]
-        ) => {
-            impl_bytable_ibnum!($inner, $byte_len, $unsigned);
-            generate_int!(
-                name = $name,
-                inner_type = $inner,
-                min = $min,
-                max = $max,
-                zero = $zero,
-                one = $one,
-                ten = $ten,
-                byte_len = $byte_len,
-                from = [$($from),*]
-            );
-        };
         // impl_bytable = none (Optional)
         (
             name = $name:ident,
             inner_type = $inner:ty,
-            min = $min:expr,
-            max = $max:expr,
-            zero = $zero:expr,
-            one = $one:expr,
-            ten = $ten:expr,
-            byte_len = $byte_len:literal,
             from = [$($from:ty),*]
-
         ) => {
-            impl_number_bound!($inner, $max, $min, $zero, $one, $ten);
-            impl_checked_ops_unsigned!($inner);
             pub type $name = Uint<$inner>;
 
             // Impl From Uint and from inner type
@@ -129,7 +42,7 @@ macro_rules! generate_int {
                 impl From<$from> for $name {
                     fn from(value: $from) -> Self {
                         let others_byte = value.to_le_bytes();
-                        let mut bytes: [u8; $byte_len] = [0; $byte_len];
+                        let mut bytes: [u8; <$name>::LEN] = [0; <$name>::LEN];
                         for i in 0..others_byte.len() {
                             bytes[i] = others_byte[i];
                         }
@@ -140,7 +53,7 @@ macro_rules! generate_int {
                 impl From<<$from as UintInner>::U> for $name {
                     fn from(value: <$from as UintInner>::U) -> Self {
                         let others_byte = value.to_le_bytes();
-                        let mut bytes: [u8; $byte_len] = [0; $byte_len];
+                        let mut bytes: [u8; <$name>::LEN] = [0; <$name>::LEN];
                         for i in 0..others_byte.len() {
                             bytes[i] = others_byte[i];
                         }
@@ -378,74 +291,95 @@ macro_rules! impl_bytable_ibnum {
 }
 
 #[macro_export]
+macro_rules! impl_checked_ops {
+    ($t:ty) => {
+        fn checked_add(self, other: Self) -> StdResult<Self> {
+            self.checked_add(other).ok_or_else(|| StdError::overflow_add(self, other))
+        }
+
+        fn checked_sub(self, other: Self) -> StdResult<Self> {
+            self.checked_sub(other).ok_or_else(|| StdError::overflow_sub(self, other))
+        }
+
+        fn checked_mul(self, other: Self) -> StdResult<Self> {
+            self.checked_mul(other).ok_or_else(|| StdError::overflow_mul(self, other))
+        }
+
+        fn checked_div(self, other: Self) -> StdResult<Self> {
+            self.checked_div(other).ok_or_else(|| StdError::division_by_zero(self))
+        }
+
+        fn checked_rem(self, other: Self) -> StdResult<Self> {
+            self.checked_rem(other).ok_or_else(|| StdError::division_by_zero(self))
+        }
+
+        fn checked_pow(self, other: u32) -> StdResult<Self> {
+            self.checked_pow(other).ok_or_else(|| StdError::overflow_pow(self, other))
+        }
+
+        fn checked_shl(self, other: u32) -> StdResult<Self> {
+            self.checked_shl(other).ok_or_else(|| StdError::overflow_shl(self, other))
+        }
+
+        fn checked_shr(self, other: u32) -> StdResult<Self> {
+            self.checked_shr(other).ok_or_else(|| StdError::overflow_shr(self, other))
+        }
+
+        fn checked_ilog2(self) -> StdResult<u32> {
+            self.checked_ilog2().ok_or_else(|| StdError::zero_log())
+        }
+
+        fn checked_ilog10(self) -> StdResult<u32> {
+            self.checked_ilog10().ok_or_else(|| StdError::zero_log())
+        }
+        fn wrapping_add(self, other: Self) -> Self {
+            self.wrapping_add(other)
+        }
+        fn wrapping_sub(self, other: Self) -> Self {
+            self.wrapping_sub(other)
+        }
+        fn wrapping_mul(self, other: Self) -> Self {
+            self.wrapping_mul(other)
+        }
+        fn wrapping_pow(self, other: u32) -> Self {
+            self.wrapping_pow(other)
+        }
+        fn saturating_add(self, other: Self) -> Self {
+            self.saturating_add(other)
+        }
+        fn saturating_sub(self, other: Self) -> Self {
+            self.saturating_sub(other)
+        }
+        fn saturating_mul(self, other: Self) -> Self {
+            self.saturating_mul(other)
+        }
+        fn saturating_pow(self, other: u32) -> Self {
+            self.saturating_pow(other)
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! impl_checked_ops_unsigned {
     ($t:ty) => {
         impl CheckedOps for $t {
-            fn checked_add(self, other: Self) -> StdResult<Self> {
-                self.checked_add(other).ok_or_else(|| StdError::overflow_add(self, other))
-            }
+            impl_checked_ops!($t);
 
-            fn checked_sub(self, other: Self) -> StdResult<Self> {
-                self.checked_sub(other).ok_or_else(|| StdError::overflow_sub(self, other))
-            }
-
-            fn checked_mul(self, other: Self) -> StdResult<Self> {
-                self.checked_mul(other).ok_or_else(|| StdError::overflow_mul(self, other))
-            }
-
-            fn checked_div(self, other: Self) -> StdResult<Self> {
-                self.checked_div(other).ok_or_else(|| StdError::division_by_zero(self))
-            }
-
-            fn checked_rem(self, other: Self) -> StdResult<Self> {
-                self.checked_rem(other).ok_or_else(|| StdError::division_by_zero(self))
-            }
-
-            fn checked_pow(self, other: u32) -> StdResult<Self> {
-                self.checked_pow(other).ok_or_else(|| StdError::overflow_pow(self, other))
-            }
-
-            fn checked_shl(self, other: u32) -> StdResult<Self> {
-                self.checked_shl(other).ok_or_else(|| StdError::overflow_shl(self, other))
-            }
-
-            fn checked_shr(self, other: u32) -> StdResult<Self> {
-                self.checked_shr(other).ok_or_else(|| StdError::overflow_shr(self, other))
-            }
-
-            fn checked_ilog2(self) -> StdResult<u32> {
-                self.checked_ilog2().ok_or_else(|| StdError::zero_log())
-            }
-
-            fn checked_ilog10(self) -> StdResult<u32> {
-                self.checked_ilog10().ok_or_else(|| StdError::zero_log())
-            }
-            fn wrapping_add(self, other: Self) -> Self {
-                self.wrapping_add(other)
-            }
-            fn wrapping_sub(self, other: Self) -> Self {
-                self.wrapping_sub(other)
-            }
-            fn wrapping_mul(self, other: Self) -> Self {
-                self.wrapping_mul(other)
-            }
-            fn wrapping_pow(self, other: u32) -> Self {
-                self.wrapping_pow(other)
-            }
-            fn saturating_add(self, other: Self) -> Self {
-                self.saturating_add(other)
-            }
-            fn saturating_sub(self, other: Self) -> Self {
-                self.saturating_sub(other)
-            }
-            fn saturating_mul(self, other: Self) -> Self {
-                self.saturating_mul(other)
-            }
-            fn saturating_pow(self, other: u32) -> Self {
-                self.saturating_pow(other)
-            }
             fn abs(self) -> Self {
                 self
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_checked_ops_signed {
+    ($t:ty) => {
+        impl CheckedOps for $t {
+            impl_checked_ops!($t);
+
+            fn abs(self) -> Self {
+                self.abs()
             }
         }
     };

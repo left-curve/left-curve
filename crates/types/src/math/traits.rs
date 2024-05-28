@@ -1,6 +1,6 @@
 use std::ops::{Add, Div};
 
-use crate::{StdError, StdResult, Uint};
+use crate::{StdError, StdResult};
 
 pub trait NumberConst {
     const MAX: Self;
@@ -11,6 +11,7 @@ pub trait NumberConst {
 }
 
 pub trait Bytable<const S: usize> {
+    const LEN: usize = S;
     fn from_be_bytes(data: [u8; S]) -> Self;
     fn from_le_bytes(data: [u8; S]) -> Self;
     fn to_be_bytes(self) -> [u8; S];

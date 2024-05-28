@@ -283,21 +283,10 @@ where
     }
 }
 
-use crate::{
-    impl_bytable_bnum, impl_bytable_ibnum, impl_bytable_std, impl_checked_ops_unsigned, impl_number_bound,
-};
-
 // Uint64
 generate_int!(
     name = Uint64,
     inner_type = u64,
-    min = u64::MIN,
-    max = u64::MAX,
-    zero = 0,
-    one = 1,
-    ten = 10,
-    byte_len = 8,
-    impl_bytable = std,
     from = []
 );
 
@@ -305,13 +294,6 @@ generate_int!(
 generate_int!(
     name = Uint128,
     inner_type = u128,
-    min = u128::MIN,
-    max = u128::MAX,
-    zero = 0,
-    one = 1,
-    ten = 10,
-    byte_len = 16,
-    impl_bytable = std,
     from = [Uint64]
 );
 
@@ -319,13 +301,7 @@ generate_int!(
 generate_int!(
     name = Uint256,
     inner_type = U256,
-    min = U256::MIN,
-    max = U256::MAX,
-    zero = U256::ZERO,
-    one = U256::ONE,
-    ten = U256::ONE,
-    byte_len = 32,
-    impl_bytable = bnum,
+
     from = [Uint64, Uint128]
 );
 
@@ -333,13 +309,6 @@ generate_int!(
 generate_int!(
     name = Uint512,
     inner_type = U512,
-    min = U512::MIN,
-    max = U512::MAX,
-    zero = U512::ZERO,
-    one = U512::ONE,
-    ten = U512::ONE,
-    byte_len = 64,
-    impl_bytable = bnum,
     from = [Uint256, Uint64, Uint128]
 );
 
@@ -352,13 +321,6 @@ impl_next!(Uint256, Uint512);
 generate_int!(
     name = Int64,
     inner_type = i64,
-    min = i64::MIN,
-    max = i64::MAX,
-    zero = 0,
-    one = 1,
-    ten = 10,
-    byte_len = 8,
-    impl_bytable = std,
     from = []
 );
 
@@ -366,13 +328,6 @@ generate_int!(
 generate_int!(
     name = Int128,
     inner_type = i128,
-    min = i128::MIN,
-    max = i128::MAX,
-    zero = 0,
-    one = 1,
-    ten = 10,
-    byte_len = 16,
-    impl_bytable = std,
     from = [Int64]
 );
 
@@ -380,13 +335,6 @@ generate_int!(
 generate_int!(
     name = Int256,
     inner_type = I256,
-    min = I256::MIN,
-    max = I256::MAX,
-    zero = I256::ZERO,
-    one = I256::ONE,
-    ten = I256::ONE,
-    byte_len = 32,
-    impl_bytable = ibnum unsigned U256,
     from = [Int64, Int128]
 );
 
@@ -394,13 +342,6 @@ generate_int!(
 generate_int!(
     name = Int512,
     inner_type = I512,
-    min = I512::MIN,
-    max = I512::MAX,
-    zero = I512::ZERO,
-    one = I512::ONE,
-    ten = I512::ONE,
-    byte_len = 64,
-    impl_bytable = ibnum unsigned U512,
     from = [Int64, Int128, Int256]
 );
 
