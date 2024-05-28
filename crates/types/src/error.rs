@@ -127,6 +127,12 @@ pub enum StdError {
         ty: &'static str,
         reason: String,
     },
+
+    #[error("Negative square! type: {ty}, value: {value}")]
+    NegativeSquare {
+        ty: &'static str,
+        value: String,
+    },
 }
 
 impl StdError {
@@ -240,6 +246,17 @@ impl StdError {
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
+    }
+
+    pub fn negative_sqrt<T>(value: impl ToString) -> Self {
+        Self::NegativeSquare {
+            ty: type_name::<T>(),
+            value: value.to_string(),
+        }
+    }
+
+    pub fn generic_err(reason: impl ToString) -> Self {
+        Self::Generic(reason.to_string())
     }
 }
 

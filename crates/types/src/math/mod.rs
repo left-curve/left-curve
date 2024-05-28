@@ -1,5 +1,6 @@
+mod decimal;
 mod int;
 mod macros;
 mod traits;
-
-pub use {int::*, traits::*};
+mod inner_impl;
+pub use {decimal::*, int::*, traits::*};

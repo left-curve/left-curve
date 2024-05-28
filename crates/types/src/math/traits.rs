@@ -1,10 +1,13 @@
-use crate::StdResult;
+use std::ops::{Add, Div};
 
-pub trait GrugNumber {
+use crate::{StdError, StdResult, Uint};
+
+pub trait NumberConst {
     const MAX: Self;
     const MIN: Self;
     const ZERO: Self;
     const ONE: Self;
+    const TEN: Self;
 }
 
 pub trait Bytable<const S: usize> {
@@ -36,8 +39,60 @@ pub trait CheckedOps: Sized {
     fn saturating_sub(self, other: Self) -> Self;
     fn saturating_mul(self, other: Self) -> Self;
     fn saturating_pow(self, other: u32) -> Self;
+    fn abs(self) -> Self;
 }
 
-pub trait NextNumer {
+pub trait NextNumber {
     type Next;
+}
+
+pub trait Sqrt: Sized {
+    fn checked_sqrt(self) -> StdResult<Self>;
+    fn sqrt(self) -> Self {
+        self.checked_sqrt().unwrap()
+    }
+}
+
+impl<T> Sqrt for T
+where
+    T: NumberConst
+        + PartialEq
+        + PartialOrd
+        + Add<Output = Self>
+        + Div<Output = Self>
+        + Copy
+        + ToString,
+{
+    fn checked_sqrt(self) -> StdResult<Self> {
+        if self == Self::ZERO {
+            return Ok(Self::ZERO);
+        } else if self < Self::ZERO {
+            return Err(StdError::negative_sqrt::<Self>(self));
+        }
+
+        let two = Self::ONE + Self::ONE;
+        let mut x = self;
+        let mut y = (x + Self::ONE) / two;
+        while y < x {
+            x = y;
+            y = (x + self / x) / two;
+        }
+        Ok(x)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{Int128, Sqrt, Uint128};
+
+    #[test]
+    fn sqrt() {
+        let val = 100_u128;
+        assert_eq!(val.sqrt(), 10_u128);
+        let val = Uint128::new(64);
+        assert_eq!(val.sqrt(), Uint128::new(8));
+
+        let val = Int128::new(-64);
+        val.checked_sqrt().unwrap_err();
+    }
 }

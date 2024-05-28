@@ -1,16 +1,16 @@
 use bnum::types::{U256, U512};
 
 use crate::{
-    generate_grug_number, impl_bytable_bnum, impl_bytable_std, impl_checked_ops, impl_next,
+    generate_int, impl_bytable_bnum, impl_bytable_std, impl_checked_ops_unsigned, impl_next,
     impl_number_bound,
-    uint::{Bytable, CheckedOps, GrugNumber, NextNumer, Uint, UintInner},
+    uint::{Bytable, CheckedOps, NumberConst, NextNumber, Uint, UintInner},
     StdError, StdResult,
 };
 
 
 
 // Int64
-generate_grug_number!(
+generate_int!(
     name = Int64g,
     inner_type = i64,
     min = i64::MIN,

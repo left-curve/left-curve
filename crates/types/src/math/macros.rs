@@ -2,7 +2,7 @@
 ///
 /// ### Example:
 /// ```ignore
-/// generate_grug_number!(
+/// generate_int!(
 ///     // The name of the Uint
 ///     name = Uint128,     
 ///     // Inner type of the Uint
@@ -28,7 +28,7 @@
 ///     from = [Uint64]
 /// );
 #[macro_export]
-macro_rules! generate_grug_number {
+macro_rules! generate_int {
         // impl_bytable = std
         (
             name = $name:ident,
@@ -37,18 +37,20 @@ macro_rules! generate_grug_number {
             max = $max:expr,
             zero = $zero:expr,
             one = $one:expr,
+            ten = $ten:expr,
             byte_len = $byte_len:literal,
             impl_bytable = std,
             from = [$($from:ty),*]
         ) => {
             impl_bytable_std!($inner, $byte_len);
-            generate_grug_number!(
+            generate_int!(
                 name = $name,
                 inner_type = $inner,
                 min = $min,
                 max = $max,
                 zero = $zero,
                 one = $one,
+                ten = $ten,
                 byte_len = $byte_len,
                 from = [$($from),*]
             );
@@ -61,18 +63,20 @@ macro_rules! generate_grug_number {
             max = $max:expr,
             zero = $zero:expr,
             one = $one:expr,
+            ten = $ten:expr,
             byte_len = $byte_len:literal,
             impl_bytable = bnum,
             from = [$($from:ty),*]
         ) => {
             impl_bytable_bnum!($inner, $byte_len);
-            generate_grug_number!(
+            generate_int!(
                 name = $name,
                 inner_type = $inner,
                 min = $min,
                 max = $max,
                 zero = $zero,
                 one = $one,
+                ten = $ten,
                 byte_len = $byte_len,
                 from = [$($from),*]
             );
@@ -85,18 +89,20 @@ macro_rules! generate_grug_number {
             max = $max:expr,
             zero = $zero:expr,
             one = $one:expr,
+            ten = $ten:expr,
             byte_len = $byte_len:literal,
             impl_bytable = ibnum unsigned $unsigned:ty,
             from = [$($from:ty),*]
         ) => {
             impl_bytable_ibnum!($inner, $byte_len, $unsigned);
-            generate_grug_number!(
+            generate_int!(
                 name = $name,
                 inner_type = $inner,
                 min = $min,
                 max = $max,
                 zero = $zero,
                 one = $one,
+                ten = $ten,
                 byte_len = $byte_len,
                 from = [$($from),*]
             );
@@ -109,12 +115,13 @@ macro_rules! generate_grug_number {
             max = $max:expr,
             zero = $zero:expr,
             one = $one:expr,
+            ten = $ten:expr,
             byte_len = $byte_len:literal,
             from = [$($from:ty),*]
 
         ) => {
-            impl_number_bound!($inner, $max, $min, $zero, $one);
-            impl_checked_ops!($inner);
+            impl_number_bound!($inner, $max, $min, $zero, $one, $ten);
+            impl_checked_ops_unsigned!($inner);
             pub type $name = Uint<$inner>;
 
             // Impl From Uint and from inner type
@@ -200,12 +207,13 @@ macro_rules! generate_grug_number {
 /// ```
 #[macro_export]
 macro_rules! impl_number_bound {
-    ($t:ty, $max:expr, $min:expr, $zero:expr, $one:expr) => {
-        impl GrugNumber for $t {
+    ($t:ty, $max:expr, $min:expr, $zero:expr, $one:expr, $ten:expr) => {
+        impl NumberConst for $t {
             const MAX: Self = $max;
             const MIN: Self = $min;
             const ZERO: Self = $zero;
             const ONE: Self = $one;
+            const TEN: Self = $ten;
         }
 
         // This is a compile-time check to ensure that the constants are of the correct type.
@@ -370,7 +378,7 @@ macro_rules! impl_bytable_ibnum {
 }
 
 #[macro_export]
-macro_rules! impl_checked_ops {
+macro_rules! impl_checked_ops_unsigned {
     ($t:ty) => {
         impl CheckedOps for $t {
             fn checked_add(self, other: Self) -> StdResult<Self> {
@@ -436,6 +444,9 @@ macro_rules! impl_checked_ops {
             fn saturating_pow(self, other: u32) -> Self {
                 self.saturating_pow(other)
             }
+            fn abs(self) -> Self {
+                self
+            }
         }
     };
 }
@@ -443,7 +454,7 @@ macro_rules! impl_checked_ops {
 #[macro_export]
 macro_rules! impl_next {
     ($t:ty, $next:ty) => {
-        impl NextNumer for $t {
+        impl NextNumber for $t {
             type Next = $next;
         }
     };
@@ -472,6 +483,22 @@ macro_rules! impl_base_ops {
                 type Output = Self;
 
                 fn $method(self, other: $other) -> Self {
+                    self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
+                }
+            }
+        };
+        // Decimal
+        (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
+        {
+            impl<U, const S: usize> std::ops::$imp for $t
+            where
+                Uint<U>: NextNumber + CheckedOps,
+                <Uint<U> as NextNumber>::Next: From<Uint<U>> + TryInto<Uint<U>> + CheckedOps + ToString + Clone,
+                U: NumberConst + Clone + PartialEq + Copy + FromStr,
+            {
+                type Output = Self;
+
+                fn $method(self, other: Self) -> Self {
                     self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
                 }
             }
@@ -513,6 +540,7 @@ macro_rules! call_inner {
             Self(self.0.$op(other))
         }
     };
+
     (fn $op:ident, field $inner:tt, => Result<Self>) => {
         fn $op(self, other: Self) -> StdResult<Self> {
             self.0.$op(other.$inner).map(|val| Self(val))
@@ -521,6 +549,11 @@ macro_rules! call_inner {
     (fn $op:ident, field $inner:tt, => Self) => {
         fn $op(self, other: Self) -> Self {
             Self(self.0.$op(other.$inner))
+        }
+    };
+    (fn $op:ident, => Self) => {
+        fn $op(self) -> Self {
+            Self(self.0.$op())
         }
     };
     (fn $op:ident, => $out:ty) => {
@@ -575,3 +608,33 @@ macro_rules! forward_ref_op_assign_typed {
             }
         };
     }
+
+#[macro_export]
+macro_rules! generate_decimal_per {
+    ($name:ident, $shift:expr) => {
+        pub fn $name(x: impl Into<Uint<U>>) -> Self {
+            let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(($shift) as u32));
+            Self::raw(atomic)
+        }
+    };
+}
+
+/// Generate `unchecked fn` from `checked fn`
+#[macro_export]
+macro_rules! generate_unchecked {
+    ($checked:tt => $name:ident) => {
+        pub fn $name(self) -> Self {
+            self.$checked().unwrap()
+        }
+    };
+    ($checked:tt => $name:ident, arg $arg:ident) => {
+        pub fn $name(self, arg: $arg) -> Self {
+            self.$checked(arg).unwrap()
+        }
+    };
+    ($checked:tt => $name:ident, args $arg1:ty, $arg2:ty) => {
+        pub fn $name(arg1: $arg1, arg2: $arg2) -> Self {
+            Self::$checked(arg1, arg2).unwrap()
+        }
+    };
+}
