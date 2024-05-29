@@ -14,6 +14,10 @@ test:
 lint:
   cargo +nightly clippy --bins --tests --benches --examples --all-features --all-targets
 
+# Perform formatting
+fmt:
+  cargo +nightly fmt --all
+
 # Compile and optimize contracts (https://github.com/CosmWasm/rust-optimizer)
 optimize:
   if [[ $(uname -m) =~ "arm64" ]]; then \
