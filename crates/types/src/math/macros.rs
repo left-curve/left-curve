@@ -4,13 +4,20 @@
 /// ```ignore
 /// generate_int!(
 ///     // The name of the Int
-///     name = Uint128,     
+///     name = Int128,     
 ///     // Inner type of the Int
-///     inner_type = u128,   
-///     // Implement From | TryInto from other types
-///     from_int = [Uint64]
-///     // Implement From | TryInto from other types
-///     from_std = [Uint64]
+///     inner_type = i128,   
+///     // Implement From | TryInto from other Int types
+///     // Safe type where overflow is not possible
+///     // It also impls Base ops (Add, Sub ecc..) vs this type
+///     from_int = [Int64, Uint64]
+///     // Implement From | TryInto from other std types
+///     // Safe type where overflow is not possible
+///     // It also impls Base ops (Add, Sub ecc..) vs this type
+///     from_std = [u32, u16, u8, i32, i16, i8]
+///     // Implement TryFrom | TryInto from other Int types
+///     // Unsafe type where overflow is possible
+///     try_from_int = [Uint128]
 /// );
 #[macro_export]
 macro_rules! generate_int {
@@ -179,6 +186,25 @@ macro_rules! generate_int {
     }
 }
 
+/// Generate a [`Decimal`](super::Decimal) type for a given inner type.
+///
+/// ### Example:
+/// ```ignore
+/// generate_int!(
+///     // The name of the Int
+///     name = SignedDecimal256,     
+///     // Inner type of the Int
+///     inner_type = I256,   
+///     // Number of decimal places
+///     decimal_places = 18,
+///     // Implement From | TryInto from other Decimal types
+///     // Safe type where overflow is not possible
+///     // It also impls Base ops (Add, Sub ecc..) vs this type
+///     from_dec = [SignedDecimal128, Decimal128]
+///     // Implement TryFrom | TryInto from other Int types
+///     // Unsafe type where overflow is possible
+///     try_from_dec = [Decimal256]
+/// );
 #[macro_export]
 macro_rules! generate_decimal {
     (
