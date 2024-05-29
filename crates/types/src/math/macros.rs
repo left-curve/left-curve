@@ -18,7 +18,8 @@ macro_rules! generate_int {
     name = $name:ident,
     inner_type = $inner:ty,
     from_int = [$($from:ty),*],
-    from_std = [$($from_std:ty),*]
+    from_std = [$($from_std:ty),*],
+    try_from_int = [$($try_from:ty),*]
     ) => {
         pub type $name = Int<$inner>;
 
@@ -36,8 +37,8 @@ macro_rules! generate_int {
             }
 
             // Ex: From<u64> for Uint128
-            impl From<<$from as UintInner>::U> for $name {
-                fn from(value: <$from as UintInner>::U) -> Self {
+            impl From<<$from as Inner>::U> for $name {
+                fn from(value: <$from as Inner>::U) -> Self {
                     // --- Old code ---
 
                     // Self::from_le_bytes_growing(value.to_le_bytes())
@@ -67,9 +68,9 @@ macro_rules! generate_int {
             }
 
             // Ex: TryInto<u64> for Uint128
-            impl TryInto<<$from as UintInner>::U> for $name {
+            impl TryInto<<$from as Inner>::U> for $name {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<<$from as UintInner>::U> {
+                fn try_into(self) -> StdResult<<$from as Inner>::U> {
                     // --- Old code ---
 
                     // let other_b_l = <$from>::byte_len();
@@ -87,30 +88,7 @@ macro_rules! generate_int {
 
             }
 
-            impl_base_ops!(impl Add, add for $name as $from where sub fn checked_add);
-            impl_base_ops!(impl Sub, sub for $name as $from where sub fn checked_sub);
-            impl_base_ops!(impl Mul, mul for $name as $from where sub fn checked_mul);
-            impl_base_ops!(impl Div, div for $name as $from where sub fn checked_div);
-
-            forward_ref_binop!(impl Add, add for $name, $from);
-            forward_ref_binop!(impl Sub, sub for $name, $from);
-            forward_ref_binop!(impl Mul, mul for $name, $from);
-            forward_ref_binop!(impl Div, div for $name, $from);
-
-            forward_ref_binop!(impl Add, add for $from, $name);
-            forward_ref_binop!(impl Sub, sub for $from, $name);
-            forward_ref_binop!(impl Mul, mul for $from, $name);
-            forward_ref_binop!(impl Div, div for $from, $name);
-
-            impl_assign!(impl AddAssign, add_assign for $name as $from where sub fn checked_add);
-            impl_assign!(impl SubAssign, sub_assign for $name as $from where sub fn checked_add);
-            impl_assign!(impl MulAssign, mul_assign for $name as $from where sub fn checked_add);
-            impl_assign!(impl DivAssign, div_assign for $name as $from where sub fn checked_add);
-
-            forward_ref_op_assign!(impl AddAssign, add_assign for $name, $from);
-            forward_ref_op_assign!(impl SubAssign, sub_assign for $name, $from);
-            forward_ref_op_assign!(impl MulAssign, mul_assign for $name, $from);
-            forward_ref_op_assign!(impl DivAssign, div_assign for $name, $from);
+            impl_all_ops_and_assign!($name, $from);
         )*
 
         // --- Impl From std ---
@@ -131,31 +109,43 @@ macro_rules! generate_int {
 
             // --- Impl ops ---
 
-            impl_base_ops!(impl Add, add for $name as $from_std where sub fn checked_add);
-            impl_base_ops!(impl Sub, sub for $name as $from_std where sub fn checked_sub);
-            impl_base_ops!(impl Mul, mul for $name as $from_std where sub fn checked_mul);
-            impl_base_ops!(impl Div, div for $name as $from_std where sub fn checked_div);
+            impl_all_ops_and_assign!($name, $from_std);
 
-            forward_ref_binop!(impl Add, add for $name, $from_std);
-            forward_ref_binop!(impl Sub, sub for $name, $from_std);
-            forward_ref_binop!(impl Mul, mul for $name, $from_std);
-            forward_ref_binop!(impl Div, div for $name, $from_std);
+        )*
 
-            forward_ref_binop!(impl Add, add for $from_std, $name);
-            forward_ref_binop!(impl Sub, sub for $from_std, $name);
-            forward_ref_binop!(impl Mul, mul for $from_std, $name);
-            forward_ref_binop!(impl Div, div for $from_std, $name);
+        $(
+            // Ex: TryFrom<Uint128> for Int128
+            impl TryFrom<$try_from> for $name {
+                type Error = StdError;
+                fn try_from(value: $try_from) -> StdResult<Self> {
+                    Self::from_str(&value.to_string())
+                }
+            }
 
-            impl_assign!(impl AddAssign, add_assign for $name as $from_std where sub fn checked_add);
-            impl_assign!(impl SubAssign, sub_assign for $name as $from_std where sub fn checked_add);
-            impl_assign!(impl MulAssign, mul_assign for $name as $from_std where sub fn checked_add);
-            impl_assign!(impl DivAssign, div_assign for $name as $from_std where sub fn checked_add);
+            // Ex: From<u64> for Uint128
+            impl TryFrom<<$try_from as Inner>::U> for $name {
+                type Error = StdError;
+                fn try_from(value: <$try_from as Inner>::U) -> StdResult<Self> {
+                    Self::from_str(&value.to_string())
+                }
+            }
 
-            forward_ref_op_assign!(impl AddAssign, add_assign for $name, $from_std);
-            forward_ref_op_assign!(impl SubAssign, sub_assign for $name, $from_std);
-            forward_ref_op_assign!(impl MulAssign, mul_assign for $name, $from_std);
-            forward_ref_op_assign!(impl DivAssign, div_assign for $name, $from_std);
+            // Ex: TryInto<Uint64> for Uint128
+            impl TryInto<$try_from> for $name {
+                type Error = StdError;
+                fn try_into(self) -> StdResult<$try_from> {
+                    <$try_from>::from_str(&self.to_string())
+                }
 
+            }
+
+            // Ex: TryInto<u64> for Uint128
+            impl TryInto<<$try_from as Inner>::U> for $name {
+                type Error = StdError;
+                fn try_into(self) -> StdResult<<$try_from as Inner>::U> {
+                    <$try_from>::from_str(&self.to_string()).map(Into::into)
+                }
+            }
         )*
 
         // Ex: From<u128> for Uint128
@@ -172,6 +162,94 @@ macro_rules! generate_int {
             }
         }
 
+    };
+    (
+    name = $name:ident,
+    inner_type = $inner:ty,
+    from_int = [$($from:ty),*],
+    from_std = [$($from_std:ty),*]
+    ) => {
+        generate_int!(
+            name = $name,
+            inner_type = $inner,
+            from_int = [$($from),*],
+            from_std = [$($from_std),*],
+            try_from_int = []
+        );
+    }
+}
+
+#[macro_export]
+macro_rules! generate_decimal {
+    (
+        name = $name:ident,
+        inner_type = $inner:ty,
+        decimal_places = $decimal_places:expr,
+        from_dec = [$($from:ty),*],
+        try_from_dec = [$($try_from:ty),*]
+    ) => {
+        pub type $name = Decimal<$inner, $decimal_places>;
+
+        impl $name {
+            pub const DECIMAL_PLACES: usize = $decimal_places;
+        }
+
+        $(
+            // Ex: From<Decimal128> for Decimal256
+            impl From<$from> for $name {
+                fn from(value: $from) -> Self {
+                    // This is safe.
+                    // But it's depend on the data passed on the macro
+                    Self::from_str(&value.to_string()).unwrap()
+                }
+            }
+
+            // Ex: TryInto<Decimal128> for Decimal256
+            impl TryInto<$from> for $name {
+                type Error = StdError;
+                fn try_into(self) -> StdResult<$from> {
+                    <$from>::from_str(&self.to_string())
+                }
+            }
+
+            impl_all_ops_and_assign!($name, $from);
+        )*
+
+        $(
+            // Ex: TryFrom<Decimal128> for Decimal256
+            impl TryFrom<$try_from> for $name {
+                type Error = StdError;
+                fn try_from(value: $try_from) -> StdResult<Self> {
+                    // This is safe.
+                    // But it's depend on the data passed on the macro
+                    Self::from_str(&value.to_string())
+                }
+            }
+
+            // Ex: TryInto<Decimal128> for Decimal256
+            impl TryInto<$try_from> for $name {
+                type Error = StdError;
+                fn try_into(self) -> StdResult<$try_from> {
+                    <$try_from>::from_str(&self.to_string())
+                }
+            }
+        )*
+
+
+    };
+    (
+        name = $name:ident,
+        inner_type = $inner:ty,
+        decimal_places = $decimal_places:expr,
+        from_dec = [$($from:ty),*]
+    ) => {
+        generate_decimal!(
+            name = $name,
+            inner_type = $inner,
+            decimal_places = $decimal_places,
+            from_dec = [$($from),*],
+            try_from_dec = []
+        );
     }
 }
 
@@ -442,6 +520,10 @@ macro_rules! impl_checked_ops {
         fn saturating_pow(self, other: u32) -> Self {
             self.saturating_pow(other)
         }
+
+        fn is_zero(self) -> bool {
+            self == Self::ZERO
+        }
     };
 }
 
@@ -481,6 +563,36 @@ macro_rules! impl_next {
 }
 
 #[macro_export]
+macro_rules! impl_all_ops_and_assign {
+    ($name:ident, $other:ty) => {
+        impl_base_ops!(impl Add, add for $name as $other where sub fn checked_add);
+        impl_base_ops!(impl Sub, sub for $name as $other where sub fn checked_sub);
+        impl_base_ops!(impl Mul, mul for $name as $other where sub fn checked_mul);
+        impl_base_ops!(impl Div, div for $name as $other where sub fn checked_div);
+
+        forward_ref_binop!(impl Add, add for $name, $other);
+        forward_ref_binop!(impl Sub, sub for $name, $other);
+        forward_ref_binop!(impl Mul, mul for $name, $other);
+        forward_ref_binop!(impl Div, div for $name, $other);
+
+        forward_ref_binop!(impl Add, add for $other, $name);
+        forward_ref_binop!(impl Sub, sub for $other, $name);
+        forward_ref_binop!(impl Mul, mul for $other, $name);
+        forward_ref_binop!(impl Div, div for $other, $name);
+
+        impl_assign!(impl AddAssign, add_assign for $name as $other where sub fn checked_add);
+        impl_assign!(impl SubAssign, sub_assign for $name as $other where sub fn checked_sub);
+        impl_assign!(impl MulAssign, mul_assign for $name as $other where sub fn checked_mul);
+        impl_assign!(impl DivAssign, div_assign for $name as $other where sub fn checked_div);
+
+        forward_ref_op_assign!(impl AddAssign, add_assign for $name, $other);
+        forward_ref_op_assign!(impl SubAssign, sub_assign for $name, $other);
+        forward_ref_op_assign!(impl MulAssign, mul_assign for $name, $other);
+        forward_ref_op_assign!(impl DivAssign, div_assign for $name, $other);
+    };
+}
+
+#[macro_export]
 macro_rules! impl_base_ops {
     // args type = Self
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
@@ -508,7 +620,28 @@ macro_rules! impl_base_ops {
             }
         }
     };
-    // Decimal
+    // Ops self for other, output = Self
+    // Ex: Add<Uint64> for Uint128 => Uint128
+    // Ex: Add<Decimal128> for Decimal256 => Decimal256
+    (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
+        impl std::ops::$imp<$other> for $t
+        {
+            type Output = Self;
+            fn $method(self, other: $other) -> Self {
+                self.$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+
+        impl std::ops::$imp<$t> for $other
+        {
+            type Output = $t;
+
+            fn $method(self, other: $t) -> $t {
+                other + self
+            }
+        }
+    };
+    // Decimal Self
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: usize> std::ops::$imp for $t
         where
@@ -523,31 +656,7 @@ macro_rules! impl_base_ops {
             }
         }
     };
-    // Ops self for other, output = Self
-    // Ex: Add<Uint64> for Uint128 => Uint128
-    (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
-        impl std::ops::$imp<$other> for $t
-        where
-            $t: CheckedOps
-        {
-            type Output = Self;
 
-            fn $method(self, other: $other) -> Self {
-                self.$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
-            }
-        }
-
-        impl std::ops::$imp<$t> for $other
-        where
-            $t: CheckedOps
-        {
-            type Output = $t;
-
-            fn $method(self, other: $t) -> $t {
-                other + self
-            }
-        }
-    };
 }
 
 #[macro_export]
@@ -567,6 +676,30 @@ macro_rules! impl_signed_ops {
     // Neg
     (impl<$($gen:tt),*> Neg for $t:ty) => {
         impl<$($gen),*> std::ops::Neg for $t
+        where U: Neg + Neg<Output = U>, {
+            type Output = Self;
+            fn neg(self) -> Self {
+                Self(-self.0)
+            }
+
+        }
+
+    };
+    // Not Decimal
+    (impl Not for $t:ident) => {
+        impl<U, const S: usize> std::ops::Not for $t<U,S>
+        where U: Not + Not<Output = U>, {
+            type Output = Self;
+            fn not(self) -> Self {
+                Self(!self.0)
+            }
+
+        }
+
+    };
+    // Neg Decimal
+    (impl Neg for $t:ident) => {
+        impl<U, const S: usize> std::ops::Neg for $t<U,S>
         where U: Neg + Neg<Output = U>, {
             type Output = Self;
             fn neg(self) -> Self {

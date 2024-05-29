@@ -1,6 +1,14 @@
 use std::ops::{Add, Div};
 
-use crate::{StdError, StdResult};
+use crate::{Int, StdError, StdResult};
+
+/// Rappresent the inner type of the [`Int`]
+///
+/// This trait is used in [`generate_int!`](crate::generate_int!) / [`generate_decimal!`](crate::generate_decimal!)
+/// to get the inner type of a [`Int`] and implement the conversion from the inner type to the [`Int`]
+pub trait Inner {
+    type U;
+}
 
 pub trait NumberConst {
     const MAX: Self;
@@ -50,6 +58,7 @@ pub trait CheckedOps: Sized {
     fn saturating_mul(self, other: Self) -> Self;
     fn saturating_pow(self, other: u32) -> Self;
     fn abs(self) -> Self;
+    fn is_zero(self) -> bool;
 }
 
 pub trait NextNumber {
@@ -91,6 +100,26 @@ where
     }
 }
 
+pub trait IntPerDec<U, AsU, DR>: Sized
+where
+    Int<AsU>: Into<Int<U>>,
+    DR: DecimalRef<AsU>,
+    AsU: NumberConst + CheckedOps,
+{
+    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
+    fn mul_dec_floor(self, rhs: DR) -> Self;
+    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+    fn mul_dec_ceil(self, rhs: DR) -> Self;
+    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
+    fn div_dec_floor(self, rhs: DR) -> Self;
+    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+    fn div_dec_ceil(self, rhs: DR) -> Self;
+}
+
+pub trait DecimalRef<U: NumberConst + CheckedOps> {
+    fn numerator(self) -> Int<U>;
+    fn denominator() -> Int<U>;
+}
 #[cfg(test)]
 mod test {
     use crate::{Int128, Sqrt, Uint128};

@@ -1,17 +1,15 @@
 use std::{
-    any::type_name_of_val,
-    fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
     str::FromStr,
 };
 
 use bnum::types::{I256, I512, U256, U512};
 use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{de, ser};
 
 use crate::{
-    call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int, impl_assign,
-    impl_base_ops, impl_next, impl_signed_ops, Sqrt, StdError, StdResult,
+    call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
+    impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops, Inner, Sqrt,
+    StdError, StdResult,
 };
 
 use forward_ref::{forward_ref_binop, forward_ref_op_assign};
@@ -21,7 +19,7 @@ use super::traits::{Bytable, CheckedOps, NextNumber, NumberConst};
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Int<U>(U);
+pub struct Int<U>(pub(crate) U);
 
 impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
@@ -41,6 +39,7 @@ where
     }
 }
 
+// --- Const ---
 impl<U> Int<U>
 where
     U: NumberConst,
@@ -52,24 +51,8 @@ where
     pub const TEN: Self = Self(U::TEN);
 }
 
-impl<U> Int<U>
-where
-    U: NumberConst + PartialEq,
-{
-    pub fn is_zero(self) -> bool {
-        self.0 == U::ZERO
-    }
-}
-
-/// Rappresent the inner type of the [`Int`]
-///
-/// This trait is used in [`generate_int!`](crate::generate_int!) to get the inner type of a [`Int`]
-/// and implement the conversion from the inner type to the [`Int`]
-pub trait UintInner {
-    type U;
-}
-
-impl<U> UintInner for Int<U> {
+// --- Inner ---
+impl<U> Inner for Int<U> {
     type U = U;
 }
 
@@ -128,9 +111,10 @@ where
     call_inner!(fn saturating_mul, field 0, => Self);
     call_inner!(fn saturating_pow, arg u32, => Self);
     call_inner!(fn abs,                     => Self);
+    call_inner!(fn is_zero,                 => bool);
 }
 
-// --- Sqrt ----
+// --- Sqrt ---
 impl<U> Sqrt for Int<U>
 where
     U: Copy + Sqrt,
@@ -139,9 +123,8 @@ where
         self.number().checked_sqrt().map(Self::new)
     }
 }
-// --- NextNumber ---
 
-// full_mull
+// --- full_mull ---
 impl<U> Int<U>
 where
     Int<U>: NextNumber,
@@ -157,10 +140,6 @@ where
     pub fn checked_full_mul(self, rhs: impl Into<Self>) -> StdResult<<Int<U> as NextNumber>::Next> {
         let s = <Int<U> as NextNumber>::Next::from(self);
         let r = <Int<U> as NextNumber>::Next::from(rhs.into());
-
-        println!("{}: {}", s.to_string(), type_name_of_val(&s));
-        println!("{}: {}", s.to_string(), type_name_of_val(&r));
-
         s.checked_mul(r)
     }
 
@@ -169,13 +148,14 @@ where
     }
 }
 
-// multiply_ratio
+// --- multiply_ratio ---
 impl<U> Int<U>
 where
-    Int<U>: NextNumber + Copy,
+    U: NumberConst + PartialEq,
+    Int<U>: NextNumber + CheckedOps + Copy,
     <Int<U> as NextNumber>::Next: From<Int<U>> + CheckedOps + TryInto<Int<U>> + ToString + Clone,
 {
-    pub fn checked_multiply_ratio<A: Into<Self>, B: Into<Self>>(
+    pub fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
         numerator: A,
         denominator: B,
@@ -190,12 +170,28 @@ where
             .map_err(|_| StdError::overflow_conversion::<_, Self>(next_result))
     }
 
-    pub fn multiply_ratio<A: Into<Self>, B: Into<Self>>(
+    pub fn multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
         numerator: A,
         denominator: B,
     ) -> Self {
-        self.checked_multiply_ratio(numerator, denominator).unwrap()
+        self.checked_multiply_ratio_floor(numerator, denominator).unwrap()
+    }
+
+    pub fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
+        self,
+        numerator: A,
+        denominator: B,
+    ) -> StdResult<Self> {
+        let numerator: Self = numerator.into();
+        let dividend = self.checked_full_mul(numerator)?;
+        let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
+        let remained = dividend.checked_rem(floor_result.as_next())?;
+        if !remained.is_zero() {
+            Self::ONE.checked_add(floor_result)
+        } else {
+            Ok(floor_result)
+        }
     }
 }
 
@@ -231,85 +227,88 @@ forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
 forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
 forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
 
-// TODO: Is worth create macros to impl below traits?
+mod display {
+    use std::{fmt::Display, str::FromStr};
 
-impl<U> FromStr for Int<U>
-where
-    U: FromStr,
-    <U as FromStr>::Err: ToString,
-{
-    type Err = StdError;
+    use crate::{Int, StdError};
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        U::from_str(s).map(Self).map_err(|err| StdError::parse_number::<Self>(s, err))
-    }
-}
-
-impl<U> From<Int<U>> for String
-where
-    U: std::fmt::Display,
-{
-    fn from(value: Int<U>) -> Self {
-        value.to_string()
-    }
-}
-
-impl<U> std::fmt::Display for Int<U>
-where
-    U: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<U> ser::Serialize for Int<U>
-where
-    U: std::fmt::Display,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    impl<U> FromStr for Int<U>
     where
-        S: ser::Serializer,
+        U: FromStr,
+        <U as FromStr>::Err: ToString,
     {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
+        type Err = StdError;
 
-impl<'de, U> de::Deserialize<'de> for Int<U>
-where
-    U: Default + FromStr,
-    <U as FromStr>::Err: Display,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            U::from_str(s).map(Self).map_err(|err| StdError::parse_number::<Self>(s, err))
+        }
+    }
+
+    impl<U> std::fmt::Display for Int<U>
     where
-        D: de::Deserializer<'de>,
+        U: Display,
     {
-        deserializer.deserialize_str(UintVisitor::<U>::default())
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.0.fmt(f)
+        }
     }
 }
 
-#[derive(Default)]
-struct UintVisitor<U> {
-    _marker: std::marker::PhantomData<U>,
-}
+mod serde {
+    use std::{fmt::Display, str::FromStr};
 
-impl<'de, U> de::Visitor<'de> for UintVisitor<U>
-where
-    U: FromStr,
-    <U as FromStr>::Err: Display,
-{
-    type Value = Int<U>;
+    use serde::{de, ser};
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // TODO: Change this message in base at the type of U
-        f.write_str("a string-encoded 256-bit unsigned integer")
-    }
+    use crate::Int;
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    impl<U> ser::Serialize for Int<U>
     where
-        E: de::Error,
+        U: Display,
     {
-        v.parse::<U>().map(Int::<U>).map_err(E::custom)
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: ser::Serializer,
+        {
+            serializer.serialize_str(&self.0.to_string())
+        }
+    }
+
+    impl<'de, U> de::Deserialize<'de> for Int<U>
+    where
+        U: Default + FromStr,
+        <U as FromStr>::Err: Display,
+    {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            deserializer.deserialize_str(UintVisitor::<U>::default())
+        }
+    }
+
+    #[derive(Default)]
+    struct UintVisitor<U> {
+        _marker: std::marker::PhantomData<U>,
+    }
+
+    impl<'de, U> de::Visitor<'de> for UintVisitor<U>
+    where
+        U: FromStr,
+        <U as FromStr>::Err: Display,
+    {
+        type Value = Int<U>;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            // TODO: Change this message in base at the type of U
+            f.write_str("a string-encoded 256-bit unsigned integer")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            v.parse::<U>().map(Int::<U>).map_err(E::custom)
+        }
     }
 }
 
@@ -335,11 +334,6 @@ generate_int!(
     from_std = [u32, u16, u8]
 );
 
-// Implementations of [`Next`] has to be done after all the types are defined.
-impl_next!(Uint64, Uint128);
-impl_next!(Uint128, Uint256);
-impl_next!(Uint256, Uint512);
-
 // Int64
 generate_int!(
     name = Int64,
@@ -353,7 +347,8 @@ generate_int!(
     name = Int128,
     inner_type = i128,
     from_int = [Int64, Uint64],
-    from_std = [u32, u16, u8, i32, i16, i8]
+    from_std = [u32, u16, u8, i32, i16, i8],
+    try_from_int = [Uint128]
 );
 
 // Int256
@@ -361,7 +356,8 @@ generate_int!(
     name = Int256,
     inner_type = I256,
     from_int = [Int64, Int128, Uint64, Uint128],
-    from_std = [u32, u16, u8, i32, i16, i8]
+    from_std = [u32, u16, u8, i32, i16, i8],
+    try_from_int = [Uint256]
 );
 
 // Int512
@@ -369,10 +365,15 @@ generate_int!(
     name = Int512,
     inner_type = I512,
     from_int = [Int64, Int128, Int256, Uint64, Uint128, Uint256],
-    from_std = [u32, u16, u8, i32, i16, i8]
+    from_std = [u32, u16, u8, i32, i16, i8],
+    try_from_int = [Uint512]
 );
 
 // Implementations of [`Next`] has to be done after all the types are defined.
+impl_next!(Uint64, Uint128);
+impl_next!(Uint128, Uint256);
+impl_next!(Uint256, Uint512);
+
 impl_next!(Int64, Int128);
 impl_next!(Int128, Int256);
 impl_next!(Int256, Int512);
@@ -416,6 +417,18 @@ mod test {
 
         let foo = Int256::ONE;
         assert_eq!(foo.as_next(), Int512::new(I512::ONE));
+
+        let foo = Int128::new(10);
+        assert_eq!(TryInto::<Uint128>::try_into(foo).unwrap(), Uint128::new(10));
+
+        let foo = Int128::new(-10);
+        TryInto::<Uint128>::try_into(foo).unwrap_err();
+
+        let foo = Int128::new(10);
+        assert_eq!(TryInto::<u128>::try_into(foo).unwrap(), 10);
+
+        let foo = Int128::new(-10);
+        TryInto::<u128>::try_into(foo).unwrap_err();
     }
 
     #[test]
