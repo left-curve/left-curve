@@ -17,10 +17,8 @@ pub struct ImmutableCtx<'a> {
     // `ctx.secp256k1_verify` instead of `ctx.api.secp256k1_verify`,
     // `ctx.query_wasm_smart` instead of `ctx.querier.query_chain`.
     // In our opinion, this is more ergonomic for users.
-    #[doc(hidden)]
-    pub api: &'a dyn Api,
-    #[doc(hidden)]
-    pub querier: &'a dyn Querier,
+    #[doc(hidden)] pub api: &'a dyn Api,
+    #[doc(hidden)] pub querier: &'a dyn Querier,
     pub chain_id: String,
     pub block_height: Uint64,
     pub block_timestamp: Timestamp,
@@ -32,10 +30,8 @@ pub struct ImmutableCtx<'a> {
 /// the contract is allowed to mutate the state, such as instantiate and execute.
 pub struct MutableCtx<'a> {
     pub store: &'a mut dyn Storage,
-    #[doc(hidden)]
-    pub api: &'a dyn Api,
-    #[doc(hidden)]
-    pub querier: &'a dyn Querier,
+    #[doc(hidden)] pub api: &'a dyn Api,
+    #[doc(hidden)] pub querier: &'a dyn Querier,
     pub chain_id: String,
     pub block_height: Uint64,
     pub block_timestamp: Timestamp,
@@ -53,10 +49,8 @@ pub struct MutableCtx<'a> {
 /// There isn't such an entry point in Grug, but we keep the name nonetheless.
 pub struct SudoCtx<'a> {
     pub store: &'a mut dyn Storage,
-    #[doc(hidden)]
-    pub api: &'a dyn Api,
-    #[doc(hidden)]
-    pub querier: &'a dyn Querier,
+    #[doc(hidden)] pub api: &'a dyn Api,
+    #[doc(hidden)] pub querier: &'a dyn Querier,
     pub chain_id: String,
     pub block_height: Uint64,
     pub block_timestamp: Timestamp,
@@ -75,10 +69,8 @@ pub struct SudoCtx<'a> {
 /// steps (e.g. verifying a cryptographic signature) if it's in simulation mode.
 pub struct AuthCtx<'a> {
     pub store: &'a mut dyn Storage,
-    #[doc(hidden)]
-    pub api: &'a dyn Api,
-    #[doc(hidden)]
-    pub querier: &'a dyn Querier,
+    #[doc(hidden)] pub api: &'a dyn Api,
+    #[doc(hidden)] pub querier: &'a dyn Querier,
     pub chain_id: String,
     pub block_height: Uint64,
     pub block_timestamp: Timestamp,
