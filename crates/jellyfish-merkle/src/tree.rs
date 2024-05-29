@@ -5,7 +5,6 @@ use {
     },
     grug_storage::{Map, Set},
     grug_types::{hash, Batch, Hash, Op, Order, StdResult, Storage},
-    tracing::trace,
 };
 
 // default storage namespaces
@@ -491,28 +490,6 @@ impl<'a> MerkleTree<'a> {
         bits:    &BitArray,
         node:    &Node,
     ) -> StdResult<()> {
-        match node {
-            Node::Internal(InternalNode { left_child, right_child }) => {
-                trace!(
-                    version,
-                    ?bits,
-                    left_version  = ?left_child.as_ref().map(|c| c.version),
-                    left_hash     = ?left_child.as_ref().map(|c| &c.hash),
-                    right_version = ?right_child.as_ref().map(|c| c.version),
-                    right_hash    = ?right_child.as_ref().map(|c| &c.hash),
-                    "Saving internal node"
-                );
-            },
-            Node::Leaf(LeafNode { key_hash, value_hash }) => {
-                trace!(
-                    version,
-                    ?bits,
-                    ?key_hash,
-                    ?value_hash,
-                    "Saving leaf node"
-                );
-            },
-        }
         self.nodes.save(store, (version, bits), node)
     }
 
@@ -524,7 +501,6 @@ impl<'a> MerkleTree<'a> {
         version: u64,
         bits: &BitArray,
     ) -> StdResult<()> {
-        trace!(orphaned_since_version, version, ?bits, "Marking node as orphaned");
         self.orphans.insert(store, (orphaned_since_version, version, bits))
     }
 }
@@ -684,10 +660,7 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*, grug_types::MockStorage, hex_literal::hex, test_case::test_case,
-        tracing_test::traced_test,
-    };
+    use {super::*, grug_types::MockStorage, hex_literal::hex, test_case::test_case};
 
     const TREE: MerkleTree = MerkleTree::new_default();
 
@@ -714,7 +687,6 @@ mod tests {
     }
 
     #[test]
-    #[traced_test]
     fn applying_initial_batch() {
         let (store, root_hash) = build_test_case().unwrap();
         assert_eq!(root_hash, Some(HASH_ROOT));
@@ -740,7 +712,6 @@ mod tests {
     // = sha256(00 | 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b | cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
     // = b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf
     #[test]
-    #[traced_test]
     fn collapsing_path() {
         let (mut store, _) = build_test_case().unwrap();
         let new_root_hash = TREE.apply_raw(&mut store, 1, 2, &Batch::from([
@@ -754,7 +725,6 @@ mod tests {
     // try deleting every single node. the function should return None as the
     // new root hash. see that nodes have been properly marked as orphaned.
     #[test]
-    #[traced_test]
     fn deleting_all_nodes() {
         let (mut store, _) = build_test_case().unwrap();
 
@@ -780,7 +750,6 @@ mod tests {
     // same value, or deletes of non-existing keys. the version number shouldn't
     // be incremented and root hash shouldn't be changed.
     #[test]
-    #[traced_test]
     fn no_ops() {
         let (mut store, _) = build_test_case().unwrap();
 
