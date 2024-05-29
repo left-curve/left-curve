@@ -86,7 +86,7 @@ impl<'a> MapKey for &'a PublicKey {
                 Ok(PublicKey::Secp256r1(bytes.to_vec().into()))
             },
             _ => {
-                Err(StdError::deserialize::<PublicKey>("unknown public key type: {ty_bytes:?}"))
+                Err(StdError::deserialize::<PublicKey>(format!("unknown public key type: {ty_bytes:?}")))
             },
         }
     }
