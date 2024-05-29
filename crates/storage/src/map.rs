@@ -47,66 +47,66 @@ where
     K: MapKey,
     T: BorshSerialize + BorshDeserialize,
 {
-    pub fn is_empty(&self, store: &dyn Storage) -> bool {
-        self.range(store, None, None, Order::Ascending).next().is_none()
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.range(storage, None, None, Order::Ascending).next().is_none()
     }
 
-    pub fn has(&self, store: &dyn Storage, k: K) -> bool {
-        self.path(k).as_path().exists(store)
+    pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
+        self.path(k).as_path().exists(storage)
     }
 
-    pub fn may_load(&self, store: &dyn Storage, k: K) -> StdResult<Option<T>> {
-        self.path(k).as_path().may_load(store)
+    pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
+        self.path(k).as_path().may_load(storage)
     }
 
-    pub fn load(&self, store: &dyn Storage, k: K) -> StdResult<T> {
-        self.path(k).as_path().load(store)
+    pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
+        self.path(k).as_path().load(storage)
     }
 
-    pub fn update<A, E>(&self, store: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
     where
         A: FnOnce(Option<T>) -> Result<Option<T>, E>,
         E: From<StdError>,
     {
-        self.path(k).as_path().update(store, action)
+        self.path(k).as_path().update(storage, action)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
-        self.path(k).as_path().save(store, data)
+    pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
+        self.path(k).as_path().save(storage, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage, k: K) {
-        self.path(k).as_path().remove(store)
+    pub fn remove(&self, storage: &mut dyn Storage, k: K) {
+        self.path(k).as_path().remove(storage)
     }
 
     #[allow(clippy::type_complexity)]
     pub fn range<'b>(
         &self,
-        store: &'b dyn Storage,
+        storage: &'b dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(store, min, max, order)
+        self.no_prefix().range(storage, min, max, order)
     }
 
     pub fn keys<'b>(
         &self,
-        store: &'b dyn Storage,
+        storage: &'b dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
-        self.no_prefix().keys(store, min, max, order)
+        self.no_prefix().keys(storage, min, max, order)
     }
 
     pub fn clear(
         &self,
-        store: &mut dyn Storage,
+        storage: &mut dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         limit: Option<usize>,
     ) -> StdResult<()> {
-        self.no_prefix().clear(store, min, max, limit)
+        self.no_prefix().clear(storage, min, max, limit)
     }
 }

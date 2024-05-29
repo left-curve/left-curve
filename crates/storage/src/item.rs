@@ -27,31 +27,31 @@ impl<'a, T> Item<'a, T>
 where
     T: BorshSerialize + BorshDeserialize,
 {
-    pub fn exists(&self, store: &dyn Storage) -> bool {
-        self.path().exists(store)
+    pub fn exists(&self, storage: &dyn Storage) -> bool {
+        self.path().exists(storage)
     }
 
-    pub fn may_load(&self, store: &dyn Storage) -> StdResult<Option<T>> {
-        self.path().may_load(store)
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        self.path().may_load(storage)
     }
 
-    pub fn load(&self, store: &dyn Storage) -> StdResult<T> {
-        self.path().load(store)
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        self.path().load(storage)
     }
 
-    pub fn update<A, E>(&self, store: &mut dyn Storage, action: A) -> Result<Option<T>, E>
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
     where
         A: FnOnce(Option<T>) -> Result<Option<T>, E>,
         E: From<StdError>,
     {
-        self.path().update(store, action)
+        self.path().update(storage, action)
     }
 
-    pub fn save(&self, store: &mut dyn Storage, data: &T) -> StdResult<()> {
-        self.path().save(store, data)
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        self.path().save(storage, data)
     }
 
-    pub fn remove(&self, store: &mut dyn Storage) {
-        self.path().remove(store)
+    pub fn remove(&self, storage: &mut dyn Storage) {
+        self.path().remove(storage)
     }
 }

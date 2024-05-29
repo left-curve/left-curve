@@ -194,8 +194,8 @@ mod tests {
         (cached, merged)
     }
 
-    fn collect_records(store: &dyn Storage, order: Order) -> Vec<Record> {
-        store.scan(None, None, order).collect()
+    fn collect_records(storage: &dyn Storage, order: Order) -> Vec<Record> {
+        storage.scan(None, None, order).collect()
     }
 
     #[test]

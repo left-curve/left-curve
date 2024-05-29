@@ -2,12 +2,12 @@ use grug_types::{concat, increment_last_byte, Order, Record, Storage};
 
 #[derive(Clone)]
 pub struct PrefixStore {
-    store: Box<dyn Storage>,
+    storage: Box<dyn Storage>,
     namespace: Vec<u8>,
 }
 
 impl PrefixStore {
-    pub fn new(store: Box<dyn Storage>, prefixes: &[&[u8]]) -> Self {
+    pub fn new(storage: Box<dyn Storage>, prefixes: &[&[u8]]) -> Self {
         let mut size = 0;
         for prefix in prefixes {
             size += prefix.len();
@@ -18,14 +18,14 @@ impl PrefixStore {
             namespace.extend_from_slice(prefix);
         }
 
-        Self { store, namespace }
+        Self { storage, namespace }
     }
 }
 
 impl Storage for PrefixStore {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let prefixed_key = concat(&self.namespace, key);
-        self.store.read(&prefixed_key)
+        self.storage.read(&prefixed_key)
     }
 
     fn scan<'a>(
@@ -42,16 +42,16 @@ impl Storage for PrefixStore {
             Some(bytes) => concat(&self.namespace, bytes),
             None => increment_last_byte(self.namespace.to_vec()),
         };
-        self.store.scan(Some(&min), Some(&max), order)
+        self.storage.scan(Some(&min), Some(&max), order)
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
         let prefixed_key = concat(&self.namespace, key);
-        self.store.write(&prefixed_key, value);
+        self.storage.write(&prefixed_key, value);
     }
 
     fn remove(&mut self, key: &[u8]) {
         let prefixed_key = concat(&self.namespace, key);
-        self.store.remove(&prefixed_key);
+        self.storage.remove(&prefixed_key);
     }
 }

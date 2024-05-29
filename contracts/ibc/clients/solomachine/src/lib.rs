@@ -127,8 +127,8 @@ pub fn ibc_client_create(
     ensure!(client_state.status == IbcClientStatus::Active, "new client must be active");
     ensure!(consensus_state.sequence == 0, "sequence must start from zero");
 
-    CLIENT_STATE.save(ctx.store, &client_state)?;
-    CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
+    CLIENT_STATE.save(ctx.storage, &client_state)?;
+    CONSENSUS_STATE.save(ctx.storage, &consensus_state)?;
 
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
@@ -147,8 +147,8 @@ pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Resul
 
 pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
     let header: Header = from_json_value(header)?;
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let mut consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let mut consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     ensure!(
         client_state.status == IbcClientStatus::Active,
@@ -161,15 +161,15 @@ pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
     consensus_state.record = header.record;
     consensus_state.sequence += 1;
 
-    CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
+    CONSENSUS_STATE.save(ctx.storage, &consensus_state)?;
 
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
 pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<Response> {
     let misbehavior: Misbehavior = from_json_value(misbehavior)?;
-    let mut client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let mut client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     ensure!(
         misbehavior.header_one != misbehavior.header_two,
@@ -191,7 +191,7 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<
 
     client_state.status = IbcClientStatus::Frozen;
 
-    CLIENT_STATE.save(ctx.store, &client_state)?;
+    CLIENT_STATE.save(ctx.storage, &client_state)?;
 
     Ok(Response::new())
 }
@@ -217,8 +217,8 @@ pub fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> anyhow::
 }
 
 pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyhow::Result<()> {
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
@@ -245,8 +245,8 @@ pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyho
 }
 
 pub fn verify_non_membership(ctx: ImmutableCtx, key: Binary) -> anyhow::Result<()> {
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
@@ -285,7 +285,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 
 pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        client_state: CLIENT_STATE.load(ctx.store)?,
-        consensus_state: CONSENSUS_STATE.load(ctx.store)?,
+        client_state: CLIENT_STATE.load(ctx.storage)?,
+        consensus_state: CONSENSUS_STATE.load(ctx.storage)?,
     })
 }

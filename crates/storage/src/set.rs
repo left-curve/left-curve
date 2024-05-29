@@ -38,39 +38,39 @@ where
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 
-    pub fn is_empty(&self, store: &dyn Storage) -> bool {
-        self.range(store, None, None, Order::Ascending).next().is_none()
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.range(storage, None, None, Order::Ascending).next().is_none()
     }
 
-    pub fn has(&self, store: &dyn Storage, item: T) -> bool {
-        self.path(item).as_path().exists(store)
+    pub fn has(&self, storage: &dyn Storage, item: T) -> bool {
+        self.path(item).as_path().exists(storage)
     }
 
-    pub fn insert(&self, store: &mut dyn Storage, item: T) -> StdResult<()> {
-        self.path(item).as_path().save(store, &Empty {})
+    pub fn insert(&self, storage: &mut dyn Storage, item: T) -> StdResult<()> {
+        self.path(item).as_path().save(storage, &Empty {})
     }
 
-    pub fn remove(&self, store: &mut dyn Storage, item: T) {
-        self.path(item).as_path().remove(store)
+    pub fn remove(&self, storage: &mut dyn Storage, item: T) {
+        self.path(item).as_path().remove(storage)
     }
 
     pub fn range<'b>(
         &self,
-        store: &'b dyn Storage,
+        storage: &'b dyn Storage,
         min: Option<Bound<T>>,
         max: Option<Bound<T>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<T::Output>> + 'b> {
-        self.no_prefix().keys(store, min, max, order)
+        self.no_prefix().keys(storage, min, max, order)
     }
 
     pub fn clear(
         &self,
-        store: &mut dyn Storage,
+        storage: &mut dyn Storage,
         min:   Option<Bound<T>>,
         max:   Option<Bound<T>>,
         limit: Option<usize>,
     ) -> StdResult<()> {
-        self.no_prefix().clear(store, min, max, limit)
+        self.no_prefix().clear(storage, min, max, limit)
     }
 }

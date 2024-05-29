@@ -28,7 +28,7 @@ struct MemDbInner {
     /// A HashMap is chosen over BTreeMap because our Merkle tree implementation
     /// does not need to iterate raw keys in this store.
     state_commitment: HashMap<Vec<u8>, Vec<u8>>,
-    /// A versioned key-value store: key => (version => value)
+    /// A versioned key-value storage: key => (version => value)
     state_storage: VersionedMap<Vec<u8>, Vec<u8>>,
     /// Uncommitted changes
     changeset: Option<ChangeSet>,

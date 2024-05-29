@@ -23,9 +23,9 @@ macro_rules! unwrap_into_generic_result {
 
 #[macro_export]
 macro_rules! make_immutable_ctx {
-    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
+    ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
         ImmutableCtx {
-            store:           $store,
+            storage:         $storage,
             api:             $api,
             querier:         $querier,
             chain_id:        $ctx.chain_id,
@@ -39,9 +39,9 @@ macro_rules! make_immutable_ctx {
 
 #[macro_export]
 macro_rules! make_mutable_ctx {
-    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
+    ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
         MutableCtx {
-            store:           $store,
+            storage:         $storage,
             api:             $api,
             querier:         $querier,
             chain_id:        $ctx.chain_id,
@@ -57,9 +57,9 @@ macro_rules! make_mutable_ctx {
 
 #[macro_export]
 macro_rules! make_sudo_ctx {
-    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
+    ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
         SudoCtx {
-            store:           $store,
+            storage:         $storage,
             api:             $api,
             querier:         $querier,
             chain_id:        $ctx.chain_id,
@@ -73,9 +73,9 @@ macro_rules! make_sudo_ctx {
 
 #[macro_export]
 macro_rules! make_auth_ctx {
-    ($ctx:ident, $store:expr, $api:expr, $querier:expr) => {
+    ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
         AuthCtx {
-            store:           $store,
+            storage:         $storage,
             api:             $api,
             querier:         $querier,
             chain_id:        $ctx.chain_id,

@@ -7,30 +7,30 @@ use {
 };
 
 pub struct SharedStore<S> {
-    store: Arc<RwLock<S>>,
+    storage: Arc<RwLock<S>>,
 }
 
 impl<S> SharedStore<S> {
-    pub fn new(store: S) -> Self {
+    pub fn new(storage: S) -> Self {
         Self {
-            store: Arc::new(RwLock::new(store)),
+            storage: Arc::new(RwLock::new(storage)),
         }
     }
 
     pub fn share(&self) -> Self {
         Self {
-            store: Arc::clone(&self.store),
+            storage: Arc::clone(&self.storage),
         }
     }
 
     pub fn read_access(&self) -> RwLockReadGuard<S> {
-        self.store.read().unwrap_or_else(|err| {
+        self.storage.read().unwrap_or_else(|err| {
             panic!("poisoned lock: {err:?}")
         })
     }
 
     pub fn write_access(&self) -> RwLockWriteGuard<S> {
-        self.store.write().unwrap_or_else(|err| {
+        self.storage.write().unwrap_or_else(|err| {
             panic!("poisoned lock: {err:?}")
         })
     }
@@ -38,7 +38,7 @@ impl<S> SharedStore<S> {
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
     pub fn disassemble(self) -> S {
-        let lock = Arc::try_unwrap(self.store).unwrap_or_else(|_| {
+        let lock = Arc::try_unwrap(self.storage).unwrap_or_else(|_| {
             panic!("")
         });
 
@@ -65,18 +65,18 @@ impl<S: Storage> Storage for SharedStore<S> {
     // A naive implementation of the `scan` may be something like this:
     //
     // ```rust
-    // let store = self.store.borrow();
-    // store.scan(min, max, order)
+    // let storage = self.storage.borrow();
+    // storage.scan(min, max, order)
     // ```
     //
     // However, this doesn't work! Compiler would complain:
     //
-    // > cannot return value referencing local variable `store`
+    // > cannot return value referencing local variable `storage`
     // > returns a value referencing data owned by the current function
     //
-    // Basically, `store` is dropped at the end of the function. The iterator
-    // created by `store.scan()` holds an immutable reference to `store`, so it
-    // cannot be returned.
+    // Basically, `storage` is dropped at the end of the function. The iterator
+    // created by `storage.scan()` holds an immutable reference to `storage`, so
+    // it cannot be returned.
     //
     // For this reason, we need to collect the records into a Vec and have it
     // owned by the iterator. However we can't collect the entire [min, max)
@@ -108,7 +108,7 @@ impl<S: Storage> Storage for SharedStore<S> {
 }
 
 struct SharedIter<'a, S> {
-    store: RwLockReadGuard<'a, S>,
+    storage: RwLockReadGuard<'a, S>,
     batch: vec::IntoIter<Record>,
     min:   Option<Vec<u8>>,
     max:   Option<Vec<u8>>,
@@ -119,13 +119,13 @@ impl<'a, S> SharedIter<'a, S> {
     const BATCH_SIZE: usize = 30;
 
     pub fn new(
-        store: RwLockReadGuard<'a, S>,
+        storage: RwLockReadGuard<'a, S>,
         min:   Option<&[u8]>,
         max:   Option<&[u8]>,
         order: Order,
     ) -> Self {
         Self {
-            store,
+            storage,
             batch: Vec::new().into_iter(),
             min:   min.map(|slice| slice.to_vec()),
             max:   max.map(|slice| slice.to_vec()),
@@ -137,7 +137,7 @@ impl<'a, S> SharedIter<'a, S> {
 impl<'a, S: Storage> SharedIter<'a, S> {
     fn collect_next_batch(&mut self) {
         let batch = self
-            .store
+            .storage
             .scan(self.min.as_deref(), self.max.as_deref(), self.order)
             .take(Self::BATCH_SIZE)
             .collect::<Vec<_>>();
@@ -191,17 +191,17 @@ mod tests {
 
     #[test]
     fn iterator_works() {
-        let mut store = SharedStore::new(MockStorage::new());
+        let mut storage = SharedStore::new(MockStorage::new());
         for (k, v) in mock_records(1, 100, Order::Ascending) {
-            store.write(&k, &v);
+            storage.write(&k, &v);
         }
 
-        let records = store
+        let records = storage
             .scan(Some(&12u32.to_be_bytes()), Some(&89u32.to_be_bytes()), Order::Ascending)
             .collect::<Vec<_>>();
         assert_eq!(records, mock_records(12, 89, Order::Ascending));
 
-        let records = store
+        let records = storage
             .scan(None, None, Order::Descending)
             .collect::<Vec<_>>();
         assert_eq!(records, mock_records(1, 100, Order::Descending));

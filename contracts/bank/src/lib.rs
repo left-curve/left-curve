@@ -46,13 +46,13 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
     for (address, coins) in msg.initial_balances {
         for coin in coins {
-            BALANCES.save(ctx.store, (&address, &coin.denom), &coin.amount)?;
+            BALANCES.save(ctx.storage, (&address, &coin.denom), &coin.amount)?;
             accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
     }
 
     for (denom, amount) in supplies {
-        SUPPLIES.save(ctx.store, &denom, &amount)?;
+        SUPPLIES.save(ctx.storage, &denom, &amount)?;
     }
 
     Ok(Response::new())
@@ -78,8 +78,8 @@ fn accumulate_supply(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
-        decrease_balance(ctx.store, &msg.from, coin.denom, *coin.amount)?;
-        increase_balance(ctx.store, &msg.to, coin.denom, *coin.amount)?;
+        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
     }
 
     Ok(Response::new()
@@ -120,8 +120,8 @@ pub fn mint(
     denom:  String,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
-    increase_supply(ctx.store, &denom, amount)?;
-    increase_balance(ctx.store, &to, &denom, amount)?;
+    increase_supply(ctx.storage, &denom, amount)?;
+    increase_balance(ctx.storage, &to, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "mint")
@@ -138,8 +138,8 @@ pub fn burn(
     denom:  String,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
-    decrease_supply(ctx.store, &denom, amount)?;
-    decrease_balance(ctx.store, &from, &denom, amount)?;
+    decrease_supply(ctx.storage, &denom, amount)?;
+    decrease_balance(ctx.storage, &from, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "burn")
@@ -151,11 +151,11 @@ pub fn burn(
 /// Increase the total supply of a token by the given amount.
 /// Return the total supply value after the increase.
 fn increase_supply(
-    store:  &mut dyn Storage,
+    storage:  &mut dyn Storage,
     denom:  &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    SUPPLIES.update(store, denom, |supply| {
+    SUPPLIES.update(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_add(amount)?;
         Ok(Some(supply))
     })
@@ -164,11 +164,11 @@ fn increase_supply(
 /// Decrease the total supply of a token by the given amount.
 /// Return the total supply value after the decrease.
 fn decrease_supply(
-    store:  &mut dyn Storage,
+    storage:  &mut dyn Storage,
     denom:  &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    SUPPLIES.update(store, denom, |supply| {
+    SUPPLIES.update(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_sub(amount)?;
         // if supply is reduced to zero, delete it, to save disk space
         if supply.is_zero() {
@@ -182,12 +182,12 @@ fn decrease_supply(
 /// Increase an account's balance of a token by the given amount.
 /// Return the balance value after the increase.
 fn increase_balance(
-    store:   &mut dyn Storage,
+    storage:   &mut dyn Storage,
     address: &Addr,
     denom:   &str,
     amount:  Uint128,
 ) -> StdResult<Option<Uint128>> {
-    BALANCES.update(store, (address, denom), |balance| {
+    BALANCES.update(storage, (address, denom), |balance| {
         let balance = balance.unwrap_or_default().checked_add(amount)?;
         Ok(Some(balance))
     })
@@ -196,12 +196,12 @@ fn increase_balance(
 /// Decrease an account's balance of a token by the given amount.
 /// Return the balance value after the decrease.
 fn decrease_balance(
-    store:   &mut dyn Storage,
+    storage:   &mut dyn Storage,
     address: &Addr,
     denom:   &str,
     amount:  Uint128,
 ) -> StdResult<Option<Uint128>> {
-    BALANCES.update(store, (address, denom), |balance| {
+    BALANCES.update(storage, (address, denom), |balance| {
         let balance = balance.unwrap_or_default().checked_sub(amount)?;
         // if balance is reduced to zero, delete it, to save disk space
         if balance.is_zero() {
@@ -239,7 +239,7 @@ pub fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> StdResult<BankQueryRe
 }
 
 pub fn query_balance(ctx: ImmutableCtx, address: Addr, denom: String) -> StdResult<Coin> {
-    let maybe_amount = BALANCES.may_load(ctx.store, (&address, &denom))?;
+    let maybe_amount = BALANCES.may_load(ctx.storage, (&address, &denom))?;
     Ok(Coin {
         denom,
         amount: maybe_amount.unwrap_or(Uint128::ZERO),
@@ -256,13 +256,13 @@ pub fn query_balances(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     let mut iter = BALANCES
         .prefix(&address)
-        .range(ctx.store, start, None, Order::Ascending)
+        .range(ctx.storage, start, None, Order::Ascending)
         .take(limit);
     Coins::from_iter_unchecked(&mut iter)
 }
 
 pub fn query_supply(ctx: ImmutableCtx, denom: String) -> StdResult<Coin> {
-    let maybe_supply = SUPPLIES.may_load(ctx.store, &denom)?;
+    let maybe_supply = SUPPLIES.may_load(ctx.storage, &denom)?;
     Ok(Coin {
         denom,
         amount: maybe_supply.unwrap_or(Uint128::ZERO),
@@ -277,7 +277,7 @@ pub fn query_supplies(
     let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     let mut iter = SUPPLIES
-        .range(ctx.store, start, None, Order::Ascending)
+        .range(ctx.storage, start, None, Order::Ascending)
         .take(limit);
     Coins::from_iter_unchecked(&mut iter)
 }

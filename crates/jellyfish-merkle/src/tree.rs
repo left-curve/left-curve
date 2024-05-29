@@ -72,8 +72,8 @@ impl<'a> MerkleTree<'a> {
     /// If the root node is not found at the version, return None. There are two
     /// possible reasons that it's not found: either no data has ever been
     /// written to the tree yet, or the version is old and has been pruned.
-    pub fn root_hash(&self, store: &dyn Storage, version: u64) -> StdResult<Option<Hash>> {
-        let root_node = self.nodes.may_load(store, (version, ROOT_BITS))?;
+    pub fn root_hash(&self, storage: &dyn Storage, version: u64) -> StdResult<Option<Hash>> {
+        let root_node = self.nodes.may_load(storage, (version, ROOT_BITS))?;
         Ok(root_node.map(|node| node.hash()))
     }
 
@@ -89,7 +89,7 @@ impl<'a> MerkleTree<'a> {
     /// use `apply` instead.
     pub fn apply_raw(
         &self,
-        store:       &mut dyn Storage,
+        storage:       &mut dyn Storage,
         old_version: u64,
         new_version: u64,
         batch:       &Batch,
@@ -101,7 +101,7 @@ impl<'a> MerkleTree<'a> {
         batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
         // apply the hashed keys and values
-        self.apply(store, old_version, new_version, batch)
+        self.apply(storage, old_version, new_version, batch)
     }
 
     /// Apply a batch of ops to the tree. Return the new root hash.
@@ -116,7 +116,7 @@ impl<'a> MerkleTree<'a> {
     /// of prehashes, use `apply_raw` instead.
     pub fn apply(
         &self,
-        store:       &mut dyn Storage,
+        storage:       &mut dyn Storage,
         old_version: u64,
         new_version: u64,
         batch:       Vec<(Hash, Op<Hash>)>,
@@ -127,16 +127,16 @@ impl<'a> MerkleTree<'a> {
 
         // if an old root node exists (i.e. tree isn't empty at the old version),
         // mark it as orphaned
-        if self.nodes.has(store, (old_version, ROOT_BITS)) {
-            self.mark_node_as_orphaned(store, new_version, old_version, ROOT_BITS)?;
+        if self.nodes.has(storage, (old_version, ROOT_BITS)) {
+            self.mark_node_as_orphaned(storage, new_version, old_version, ROOT_BITS)?;
         }
 
         // recursively apply the ops, starting at the old root
-        match self.apply_at(store, new_version, old_version, ROOT_BITS, batch)? {
+        match self.apply_at(storage, new_version, old_version, ROOT_BITS, batch)? {
             // if the new tree is non-empty (i.e. it has a root node), save this
             // new root node and return its hash
             Outcome::Updated(new_root_node) | Outcome::Unchanged(Some(new_root_node)) => {
-                self.save_node(store, new_version, ROOT_BITS, &new_root_node)?;
+                self.save_node(storage, new_version, ROOT_BITS, &new_root_node)?;
                 Ok(Some(new_root_node.hash()))
             },
             // the new tree is empty. do nothing and just return None.
@@ -148,30 +148,30 @@ impl<'a> MerkleTree<'a> {
 
     fn apply_at(
         &self,
-        store:       &mut dyn Storage,
+        storage:       &mut dyn Storage,
         new_version: u64,
         old_version: u64,
         bits:        &BitArray,
         batch:       Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
-        match self.nodes.may_load(store, (old_version, bits))? {
+        match self.nodes.may_load(storage, (old_version, bits))? {
             Some(Node::Leaf(leaf_node)) => {
-                self.apply_at_leaf(store, new_version, bits, leaf_node, batch)
+                self.apply_at_leaf(storage, new_version, bits, leaf_node, batch)
             },
             Some(Node::Internal(internal_node)) => {
-                self.apply_at_internal(store, new_version, bits, internal_node, batch)
+                self.apply_at_internal(storage, new_version, bits, internal_node, batch)
             },
             None => {
                 let (batch, op) = prepare_batch_for_subtree(batch, None);
                 debug_assert!(op.is_none());
-                self.create_subtree(store, new_version, bits, batch, None)
+                self.create_subtree(storage, new_version, bits, batch, None)
             },
         }
     }
 
     fn apply_at_internal(
         &self,
-        store:             &mut dyn Storage,
+        storage:             &mut dyn Storage,
         new_version:       u64,
         bits:              &BitArray,
         mut internal_node: InternalNode,
@@ -182,7 +182,7 @@ impl<'a> MerkleTree<'a> {
 
         // apply at the two children, respectively
         let left_outcome = self.apply_at_child(
-            store,
+            storage,
             new_version,
             bits,
             true,
@@ -190,7 +190,7 @@ impl<'a> MerkleTree<'a> {
             batch_for_left,
         )?;
         let right_outcome = self.apply_at_child(
-            store,
+            storage,
             new_version,
             bits,
             false,
@@ -250,7 +250,7 @@ impl<'a> MerkleTree<'a> {
     #[inline]
     fn apply_at_child(
         &self,
-        store:       &mut dyn Storage,
+        storage:       &mut dyn Storage,
         new_version: u64,
         parent_bits: &BitArray,
         is_left:     bool,
@@ -261,7 +261,7 @@ impl<'a> MerkleTree<'a> {
         match (batch.is_empty(), child) {
             // child exists, but there is no op to apply
             (true, Some(child)) => {
-                let child_node = self.nodes.load(store, (child.version, &child_bits))?;
+                let child_node = self.nodes.load(storage, (child.version, &child_bits))?;
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
             // child doesn't exist, and there is no op to apply
@@ -270,14 +270,14 @@ impl<'a> MerkleTree<'a> {
             },
             // child exists, and there are ops to apply
             (false, Some(child)) => {
-                let outcome = self.apply_at(store, new_version, child.version, &child_bits, batch)?;
+                let outcome = self.apply_at(storage, new_version, child.version, &child_bits, batch)?;
                 // if the child has been updated, save the updated node
                 if let Outcome::Updated(new_child_node) = &outcome {
-                    self.save_node(store, new_version, &child_bits, new_child_node)?;
+                    self.save_node(storage, new_version, &child_bits, new_child_node)?;
                 }
                 // if the child has been deleted or updated, mark it as orphaned
                 if let Outcome::Deleted | Outcome::Updated(_) = &outcome {
-                    self.mark_node_as_orphaned(store, new_version, child.version, &child_bits)?;
+                    self.mark_node_as_orphaned(storage, new_version, child.version, &child_bits)?;
                 }
                 Ok(outcome)
             },
@@ -285,14 +285,14 @@ impl<'a> MerkleTree<'a> {
             (false, None) => {
                 let (batch, op) = prepare_batch_for_subtree(batch, None);
                 debug_assert!(op.is_none());
-                self.create_subtree(store, new_version, &child_bits, batch, None)
+                self.create_subtree(storage, new_version, &child_bits, batch, None)
             },
         }
     }
 
     fn apply_at_leaf(
         &self,
-        store:         &mut dyn Storage,
+        storage:         &mut dyn Storage,
         new_version:   u64,
         bits:          &BitArray,
         mut leaf_node: LeafNode,
@@ -317,20 +317,20 @@ impl<'a> MerkleTree<'a> {
             },
             (false, Some(Op::Insert(value_hash))) => {
                 leaf_node.value_hash = value_hash;
-                self.create_subtree(store, new_version, bits, batch, Some(leaf_node))
+                self.create_subtree(storage, new_version, bits, batch, Some(leaf_node))
             },
             (false, Some(Op::Delete)) => {
-                self.create_subtree(store, new_version, bits, batch, None)
+                self.create_subtree(storage, new_version, bits, batch, None)
             },
             (false, None) => {
-                self.create_subtree(store, new_version, bits, batch, Some(leaf_node))
+                self.create_subtree(storage, new_version, bits, batch, Some(leaf_node))
             },
         }
     }
 
     fn create_subtree(
         &self,
-        store:         &mut dyn Storage,
+        storage:         &mut dyn Storage,
         version:       u64,
         bits:          &BitArray,
         batch:         Vec<(Hash, Hash)>,
@@ -351,14 +351,14 @@ impl<'a> MerkleTree<'a> {
                 let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
                 let (leaf_for_left, leaf_for_right) = partition_leaf(existing_leaf, bits);
                 let left_outcome = self.create_subtree(
-                    store,
+                    storage,
                     version,
                     &bits.extend_one_bit(true),
                     batch_for_left,
                     leaf_for_left,
                 )?;
                 let right_outcome = self.create_subtree(
-                    store,
+                    storage,
                     version,
                     &bits.extend_one_bit(false),
                     batch_for_right,
@@ -371,7 +371,7 @@ impl<'a> MerkleTree<'a> {
             },
         };
 
-        self.save_node(store, version, bits, &new_node)?;
+        self.save_node(storage, version, bits, &new_node)?;
 
         Ok(Outcome::Updated(new_node))
     }
@@ -397,13 +397,13 @@ impl<'a> MerkleTree<'a> {
     ///
     /// To query a key with proof, the caller should first call `get` on the raw
     /// KV store, then `prove` on the Merkle tree. This separation of data
-    /// storage and data commitment was put forward by Cosmos SDK's ADR-65:
+    /// store and data commitment was put forward by Cosmos SDK's ADR-65:
     /// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md
-    pub fn prove(&self, store: &dyn Storage, key_hash: &Hash, version: u64) -> StdResult<Proof> {
+    pub fn prove(&self, storage: &dyn Storage, key_hash: &Hash, version: u64) -> StdResult<Proof> {
         let mut bits = ROOT_BITS.clone();
         let bitarray = BitArray::from_bytes(key_hash);
         let mut iter = bitarray.range(None, None, Order::Ascending);
-        let mut node = self.nodes.load(store, (version, &bits))?;
+        let mut node = self.nodes.load(storage, (version, &bits))?;
         let mut proof_node = None;
         let mut sibling_hashes = vec![];
 
@@ -429,12 +429,12 @@ impl<'a> MerkleTree<'a> {
                         (Some(0), Some(child), sibling) => {
                             sibling_hashes.push(hash_of(sibling));
                             bits.push(0);
-                            node = self.nodes.load(store, (child.version, &bits))?;
+                            node = self.nodes.load(storage, (child.version, &bits))?;
                         },
                         (Some(1), sibling, Some(child)) => {
                             sibling_hashes.push(hash_of(sibling));
                             bits.push(1);
-                            node = self.nodes.load(store, (child.version, &bits))?;
+                            node = self.nodes.load(storage, (child.version, &bits))?;
                         },
                         (Some(0), None, sibling) => {
                             proof_node = Some(ProofNode::Internal {
@@ -485,23 +485,23 @@ impl<'a> MerkleTree<'a> {
     #[inline]
     fn save_node(
         &self,
-        store:   &mut dyn Storage,
+        storage:   &mut dyn Storage,
         version: u64,
         bits:    &BitArray,
         node:    &Node,
     ) -> StdResult<()> {
-        self.nodes.save(store, (version, bits), node)
+        self.nodes.save(storage, (version, bits), node)
     }
 
     #[inline]
     fn mark_node_as_orphaned(
         &self,
-        store:         &mut dyn Storage,
+        storage:         &mut dyn Storage,
         orphaned_since_version: u64,
         version: u64,
         bits: &BitArray,
     ) -> StdResult<()> {
-        self.orphans.insert(store, (orphaned_since_version, version, bits))
+        self.orphans.insert(storage, (orphaned_since_version, version, bits))
     }
 }
 
@@ -676,21 +676,21 @@ mod tests {
     const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
 
     fn build_test_case() -> StdResult<(MockStorage, Option<Hash>)> {
-        let mut store = MockStorage::new();
-        let root_hash = TREE.apply_raw(&mut store, 0, 1,&Batch::from([
+        let mut storage = MockStorage::new();
+        let root_hash = TREE.apply_raw(&mut storage, 0, 1,&Batch::from([
             (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
             (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
             (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
             (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
         ]))?;
-        Ok((store, root_hash))
+        Ok((storage, root_hash))
     }
 
     #[test]
     fn applying_initial_batch() {
-        let (store, root_hash) = build_test_case().unwrap();
+        let (storage, root_hash) = build_test_case().unwrap();
         assert_eq!(root_hash, Some(HASH_ROOT));
-        assert!(TREE.orphans.range(&store, None, None, Order::Ascending).next().is_none());
+        assert!(TREE.orphans.range(&storage, None, None, Order::Ascending).next().is_none());
     }
 
     // delete the leaves 010 and 0110. this should cause the leaf 0111 be moved
@@ -713,8 +713,8 @@ mod tests {
     // = b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf
     #[test]
     fn collapsing_path() {
-        let (mut store, _) = build_test_case().unwrap();
-        let new_root_hash = TREE.apply_raw(&mut store, 1, 2, &Batch::from([
+        let (mut storage, _) = build_test_case().unwrap();
+        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
             (b"r".to_vec(), Op::Delete),
             (b"m".to_vec(), Op::Delete),
         ]))
@@ -726,10 +726,10 @@ mod tests {
     // new root hash. see that nodes have been properly marked as orphaned.
     #[test]
     fn deleting_all_nodes() {
-        let (mut store, _) = build_test_case().unwrap();
+        let (mut storage, _) = build_test_case().unwrap();
 
         // check that new root hash is None
-        let new_root_hash = TREE.apply_raw(&mut store, 1, 2, &Batch::from([
+        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
             (b"r".to_vec(), Op::Delete),
             (b"m".to_vec(), Op::Delete),
             (b"L".to_vec(), Op::Delete),
@@ -739,10 +739,10 @@ mod tests {
         assert!(new_root_hash.is_none());
 
         // check that every node has been marked as orphaned
-        for item in TREE.nodes.keys(&store, None, None, Order::Ascending) {
+        for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
             assert_eq!(version, 1);
-            assert!(TREE.orphans.has(&store, (2, version, &bits)));
+            assert!(TREE.orphans.has(&storage, (2, version, &bits)));
         }
     }
 
@@ -751,9 +751,9 @@ mod tests {
     // be incremented and root hash shouldn't be changed.
     #[test]
     fn no_ops() {
-        let (mut store, _) = build_test_case().unwrap();
+        let (mut storage, _) = build_test_case().unwrap();
 
-        let new_root_hash = TREE.apply_raw(&mut store, 1, 2, &Batch::from([
+        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
             // overwriting keys with the same keys
             (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
             (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
@@ -770,7 +770,7 @@ mod tests {
 
         // make sure that no node has been marked as orphaned (other than the
         // old root node, which is always orphaned)
-        for item in TREE.orphans.range(&store, None, None, Order::Ascending) {
+        for item in TREE.orphans.range(&storage, None, None, Order::Ascending) {
             let (orphaned_since_version, version, bits) = item.unwrap();
             assert_eq!(orphaned_since_version, 2);
             assert_eq!(version, 1);
@@ -779,7 +779,7 @@ mod tests {
 
         // make sure no node of version 2 has been written (other than the new
         // root node, which is always written)
-        for item in TREE.nodes.keys(&store, None, None, Order::Ascending) {
+        for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
             assert!(version == 1 || (version == 2 && bits == *ROOT_BITS));
         }
@@ -855,7 +855,7 @@ mod tests {
         "proving non-membership of o"
     )]
     fn proving(key: &str, proof: Proof) {
-        let (store, _) = build_test_case().unwrap();
-        assert_eq!(TREE.prove(&store, &hash(key.as_bytes()), 1).unwrap(), proof);
+        let (storage, _) = build_test_case().unwrap();
+        assert_eq!(TREE.prove(&storage, &hash(key.as_bytes()), 1).unwrap(), proof);
     }
 }

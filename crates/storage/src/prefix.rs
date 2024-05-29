@@ -32,7 +32,7 @@ where
     #[allow(clippy::type_complexity)]
     pub fn range<'a>(
         &self,
-        store: &'a dyn Storage,
+        storage: &'a dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
@@ -45,7 +45,7 @@ where
         // need to make a clone of self.prefix and move it into the closure,
         // so that the iterator can live longer than &self.
         let prefix = self.prefix.clone();
-        let iter = store.scan(Some(&min), Some(&max), order).map(move |(k, v)| {
+        let iter = storage.scan(Some(&min), Some(&max), order).map(move |(k, v)| {
             debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             let key = K::deserialize(&key_bytes)?;
@@ -58,7 +58,7 @@ where
 
     pub fn keys<'a>(
         &self,
-        store: &'a dyn Storage,
+        storage: &'a dyn Storage,
         min:   Option<Bound<K>>,
         max:   Option<Bound<K>>,
         order: Order,
@@ -67,7 +67,7 @@ where
         let prefix = self.prefix.clone();
         // TODO: this is really inefficient because the host needs to load both
         // the key and value into Wasm memory
-        let iter = store.scan(Some(&min), Some(&max), order).map(move |(k, _)| {
+        let iter = storage.scan(Some(&min), Some(&max), order).map(move |(k, _)| {
             debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
             let key_bytes = trim(&prefix, &k);
             K::deserialize(&key_bytes)
@@ -77,7 +77,7 @@ where
 
     pub fn clear(
         &self,
-        _store: &mut dyn Storage,
+        _storage: &mut dyn Storage,
         _min:   Option<Bound<K>>,
         _max:   Option<Bound<K>>,
         _limit: Option<usize>,

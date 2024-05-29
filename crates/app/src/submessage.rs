@@ -39,7 +39,7 @@ pub fn handle_submessages<VM>(
     //
     // Instead, we use the `dyn_clone::DynClone` trait:
     // https://docs.rs/dyn-clone/1.0.16/dyn_clone/
-    store:   Box<dyn Storage>,
+    storage:   Box<dyn Storage>,
     block:   &BlockInfo,
     sender:  &Addr,
     submsgs: Vec<SubMessage>,
@@ -50,7 +50,7 @@ where
 {
     let mut events = vec![];
     for submsg in submsgs {
-        let cached = SharedStore::new(CacheStore::new(store.clone(), None));
+        let cached = SharedStore::new(CacheStore::new(storage.clone(), None));
         match (submsg.reply_on, process_msg::<VM>(Box::new(cached.share()), block, sender, submsg.msg)) {
             // success - callback requested
             // flush state changes, log events, give callback
@@ -58,7 +58,7 @@ where
                 cached.disassemble().consume();
                 events.extend(submsg_events.clone());
                 events.extend(do_reply::<VM>(
-                    store.clone(),
+                    storage.clone(),
                     block,
                     sender,
                     &payload,
@@ -69,7 +69,7 @@ where
             // discard uncommitted state changes, give callback
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
                 events.extend(do_reply::<VM>(
-                    store.clone(),
+                    storage.clone(),
                     block,
                     sender,
                     &payload,
@@ -93,7 +93,7 @@ where
 }
 
 pub fn do_reply<VM>(
-    store:      Box<dyn Storage>,
+    storage:      Box<dyn Storage>,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
@@ -103,7 +103,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_reply::<VM>(store, block, contract, payload, submsg_res) {
+    match _do_reply::<VM>(storage, block, contract, payload, submsg_res) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
@@ -116,7 +116,7 @@ where
 }
 
 fn _do_reply<VM>(
-    store:      Box<dyn Storage>,
+    storage:      Box<dyn Storage>,
     block:      &BlockInfo,
     contract:   &Addr,
     payload:    &Json,
@@ -126,11 +126,11 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&store)?;
-    let account = ACCOUNTS.load(&store, contract)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, contract)?;
 
-    let program = load_program::<VM>(&store, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
+    let program = load_program::<VM>(&storage, &account.code_hash)?;
+    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), contract, program)?;
 
     // call reply
     let ctx = Context {
@@ -147,7 +147,7 @@ where
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(store, block, contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(storage, block, contract, resp.submsgs)?);
 
     Ok(events)
 }

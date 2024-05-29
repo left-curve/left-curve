@@ -13,7 +13,7 @@ use {
 // ------------------------------- create client -------------------------------
 
 pub fn do_create_client<VM>(
-    store:           Box<dyn Storage>,
+    storage:           Box<dyn Storage>,
     block:           &BlockInfo,
     sender:          &Addr,
     code_hash:       Hash,
@@ -25,7 +25,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_create_client::<VM>(store, block, sender, code_hash, client_state, consensus_state, salt) {
+    match _do_create_client::<VM>(storage, block, sender, code_hash, client_state, consensus_state, salt) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Create IBC client");
             Ok(events)
@@ -38,7 +38,7 @@ where
 }
 
 pub fn _do_create_client<VM>(
-    mut store:       Box<dyn Storage>,
+    mut storage:       Box<dyn Storage>,
     block:           &BlockInfo,
     sender:          &Addr,
     code_hash:       Hash,
@@ -50,12 +50,12 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&store)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
 
     // make sure:
     // 1. the sender has the permission to create clients
     // 2. the code hash is allowed as IBC client
-    let cfg = CONFIG.load(&store)?;
+    let cfg = CONFIG.load(&storage)?;
     if !has_permission(&cfg.permissions.create_client, cfg.owner.as_ref(), sender) {
         return Err(AppError::Unauthorized);
     }
@@ -66,7 +66,7 @@ where
     // compute contract address and make sure there can't already be an account
     // of the same address
     let address = Addr::compute(sender, &code_hash, &salt);
-    if ACCOUNTS.has(&store, &address) {
+    if ACCOUNTS.has(&storage, &address) {
         return Err(AppError::account_exists(address));
     }
 
@@ -76,10 +76,10 @@ where
         // IBC clients are not upgradable
         admin: None,
     };
-    ACCOUNTS.save(&mut store, &address, &account)?;
+    ACCOUNTS.save(&mut storage, &address, &account)?;
 
-    let program = load_program::<VM>(&store, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), &address, program)?;
+    let program = load_program::<VM>(&storage, &account.code_hash)?;
+    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), &address, program)?;
 
     // call `ibc_client_create` entry point
     let ctx = Context {
@@ -96,7 +96,7 @@ where
 
     // handle submessages
     let mut events = vec![new_create_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(store, block, sender, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(storage, block, sender, resp.submsgs)?);
 
     Ok((events, ctx.contract))
 }
@@ -104,7 +104,7 @@ where
 // ------------------------------- update client -------------------------------
 
 pub fn do_update_client<VM>(
-    store:     Box<dyn Storage>,
+    storage:     Box<dyn Storage>,
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
@@ -114,7 +114,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_update_client::<VM>(store, block, sender, client_id, header) {
+    match _do_update_client::<VM>(storage, block, sender, client_id, header) {
         Ok(events) => {
             info!(client_id = client_id.to_string(), "Update IBC client");
             Ok(events)
@@ -127,7 +127,7 @@ where
 }
 
 fn _do_update_client<VM>(
-    store:     Box<dyn Storage>,
+    storage:     Box<dyn Storage>,
     block:     &BlockInfo,
     sender:    &Addr,
     client_id: &Addr,
@@ -137,11 +137,11 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&store)?;
-    let account = ACCOUNTS.load(&store, client_id)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, client_id)?;
 
-    let program = load_program::<VM>(&store, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
+    let program = load_program::<VM>(&storage, &account.code_hash)?;
+    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
@@ -161,7 +161,7 @@ where
 
     // handle submessages
     let mut events = vec![new_update_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }
@@ -169,7 +169,7 @@ where
 // ------------------------------- freeze client -------------------------------
 
 pub fn do_freeze_client<VM>(
-    store:       Box<dyn Storage>,
+    storage:       Box<dyn Storage>,
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
@@ -179,7 +179,7 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    match _do_freeze_client::<VM>(store, block, sender, client_id, misbehavior) {
+    match _do_freeze_client::<VM>(storage, block, sender, client_id, misbehavior) {
         Ok(events) => {
             warn!(client = client_id.to_string(), "Froze IBC client due to misbehavior");
             Ok(events)
@@ -192,7 +192,7 @@ where
 }
 
 fn _do_freeze_client<VM>(
-    store:       Box<dyn Storage>,
+    storage:       Box<dyn Storage>,
     block:       &BlockInfo,
     sender:      &Addr,
     client_id:   &Addr,
@@ -202,11 +202,11 @@ where
     VM: Vm + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&store)?;
-    let account = ACCOUNTS.load(&store, client_id)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, client_id)?;
 
-    let program = load_program::<VM>(&store, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), client_id, program)?;
+    let program = load_program::<VM>(&storage, &account.code_hash)?;
+    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), client_id, program)?;
 
     // call `ibc_client_update` entry point
     let ctx = Context {
@@ -226,7 +226,7 @@ where
 
     // handle submessages
     let mut events = vec![new_client_misbehavior_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
 
     Ok(events)
 }

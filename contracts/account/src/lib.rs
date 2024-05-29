@@ -127,8 +127,8 @@ pub fn sign_bytes(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    PUBLIC_KEY.save(ctx.store, &msg.public_key)?;
-    SEQUENCE.save(ctx.store, &0)?;
+    PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
+    SEQUENCE.save(ctx.storage, &0)?;
 
     Ok(Response::new())
 }
@@ -144,8 +144,8 @@ pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
-    let public_key = PUBLIC_KEY.load(ctx.store)?;
-    let mut sequence = SEQUENCE.load(ctx.store)?;
+    let public_key = PUBLIC_KEY.load(ctx.storage)?;
+    let mut sequence = SEQUENCE.load(ctx.storage)?;
 
     // prepare the hash that is expected to have been signed
     let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.chain_id, sequence)?;
@@ -165,7 +165,7 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
 
     // update sequence
     sequence += 1;
-    SEQUENCE.save(ctx.store, &sequence)?;
+    SEQUENCE.save(ctx.storage, &sequence)?;
 
     Ok(Response::new()
         .add_attribute("method", "before_tx")
@@ -192,7 +192,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 
 pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        public_key: PUBLIC_KEY.load(ctx.store)?,
-        sequence: SEQUENCE.load(ctx.store)?,
+        public_key: PUBLIC_KEY.load(ctx.storage)?,
+        sequence: SEQUENCE.load(ctx.storage)?,
     })
 }

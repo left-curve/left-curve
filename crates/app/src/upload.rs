@@ -4,14 +4,14 @@ use {
     tracing::{info, warn},
 };
 
-pub fn do_upload(store: &mut dyn Storage, uploader: &Addr, code: Vec<u8>) -> AppResult<Vec<Event>> {
-    match _do_upload(store, uploader, code) {
+pub fn do_upload(storage: &mut dyn Storage, uploader: &Addr, code: Vec<u8>) -> AppResult<Vec<Event>> {
+    match _do_upload(storage, uploader, code) {
         Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");
             Ok(events)
         },
         Err(err) => {
-            warn!(err = err.to_string(), "Failed to store code");
+            warn!(err = err.to_string(), "Failed to storage code");
             Err(err)
         },
     }
@@ -19,26 +19,26 @@ pub fn do_upload(store: &mut dyn Storage, uploader: &Addr, code: Vec<u8>) -> App
 
 // return the hash of the code that is stored, for purpose of tracing/logging
 fn _do_upload(
-    store: &mut dyn Storage,
+    storage: &mut dyn Storage,
     uploader: &Addr,
     code: Vec<u8>,
 ) -> AppResult<(Vec<Event>, Hash)> {
-    // make sure the user has permission to store code
-    let cfg = CONFIG.load(store)?;
+    // make sure the user has permission to storage code
+    let cfg = CONFIG.load(storage)?;
     if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
         return Err(AppError::Unauthorized);
     }
 
     // make sure that the same code isn't uploaded twice
     let code_hash = hash(&code);
-    if CODES.has(store, &code_hash) {
+    if CODES.has(storage, &code_hash) {
         return Err(AppError::code_exists(code_hash));
     }
 
     // TODO: deserialize the code to make sure it's a valid program?
 
-    // store the code
-    CODES.save(store, &code_hash, &code)?;
+    // storage the code
+    CODES.save(storage, &code_hash, &code)?;
 
     Ok((vec![new_upload_event(&code_hash, uploader)], code_hash))
 }
