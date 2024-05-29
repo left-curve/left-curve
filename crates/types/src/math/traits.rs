@@ -10,7 +10,7 @@ pub trait NumberConst {
     const TEN: Self;
 }
 
-pub trait Bytable<const S: usize> {
+pub trait Bytable<const S: usize>: Sized {
     const LEN: usize = S;
     fn from_be_bytes(data: [u8; S]) -> Self;
     fn from_le_bytes(data: [u8; S]) -> Self;
@@ -18,6 +18,15 @@ pub trait Bytable<const S: usize> {
     fn to_le_bytes(self) -> [u8; S];
     fn byte_len() -> usize {
         S
+    }
+    fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S];
+    fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S];
+
+    fn from_be_bytes_growing<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> Self {
+        Self::from_be_bytes(Self::grow_be_bytes(data))
+    }
+    fn from_le_bytes_growing<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> Self {
+        Self::from_le_bytes(Self::grow_le_bytes(data))
     }
 }
 

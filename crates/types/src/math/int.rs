@@ -1,28 +1,38 @@
-use std::{fmt::Display, str::FromStr};
+use std::{
+    any::type_name_of_val,
+    fmt::Display,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+    str::FromStr,
+};
 
 use bnum::types::{I256, I512, U256, U512};
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{de, ser};
 
 use crate::{
-    call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
-    impl_assign, impl_base_ops, impl_next, Sqrt, StdError, StdResult,
+    call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int, impl_assign,
+    impl_base_ops, impl_next, impl_signed_ops, Sqrt, StdError, StdResult,
 };
 
-use super::traits::{Bytable, CheckedOps, NumberConst, NextNumber};
+use forward_ref::{forward_ref_binop, forward_ref_op_assign};
+
+use super::traits::{Bytable, CheckedOps, NextNumber, NumberConst};
 
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Uint<U>(U);
+pub struct Int<U>(U);
 
-impl<U> Uint<U> {
+impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
     }
+    pub fn new_from(value: impl Into<U>) -> Self {
+        Self(value.into())
+    }
 }
 
-impl<U> Uint<U>
+impl<U> Int<U>
 where
     U: Copy,
 {
@@ -31,7 +41,7 @@ where
     }
 }
 
-impl<U> Uint<U>
+impl<U> Int<U>
 where
     U: NumberConst,
 {
@@ -42,7 +52,7 @@ where
     pub const TEN: Self = Self(U::TEN);
 }
 
-impl<U> Uint<U>
+impl<U> Int<U>
 where
     U: NumberConst + PartialEq,
 {
@@ -51,20 +61,20 @@ where
     }
 }
 
-/// Rappresent the inner type of the [`Uint`]
+/// Rappresent the inner type of the [`Int`]
 ///
-/// This trait is used in [`generate_int!`](crate::generate_int!) to get the inner type of a [`Uint`]
-/// and implement the conversion from the inner type to the [`Uint`]
+/// This trait is used in [`generate_int!`](crate::generate_int!) to get the inner type of a [`Int`]
+/// and implement the conversion from the inner type to the [`Int`]
 pub trait UintInner {
     type U;
 }
 
-impl<U> UintInner for Uint<U> {
+impl<U> UintInner for Int<U> {
     type U = U;
 }
 
 // --- Bytable ---
-impl<U, const S: usize> Bytable<S> for Uint<U>
+impl<U, const S: usize> Bytable<S> for Int<U>
 where
     U: Bytable<S>,
 {
@@ -83,11 +93,19 @@ where
     fn to_le_bytes(self) -> [u8; S] {
         self.0.to_le_bytes()
     }
+
+    fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
+        U::grow_be_bytes(data)
+    }
+
+    fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
+        U::grow_le_bytes(data)
+    }
 }
 
 #[rustfmt::skip]
 // --- CheckedOps ---
-impl<U> CheckedOps for Uint<U>
+impl<U> CheckedOps for Int<U>
 where
     U: CheckedOps,
 {
@@ -113,7 +131,7 @@ where
 }
 
 // --- Sqrt ----
-impl<U> Sqrt for Uint<U>
+impl<U> Sqrt for Int<U>
 where
     U: Copy + Sqrt,
 {
@@ -124,29 +142,38 @@ where
 // --- NextNumber ---
 
 // full_mull
-impl<U> Uint<U>
+impl<U> Int<U>
 where
-    Uint<U>: NextNumber,
-    <Uint<U> as NextNumber>::Next: From<Uint<U>> + CheckedOps,
+    Int<U>: NextNumber,
+    <Int<U> as NextNumber>::Next: From<Int<U>> + CheckedOps + ToString,
 {
-    pub fn checked_full_mul(
-        self,
-        rhs: impl Into<Self>,
-    ) -> StdResult<<Uint<U> as NextNumber>::Next> {
-        <Uint<U> as NextNumber>::Next::from(self)
-            .checked_mul(<Uint<U> as NextNumber>::Next::from(rhs.into()))
+    /// Convert the current [`Int`] to [`NextNumber::Next`]
+    ///
+    /// Example: [`Uint64`] -> [`Uint128`]
+    pub fn as_next(self) -> <Int<U> as NextNumber>::Next {
+        <Int<U> as NextNumber>::Next::from(self)
     }
 
-    pub fn full_mul(self, rhs: impl Into<Self>) -> <Uint<U> as NextNumber>::Next {
+    pub fn checked_full_mul(self, rhs: impl Into<Self>) -> StdResult<<Int<U> as NextNumber>::Next> {
+        let s = <Int<U> as NextNumber>::Next::from(self);
+        let r = <Int<U> as NextNumber>::Next::from(rhs.into());
+
+        println!("{}: {}", s.to_string(), type_name_of_val(&s));
+        println!("{}: {}", s.to_string(), type_name_of_val(&r));
+
+        s.checked_mul(r)
+    }
+
+    pub fn full_mul(self, rhs: impl Into<Self>) -> <Int<U> as NextNumber>::Next {
         self.checked_full_mul(rhs).unwrap()
     }
 }
 
 // multiply_ratio
-impl<U> Uint<U>
+impl<U> Int<U>
 where
-    Uint<U>: NextNumber + Copy,
-    <Uint<U> as NextNumber>::Next: From<Uint<U>> + CheckedOps + TryInto<Uint<U>> + ToString + Clone,
+    Int<U>: NextNumber + Copy,
+    <Int<U> as NextNumber>::Next: From<Int<U>> + CheckedOps + TryInto<Int<U>> + ToString + Clone,
 {
     pub fn checked_multiply_ratio<A: Into<Self>, B: Into<Self>>(
         self,
@@ -154,7 +181,7 @@ where
         denominator: B,
     ) -> StdResult<Self> {
         let numerator: Self = numerator.into();
-        let denominator: <Uint<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
+        let denominator: <Int<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
 
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
         next_result
@@ -172,38 +199,41 @@ where
     }
 }
 
-impl_base_ops!(impl<U> Add, add for Uint<U> where sub fn checked_add);
-impl_base_ops!(impl<U> Sub, sub for Uint<U> where sub fn checked_sub);
-impl_base_ops!(impl<U> Mul, mul for Uint<U> where sub fn checked_mul);
-impl_base_ops!(impl<U> Div, div for Uint<U> where sub fn checked_div);
-impl_base_ops!(impl<U> Shl, shl for Uint<U> where sub fn checked_shl, u32);
-impl_base_ops!(impl<U> Shr, shr for Uint<U> where sub fn checked_shr, u32);
+impl_signed_ops!(impl<U> Not for Int<U>);
+impl_signed_ops!(impl<U> Neg for Int<U>);
 
-impl_assign!(impl<U> AddAssign, add_assign for Uint<U> where sub fn checked_add);
-impl_assign!(impl<U> SubAssign, sub_assign for Uint<U> where sub fn checked_sub);
-impl_assign!(impl<U> MulAssign, mul_assign for Uint<U> where sub fn checked_mul);
-impl_assign!(impl<U> DivAssign, div_assign for Uint<U> where sub fn checked_div);
-impl_assign!(impl<U> ShrAssign, shr_assign for Uint<U> where sub fn checked_shr, u32);
-impl_assign!(impl<U> ShlAssign, shl_assign for Uint<U> where sub fn checked_shl, u32);
+impl_base_ops!(impl<U> Add, add for Int<U> where sub fn checked_add);
+impl_base_ops!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
+impl_base_ops!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
+impl_base_ops!(impl<U> Div, div for Int<U> where sub fn checked_div);
+impl_base_ops!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
+impl_base_ops!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
 
-forward_ref_binop_typed!(impl<U> Add, add for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Sub, sub for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Mul, mul for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Div, div for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Rem, rem for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Shl, shl for Uint<U>, u32);
-forward_ref_binop_typed!(impl<U> Shr, shr for Uint<U>, u32);
+impl_assign!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
+impl_assign!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
+impl_assign!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
+impl_assign!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
+impl_assign!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
+impl_assign!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
 
-forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Uint<U>, u32);
-forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Uint<U>, u32);
+forward_ref_binop_typed!(impl<U> Add, add for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Sub, sub for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Mul, mul for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Div, div for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Rem, rem for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Shl, shl for Int<U>, u32);
+forward_ref_binop_typed!(impl<U> Shr, shr for Int<U>, u32);
+
+forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
+forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
 
 // TODO: Is worth create macros to impl below traits?
 
-impl<U> FromStr for Uint<U>
+impl<U> FromStr for Int<U>
 where
     U: FromStr,
     <U as FromStr>::Err: ToString,
@@ -215,16 +245,16 @@ where
     }
 }
 
-impl<U> From<Uint<U>> for String
+impl<U> From<Int<U>> for String
 where
     U: std::fmt::Display,
 {
-    fn from(value: Uint<U>) -> Self {
+    fn from(value: Int<U>) -> Self {
         value.to_string()
     }
 }
 
-impl<U> std::fmt::Display for Uint<U>
+impl<U> std::fmt::Display for Int<U>
 where
     U: std::fmt::Display,
 {
@@ -233,7 +263,7 @@ where
     }
 }
 
-impl<U> ser::Serialize for Uint<U>
+impl<U> ser::Serialize for Int<U>
 where
     U: std::fmt::Display,
 {
@@ -245,7 +275,7 @@ where
     }
 }
 
-impl<'de, U> de::Deserialize<'de> for Uint<U>
+impl<'de, U> de::Deserialize<'de> for Int<U>
 where
     U: Default + FromStr,
     <U as FromStr>::Err: Display,
@@ -268,7 +298,7 @@ where
     U: FromStr,
     <U as FromStr>::Err: Display,
 {
-    type Value = Uint<U>;
+    type Value = Int<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         // TODO: Change this message in base at the type of U
@@ -279,37 +309,30 @@ where
     where
         E: de::Error,
     {
-        v.parse::<U>().map(Uint::<U>).map_err(E::custom)
+        v.parse::<U>().map(Int::<U>).map_err(E::custom)
     }
 }
 
 // Uint64
-generate_int!(
-    name = Uint64,
-    inner_type = u64,
-    from = []
-);
+generate_int!(name = Uint64, inner_type = u64, from_int = [], from_std = [u32, u16, u8]);
 
 // Uint128
-generate_int!(
-    name = Uint128,
-    inner_type = u128,
-    from = [Uint64]
-);
+generate_int!(name = Uint128, inner_type = u128, from_int = [Uint64], from_std = [u32, u16, u8]);
 
 // Uint256
 generate_int!(
     name = Uint256,
     inner_type = U256,
-
-    from = [Uint64, Uint128]
+    from_int = [Uint64, Uint128],
+    from_std = [u32, u16, u8]
 );
 
 // Uint512
 generate_int!(
     name = Uint512,
     inner_type = U512,
-    from = [Uint256, Uint64, Uint128]
+    from_int = [Uint256, Uint64, Uint128],
+    from_std = [u32, u16, u8]
 );
 
 // Implementations of [`Next`] has to be done after all the types are defined.
@@ -321,31 +344,115 @@ impl_next!(Uint256, Uint512);
 generate_int!(
     name = Int64,
     inner_type = i64,
-    from = []
+    from_int = [],
+    from_std = [u32, u16, u8, i32, i16, i8]
 );
 
 // Int128
 generate_int!(
     name = Int128,
     inner_type = i128,
-    from = [Int64]
+    from_int = [Int64, Uint64],
+    from_std = [u32, u16, u8, i32, i16, i8]
 );
 
 // Int256
 generate_int!(
     name = Int256,
     inner_type = I256,
-    from = [Int64, Int128]
+    from_int = [Int64, Int128, Uint64, Uint128],
+    from_std = [u32, u16, u8, i32, i16, i8]
 );
 
 // Int512
 generate_int!(
     name = Int512,
     inner_type = I512,
-    from = [Int64, Int128, Int256]
+    from_int = [Int64, Int128, Int256, Uint64, Uint128, Uint256],
+    from_std = [u32, u16, u8, i32, i16, i8]
 );
 
 // Implementations of [`Next`] has to be done after all the types are defined.
 impl_next!(Int64, Int128);
 impl_next!(Int128, Int256);
 impl_next!(Int256, Int512);
+
+#[cfg(test)]
+mod test {
+    use bnum::types::{I256, I512, U256};
+
+    use crate::{
+        math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+        Bytable, Int128, Int256, Int512, Int64, Uint128, Uint64,
+    };
+
+    #[test]
+    fn t1() {
+        let a = (-2_i128).to_be_bytes();
+        let a = grow_be_int::<16, 32>(a);
+        let a = I256::from_be_bytes(a);
+        println!("{:?}", a);
+
+        let a = (-2_i128).to_le_bytes();
+        let a = grow_le_int::<16, 32>(a);
+        let a = I256::from_le_bytes(a);
+        println!("{:?}", a);
+
+        let a = (2_u128).to_be_bytes();
+        let a = grow_be_uint::<16, 32>(a);
+        let a = U256::from_be_bytes(a);
+        println!("{:?}", a);
+
+        let a = (2_i128).to_le_bytes();
+        let a = grow_le_uint::<16, 32>(a);
+        let a = I256::from_le_bytes(a);
+        println!("{:?}", a);
+    }
+
+    #[test]
+    fn t2_conversion() {
+        let foo = Int128::new(1);
+        assert_eq!(foo.as_next(), Int256::new(I256::ONE));
+
+        let foo = Int256::ONE;
+        assert_eq!(foo.as_next(), Int512::new(I512::ONE));
+    }
+
+    #[test]
+    fn t3_ops() {
+        let foo = Uint64::new(1);
+        let bar = Uint128::new(2);
+        assert_eq!(bar + foo, Uint128::new(3));
+
+        let foo = Int64::new(1);
+        assert_eq!(-foo, Int64::new(-1));
+
+        let foo = Uint64::new(10);
+        let bar = Int128::new(-10);
+
+        assert_eq!(bar + foo, Int128::new(0));
+
+        assert_eq!(foo + bar, Int128::new(0));
+
+        let foo = Uint64::new(10);
+        let bar = Uint128::new(20);
+
+        let zzz = Uint64::new(20);
+
+        assert_eq!(foo + zzz, Uint64::new(30));
+        assert_eq!(foo + &zzz, Uint64::new(30));
+        assert_eq!(&foo + zzz, Uint64::new(30));
+        assert_eq!(&foo + &zzz, Uint64::new(30));
+
+        assert_eq!(foo + &bar, Uint128::new(30));
+        assert_eq!(bar + &foo, Uint128::new(30));
+
+        let mut foo = Uint128::new(10);
+
+        foo += 10_u32;
+
+        assert_eq!(foo, Uint128::new(20));
+
+        // foo += 10_u32;
+    }
+}
