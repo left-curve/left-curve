@@ -11,7 +11,7 @@ use {
 
 pub fn do_before_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_before_tx::<VM>(storage, block, tx) {
@@ -29,7 +29,7 @@ where
 
 fn _do_before_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -62,7 +62,7 @@ where
 
 pub fn do_after_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_after_tx::<VM>(storage, block, tx) {
@@ -80,7 +80,7 @@ where
 
 fn _do_after_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

@@ -15,7 +15,7 @@ pub fn create_vm_instance<VM>(
     program: VM::Program,
 ) -> AppResult<VM>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let prefix_store = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);

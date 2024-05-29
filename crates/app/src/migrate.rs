@@ -16,7 +16,7 @@ pub fn do_migrate<VM>(
     msg:           &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_migrate::<VM>(storage, block, contract, sender, new_code_hash, msg) {
@@ -40,7 +40,7 @@ fn _do_migrate<VM>(
     msg:           &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

@@ -28,7 +28,7 @@ pub fn query_balance<VM>(
     denom:   String,
 ) -> AppResult<Coin>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     _query_bank::<VM>(storage, block, &BankQueryMsg::Balance { address, denom })
@@ -43,7 +43,7 @@ pub fn query_balances<VM>(
     limit:       Option<u32>,
 ) -> AppResult<Coins>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     _query_bank::<VM>(storage, block, &BankQueryMsg::Balances { address, start_after, limit })
@@ -56,7 +56,7 @@ pub fn query_supply<VM>(
     denom: String,
 ) -> AppResult<Coin>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     _query_bank::<VM>(storage, block, &BankQueryMsg::Supply { denom })
@@ -70,7 +70,7 @@ pub fn query_supplies<VM>(
     limit:       Option<u32>,
 ) -> AppResult<Coins>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     _query_bank::<VM>(storage, block, &BankQueryMsg::Supplies { start_after, limit })
@@ -83,7 +83,7 @@ pub fn _query_bank<VM>(
     msg:   &BankQueryMsg,
 ) -> AppResult<BankQueryResponse>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     // load program code
@@ -180,7 +180,7 @@ pub fn query_wasm_smart<VM>(
     msg:      Json,
 ) -> AppResult<WasmSmartResponse>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

@@ -16,7 +16,7 @@ pub fn do_transfer<VM>(
     receive: bool,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_transfer::<VM>(storage, block, from, to, coins, receive) {
@@ -47,7 +47,7 @@ fn _do_transfer<VM>(
     receive: bool,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -97,7 +97,7 @@ fn _do_receive<VM>(
     mut events: Vec<Event>,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

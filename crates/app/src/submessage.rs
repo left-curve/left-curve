@@ -45,7 +45,7 @@ pub fn handle_submessages<VM>(
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
@@ -100,7 +100,7 @@ pub fn do_reply<VM>(
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_reply::<VM>(storage, block, contract, payload, submsg_res) {
@@ -123,7 +123,7 @@ fn _do_reply<VM>(
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

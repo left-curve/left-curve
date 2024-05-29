@@ -22,7 +22,7 @@ impl<VM> QueryProvider<VM> {
 
 impl<VM> Querier for QueryProvider<VM>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {

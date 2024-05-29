@@ -19,7 +19,7 @@ pub fn do_instantiate<VM>(
     admin:     Option<Addr>,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_instantiate::<VM>(storage, block, sender, code_hash, msg, salt, funds, admin) {
@@ -47,7 +47,7 @@ fn _do_instantiate<VM>(
     admin:     Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     // make sure the user has permission to instantiate contracts

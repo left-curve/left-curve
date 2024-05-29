@@ -52,7 +52,7 @@ where
 impl<DB, VM> App<DB, VM>
 where
     DB: Db,
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn do_init_chain_raw(
@@ -300,7 +300,7 @@ where
 fn process_tx<S, VM>(storage: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
@@ -345,7 +345,7 @@ pub fn process_msg<VM>(
     msg: Message,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match msg {
@@ -399,7 +399,7 @@ pub fn process_query<VM>(
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match req {

@@ -16,7 +16,7 @@ pub fn do_execute<VM>(
     funds:    Coins,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_execute::<VM>(storage, block, contract, sender, msg, funds) {
@@ -40,7 +40,7 @@ fn _do_execute<VM>(
     funds:    Coins,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

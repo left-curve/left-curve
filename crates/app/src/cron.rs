@@ -15,7 +15,7 @@ pub fn do_before_block<VM>(
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_before_block::<VM>(storage, block, contract) {
@@ -36,7 +36,7 @@ fn _do_before_block<VM>(
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -73,7 +73,7 @@ pub fn do_after_block<VM>(
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_after_block::<VM>(storage, block, contract) {
@@ -94,7 +94,7 @@ fn _do_after_block<VM>(
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

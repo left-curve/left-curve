@@ -22,7 +22,7 @@ pub fn do_create_client<VM>(
     salt:            Binary,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_create_client::<VM>(storage, block, sender, code_hash, client_state, consensus_state, salt) {
@@ -47,7 +47,7 @@ pub fn _do_create_client<VM>(
     salt:            Binary,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -111,7 +111,7 @@ pub fn do_update_client<VM>(
     header:    Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_update_client::<VM>(storage, block, sender, client_id, header) {
@@ -134,7 +134,7 @@ fn _do_update_client<VM>(
     header:    Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -176,7 +176,7 @@ pub fn do_freeze_client<VM>(
     misbehavior: Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     match _do_freeze_client::<VM>(storage, block, sender, client_id, misbehavior) {
@@ -199,7 +199,7 @@ fn _do_freeze_client<VM>(
     misbehavior: Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
