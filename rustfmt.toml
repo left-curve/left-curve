@@ -2,7 +2,6 @@
 condense_wildcard_suffixes     = true  # unstable
 format_macro_bodies            = true  # unstable
 format_macro_matchers          = true  # unstable
-# group_imports                  = "One" # unstable
 imports_granularity            = "One" # unstable
 match_block_trailing_comma     = true
 normalize_comments             = true  # unstable
