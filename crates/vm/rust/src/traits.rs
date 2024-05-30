@@ -1,8 +1,3 @@
-//! TODO: This file is named "traits" but it includes types instead of traits,
-//! because we need trait aliases which is unstable:
-//! https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
-//! Using boxes is a temporary workaround.
-
 use {
     grug_types::{
         Api, BankQueryMsg, BankQueryResponse, Context, Empty, GenericResult, Json, Querier,
@@ -66,6 +61,10 @@ pub trait Contract {
         msg: Json,
     ) -> GenericResult<Json>;
 }
+
+// Trait aliases are unstable:
+// https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
+// So we define boxed traits as a workaround.
 
 pub type InstantiateFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
 

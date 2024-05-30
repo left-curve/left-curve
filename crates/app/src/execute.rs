@@ -8,12 +8,12 @@ use {
 };
 
 pub fn do_execute<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
-    sender:   &Addr,
-    msg:      &Json,
-    funds:    Coins,
+    sender: &Addr,
+    msg: &Json,
+    funds: Coins,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -32,12 +32,12 @@ where
 }
 
 fn _do_execute<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
-    sender:   &Addr,
-    msg:      &Json,
-    funds:    Coins,
+    sender: &Addr,
+    msg: &Json,
+    funds: Coins,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -64,19 +64,24 @@ where
     // call execute
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          Some(sender.clone()),
-        funds:           Some(funds),
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: Some(sender.clone()),
+        funds: Some(funds),
+        simulate: None,
     };
     let resp = instance.call_execute(&ctx, msg)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_execute_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

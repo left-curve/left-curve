@@ -5,8 +5,8 @@ use {
 };
 
 pub fn do_set_config(
-    storage:   &mut dyn Storage,
-    sender:  &Addr,
+    storage: &mut dyn Storage,
+    sender: &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
     match _do_set_config(storage, sender, new_cfg) {
@@ -22,8 +22,8 @@ pub fn do_set_config(
 }
 
 fn _do_set_config(
-    storage:   &mut dyn Storage,
-    sender:  &Addr,
+    storage: &mut dyn Storage,
+    sender: &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
     // make sure the sender is authorized to set the config

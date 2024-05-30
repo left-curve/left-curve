@@ -26,13 +26,13 @@ pub struct InstantiateMsg {
 #[grug_derive(serde)]
 pub enum ExecuteMsg {
     Mint {
-        to:     Addr,
-        denom:  String,
+        to: Addr,
+        denom: String,
         amount: Uint128,
     },
     Burn {
-        from:   Addr,
-        denom:  String,
+        from: Addr,
+        denom: String,
         amount: Uint128,
     },
 }
@@ -62,8 +62,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 // not to be confused with `increase_supply` also found in this contract
 fn accumulate_supply(
     supplies: &mut HashMap<String, Uint128>,
-    denom:    &str,
-    by:       Uint128,
+    denom: &str,
+    by: Uint128,
 ) -> anyhow::Result<()> {
     let Some(supply) = supplies.get_mut(denom) else {
         supplies.insert(denom.into(), by);
@@ -99,11 +99,7 @@ pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Mint {
-            to,
-            denom,
-            amount,
-        } => mint(ctx, to, denom, amount),
+        ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
             from,
             denom,
@@ -114,12 +110,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 // NOTE: we haven't implement gatekeeping for minting/burning yet. for now
 // anyone can mint any denom to any account, or burn any token from any account.
-pub fn mint(
-    ctx:    MutableCtx,
-    to:     Addr,
-    denom:  String,
-    amount: Uint128,
-) -> anyhow::Result<Response> {
+pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
@@ -133,9 +124,9 @@ pub fn mint(
 // NOTE: we haven't implement gatekeeping for minting/burning yet. for now
 // anyone can mint any denom to any account, or burn any token from any account.
 pub fn burn(
-    ctx:    MutableCtx,
-    from:   Addr,
-    denom:  String,
+    ctx: MutableCtx,
+    from: Addr,
+    denom: String,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
@@ -151,8 +142,8 @@ pub fn burn(
 /// Increase the total supply of a token by the given amount.
 /// Return the total supply value after the increase.
 fn increase_supply(
-    storage:  &mut dyn Storage,
-    denom:  &str,
+    storage: &mut dyn Storage,
+    denom: &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
     SUPPLIES.update(storage, denom, |supply| {
@@ -164,8 +155,8 @@ fn increase_supply(
 /// Decrease the total supply of a token by the given amount.
 /// Return the total supply value after the decrease.
 fn decrease_supply(
-    storage:  &mut dyn Storage,
-    denom:  &str,
+    storage: &mut dyn Storage,
+    denom: &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
     SUPPLIES.update(storage, denom, |supply| {
@@ -182,10 +173,10 @@ fn decrease_supply(
 /// Increase an account's balance of a token by the given amount.
 /// Return the balance value after the increase.
 fn increase_balance(
-    storage:   &mut dyn Storage,
+    storage: &mut dyn Storage,
     address: &Addr,
-    denom:   &str,
-    amount:  Uint128,
+    denom: &str,
+    amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
     BALANCES.update(storage, (address, denom), |balance| {
         let balance = balance.unwrap_or_default().checked_add(amount)?;
@@ -196,10 +187,10 @@ fn increase_balance(
 /// Decrease an account's balance of a token by the given amount.
 /// Return the balance value after the decrease.
 fn decrease_balance(
-    storage:   &mut dyn Storage,
+    storage: &mut dyn Storage,
     address: &Addr,
-    denom:   &str,
-    amount:  Uint128,
+    denom: &str,
+    amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
     BALANCES.update(storage, (address, denom), |balance| {
         let balance = balance.unwrap_or_default().checked_sub(amount)?;
@@ -219,22 +210,18 @@ fn decrease_balance(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQueryMsg::Balance {
-            address,
-            denom,
-        } => query_balance(ctx, address, denom).map(BankQueryResponse::Balance),
+        BankQueryMsg::Balance { address, denom } => {
+            query_balance(ctx, address, denom).map(BankQueryResponse::Balance)
+        },
         BankQueryMsg::Balances {
             address,
             start_after,
             limit,
         } => query_balances(ctx, address, start_after, limit).map(BankQueryResponse::Balances),
-        BankQueryMsg::Supply {
-            denom,
-        } => query_supply(ctx, denom).map(BankQueryResponse::Supply),
-        BankQueryMsg::Supplies {
-            start_after,
-            limit,
-        } => query_supplies(ctx, start_after, limit).map(BankQueryResponse::Supplies),
+        BankQueryMsg::Supply { denom } => query_supply(ctx, denom).map(BankQueryResponse::Supply),
+        BankQueryMsg::Supplies { start_after, limit } => {
+            query_supplies(ctx, start_after, limit).map(BankQueryResponse::Supplies)
+        },
     }
 }
 
@@ -247,12 +234,14 @@ pub fn query_balance(ctx: ImmutableCtx, address: Addr, denom: String) -> StdResu
 }
 
 pub fn query_balances(
-    ctx:         ImmutableCtx,
-    address:     Addr,
+    ctx: ImmutableCtx,
+    address: Addr,
     start_after: Option<String>,
-    limit:       Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
+    let start = start_after
+        .as_ref()
+        .map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     let mut iter = BALANCES
         .prefix(&address)
@@ -270,11 +259,13 @@ pub fn query_supply(ctx: ImmutableCtx, denom: String) -> StdResult<Coin> {
 }
 
 pub fn query_supplies(
-    ctx:         ImmutableCtx,
+    ctx: ImmutableCtx,
     start_after: Option<String>,
-    limit:       Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(|denom| Bound::Exclusive(denom.as_str()));
+    let start = start_after
+        .as_ref()
+        .map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     let mut iter = SUPPLIES
         .range(ctx.storage, start, None, Order::Ascending)

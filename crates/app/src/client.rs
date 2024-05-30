@@ -13,19 +13,27 @@ use {
 // ------------------------------- create client -------------------------------
 
 pub fn do_create_client<VM>(
-    storage:           Box<dyn Storage>,
-    block:           &BlockInfo,
-    sender:          &Addr,
-    code_hash:       Hash,
-    client_state:    Json,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
+    code_hash: Hash,
+    client_state: Json,
     consensus_state: Json,
-    salt:            Binary,
+    salt: Binary,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_create_client::<VM>(storage, block, sender, code_hash, client_state, consensus_state, salt) {
+    match _do_create_client::<VM>(
+        storage,
+        block,
+        sender,
+        code_hash,
+        client_state,
+        consensus_state,
+        salt,
+    ) {
         Ok((events, address)) => {
             info!(address = address.to_string(), "Create IBC client");
             Ok(events)
@@ -38,13 +46,13 @@ where
 }
 
 pub fn _do_create_client<VM>(
-    mut storage:       Box<dyn Storage>,
-    block:           &BlockInfo,
-    sender:          &Addr,
-    code_hash:       Hash,
-    client_state:    Json,
+    mut storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
+    code_hash: Hash,
+    client_state: Json,
     consensus_state: Json,
-    salt:            Binary,
+    salt: Binary,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
     VM: Vm,
@@ -84,19 +92,30 @@ where
     // call `ibc_client_create` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        address,
-        sender:          Some(sender.clone()),
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: address,
+        sender: Some(sender.clone()),
+        funds: None,
+        simulate: None,
     };
-    let resp = instance.call_ibc_client_create(&ctx, &client_state, &consensus_state)?.into_std_result()?;
+    let resp = instance
+        .call_ibc_client_create(&ctx, &client_state, &consensus_state)?
+        .into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_create_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, sender, resp.submsgs)?);
+    let mut events = vec![new_create_client_event(
+        &ctx.contract,
+        &account.code_hash,
+        resp.attributes,
+    )];
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        sender,
+        resp.submsgs,
+    )?);
 
     Ok((events, ctx.contract))
 }
@@ -104,11 +123,11 @@ where
 // ------------------------------- update client -------------------------------
 
 pub fn do_update_client<VM>(
-    storage:     Box<dyn Storage>,
-    block:     &BlockInfo,
-    sender:    &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
     client_id: &Addr,
-    header:    Json,
+    header: Json,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -127,11 +146,11 @@ where
 }
 
 fn _do_update_client<VM>(
-    storage:     Box<dyn Storage>,
-    block:     &BlockInfo,
-    sender:    &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
     client_id: &Addr,
-    header:    Json,
+    header: Json,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -146,22 +165,31 @@ where
     // call `ibc_client_update` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        client_id.clone(),
-        sender:          Some(sender.clone()),
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: client_id.clone(),
+        sender: Some(sender.clone()),
+        funds: None,
+        simulate: None,
     };
-    let msg = IbcClientUpdateMsg::Update {
-        header,
-    };
-    let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
+    let msg = IbcClientUpdateMsg::Update { header };
+    let resp = instance
+        .call_ibc_client_update(&ctx, &msg)?
+        .into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_update_client_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    let mut events = vec![new_update_client_event(
+        &ctx.contract,
+        &account.code_hash,
+        resp.attributes,
+    )];
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }
@@ -169,10 +197,10 @@ where
 // ------------------------------- freeze client -------------------------------
 
 pub fn do_freeze_client<VM>(
-    storage:       Box<dyn Storage>,
-    block:       &BlockInfo,
-    sender:      &Addr,
-    client_id:   &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
+    client_id: &Addr,
     misbehavior: Json,
 ) -> AppResult<Vec<Event>>
 where
@@ -181,21 +209,27 @@ where
 {
     match _do_freeze_client::<VM>(storage, block, sender, client_id, misbehavior) {
         Ok(events) => {
-            warn!(client = client_id.to_string(), "Froze IBC client due to misbehavior");
+            warn!(
+                client = client_id.to_string(),
+                "Froze IBC client due to misbehavior"
+            );
             Ok(events)
         },
         Err(err) => {
-            warn!(err = err.to_string(), "Failed to freeze IBC client due to misbehavior");
+            warn!(
+                err = err.to_string(),
+                "Failed to freeze IBC client due to misbehavior"
+            );
             Err(err)
         },
     }
 }
 
 fn _do_freeze_client<VM>(
-    storage:       Box<dyn Storage>,
-    block:       &BlockInfo,
-    sender:      &Addr,
-    client_id:   &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
+    client_id: &Addr,
     misbehavior: Json,
 ) -> AppResult<Vec<Event>>
 where
@@ -211,22 +245,31 @@ where
     // call `ibc_client_update` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        client_id.clone(),
-        sender:          Some(sender.clone()),
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: client_id.clone(),
+        sender: Some(sender.clone()),
+        funds: None,
+        simulate: None,
     };
-    let msg = IbcClientUpdateMsg::UpdateOnMisbehavior {
-        misbehavior,
-    };
-    let resp = instance.call_ibc_client_update(&ctx, &msg)?.into_std_result()?;
+    let msg = IbcClientUpdateMsg::UpdateOnMisbehavior { misbehavior };
+    let resp = instance
+        .call_ibc_client_update(&ctx, &msg)?
+        .into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_client_misbehavior_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    let mut events = vec![new_client_misbehavior_event(
+        &ctx.contract,
+        &account.code_hash,
+        resp.attributes,
+    )];
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

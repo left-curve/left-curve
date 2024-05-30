@@ -7,14 +7,14 @@ use {
 
 pub struct Item<'a, T> {
     storage_key: &'a [u8],
-    _data_type:  PhantomData<T>,
+    _data_type: PhantomData<T>,
 }
 
 impl<'a, T> Item<'a, T> {
     pub const fn new(storage_key: &'a str) -> Self {
         Self {
             storage_key: storage_key.as_bytes(),
-            _data_type:  PhantomData,
+            _data_type: PhantomData,
         }
     }
 

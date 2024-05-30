@@ -81,9 +81,9 @@ struct DiskDbInner {
 }
 
 pub(crate) struct PendingData {
-    version:          u64,
+    version: u64,
     state_commitment: Batch,
-    state_storage:    Batch,
+    state_storage: Batch,
 }
 
 impl DiskDb {
@@ -91,15 +91,11 @@ impl DiskDb {
     pub fn open(data_dir: impl AsRef<Path>) -> DbResult<Self> {
         // note: for default and state commitment CFs, don't enable timestamping;
         // for state storage column family, enable timestamping.
-        let db = DBWithThreadMode::open_cf_with_opts(
-            &new_db_options(),
-            data_dir,
-            [
-                (CF_NAME_DEFAULT, Options::default()),
-                (CF_NAME_STATE_COMMITMENT, Options::default()),
-                (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
-            ],
-        )?;
+        let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
+            (CF_NAME_DEFAULT, Options::default()),
+            (CF_NAME_STATE_COMMITMENT, Options::default()),
+            (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
+        ])?;
 
         Ok(Self {
             inner: Arc::new(DiskDbInner {
@@ -137,11 +133,18 @@ impl Db for DiskDb {
 
     fn latest_version(&self) -> Option<u64> {
         let cf = cf_default(&self.inner.db);
-        let bytes = self.inner.db.get_cf(&cf, LATEST_VERSION_KEY).unwrap_or_else(|err| {
-            panic!("failed to read from default column family: {err}");
-        })?;
+        let bytes = self
+            .inner
+            .db
+            .get_cf(&cf, LATEST_VERSION_KEY)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from default column family: {err}");
+            })?;
         let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!("latest version is of incorrect byte length: {}", bytes.len());
+            panic!(
+                "latest version is of incorrect byte length: {}",
+                bytes.len()
+            );
         });
         Some(u64::from_le_bytes(array))
     }
@@ -182,16 +185,21 @@ impl Db for DiskDb {
         let (_, pending) = cache.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
-            version:          new_version,
+            version: new_version,
             state_commitment: pending,
-            state_storage:    batch,
+            state_storage: batch,
         });
 
         Ok((new_version, root_hash))
     }
 
     fn commit(&self) -> DbResult<()> {
-        let pending = self.inner.pending_data.write()?.take().ok_or(DbError::PendingDataNotSet)?;
+        let pending = self
+            .inner
+            .pending_data
+            .write()?
+            .take()
+            .ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
 
         // set the new version (note: use little endian)
@@ -239,15 +247,18 @@ impl Clone for StateCommitment {
 
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner.db.get_cf(&cf_state_commitment(&self.inner.db), key).unwrap_or_else(|err| {
-            panic!("failed to read from state commitment: {err}");
-        })
+        self.inner
+            .db
+            .get_cf(&cf_state_commitment(&self.inner.db), key)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from state commitment: {err}");
+            })
     }
 
     fn scan<'a>(
         &'a self,
-        _min:   Option<&[u8]>,
-        _max:   Option<&[u8]>,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
         _order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         unimplemented!("this isn't used by the Merkle tree");
@@ -273,15 +284,18 @@ pub struct StateStorage {
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let opts = new_read_options(Some(self.version), None, None);
-        self.inner.db.get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts).unwrap_or_else(|err| {
-            panic!("failed to read from state storage: {err}");
-        })
+        self.inner
+            .db
+            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from state storage: {err}");
+            })
     }
 
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let opts = new_read_options(Some(self.version), min, max);
@@ -289,12 +303,16 @@ impl Storage for StateStorage {
             Order::Ascending => IteratorMode::Start,
             Order::Descending => IteratorMode::End,
         };
-        let iter = self.inner.db.iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode).map(|item| {
-            let (k, v) = item.unwrap_or_else(|err| {
-                panic!("failed to iterate in state storage: {err}");
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state storage: {err}");
+                });
+                (k.to_vec(), v.to_vec())
             });
-            (k.to_vec(), v.to_vec())
-        });
         Box::new(iter)
     }
 
@@ -337,7 +355,7 @@ fn new_cf_options_with_ts() -> Options {
 }
 
 fn new_read_options(
-    version:             Option<u64>,
+    version: Option<u64>,
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
@@ -437,13 +455,27 @@ mod tests {
     mod v0 {
         use super::*;
 
-        pub const ROOT_HASH: Hash = Hash::from_slice(hex!("1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64"));
-        pub const HASH_0:    Hash = Hash::from_slice(hex!("4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad"));
-        pub const HASH_00:   Hash = Hash::from_slice(hex!("01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"));
-        pub const HASH_01:   Hash = Hash::from_slice(hex!("248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf"));
-        pub const HASH_010:  Hash = Hash::from_slice(hex!("8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575"));
-        pub const HASH_011:  Hash = Hash::from_slice(hex!("3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a"));
-        pub const HASH_1:    Hash = Hash::from_slice(hex!("8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"));
+        pub const ROOT_HASH: Hash = Hash::from_slice(hex!(
+            "1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64"
+        ));
+        pub const HASH_0: Hash = Hash::from_slice(hex!(
+            "4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad"
+        ));
+        pub const HASH_00: Hash = Hash::from_slice(hex!(
+            "01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"
+        ));
+        pub const HASH_01: Hash = Hash::from_slice(hex!(
+            "248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf"
+        ));
+        pub const HASH_010: Hash = Hash::from_slice(hex!(
+            "8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575"
+        ));
+        pub const HASH_011: Hash = Hash::from_slice(hex!(
+            "3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a"
+        ));
+        pub const HASH_1: Hash = Hash::from_slice(hex!(
+            "8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"
+        ));
     }
 
     // the tree at version 2 should look like:
@@ -490,13 +522,27 @@ mod tests {
     mod v1 {
         use super::*;
 
-        pub const ROOT_HASH: Hash = Hash::from_slice(hex!("05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4"));
-        pub const HASH_0:    Hash = Hash::from_slice(hex!("7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402"));
-        pub const HASH_00:   Hash = Hash::from_slice(hex!("01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"));
-        pub const HASH_01:   Hash = Hash::from_slice(hex!("44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7"));
-        pub const HASH_1:    Hash = Hash::from_slice(hex!("9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f"));
-        pub const HASH_110:  Hash = Hash::from_slice(hex!("8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"));
-        pub const HASH_111:  Hash = Hash::from_slice(hex!("a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6"));
+        pub const ROOT_HASH: Hash = Hash::from_slice(hex!(
+            "05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4"
+        ));
+        pub const HASH_0: Hash = Hash::from_slice(hex!(
+            "7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402"
+        ));
+        pub const HASH_00: Hash = Hash::from_slice(hex!(
+            "01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"
+        ));
+        pub const HASH_01: Hash = Hash::from_slice(hex!(
+            "44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7"
+        ));
+        pub const HASH_1: Hash = Hash::from_slice(hex!(
+            "9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f"
+        ));
+        pub const HASH_110: Hash = Hash::from_slice(hex!(
+            "8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"
+        ));
+        pub const HASH_111: Hash = Hash::from_slice(hex!(
+            "a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6"
+        ));
     }
 
     #[test]
@@ -507,9 +553,9 @@ mod tests {
         // write a batch. the very first batch have version 0
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
-            (b"jake".to_vec(),   Op::Insert(b"shepherd".to_vec())),
-            (b"joe".to_vec(),    Op::Insert(b"biden".to_vec())),
-            (b"larry".to_vec(),  Op::Insert(b"engineer".to_vec())),
+            (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+            (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+            (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
         assert_eq!(version, 0);
@@ -517,8 +563,8 @@ mod tests {
 
         // write another batch with version = 1
         let batch = Batch::from([
-            (b"donald".to_vec(),  Op::Insert(b"duck".to_vec())),
-            (b"joe".to_vec(),     Op::Delete),
+            (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+            (b"joe".to_vec(), Op::Delete),
             (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
         ]);
         let (version, root_hash) = store.flush_and_commit(batch).unwrap();
@@ -527,38 +573,45 @@ mod tests {
 
         // try query values at the two versions, respectively, from state storage
         for (version, key, value) in [
-            (0, "donald",  Some("trump")),
-            (0, "jake",    Some("shepherd")),
-            (0, "joe",     Some("biden")),
-            (0, "larry",   Some("engineer")),
+            (0, "donald", Some("trump")),
+            (0, "jake", Some("shepherd")),
+            (0, "joe", Some("biden")),
+            (0, "larry", Some("engineer")),
             (0, "pumpkin", None),
-            (1, "donald",  Some("duck")),
-            (1, "jake",    Some("shepherd")),
-            (1, "joe",     None),
-            (1, "larry",   Some("engineer")),
+            (1, "donald", Some("duck")),
+            (1, "jake", Some("shepherd")),
+            (1, "joe", None),
+            (1, "larry", Some("engineer")),
             (1, "pumpkin", Some("cat")),
         ] {
             let found_value = store.state_storage(Some(version)).read(key.as_bytes());
-            assert_eq!(found_value.map(|bz| String::from_utf8(bz).unwrap()).as_deref(), value);
+            assert_eq!(
+                found_value
+                    .map(|bz| String::from_utf8(bz).unwrap())
+                    .as_deref(),
+                value
+            );
         }
 
         // try iterating at the two versions, respectively
         for (version, items) in [
             (0, [
                 ("donald", "trump"),
-                ("jake",   "shepherd"),
-                ("joe",    "biden"),
-                ("larry",  "engineer"),
+                ("jake", "shepherd"),
+                ("joe", "biden"),
+                ("larry", "engineer"),
             ]),
             (1, [
-                ("donald",  "duck"),
-                ("jake",    "shepherd"),
-                ("larry",   "engineer"),
+                ("donald", "duck"),
+                ("jake", "shepherd"),
+                ("larry", "engineer"),
                 ("pumpkin", "cat"),
             ]),
         ] {
-            for ((found_key, found_value), (key, value)) in
-                store.state_storage(Some(version)).scan(None, None, Order::Ascending).zip(items)
+            for ((found_key, found_value), (key, value)) in store
+                .state_storage(Some(version))
+                .scan(None, None, Order::Ascending)
+                .zip(items)
             {
                 assert_eq!(found_key, key.as_bytes());
                 assert_eq!(found_value, value.as_bytes());
@@ -568,72 +621,94 @@ mod tests {
         // try generating merkle proofs at the two versions, respectively; also
         // verify the proofs.
         for (version, key, value, proof) in [
-            (0, "donald", Some("trump"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v0::HASH_011),
-                    Some(v0::HASH_00),
-                    Some(v0::HASH_1),
-                ],
-            })),
-            (0, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![Some(v0::HASH_0)],
-            })),
-            (0, "joe", Some("biden"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v0::HASH_010),
-                    Some(v0::HASH_00),
-                    Some(v0::HASH_1),
-                ],
-            })),
-            (0, "larry", Some("engineer"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v0::HASH_01),
-                    Some(v0::HASH_1),
-                ],
-            })),
-            (0, "pumpkin", None, Proof::NonMembership(NonMembershipProof {
-                node: ProofNode::Leaf {
-                    key_hash: hash(b"jake"),
-                    value_hash: hash(b"shepherd"),
-                },
-                sibling_hashes: vec![Some(v0::HASH_0)],
-            })),
-            (1, "donald", Some("duck"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v1::HASH_00),
-                    Some(v1::HASH_1),
-                ],
-            })),
-            (1, "jake", Some("shepherd"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v1::HASH_111),
-                    None,
-                    Some(v1::HASH_0),
-                ],
-            })),
-            (1, "joe", None, Proof::NonMembership(NonMembershipProof {
-                node: ProofNode::Leaf {
-                    key_hash: hash(b"donald"),
-                    value_hash: hash(b"duck"),
-                },
-                sibling_hashes: vec![
-                    Some(v1::HASH_00),
-                    Some(v1::HASH_1),
-                ],
-            })),
-            (1, "larry", Some("engineer"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v1::HASH_01),
-                    Some(v1::HASH_1),
-                ],
-            })),
-            (1, "pumpkin", Some("cat"), Proof::Membership(MembershipProof {
-                sibling_hashes: vec![
-                    Some(v1::HASH_110),
-                    None,
-                    Some(v1::HASH_0),
-                ],
-            })),
+            (
+                0,
+                "donald",
+                Some("trump"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v0::HASH_011), Some(v0::HASH_00), Some(v0::HASH_1)],
+                }),
+            ),
+            (
+                0,
+                "jake",
+                Some("shepherd"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v0::HASH_0)],
+                }),
+            ),
+            (
+                0,
+                "joe",
+                Some("biden"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v0::HASH_010), Some(v0::HASH_00), Some(v0::HASH_1)],
+                }),
+            ),
+            (
+                0,
+                "larry",
+                Some("engineer"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v0::HASH_01), Some(v0::HASH_1)],
+                }),
+            ),
+            (
+                0,
+                "pumpkin",
+                None,
+                Proof::NonMembership(NonMembershipProof {
+                    node: ProofNode::Leaf {
+                        key_hash: hash(b"jake"),
+                        value_hash: hash(b"shepherd"),
+                    },
+                    sibling_hashes: vec![Some(v0::HASH_0)],
+                }),
+            ),
+            (
+                1,
+                "donald",
+                Some("duck"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v1::HASH_00), Some(v1::HASH_1)],
+                }),
+            ),
+            (
+                1,
+                "jake",
+                Some("shepherd"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v1::HASH_111), None, Some(v1::HASH_0)],
+                }),
+            ),
+            (
+                1,
+                "joe",
+                None,
+                Proof::NonMembership(NonMembershipProof {
+                    node: ProofNode::Leaf {
+                        key_hash: hash(b"donald"),
+                        value_hash: hash(b"duck"),
+                    },
+                    sibling_hashes: vec![Some(v1::HASH_00), Some(v1::HASH_1)],
+                }),
+            ),
+            (
+                1,
+                "larry",
+                Some("engineer"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v1::HASH_01), Some(v1::HASH_1)],
+                }),
+            ),
+            (
+                1,
+                "pumpkin",
+                Some("cat"),
+                Proof::Membership(MembershipProof {
+                    sibling_hashes: vec![Some(v1::HASH_110), None, Some(v1::HASH_0)],
+                }),
+            ),
         ] {
             let found_proof = store.prove(key.as_bytes(), Some(version)).unwrap();
             assert_eq!(found_proof, proof);

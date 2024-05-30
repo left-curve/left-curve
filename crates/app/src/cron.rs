@@ -10,8 +10,8 @@ use {
 // ------------------------------- before block --------------------------------
 
 pub fn do_before_block<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -31,8 +31,8 @@ where
 }
 
 fn _do_before_block<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -48,19 +48,24 @@ where
     // call the recipient contract's `before_block` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          None,
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: None,
+        funds: None,
+        simulate: None,
     };
     let resp = instance.call_before_block(&ctx)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_before_block_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }
@@ -68,8 +73,8 @@ where
 // -------------------------------- after block --------------------------------
 
 pub fn do_after_block<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -89,8 +94,8 @@ where
 }
 
 fn _do_after_block<VM>(
-    storage:    Box<dyn Storage>,
-    block:    &BlockInfo,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
     contract: &Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -106,19 +111,24 @@ where
     // call the recipient contract's `after_block` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          None,
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: None,
+        funds: None,
+        simulate: None,
     };
     let resp = instance.call_after_block(&ctx)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_after_block_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

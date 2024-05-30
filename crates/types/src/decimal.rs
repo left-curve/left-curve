@@ -5,10 +5,7 @@ use {
     serde::{de, ser},
     std::{
         fmt,
-        ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign,
-            Sub, SubAssign,
-        },
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
         str::FromStr,
     },
 };
@@ -29,19 +26,20 @@ use {
 /// ```plain
 /// Uint128::MAX / 10^18 = 340282366920938463463.374607431768211455
 /// ```
-#[derive(BorshSerialize, BorshDeserialize, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Decimal(Uint128);
 
 forward_ref_partial_eq!(Decimal, Decimal);
 
 impl Decimal {
-    pub const DECIMAL_PLACES: u32 = 18;
     pub const DECIMAL_FRACTIONAL: Uint128 = Uint128::new(1_000_000_000_000_000_000);
-
-    pub const MAX:  Self = Self(Uint128::MAX);
-    pub const MIN:  Self = Self(Uint128::MIN);
+    pub const DECIMAL_PLACES: u32 = 18;
+    pub const MAX: Self = Self(Uint128::MAX);
+    pub const MIN: Self = Self(Uint128::MIN);
+    pub const ONE: Self = Self(Self::DECIMAL_FRACTIONAL);
     pub const ZERO: Self = Self(Uint128::ZERO);
-    pub const ONE:  Self = Self(Self::DECIMAL_FRACTIONAL);
 
     pub const fn is_zero(self) -> bool {
         self.0.is_zero()
@@ -71,7 +69,7 @@ impl Decimal {
 
     pub fn checked_multiply_ratio(
         self,
-        nominator:   Uint128,
+        nominator: Uint128,
         denominator: Uint128,
     ) -> StdResult<Self> {
         (Uint256::from(self.0) * Uint256::from(nominator) / Uint256::from(denominator))
@@ -179,7 +177,8 @@ impl FromStr for Decimal {
             if fraction_part.is_empty() {
                 Uint128::ZERO
             } else {
-                let exp = Self::DECIMAL_PLACES.checked_sub(fraction_part.len() as u32)
+                let exp = Self::DECIMAL_PLACES
+                    .checked_sub(fraction_part.len() as u32)
                     .ok_or(StdError::deserialize::<Self>("too many decimal places"))?;
                 let fractional_factor = Uint128::new(10u128.pow(exp));
                 Uint128::from_str(fraction_part)?.checked_mul(fractional_factor)?
@@ -210,7 +209,10 @@ impl fmt::Display for Decimal {
         if fractional.is_zero() {
             write!(f, "{whole}")
         } else {
-            let s = format!("{whole}.{fractional:0>padding$}", padding = Self::DECIMAL_PLACES as usize);
+            let s = format!(
+                "{whole}.{fractional:0>padding$}",
+                padding = Self::DECIMAL_PLACES as usize
+            );
             f.write_str(s.trim_end_matches('0'))
         }
     }
@@ -272,7 +274,10 @@ mod tests {
     fn multiplication() {
         let lhs = Decimal::from_str("74567.67567654").unwrap();
         let rhs = Decimal::from_str("42143.34452434").unwrap();
-        assert_eq!(lhs * rhs, Decimal::from_str("3142531246.4156730139969836").unwrap());
+        assert_eq!(
+            lhs * rhs,
+            Decimal::from_str("3142531246.4156730139969836").unwrap()
+        );
     }
 
     #[test]
@@ -280,7 +285,10 @@ mod tests {
         let lhs = Decimal::from_str("74567.67567654").unwrap();
         let rhs = Decimal::from_str("42143.34452434").unwrap();
         // note: keep 18 decimal places
-        assert_eq!(lhs / rhs, Decimal::from_str("1.769382010805365527").unwrap());
+        assert_eq!(
+            lhs / rhs,
+            Decimal::from_str("1.769382010805365527").unwrap()
+        );
     }
 
     #[test_case(

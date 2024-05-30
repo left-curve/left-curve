@@ -12,14 +12,14 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Coin {
-    pub denom:  String,
+    pub denom: String,
     pub amount: Uint128,
 }
 
 impl Coin {
     pub fn new(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
         Self {
-            denom:  denom.into(),
+            denom: denom.into(),
             amount: amount.into(),
         }
     }
@@ -54,11 +54,13 @@ impl fmt::Debug for Coin {
 /// amount.
 #[derive(Serialize)]
 pub struct CoinRef<'a> {
-    pub denom:  &'a String,
+    pub denom: &'a String,
     pub amount: &'a Uint128,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
+)]
 pub struct Coins(BTreeMap<String, Uint128>);
 
 impl Coins {
@@ -91,7 +93,11 @@ impl Coins {
     /// know what you're doing.
     #[doc(hidden)]
     pub fn from_vec_unchecked(vec: Vec<Coin>) -> Self {
-        Self(vec.into_iter().map(|coin| (coin.denom, coin.amount)).collect())
+        Self(
+            vec.into_iter()
+                .map(|coin| (coin.denom, coin.amount))
+                .collect(),
+        )
     }
 
     /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
@@ -167,7 +173,9 @@ impl Coins {
     /// is purged, so that only non-zero amount coins remain.
     pub fn decrease_amount(&mut self, denom: &str, by: Uint128) -> StdResult<()> {
         let Some(amount) = self.0.get_mut(denom) else {
-            return Err(StdError::DenomNotFound { denom: denom.into() });
+            return Err(StdError::DenomNotFound {
+                denom: denom.into(),
+            });
         };
 
         // TODO
@@ -208,11 +216,15 @@ impl FromStr for Coins {
             };
 
             let Ok(amount) = Uint128::from_str(amount_str) else {
-                return Err(StdError::parse_coins(format!("invalid amount `{amount_str}`")));
+                return Err(StdError::parse_coins(format!(
+                    "invalid amount `{amount_str}`"
+                )));
             };
 
             if amount.is_zero() {
-                return Err(StdError::parse_coins(format!("denom `{denom}` as zero amount")));
+                return Err(StdError::parse_coins(format!(
+                    "denom `{denom}` as zero amount"
+                )));
             }
 
             if map.contains_key(denom) {
@@ -235,7 +247,10 @@ impl TryFrom<Vec<Coin>> for Coins {
         let mut map = BTreeMap::new();
         for coin in vec {
             if coin.amount.is_zero() {
-                return Err(StdError::parse_coins(format!("denom `{}` as zero amount", coin.denom)));
+                return Err(StdError::parse_coins(format!(
+                    "denom `{}` as zero amount",
+                    coin.denom
+                )));
             }
             if map.insert(coin.denom, coin.amount).is_some() {
                 return Err(StdError::parse_coins("duplicate denom found"));
@@ -258,8 +273,8 @@ impl From<Coins> for Vec<Coin> {
 }
 
 impl<'a> IntoIterator for &'a Coins {
-    type Item = CoinRef<'a>;
     type IntoIter = CoinsIter<'a>;
+    type Item = CoinRef<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         CoinsIter(self.0.iter())
@@ -267,8 +282,8 @@ impl<'a> IntoIterator for &'a Coins {
 }
 
 impl IntoIterator for Coins {
-    type Item = Coin;
     type IntoIter = CoinsIntoIter;
+    type Item = Coin;
 
     fn into_iter(self) -> Self::IntoIter {
         CoinsIntoIter(self.0.into_iter())
@@ -281,7 +296,9 @@ impl<'a> Iterator for CoinsIter<'a> {
     type Item = CoinRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|(denom, amount)| CoinRef { denom, amount })
+        self.0
+            .next()
+            .map(|(denom, amount)| CoinRef { denom, amount })
     }
 }
 
@@ -329,12 +346,14 @@ mod tests {
     };
 
     fn mock_coins() -> Coins {
-        Coins([
-            (String::from("uatom"), Uint128::new(123)),
-            (String::from("umars"), Uint128::new(456)),
-            (String::from("uosmo"), Uint128::new(789)),
-        ]
-        .into())
+        Coins(
+            [
+                (String::from("uatom"), Uint128::new(123)),
+                (String::from("umars"), Uint128::new(456)),
+                (String::from("uosmo"), Uint128::new(789)),
+            ]
+            .into(),
+        )
     }
 
     fn mock_coins_json() -> Json {
@@ -353,7 +372,10 @@ mod tests {
     #[test]
     fn deserializing_coins() {
         // valid string
-        assert_eq!(from_json_value::<Coins>(mock_coins_json()).unwrap(), mock_coins());
+        assert_eq!(
+            from_json_value::<Coins>(mock_coins_json()).unwrap(),
+            mock_coins()
+        );
 
         // invalid json: contains zero amount
         let illegal_json = json!([

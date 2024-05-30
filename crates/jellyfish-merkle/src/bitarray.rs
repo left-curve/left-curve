@@ -16,8 +16,10 @@ pub struct BitArray {
 }
 
 impl BitArray {
-    pub const MAX_BIT_LENGTH:  usize = Self::MAX_BYTE_LENGTH * 8; // 256
-    pub const MAX_BYTE_LENGTH: usize = Hash::LENGTH;              // 32
+    /// Max supported bitarray length in number of bits (256)
+    pub const MAX_BIT_LENGTH: usize = Self::MAX_BYTE_LENGTH * 8;
+    /// Max supported bitarray length in number of bytes (32)
+    pub const MAX_BYTE_LENGTH: usize = Hash::LENGTH;
 
     pub const fn new_empty() -> Self {
         Self {
@@ -30,13 +32,22 @@ impl BitArray {
     pub fn extend_one_bit(&self, is_left: bool) -> Self {
         let mut new = self.clone();
         // left child = 0, right child = 1
-        new.push(if is_left { 0 } else { 1 });
+        new.push(if is_left {
+            0
+        } else {
+            1
+        });
         new
     }
 
     pub fn from_bytes(slice: &[u8]) -> Self {
         // the slice must be no longer than 32 bytes, otherwise panic
-        assert!(slice.len() <= Self::MAX_BYTE_LENGTH, "slice too long: {} > {}", slice.len(), Self::MAX_BYTE_LENGTH);
+        assert!(
+            slice.len() <= Self::MAX_BYTE_LENGTH,
+            "slice too long: {} > {}",
+            slice.len(),
+            Self::MAX_BYTE_LENGTH
+        );
         // copy the bytes over
         let mut bytes = [0; Self::MAX_BYTE_LENGTH];
         bytes[..slice.len()].copy_from_slice(slice);
@@ -49,7 +60,11 @@ impl BitArray {
     // we can't use Rust's `Index` trait, because it requires returning a &u8,
     // so we get a "cannot return local reference" error.
     pub fn bit_at_index(&self, index: usize) -> u8 {
-        debug_assert!(index < self.num_bits, "index out of bounds: {index} >= {}", self.num_bits);
+        debug_assert!(
+            index < self.num_bits,
+            "index out of bounds: {index} >= {}",
+            self.num_bits
+        );
         // we can use the `div_rem` method provided by the num-integer crate,
         // not sure if it's more efficient:
         // https://docs.rs/num-integer/latest/num_integer/fn.div_rem.html
@@ -59,7 +74,10 @@ impl BitArray {
     }
 
     pub fn push(&mut self, bit: u8) {
-        debug_assert!(self.num_bits <= Self::MAX_BIT_LENGTH, "bitarray getting too long");
+        debug_assert!(
+            self.num_bits <= Self::MAX_BIT_LENGTH,
+            "bitarray getting too long"
+        );
         debug_assert!(bit == 0 || bit == 1, "bit can only be 0 or 1, got {bit}");
         let (quotient, remainder) = (self.num_bits / 8, self.num_bits % 8);
         let byte = &mut self.bytes[quotient];
@@ -115,9 +133,9 @@ impl PartialEq<Hash> for BitArray {
 }
 
 impl<'a> MapKey for &'a BitArray {
+    type Output = BitArray;
     type Prefix = u16;
     type Suffix = &'a [u8];
-    type Output = BitArray;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let num_bytes = self.num_bits.div_ceil(8);
@@ -137,11 +155,11 @@ impl<'a> MapKey for &'a BitArray {
 }
 
 pub struct BitIterator<'a> {
-    bytes:   &'a [u8],
+    bytes: &'a [u8],
     current: Option<(usize, usize)>, // None if `next` hasn't been called for the 1st time yet
-    min:     (usize, usize),
-    max:     (usize, usize),
-    order:   Order,
+    min: (usize, usize),
+    max: (usize, usize),
+    order: Order,
 }
 
 impl<'a> BitIterator<'a> {
@@ -234,7 +252,11 @@ mod tests {
     fn build_bitarray_from_booleans(bits: &[bool]) -> BitArray {
         let mut bitarray = BitArray::new_empty();
         for bit in bits {
-            bitarray.push(if *bit { 1 } else { 0 });
+            bitarray.push(if *bit {
+                1
+            } else {
+                0
+            });
         }
         bitarray
     }

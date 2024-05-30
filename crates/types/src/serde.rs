@@ -17,7 +17,9 @@ pub fn to_json_value<T>(data: &T) -> StdResult<Json>
 where
     T: Serialize,
 {
-    serde_json::to_value(data).map(Into::into).map_err(StdError::serialize::<T>)
+    serde_json::to_value(data)
+        .map(Into::into)
+        .map_err(StdError::serialize::<T>)
 }
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the

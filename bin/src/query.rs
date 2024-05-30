@@ -57,9 +57,7 @@ enum SubCmd {
         limit: Option<u32>,
     },
     /// Query a Wasm binary code by hash
-    Code {
-        hash: Hash,
-    },
+    Code { hash: Hash },
     /// Enumerate hashes of all Wasm byte codes
     Codes {
         /// Start after this hash
@@ -96,7 +94,7 @@ enum SubCmd {
     /// Query a raw key in the store
     Store {
         /// Key in hex encoding
-        key: String,
+        key_hex: String,
         /// Whether to request Merkle proof for raw store queries [default: false]
         #[arg(long, global = true, default_value_t = false)]
         prove: bool,
@@ -117,118 +115,105 @@ impl QueryCmd {
     pub async fn run(self) -> anyhow::Result<()> {
         let client = Client::connect(&self.node)?;
         match self.subcmd {
-            SubCmd::Info => print_json_pretty(client.query_info(self.height).await?),
-            SubCmd::Balance {
-                address,
-                denom,
-            } => print_json_pretty(client.query_balance(address, denom, self.height).await?),
+            SubCmd::Info => {
+                let res = client.query_info(self.height).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Balance { address, denom } => {
+                let res = client.query_balance(address, denom, self.height).await?;
+                print_json_pretty(res)
+            },
             SubCmd::Balances {
                 address,
                 start_after,
                 limit,
-            } => print_json_pretty(client.query_balances(address, start_after, limit, self.height).await?),
-            SubCmd::Supply {
-                denom,
-            } => print_json_pretty(client.query_supply(denom, self.height).await?),
-            SubCmd::Supplies {
-                start_after,
-                limit,
-            } => print_json_pretty(client.query_supplies(start_after, limit, self.height).await?),
-            SubCmd::Code {
-                hash,
-            } => query_code(&client, hash, self.height).await,
-            SubCmd::Codes {
-                start_after,
-                limit,
-            } => print_json_pretty(client.query_codes(start_after, limit, self.height).await?),
-            SubCmd::Account {
-                address,
-            } => print_json_pretty(client.query_account(address, self.height).await?),
-            SubCmd::Accounts {
-                start_after,
-                limit,
-            } => print_json_pretty(client.query_accounts(start_after, limit, self.height).await?),
-            SubCmd::WasmRaw {
-                contract,
-                key_hex,
-            } => query_wasm_raw(&client, contract, key_hex, self.height).await,
-            SubCmd::WasmSmart {
-                contract,
-                msg,
-            } => query_wasm_smart(&client, contract, msg, self.height).await,
-            SubCmd::Store {
-                key,
-                prove,
-            } => query_store(&client, key, self.height, prove).await,
-            SubCmd::Tx {
-                hash,
-            } => print_json_pretty(client.tx(&hash).await?),
-            SubCmd::Block {
-                height,
-            } => print_json_pretty(client.block_result(height).await?),
+            } => {
+                let res = client
+                    .query_balances(address, start_after, limit, self.height)
+                    .await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Supply { denom } => {
+                let res = client.query_supply(denom, self.height).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Supplies { start_after, limit } => {
+                let res = client
+                    .query_supplies(start_after, limit, self.height)
+                    .await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Code { hash } => {
+                // we will be writing the wasm byte code to $(pwd)/${hash}.wasm
+                // first check if the file already exists. throw if it does
+                let filename = PathBuf::from(format!("{hash}.wasm"));
+                ensure!(!filename.exists(), "file `{filename:?}` already exists!");
+
+                // make the query
+                let wasm_byte_code = client.query_code(hash, self.height).await?;
+
+                // write the bytes to the file
+                // this creates a new file if not exists, an overwrite if exists
+                let mut file = File::create(&filename)?;
+                file.write_all(&wasm_byte_code)?;
+
+                println!("Wasm byte code written to {filename:?}");
+
+                Ok(())
+            },
+            SubCmd::Codes { start_after, limit } => {
+                let res = client.query_codes(start_after, limit, self.height).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Account { address } => {
+                let res = client.query_account(address, self.height).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Accounts { start_after, limit } => {
+                let res = client
+                    .query_accounts(start_after, limit, self.height)
+                    .await?;
+                print_json_pretty(res)
+            },
+            SubCmd::WasmRaw { contract, key_hex } => {
+                // we interpret the input raw key as Hex encoded
+                let key = Binary::from(hex::decode(&key_hex)?);
+                let res = client.query_wasm_raw(contract, key, self.height).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::WasmSmart { contract, msg } => {
+                // the input should be a JSON string, e.g. `{"config":{}}`
+                let msg: Value = serde_json::from_str(&msg)?;
+                let res = client
+                    .query_wasm_smart::<_, Value>(contract, &msg, self.height)
+                    .await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Store { key_hex, prove } => {
+                #[derive(Serialize)]
+                struct PrintableQueryStoreResponse {
+                    key: String,
+                    value: Option<String>,
+                    proof: Option<Proof>,
+                }
+
+                let key = hex::decode(&key_hex)?;
+                let (value, proof) = client.query_store(key, self.height, prove).await?;
+
+                print_json_pretty(PrintableQueryStoreResponse {
+                    key: key_hex,
+                    value: value.map(hex::encode),
+                    proof,
+                })
+            },
+            SubCmd::Tx { hash } => {
+                let res = client.tx(&hash).await?;
+                print_json_pretty(res)
+            },
+            SubCmd::Block { height } => {
+                let res = client.block_result(height).await?;
+                print_json_pretty(res)
+            },
         }
     }
-}
-
-async fn query_code(client: &Client, hash: Hash, height: Option<u64>) -> anyhow::Result<()> {
-    // we will be writing the wasm byte code to $(pwd)/${hash}.wasm
-    // first check if the file already exists. throw if it does
-    let filename = PathBuf::from(format!("{hash}.wasm"));
-    ensure!(!filename.exists(), "file `{filename:?}` already exists!");
-
-    // make the query
-    let wasm_byte_code = client.query_code(hash, height).await?;
-
-    // write the bytes to the file
-    // this creates a new file if not exists, an overwrite if exists
-    let mut file = File::create(&filename)?;
-    file.write_all(&wasm_byte_code)?;
-
-    println!("Wasm byte code written to {filename:?}");
-
-    Ok(())
-}
-
-async fn query_wasm_raw(
-    client:   &Client,
-    contract: Addr,
-    key_hex:  String,
-    height:   Option<u64>,
-) -> anyhow::Result<()> {
-    // we interpret the input raw key as Hex encoded
-    let key = Binary::from(hex::decode(&key_hex)?);
-    print_json_pretty(client.query_wasm_raw(contract, key, height).await?)
-}
-
-async fn query_wasm_smart(
-    client:   &Client,
-    contract: Addr,
-    msg:      String,
-    height:   Option<u64>,
-) -> anyhow::Result<()> {
-    // the input should be a JSON string, e.g. `{"config":{}}`
-    let msg: Value = serde_json::from_str(&msg)?;
-    print_json_pretty(client.query_wasm_smart::<_, Value>(contract, &msg, height).await?)
-}
-
-async fn query_store(
-    client:  &Client,
-    key_hex: String,
-    height:  Option<u64>,
-    prove:   bool,
-) -> anyhow::Result<()> {
-    let key = hex::decode(&key_hex)?;
-    let (value, proof) = client.query_store(key, height, prove).await?;
-    print_json_pretty(PrintableQueryStoreResponse {
-        key: key_hex,
-        value: value.map(hex::encode),
-        proof,
-    })
-}
-
-#[derive(Serialize)]
-struct PrintableQueryStoreResponse {
-    key:   String,
-    value: Option<String>,
-    proof: Option<Proof>,
 }

@@ -8,12 +8,12 @@ use {
 };
 
 pub fn do_migrate<VM>(
-    storage:         Box<dyn Storage>,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    sender:        &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    sender: &Addr,
     new_code_hash: Hash,
-    msg:           &Json,
+    msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -32,12 +32,12 @@ where
 }
 
 fn _do_migrate<VM>(
-    mut storage:     Box<dyn Storage>,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    sender:        &Addr,
+    mut storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    sender: &Addr,
     new_code_hash: Hash,
-    msg:           &Json,
+    msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -66,13 +66,13 @@ where
     // call the contract's migrate entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          Some(sender.clone()),
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: Some(sender.clone()),
+        funds: None,
+        simulate: None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
@@ -83,7 +83,12 @@ where
         &account.code_hash,
         resp.attributes,
     )];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

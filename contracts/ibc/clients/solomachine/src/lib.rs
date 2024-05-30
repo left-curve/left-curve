@@ -41,8 +41,9 @@ use grug::entry_point;
 use {
     anyhow::{bail, ensure},
     grug::{
-        grug_derive, from_json_value, hash, to_borsh_vec, to_json_value, Api, Binary, IbcClientStatus,
-        IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx, Json,
+        from_json_value, grug_derive, hash, to_borsh_vec, to_json_value, Api, Binary,
+        IbcClientStatus, IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Json,
+        Response, StdResult, SudoCtx,
     },
 };
 
@@ -124,8 +125,14 @@ pub fn ibc_client_create(
     let client_state: ClientState = from_json_value(client_state)?;
     let consensus_state: ConsensusState = from_json_value(consensus_state)?;
 
-    ensure!(client_state.status == IbcClientStatus::Active, "new client must be active");
-    ensure!(consensus_state.sequence == 0, "sequence must start from zero");
+    ensure!(
+        client_state.status == IbcClientStatus::Active,
+        "new client must be active"
+    );
+    ensure!(
+        consensus_state.sequence == 0,
+        "sequence must start from zero"
+    );
 
     CLIENT_STATE.save(ctx.storage, &client_state)?;
     CONSENSUS_STATE.save(ctx.storage, &consensus_state)?;
@@ -136,12 +143,10 @@ pub fn ibc_client_create(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Result<Response> {
     match msg {
-        IbcClientUpdateMsg::Update {
-            header,
-        } => update(ctx, header),
-        IbcClientUpdateMsg::UpdateOnMisbehavior {
-            misbehavior,
-        } => update_on_misbehavior(ctx, misbehavior),
+        IbcClientUpdateMsg::Update { header } => update(ctx, header),
+        IbcClientUpdateMsg::UpdateOnMisbehavior { misbehavior } => {
+            update_on_misbehavior(ctx, misbehavior)
+        },
     }
 }
 
@@ -156,7 +161,12 @@ pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
         client_state.status
     );
 
-    verify_signature(ctx.api, &consensus_state.public_key, consensus_state.sequence, &header)?;
+    verify_signature(
+        ctx.api,
+        &consensus_state.public_key,
+        consensus_state.sequence,
+        &header,
+    )?;
 
     consensus_state.record = header.record;
     consensus_state.sequence += 1;
@@ -202,17 +212,12 @@ pub fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> anyhow::
         // solo machine does not utilize the height and delay period pamameters
         // for membership verification, per ICS-06 spec. our implementation also
         // does not use the proof.
-        IbcClientVerifyMsg::VerifyMembership {
-            key,
-            value,
-            ..
-        } => verify_membership(ctx, key, value),
+        IbcClientVerifyMsg::VerifyMembership { key, value, .. } => {
+            verify_membership(ctx, key, value)
+        },
         // solo machine does not utilize the height and delay period parameters
         // for non-membership verification, per ICS-06 spec.
-        IbcClientVerifyMsg::VerifyNonMembership {
-            key,
-            ..
-        } => verify_non_membership(ctx, key),
+        IbcClientVerifyMsg::VerifyNonMembership { key, .. } => verify_non_membership(ctx, key),
     }
 }
 
@@ -222,7 +227,10 @@ pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyho
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
-    ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
+    ensure!(
+        client_state.status != IbcClientStatus::Frozen,
+        "client is frozen due to misbehavior"
+    );
 
     // a record must exist for the current sequence, and its key and value must
     // both match the given values.
@@ -232,12 +240,12 @@ pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyho
 
     ensure!(
         record.key == key,
-        "record exists but key does not match: {} != {key}",
+        "record exists but keys do not match: {} != {key}",
         record.key
     );
     ensure!(
         record.value == value,
-        "record exists but value does not match: {} != {value}",
+        "record exists but values do not match: {} != {value}",
         record.value
     );
 
@@ -250,12 +258,18 @@ pub fn verify_non_membership(ctx: ImmutableCtx, key: Binary) -> anyhow::Result<(
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
-    ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
+    ensure!(
+        client_state.status != IbcClientStatus::Frozen,
+        "client is frozen due to misbehavior"
+    );
 
     // we're verifying non-membership now, so if the record exists, the key
     // must not match, otherwise it's a membership.
     if let Some(record) = consensus_state.record {
-        ensure!(record.key != key, "expecting non-membership but record exists");
+        ensure!(
+            record.key != key,
+            "expecting non-membership but record exists"
+        );
     }
 
     Ok(())

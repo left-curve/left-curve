@@ -11,8 +11,8 @@
 /// length into 2 bytes)
 pub fn nested_namespaces_with_key(
     maybe_namespace: Option<&[u8]>,
-    prefixes:        &[impl AsRef<[u8]>],
-    maybe_key:       Option<&impl AsRef<[u8]>>,
+    prefixes: &[impl AsRef<[u8]>],
+    maybe_key: Option<&impl AsRef<[u8]>>,
 ) -> Vec<u8> {
     let mut size = 0;
     if let Some(namespace) = maybe_namespace {
@@ -46,7 +46,11 @@ pub fn nested_namespaces_with_key(
 pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
     let len = bytes.as_ref().len();
     if len > 0xffff {
-        panic!("Can't encode length becayse byte slice is too long: {} > {}", len, u16::MAX);
+        panic!(
+            "Can't encode length becayse byte slice is too long: {} > {}",
+            len,
+            u16::MAX
+        );
     }
 
     (bytes.as_ref().len() as u16).to_be_bytes()
@@ -59,7 +63,10 @@ pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
 // we can prevent this by introducing a max length for the namespace.
 // assert this max length at compile time when the user calls Map::new.
 pub fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
-    debug_assert!(bytes.iter().any(|x| *x != u8::MAX), "bytes are entirely 255");
+    debug_assert!(
+        bytes.iter().any(|x| *x != u8::MAX),
+        "bytes are entirely 255"
+    );
     for byte in bytes.iter_mut().rev() {
         if *byte == u8::MAX {
             *byte = 0;
@@ -95,7 +102,10 @@ pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
 /// performance. You must make sure only use this function we you're sure the
 /// slice actually is prefixed with the namespace.
 pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
-    debug_assert!(key.starts_with(namespace), "byte slice doesn't start with the given namespace");
+    debug_assert!(
+        key.starts_with(namespace),
+        "byte slice doesn't start with the given namespace"
+    );
     key[namespace.len()..].to_vec()
 }
 

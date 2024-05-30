@@ -39,9 +39,9 @@ pub fn handle_submessages<VM>(
     //
     // Instead, we use the `dyn_clone::DynClone` trait:
     // https://docs.rs/dyn-clone/1.0.16/dyn_clone/
-    storage:   Box<dyn Storage>,
-    block:   &BlockInfo,
-    sender:  &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
 where
@@ -51,7 +51,10 @@ where
     let mut events = vec![];
     for submsg in submsgs {
         let cached = SharedStore::new(CacheStore::new(storage.clone(), None));
-        match (submsg.reply_on, process_msg::<VM>(Box::new(cached.share()), block, sender, submsg.msg)) {
+        match (
+            submsg.reply_on,
+            process_msg::<VM>(Box::new(cached.share()), block, sender, submsg.msg),
+        ) {
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
@@ -93,10 +96,10 @@ where
 }
 
 pub fn do_reply<VM>(
-    storage:      Box<dyn Storage>,
-    block:      &BlockInfo,
-    contract:   &Addr,
-    payload:    &Json,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    payload: &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
@@ -116,10 +119,10 @@ where
 }
 
 fn _do_reply<VM>(
-    storage:      Box<dyn Storage>,
-    block:      &BlockInfo,
-    contract:   &Addr,
-    payload:    &Json,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    payload: &Json,
     submsg_res: SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
@@ -135,19 +138,26 @@ where
     // call reply
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          None,
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: None,
+        funds: None,
+        simulate: None,
     };
-    let resp = instance.call_reply(&ctx, payload, &submsg_res)?.into_std_result()?;
+    let resp = instance
+        .call_reply(&ctx, payload, &submsg_res)?
+        .into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

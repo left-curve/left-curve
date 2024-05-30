@@ -63,8 +63,8 @@ impl Storage for Box<dyn Storage> {
 
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         self.as_ref().scan(min, max, order)

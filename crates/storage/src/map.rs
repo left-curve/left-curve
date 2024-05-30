@@ -6,8 +6,8 @@ use {
 };
 
 pub struct Map<'a, K, T> {
-    namespace:  &'a [u8],
-    _key_type:  PhantomData<K>,
+    namespace: &'a [u8],
+    _key_type: PhantomData<K>,
     _data_type: PhantomData<T>,
 }
 
@@ -16,8 +16,8 @@ impl<'a, K, T> Map<'a, K, T> {
         // TODO: add a maximum length for namespace
         // see comments of increment_last_byte function for rationale
         Self {
-            namespace:  namespace.as_bytes(),
-            _key_type:  PhantomData,
+            namespace: namespace.as_bytes(),
+            _key_type: PhantomData,
             _data_type: PhantomData,
         }
     }
@@ -48,7 +48,9 @@ where
     T: BorshSerialize + BorshDeserialize,
 {
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.range(storage, None, None, Order::Ascending).next().is_none()
+        self.range(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
     }
 
     pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
@@ -83,8 +85,8 @@ where
     pub fn range<'b>(
         &self,
         storage: &'b dyn Storage,
-        min:   Option<Bound<K>>,
-        max:   Option<Bound<K>>,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
         self.no_prefix().range(storage, min, max, order)
@@ -93,8 +95,8 @@ where
     pub fn keys<'b>(
         &self,
         storage: &'b dyn Storage,
-        min:   Option<Bound<K>>,
-        max:   Option<Bound<K>>,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
         self.no_prefix().keys(storage, min, max, order)
@@ -103,8 +105,8 @@ where
     pub fn clear(
         &self,
         storage: &mut dyn Storage,
-        min:   Option<Bound<K>>,
-        max:   Option<Bound<K>>,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
         limit: Option<usize>,
     ) -> StdResult<()> {
         self.no_prefix().clear(storage, min, max, limit)

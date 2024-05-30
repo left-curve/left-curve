@@ -9,9 +9,9 @@ use {
 };
 
 pub struct Prefix<K, T> {
-    prefix:       Vec<u8>,
+    prefix: Vec<u8>,
     _suffix_type: PhantomData<K>,
-    _data_type:   PhantomData<T>,
+    _data_type: PhantomData<T>,
 }
 
 impl<K, T> Prefix<K, T> {
@@ -19,7 +19,7 @@ impl<K, T> Prefix<K, T> {
         Self {
             prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
             _suffix_type: PhantomData,
-            _data_type:   PhantomData,
+            _data_type: PhantomData,
         }
     }
 }
@@ -33,8 +33,8 @@ where
     pub fn range<'a>(
         &self,
         storage: &'a dyn Storage,
-        min:   Option<Bound<K>>,
-        max:   Option<Bound<K>>,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
         // compute start and end bounds
@@ -45,13 +45,15 @@ where
         // need to make a clone of self.prefix and move it into the closure,
         // so that the iterator can live longer than &self.
         let prefix = self.prefix.clone();
-        let iter = storage.scan(Some(&min), Some(&max), order).map(move |(k, v)| {
-            debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
-            let key_bytes = trim(&prefix, &k);
-            let key = K::deserialize(&key_bytes)?;
-            let data = from_borsh_slice(v)?;
-            Ok((key, data))
-        });
+        let iter = storage
+            .scan(Some(&min), Some(&max), order)
+            .map(move |(k, v)| {
+                debug_assert_eq!(&k[0..prefix.len()], prefix, "Prefix mispatch");
+                let key_bytes = trim(&prefix, &k);
+                let key = K::deserialize(&key_bytes)?;
+                let data = from_borsh_slice(v)?;
+                Ok((key, data))
+            });
 
         Box::new(iter)
     }
@@ -59,27 +61,29 @@ where
     pub fn keys<'a>(
         &self,
         storage: &'a dyn Storage,
-        min:   Option<Bound<K>>,
-        max:   Option<Bound<K>>,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
         let (min, max) = range_bounds(&self.prefix, min, max);
         let prefix = self.prefix.clone();
         // TODO: this is really inefficient because the host needs to load both
         // the key and value into Wasm memory
-        let iter = storage.scan(Some(&min), Some(&max), order).map(move |(k, _)| {
-            debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
-            let key_bytes = trim(&prefix, &k);
-            K::deserialize(&key_bytes)
-        });
+        let iter = storage
+            .scan(Some(&min), Some(&max), order)
+            .map(move |(k, _)| {
+                debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
+                let key_bytes = trim(&prefix, &k);
+                K::deserialize(&key_bytes)
+            });
         Box::new(iter)
     }
 
     pub fn clear(
         &self,
         _storage: &mut dyn Storage,
-        _min:   Option<Bound<K>>,
-        _max:   Option<Bound<K>>,
+        _min: Option<Bound<K>>,
+        _max: Option<Bound<K>>,
         _limit: Option<usize>,
     ) -> StdResult<()> {
         todo!()
@@ -88,8 +92,8 @@ where
 
 fn range_bounds<K: MapKey>(
     prefix: &[u8],
-    min:    Option<Bound<K>>,
-    max:    Option<Bound<K>>,
+    min: Option<Bound<K>>,
+    max: Option<Bound<K>>,
 ) -> (Vec<u8>, Vec<u8>) {
     let min = match min.map(RawBound::from) {
         None => prefix.to_vec(),

@@ -21,5 +21,5 @@ macro_rules! forward_ref_partial_eq {
                 *self == **rhs
             }
         }
-    }
+    };
 }

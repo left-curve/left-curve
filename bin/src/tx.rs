@@ -140,72 +140,88 @@ impl TxCmd {
         let msgs = match self.subcmd {
             SubCmd::SetConfig { new_cfg } => {
                 let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
-                vec![Message::SetConfig {
-                    new_cfg,
-                }]
+                vec![Message::SetConfig { new_cfg }]
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
-                vec![Message::Transfer {
-                    to,
-                    coins,
-                }]
+                vec![Message::Transfer { to, coins }]
             },
             SubCmd::Store { path } => {
                 let mut file = File::open(path)?;
                 let mut code = vec![];
                 file.read_to_end(&mut code)?;
-                vec![Message::Upload {
-                    code: code.into(),
-                }]
+                vec![Message::Upload { code: code.into() }]
             },
-            SubCmd::Instantiate { code_hash, msg, salt, funds, admin } => {
+            SubCmd::Instantiate {
+                code_hash,
+                msg,
+                salt,
+                funds,
+                admin,
+            } => {
                 vec![Message::Instantiate {
-                    msg:   msg.into_bytes().into(),
-                    salt:  salt.into_bytes().into(),
+                    msg: msg.into_bytes().into(),
+                    salt: salt.into_bytes().into(),
                     funds: Coins::from_str(&funds.unwrap_or_default())?,
                     code_hash,
                     admin,
                 }]
             },
-            SubCmd::StoreAndInstantiate { path, msg, salt, funds, admin } => {
+            SubCmd::StoreAndInstantiate {
+                path,
+                msg,
+                salt,
+                funds,
+                admin,
+            } => {
                 let mut file = File::open(path)?;
                 let mut code = vec![];
                 file.read_to_end(&mut code)?;
                 let code_hash = hash(&code);
                 vec![
-                    Message::Upload {
-                        code: code.into(),
-                    },
+                    Message::Upload { code: code.into() },
                     Message::Instantiate {
-                        msg:   msg.into_bytes().into(),
-                        salt:  salt.into_bytes().into(),
+                        msg: msg.into_bytes().into(),
+                        salt: salt.into_bytes().into(),
                         funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
                         code_hash,
                         admin,
                     },
                 ]
             },
-            SubCmd::Execute { contract, msg, funds } => {
+            SubCmd::Execute {
+                contract,
+                msg,
+                funds,
+            } => {
                 vec![Message::Execute {
-                    msg:   msg.into_bytes().into(),
+                    msg: msg.into_bytes().into(),
                     funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
                     contract,
                 }]
             },
-            SubCmd::Migrate { contract, new_code_hash, msg } => {
+            SubCmd::Migrate {
+                contract,
+                new_code_hash,
+                msg,
+            } => {
                 vec![Message::Migrate {
                     msg: msg.into_bytes().into(),
                     new_code_hash,
                     contract,
                 }]
             },
-            SubCmd::CreateClient { code_hash, client_state, consensus_state, salt } => {
+            SubCmd::CreateClient {
+                code_hash,
+                client_state,
+                consensus_state,
+                salt,
+            } => {
                 vec![Message::CreateClient {
                     code_hash,
-                    client_state:    client_state.into_bytes().into(),
+                    client_state: client_state.into_bytes().into(),
                     consensus_state: consensus_state.into_bytes().into(),
-                    salt:            salt.into_bytes().into(),
+                    salt: salt.into_bytes().into(),
                 }]
             },
             SubCmd::UpdateClient { client_id, header } => {
@@ -214,7 +230,10 @@ impl TxCmd {
                     header: header.into_bytes().into(),
                 }]
             },
-            SubCmd::FreezeClient { client_id, misbehavior } => {
+            SubCmd::FreezeClient {
+                client_id,
+                misbehavior,
+            } => {
                 vec![Message::FreezeClient {
                     client_id,
                     misbehavior: misbehavior.into_bytes().into(),
@@ -235,11 +254,12 @@ impl TxCmd {
 
         // broadcast transaction
         let client = Client::connect(&self.node)?;
-        let maybe_res = client.send_tx_with_confirmation(msgs, &sign_opts, |tx| {
-            print_json_pretty(tx)?;
-            Ok(confirm("🤔 Broadcast transaction?".bold())?)
-        })
-        .await?;
+        let maybe_res = client
+            .send_tx_with_confirmation(msgs, &sign_opts, |tx| {
+                print_json_pretty(tx)?;
+                Ok(confirm("🤔 Broadcast transaction?".bold())?)
+            })
+            .await?;
 
         // print result
         if let Some(res) = maybe_res {
@@ -257,7 +277,7 @@ impl TxCmd {
 struct PrintableBroadcastResponse {
     code: u32,
     data: Binary,
-    log:  String,
+    log: String,
     hash: String,
 }
 
@@ -266,7 +286,7 @@ impl From<tx_sync::Response> for PrintableBroadcastResponse {
         Self {
             code: broadcast_res.code.into(),
             data: broadcast_res.data.to_vec().into(),
-            log:  broadcast_res.log,
+            log: broadcast_res.log,
             hash: broadcast_res.hash.to_string(),
         }
     }

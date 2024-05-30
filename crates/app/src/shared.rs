@@ -24,27 +24,24 @@ impl<S> SharedStore<S> {
     }
 
     pub fn read_access(&self) -> RwLockReadGuard<S> {
-        self.storage.read().unwrap_or_else(|err| {
-            panic!("poisoned lock: {err:?}")
-        })
+        self.storage
+            .read()
+            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
     pub fn write_access(&self) -> RwLockWriteGuard<S> {
-        self.storage.write().unwrap_or_else(|err| {
-            panic!("poisoned lock: {err:?}")
-        })
+        self.storage
+            .write()
+            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
     /// Disassemble the shared store and return the underlying store.
     /// Fails if there are currently more than one strong reference to it.
     pub fn disassemble(self) -> S {
-        let lock = Arc::try_unwrap(self.storage).unwrap_or_else(|_| {
-            panic!("")
-        });
+        let lock = Arc::try_unwrap(self.storage).unwrap_or_else(|_| panic!(""));
 
-        lock.into_inner().unwrap_or_else(|err| {
-            panic!("poisoned lock: {err:?}")
-        })
+        lock.into_inner()
+            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 }
 
@@ -110,8 +107,8 @@ impl<S: Storage> Storage for SharedStore<S> {
 struct SharedIter<'a, S> {
     storage: RwLockReadGuard<'a, S>,
     batch: vec::IntoIter<Record>,
-    min:   Option<Vec<u8>>,
-    max:   Option<Vec<u8>>,
+    min: Option<Vec<u8>>,
+    max: Option<Vec<u8>>,
     order: Order,
 }
 
@@ -120,15 +117,15 @@ impl<'a, S> SharedIter<'a, S> {
 
     pub fn new(
         storage: RwLockReadGuard<'a, S>,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Self {
         Self {
             storage,
             batch: Vec::new().into_iter(),
-            min:   min.map(|slice| slice.to_vec()),
-            max:   max.map(|slice| slice.to_vec()),
+            min: min.map(|slice| slice.to_vec()),
+            max: max.map(|slice| slice.to_vec()),
             order,
         }
     }
@@ -196,10 +193,19 @@ mod tests {
             storage.write(&k, &v);
         }
 
+        let lower_bound: u32 = 12;
+        let upper_bound: u32 = 89;
         let records = storage
-            .scan(Some(&12u32.to_be_bytes()), Some(&89u32.to_be_bytes()), Order::Ascending)
+            .scan(
+                Some(&lower_bound.to_be_bytes()),
+                Some(&upper_bound.to_be_bytes()),
+                Order::Ascending,
+            )
             .collect::<Vec<_>>();
-        assert_eq!(records, mock_records(12, 89, Order::Ascending));
+        assert_eq!(
+            records,
+            mock_records(lower_bound, upper_bound, Order::Ascending)
+        );
 
         let records = storage
             .scan(None, None, Order::Descending)

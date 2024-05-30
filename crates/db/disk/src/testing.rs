@@ -17,9 +17,12 @@ impl TempDataDir {
     /// Produces a fresh (non-existent) temporary path which will be
     /// DB::destroy'ed automatically.
     pub fn new(prefix: &str) -> Self {
-        let dir = tempfile::Builder::new().prefix(prefix).tempdir().unwrap_or_else(|err| {
-            panic!("failed to create temporary directory for DB: {err}");
-        });
+        let dir = tempfile::Builder::new()
+            .prefix(prefix)
+            .tempdir()
+            .unwrap_or_else(|err| {
+                panic!("failed to create temporary directory for DB: {err}");
+            });
         let path = dir.path().join("db");
         Self { dir, path }
     }

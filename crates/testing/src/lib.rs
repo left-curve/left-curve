@@ -41,7 +41,9 @@ impl MockApp {
             timestamp: current_time(),
             hash: Hash::ZERO,
         };
-        self.inner.do_init_chain(chain_id.to_string(), block, genesis_state).unwrap();
+        self.inner
+            .do_init_chain(chain_id.to_string(), block, genesis_state)
+            .unwrap();
     }
 
     pub fn query(&self, req: QueryRequest) -> QueryResponse {

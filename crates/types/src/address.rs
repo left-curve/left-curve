@@ -95,7 +95,9 @@ impl TryFrom<Vec<u8>> for Addr {
 
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self>("address is not of the correct length"));
+            return Err(StdError::deserialize::<Self>(
+                "address is not of the correct length",
+            ));
         };
 
         Ok(Self(Hash(bytes)))
@@ -107,7 +109,9 @@ impl TryFrom<&[u8]> for Addr {
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self>("address is not of the correct length"));
+            return Err(StdError::deserialize::<Self>(
+                "address is not of the correct length",
+            ));
         };
 
         Ok(Self(Hash(bytes)))
@@ -119,7 +123,9 @@ impl FromStr for Addr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
-            return Err(StdError::deserialize::<Self>("address must use the 0x prefix"));
+            return Err(StdError::deserialize::<Self>(
+                "address must use the 0x prefix",
+            ));
         };
 
         Hash::from_str(hex_str).map(Self)
@@ -192,7 +198,9 @@ mod tests {
 
     // the same as the mock hash from the Hash unit tests, except with 0x prefix
     const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
-    const MOCK_ADDR: Addr = Addr(Hash(hex!("299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b")));
+    const MOCK_ADDR: Addr = Addr(Hash(hex!(
+        "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"
+    )));
 
     #[test]
     fn serializing() {

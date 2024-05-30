@@ -29,8 +29,7 @@ const CLIENT_ID_KEY: &str = "client_id";
 const CLIENT_TYPE_KEY: &str = "client_type";
 
 pub fn new_set_config_event(sender: &Addr) -> Event {
-    Event::new("set_config")
-        .add_attribute("sender", sender)
+    Event::new("set_config").add_attribute("sender", sender)
 }
 
 pub fn new_upload_event(code_hash: &Hash, uploader: &Addr) -> Event {
@@ -89,7 +88,7 @@ pub fn new_execute_event(contract: &Addr, attrs: Vec<Attribute>) -> Event {
 }
 
 pub fn new_migrate_event(
-    contract:      &Addr,
+    contract: &Addr,
     old_code_hash: &Hash,
     new_code_hash: &Hash,
     attrs: Vec<Attribute>,
@@ -121,7 +120,11 @@ pub fn new_update_client_event(client: &Addr, code_hash: &Hash, attrs: Vec<Attri
         .add_attributes(attrs)
 }
 
-pub fn new_client_misbehavior_event(client: &Addr, code_hash: &Hash, attrs: Vec<Attribute>) -> Event {
+pub fn new_client_misbehavior_event(
+    client: &Addr,
+    code_hash: &Hash,
+    attrs: Vec<Attribute>,
+) -> Event {
     Event::new("client_misbehavior")
         .add_attribute(CLIENT_ID_KEY, client)
         .add_attribute(CLIENT_TYPE_KEY, code_hash)

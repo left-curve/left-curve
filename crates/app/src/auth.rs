@@ -9,7 +9,11 @@ use {
 
 // --------------------------------- before tx ---------------------------------
 
-pub fn do_before_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+pub fn do_before_tx<VM>(
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    tx: &Tx,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm,
     AppError: From<VM::Error>,
@@ -17,11 +21,17 @@ where
     match _do_before_tx::<VM>(storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "Called before transaction hook");
+            debug!(
+                sender = tx.sender.to_string(),
+                "Called before transaction hook"
+            );
             Ok(events)
         },
         Err(err) => {
-            warn!(err = err.to_string(), "Failed to call before transaction hook");
+            warn!(
+                err = err.to_string(),
+                "Failed to call before transaction hook"
+            );
             Err(err)
         },
     }
@@ -41,26 +51,35 @@ where
     // call `before_tx` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        tx.sender.clone(),
-        sender:          None,
-        funds:           None,
-        simulate:        Some(false),
+        block_hash: block.hash.clone(),
+        contract: tx.sender.clone(),
+        sender: None,
+        funds: None,
+        simulate: Some(false),
     };
     let resp = instance.call_before_tx(&ctx, tx)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_before_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }
 
 // --------------------------------- after tx ----------------------------------
 
-pub fn do_after_tx<VM>(storage: Box<dyn Storage>, block: &BlockInfo, tx: &Tx) -> AppResult<Vec<Event>>
+pub fn do_after_tx<VM>(
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    tx: &Tx,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm,
     AppError: From<VM::Error>,
@@ -68,11 +87,17 @@ where
     match _do_after_tx::<VM>(storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
-            debug!(sender = tx.sender.to_string(), "Called after transaction hook");
+            debug!(
+                sender = tx.sender.to_string(),
+                "Called after transaction hook"
+            );
             Ok(events)
         },
         Err(err) => {
-            warn!(err = err.to_string(), "Failed to call after transaction hook");
+            warn!(
+                err = err.to_string(),
+                "Failed to call after transaction hook"
+            );
             Err(err)
         },
     }
@@ -92,19 +117,24 @@ where
     // call `after_tx` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        tx.sender.clone(),
-        sender:          None,
-        funds:           None,
-        simulate:        Some(false),
+        block_hash: block.hash.clone(),
+        contract: tx.sender.clone(),
+        sender: None,
+        funds: None,
+        simulate: Some(false),
     };
     let resp = instance.call_after_tx(&ctx, tx)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_after_tx_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

@@ -9,11 +9,15 @@ use {
 
 /// Genesis messages don't have senders, so we use this mock up hash as the
 /// sender address. It is the SHA-256 hash of the UTF-8 string `sender`.
-pub const GENESIS_SENDER: Addr = Addr(Hash(hex!("0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a")));
+pub const GENESIS_SENDER: Addr = Addr(Hash(hex!(
+    "0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a"
+)));
 
 /// During genesis there isn't a block hash, so we use this mock up hash as the
 /// block hash. It is the SHA-256 hash of the UTF-8 string `hash`.
-pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!("d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"));
+pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!(
+    "d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"
+));
 
 /// The chain's genesis state. To be included in the `app_state` field of
 /// CometBFT's `genesis.json`.
@@ -21,7 +25,7 @@ pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!("d04b98f48e8f8bcc15c6ae5ac050801c
 #[serde(deny_unknown_fields)]
 pub struct GenesisState {
     pub config: Config,
-    pub msgs:   Vec<Message>,
+    pub msgs: Vec<Message>,
 }
 
 /// Chain-level configurations. Not to be confused with contract-level configs.
@@ -59,11 +63,11 @@ pub struct Config {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Permissions {
-    pub upload:            Permission,
-    pub instantiate:       Permission,
-    pub create_client:     Permission,
+    pub upload: Permission,
+    pub instantiate: Permission,
+    pub create_client: Permission,
     pub create_connection: Permission,
-    pub create_channel:    Permission,
+    pub create_channel: Permission,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -81,9 +85,9 @@ pub enum Permission {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct BlockInfo {
-    pub height:    Uint64,
+    pub height: Uint64,
     pub timestamp: Timestamp,
-    pub hash:      Hash,
+    pub hash: Hash,
 }
 
 #[skip_serializing_none]
@@ -91,5 +95,5 @@ pub struct BlockInfo {
 #[serde(deny_unknown_fields)]
 pub struct Account {
     pub code_hash: Hash,
-    pub admin:     Option<Addr>,
+    pub admin: Option<Addr>,
 }

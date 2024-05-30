@@ -8,11 +8,11 @@ use {
 };
 
 pub fn do_transfer<VM>(
-    storage:   Box<dyn Storage>,
-    block:   &BlockInfo,
-    from:    Addr,
-    to:      Addr,
-    coins:   Coins,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    from: Addr,
+    to: Addr,
+    coins: Coins,
     receive: bool,
 ) -> AppResult<Vec<Event>>
 where
@@ -22,8 +22,8 @@ where
     match _do_transfer::<VM>(storage, block, from, to, coins, receive) {
         Ok((events, msg)) => {
             info!(
-                from  = msg.from.to_string(),
-                to    = msg.to.to_string(),
+                from = msg.from.to_string(),
+                to = msg.to.to_string(),
                 coins = msg.coins.to_string(),
                 "Transferred coins"
             );
@@ -39,11 +39,11 @@ where
 // return the TransferMsg, which includes the sender, receiver, and amount, for
 // purpose of tracing/logging
 fn _do_transfer<VM>(
-    storage:   Box<dyn Storage>,
-    block:   &BlockInfo,
-    from:    Addr,
-    to:      Addr,
-    coins:   Coins,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    from: Addr,
+    to: Addr,
+    coins: Coins,
     receive: bool,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
@@ -60,24 +60,25 @@ where
     // call transfer
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        cfg.bank,
-        sender:          None,
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: cfg.bank,
+        sender: None,
+        funds: None,
+        simulate: None,
     };
-    let msg = TransferMsg {
-        from,
-        to,
-        coins,
-    };
+    let msg = TransferMsg { from, to, coins };
     let resp = instance.call_bank_transfer(&ctx, &msg)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage.clone(), block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage.clone(),
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     if receive {
         // call the recipient contract's `receive` entry point to inform it of
@@ -91,9 +92,9 @@ where
 }
 
 fn _do_receive<VM>(
-    storage:      Box<dyn Storage>,
-    block:      &BlockInfo,
-    msg:        TransferMsg,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    msg: TransferMsg,
     mut events: Vec<Event>,
 ) -> AppResult<(Vec<Event>, TransferMsg)>
 where
@@ -109,19 +110,24 @@ where
     // call the recipient contract's `receive` entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        msg.to.clone(),
-        sender:          Some(msg.from.clone()),
-        funds:           Some(msg.coins.clone()),
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: msg.to.clone(),
+        sender: Some(msg.from.clone()),
+        funds: Some(msg.coins.clone()),
+        simulate: None,
     };
     let resp = instance.call_receive(&ctx)?.into_std_result()?;
 
     // handle submessages
     events.push(new_receive_event(&msg.to, resp.attributes));
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok((events, msg))
 }

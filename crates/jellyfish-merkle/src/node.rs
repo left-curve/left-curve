@@ -5,23 +5,23 @@ use {
 };
 
 const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
-const LEAF_NODE_HASH_PERFIX:     &[u8] = &[1];
+const LEAF_NODE_HASH_PERFIX: &[u8] = &[1];
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Child {
     pub version: u64,
-    pub hash:    Hash,
+    pub hash: Hash,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InternalNode {
-    pub left_child:  Option<Child>,
+    pub left_child: Option<Child>,
     pub right_child: Option<Child>,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LeafNode {
-    pub key_hash:   Hash,
+    pub key_hash: Hash,
     pub value_hash: Hash,
 }
 
@@ -48,12 +48,14 @@ impl Node {
     /// represented by a zero hash `[0u8; 32]`.
     pub fn hash(&self) -> Hash {
         match self {
-            Node::Internal(InternalNode { left_child, right_child }) => {
-                hash_internal_node(hash_of(left_child), hash_of(right_child))
-            },
-            Node::Leaf(LeafNode { key_hash, value_hash }) => {
-                hash_leaf_node(key_hash, value_hash)
-            },
+            Node::Internal(InternalNode {
+                left_child,
+                right_child,
+            }) => hash_internal_node(hash_of(left_child), hash_of(right_child)),
+            Node::Leaf(LeafNode {
+                key_hash,
+                value_hash,
+            }) => hash_leaf_node(key_hash, value_hash),
         }
     }
 }

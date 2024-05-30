@@ -25,7 +25,12 @@ impl From<u64> for U64Timestamp {
 impl From<&[u8]> for U64Timestamp {
     fn from(bytes: &[u8]) -> Self {
         // note: panic if slice is not exactly 8 bytes
-        debug_assert_eq!(bytes.len(), Self::SIZE, "[U64Timestamp]: incorrect length: {}", bytes.len());
+        debug_assert_eq!(
+            bytes.len(),
+            Self::SIZE,
+            "[U64Timestamp]: incorrect length: {}",
+            bytes.len()
+        );
         Self(bytes.try_into().unwrap())
     }
 }

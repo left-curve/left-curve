@@ -55,12 +55,8 @@ impl KeysCmd {
                 recover,
                 coin_type,
             } => add(&dir, &name, recover, coin_type),
-            KeysCmd::Delete {
-                name,
-            } => delete(&dir, &name),
-            KeysCmd::Show {
-                name,
-            } => show(&dir, &name),
+            KeysCmd::Delete { name } => delete(&dir, &name),
+            KeysCmd::Show { name } => show(&dir, &name),
             KeysCmd::List => list(&dir),
         }
     }
@@ -79,7 +75,9 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
     };
 
     // ask for password and save encrypted keystore
-    let password = read_password(format!("🔑 Enter a password to encrypt file `{filename:?}`").bold())?;
+    let password = read_password(
+        format!("🔑 Enter a password to encrypt the keystore `{filename:?}`").bold(),
+    )?;
     let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
     let keystore = sk.write_to_file(&filename, &password)?;
 
@@ -87,7 +85,10 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
     print_json_pretty(keystore)?;
 
     if !recover {
-        println!("\n{} write this mnemonic phrase in a safe place!", "Important:".bold());
+        println!(
+            "\n{} write this mnemonic phrase in a safe place!",
+            "Important:".bold()
+        );
         println!("It is the only way to recover your account if you ever forget your password.");
         println!("\n{}", mnemonic.phrase());
     }

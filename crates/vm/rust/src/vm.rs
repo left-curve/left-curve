@@ -38,12 +38,7 @@ impl Vm for RustVm {
         let contract = get_contract!(self.program.index);
         let out = match name {
             "receive" => {
-                let res = contract.receive(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                );
+                let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
                 to_json_vec(&res)?
             },
             _ => {
@@ -77,35 +72,19 @@ impl Vm for RustVm {
             },
             "execute" => {
                 let msg = from_json_slice(param1)?;
-                let res = contract.execute(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                    msg,
-                );
+                let res =
+                    contract.execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             "migrate" => {
                 let msg = from_json_slice(param1)?;
-                let res = contract.migrate(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                    msg,
-                );
+                let res =
+                    contract.migrate(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             "query" => {
                 let msg = from_json_slice(param1)?;
-                let res = contract.query(
-                    ctx.clone(),
-                    &self.storage,
-                    &MockApi,
-                    &self.querier,
-                    msg,
-                );
+                let res = contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             _ => {

@@ -4,7 +4,11 @@ use {
     tracing::{info, warn},
 };
 
-pub fn do_upload(storage: &mut dyn Storage, uploader: &Addr, code: Vec<u8>) -> AppResult<Vec<Event>> {
+pub fn do_upload(
+    storage: &mut dyn Storage,
+    uploader: &Addr,
+    code: Vec<u8>,
+) -> AppResult<Vec<Event>> {
     match _do_upload(storage, uploader, code) {
         Ok((events, code_hash)) => {
             info!(code_hash = code_hash.to_string(), "Stored code");

@@ -19,18 +19,11 @@ pub enum Message {
     ///
     /// Only the `owner` is authorized to do this. If the owner is set to `None`,
     /// no one can update the config.
-    SetConfig {
-        new_cfg: Config,
-    },
+    SetConfig { new_cfg: Config },
     /// Send coins to the given recipient address.
-    Transfer {
-        to: Addr,
-        coins: Coins,
-    },
+    Transfer { to: Addr, coins: Coins },
     /// Upload a Wasm binary code and store it in the chain's state.
-    Upload {
-        code: Binary,
-    },
+    Upload { code: Binary },
     /// Register a new account.
     Instantiate {
         code_hash: Hash,
@@ -62,13 +55,7 @@ pub enum Message {
         salt: Binary,
     },
     /// Update the state of an IBC light client by submitting a new header.
-    UpdateClient {
-        client_id: Addr,
-        header: Json,
-    },
+    UpdateClient { client_id: Addr, header: Json },
     /// Freeze an IBC light client by submitting evidence of a misbehavior.
-    FreezeClient {
-        client_id: Addr,
-        misbehavior: Json,
-    },
+    FreezeClient { client_id: Addr, misbehavior: Json },
 }

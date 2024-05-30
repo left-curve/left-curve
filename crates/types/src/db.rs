@@ -47,7 +47,7 @@ impl<V> Op<V> {
 /// Describing iteration order.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Order {
-    Ascending  = 1,
+    Ascending = 1,
     Descending = 2,
 }
 

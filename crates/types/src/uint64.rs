@@ -18,16 +18,18 @@ use {
 /// JSON supports integer numbers in the range of [-(2^53)+1, (2^53)-1].
 /// Numbers beyond this range (uint64, uint64...) need to serialize as strings.
 /// https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497
-#[derive(BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Uint64(u64);
 
 forward_ref_partial_eq!(Uint64, Uint64);
 
 impl Uint64 {
-    pub const MAX:  Self = Self(u64::MAX);
-    pub const MIN:  Self = Self(u64::MIN);
+    pub const MAX: Self = Self(u64::MAX);
+    pub const MIN: Self = Self(u64::MIN);
+    pub const ONE: Self = Self(1);
     pub const ZERO: Self = Self(0);
-    pub const ONE:  Self = Self(1);
 
     pub const fn new(value: u64) -> Self {
         Self(value)

@@ -9,14 +9,14 @@ use {
 
 #[allow(clippy::too_many_arguments)]
 pub fn do_instantiate<VM>(
-    storage:     Box<dyn Storage>,
-    block:     &BlockInfo,
-    sender:    &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    sender: &Addr,
     code_hash: Hash,
-    msg:       &Json,
-    salt:      Binary,
-    funds:     Coins,
-    admin:     Option<Addr>,
+    msg: &Json,
+    salt: Binary,
+    funds: Coins,
+    admin: Option<Addr>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -38,13 +38,13 @@ where
 #[allow(clippy::too_many_arguments)]
 fn _do_instantiate<VM>(
     mut storage: Box<dyn Storage>,
-    block:     &BlockInfo,
-    sender:    &Addr,
+    block: &BlockInfo,
+    sender: &Addr,
     code_hash: Hash,
-    msg:       &Json,
-    salt:      Binary,
-    funds:     Coins,
-    admin:     Option<Addr>,
+    msg: &Json,
+    salt: Binary,
+    funds: Coins,
+    admin: Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
     VM: Vm,
@@ -85,20 +85,29 @@ where
 
     // call instantiate
     let ctx = Context {
-        chain_id:        CHAIN_ID.load(&storage)?,
-        block_height:    block.height,
+        chain_id: CHAIN_ID.load(&storage)?,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        address,
-        sender:          Some(sender.clone()),
-        funds:           Some(funds),
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: address,
+        sender: Some(sender.clone()),
+        funds: Some(funds),
+        simulate: None,
     };
     let resp = instance.call_instantiate(&ctx, msg)?.into_std_result()?;
 
     // handle submessages
-    let mut events = vec![new_instantiate_event(&ctx.contract, &account.code_hash, resp.attributes)];
-    events.extend(handle_submessages::<VM>(storage, block, &ctx.contract, resp.submsgs)?);
+    let mut events = vec![new_instantiate_event(
+        &ctx.contract,
+        &account.code_hash,
+        resp.attributes,
+    )];
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok((events, ctx.contract))
 }

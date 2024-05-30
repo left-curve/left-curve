@@ -58,9 +58,9 @@ pub trait MapKey: Sized {
 }
 
 impl MapKey for () {
+    type Output = ();
     type Prefix = ();
     type Suffix = ();
-    type Output = ();
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
@@ -68,7 +68,9 @@ impl MapKey for () {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
-            return Err(StdError::deserialize::<Self::Output>("expecting empty bytes"));
+            return Err(StdError::deserialize::<Self::Output>(
+                "expecting empty bytes",
+            ));
         }
 
         Ok(())
@@ -77,9 +79,9 @@ impl MapKey for () {
 
 // TODO: create a Binary type and replace this with &Binary
 impl MapKey for &[u8] {
+    type Output = Vec<u8>;
     type Prefix = ();
     type Suffix = ();
-    type Output = Vec<u8>;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self)]
@@ -91,9 +93,9 @@ impl MapKey for &[u8] {
 }
 
 impl MapKey for &str {
+    type Output = String;
     type Prefix = ();
     type Suffix = ();
-    type Output = String;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_bytes())]
@@ -105,9 +107,9 @@ impl MapKey for &str {
 }
 
 impl MapKey for &Addr {
+    type Output = Addr;
     type Prefix = ();
     type Suffix = ();
-    type Output = Addr;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_ref())]
@@ -119,9 +121,9 @@ impl MapKey for &Addr {
 }
 
 impl MapKey for &Hash {
+    type Output = Hash;
     type Prefix = ();
     type Suffix = ();
-    type Output = Hash;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Ref(self.as_ref())]
@@ -159,10 +161,7 @@ macro_rules! impl_integer_map_key {
 }
 
 impl_integer_map_key!(
-    i8,   Val8,   u8,   Val8,
-    i16,  Val16,  u16,  Val16,
-    i32,  Val32,  u32,  Val32,
-    i64,  Val64,  u64,  Val64,
+    i8, Val8, u8, Val8, i16, Val16, u16, Val16, i32, Val32, u32, Val32, i64, Val64, u64, Val64,
     i128, Val128, u128, Val128,
 );
 
@@ -171,9 +170,9 @@ where
     A: MapKey,
     B: MapKey,
 {
+    type Output = (A::Output, B::Output);
     type Prefix = A;
     type Suffix = B;
-    type Output = (A::Output, B::Output);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = vec![];
@@ -196,9 +195,9 @@ where
     B: MapKey,
     C: MapKey,
 {
+    type Output = (A::Output, B::Output, C::Output);
     type Prefix = A;
     type Suffix = (B, C);
-    type Output = (A::Output, B::Output, C::Output);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = vec![];

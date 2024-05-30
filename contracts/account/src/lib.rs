@@ -3,8 +3,9 @@ use grug::entry_point;
 use {
     anyhow::bail,
     grug::{
-        grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary, ImmutableCtx,
-        Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError, StdResult, Tx,
+        grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary,
+        ImmutableCtx, Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError,
+        StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
@@ -54,9 +55,9 @@ pub enum PublicKey {
 // implement MapKey trait, so that in account factory it can use the public key
 // as a map key.
 impl<'a> MapKey for &'a PublicKey {
+    type Output = PublicKey;
     type Prefix = ();
     type Suffix = ();
-    type Output = PublicKey;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let (ty, bytes) = match self {
@@ -85,9 +86,9 @@ impl<'a> MapKey for &'a PublicKey {
                 }
                 Ok(PublicKey::Secp256r1(bytes.to_vec().into()))
             },
-            _ => {
-                Err(StdError::deserialize::<PublicKey>(format!("unknown public key type: {ty_bytes:?}")))
-            },
+            _ => Err(StdError::deserialize::<PublicKey>(format!(
+                "unknown public key type: {ty_bytes:?}"
+            ))),
         }
     }
 }

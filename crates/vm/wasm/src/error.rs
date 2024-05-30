@@ -45,9 +45,7 @@ pub enum VmError {
     WasmerInstanceNotSet,
 
     #[error("Iterator with ID `{iterator_id}` not found")]
-    IteratorNotFound {
-        iterator_id: i32,
-    },
+    IteratorNotFound { iterator_id: i32 },
 
     #[error("Region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
     RegionTooSmall {
@@ -56,7 +54,9 @@ pub enum VmError {
         data: String,
     },
 
-    #[error("Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}")]
+    #[error(
+        "Unexpected number of return values! name: {name}, expect: {expect}, actual: {actual}"
+    )]
     ReturnCount {
         name: String,
         expect: usize,

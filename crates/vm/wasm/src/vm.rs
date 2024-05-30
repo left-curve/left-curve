@@ -111,11 +111,11 @@ impl Vm for WasmVm {
         let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut wasm_store, param2.as_ref())?;
         let res_ptr: u32 = env
-            .call_function1(
-                &mut wasm_store,
-                name,
-                &[ctx_ptr.into(), param1_ptr.into(), param2_ptr.into()],
-            )?
+            .call_function1(&mut wasm_store, name, &[
+                ctx_ptr.into(),
+                param1_ptr.into(),
+                param2_ptr.into(),
+            ])?
             .try_into()
             .map_err(VmError::ReturnType)?;
 

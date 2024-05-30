@@ -3,9 +3,9 @@ use std::mem;
 /// Describes a region in the Wasm linear memory.
 #[repr(C)]
 pub struct Region {
-    offset:   usize,
+    offset: usize,
     capacity: usize,
-    length:   usize,
+    length: usize,
 }
 
 impl Region {
@@ -16,9 +16,9 @@ impl Region {
     /// NOT call `deallocate` to free the memory.
     pub fn build(data: &[u8]) -> Box<Region> {
         Box::new(Self {
-            offset:   data.as_ptr() as usize,
+            offset: data.as_ptr() as usize,
             capacity: data.len(),
-            length:   data.len(),
+            length: data.len(),
         })
     }
 
@@ -34,9 +34,9 @@ impl Region {
     /// taken by _both_ the Region and the Vec.
     pub fn release_buffer(data: Vec<u8>) -> *mut Self {
         let region = Box::new(Self {
-            offset:   data.as_ptr() as usize,
+            offset: data.as_ptr() as usize,
             capacity: data.capacity(),
-            length:   data.len(),
+            length: data.len(),
         });
 
         // drop the `data` value without freeing the memory

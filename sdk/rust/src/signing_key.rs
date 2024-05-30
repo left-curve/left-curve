@@ -1,8 +1,8 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
-    grug_crypto::Identity256,
     grug::{Addr, Binary, Message, Tx},
+    grug_crypto::Identity256,
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -12,15 +12,15 @@ use {
     std::{fs, path::Path},
 };
 
-const PBKDF2_ITERATIONS: u32   = 600_000;
-const PBKDF2_SALT_LEN:   usize = 16;
-const PBKDF2_KEY_LEN:    usize = 32;
+const PBKDF2_ITERATIONS: u32 = 600_000;
+const PBKDF2_SALT_LEN: usize = 16;
+const PBKDF2_KEY_LEN: usize = 32;
 
 #[derive(Serialize, Deserialize)]
 pub struct Keystore {
-    pk:         Binary,
-    salt:       Binary,
-    nonce:      Binary,
+    pk: Binary,
+    salt: Binary,
+    nonce: Binary,
     ciphertext: Binary,
 }
 
@@ -42,9 +42,7 @@ impl SigningKey {
         let seed = mnemonic.to_seed("");
         let path = format!("m/44'/{coin_type}'/0'/0/0");
         let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
-        Ok(Self {
-            inner: xprv.into(),
-        })
+        Ok(Self { inner: xprv.into() })
     }
 
     /// Read and decrypt a keystore file.
@@ -55,11 +53,17 @@ impl SigningKey {
 
         // recover encryption key from password and salt
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
-        pbkdf2_hmac::<Sha256>(password.as_bytes(), &keystore.salt, PBKDF2_ITERATIONS, &mut password_hash);
+        pbkdf2_hmac::<Sha256>(
+            password.as_bytes(),
+            &keystore.salt,
+            PBKDF2_ITERATIONS,
+            &mut password_hash,
+        );
 
         // decrypt the private key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
-        let decrypted = cipher.decrypt(keystore.nonce.as_ref().into(), keystore.ciphertext.as_ref())?;
+        let decrypted =
+            cipher.decrypt(keystore.nonce.as_ref().into(), keystore.ciphertext.as_ref())?;
 
         Ok(Self {
             inner: k256::ecdsa::SigningKey::from_bytes(decrypted.as_slice().into())?,
@@ -72,7 +76,12 @@ impl SigningKey {
         let mut salt = [0u8; PBKDF2_SALT_LEN];
         OsRng.fill(&mut salt);
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
-        pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, PBKDF2_ITERATIONS, &mut password_hash);
+        pbkdf2_hmac::<Sha256>(
+            password.as_bytes(),
+            &salt,
+            PBKDF2_ITERATIONS,
+            &mut password_hash,
+        );
 
         // encrypt the private key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
@@ -81,9 +90,9 @@ impl SigningKey {
 
         // write keystore to file
         let keystore = Keystore {
-            pk:         self.public_key().to_vec().into(),
-            salt:       salt.to_vec().into(),
-            nonce:      nonce.to_vec().into(),
+            pk: self.public_key().to_vec().into(),
+            salt: salt.to_vec().into(),
+            nonce: nonce.to_vec().into(),
             ciphertext: ciphertext.into(),
         };
         let keystore_str = serde_json::to_string_pretty(&keystore)?;
@@ -100,8 +109,8 @@ impl SigningKey {
 
     pub fn create_and_sign_tx(
         &self,
-        msgs:     Vec<Message>,
-        sender:   Addr,
+        msgs: Vec<Message>,
+        sender: Addr,
         chain_id: &str,
         sequence: u32,
     ) -> anyhow::Result<Tx> {

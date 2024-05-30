@@ -9,28 +9,28 @@ use {
 
 pub struct PathBuf<T> {
     storage_key: Vec<u8>,
-    _data_type:  PhantomData<T>,
+    _data_type: PhantomData<T>,
 }
 
 impl<T> PathBuf<T> {
     pub fn new(namespace: &[u8], prefixes: &[RawKey], maybe_key: Option<&RawKey>) -> Self {
         Self {
             storage_key: nested_namespaces_with_key(Some(namespace), prefixes, maybe_key),
-            _data_type:  PhantomData,
+            _data_type: PhantomData,
         }
     }
 
     pub fn as_path(&self) -> Path<'_, T> {
         Path {
             storage_key: self.storage_key.as_slice(),
-            _data_type:  self._data_type,
+            _data_type: self._data_type,
         }
     }
 }
 
 pub struct Path<'a, T> {
     storage_key: &'a [u8],
-    _data_type:  PhantomData<T>,
+    _data_type: PhantomData<T>,
 }
 
 impl<'a, T> Path<'a, T> {
@@ -51,7 +51,10 @@ where
     }
 
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
-        storage.read(self.storage_key).map(from_borsh_slice).transpose()
+        storage
+            .read(self.storage_key)
+            .map(from_borsh_slice)
+            .transpose()
     }
 
     pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {

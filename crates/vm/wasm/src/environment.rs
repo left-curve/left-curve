@@ -49,7 +49,10 @@ impl Environment {
     }
 
     pub fn memory<'a>(&self, wasm_store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
-        self.memory.as_ref().ok_or(VmError::MemoryNotSet).map(|mem| mem.view(wasm_store))
+        self.memory
+            .as_ref()
+            .ok_or(VmError::MemoryNotSet)
+            .map(|mem| mem.view(wasm_store))
     }
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>

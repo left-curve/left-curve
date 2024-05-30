@@ -48,9 +48,9 @@ pub fn write_to_memory(
 
     if region.length > region.capacity {
         return Err(VmError::RegionTooSmall {
-            offset:   region.offset,
+            offset: region.offset,
             capacity: region.capacity,
-            data:     BASE64.encode(data),
+            data: BASE64.encode(data),
         });
     }
 

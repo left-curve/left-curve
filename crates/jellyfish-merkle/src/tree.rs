@@ -8,7 +8,7 @@ use {
 };
 
 // default storage namespaces
-pub const DEFAULT_NODE_NAMESPACE:   &str = "n";
+pub const DEFAULT_NODE_NAMESPACE: &str = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE: &str = "o";
 
 /// The bit path of the root node, which is just empty
@@ -41,7 +41,7 @@ enum Outcome {
 /// - Sovereign Lab's article on optimizations:
 ///   https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8
 pub struct MerkleTree<'a> {
-    nodes:   Map<'a, (u64, &'a BitArray), Node>,
+    nodes: Map<'a, (u64, &'a BitArray), Node>,
     orphans: Set<'a, (u64, u64, &'a BitArray)>,
 }
 
@@ -55,7 +55,7 @@ impl<'a> MerkleTree<'a> {
     /// Create a new Merkle tree with the given namespaces.
     pub const fn new(node_namespace: &'a str, orphan_namespace: &'a str) -> Self {
         Self {
-            nodes:   Map::new(node_namespace),
+            nodes: Map::new(node_namespace),
             orphans: Set::new(orphan_namespace),
         }
     }
@@ -89,13 +89,16 @@ impl<'a> MerkleTree<'a> {
     /// use `apply` instead.
     pub fn apply_raw(
         &self,
-        storage:       &mut dyn Storage,
+        storage: &mut dyn Storage,
         old_version: u64,
         new_version: u64,
-        batch:       &Batch,
+        batch: &Batch,
     ) -> StdResult<Option<Hash>> {
         // hash the keys and values
-        let mut batch: Vec<_> = batch.iter().map(|(k, op)| (hash(k), op.as_ref().map(hash))).collect();
+        let mut batch: Vec<_> = batch
+            .iter()
+            .map(|(k, op)| (hash(k), op.as_ref().map(hash)))
+            .collect();
 
         // sort by key hashes ascendingly
         batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
@@ -116,14 +119,17 @@ impl<'a> MerkleTree<'a> {
     /// of prehashes, use `apply_raw` instead.
     pub fn apply(
         &self,
-        storage:       &mut dyn Storage,
+        storage: &mut dyn Storage,
         old_version: u64,
         new_version: u64,
-        batch:       Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Option<Hash>> {
         // the caller must make sure that versions are strictly incremental.
         // we assert this in debug mode must skip in release to save some time...
-        debug_assert!(new_version == 0 || new_version > old_version, "version is not incremental");
+        debug_assert!(
+            new_version == 0 || new_version > old_version,
+            "version is not incremental"
+        );
 
         // if an old root node exists (i.e. tree isn't empty at the old version),
         // mark it as orphaned
@@ -140,19 +146,17 @@ impl<'a> MerkleTree<'a> {
                 Ok(Some(new_root_node.hash()))
             },
             // the new tree is empty. do nothing and just return None.
-            Outcome::Deleted | Outcome::Unchanged(None) => {
-                Ok(None)
-            },
+            Outcome::Deleted | Outcome::Unchanged(None) => Ok(None),
         }
     }
 
     fn apply_at(
         &self,
-        storage:       &mut dyn Storage,
+        storage: &mut dyn Storage,
         new_version: u64,
         old_version: u64,
-        bits:        &BitArray,
-        batch:       Vec<(Hash, Op<Hash>)>,
+        bits: &BitArray,
+        batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
         match self.nodes.may_load(storage, (old_version, bits))? {
             Some(Node::Leaf(leaf_node)) => {
@@ -171,11 +175,11 @@ impl<'a> MerkleTree<'a> {
 
     fn apply_at_internal(
         &self,
-        storage:             &mut dyn Storage,
-        new_version:       u64,
-        bits:              &BitArray,
+        storage: &mut dyn Storage,
+        new_version: u64,
+        bits: &BitArray,
         mut internal_node: InternalNode,
-        batch:             Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
         // split the batch into two, one for left child, one for right
         let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
@@ -199,45 +203,44 @@ impl<'a> MerkleTree<'a> {
         )?;
 
         match (left_outcome, right_outcome) {
-            // both children are deleted or never existed. delete this node as well
-            (Outcome::Deleted | Outcome::Unchanged(None), Outcome::Deleted | Outcome::Unchanged(None)) => {
-                Ok(Outcome::Deleted)
-            },
             // neither children is changed. this node is unchanged as well
             (Outcome::Unchanged(_), Outcome::Unchanged(_)) => {
                 Ok(Outcome::Unchanged(Some(Node::Internal(internal_node))))
             },
+            // both children are deleted or never existed. delete this node as well
+            (
+                Outcome::Deleted | Outcome::Unchanged(None),
+                Outcome::Deleted | Outcome::Unchanged(None),
+            ) => Ok(Outcome::Deleted),
             // left child is a leaf, right child is deleted.
             // delete the current internal node and move left child up.
-            (Outcome::Updated(left) | Outcome::Unchanged(Some(left)), Outcome::Deleted | Outcome::Unchanged(None)) if left.is_leaf() => {
-                Ok(Outcome::Updated(left))
-            },
+            (
+                Outcome::Updated(left) | Outcome::Unchanged(Some(left)),
+                Outcome::Deleted | Outcome::Unchanged(None),
+            ) if left.is_leaf() => Ok(Outcome::Updated(left)),
             // left child is deleted, right child is a leaf.
             // delete the current internal node and move right child up.
-            (Outcome::Deleted | Outcome::Unchanged(None), Outcome::Updated(right) | Outcome::Unchanged(Some(right))) if right.is_leaf() => {
-                Ok(Outcome::Updated(right))
-            },
+            (
+                Outcome::Deleted | Outcome::Unchanged(None),
+                Outcome::Updated(right) | Outcome::Unchanged(Some(right)),
+            ) if right.is_leaf() => Ok(Outcome::Updated(right)),
             // at least one child is updated and the path can't be collapsed.
             // update the currenct node and return
             (left, right) => {
                 internal_node.left_child = match left {
-                    Outcome::Updated(child_node) => {
-                        Some(Child {
-                            version: new_version,
-                            hash: child_node.hash(),
-                        })
-                    },
+                    Outcome::Updated(child_node) => Some(Child {
+                        version: new_version,
+                        hash: child_node.hash(),
+                    }),
                     Outcome::Deleted => None,
                     Outcome::Unchanged(_) => internal_node.left_child,
                 };
 
                 internal_node.right_child = match right {
-                    Outcome::Updated(child_node) => {
-                        Some(Child {
-                            version: new_version,
-                            hash: child_node.hash(),
-                        })
-                    },
+                    Outcome::Updated(child_node) => Some(Child {
+                        version: new_version,
+                        hash: child_node.hash(),
+                    }),
                     Outcome::Deleted => None,
                     Outcome::Unchanged(_) => internal_node.right_child,
                 };
@@ -250,12 +253,12 @@ impl<'a> MerkleTree<'a> {
     #[inline]
     fn apply_at_child(
         &self,
-        storage:       &mut dyn Storage,
+        storage: &mut dyn Storage,
         new_version: u64,
         parent_bits: &BitArray,
-        is_left:     bool,
-        child:       Option<&Child>,
-        batch:       Vec<(Hash, Op<Hash>)>,
+        is_left: bool,
+        child: Option<&Child>,
+        batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
         let child_bits = parent_bits.extend_one_bit(is_left);
         match (batch.is_empty(), child) {
@@ -265,12 +268,11 @@ impl<'a> MerkleTree<'a> {
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
             // child doesn't exist, and there is no op to apply
-            (true, None) => {
-                Ok(Outcome::Unchanged(None))
-            },
+            (true, None) => Ok(Outcome::Unchanged(None)),
             // child exists, and there are ops to apply
             (false, Some(child)) => {
-                let outcome = self.apply_at(storage, new_version, child.version, &child_bits, batch)?;
+                let outcome =
+                    self.apply_at(storage, new_version, child.version, &child_bits, batch)?;
                 // if the child has been updated, save the updated node
                 if let Outcome::Updated(new_child_node) = &outcome {
                     self.save_node(storage, new_version, &child_bits, new_child_node)?;
@@ -292,11 +294,11 @@ impl<'a> MerkleTree<'a> {
 
     fn apply_at_leaf(
         &self,
-        storage:         &mut dyn Storage,
-        new_version:   u64,
-        bits:          &BitArray,
+        storage: &mut dyn Storage,
+        new_version: u64,
+        bits: &BitArray,
         mut leaf_node: LeafNode,
-        batch:         Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
         let (batch, op) = prepare_batch_for_subtree(batch, Some(&leaf_node));
         match (batch.is_empty(), op) {
@@ -309,12 +311,8 @@ impl<'a> MerkleTree<'a> {
                     Ok(Outcome::Updated(Node::Leaf(leaf_node)))
                 }
             },
-            (true, Some(Op::Delete)) => {
-                Ok(Outcome::Deleted)
-            },
-            (true, None) => {
-                Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
-            },
+            (true, Some(Op::Delete)) => Ok(Outcome::Deleted),
+            (true, None) => Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node)))),
             (false, Some(Op::Insert(value_hash))) => {
                 leaf_node.value_hash = value_hash;
                 self.create_subtree(storage, new_version, bits, batch, Some(leaf_node))
@@ -330,22 +328,23 @@ impl<'a> MerkleTree<'a> {
 
     fn create_subtree(
         &self,
-        storage:         &mut dyn Storage,
-        version:       u64,
-        bits:          &BitArray,
-        batch:         Vec<(Hash, Hash)>,
+        storage: &mut dyn Storage,
+        version: u64,
+        bits: &BitArray,
+        batch: Vec<(Hash, Hash)>,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<Outcome> {
         let new_node = match (batch.len(), existing_leaf) {
             (0, None) => {
                 return Ok(Outcome::Unchanged(None));
             },
-            (0, Some(leaf_node)) => {
-                Node::Leaf(leaf_node)
-            }
+            (0, Some(leaf_node)) => Node::Leaf(leaf_node),
             (1, None) => {
                 let (key_hash, value_hash) = only_item(batch);
-                Node::Leaf(LeafNode { key_hash, value_hash })
+                Node::Leaf(LeafNode {
+                    key_hash,
+                    value_hash,
+                })
             },
             (_, existing_leaf) => {
                 let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
@@ -415,7 +414,7 @@ impl<'a> MerkleTree<'a> {
                 Node::Leaf(leaf) => {
                     if key_hash != leaf.key_hash {
                         proof_node = Some(ProofNode::Leaf {
-                            key_hash:   leaf.key_hash,
+                            key_hash: leaf.key_hash,
                             value_hash: leaf.value_hash,
                         });
                     }
@@ -424,7 +423,10 @@ impl<'a> MerkleTree<'a> {
                 // we've reached an internal node. move on to its child based on
                 // the next bit in the key hash. append its sibling to the sibling
                 // hashes.
-                Node::Internal(InternalNode { left_child, right_child }) => {
+                Node::Internal(InternalNode {
+                    left_child,
+                    right_child,
+                }) => {
                     match (iter.next(), left_child, right_child) {
                         (Some(0), Some(child), sibling) => {
                             sibling_hashes.push(hash_of(sibling));
@@ -438,19 +440,19 @@ impl<'a> MerkleTree<'a> {
                         },
                         (Some(0), None, sibling) => {
                             proof_node = Some(ProofNode::Internal {
-                                left_hash:  None,
+                                left_hash: None,
                                 right_hash: hash_of(sibling),
                             });
                             break;
                         },
                         (Some(1), sibling, None) => {
                             proof_node = Some(ProofNode::Internal {
-                                left_hash:  hash_of(sibling),
+                                left_hash: hash_of(sibling),
                                 right_hash: None,
                             });
                             break;
                         },
-                        (bit, _, _) => {
+                        (bit, ..) => {
                             // the next bit must exist, because if we have reached the end of the
                             // bitarray, the node is definitely a leaf. also it can only be 0 or 1.
                             unreachable!("unexpected next bit: {bit:?}");
@@ -469,7 +471,10 @@ impl<'a> MerkleTree<'a> {
         sibling_hashes.reverse();
 
         if let Some(node) = proof_node {
-            Ok(Proof::NonMembership(NonMembershipProof { node, sibling_hashes }))
+            Ok(Proof::NonMembership(NonMembershipProof {
+                node,
+                sibling_hashes,
+            }))
         } else {
             Ok(Proof::Membership(MembershipProof { sibling_hashes }))
         }
@@ -485,10 +490,10 @@ impl<'a> MerkleTree<'a> {
     #[inline]
     fn save_node(
         &self,
-        storage:   &mut dyn Storage,
+        storage: &mut dyn Storage,
         version: u64,
-        bits:    &BitArray,
-        node:    &Node,
+        bits: &BitArray,
+        node: &Node,
     ) -> StdResult<()> {
         self.nodes.save(storage, (version, bits), node)
     }
@@ -496,21 +501,24 @@ impl<'a> MerkleTree<'a> {
     #[inline]
     fn mark_node_as_orphaned(
         &self,
-        storage:         &mut dyn Storage,
+        storage: &mut dyn Storage,
         orphaned_since_version: u64,
         version: u64,
         bits: &BitArray,
     ) -> StdResult<()> {
-        self.orphans.insert(storage, (orphaned_since_version, version, bits))
+        self.orphans
+            .insert(storage, (orphaned_since_version, version, bits))
     }
 }
 
 #[allow(clippy::type_complexity)]
 #[inline]
-fn partition_batch<T>(mut batch: Vec<(Hash, T)>, bits: &BitArray) -> (Vec<(Hash, T)>, Vec<(Hash, T)>) {
-    let partition_point = batch.partition_point(|(key_hash, _)| {
-        bit_at_index(key_hash, bits.num_bits) == 0
-    });
+fn partition_batch<T>(
+    mut batch: Vec<(Hash, T)>,
+    bits: &BitArray,
+) -> (Vec<(Hash, T)>, Vec<(Hash, T)>) {
+    let partition_point =
+        batch.partition_point(|(key_hash, _)| bit_at_index(key_hash, bits.num_bits) == 0);
     let right = batch.split_off(partition_point);
     (batch, right)
 }
@@ -586,12 +594,10 @@ fn hash_of(child: Option<Child>) -> Option<Hash> {
 #[inline]
 fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
     match outcome {
-        Outcome::Updated(node) => {
-            Some(Child {
-                version,
-                hash: node.hash(),
-            })
-        },
+        Outcome::Updated(node) => Some(Child {
+            version,
+            hash: node.hash(),
+        }),
         Outcome::Unchanged(None) => None,
         _ => unreachable!("invalid outcome when building subtree: {outcome:?}"),
     }
@@ -664,25 +670,50 @@ mod tests {
 
     const TREE: MerkleTree = MerkleTree::new_default();
 
-    const HASH_ROOT: Hash = Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"));
-    const HASH_0:    Hash = Hash::from_slice(hex!("b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"));
-    const HASH_1:    Hash = Hash::from_slice(hex!("cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"));
-    const HASH_01:   Hash = Hash::from_slice(hex!("521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"));
-    const HASH_010:  Hash = Hash::from_slice(hex!("c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"));
-    const HASH_011:  Hash = Hash::from_slice(hex!("e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"));
-    const HASH_0110: Hash = Hash::from_slice(hex!("fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"));
-    const HASH_0111: Hash = Hash::from_slice(hex!("412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"));
-    const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
-    const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
+    const HASH_ROOT: Hash = Hash::from_slice(hex!(
+        "ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"
+    ));
+    const HASH_0: Hash = Hash::from_slice(hex!(
+        "b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"
+    ));
+    const HASH_1: Hash = Hash::from_slice(hex!(
+        "cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"
+    ));
+    const HASH_01: Hash = Hash::from_slice(hex!(
+        "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"
+    ));
+    const HASH_010: Hash = Hash::from_slice(hex!(
+        "c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"
+    ));
+    const HASH_011: Hash = Hash::from_slice(hex!(
+        "e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"
+    ));
+    const HASH_0110: Hash = Hash::from_slice(hex!(
+        "fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"
+    ));
+    const HASH_0111: Hash = Hash::from_slice(hex!(
+        "412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"
+    ));
+    const HASH_M: Hash = Hash::from_slice(hex!(
+        "62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"
+    ));
+    const HASH_BAR: Hash = Hash::from_slice(hex!(
+        "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
+    ));
 
     fn build_test_case() -> StdResult<(MockStorage, Option<Hash>)> {
         let mut storage = MockStorage::new();
-        let root_hash = TREE.apply_raw(&mut storage, 0, 1,&Batch::from([
-            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
-            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
-            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
-            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
-        ]))?;
+        let root_hash = TREE.apply_raw(
+            &mut storage,
+            0,
+            1,
+            &Batch::from([
+                (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+                (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+                (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            ]),
+        )?;
         Ok((storage, root_hash))
     }
 
@@ -690,7 +721,11 @@ mod tests {
     fn applying_initial_batch() {
         let (storage, root_hash) = build_test_case().unwrap();
         assert_eq!(root_hash, Some(HASH_ROOT));
-        assert!(TREE.orphans.range(&storage, None, None, Order::Ascending).next().is_none());
+        assert!(TREE
+            .orphans
+            .range(&storage, None, None, Order::Ascending)
+            .next()
+            .is_none());
     }
 
     // delete the leaves 010 and 0110. this should cause the leaf 0111 be moved
@@ -714,12 +749,20 @@ mod tests {
     #[test]
     fn collapsing_path() {
         let (mut storage, _) = build_test_case().unwrap();
-        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
-            (b"r".to_vec(), Op::Delete),
-            (b"m".to_vec(), Op::Delete),
-        ]))
-        .unwrap();
-        assert_eq!(new_root_hash, Some(Hash::from_slice(hex!("b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf"))));
+        let new_root_hash = TREE
+            .apply_raw(
+                &mut storage,
+                1,
+                2,
+                &Batch::from([(b"r".to_vec(), Op::Delete), (b"m".to_vec(), Op::Delete)]),
+            )
+            .unwrap();
+        assert_eq!(
+            new_root_hash,
+            Some(Hash::from_slice(hex!(
+                "b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf"
+            )))
+        );
     }
 
     // try deleting every single node. the function should return None as the
@@ -729,13 +772,19 @@ mod tests {
         let (mut storage, _) = build_test_case().unwrap();
 
         // check that new root hash is None
-        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
-            (b"r".to_vec(), Op::Delete),
-            (b"m".to_vec(), Op::Delete),
-            (b"L".to_vec(), Op::Delete),
-            (b"a".to_vec(), Op::Delete),
-        ]))
-        .unwrap();
+        let new_root_hash = TREE
+            .apply_raw(
+                &mut storage,
+                1,
+                2,
+                &Batch::from([
+                    (b"r".to_vec(), Op::Delete),
+                    (b"m".to_vec(), Op::Delete),
+                    (b"L".to_vec(), Op::Delete),
+                    (b"a".to_vec(), Op::Delete),
+                ]),
+            )
+            .unwrap();
         assert!(new_root_hash.is_none());
 
         // check that every node has been marked as orphaned
@@ -753,18 +802,24 @@ mod tests {
     fn no_ops() {
         let (mut storage, _) = build_test_case().unwrap();
 
-        let new_root_hash = TREE.apply_raw(&mut storage, 1, 2, &Batch::from([
-            // overwriting keys with the same keys
-            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
-            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
-            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
-            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
-            // deleting non-existing keys
-            (b"larry".to_vec(), Op::Delete), // 00001101...
-            (b"trump".to_vec(), Op::Delete), // 10100110...
-            (b"biden".to_vec(), Op::Delete), // 00000110...
-        ]))
-        .unwrap();
+        let new_root_hash = TREE
+            .apply_raw(
+                &mut storage,
+                1,
+                2,
+                &Batch::from([
+                    // overwriting keys with the same keys
+                    (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+                    (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+                    (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+                    (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+                    // deleting non-existing keys
+                    (b"larry".to_vec(), Op::Delete), // 00001101...
+                    (b"trump".to_vec(), Op::Delete), // 10100110...
+                    (b"biden".to_vec(), Op::Delete), // 00000110...
+                ]),
+            )
+            .unwrap();
         // make sure the root hash is unchanged
         assert_eq!(new_root_hash, Some(HASH_ROOT));
 
@@ -856,6 +911,9 @@ mod tests {
     )]
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
-        assert_eq!(TREE.prove(&storage, &hash(key.as_bytes()), 1).unwrap(), proof);
+        assert_eq!(
+            TREE.prove(&storage, &hash(key.as_bytes()), 1).unwrap(),
+            proof
+        );
     }
 }

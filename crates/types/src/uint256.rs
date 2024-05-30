@@ -24,10 +24,10 @@ pub struct Uint256(pub(crate) U256);
 forward_ref_partial_eq!(Uint256, Uint256);
 
 impl Uint256 {
-    pub const MAX:  Self = Self(U256::MAX);
-    pub const MIN:  Self = Self(U256::MIN);
+    pub const MAX: Self = Self(U256::MAX);
+    pub const MIN: Self = Self(U256::MIN);
+    pub const ONE: Self = Self(U256::ONE);
     pub const ZERO: Self = Self(U256::ZERO);
-    pub const ONE:  Self = Self(U256::ONE);
 
     pub const fn from_u128(value: u128) -> Self {
         let bytes = value.to_le_bytes();
@@ -36,7 +36,8 @@ impl Uint256 {
                 bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ]),
             u64::from_le_bytes([
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
+                bytes[15],
             ]),
             0,
             0,

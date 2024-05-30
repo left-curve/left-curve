@@ -39,7 +39,9 @@ where
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.range(storage, None, None, Order::Ascending).next().is_none()
+        self.range(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
     }
 
     pub fn has(&self, storage: &dyn Storage, item: T) -> bool {
@@ -67,8 +69,8 @@ where
     pub fn clear(
         &self,
         storage: &mut dyn Storage,
-        min:   Option<Bound<T>>,
-        max:   Option<Bound<T>>,
+        min: Option<Bound<T>>,
+        max: Option<Bound<T>>,
         limit: Option<usize>,
     ) -> StdResult<()> {
         self.no_prefix().clear(storage, min, max, limit)
