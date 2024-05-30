@@ -1448,6 +1448,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "proptest",
+ "prost",
  "serde",
  "serde_json",
  "serde_with",

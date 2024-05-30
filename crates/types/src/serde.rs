@@ -1,6 +1,7 @@
 use {
     crate::{Json, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -55,4 +56,21 @@ where
     T: BorshSerialize,
 {
     borsh::to_vec(data).map_err(StdError::serialize::<T>)
+}
+
+/// Deserialize a slice of bytes into Rust value of a given type `T` using the
+/// Protobuf encoding scheme.
+pub fn from_proto_slice<T>(bytes: impl AsRef<[u8]>) -> StdResult<T>
+where
+    T: Message + Default,
+{
+    T::decode(bytes.as_ref()).map_err(StdError::deserialize::<T>)
+}
+
+/// Serialize a Rust value into bytes using the Protobuf encoding scheme.
+pub fn to_proto_vec<T>(data: &T) -> Vec<u8>
+where
+    T: Message,
+{
+    data.encode_to_vec()
 }
