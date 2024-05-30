@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     grug_sdk::{Client, SigningKey, SigningOptions},
-    grug_types::{from_json_slice, hash, Addr, Binary, Coins, Config, Hash, Message},
+    grug_types::{from_json_slice, Addr, Binary, Coins, Config, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -51,7 +51,7 @@ enum SubCmd {
         coins: String,
     },
     /// Update a Wasm binary code
-    Store {
+    Upload {
         /// Path to the Wasm file
         path: PathBuf,
     },
@@ -59,21 +59,6 @@ enum SubCmd {
     Instantiate {
         /// Hash of the Wasm byte code to be associated with the contract
         code_hash: Hash,
-        /// Instantiate message as a JSON string
-        msg: String,
-        /// Salt in UTF-8 encoding
-        salt: String,
-        /// Coins to be sent to the contract, in the format: {denom1}:{amount},{denom2}:{amount},...
-        #[arg(long)]
-        funds: Option<String>,
-        /// Administrator address for the contract
-        #[arg(long)]
-        admin: Option<Addr>,
-    },
-    /// Upload code and instantiate a contract in one go
-    StoreAndInstantiate {
-        /// Path to the Wasm file
-        path: PathBuf,
         /// Instantiate message as a JSON string
         msg: String,
         /// Salt in UTF-8 encoding
@@ -137,20 +122,20 @@ impl TxCmd {
         let key_name = self.key.ok_or(anyhow!("key name not specified"))?;
 
         // compose the message
-        let msgs = match self.subcmd {
+        let msg = match self.subcmd {
             SubCmd::SetConfig { new_cfg } => {
                 let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
-                vec![Message::SetConfig { new_cfg }]
+                Message::SetConfig { new_cfg }
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
-                vec![Message::Transfer { to, coins }]
+                Message::Transfer { to, coins }
             },
-            SubCmd::Store { path } => {
+            SubCmd::Upload { path } => {
                 let mut file = File::open(path)?;
                 let mut code = vec![];
                 file.read_to_end(&mut code)?;
-                vec![Message::Upload { code: code.into() }]
+                Message::Upload { code: code.into() }
             },
             SubCmd::Instantiate {
                 code_hash,
@@ -158,86 +143,52 @@ impl TxCmd {
                 salt,
                 funds,
                 admin,
-            } => {
-                vec![Message::Instantiate {
-                    msg: msg.into_bytes().into(),
-                    salt: salt.into_bytes().into(),
-                    funds: Coins::from_str(&funds.unwrap_or_default())?,
-                    code_hash,
-                    admin,
-                }]
-            },
-            SubCmd::StoreAndInstantiate {
-                path,
-                msg,
-                salt,
-                funds,
+            } => Message::Instantiate {
+                msg: msg.into_bytes().into(),
+                salt: salt.into_bytes().into(),
+                funds: Coins::from_str(&funds.unwrap_or_default())?,
+                code_hash,
                 admin,
-            } => {
-                let mut file = File::open(path)?;
-                let mut code = vec![];
-                file.read_to_end(&mut code)?;
-                let code_hash = hash(&code);
-                vec![
-                    Message::Upload { code: code.into() },
-                    Message::Instantiate {
-                        msg: msg.into_bytes().into(),
-                        salt: salt.into_bytes().into(),
-                        funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
-                        code_hash,
-                        admin,
-                    },
-                ]
             },
             SubCmd::Execute {
                 contract,
                 msg,
                 funds,
-            } => {
-                vec![Message::Execute {
-                    msg: msg.into_bytes().into(),
-                    funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
-                    contract,
-                }]
+            } => Message::Execute {
+                msg: msg.into_bytes().into(),
+                funds: Coins::from_str(funds.as_deref().unwrap_or(Coins::EMPTY_COINS_STR))?,
+                contract,
             },
             SubCmd::Migrate {
                 contract,
                 new_code_hash,
                 msg,
-            } => {
-                vec![Message::Migrate {
-                    msg: msg.into_bytes().into(),
-                    new_code_hash,
-                    contract,
-                }]
+            } => Message::Migrate {
+                msg: msg.into_bytes().into(),
+                new_code_hash,
+                contract,
             },
             SubCmd::ClientCreate {
                 code_hash,
                 client_state,
                 consensus_state,
                 salt,
-            } => {
-                vec![Message::ClientCreate {
-                    code_hash,
-                    client_state: client_state.into_bytes().into(),
-                    consensus_state: consensus_state.into_bytes().into(),
-                    salt: salt.into_bytes().into(),
-                }]
+            } => Message::ClientCreate {
+                code_hash,
+                client_state: client_state.into_bytes().into(),
+                consensus_state: consensus_state.into_bytes().into(),
+                salt: salt.into_bytes().into(),
             },
-            SubCmd::ClientUpdate { client_id, header } => {
-                vec![Message::ClientUpdate {
-                    client_id,
-                    header: header.into_bytes().into(),
-                }]
+            SubCmd::ClientUpdate { client_id, header } => Message::ClientUpdate {
+                client_id,
+                header: header.into_bytes().into(),
             },
             SubCmd::ClientFreeze {
                 client_id,
                 misbehavior,
-            } => {
-                vec![Message::ClientFreeze {
-                    client_id,
-                    misbehavior: misbehavior.into_bytes().into(),
-                }]
+            } => Message::ClientFreeze {
+                client_id,
+                misbehavior: misbehavior.into_bytes().into(),
             },
         };
 
@@ -255,7 +206,7 @@ impl TxCmd {
         // broadcast transaction
         let client = Client::connect(&self.node)?;
         let maybe_res = client
-            .send_tx_with_confirmation(msgs, &sign_opts, |tx| {
+            .send_tx_with_confirmation(vec![msg], &sign_opts, |tx| {
                 print_json_pretty(tx)?;
                 Ok(confirm("🤔 Broadcast transaction?".bold())?)
             })
