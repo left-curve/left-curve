@@ -44,7 +44,7 @@ pub struct Config {
     ///
     /// Non-fungible tokens (NFTs) can be managed by this contract as well,
     /// using an approach similar to Solana's Metaplex standard:
-    /// https://twitter.com/octalmage/status/1695165358955487426
+    /// <https://twitter.com/octalmage/status/1695165358955487426>
     pub bank: Addr,
     /// A list of contracts that will be called at the beginning of each block,
     /// before any transaction, in order. Each of them must implement the `before_block`

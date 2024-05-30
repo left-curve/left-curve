@@ -2,7 +2,7 @@
 /// Useful in creating math types.
 ///
 /// Copied from CosmWasm:
-/// https://github.com/CosmWasm/cosmwasm/blob/v1.5.3/packages/std/src/forward_ref.rs
+/// <https://github.com/CosmWasm/cosmwasm/blob/v1.5.3/packages/std/src/forward_ref.rs>
 #[macro_export]
 macro_rules! forward_ref_partial_eq {
     ($t:ty, $u:ty) => {

@@ -9,52 +9,52 @@ use {
 #[serde(rename_all = "snake_case")]
 pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
-    /// Returns: InfoResponse
+    /// Returns: `InfoResponse`
     Info {},
     /// An account's balance in a single denom.
-    /// Returns: Coin
+    /// Returns: `Coin`
     Balance { address: Addr, denom: String },
     /// Enumerate an account's balances in all denoms.
-    /// Returns: Coins
+    /// Returns: `Coins`
     Balances {
         address: Addr,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// A token's total supply.
-    /// Returns: Coin
+    /// Returns: `Coin`
     Supply { denom: String },
     /// Enumerate all tokens' total supplies.
-    /// Returns: Coins
+    /// Returns: `Coins`
     Supplies {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// A single Wasm byte code.
-    /// Returns: Binary
+    /// Returns: `Binary`
     Code { hash: Hash },
     /// Enumerate metadata of all codes.
     /// Note: to limit the size of return data, we only return the hashes.
     /// To download the actual Wasm byte code, use Query::Code.
-    /// Returns: Vec<Hash>
+    /// Returns: `Vec<Hash>`
     Codes {
         start_after: Option<Hash>,
         limit: Option<u32>,
     },
     /// Metadata of a single account.
-    /// Returns: AccountResponse
+    /// Returns: `AccountResponse`
     Account { address: Addr },
     /// Enumerate metadata of all accounts.
-    /// Returns: Vec<AccountResponse>
+    /// Returns: `Vec<AccountResponse>`
     Accounts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
     /// A raw key-value pair in a contract's internal state.
-    /// Returns: WasmRawResponse
+    /// Returns: `WasmRawResponse`
     WasmRaw { contract: Addr, key: Binary },
     /// Call the contract's query entry point with the given message.
-    /// Returns: WasmSmartResponse
+    /// Returns: `WasmSmartResponse`
     WasmSmart { contract: Addr, msg: Json },
 }
 

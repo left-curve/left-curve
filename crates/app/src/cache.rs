@@ -9,7 +9,7 @@ use {
 };
 
 /// Adapted from cw-multi-test:
-/// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
+/// <https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253>
 #[derive(Clone)]
 pub struct CacheStore<S: Clone> {
     base: S,

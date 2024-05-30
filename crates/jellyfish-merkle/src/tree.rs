@@ -31,15 +31,15 @@ enum Outcome {
 ///
 /// Adapted from Diem's work:
 /// - Whitepaper:
-///   https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/
+///   <https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/>
 /// - Rust implementation:
-///   https://github.com/diem/diem/tree/latest/storage/jellyfish-merkle
+///   <https://github.com/diem/diem/tree/latest/storage/jellyfish-merkle>
 ///
 /// Also worth looking into:
 /// - Penumbra's adaptation:
-///   https://github.com/penumbra-zone/jmt
+///   <https://github.com/penumbra-zone/jmt>
 /// - Sovereign Lab's article on optimizations:
-///   https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8
+///   <https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8>
 pub struct MerkleTree<'a> {
     nodes: Map<'a, (u64, &'a BitArray), Node>,
     orphans: Set<'a, (u64, u64, &'a BitArray)>,
@@ -397,7 +397,7 @@ impl<'a> MerkleTree<'a> {
     /// To query a key with proof, the caller should first call `get` on the raw
     /// KV store, then `prove` on the Merkle tree. This separation of data
     /// store and data commitment was put forward by Cosmos SDK's ADR-65:
-    /// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md
+    /// <https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md>
     pub fn prove(&self, storage: &dyn Storage, key_hash: &Hash, version: u64) -> StdResult<Proof> {
         let mut bits = ROOT_BITS.clone();
         let bitarray = BitArray::from_bytes(key_hash);

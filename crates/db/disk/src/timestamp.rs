@@ -58,9 +58,9 @@ impl Ord for U64Timestamp {
 /// using the same name: "leveldb.BytewiseComparator.u64ts".
 ///
 /// Adapted from:
-/// - https://github.com/facebook/rocksdb/blob/main/util/comparator.cc#L238
-/// - https://github.com/linxGnu/grocksdb/blob/master/db_ts_test.go#L167
-/// - https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/comparator.go
+/// - <https://github.com/facebook/rocksdb/blob/main/util/comparator.cc#L238>
+/// - <https://github.com/linxGnu/grocksdb/blob/master/db_ts_test.go#L167>
+/// - <https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/comparator.go>
 pub struct U64Comparator;
 
 impl U64Comparator {

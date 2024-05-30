@@ -1,8 +1,8 @@
 //! Specifications:
-//! https://github.com/cosmos/ibc/tree/main/spec/client/ics-006-solo-machine-client
+//! <https://github.com/cosmos/ibc/tree/main/spec/client/ics-006-solo-machine-client>
 //!
 //! Go implementation:
-//! https://github.com/cosmos/ibc-go/tree/v8.1.0/modules/light-clients/06-solomachine
+//! <https://github.com/cosmos/ibc-go/tree/v8.1.0/modules/light-clients/06-solomachine>
 //!
 //! This implementation does not follow the ICS-06 specification. In the spec,
 //! the client state is only updated when changing the public key or diversifier;

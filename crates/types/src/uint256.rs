@@ -17,7 +17,7 @@ use {
 ///
 /// JSON supports integer numbers in the range of [-(2^53)+1, (2^53)-1].
 /// Numbers beyond this range (uint64, uint128...) need to serialize as strings.
-/// https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497
+/// <https://stackoverflow.com/questions/13502398/json-integers-limit-on-size#comment80159722_13502497>
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Uint256(pub(crate) U256);
 
@@ -172,9 +172,9 @@ impl Uint256 {
     /// In other words, take the square root and _round down_.
     ///
     /// Copied from `uint` crate:
-    /// https://github.com/paritytech/parity-common/blob/uint-v0.9.5/uint/src/uint.rs#L963-L983
+    /// <https://github.com/paritytech/parity-common/blob/uint-v0.9.5/uint/src/uint.rs#L963-L983>
     /// which utilizes the method described in:
-    /// https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
+    /// <https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division>
     pub fn integer_sqrt(self) -> Self {
         if self <= Self::ONE {
             return self;

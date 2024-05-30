@@ -18,7 +18,7 @@ use {
 /// The ABCI application.
 ///
 /// Must be clonable which is required by `tendermint-abci` library:
-/// https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25
+/// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 pub struct App<DB, VM> {
     db: DB,
     vm: PhantomData<VM>,

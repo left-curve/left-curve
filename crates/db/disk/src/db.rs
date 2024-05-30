@@ -52,11 +52,11 @@ const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 ///
 /// The separation of SS and SC was first conceived by the Cosmos SDK core team
 /// in ADR-040:
-/// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-040-storage-and-smt-state-commitments.md
+/// <https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-040-storage-and-smt-state-commitments.md>
 /// and later refined in ADR-065:
-/// https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md.
+/// <https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md>.
 /// It was first pushed to production use by Sei, marketed as SeiDB:
-/// https://blog.sei.io/sei-db-the-numbers/
+/// <https://blog.sei.io/sei-db-the-numbers/>
 ///
 /// Our design mostly resembles Sei's with the differences being that:
 /// - we use a binary Jellyfish Merkle tree (JMT) instead of IAVL;
