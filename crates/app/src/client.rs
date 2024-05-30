@@ -12,7 +12,7 @@ use {
 
 // ------------------------------- create client -------------------------------
 
-pub fn do_create_client<VM>(
+pub fn do_client_create<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
@@ -25,7 +25,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_create_client::<VM>(
+    match _do_client_create::<VM>(
         storage,
         block,
         sender,
@@ -45,7 +45,7 @@ where
     }
 }
 
-pub fn _do_create_client<VM>(
+pub fn _do_client_create<VM>(
     mut storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
@@ -122,7 +122,7 @@ where
 
 // ------------------------------- update client -------------------------------
 
-pub fn do_update_client<VM>(
+pub fn do_client_update<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
@@ -133,7 +133,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_update_client::<VM>(storage, block, sender, client_id, header) {
+    match _do_client_update::<VM>(storage, block, sender, client_id, header) {
         Ok(events) => {
             info!(client_id = client_id.to_string(), "Update IBC client");
             Ok(events)
@@ -145,7 +145,7 @@ where
     }
 }
 
-fn _do_update_client<VM>(
+fn _do_client_update<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
@@ -196,7 +196,7 @@ where
 
 // ------------------------------- freeze client -------------------------------
 
-pub fn do_freeze_client<VM>(
+pub fn do_client_freeze<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,
@@ -207,7 +207,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_freeze_client::<VM>(storage, block, sender, client_id, misbehavior) {
+    match _do_client_freeze::<VM>(storage, block, sender, client_id, misbehavior) {
         Ok(events) => {
             warn!(
                 client = client_id.to_string(),
@@ -225,7 +225,7 @@ where
     }
 }
 
-fn _do_freeze_client<VM>(
+fn _do_client_freeze<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
     sender: &Addr,

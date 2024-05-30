@@ -420,7 +420,7 @@ impl Client {
         .await
     }
 
-    pub async fn create_client<A: Serialize, B: Serialize>(
+    pub async fn client_create<A: Serialize, B: Serialize>(
         &self,
         code_hash: Hash,
         client_state: &A,
@@ -431,7 +431,7 @@ impl Client {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let client_state = to_json_value(client_state)?;
         let consensus_state = to_json_value(consensus_state)?;
-        let msg = Message::CreateClient {
+        let msg = Message::ClientCreate {
             code_hash,
             client_state,
             consensus_state,
@@ -441,26 +441,26 @@ impl Client {
         Ok((address, res))
     }
 
-    pub async fn update_client<M: Serialize>(
+    pub async fn client_update<M: Serialize>(
         &self,
         client_id: Addr,
         header: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::UpdateClient {
+        let msg = Message::ClientUpdate {
             client_id,
             header: to_json_value(header)?,
         };
         self.send_tx(vec![msg], sign_opts).await
     }
 
-    pub async fn freeze_client<M: Serialize>(
+    pub async fn client_freeze<M: Serialize>(
         &self,
         client_id: Addr,
         misbehavior: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::FreezeClient {
+        let msg = Message::ClientFreeze {
             client_id,
             misbehavior: to_json_value(misbehavior)?,
         };

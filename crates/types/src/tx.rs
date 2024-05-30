@@ -48,14 +48,14 @@ pub enum Message {
         msg: Json,
     },
     /// Create a new IBC light client.
-    CreateClient {
+    ClientCreate {
         code_hash: Hash,
         client_state: Json,
         consensus_state: Json,
         salt: Binary,
     },
     /// Update the state of an IBC light client by submitting a new header.
-    UpdateClient { client_id: Addr, header: Json },
+    ClientUpdate { client_id: Addr, header: Json },
     /// Freeze an IBC light client by submitting evidence of a misbehavior.
-    FreezeClient { client_id: Addr, misbehavior: Json },
+    ClientFreeze { client_id: Addr, misbehavior: Json },
 }

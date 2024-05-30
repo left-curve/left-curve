@@ -105,7 +105,7 @@ enum SubCmd {
         msg: String,
     },
     /// Create an IBC light client
-    CreateClient {
+    ClientCreate {
         /// Hash of the Wasm byte code to be associated with the contract
         code_hash: Hash,
         /// Client state as a JSON string
@@ -116,14 +116,14 @@ enum SubCmd {
         salt: String,
     },
     /// Update the state of an IBC light client by submitting a header
-    UpdateClient {
+    ClientUpdate {
         /// Address of the client contract
         client_id: Addr,
         /// Block header as a JSON string
         header: String,
     },
     /// Freeze an IBC light client by submitting evidence of a misbehavior
-    FreezeClient {
+    ClientFreeze {
         /// Address of the client contract
         client_id: Addr,
         /// Misbehavior as a JSON string
@@ -211,30 +211,30 @@ impl TxCmd {
                     contract,
                 }]
             },
-            SubCmd::CreateClient {
+            SubCmd::ClientCreate {
                 code_hash,
                 client_state,
                 consensus_state,
                 salt,
             } => {
-                vec![Message::CreateClient {
+                vec![Message::ClientCreate {
                     code_hash,
                     client_state: client_state.into_bytes().into(),
                     consensus_state: consensus_state.into_bytes().into(),
                     salt: salt.into_bytes().into(),
                 }]
             },
-            SubCmd::UpdateClient { client_id, header } => {
-                vec![Message::UpdateClient {
+            SubCmd::ClientUpdate { client_id, header } => {
+                vec![Message::ClientUpdate {
                     client_id,
                     header: header.into_bytes().into(),
                 }]
             },
-            SubCmd::FreezeClient {
+            SubCmd::ClientFreeze {
                 client_id,
                 misbehavior,
             } => {
-                vec![Message::FreezeClient {
+                vec![Message::ClientFreeze {
                     client_id,
                     misbehavior: misbehavior.into_bytes().into(),
                 }]

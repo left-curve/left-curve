@@ -1,10 +1,10 @@
 use {
     crate::{
-        do_after_block, do_after_tx, do_before_block, do_before_tx, do_create_client, do_execute,
-        do_freeze_client, do_instantiate, do_migrate, do_set_config, do_transfer, do_update_client,
-        do_upload, query_account, query_accounts, query_balance, query_balances, query_code,
-        query_codes, query_info, query_supplies, query_supply, query_wasm_raw, query_wasm_smart,
-        AppError, AppResult, CacheStore, Db, SharedStore, Vm, CHAIN_ID, CONFIG,
+        do_after_block, do_after_tx, do_before_block, do_before_tx, do_client_create,
+        do_client_freeze, do_client_update, do_execute, do_instantiate, do_migrate, do_set_config,
+        do_transfer, do_upload, query_account, query_accounts, query_balance, query_balances,
+        query_code, query_codes, query_info, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_smart, AppError, AppResult, CacheStore, Db, SharedStore, Vm, CHAIN_ID, CONFIG,
         LAST_FINALIZED_BLOCK,
     },
     grug_types::{
@@ -393,12 +393,12 @@ where
             new_code_hash,
             msg,
         } => do_migrate::<VM>(storage, block, &contract, sender, new_code_hash, &msg),
-        Message::CreateClient {
+        Message::ClientCreate {
             code_hash,
             client_state,
             consensus_state,
             salt,
-        } => do_create_client::<VM>(
+        } => do_client_create::<VM>(
             storage,
             block,
             sender,
@@ -407,13 +407,13 @@ where
             consensus_state,
             salt,
         ),
-        Message::UpdateClient { client_id, header } => {
-            do_update_client::<VM>(storage, block, sender, &client_id, header)
+        Message::ClientUpdate { client_id, header } => {
+            do_client_update::<VM>(storage, block, sender, &client_id, header)
         },
-        Message::FreezeClient {
+        Message::ClientFreeze {
             client_id,
             misbehavior,
-        } => do_freeze_client::<VM>(storage, block, sender, &client_id, misbehavior),
+        } => do_client_freeze::<VM>(storage, block, sender, &client_id, misbehavior),
     }
 }
 
