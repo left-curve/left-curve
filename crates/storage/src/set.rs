@@ -43,7 +43,7 @@ where
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.range(storage, None, None, Order::Ascending)
+        self.range_raw(storage, None, None, Order::Ascending)
             .next()
             .is_none()
     }

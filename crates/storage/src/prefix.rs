@@ -1,10 +1,11 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, RawBound, RawKey},
+    crate::{Borsh, Bound, Encoding, MapKey, Proto, RawBound, RawKey},
     borsh::BorshDeserialize,
     grug_types::{
-        concat, extend_one_byte, from_borsh_slice, increment_last_byte, nested_namespaces_with_key,
-        trim, Order, StdResult, Storage,
+        concat, extend_one_byte, from_borsh_slice, from_proto_slice, increment_last_byte,
+        nested_namespaces_with_key, trim, Order, StdResult, Storage,
     },
+    prost::Message,
     std::marker::PhantomData,
 };
 
@@ -15,7 +16,10 @@ pub struct Prefix<K, T, E: Encoding = Borsh> {
     encoding: PhantomData<E>,
 }
 
-impl<K, T> Prefix<K, T> {
+impl<K, T, E> Prefix<K, T, E>
+where
+    E: Encoding,
+{
     pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
         Self {
             prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
@@ -122,6 +126,31 @@ where
             .map(|(key_raw, value_raw)| {
                 let key = K::deserialize(&key_raw)?;
                 let value = from_borsh_slice(value_raw)?;
+                Ok((key, value))
+            });
+
+        Box::new(iter)
+    }
+}
+
+impl<K, T> Prefix<K, T, Proto>
+where
+    K: MapKey,
+    T: Message + Default,
+{
+    #[allow(clippy::type_complexity)]
+    pub fn range<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
+        let iter = self
+            .range_raw(storage, min, max, order)
+            .map(|(key_raw, value_raw)| {
+                let key = K::deserialize(&key_raw)?;
+                let value = from_proto_slice(value_raw)?;
                 Ok((key, value))
             });
 

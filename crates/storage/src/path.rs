@@ -1,9 +1,11 @@
 use {
-    crate::{Borsh, Encoding, RawKey},
+    crate::{Borsh, Encoding, Proto, RawKey},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        from_borsh_slice, nested_namespaces_with_key, to_borsh_vec, StdError, StdResult, Storage,
+        from_borsh_slice, from_proto_slice, nested_namespaces_with_key, to_borsh_vec, to_proto_vec,
+        StdError, StdResult, Storage,
     },
+    prost::Message,
     std::marker::PhantomData,
 };
 
@@ -61,6 +63,8 @@ where
     }
 }
 
+// ----------------------------------- borsh -----------------------------------
+
 impl<'a, T> Path<'a, T, Borsh>
 where
     T: BorshSerialize,
@@ -106,6 +110,57 @@ where
 
         if let Some(data) = &maybe_data {
             self.save(storage, data)?;
+        } else {
+            self.remove(storage);
+        }
+
+        Ok(maybe_data)
+    }
+}
+
+// ----------------------------------- proto -----------------------------------
+
+impl<'a, T> Path<'a, T, Proto>
+where
+    T: Message,
+{
+    // Note that for Protobuf, this function doesn't need to return a Result,
+    // because proto serialization always succeeds.
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) {
+        let bytes = to_proto_vec(data);
+        storage.write(self.storage_key, &bytes);
+    }
+}
+
+impl<'a, T> Path<'a, T, Proto>
+where
+    T: Message + Default,
+{
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        storage
+            .read(self.storage_key)
+            .map(from_proto_slice)
+            .transpose()
+    }
+
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        storage
+            .read(self.storage_key)
+            .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
+            .and_then(from_proto_slice)
+    }
+
+    // compared to the original cosmwasm, we require `action` to return an
+    // option, which in case of None leads to the record being deleted.
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
+    where
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        let maybe_data = action(self.may_load(storage)?)?;
+
+        if let Some(data) = &maybe_data {
+            self.save(storage, data);
         } else {
             self.remove(storage);
         }

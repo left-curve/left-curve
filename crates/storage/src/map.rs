@@ -1,7 +1,8 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix},
+    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix, Proto},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Order, StdError, StdResult, Storage},
+    prost::Message,
     std::marker::PhantomData,
 };
 
@@ -30,17 +31,17 @@ where
     K: MapKey,
     E: Encoding,
 {
-    fn path(&self, key: K) -> PathBuf<T> {
+    fn path(&self, key: K) -> PathBuf<T, E> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<K, T> {
+    fn no_prefix(&self) -> Prefix<K, T, E> {
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E> {
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 
@@ -100,6 +101,8 @@ where
     }
 }
 
+// ----------------------------------- borsh -----------------------------------
+
 impl<'a, K, T> Map<'a, K, T, Borsh>
 where
     K: MapKey,
@@ -146,5 +149,50 @@ where
         E: From<StdError>,
     {
         self.path(k).as_path().update(storage, action)
+    }
+}
+
+// ----------------------------------- proto -----------------------------------
+
+impl<'a, K, T> Map<'a, K, T, Proto>
+where
+    K: MapKey,
+    T: Message,
+{
+    pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) {
+        self.path(k).as_path().save(storage, data)
+    }
+}
+
+impl<'a, K, T> Map<'a, K, T, Proto>
+where
+    K: MapKey,
+    T: Message + Default,
+{
+    pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
+        self.path(k).as_path().may_load(storage)
+    }
+
+    pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
+        self.path(k).as_path().load(storage)
+    }
+
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
+    where
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        self.path(k).as_path().update(storage, action)
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().range(storage, min, max, order)
     }
 }
