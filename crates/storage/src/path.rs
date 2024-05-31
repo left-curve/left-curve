@@ -40,16 +40,20 @@ impl<'a, T> Path<'a, T> {
             _data_type: PhantomData,
         }
     }
+
+    pub fn exists(&self, storage: &dyn Storage) -> bool {
+        storage.read(self.storage_key).is_some()
+    }
+
+    pub fn remove(&self, storage: &mut dyn Storage) {
+        storage.remove(self.storage_key);
+    }
 }
 
 impl<'a, T> Path<'a, T>
 where
     T: BorshSerialize + BorshDeserialize,
 {
-    pub fn exists(&self, storage: &dyn Storage) -> bool {
-        storage.read(self.storage_key).is_some()
-    }
-
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         storage
             .read(self.storage_key)
@@ -86,9 +90,5 @@ where
         let bytes = to_borsh_vec(data)?;
         storage.write(self.storage_key, &bytes);
         Ok(())
-    }
-
-    pub fn remove(&self, storage: &mut dyn Storage) {
-        storage.remove(self.storage_key);
     }
 }
