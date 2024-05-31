@@ -4,14 +4,14 @@ use {
     anyhow::bail,
     grug::{
         grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary,
-        ImmutableCtx, Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError,
-        StdResult, Tx,
+        ImmutableCtx, Incrementor, Item, Json, MapKey, Message, MutableCtx, RawKey, Response,
+        StdError, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
 
 const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
-const SEQUENCE: Item<u32> = Item::new("seq");
+const SEQUENCE: Incrementor<u32> = Incrementor::new("seq");
 
 #[grug_derive(serde)]
 pub struct InstantiateMsg {
@@ -128,8 +128,11 @@ pub fn sign_bytes(
 
 #[cfg_attr(not(feature = "library"), grug_export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    // Save the public key in contract store
     PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
-    SEQUENCE.save(ctx.storage, &0)?;
+
+    // Initialize the sequence number to zero
+    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }
@@ -146,7 +149,7 @@ pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), grug_export)]
 pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
-    let mut sequence = SEQUENCE.load(ctx.storage)?;
+    let sequence = SEQUENCE.load(ctx.storage)?;
 
     // prepare the hash that is expected to have been signed
     let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.chain_id, sequence)?;
@@ -164,9 +167,8 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         }
     }
 
-    // update sequence
-    sequence += 1;
-    SEQUENCE.save(ctx.storage, &sequence)?;
+    // increment the sequence number
+    SEQUENCE.increment(ctx.storage)?;
 
     Ok(Response::new()
         .add_attribute("method", "before_tx")

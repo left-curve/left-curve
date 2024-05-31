@@ -50,6 +50,15 @@ impl<'a, T> Incrementor<'a, T>
 where
     T: BorshSerialize + BorshDeserialize + Increment,
 {
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        self.item.load(storage)
+    }
+
+    /// Initialize the incrementor to the zero value.
+    pub fn initialize(&self, storage: &mut dyn Storage) -> StdResult<()> {
+        self.item.save(storage, &T::ZERO)
+    }
+
     /// Increment the value stored by one unit; return the value _after_
     /// incrementing. If no value is stored, set it to zero and return zero.
     pub fn increment(&self, storage: &mut dyn Storage) -> StdResult<T> {
