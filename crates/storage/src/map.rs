@@ -45,10 +45,9 @@ where
 impl<'a, K, T> Map<'a, K, T>
 where
     K: MapKey,
-    T: BorshSerialize + BorshDeserialize,
 {
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.range(storage, None, None, Order::Ascending)
+        self.range_raw(storage, None, None, Order::Ascending)
             .next()
             .is_none()
     }
@@ -57,6 +56,43 @@ where
         self.path(k).as_path().exists(storage)
     }
 
+    #[allow(clippy::type_complexity)]
+    pub fn range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'b> {
+        self.no_prefix().range_raw(storage, min, max, order)
+    }
+
+    pub fn keys_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().keys_raw(storage, min, max, order)
+    }
+
+    pub fn clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        limit: Option<usize>,
+    ) {
+        self.no_prefix().clear(storage, min, max, limit)
+    }
+}
+
+impl<'a, K, T> Map<'a, K, T>
+where
+    K: MapKey,
+    T: BorshSerialize + BorshDeserialize,
+{
     pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
         self.path(k).as_path().may_load(storage)
     }
@@ -100,15 +136,5 @@ where
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
         self.no_prefix().keys(storage, min, max, order)
-    }
-
-    pub fn clear(
-        &self,
-        storage: &mut dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        limit: Option<usize>,
-    ) -> StdResult<()> {
-        self.no_prefix().clear(storage, min, max, limit)
     }
 }

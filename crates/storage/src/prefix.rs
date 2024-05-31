@@ -95,7 +95,7 @@ where
         _min: Option<Bound<K>>,
         _max: Option<Bound<K>>,
         _limit: Option<usize>,
-    ) -> StdResult<()> {
+    ) {
         todo!() // TODO: implement this after we're added a `remove_range` method to Storage
     }
 }

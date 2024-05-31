@@ -56,6 +56,16 @@ where
         self.path(item).as_path().remove(storage)
     }
 
+    pub fn range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<T>>,
+        max: Option<Bound<T>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().keys_raw(storage, min, max, order)
+    }
+
     pub fn range<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -72,7 +82,7 @@ where
         min: Option<Bound<T>>,
         max: Option<Bound<T>>,
         limit: Option<usize>,
-    ) -> StdResult<()> {
+    ) {
         self.no_prefix().clear(storage, min, max, limit)
     }
 }
