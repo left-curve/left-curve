@@ -37,7 +37,7 @@
 //! please let us know.
 
 #[cfg(not(feature = "library"))]
-use grug::entry_point;
+use grug::grug_export;
 use {
     anyhow::{bail, ensure},
     grug::{
@@ -116,7 +116,7 @@ pub struct SignBytes {
     pub record: Option<Record>,
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_create(
     ctx: SudoCtx,
     client_state: Json,
@@ -140,7 +140,7 @@ pub fn ibc_client_create(
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Result<Response> {
     match msg {
         IbcClientUpdateMsg::Update { header } => update(ctx, header),
@@ -206,7 +206,7 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> anyhow::Result<()> {
     match msg {
         // solo machine does not utilize the height and delay period pamameters
@@ -290,7 +290,7 @@ fn verify_signature(
     api.secp256k1_verify(&sign_bytes_hash, &header.signature, public_key)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::State {} => to_json_value(&query_state(ctx)?),

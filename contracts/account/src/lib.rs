@@ -1,5 +1,5 @@
 #[cfg(not(feature = "library"))]
-use grug::entry_point;
+use grug::grug_export;
 use {
     anyhow::bail,
     grug::{
@@ -126,7 +126,7 @@ pub fn sign_bytes(
     Ok(hasher.finalize().into())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
     SEQUENCE.save(ctx.storage, &0)?;
@@ -134,7 +134,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
     // do nothing, accept all transfers. log the receipt to events
     Ok(Response::new()
@@ -143,7 +143,7 @@ pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_attribute("funds", ctx.funds.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
     let mut sequence = SEQUENCE.load(ctx.storage)?;
@@ -173,18 +173,18 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         .add_attribute("next_sequence", sequence.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn after_tx(_ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     // nothing to do
     Ok(Response::new().add_attribute("method", "after_tx"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn execute(_ctx: MutableCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
     bail!("no execute method is available for this contract");
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::State {} => to_json_value(&query_state(ctx)?),

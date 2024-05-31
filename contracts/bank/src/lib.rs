@@ -1,5 +1,5 @@
 #[cfg(not(feature = "library"))]
-use grug::entry_point;
+use grug::grug_export;
 use {
     anyhow::bail,
     grug::{
@@ -37,7 +37,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     // need to make sure there are no duplicate address in initial balances.
     // we don't need to dedup denoms however. if there's duplicate denoms, the
@@ -75,7 +75,7 @@ fn accumulate_supply(
     Ok(())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
@@ -89,14 +89,14 @@ pub fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
         .add_attribute("coins", msg.coins.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     // we do not expect anyone to send any fund to this contract.
     // throw an error to revert the transfer.
     bail!("do not send funds to this contract");
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
@@ -207,7 +207,7 @@ fn decrease_balance(
 // The query response MUST matches exactly the request. E.g. if the request is
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> StdResult<BankQueryResponse> {
     match msg {
         BankQueryMsg::Balance { address, denom } => {
