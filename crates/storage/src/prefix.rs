@@ -1,5 +1,5 @@
 use {
-    crate::{Bound, MapKey, RawBound, RawKey},
+    crate::{Borsh, Bound, Encoding, MapKey, RawBound, RawKey},
     borsh::BorshDeserialize,
     grug_types::{
         concat, extend_one_byte, from_borsh_slice, increment_last_byte, nested_namespaces_with_key,
@@ -8,25 +8,28 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct Prefix<K, T> {
+pub struct Prefix<K, T, E: Encoding = Borsh> {
     prefix: Vec<u8>,
-    _suffix_type: PhantomData<K>,
-    _data_type: PhantomData<T>,
+    suffix: PhantomData<K>,
+    data: PhantomData<T>,
+    encoding: PhantomData<E>,
 }
 
 impl<K, T> Prefix<K, T> {
     pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
         Self {
             prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
-            _suffix_type: PhantomData,
-            _data_type: PhantomData,
+            suffix: PhantomData,
+            data: PhantomData,
+            encoding: PhantomData,
         }
     }
 }
 
-impl<K, T> Prefix<K, T>
+impl<K, T, E> Prefix<K, T, E>
 where
     K: MapKey,
+    E: Encoding,
 {
     #[allow(clippy::type_complexity)]
     pub fn range_raw<'a>(
@@ -64,7 +67,8 @@ where
         let (min, max) = range_bounds(&self.prefix, min, max);
         let prefix = self.prefix.clone();
         // TODO: this is really inefficient because the host needs to load both
-        // the key and value into Wasm memory
+        // the key and value into Wasm memory. we should create a `scan_keys`
+        // import that only loads the keys.
         let iter = storage
             .scan(Some(&min), Some(&max), order)
             .map(move |(k, _)| {
@@ -100,7 +104,7 @@ where
     }
 }
 
-impl<K, T> Prefix<K, T>
+impl<K, T> Prefix<K, T, Borsh>
 where
     K: MapKey,
     T: BorshDeserialize,

@@ -1,5 +1,5 @@
 use {
-    crate::RawKey,
+    crate::{Borsh, Encoding, RawKey},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
         from_borsh_slice, nested_namespaces_with_key, to_borsh_vec, StdError, StdResult, Storage,
@@ -7,37 +7,48 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct PathBuf<T> {
+pub struct PathBuf<T, E: Encoding = Borsh> {
     storage_key: Vec<u8>,
-    _data_type: PhantomData<T>,
+    data: PhantomData<T>,
+    encoding: PhantomData<E>,
 }
 
-impl<T> PathBuf<T> {
+impl<T, E> PathBuf<T, E>
+where
+    E: Encoding,
+{
     pub fn new(namespace: &[u8], prefixes: &[RawKey], maybe_key: Option<&RawKey>) -> Self {
         Self {
             storage_key: nested_namespaces_with_key(Some(namespace), prefixes, maybe_key),
-            _data_type: PhantomData,
+            data: PhantomData,
+            encoding: PhantomData,
         }
     }
 
-    pub fn as_path(&self) -> Path<'_, T> {
+    pub fn as_path(&self) -> Path<'_, T, E> {
         Path {
             storage_key: self.storage_key.as_slice(),
-            _data_type: self._data_type,
+            data: self.data,
+            encoding: self.encoding,
         }
     }
 }
 
-pub struct Path<'a, T> {
+pub struct Path<'a, T, E: Encoding = Borsh> {
     storage_key: &'a [u8],
-    _data_type: PhantomData<T>,
+    data: PhantomData<T>,
+    encoding: PhantomData<E>,
 }
 
-impl<'a, T> Path<'a, T> {
+impl<'a, T, E> Path<'a, T, E>
+where
+    E: Encoding,
+{
     pub(crate) fn from_raw(storage_key: &'a [u8]) -> Self {
         Self {
             storage_key,
-            _data_type: PhantomData,
+            data: PhantomData,
+            encoding: PhantomData,
         }
     }
 
@@ -50,9 +61,20 @@ impl<'a, T> Path<'a, T> {
     }
 }
 
-impl<'a, T> Path<'a, T>
+impl<'a, T> Path<'a, T, Borsh>
 where
-    T: BorshSerialize + BorshDeserialize,
+    T: BorshSerialize,
+{
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        let bytes = to_borsh_vec(data)?;
+        storage.write(self.storage_key, &bytes);
+        Ok(())
+    }
+}
+
+impl<'a, T> Path<'a, T, Borsh>
+where
+    T: BorshDeserialize,
 {
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         storage
@@ -67,7 +89,12 @@ where
             .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
             .and_then(from_borsh_slice)
     }
+}
 
+impl<'a, T> Path<'a, T, Borsh>
+where
+    T: BorshSerialize + BorshDeserialize,
+{
     // compared to the original cosmwasm, we require `action` to return an
     // option, which in case of None leads to the record being deleted.
     pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
@@ -84,11 +111,5 @@ where
         }
 
         Ok(maybe_data)
-    }
-
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-        let bytes = to_borsh_vec(data)?;
-        storage.write(self.storage_key, &bytes);
-        Ok(())
     }
 }

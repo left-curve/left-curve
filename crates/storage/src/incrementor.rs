@@ -1,5 +1,5 @@
 use {
-    crate::Item,
+    crate::{Borsh, Encoding, Item},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{StdResult, Storage},
 };
@@ -34,11 +34,14 @@ impl_increment!(u8, u16, u32, u64, u128);
 
 /// An abstraction over `Item`. Stores a single number that is monotonically
 /// incremented one unit at a time.
-pub struct Incrementor<'a, T> {
-    item: Item<'a, T>,
+pub struct Incrementor<'a, T, E: Encoding = Borsh> {
+    item: Item<'a, T, E>,
 }
 
-impl<'a, T> Incrementor<'a, T> {
+impl<'a, T, E> Incrementor<'a, T, E>
+where
+    E: Encoding,
+{
     pub const fn new(storage_key: &'a str) -> Self {
         Self {
             item: Item::new(storage_key),
@@ -46,7 +49,7 @@ impl<'a, T> Incrementor<'a, T> {
     }
 }
 
-impl<'a, T> Incrementor<'a, T>
+impl<'a, T> Incrementor<'a, T, Borsh>
 where
     T: BorshSerialize + BorshDeserialize + Increment,
 {
