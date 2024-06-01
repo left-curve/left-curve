@@ -1,12 +1,13 @@
 /// Generate a [`Unit`](super::Int) type for a given inner type.
 ///
-/// ### Example:
+/// ### Example
+///
 /// ```ignore
 /// generate_int!(
 ///     // The name of the Int
-///     name = Int128,     
+///     name = Int128,
 ///     // Inner type of the Int
-///     inner_type = i128,   
+///     inner_type = i128,
 ///     // Implement From | TryInto from other Int types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
@@ -22,11 +23,11 @@
 #[macro_export]
 macro_rules! generate_int {
     (
-    name = $name:ident,
-    inner_type = $inner:ty,
-    from_int = [$($from:ty),*],
-    from_std = [$($from_std:ty),*],
-    try_from_int = [$($try_from:ty),*]
+        name = $name:ident,
+        inner_type = $inner:ty,
+        from_int = [$($from:ty),*],
+        from_std = [$($from_std:ty),*],
+        try_from_int = [$($try_from:ty),*]
     ) => {
         pub type $name = Int<$inner>;
 
@@ -35,10 +36,6 @@ macro_rules! generate_int {
             // Ex: From<Uint64> for Uint128
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
-                    // --- Old code ---
-
-                    // Self::from_le_bytes_growing(value.to_le_bytes())
-
                     Self::from_str(&value.to_string()).unwrap() // Safe unwrap
                 }
             }
@@ -46,10 +43,6 @@ macro_rules! generate_int {
             // Ex: From<u64> for Uint128
             impl From<<$from as Inner>::U> for $name {
                 fn from(value: <$from as Inner>::U) -> Self {
-                    // --- Old code ---
-
-                    // Self::from_le_bytes_growing(value.to_le_bytes())
-
                     Self::from_str(&value.to_string()).unwrap() // Safe unwrap
                 }
             }
@@ -58,17 +51,6 @@ macro_rules! generate_int {
             impl TryInto<$from> for $name {
                 type Error = StdError;
                 fn try_into(self) -> StdResult<$from> {
-                    // --- Old code ---
-
-                    // let other_b_l = <$from>::byte_len();
-                    // let bytes = self.to_le_bytes();
-                    // let (lower, higher) = bytes.split_at(other_b_l);
-                    // if higher.iter().any(|&b| b != 0) {
-                    //     // TODO: Change this error after implementing FromStr for Int
-                    //     return Err(StdError::Generic("Conversion error!".to_string()));
-                    // }
-                    // Ok(<$from>::from_le_bytes(lower.try_into()?))
-
                     <$from>::from_str(&self.to_string())
                 }
 
@@ -78,21 +60,8 @@ macro_rules! generate_int {
             impl TryInto<<$from as Inner>::U> for $name {
                 type Error = StdError;
                 fn try_into(self) -> StdResult<<$from as Inner>::U> {
-                    // --- Old code ---
-
-                    // let other_b_l = <$from>::byte_len();
-                    // let bytes = self.to_le_bytes();
-                    // let (lower, higher) = bytes.split_at(other_b_l);
-                    // if higher.iter().any(|&b| b != 0) {
-                    //     // TODO: Change this error after implementing FromStr for Int
-                    //     return Err(StdError::Generic("Conversion error!".to_string()));
-                    // }
-                    // Ok(<$from>::from_le_bytes(lower.try_into()?).into())
-
                     <$from>::from_str(&self.to_string()).map(Into::into)
-
                 }
-
             }
 
             impl_all_ops_and_assign!($name, $from);
@@ -110,14 +79,13 @@ macro_rules! generate_int {
             impl TryInto<$from_std> for $name {
                 type Error = StdError;
                 fn try_into(self) -> StdResult<$from_std> {
-                    <$from_std>::from_str(&self.to_string()).map_err(|_| StdError::overflow_conversion::<_, $from_std>(self))
+                    <$from_std>::from_str(&self.to_string())
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_std>(self))
                 }
             }
 
             // --- Impl ops ---
-
             impl_all_ops_and_assign!($name, $from_std);
-
         )*
 
         $(
@@ -168,13 +136,13 @@ macro_rules! generate_int {
                value.number()
             }
         }
-
     };
+
     (
-    name = $name:ident,
-    inner_type = $inner:ty,
-    from_int = [$($from:ty),*],
-    from_std = [$($from_std:ty),*]
+        name = $name:ident,
+        inner_type = $inner:ty,
+        from_int = [$($from:ty),*],
+        from_std = [$($from_std:ty),*]
     ) => {
         generate_int!(
             name = $name,
@@ -188,13 +156,14 @@ macro_rules! generate_int {
 
 /// Generate a [`Decimal`](super::Decimal) type for a given inner type.
 ///
-/// ### Example:
+/// ### Example
+///
 /// ```ignore
 /// generate_int!(
 ///     // The name of the Int
-///     name = SignedDecimal256,     
+///     name = SignedDecimal256,
 ///     // Inner type of the Int
-///     inner_type = I256,   
+///     inner_type = I256,
 ///     // Number of decimal places
 ///     decimal_places = 18,
 ///     // Implement From | TryInto from other Decimal types
@@ -260,9 +229,8 @@ macro_rules! generate_decimal {
                 }
             }
         )*
-
-
     };
+
     (
         name = $name:ident,
         inner_type = $inner:ty,
@@ -281,11 +249,14 @@ macro_rules! generate_decimal {
 
 /// **Syntax**:
 ///
-///  `impl_grug_number!(type, max, min, zero, one)`
+/// ```ignore
+/// impl_number_bound!(type, max, min, zero, one);
+/// ```
 ///
 /// **Example**:
-///  ```ignore
-/// impl_grug_number!(u64, u64::MAX, u64::MIN, 0, 1)
+///
+/// ```ignore
+/// impl_number_bound!(u64, u64::MAX, u64::MIN, 0, 1);
 /// ```
 #[macro_export]
 macro_rules! impl_number_bound {
@@ -298,7 +269,8 @@ macro_rules! impl_number_bound {
             const ZERO: Self = $zero;
         }
 
-        // This is a compile-time check to ensure that the constants are of the correct type.
+        // This is a compile-time check to ensure that the constants are of the
+        // correct types.
         const _: () = {
             const fn _check_type(_: $t) {}
             _check_type($max);
@@ -533,27 +505,35 @@ macro_rules! impl_checked_ops {
         fn checked_ilog10(self) -> StdResult<u32> {
             self.checked_ilog10().ok_or_else(|| StdError::zero_log())
         }
+
         fn wrapping_add(self, other: Self) -> Self {
             self.wrapping_add(other)
         }
+
         fn wrapping_sub(self, other: Self) -> Self {
             self.wrapping_sub(other)
         }
+
         fn wrapping_mul(self, other: Self) -> Self {
             self.wrapping_mul(other)
         }
+
         fn wrapping_pow(self, other: u32) -> Self {
             self.wrapping_pow(other)
         }
+
         fn saturating_add(self, other: Self) -> Self {
             self.saturating_add(other)
         }
+
         fn saturating_sub(self, other: Self) -> Self {
             self.saturating_sub(other)
         }
+
         fn saturating_mul(self, other: Self) -> Self {
             self.saturating_mul(other)
         }
+
         fn saturating_pow(self, other: u32) -> Self {
             self.saturating_pow(other)
         }
@@ -635,7 +615,7 @@ macro_rules! impl_base_ops {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<$($gen),*> std::ops::$imp for $t
         where
-            $t: CheckedOps
+            $t: CheckedOps,
         {
             type Output = Self;
 
@@ -644,11 +624,12 @@ macro_rules! impl_base_ops {
             }
         }
     };
+
     // args type = other
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
         impl<$($gen),*> std::ops::$imp<$other> for $t
         where
-            $t: CheckedOps
+            $t: CheckedOps,
         {
             type Output = Self;
 
@@ -657,20 +638,19 @@ macro_rules! impl_base_ops {
             }
         }
     };
+
     // Ops self for other, output = Self
     // Ex: Add<Uint64> for Uint128 => Uint128
     // Ex: Add<Decimal128> for Decimal256 => Decimal256
     (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
-        impl std::ops::$imp<$other> for $t
-        {
+        impl std::ops::$imp<$other> for $t {
             type Output = Self;
             fn $method(self, other: $other) -> Self {
                 self.$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
             }
         }
 
-        impl std::ops::$imp<$t> for $other
-        {
+        impl std::ops::$imp<$t> for $other {
             type Output = $t;
 
             fn $method(self, other: $t) -> $t {
@@ -678,6 +658,7 @@ macro_rules! impl_base_ops {
             }
         }
     };
+
     // Decimal Self
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: usize> std::ops::$imp for $t
@@ -701,48 +682,56 @@ macro_rules! impl_signed_ops {
     // Not
     (impl<$($gen:tt),*> Not for $t:ty) => {
         impl<$($gen),*> std::ops::Not for $t
-        where U: Not + Not<Output = U>, {
+        where
+            U: Not + Not<Output = U>,
+        {
             type Output = Self;
+
             fn not(self) -> Self {
                 Self(!self.0)
             }
-
         }
-
     };
+
     // Neg
     (impl<$($gen:tt),*> Neg for $t:ty) => {
         impl<$($gen),*> std::ops::Neg for $t
-        where U: Neg + Neg<Output = U>, {
+        where
+            U: Neg + Neg<Output = U>,
+        {
             type Output = Self;
+
             fn neg(self) -> Self {
                 Self(-self.0)
             }
-
         }
-
     };
+
     // Not Decimal
     (impl Not for $t:ident) => {
         impl<U, const S: usize> std::ops::Not for $t<U,S>
-        where U: Not + Not<Output = U>, {
+        where
+            U: Not + Not<Output = U>,
+        {
             type Output = Self;
+
             fn not(self) -> Self {
                 Self(!self.0)
             }
-
         }
-
     };
+
     // Neg Decimal
     (impl Neg for $t:ident) => {
         impl<U, const S: usize> std::ops::Neg for $t<U,S>
-        where U: Neg + Neg<Output = U>, {
+        where
+            U: Neg + Neg<Output = U>,
+        {
             type Output = Self;
+
             fn neg(self) -> Self {
                 Self(-self.0)
             }
-
         }
 
     };
@@ -754,23 +743,26 @@ macro_rules! impl_assign {
         (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
             impl<$($gen),*>core::ops::$imp for $t
             where
-                $t: CheckedOps + Copy
+                $t: CheckedOps + Copy,
             {
                 fn $method(&mut self, other: Self) {
                     *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
                 }
             }
         };
+
         // args type = other
         (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
             impl<U> core::ops::$imp<$other> for $t
             where
-            $t: CheckedOps + Copy {
+                $t: CheckedOps + Copy,
+            {
                 fn $method(&mut self, other: $other) {
                     *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
                 }
             }
         };
+
         // Decimal
         (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
         {
@@ -785,11 +777,11 @@ macro_rules! impl_assign {
                 }
             }
         };
+
         // Ops self for other, output = Self
         // Ex: AddAssign<Uint64> for Uint128;
         (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
-            impl std::ops::$imp<$other> for $t
-            {
+            impl std::ops::$imp<$other> for $t {
                 fn $method(&mut self, other: $other) {
                     *self = (*self).$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
                 }
@@ -799,32 +791,36 @@ macro_rules! impl_assign {
 
 #[macro_export]
 macro_rules! call_inner {
-    (fn $op:ident,arg $other:ident, => Result < Self >) => {
+    (fn $op:ident,arg $other:ident, => Result<Self>) => {
         fn $op(self, other: $other) -> StdResult<Self> {
             self.0.$op(other).map(|val| Self(val))
         }
     };
+
     (fn $op:ident,arg $other:ident, => Self) => {
         fn $op(self, other: $other) -> Self {
             Self(self.0.$op(other))
         }
     };
 
-    (fn $op:ident,field $inner:tt, => Result < Self >) => {
+    (fn $op:ident,field $inner:tt, => Result<Self>) => {
         fn $op(self, other: Self) -> StdResult<Self> {
             self.0.$op(other.$inner).map(|val| Self(val))
         }
     };
+
     (fn $op:ident,field $inner:tt, => Self) => {
         fn $op(self, other: Self) -> Self {
             Self(self.0.$op(other.$inner))
         }
     };
+
     (fn $op:ident, => Self) => {
         fn $op(self) -> Self {
             Self(self.0.$op())
         }
     };
+
     (fn $op:ident, => $out:ty) => {
         fn $op(self) -> $out {
             self.0.$op()
@@ -910,7 +906,6 @@ macro_rules! forward_ref_binop_decimal {
 #[macro_export]
 macro_rules! forward_ref_op_assign_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
-
         impl <$($gen),*> std::ops::$imp<&$u> for $t where $t: std::ops::$imp<$u> + Copy {
             #[inline]
             fn $method(&mut self, other: &$u) {
@@ -953,11 +948,13 @@ macro_rules! generate_unchecked {
             self.$checked().unwrap()
         }
     };
+
     ($checked:tt => $name:ident,arg $arg:ident) => {
         pub fn $name(self, arg: $arg) -> Self {
             self.$checked(arg).unwrap()
         }
     };
+
     ($checked:tt => $name:ident,args $arg1:ty, $arg2:ty) => {
         pub fn $name(arg1: $arg1, arg2: $arg2) -> Self {
             Self::$checked(arg1, arg2).unwrap()
@@ -969,6 +966,7 @@ pub(crate) const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usiz
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
     // check if sign bit is set
     let mut output = if input[0] & 0b10000000 != 0 {
         // negative number is filled up with 1s
@@ -984,6 +982,7 @@ pub(crate) const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usiz
         output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
         i += 1;
     }
+
     output
 }
 
@@ -991,6 +990,7 @@ pub(crate) fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
     // check if sign bit is set
     let mut output = if input[INPUT_SIZE - 1] & 0b10000000 != 0 {
         // negative number is filled up with 1s
@@ -1006,6 +1006,7 @@ pub(crate) fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
         output[i] = input[i];
         i += 1;
     }
+
     output
 }
 
@@ -1013,6 +1014,7 @@ pub(crate) fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
     let mut output = [0u8; OUTPUT_SIZE];
     let mut i = 0;
 
@@ -1022,6 +1024,7 @@ pub(crate) fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
         output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
         i += 1;
     }
+
     output
 }
 
@@ -1029,6 +1032,7 @@ pub(crate) fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
     let mut output = [0u8; OUTPUT_SIZE];
     let mut i = 0;
 
@@ -1038,5 +1042,6 @@ pub(crate) fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
         output[i] = input[i];
         i += 1;
     }
+
     output
 }

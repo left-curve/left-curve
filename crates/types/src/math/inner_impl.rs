@@ -1,10 +1,11 @@
-use bnum::types::{I256, I512, U256, U512};
-
-use crate::{
-    impl_bytable_bnum, impl_bytable_ibnum, impl_bytable_std, impl_checked_ops,
-    impl_checked_ops_signed, impl_checked_ops_unsigned, impl_number_bound,
-    math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
-    Bytable, CheckedOps, NumberConst, StdError, StdResult,
+use {
+    crate::{
+        impl_bytable_bnum, impl_bytable_ibnum, impl_bytable_std, impl_checked_ops,
+        impl_checked_ops_signed, impl_checked_ops_unsigned, impl_number_bound,
+        math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+        Bytable, CheckedOps, NumberConst, StdError, StdResult,
+    },
+    bnum::types::{I256, I512, U256, U512},
 };
 
 // --- Bytable ---

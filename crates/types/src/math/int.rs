@@ -1,22 +1,21 @@
-use std::{
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
-    str::FromStr,
-};
-
 use {
+    crate::{
+        call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
+        impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops,
+        math::traits::{Bytable, CheckedOps, NextNumber, NumberConst},
+        Inner, Sqrt, StdError, StdResult,
+    },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
+    forward_ref::{forward_ref_binop, forward_ref_op_assign},
+    serde::{de, ser},
+    std::{
+        fmt::{self, Display},
+        marker::PhantomData,
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+        str::FromStr,
+    },
 };
-
-use crate::{
-    call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
-    impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops, Inner, Sqrt,
-    StdError, StdResult,
-};
-
-use forward_ref::{forward_ref_binop, forward_ref_op_assign};
-
-use super::traits::{Bytable, CheckedOps, NextNumber, NumberConst};
 
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
@@ -89,8 +88,8 @@ where
     }
 }
 
-#[rustfmt::skip]
 // --- CheckedOps ---
+#[rustfmt::skip]
 impl<U> CheckedOps for Int<U>
 where
     U: CheckedOps,
@@ -231,90 +230,76 @@ forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
 forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
 forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
 
-mod display {
-    use std::{fmt::Display, str::FromStr};
+impl<U> FromStr for Int<U>
+where
+    U: FromStr,
+    <U as FromStr>::Err: ToString,
+{
+    type Err = StdError;
 
-    use crate::{Int, StdError};
-
-    impl<U> FromStr for Int<U>
-    where
-        U: FromStr,
-        <U as FromStr>::Err: ToString,
-    {
-        type Err = StdError;
-
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            U::from_str(s)
-                .map(Self)
-                .map_err(|err| StdError::parse_number::<Self>(s, err))
-        }
-    }
-
-    impl<U> std::fmt::Display for Int<U>
-    where
-        U: Display,
-    {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            self.0.fmt(f)
-        }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        U::from_str(s)
+            .map(Self)
+            .map_err(|err| StdError::parse_number::<Self>(s, err))
     }
 }
 
-mod serde {
-    use std::{fmt::Display, str::FromStr};
+impl<U> fmt::Display for Int<U>
+where
+    U: Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
-    use serde::{de, ser};
-
-    use crate::Int;
-
-    impl<U> ser::Serialize for Int<U>
+impl<U> ser::Serialize for Int<U>
+where
+    U: Display,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        U: Display,
+        S: ser::Serializer,
     {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
-        {
-            serializer.serialize_str(&self.0.to_string())
-        }
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de, U> de::Deserialize<'de> for Int<U>
+where
+    U: Default + FromStr,
+    <U as FromStr>::Err: Display,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(UintVisitor::<U>::default())
+    }
+}
+
+#[derive(Default)]
+struct UintVisitor<U> {
+    _marker: PhantomData<U>,
+}
+
+impl<'de, U> de::Visitor<'de> for UintVisitor<U>
+where
+    U: FromStr,
+    <U as FromStr>::Err: Display,
+{
+    type Value = Int<U>;
+
+    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // TODO: Change this message in base at the type of U
+        f.write_str("a string-encoded 256-bit unsigned integer")
     }
 
-    impl<'de, U> de::Deserialize<'de> for Int<U>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
-        U: Default + FromStr,
-        <U as FromStr>::Err: Display,
+        E: de::Error,
     {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
-            deserializer.deserialize_str(UintVisitor::<U>::default())
-        }
-    }
-
-    #[derive(Default)]
-    struct UintVisitor<U> {
-        _marker: std::marker::PhantomData<U>,
-    }
-
-    impl<'de, U> de::Visitor<'de> for UintVisitor<U>
-    where
-        U: FromStr,
-        <U as FromStr>::Err: Display,
-    {
-        type Value = Int<U>;
-
-        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            // TODO: Change this message in base at the type of U
-            f.write_str("a string-encoded 256-bit unsigned integer")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            v.parse::<U>().map(Int::<U>).map_err(E::custom)
-        }
+        v.parse::<U>().map(Int::<U>).map_err(E::custom)
     }
 }
 
@@ -396,11 +381,10 @@ impl_next!(Int256, Int512);
 
 #[cfg(test)]
 mod test {
-    use bnum::types::{I256, I512, U256};
-
-    use crate::{
-        math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
-        Bytable, Int128, Int256, Int512, Int64, Uint128, Uint64,
+    use {
+        super::*,
+        crate::math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+        bnum::types::{I256, I512, U256},
     };
 
     #[test]
@@ -458,30 +442,21 @@ mod test {
 
         let foo = Uint64::new(10);
         let bar = Int128::new(-10);
-
         assert_eq!(bar + foo, Int128::new(0));
-
         assert_eq!(foo + bar, Int128::new(0));
 
         let foo = Uint64::new(10);
         let bar = Uint128::new(20);
-
         let zzz = Uint64::new(20);
-
         assert_eq!(foo + zzz, Uint64::new(30));
         assert_eq!(foo + &zzz, Uint64::new(30));
         assert_eq!(&foo + zzz, Uint64::new(30));
         assert_eq!(&foo + &zzz, Uint64::new(30));
-
         assert_eq!(foo + &bar, Uint128::new(30));
         assert_eq!(bar + &foo, Uint128::new(30));
 
         let mut foo = Uint128::new(10);
-
         foo += 10_u32;
-
         assert_eq!(foo, Uint128::new(20));
-
-        // foo += 10_u32;
     }
 }
