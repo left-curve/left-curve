@@ -140,6 +140,7 @@ where
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     generate_unchecked!(checked_pow => pow, arg u32);
+    generate_unchecked!(checked_from_ratio => from_ratio, args impl Into<Int<U>>, impl Into<Int<U>>);
 
     pub fn checked_from_ratio(
         numerator: impl Into<Int<U>>,
@@ -150,10 +151,6 @@ where
         numerator
             .checked_multiply_ratio_floor(Self::decimal_fraction(), denominator)
             .map(Self)
-    }
-
-    pub fn from_ratio(numerator: impl Into<Int<U>>, denominator: impl Into<Int<U>>) -> Self {
-        Self::checked_from_ratio(numerator, denominator).unwrap()
     }
 
     pub fn checked_mul(self, rhs: Self) -> StdResult<Self> {
