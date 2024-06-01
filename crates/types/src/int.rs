@@ -16,6 +16,8 @@ use {
     },
 };
 
+// ------------------------------- generic type --------------------------------
+
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -301,6 +303,8 @@ where
         v.parse::<U>().map(Int::<U>).map_err(E::custom)
     }
 }
+
+// ------------------------------ concrete types -------------------------------
 
 // Uint64
 generate_int!(

@@ -17,6 +17,8 @@ use {
     },
 };
 
+// ------------------------------- generic type --------------------------------
+
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
@@ -436,6 +438,8 @@ where
         }
     }
 }
+
+// ------------------------------ concrete types -------------------------------
 
 // Decimal128
 generate_decimal!(
