@@ -456,11 +456,17 @@ mod test {
         let bar = Uint128::new(20);
         let zzz = Uint64::new(20);
         assert_eq!(foo + zzz, Uint64::new(30));
-        assert_eq!(foo + &zzz, Uint64::new(30));
-        assert_eq!(&foo + zzz, Uint64::new(30));
-        assert_eq!(&foo + &zzz, Uint64::new(30));
-        assert_eq!(foo + &bar, Uint128::new(30));
-        assert_eq!(bar + &foo, Uint128::new(30));
+
+        // Check if additions between an owned value and a reference works.
+        // Clippy would complain "needless reference" here, so disable it.
+        #[allow(clippy::op_ref)]
+        {
+            assert_eq!(foo + &zzz, Uint64::new(30));
+            assert_eq!(&foo + zzz, Uint64::new(30));
+            assert_eq!(&foo + &zzz, Uint64::new(30));
+            assert_eq!(foo + &bar, Uint128::new(30));
+            assert_eq!(bar + &foo, Uint128::new(30));
+        }
 
         let mut foo = Uint128::new(10);
         foo += 10_u32;
