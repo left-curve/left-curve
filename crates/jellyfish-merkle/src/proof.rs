@@ -15,10 +15,7 @@ pub enum ProofError {
     },
 
     #[error("root hash mismatch! computed: {computed}, actual: {actual}")]
-    RootHashMismatch {
-        computed: Hash,
-        actual:   Hash,
-    },
+    RootHashMismatch { computed: Hash, actual: Hash },
 
     // TODO: add more details to the error message?
     #[error("expecting child to not exist but it exists")]
@@ -52,20 +49,20 @@ pub struct NonMembershipProof {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ProofNode {
     Internal {
-        left_hash:  Option<Hash>,
+        left_hash: Option<Hash>,
         right_hash: Option<Hash>,
     },
     Leaf {
-        key_hash:   Hash,
+        key_hash: Hash,
         value_hash: Hash,
     },
 }
 
 pub fn verify_proof(
-    root_hash:  &Hash,
-    key_hash:   &Hash,
+    root_hash: &Hash,
+    key_hash: &Hash,
     value_hash: Option<&Hash>,
-    proof:      &Proof,
+    proof: &Proof,
 ) -> Result<(), ProofError> {
     match (value_hash, proof) {
         (Some(value_hash), Proof::Membership(proof)) => {
@@ -74,26 +71,22 @@ pub fn verify_proof(
         (None, Proof::NonMembership(proof)) => {
             verify_non_membership_proof(root_hash, key_hash, proof)
         },
-        (Some(_), Proof::NonMembership(_)) => {
-            Err(ProofError::IncorrectProofType {
-                expect: "membership",
-                actual: "non-membership",
-            })
-        },
-        (None, Proof::Membership(_)) => {
-            Err(ProofError::IncorrectProofType {
-                expect: "non-membership",
-                actual: "membership",
-            })
-        },
+        (Some(_), Proof::NonMembership(_)) => Err(ProofError::IncorrectProofType {
+            expect: "membership",
+            actual: "non-membership",
+        }),
+        (None, Proof::Membership(_)) => Err(ProofError::IncorrectProofType {
+            expect: "non-membership",
+            actual: "membership",
+        }),
     }
 }
 
 pub fn verify_membership_proof(
-    root_hash:  &Hash,
-    key_hash:   &Hash,
+    root_hash: &Hash,
+    key_hash: &Hash,
     value_hash: &Hash,
-    proof:      &MembershipProof,
+    proof: &MembershipProof,
 ) -> Result<(), ProofError> {
     let bitarray = BitArray::from_bytes(key_hash);
     let hash = hash_leaf_node(key_hash, value_hash);
@@ -103,16 +96,23 @@ pub fn verify_membership_proof(
 
 pub fn verify_non_membership_proof(
     root_hash: &Hash,
-    key_hash:  &Hash,
-    proof:     &NonMembershipProof,
+    key_hash: &Hash,
+    proof: &NonMembershipProof,
 ) -> Result<(), ProofError> {
     let bitarray = BitArray::from_bytes(key_hash);
     let hash = match &proof.node {
         // if the node given is an internal node, we check the bit at the depth.
         // if the bit is a 0, it must not have a left child; if the bit is a 1,
         // it must not have a right child.
-        ProofNode::Internal { left_hash, right_hash } => {
-            match (bitarray.bit_at_index(proof.sibling_hashes.len()), left_hash, right_hash) {
+        ProofNode::Internal {
+            left_hash,
+            right_hash,
+        } => {
+            match (
+                bitarray.bit_at_index(proof.sibling_hashes.len()),
+                left_hash,
+                right_hash,
+            ) {
                 (0, Some(_), _) | (1, _, Some(_)) => {
                     return Err(ProofError::UnexpectedChild);
                 },
@@ -121,18 +121,15 @@ pub fn verify_non_membership_proof(
         },
         // if the node given is a leaf, it's bit path must share a common prefix
         // with the key we want to prove not exist.
-        ProofNode::Leaf { key_hash, value_hash } => {
+        ProofNode::Leaf {
+            key_hash,
+            value_hash,
+        } => {
             let non_exist_bitarray = BitArray::from_bytes(key_hash);
-            let exist_bits = bitarray.range(
-                None,
-                Some(proof.sibling_hashes.len()),
-                Order::Descending,
-            );
-            let non_exist_bits = non_exist_bitarray.range(
-                None,
-                Some(proof.sibling_hashes.len()),
-                Order::Descending,
-            );
+            let exist_bits =
+                bitarray.range(None, Some(proof.sibling_hashes.len()), Order::Descending);
+            let non_exist_bits =
+                non_exist_bitarray.range(None, Some(proof.sibling_hashes.len()), Order::Descending);
             if exist_bits.zip(non_exist_bits).any(|(a, b)| a != b) {
                 return Err(ProofError::NotCommonPrefix);
             }
@@ -144,12 +141,15 @@ pub fn verify_non_membership_proof(
 }
 
 fn compute_and_compare_root_hash(
-    root_hash:      &Hash,
-    bitarray:       &BitArray,
+    root_hash: &Hash,
+    bitarray: &BitArray,
     sibling_hashes: &[Option<Hash>],
-    mut hash:       Hash,
+    mut hash: Hash,
 ) -> Result<(), ProofError> {
-    for (bit, sibling_hash) in bitarray.range(None, Some(sibling_hashes.len()), Order::Descending).zip(sibling_hashes) {
+    for (bit, sibling_hash) in bitarray
+        .range(None, Some(sibling_hashes.len()), Order::Descending)
+        .zip(sibling_hashes)
+    {
         if bit == 0 {
             hash = hash_internal_node(Some(&hash), sibling_hash.as_ref());
         } else {
@@ -179,16 +179,36 @@ mod tests {
     };
 
     // use the same test case as in tree.rs
-    const HASH_ROOT: Hash = Hash::from_slice(hex!("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"));
-    const HASH_0:    Hash = Hash::from_slice(hex!("b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"));
-    const HASH_1:    Hash = Hash::from_slice(hex!("cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"));
-    const HASH_01:   Hash = Hash::from_slice(hex!("521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"));
-    const HASH_010:  Hash = Hash::from_slice(hex!("c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"));
-    const HASH_011:  Hash = Hash::from_slice(hex!("e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"));
-    const HASH_0110: Hash = Hash::from_slice(hex!("fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"));
-    const HASH_0111: Hash = Hash::from_slice(hex!("412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"));
-    const HASH_M:    Hash = Hash::from_slice(hex!("62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"));
-    const HASH_BAR:  Hash = Hash::from_slice(hex!("fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"));
+    const HASH_ROOT: Hash = Hash::from_slice(hex!(
+        "ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"
+    ));
+    const HASH_0: Hash = Hash::from_slice(hex!(
+        "b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"
+    ));
+    const HASH_1: Hash = Hash::from_slice(hex!(
+        "cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"
+    ));
+    const HASH_01: Hash = Hash::from_slice(hex!(
+        "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"
+    ));
+    const HASH_010: Hash = Hash::from_slice(hex!(
+        "c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"
+    ));
+    const HASH_011: Hash = Hash::from_slice(hex!(
+        "e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"
+    ));
+    const HASH_0110: Hash = Hash::from_slice(hex!(
+        "fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"
+    ));
+    const HASH_0111: Hash = Hash::from_slice(hex!(
+        "412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"
+    ));
+    const HASH_M: Hash = Hash::from_slice(hex!(
+        "62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"
+    ));
+    const HASH_BAR: Hash = Hash::from_slice(hex!(
+        "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
+    ));
 
     #[test_case(
         "r",
@@ -236,7 +256,7 @@ mod tests {
         };
         "proving (a, buzz)"
     )]
-    fn verifying_membership(key: &str, value: &str, proof: MembershipProof){
+    fn verifying_membership(key: &str, value: &str, proof: MembershipProof) {
         assert!(verify_membership_proof(
             &HASH_ROOT,
             &hash(key.as_bytes()),
@@ -274,12 +294,7 @@ mod tests {
         "proving o"
     )]
     fn verifying_non_membership(key: &str, proof: NonMembershipProof) {
-        assert!(verify_non_membership_proof(
-            &HASH_ROOT,
-            &hash(key.as_bytes()),
-            &proof,
-        )
-        .is_ok());
+        assert!(verify_non_membership_proof(&HASH_ROOT, &hash(key.as_bytes()), &proof,).is_ok());
     }
 
     // TODO: add fail cases for proofs

@@ -20,7 +20,8 @@ impl Response {
     }
 
     pub fn add_messages(mut self, msgs: impl IntoIterator<Item = Message>) -> Self {
-        self.submsgs.extend(msgs.into_iter().map(SubMessage::reply_never));
+        self.submsgs
+            .extend(msgs.into_iter().map(SubMessage::reply_never));
         self
     }
 

@@ -1,6 +1,7 @@
 use {
     crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
     borsh::{BorshDeserialize, BorshSerialize},
+    elsa::sync::FrozenVec,
     grug_types::{
         from_json_value, Api, Context, GenericResult, Json, Querier, Response, Storage,
         SubMsgResult,
@@ -9,7 +10,6 @@ use {
         make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
         unwrap_into_generic_result, ImmutableCtx, MutableCtx, SudoCtx,
     },
-    elsa::sync::FrozenVec,
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
 };

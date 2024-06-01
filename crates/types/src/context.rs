@@ -7,12 +7,12 @@ use {
 /// host constructs this, serialize to bytes, and pass it to the Wasm module.
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct Context {
-    pub chain_id:        String,
-    pub block_height:    Uint64,
+    pub chain_id: String,
+    pub block_height: Uint64,
     pub block_timestamp: Timestamp,
-    pub block_hash:      Hash,
-    pub contract:        Addr,
-    pub sender:          Option<Addr>,
-    pub funds:           Option<Coins>,
-    pub simulate:        Option<bool>,
+    pub block_hash: Hash,
+    pub contract: Addr,
+    pub sender: Option<Addr>,
+    pub funds: Option<Coins>,
+    pub simulate: Option<bool>,
 }

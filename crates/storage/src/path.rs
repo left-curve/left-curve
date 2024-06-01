@@ -1,91 +1,170 @@
 use {
-    crate::RawKey,
+    crate::{Borsh, Encoding, Proto, RawKey},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        from_borsh_slice, nested_namespaces_with_key, to_borsh_vec, StdError, StdResult, Storage,
+        from_borsh_slice, from_proto_slice, nested_namespaces_with_key, to_borsh_vec, to_proto_vec,
+        StdError, StdResult, Storage,
     },
+    prost::Message,
     std::marker::PhantomData,
 };
 
-pub struct PathBuf<T> {
+pub struct PathBuf<T, E: Encoding = Borsh> {
     storage_key: Vec<u8>,
-    _data_type:  PhantomData<T>,
+    data: PhantomData<T>,
+    encoding: PhantomData<E>,
 }
 
-impl<T> PathBuf<T> {
+impl<T, E> PathBuf<T, E>
+where
+    E: Encoding,
+{
     pub fn new(namespace: &[u8], prefixes: &[RawKey], maybe_key: Option<&RawKey>) -> Self {
         Self {
             storage_key: nested_namespaces_with_key(Some(namespace), prefixes, maybe_key),
-            _data_type:  PhantomData,
+            data: PhantomData,
+            encoding: PhantomData,
         }
     }
 
-    pub fn as_path(&self) -> Path<'_, T> {
+    pub fn as_path(&self) -> Path<'_, T, E> {
         Path {
             storage_key: self.storage_key.as_slice(),
-            _data_type:  self._data_type,
+            data: self.data,
+            encoding: self.encoding,
         }
     }
 }
 
-pub struct Path<'a, T> {
+pub struct Path<'a, T, E: Encoding = Borsh> {
     storage_key: &'a [u8],
-    _data_type:  PhantomData<T>,
+    data: PhantomData<T>,
+    encoding: PhantomData<E>,
 }
 
-impl<'a, T> Path<'a, T> {
+impl<'a, T, E> Path<'a, T, E>
+where
+    E: Encoding,
+{
     pub(crate) fn from_raw(storage_key: &'a [u8]) -> Self {
         Self {
             storage_key,
-            _data_type: PhantomData,
+            data: PhantomData,
+            encoding: PhantomData,
         }
+    }
+
+    pub fn exists(&self, storage: &dyn Storage) -> bool {
+        storage.read(self.storage_key).is_some()
+    }
+
+    pub fn remove(&self, storage: &mut dyn Storage) {
+        storage.remove(self.storage_key);
     }
 }
 
-impl<'a, T> Path<'a, T>
+// ----------------------------------- borsh -----------------------------------
+
+impl<'a, T> Path<'a, T, Borsh>
 where
-    T: BorshSerialize + BorshDeserialize,
+    T: BorshSerialize,
 {
-    pub fn exists(&self, store: &dyn Storage) -> bool {
-        store.read(self.storage_key).is_some()
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        let bytes = to_borsh_vec(data)?;
+        storage.write(self.storage_key, &bytes);
+        Ok(())
+    }
+}
+
+impl<'a, T> Path<'a, T, Borsh>
+where
+    T: BorshDeserialize,
+{
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        storage
+            .read(self.storage_key)
+            .map(from_borsh_slice)
+            .transpose()
     }
 
-    pub fn may_load(&self, store: &dyn Storage) -> StdResult<Option<T>> {
-        store.read(self.storage_key).map(from_borsh_slice).transpose()
-    }
-
-    pub fn load(&self, store: &dyn Storage) -> StdResult<T> {
-        store
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        storage
             .read(self.storage_key)
             .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
             .and_then(from_borsh_slice)
     }
+}
 
+impl<'a, T> Path<'a, T, Borsh>
+where
+    T: BorshSerialize + BorshDeserialize,
+{
     // compared to the original cosmwasm, we require `action` to return an
     // option, which in case of None leads to the record being deleted.
-    pub fn update<A, E>(&self, store: &mut dyn Storage, action: A) -> Result<Option<T>, E>
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
     where
         A: FnOnce(Option<T>) -> Result<Option<T>, E>,
         E: From<StdError>,
     {
-        let maybe_data = action(self.may_load(store)?)?;
+        let maybe_data = action(self.may_load(storage)?)?;
 
         if let Some(data) = &maybe_data {
-            self.save(store, data)?;
+            self.save(storage, data)?;
         } else {
-            self.remove(store);
+            self.remove(storage);
         }
 
         Ok(maybe_data)
     }
+}
 
-    pub fn save(&self, store: &mut dyn Storage, data: &T) -> StdResult<()> {
-        let bytes = to_borsh_vec(data)?;
-        store.write(self.storage_key, &bytes);
-        Ok(())
+// ----------------------------------- proto -----------------------------------
+
+impl<'a, T> Path<'a, T, Proto>
+where
+    T: Message,
+{
+    // Note that for Protobuf, this function doesn't need to return a Result,
+    // because proto serialization always succeeds.
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) {
+        let bytes = to_proto_vec(data);
+        storage.write(self.storage_key, &bytes);
+    }
+}
+
+impl<'a, T> Path<'a, T, Proto>
+where
+    T: Message + Default,
+{
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        storage
+            .read(self.storage_key)
+            .map(from_proto_slice)
+            .transpose()
     }
 
-    pub fn remove(&self, store: &mut dyn Storage) {
-        store.remove(self.storage_key);
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        storage
+            .read(self.storage_key)
+            .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
+            .and_then(from_proto_slice)
+    }
+
+    // compared to the original cosmwasm, we require `action` to return an
+    // option, which in case of None leads to the record being deleted.
+    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
+    where
+        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        let maybe_data = action(self.may_load(storage)?)?;
+
+        if let Some(data) = &maybe_data {
+            self.save(storage, data);
+        } else {
+            self.remove(storage);
+        }
+
+        Ok(maybe_data)
     }
 }

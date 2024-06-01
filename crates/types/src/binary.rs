@@ -8,7 +8,9 @@ use {
     },
 };
 
-#[derive(BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub struct Binary(Vec<u8>);
 
 impl Binary {

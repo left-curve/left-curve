@@ -21,43 +21,28 @@ pub enum AppError {
     Unauthorized,
 
     #[error("Incorrect block height! expecting: {expect}, actual: {actual}")]
-    IncorrectBlockHeight {
-        expect: u64,
-        actual: u64,
-    },
+    IncorrectBlockHeight { expect: u64, actual: u64 },
 
     #[error("Owner account is not set")]
     OwnerNotSet,
 
     #[error("Sender is not the owner! sender: {sender}, owner: {owner}")]
-    NotOwner {
-        sender: Addr,
-        owner:  Addr,
-    },
+    NotOwner { sender: Addr, owner: Addr },
 
     #[error("Admin account is not set")]
     AdminNotSet,
 
     #[error("Sender is not the admin! sender: {sender}, admin: {admin}")]
-    NotAdmin {
-        sender: Addr,
-        admin:  Addr,
-    },
+    NotAdmin { sender: Addr, admin: Addr },
 
     #[error("Wasm byte code with hash `{hash}` already exists")]
-    CodeExists {
-        hash: Hash,
-    },
+    CodeExists { hash: Hash },
 
     #[error("Account with address `{address}` already exists")]
-    AccountExists {
-        address: Addr,
-    },
+    AccountExists { address: Addr },
 
     #[error("Code hash is not allowed as IBC client: `{code_hash}`")]
-    NotAllowedClient {
-        code_hash: Hash,
-    },
+    NotAllowedClient { code_hash: Hash },
 }
 
 impl AppError {

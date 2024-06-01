@@ -2,14 +2,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Event {
-    pub r#type:     String,
+    pub r#type: String,
     pub attributes: Vec<Attribute>,
 }
 
 impl Event {
     pub fn new(ty: impl ToString) -> Self {
         Self {
-            r#type:     ty.to_string(),
+            r#type: ty.to_string(),
             attributes: vec![],
         }
     }
@@ -27,14 +27,14 @@ impl Event {
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
-    pub key:   String,
+    pub key: String,
     pub value: String,
 }
 
 impl Attribute {
     pub fn new(key: impl ToString, value: impl ToString) -> Self {
         Self {
-            key:   key.to_string(),
+            key: key.to_string(),
             value: value.to_string(),
         }
     }

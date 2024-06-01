@@ -6,10 +6,7 @@ pub enum VmError {
     Std(#[from] StdError),
 
     #[error("attempting to call `{name}` with {num} inputs, but this function takes a different number of inputs")]
-    IncorrectNumberOfInputs {
-        name: String,
-        num: usize,
-    },
+    IncorrectNumberOfInputs { name: String, num: usize },
 }
 
 impl From<VmError> for AppError {

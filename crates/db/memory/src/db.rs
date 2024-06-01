@@ -28,7 +28,7 @@ struct MemDbInner {
     /// A HashMap is chosen over BTreeMap because our Merkle tree implementation
     /// does not need to iterate raw keys in this store.
     state_commitment: HashMap<Vec<u8>, Vec<u8>>,
-    /// A versioned key-value store: key => (version => value)
+    /// A versioned key-value storage: key => (version => value)
     state_storage: VersionedMap<Vec<u8>, Vec<u8>>,
     /// Uncommitted changes
     changeset: Option<ChangeSet>,
@@ -90,9 +90,7 @@ impl Db for MemDb {
     type Proof = Proof;
 
     fn state_commitment(&self) -> impl Storage + Clone + 'static {
-        StateCommitment {
-            db: self.clone(),
-        }
+        StateCommitment { db: self.clone() }
     }
 
     fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
@@ -189,7 +187,8 @@ pub struct StateCommitment {
 
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.db.with_read(|inner| inner.state_commitment.get(key).cloned())
+        self.db
+            .with_read(|inner| inner.state_commitment.get(key).cloned())
     }
 
     fn scan<'a>(
@@ -220,7 +219,8 @@ pub struct StateStorage {
 
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.db.with_read(|inner| inner.state_storage.get(key, self.version).cloned())
+        self.db
+            .with_read(|inner| inner.state_storage.get(key, self.version).cloned())
     }
 
     fn scan<'a>(

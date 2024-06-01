@@ -32,7 +32,7 @@ pub(crate) fn hash(data: &[u8]) -> Identity256 {
 /// Here we define a container struct that implements the required traits.
 ///
 /// Adapted from:
-/// https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs
+/// <https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs>
 #[derive(Default, Clone)]
 pub struct Identity256 {
     bytes: GenericArray<u8, U32>,

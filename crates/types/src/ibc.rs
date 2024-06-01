@@ -25,14 +25,10 @@ pub enum IbcClientStatus {
 pub enum IbcClientUpdateMsg {
     /// Present the client with a new header. The client will verify it and
     /// perform updates to the client and consensus states.
-    Update {
-        header: Json,
-    },
+    Update { header: Json },
     /// Present the client with a proof of misbehavior. The client will verify
     /// it and freeze itself.
-    UpdateOnMisbehavior {
-        misbehavior: Json,
-    },
+    UpdateOnMisbehavior { misbehavior: Json },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

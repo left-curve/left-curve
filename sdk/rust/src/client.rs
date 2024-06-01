@@ -1,13 +1,13 @@
 use {
     crate::{AdminOption, SigningKey},
     anyhow::{bail, ensure},
-    grug_account::{QueryMsg, StateResponse},
-    grug_jmt::Proof,
     grug::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
         Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx,
         WasmRawResponse,
     },
+    grug_account::{QueryMsg, StateResponse},
+    grug_jmt::Proof,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
     tendermint::block::Height,
@@ -19,9 +19,9 @@ use {
 
 pub struct SigningOptions {
     pub signing_key: SigningKey,
-    pub sender:      Addr,
-    pub chain_id:    Option<String>,
-    pub sequence:    Option<u32>,
+    pub sender: Addr,
+    pub chain_id: Option<String>,
+    pub sequence: Option<u32>,
 }
 
 pub struct Client {
@@ -31,9 +31,7 @@ pub struct Client {
 impl Client {
     pub fn connect(endpoint: &str) -> anyhow::Result<Self> {
         let inner = HttpClient::new(endpoint)?;
-        Ok(Self {
-            inner,
-        })
+        Ok(Self { inner })
     }
 
     // -------------------------- tendermint methods ---------------------------
@@ -68,13 +66,16 @@ impl Client {
 
     async fn query(
         &self,
-        path:   &str,
-        data:   Vec<u8>,
+        path: &str,
+        data: Vec<u8>,
         height: Option<u64>,
-        prove:  bool,
+        prove: bool,
     ) -> anyhow::Result<AbciQuery> {
         let height = height.map(|h| h.try_into()).transpose()?;
-        let res = self.inner.abci_query(Some(path.into()), data, height, prove).await?;
+        let res = self
+            .inner
+            .abci_query(Some(path.into()), data, height, prove)
+            .await?;
         if res.code.is_err() {
             bail!(
                 "query failed! codespace = {}, code = {}, log = {}",
@@ -88,9 +89,9 @@ impl Client {
 
     pub async fn query_store(
         &self,
-        key:    Vec<u8>,
+        key: Vec<u8>,
         height: Option<u64>,
-        prove:  bool,
+        prove: bool,
     ) -> anyhow::Result<(Option<Vec<u8>>, Option<Proof>)> {
         let res = self.query("/store", key.clone(), height, prove).await?;
         let value = if res.value.is_empty() {
@@ -116,7 +117,9 @@ impl Client {
         req: &QueryRequest,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
-        let res = self.query("/app", to_json_vec(req)?.to_vec(), height, false).await?;
+        let res = self
+            .query("/app", to_json_vec(req)?.to_vec(), height, false)
+            .await?;
         Ok(from_json_slice(res.value)?)
     }
 
@@ -131,7 +134,9 @@ impl Client {
         denom: String,
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
-        let res = self.query_app(&QueryRequest::Balance { address, denom }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::Balance { address, denom }, height)
+            .await?;
         Ok(res.as_balance())
     }
 
@@ -142,12 +147,23 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self.query_app(&QueryRequest::Balances { address, start_after, limit }, height).await?;
+        let res = self
+            .query_app(
+                &QueryRequest::Balances {
+                    address,
+                    start_after,
+                    limit,
+                },
+                height,
+            )
+            .await?;
         Ok(res.as_balances())
     }
 
     pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
-        let res = self.query_app(&QueryRequest::Supply { denom }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::Supply { denom }, height)
+            .await?;
         Ok(res.as_supply())
     }
 
@@ -157,7 +173,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self.query_app(&QueryRequest::Supplies { start_after, limit }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::Supplies { start_after, limit }, height)
+            .await?;
         Ok(res.as_supplies())
     }
 
@@ -172,12 +190,20 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Vec<Hash>> {
-        let res = self.query_app(&QueryRequest::Codes { start_after, limit }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::Codes { start_after, limit }, height)
+            .await?;
         Ok(res.as_codes())
     }
 
-    pub async fn query_account(&self, address: Addr, height: Option<u64>) -> anyhow::Result<AccountResponse> {
-        let res = self.query_app(&QueryRequest::Account { address }, height).await?;
+    pub async fn query_account(
+        &self,
+        address: Addr,
+        height: Option<u64>,
+    ) -> anyhow::Result<AccountResponse> {
+        let res = self
+            .query_app(&QueryRequest::Account { address }, height)
+            .await?;
         Ok(res.as_account())
     }
 
@@ -187,7 +213,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Vec<AccountResponse>> {
-        let res = self.query_app(&QueryRequest::Accounts { start_after, limit }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::Accounts { start_after, limit }, height)
+            .await?;
         Ok(res.as_accounts())
     }
 
@@ -197,7 +225,9 @@ impl Client {
         key: Binary,
         height: Option<u64>,
     ) -> anyhow::Result<WasmRawResponse> {
-        let res = self.query_app(&QueryRequest::WasmRaw { contract, key }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::WasmRaw { contract, key }, height)
+            .await?;
         Ok(res.as_wasm_raw())
     }
 
@@ -208,7 +238,9 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<R> {
         let msg = to_json_value(msg)?;
-        let res = self.query_app(&QueryRequest::WasmSmart { contract, msg }, height).await?;
+        let res = self
+            .query_app(&QueryRequest::WasmSmart { contract, msg }, height)
+            .await?;
         Ok(from_json_value(res.as_wasm_smart().data)?)
     }
 
@@ -223,7 +255,9 @@ impl Client {
         msgs: Vec<Message>,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let maybe_res = self.send_tx_with_confirmation(msgs, sign_opts, |_| Ok(true)).await?;
+        let maybe_res = self
+            .send_tx_with_confirmation(msgs, sign_opts, |_| Ok(true))
+            .await?;
         Ok(maybe_res.unwrap())
     }
 
@@ -271,16 +305,18 @@ impl Client {
         new_cfg: Config,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::SetConfig { new_cfg }], sign_opts).await
+        self.send_tx(vec![Message::SetConfig { new_cfg }], sign_opts)
+            .await
     }
 
     pub async fn transfer(
         &self,
         to: Addr,
         coins: Coins,
-        sign_opts: &SigningOptions
+        sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Transfer { to, coins }], sign_opts).await
+        self.send_tx(vec![Message::Transfer { to, coins }], sign_opts)
+            .await
     }
 
     pub async fn upload(
@@ -288,7 +324,8 @@ impl Client {
         code: Binary,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Upload { code }], sign_opts).await
+        self.send_tx(vec![Message::Upload { code }], sign_opts)
+            .await
     }
 
     pub async fn instantiate<M: Serialize>(
@@ -303,7 +340,18 @@ impl Client {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let msg = to_json_value(msg)?;
         let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
-        let res = self.send_tx(vec![Message::Instantiate { code_hash, msg, salt, funds, admin }], sign_opts).await?;
+        let res = self
+            .send_tx(
+                vec![Message::Instantiate {
+                    code_hash,
+                    msg,
+                    salt,
+                    funds,
+                    admin,
+                }],
+                sign_opts,
+            )
+            .await?;
         Ok((address, res))
     }
 
@@ -321,8 +369,16 @@ impl Client {
         let msg = to_json_value(msg)?;
         let admin = admin.decide(&address);
         let upload_msg = Message::Upload { code };
-        let instantiate_msg = Message::Instantiate { code_hash, msg, salt, funds, admin };
-        let res = self.send_tx(vec![upload_msg, instantiate_msg], sign_opts).await?;
+        let instantiate_msg = Message::Instantiate {
+            code_hash,
+            msg,
+            salt,
+            funds,
+            admin,
+        };
+        let res = self
+            .send_tx(vec![upload_msg, instantiate_msg], sign_opts)
+            .await?;
         Ok((address, res))
     }
 
@@ -334,7 +390,15 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = to_json_value(msg)?;
-        self.send_tx(vec![Message::Execute { contract, msg, funds }], sign_opts).await
+        self.send_tx(
+            vec![Message::Execute {
+                contract,
+                msg,
+                funds,
+            }],
+            sign_opts,
+        )
+        .await
     }
 
     pub async fn migrate<M: Serialize>(
@@ -345,10 +409,18 @@ impl Client {
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = to_json_value(msg)?;
-        self.send_tx(vec![Message::Migrate { contract, new_code_hash, msg }], sign_opts).await
+        self.send_tx(
+            vec![Message::Migrate {
+                contract,
+                new_code_hash,
+                msg,
+            }],
+            sign_opts,
+        )
+        .await
     }
 
-    pub async fn create_client<A: Serialize, B: Serialize>(
+    pub async fn client_create<A: Serialize, B: Serialize>(
         &self,
         code_hash: Hash,
         client_state: &A,
@@ -359,7 +431,7 @@ impl Client {
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
         let client_state = to_json_value(client_state)?;
         let consensus_state = to_json_value(consensus_state)?;
-        let msg = Message::CreateClient {
+        let msg = Message::ClientCreate {
             code_hash,
             client_state,
             consensus_state,
@@ -369,26 +441,26 @@ impl Client {
         Ok((address, res))
     }
 
-    pub async fn update_client<M: Serialize>(
+    pub async fn client_update<M: Serialize>(
         &self,
         client_id: Addr,
         header: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::UpdateClient {
+        let msg = Message::ClientUpdate {
             client_id,
             header: to_json_value(header)?,
         };
         self.send_tx(vec![msg], sign_opts).await
     }
 
-    pub async fn freeze_client<M: Serialize>(
+    pub async fn client_freeze<M: Serialize>(
         &self,
         client_id: Addr,
         misbehavior: &M,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::FreezeClient {
+        let msg = Message::ClientFreeze {
             client_id,
             misbehavior: to_json_value(misbehavior)?,
         };

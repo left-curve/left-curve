@@ -31,13 +31,12 @@ pub struct Decimal256(Uint256);
 forward_ref_partial_eq!(Decimal256, Decimal256);
 
 impl Decimal256 {
-    pub const DECIMAL_PLACES: u32 = 18;
     pub const DECIMAL_FRACTIONAL: Uint256 = Uint256::from_u128(1_000_000_000_000_000_000);
-
-    pub const MAX:  Self = Self(Uint256::MAX);
-    pub const MIN:  Self = Self(Uint256::MIN);
+    pub const DECIMAL_PLACES: u32 = 18;
+    pub const MAX: Self = Self(Uint256::MAX);
+    pub const MIN: Self = Self(Uint256::MIN);
+    pub const ONE: Self = Self(Self::DECIMAL_FRACTIONAL);
     pub const ZERO: Self = Self(Uint256::ZERO);
-    pub const ONE:  Self = Self(Self::DECIMAL_FRACTIONAL);
 
     pub const fn is_zero(self) -> bool {
         self.0.is_zero()
@@ -67,7 +66,7 @@ impl Decimal256 {
 
     pub fn checked_multiply_ratio(
         self,
-        nominator:   Uint256,
+        nominator: Uint256,
         denominator: Uint256,
     ) -> StdResult<Self> {
         (Uint512::from(self.0) * Uint512::from(nominator) / Uint512::from(denominator))
@@ -175,7 +174,8 @@ impl FromStr for Decimal256 {
             if fraction_part.is_empty() {
                 Uint256::ZERO
             } else {
-                let exp = Self::DECIMAL_PLACES.checked_sub(fraction_part.len() as u32)
+                let exp = Self::DECIMAL_PLACES
+                    .checked_sub(fraction_part.len() as u32)
                     .ok_or(StdError::deserialize::<Self>("too many decimal places"))?;
                 let fractional_factor = Uint256::from_u128(10u128.pow(exp));
                 Uint256::from_str(fraction_part)?.checked_mul(fractional_factor)?
@@ -206,7 +206,10 @@ impl fmt::Display for Decimal256 {
         if fractional.is_zero() {
             write!(f, "{whole}")
         } else {
-            let s = format!("{whole}.{fractional:0>padding$}", padding = Self::DECIMAL_PLACES as usize);
+            let s = format!(
+                "{whole}.{fractional:0>padding$}",
+                padding = Self::DECIMAL_PLACES as usize
+            );
             f.write_str(s.trim_end_matches('0'))
         }
     }
@@ -268,7 +271,10 @@ mod tests {
     fn multiplication() {
         let lhs = Decimal256::from_str("74567.67567654").unwrap();
         let rhs = Decimal256::from_str("42143.34452434").unwrap();
-        assert_eq!(lhs * rhs, Decimal256::from_str("3142531246.4156730139969836").unwrap());
+        assert_eq!(
+            lhs * rhs,
+            Decimal256::from_str("3142531246.4156730139969836").unwrap()
+        );
     }
 
     #[test]
@@ -276,7 +282,10 @@ mod tests {
         let lhs = Decimal256::from_str("74567.67567654").unwrap();
         let rhs = Decimal256::from_str("42143.34452434").unwrap();
         // note: keep 18 decimal places
-        assert_eq!(lhs / rhs, Decimal256::from_str("1.769382010805365527").unwrap());
+        assert_eq!(
+            lhs / rhs,
+            Decimal256::from_str("1.769382010805365527").unwrap()
+        );
     }
 
     #[test_case(

@@ -30,31 +30,19 @@ pub enum StdError {
     },
 
     #[error("Failed to parse into Coins: {reason}")]
-    ParseCoins {
-        reason: String,
-    },
+    ParseCoins { reason: String },
 
     #[error("Invalid payment: expecting {expect} coins, found {actual}")]
-    Payment {
-        expect: usize,
-        actual: usize,
-    },
+    Payment { expect: usize, actual: usize },
 
     #[error("Cannot find denom `{denom}` in coins")]
-    DenomNotFound {
-        denom: String,
-    },
+    DenomNotFound { denom: String },
 
     #[error("Data not found! type: {ty}, storage key: {key}")]
-    DataNotFound {
-        ty: &'static str,
-        key: String,
-    },
+    DataNotFound { ty: &'static str, key: String },
 
     #[error("Cannot find iterator with ID {iterator_id}")]
-    IteratorNotFound {
-        iterator_id: i32,
-    },
+    IteratorNotFound { iterator_id: i32 },
 
     #[error("Conversion overflow: {source_type}({value}) > {target_type}::MAX")]
     OverflowConversion {
@@ -92,47 +80,25 @@ pub enum StdError {
     },
 
     #[error("Left shift overflow: {a} << {b}")]
-    OverflowShl {
-        a: String,
-        b: u32,
-    },
+    OverflowShl { a: String, b: u32 },
 
     #[error("Right shift overflow: {a} >> {b}")]
-    OverflowShr {
-        a: String,
-        b: u32,
-    },
+    OverflowShr { a: String, b: u32 },
 
     #[error("Invalid 0 log")]
     ZeroLog {},
 
     #[error("Division by zero: {a} / 0")]
-    DivisionByZero {
-        a: String,
-    },
+    DivisionByZero { a: String },
 
     #[error("Remainder by zero: {a} % 0")]
-    RemainderByZero {
-        a: String,
-    },
+    RemainderByZero { a: String },
 
     #[error("Failed to serialize into json! type: {ty}, reason: {reason}")]
-    Serialize {
-        ty: &'static str,
-        reason: String,
-    },
+    Serialize { ty: &'static str, reason: String },
 
     #[error("Failed to deserialize from json! type: {ty}, reason: {reason}")]
-    Deserialize {
-        ty: &'static str,
-        reason: String,
-    },
-
-    #[error("Negative square! type: {ty}, value: {value}")]
-    NegativeSquare {
-        ty: &'static str,
-        value: String,
-    },
+    Deserialize { ty: &'static str, reason: String },
 }
 
 impl StdError {
@@ -151,10 +117,7 @@ impl StdError {
     }
 
     pub fn payment(expect: usize, actual: usize) -> Self {
-        Self::Payment {
-            expect,
-            actual,
-        }
+        Self::Payment { expect, actual }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {
@@ -223,15 +186,11 @@ impl StdError {
     }
 
     pub fn division_by_zero<T: ToString>(a: T) -> Self {
-        Self::DivisionByZero {
-            a: a.to_string(),
-        }
+        Self::DivisionByZero { a: a.to_string() }
     }
 
     pub fn remainder_by_zero<T: ToString>(a: T) -> Self {
-        Self::RemainderByZero {
-            a: a.to_string(),
-        }
+        Self::RemainderByZero { a: a.to_string() }
     }
 
     pub fn serialize<T>(reason: impl ToString) -> Self {

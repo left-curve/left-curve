@@ -6,7 +6,7 @@ use {
 
 /// Temporary database path which calls DB::destroy when DBPath is dropped.
 /// Copyed from rust-rocksdb:
-/// https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8
+/// <https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8>
 pub struct TempDataDir {
     #[allow(dead_code)]
     dir: TempDir, // keep the value alive so that the directory isn't deleted prematurely
@@ -17,9 +17,12 @@ impl TempDataDir {
     /// Produces a fresh (non-existent) temporary path which will be
     /// DB::destroy'ed automatically.
     pub fn new(prefix: &str) -> Self {
-        let dir = tempfile::Builder::new().prefix(prefix).tempdir().unwrap_or_else(|err| {
-            panic!("failed to create temporary directory for DB: {err}");
-        });
+        let dir = tempfile::Builder::new()
+            .prefix(prefix)
+            .tempdir()
+            .unwrap_or_else(|err| {
+                panic!("failed to create temporary directory for DB: {err}");
+            });
         let path = dir.path().join("db");
         Self { dir, path }
     }

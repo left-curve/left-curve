@@ -3,8 +3,8 @@ name: Rust
 on: push
 
 jobs:
-  tests:
-    name: Tests
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -20,8 +20,8 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
-  lints:
-    name: Lints
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -33,5 +33,21 @@ jobs:
           toolchain: stable
           components: clippy
 
-      - name: Run lints
+      - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - name: Run rustfmt checks
+        run: cargo +nightly fmt --check --all

@@ -85,9 +85,7 @@ impl Storage for ExternalStorage {
 
         let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
 
-        Box::new(ExternalIterator {
-            iterator_id,
-        })
+        Box::new(ExternalIterator { iterator_id })
     }
 
     // note: cosmwasm doesn't allow empty values:
@@ -194,9 +192,8 @@ impl Api for ExternalApi {
         let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
-        let return_value = unsafe {
-            secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
-        };
+        let return_value =
+            unsafe { secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
         if return_value == 0 {
             Ok(())
@@ -216,9 +213,8 @@ impl Api for ExternalApi {
         let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
-        let return_value = unsafe {
-            secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize)
-        };
+        let return_value =
+            unsafe { secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
         if return_value == 0 {
             Ok(())

@@ -30,7 +30,6 @@ impl Hash {
     /// We use Hex encoding, which uses 2 ASCII characters per byte, so the
     /// ASCII length should be 64.
     pub const LENGTH: usize = 32;
-
     /// A zeroed-out hash. Useful as mockups or placeholders.
     pub const ZERO: Self = Self([0; Self::LENGTH]);
 }
@@ -80,7 +79,9 @@ impl TryFrom<Vec<u8>> for Hash {
 
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self>("hash is not of the correct length"));
+            return Err(StdError::deserialize::<Self>(
+                "hash is not of the correct length",
+            ));
         };
 
         Ok(Self(bytes))
@@ -92,7 +93,9 @@ impl TryFrom<&[u8]> for Hash {
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self>("hash is not of the correct length"));
+            return Err(StdError::deserialize::<Self>(
+                "hash is not of the correct length",
+            ));
         };
 
         Ok(Self(bytes))
@@ -103,8 +106,13 @@ impl FromStr for Hash {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
-            return Err(StdError::deserialize::<Self>("hash must only contain lowercase alphanumeric characters"));
+        if !s
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        {
+            return Err(StdError::deserialize::<Self>(
+                "hash must only contain lowercase alphanumeric characters",
+            ));
         }
 
         hex::decode(s)?.as_slice().try_into()
@@ -171,7 +179,9 @@ mod tests {
 
     // just a random block hash I grabbed from MintScan
     const MOCK_JSON: &str = "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
-    const MOCK_HASH: Hash = Hash(hex!("299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"));
+    const MOCK_HASH: Hash = Hash(hex!(
+        "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"
+    ));
 
     #[test]
     fn serializing() {
@@ -182,7 +192,10 @@ mod tests {
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_HASH, Hash::from_str(MOCK_JSON).unwrap());
-        assert_eq!(MOCK_HASH, from_json_value::<Hash>(json!(MOCK_JSON)).unwrap());
+        assert_eq!(
+            MOCK_HASH,
+            from_json_value::<Hash>(json!(MOCK_JSON)).unwrap()
+        );
 
         // uppercase hex strings are not accepted
         let illegal_json = json!(MOCK_JSON.to_uppercase());

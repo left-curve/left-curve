@@ -10,9 +10,7 @@ pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u3
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    let maybe_value = env.with_context_data(|ctx| -> VmResult<_> {
-        Ok(ctx.store.read(&key))
-    })?;
+    let maybe_value = env.with_context_data(|ctx| -> VmResult<_> { Ok(ctx.storage.read(&key)) })?;
 
     // if the record doesn't exist, we return a zero pointer
     let Some(value) = maybe_value else {
@@ -57,8 +55,11 @@ pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResul
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let maybe_record = env.with_context_data_mut(|ctx| -> VmResult<_> {
-        let iterator = ctx.iterators.get_mut(&iterator_id).ok_or(VmError::IteratorNotFound { iterator_id })?;
-        Ok(iterator.next(&ctx.store))
+        let iterator = ctx
+            .iterators
+            .get_mut(&iterator_id)
+            .ok_or(VmError::IteratorNotFound { iterator_id })?;
+        Ok(iterator.next(&ctx.storage))
     })?;
 
     // if the iterator has reached its end, return a zero pointer
@@ -87,7 +88,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
     env.with_context_data_mut(|ctx| -> VmResult<_> {
-        ctx.store.write(&key, &value);
+        ctx.storage.write(&key, &value);
         Ok(())
     })
 }
@@ -98,7 +99,7 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
     env.with_context_data_mut(|ctx| -> VmResult<_> {
-        ctx.store.remove(&key);
+        ctx.storage.remove(&key);
         Ok(())
     })
 }
@@ -111,7 +112,10 @@ pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -
     let msg_bytes = read_from_memory(env, &wasm_store, msg_ptr)?;
     let msg = String::from_utf8(msg_bytes)?;
 
-    info!(contract = addr.to_string(), msg, "Contract emitted debug message");
+    info!(
+        contract = addr.to_string(),
+        msg, "Contract emitted debug message"
+    );
 
     Ok(())
 }

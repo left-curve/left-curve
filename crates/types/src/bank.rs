@@ -5,10 +5,10 @@
 //! The bank contract MUST implement the following two entry points:
 //!
 //! ```ignore
-//! #[entry_point]
+//! #[grug_export]
 //! fn transfer<E>(ctx: TransferCtx, msg: TransferMsg) -> Result<Response, E>;
 //!
-//! #[entry_point]
+//! #[grug_export]
 //! fn query_bank<E>(ctx: QueryCtx, msg: BankQuery) -> Result<BankQueryResponse, E>;
 //! ```
 //!
@@ -17,7 +17,7 @@
 //! via this entry point.
 //!
 //! ```ignore
-//! #[entry_point]
+//! #[grug_export]
 //! fn receive<E>(ctx: ReceiveCtx) -> Result<Response, E>;
 //! ```
 //!
@@ -35,8 +35,8 @@ use {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TransferMsg {
-    pub from:  Addr,
-    pub to:    Addr,
+    pub from: Addr,
+    pub to: Addr,
     pub coins: Coins,
 }
 
@@ -55,19 +55,19 @@ pub struct TransferMsg {
 pub enum BankQueryMsg {
     Balance {
         address: Addr,
-        denom:   String,
+        denom: String,
     },
     Balances {
-        address:     Addr,
+        address: Addr,
         start_after: Option<String>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
     Supply {
         denom: String,
     },
     Supplies {
         start_after: Option<String>,
-        limit:       Option<u32>,
+        limit: Option<u32>,
     },
 }
 

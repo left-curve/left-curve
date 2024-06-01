@@ -72,11 +72,7 @@ where
             .and_then(|(_, op)| op.as_ref().into_option())
     }
 
-    pub fn range<R, T>(
-        &self,
-        range: R,
-        version: u64,
-    ) -> VersionedIterator<'_, K, V, R, T>
+    pub fn range<R, T>(&self, range: R, version: u64) -> VersionedIterator<'_, K, V, R, T>
     where
         K: Borrow<T>,
         T: Ord + ?Sized,

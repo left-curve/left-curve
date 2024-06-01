@@ -8,12 +8,12 @@ pub enum RawBound {
 
 /// Describe the limit for iteration.
 ///
-/// Typically we use an Option<Bound<T>> in contracts, where T implements the
-/// MapKey trait.
+/// Typically we use an `Option<Bound<T>>` in contracts, where `T` implements
+/// the `MapKey` trait.
 ///
-/// Compared to std::ops::Bound, it removes the unbounded option (which is to be
-/// represented by a None), and introduce. the Raw variants. We don't use the
-/// std Bound because it typically requires more verbose code in contracts.
+/// Compared to `std::ops::Bound`, it removes the unbounded option (which is to
+/// be represented by a `None`), and introduces the "raw" variants. We don't use
+/// std `Bound` because it typically requires more verbose code in contracts.
 pub enum Bound<K> {
     Inclusive(K),
     Exclusive(K),

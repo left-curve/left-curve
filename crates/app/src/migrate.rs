@@ -8,18 +8,18 @@ use {
 };
 
 pub fn do_migrate<VM>(
-    store:         Box<dyn Storage>,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    sender:        &Addr,
+    storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    sender: &Addr,
     new_code_hash: Hash,
-    msg:           &Json,
+    msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_migrate::<VM>(store, block, contract, sender, new_code_hash, msg) {
+    match _do_migrate::<VM>(storage, block, contract, sender, new_code_hash, msg) {
         Ok(events) => {
             info!(contract = contract.to_string(), "Migrated contract");
             Ok(events)
@@ -32,19 +32,19 @@ where
 }
 
 fn _do_migrate<VM>(
-    mut store:     Box<dyn Storage>,
-    block:         &BlockInfo,
-    contract:      &Addr,
-    sender:        &Addr,
+    mut storage: Box<dyn Storage>,
+    block: &BlockInfo,
+    contract: &Addr,
+    sender: &Addr,
     new_code_hash: Hash,
-    msg:           &Json,
+    msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&store)?;
-    let mut account = ACCOUNTS.load(&store, contract)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let mut account = ACCOUNTS.load(&storage, contract)?;
 
     // only the admin can update code hash
     let Some(admin) = &account.admin else {
@@ -57,22 +57,22 @@ where
     // save the new code hash
     let old_code_hash = account.code_hash;
     account.code_hash = new_code_hash;
-    ACCOUNTS.save(&mut store, contract, &account)?;
+    ACCOUNTS.save(&mut storage, contract, &account)?;
 
     // create VM instance
-    let program = load_program::<VM>(&store, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(store.clone(), block.clone(), contract, program)?;
+    let program = load_program::<VM>(&storage, &account.code_hash)?;
+    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), contract, program)?;
 
     // call the contract's migrate entry point
     let ctx = Context {
         chain_id,
-        block_height:    block.height,
+        block_height: block.height,
         block_timestamp: block.timestamp,
-        block_hash:      block.hash.clone(),
-        contract:        contract.clone(),
-        sender:          Some(sender.clone()),
-        funds:           None,
-        simulate:        None,
+        block_hash: block.hash.clone(),
+        contract: contract.clone(),
+        sender: Some(sender.clone()),
+        funds: None,
+        simulate: None,
     };
     let resp = instance.call_migrate(&ctx, msg)?.into_std_result()?;
 
@@ -83,7 +83,12 @@ where
         &account.code_hash,
         resp.attributes,
     )];
-    events.extend(handle_submessages::<VM>(store, block, &ctx.contract, resp.submsgs)?);
+    events.extend(handle_submessages::<VM>(
+        storage,
+        block,
+        &ctx.contract,
+        resp.submsgs,
+    )?);
 
     Ok(events)
 }

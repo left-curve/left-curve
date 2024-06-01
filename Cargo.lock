@@ -1376,7 +1376,6 @@ dependencies = [
  "sha2 0.10.8",
  "test-case",
  "thiserror",
- "tracing",
  "tracing-test",
 ]
 
@@ -1423,6 +1422,7 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "grug-types",
+ "prost",
 ]
 
 [[package]]
@@ -1449,6 +1449,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "proptest",
+ "prost",
  "serde",
  "serde_json",
  "serde_with",

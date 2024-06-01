@@ -1,7 +1,4 @@
-use {
-    clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm,
-    std::path::PathBuf,
-};
+use {clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm, std::path::PathBuf};
 
 #[derive(Parser)]
 pub struct StartCmd {

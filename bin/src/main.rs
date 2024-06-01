@@ -64,12 +64,16 @@ enum Command {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    tracing_subscriber::fmt().with_max_level(cli.tracing_level).init();
+    tracing_subscriber::fmt()
+        .with_max_level(cli.tracing_level)
+        .init();
 
     let app_dir = if let Some(dir) = cli.home {
         dir
     } else {
-        home_dir().ok_or(anyhow!("Failed to find home directory"))?.join(DEFAULT_APP_DIR)
+        home_dir()
+            .ok_or(anyhow!("Failed to find home directory"))?
+            .join(DEFAULT_APP_DIR)
     };
     let data_dir = app_dir.join("data");
     let keys_dir = app_dir.join("keys");

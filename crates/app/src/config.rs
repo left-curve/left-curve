@@ -5,11 +5,11 @@ use {
 };
 
 pub fn do_set_config(
-    store:   &mut dyn Storage,
-    sender:  &Addr,
+    storage: &mut dyn Storage,
+    sender: &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
-    match _do_set_config(store, sender, new_cfg) {
+    match _do_set_config(storage, sender, new_cfg) {
         Ok(events) => {
             info!("Config set");
             Ok(events)
@@ -22,12 +22,12 @@ pub fn do_set_config(
 }
 
 fn _do_set_config(
-    store:   &mut dyn Storage,
-    sender:  &Addr,
+    storage: &mut dyn Storage,
+    sender: &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
     // make sure the sender is authorized to set the config
-    let cfg = CONFIG.load(store)?;
+    let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
         return Err(AppError::OwnerNotSet);
     };
@@ -36,7 +36,7 @@ fn _do_set_config(
     }
 
     // save the new config
-    CONFIG.save(store, new_cfg)?;
+    CONFIG.save(storage, new_cfg)?;
 
     Ok(vec![new_set_config_event(sender)])
 }

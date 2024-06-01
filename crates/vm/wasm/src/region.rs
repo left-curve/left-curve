@@ -6,9 +6,9 @@ use {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Region {
-    pub offset:   u32,
+    pub offset: u32,
     pub capacity: u32,
-    pub length:   u32,
+    pub length: u32,
 }
 
 impl Region {
@@ -40,5 +40,11 @@ unsafe impl ValueType for Region {
 
 fn assert_size(buf: &[u8]) {
     let len = buf.len();
-    assert_eq!(len, Region::SIZE, "Incorrect byte size: expecting {}, got {}", Region::SIZE, len);
+    assert_eq!(
+        len,
+        Region::SIZE,
+        "Incorrect byte size: expecting {}, got {}",
+        Region::SIZE,
+        len
+    );
 }

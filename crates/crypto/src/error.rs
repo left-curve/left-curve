@@ -6,10 +6,7 @@ pub enum CryptoError {
     Signature(#[from] signature::Error),
 
     #[error("data is of incorrect length: expecting {expect}, found {actual}")]
-    IncorrectLength {
-        expect: usize,
-        actual: usize,
-    },
+    IncorrectLength { expect: usize, actual: usize },
 }
 
 impl CryptoError {

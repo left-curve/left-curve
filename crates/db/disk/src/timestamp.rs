@@ -25,7 +25,12 @@ impl From<u64> for U64Timestamp {
 impl From<&[u8]> for U64Timestamp {
     fn from(bytes: &[u8]) -> Self {
         // note: panic if slice is not exactly 8 bytes
-        debug_assert_eq!(bytes.len(), Self::SIZE, "[U64Timestamp]: incorrect length: {}", bytes.len());
+        debug_assert_eq!(
+            bytes.len(),
+            Self::SIZE,
+            "[U64Timestamp]: incorrect length: {}",
+            bytes.len()
+        );
         Self(bytes.try_into().unwrap())
     }
 }
@@ -53,9 +58,9 @@ impl Ord for U64Timestamp {
 /// using the same name: "leveldb.BytewiseComparator.u64ts".
 ///
 /// Adapted from:
-/// - https://github.com/facebook/rocksdb/blob/main/util/comparator.cc#L238
-/// - https://github.com/linxGnu/grocksdb/blob/master/db_ts_test.go#L167
-/// - https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/comparator.go
+/// - <https://github.com/facebook/rocksdb/blob/main/util/comparator.cc#L238>
+/// - <https://github.com/linxGnu/grocksdb/blob/master/db_ts_test.go#L167>
+/// - <https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/comparator.go>
 pub struct U64Comparator;
 
 impl U64Comparator {

@@ -1,16 +1,17 @@
 #[cfg(not(feature = "library"))]
-use grug::entry_point;
+use grug::grug_export;
 use {
     anyhow::bail,
     grug::{
-        grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary, ImmutableCtx,
-        Item, Json, MapKey, Message, MutableCtx, RawKey, Response, StdError, StdResult, Tx,
+        grug_derive, split_one_key, to_json_value, to_json_vec, Addr, AuthCtx, Binary,
+        ImmutableCtx, Incrementor, Item, Json, MapKey, Message, MutableCtx, RawKey, Response,
+        StdError, StdResult, Tx,
     },
     sha2::{Digest, Sha256},
 };
 
 const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
-const SEQUENCE: Item<u32> = Item::new("seq");
+const SEQUENCE: Incrementor<u32> = Incrementor::new("seq");
 
 #[grug_derive(serde)]
 pub struct InstantiateMsg {
@@ -54,9 +55,9 @@ pub enum PublicKey {
 // implement MapKey trait, so that in account factory it can use the public key
 // as a map key.
 impl<'a> MapKey for &'a PublicKey {
+    type Output = PublicKey;
     type Prefix = ();
     type Suffix = ();
-    type Output = PublicKey;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         let (ty, bytes) = match self {
@@ -85,9 +86,9 @@ impl<'a> MapKey for &'a PublicKey {
                 }
                 Ok(PublicKey::Secp256r1(bytes.to_vec().into()))
             },
-            _ => {
-                Err(StdError::deserialize::<PublicKey>("unknown public key type: {ty_bytes:?}"))
-            },
+            _ => Err(StdError::deserialize::<PublicKey>(format!(
+                "unknown public key type: {ty_bytes:?}"
+            ))),
         }
     }
 }
@@ -125,15 +126,18 @@ pub fn sign_bytes(
     Ok(hasher.finalize().into())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    PUBLIC_KEY.save(ctx.store, &msg.public_key)?;
-    SEQUENCE.save(ctx.store, &0)?;
+    // Save the public key in contract store
+    PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
+
+    // Initialize the sequence number to zero
+    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
     // do nothing, accept all transfers. log the receipt to events
     Ok(Response::new()
@@ -142,10 +146,10 @@ pub fn receive(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_attribute("funds", ctx.funds.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
-    let public_key = PUBLIC_KEY.load(ctx.store)?;
-    let mut sequence = SEQUENCE.load(ctx.store)?;
+    let public_key = PUBLIC_KEY.load(ctx.storage)?;
+    let sequence = SEQUENCE.load(ctx.storage)?;
 
     // prepare the hash that is expected to have been signed
     let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.chain_id, sequence)?;
@@ -163,27 +167,26 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         }
     }
 
-    // update sequence
-    sequence += 1;
-    SEQUENCE.save(ctx.store, &sequence)?;
+    // increment the sequence number
+    SEQUENCE.increment(ctx.storage)?;
 
     Ok(Response::new()
         .add_attribute("method", "before_tx")
         .add_attribute("next_sequence", sequence.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn after_tx(_ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     // nothing to do
     Ok(Response::new().add_attribute("method", "after_tx"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn execute(_ctx: MutableCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
     bail!("no execute method is available for this contract");
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::State {} => to_json_value(&query_state(ctx)?),
@@ -192,7 +195,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 
 pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        public_key: PUBLIC_KEY.load(ctx.store)?,
-        sequence: SEQUENCE.load(ctx.store)?,
+        public_key: PUBLIC_KEY.load(ctx.storage)?,
+        sequence: SEQUENCE.load(ctx.storage)?,
     })
 }

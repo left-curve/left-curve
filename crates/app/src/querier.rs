@@ -5,15 +5,15 @@ use {
 };
 
 pub struct QueryProvider<VM> {
-    store: Box<dyn Storage>,
+    storage: Box<dyn Storage>,
     block: BlockInfo,
     vm: PhantomData<VM>,
 }
 
 impl<VM> QueryProvider<VM> {
-    pub fn new(store: Box<dyn Storage>, block: BlockInfo) -> Self {
+    pub fn new(storage: Box<dyn Storage>, block: BlockInfo) -> Self {
         Self {
-            store,
+            storage,
             block,
             vm: PhantomData,
         }
@@ -22,11 +22,11 @@ impl<VM> QueryProvider<VM> {
 
 impl<VM> Querier for QueryProvider<VM>
 where
-    VM: Vm + 'static,
+    VM: Vm,
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        process_query::<VM>(self.store.clone(), &self.block, req)
+        process_query::<VM>(self.storage.clone(), &self.block, req)
             .map_err(|err| StdError::Generic(err.to_string()))
     }
 }

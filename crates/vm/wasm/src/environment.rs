@@ -13,7 +13,7 @@ use {
 // TODO: add explaination on why wasm_instance field needs to be Options
 // it has to do with the procedure how we create the ContextData when building the instance
 pub struct ContextData {
-    pub store: PrefixStore,
+    pub storage: PrefixStore,
     pub querier: QueryProvider<WasmVm>,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
@@ -35,11 +35,11 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(store: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
+    pub fn new(storage: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
         Self {
             memory: None,
             data: Arc::new(RwLock::new(ContextData {
-                store,
+                storage,
                 querier,
                 iterators: HashMap::new(),
                 next_iterator_id: 0,
@@ -49,7 +49,10 @@ impl Environment {
     }
 
     pub fn memory<'a>(&self, wasm_store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
-        self.memory.as_ref().ok_or(VmError::MemoryNotSet).map(|mem| mem.view(wasm_store))
+        self.memory
+            .as_ref()
+            .ok_or(VmError::MemoryNotSet)
+            .map(|mem| mem.view(wasm_store))
     }
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>

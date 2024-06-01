@@ -1,10 +1,15 @@
 use {
     grug_types::{Batch, Op, Order, Record, Storage},
-    std::{cmp::Ordering, iter, iter::Peekable, mem, ops::Bound},
+    std::{
+        cmp::Ordering,
+        iter::{self, Peekable},
+        mem,
+        ops::Bound,
+    },
 };
 
 /// Adapted from cw-multi-test:
-/// https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253
+/// <https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253>
 #[derive(Clone)]
 pub struct CacheStore<S: Clone> {
     base: S,
@@ -53,8 +58,8 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
 
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         if let (Some(min), Some(max)) = (min, max) {
@@ -77,7 +82,8 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.pending.insert(key.to_vec(), Op::Insert(value.to_vec()));
+        self.pending
+            .insert(key.to_vec(), Op::Insert(value.to_vec()));
     }
 
     fn remove(&mut self, key: &[u8]) {
@@ -96,9 +102,9 @@ where
     B: Iterator<Item = Record>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
-    base:    Peekable<B>,
+    base: Peekable<B>,
     pending: Peekable<P>,
-    order:   Order,
+    order: Order,
 }
 
 impl<'a, B, P> Merged<'a, B, P>
@@ -108,7 +114,7 @@ where
 {
     pub fn new(base: B, pending: P, order: Order) -> Self {
         Self {
-            base:    base.peekable(),
+            base: base.peekable(),
             pending: pending.peekable(),
             order,
         }
@@ -194,8 +200,8 @@ mod tests {
         (cached, merged)
     }
 
-    fn collect_records(store: &dyn Storage, order: Order) -> Vec<Record> {
-        store.scan(None, None, order).collect()
+    fn collect_records(storage: &dyn Storage, order: Order) -> Vec<Record> {
+        storage.scan(None, None, order).collect()
     }
 
     #[test]

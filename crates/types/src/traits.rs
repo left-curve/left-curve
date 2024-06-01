@@ -9,7 +9,7 @@ use {
 ///
 /// Note that the store must be clone-able, which is required by Wasmer runtime.
 /// We can't use the std library Clone trait, which is not object-safe.
-/// We use DynClone (https://crates.io/crates/dyn-clone) instead, which is
+/// We use [DynClone](https://crates.io/crates/dyn-clone) instead, which is
 /// object-safe, and use the `clone_trait_object!` macro below to derive std
 /// Clone trait for any type that implements Storage.
 ///
@@ -63,8 +63,8 @@ impl Storage for Box<dyn Storage> {
 
     fn scan<'a>(
         &'a self,
-        min:   Option<&[u8]>,
-        max:   Option<&[u8]>,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         self.as_ref().scan(min, max, order)

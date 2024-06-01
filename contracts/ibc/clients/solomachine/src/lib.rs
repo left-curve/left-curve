@@ -1,8 +1,8 @@
 //! Specifications:
-//! https://github.com/cosmos/ibc/tree/main/spec/client/ics-006-solo-machine-client
+//! <https://github.com/cosmos/ibc/tree/main/spec/client/ics-006-solo-machine-client>
 //!
 //! Go implementation:
-//! https://github.com/cosmos/ibc-go/tree/v8.1.0/modules/light-clients/06-solomachine
+//! <https://github.com/cosmos/ibc-go/tree/v8.1.0/modules/light-clients/06-solomachine>
 //!
 //! This implementation does not follow the ICS-06 specification. In the spec,
 //! the client state is only updated when changing the public key or diversifier;
@@ -37,12 +37,13 @@
 //! please let us know.
 
 #[cfg(not(feature = "library"))]
-use grug::entry_point;
+use grug::grug_export;
 use {
     anyhow::{bail, ensure},
     grug::{
-        grug_derive, from_json_value, hash, to_borsh_vec, to_json_value, Api, Binary, IbcClientStatus,
-        IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Response, StdResult, SudoCtx, Json,
+        from_json_value, grug_derive, hash, to_borsh_vec, to_json_value, Api, Binary,
+        IbcClientStatus, IbcClientUpdateMsg, IbcClientVerifyMsg, ImmutableCtx, Item, Json,
+        Response, StdResult, SudoCtx,
     },
 };
 
@@ -115,7 +116,7 @@ pub struct SignBytes {
     pub record: Option<Record>,
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_create(
     ctx: SudoCtx,
     client_state: Json,
@@ -124,31 +125,35 @@ pub fn ibc_client_create(
     let client_state: ClientState = from_json_value(client_state)?;
     let consensus_state: ConsensusState = from_json_value(consensus_state)?;
 
-    ensure!(client_state.status == IbcClientStatus::Active, "new client must be active");
-    ensure!(consensus_state.sequence == 0, "sequence must start from zero");
+    ensure!(
+        client_state.status == IbcClientStatus::Active,
+        "new client must be active"
+    );
+    ensure!(
+        consensus_state.sequence == 0,
+        "sequence must start from zero"
+    );
 
-    CLIENT_STATE.save(ctx.store, &client_state)?;
-    CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
+    CLIENT_STATE.save(ctx.storage, &client_state)?;
+    CONSENSUS_STATE.save(ctx.storage, &consensus_state)?;
 
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_update(ctx: SudoCtx, msg: IbcClientUpdateMsg) -> anyhow::Result<Response> {
     match msg {
-        IbcClientUpdateMsg::Update {
-            header,
-        } => update(ctx, header),
-        IbcClientUpdateMsg::UpdateOnMisbehavior {
-            misbehavior,
-        } => update_on_misbehavior(ctx, misbehavior),
+        IbcClientUpdateMsg::Update { header } => update(ctx, header),
+        IbcClientUpdateMsg::UpdateOnMisbehavior { misbehavior } => {
+            update_on_misbehavior(ctx, misbehavior)
+        },
     }
 }
 
 pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
     let header: Header = from_json_value(header)?;
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let mut consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let mut consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     ensure!(
         client_state.status == IbcClientStatus::Active,
@@ -156,20 +161,25 @@ pub fn update(ctx: SudoCtx, header: Json) -> anyhow::Result<Response> {
         client_state.status
     );
 
-    verify_signature(ctx.api, &consensus_state.public_key, consensus_state.sequence, &header)?;
+    verify_signature(
+        ctx.api,
+        &consensus_state.public_key,
+        consensus_state.sequence,
+        &header,
+    )?;
 
     consensus_state.record = header.record;
     consensus_state.sequence += 1;
 
-    CONSENSUS_STATE.save(ctx.store, &consensus_state)?;
+    CONSENSUS_STATE.save(ctx.storage, &consensus_state)?;
 
     Ok(Response::new().add_attribute("consensus_height", consensus_state.sequence))
 }
 
 pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<Response> {
     let misbehavior: Misbehavior = from_json_value(misbehavior)?;
-    let mut client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let mut client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     ensure!(
         misbehavior.header_one != misbehavior.header_two,
@@ -191,38 +201,36 @@ pub fn update_on_misbehavior(ctx: SudoCtx, misbehavior: Json) -> anyhow::Result<
 
     client_state.status = IbcClientStatus::Frozen;
 
-    CLIENT_STATE.save(ctx.store, &client_state)?;
+    CLIENT_STATE.save(ctx.storage, &client_state)?;
 
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> anyhow::Result<()> {
     match msg {
         // solo machine does not utilize the height and delay period pamameters
         // for membership verification, per ICS-06 spec. our implementation also
         // does not use the proof.
-        IbcClientVerifyMsg::VerifyMembership {
-            key,
-            value,
-            ..
-        } => verify_membership(ctx, key, value),
+        IbcClientVerifyMsg::VerifyMembership { key, value, .. } => {
+            verify_membership(ctx, key, value)
+        },
         // solo machine does not utilize the height and delay period parameters
         // for non-membership verification, per ICS-06 spec.
-        IbcClientVerifyMsg::VerifyNonMembership {
-            key,
-            ..
-        } => verify_non_membership(ctx, key),
+        IbcClientVerifyMsg::VerifyNonMembership { key, .. } => verify_non_membership(ctx, key),
     }
 }
 
 pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyhow::Result<()> {
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
-    ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
+    ensure!(
+        client_state.status != IbcClientStatus::Frozen,
+        "client is frozen due to misbehavior"
+    );
 
     // a record must exist for the current sequence, and its key and value must
     // both match the given values.
@@ -232,12 +240,12 @@ pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyho
 
     ensure!(
         record.key == key,
-        "record exists but key does not match: {} != {key}",
+        "record exists but keys do not match: {} != {key}",
         record.key
     );
     ensure!(
         record.value == value,
-        "record exists but value does not match: {} != {value}",
+        "record exists but values do not match: {} != {value}",
         record.value
     );
 
@@ -245,17 +253,23 @@ pub fn verify_membership(ctx: ImmutableCtx, key: Binary, value: Binary) -> anyho
 }
 
 pub fn verify_non_membership(ctx: ImmutableCtx, key: Binary) -> anyhow::Result<()> {
-    let client_state = CLIENT_STATE.load(ctx.store)?;
-    let consensus_state = CONSENSUS_STATE.load(ctx.store)?;
+    let client_state = CLIENT_STATE.load(ctx.storage)?;
+    let consensus_state = CONSENSUS_STATE.load(ctx.storage)?;
 
     // if the client is frozen due to a misbehavior, then its state is not
     // trustworthy. all verifications should fail in this case.
-    ensure!(client_state.status != IbcClientStatus::Frozen, "client is frozen due to misbehavior");
+    ensure!(
+        client_state.status != IbcClientStatus::Frozen,
+        "client is frozen due to misbehavior"
+    );
 
     // we're verifying non-membership now, so if the record exists, the key
     // must not match, otherwise it's a membership.
     if let Some(record) = consensus_state.record {
-        ensure!(record.key != key, "expecting non-membership but record exists");
+        ensure!(
+            record.key != key,
+            "expecting non-membership but record exists"
+        );
     }
 
     Ok(())
@@ -276,7 +290,7 @@ fn verify_signature(
     api.secp256k1_verify(&sign_bytes_hash, &header.signature, public_key)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), grug_export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::State {} => to_json_value(&query_state(ctx)?),
@@ -285,7 +299,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 
 pub fn query_state(ctx: ImmutableCtx) -> StdResult<StateResponse> {
     Ok(StateResponse {
-        client_state: CLIENT_STATE.load(ctx.store)?,
-        consensus_state: CONSENSUS_STATE.load(ctx.store)?,
+        client_state: CLIENT_STATE.load(ctx.storage)?,
+        consensus_state: CONSENSUS_STATE.load(ctx.storage)?,
     })
 }
