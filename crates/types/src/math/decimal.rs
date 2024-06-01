@@ -3,8 +3,10 @@ use std::{
     str::FromStr,
 };
 
-use bnum::types::{I256, U256};
-use borsh::{BorshDeserialize, BorshSerialize};
+use {
+    bnum::types::{I256, U256},
+    borsh::{BorshDeserialize, BorshSerialize},
+};
 
 use crate::{
     forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
@@ -56,6 +58,16 @@ where
     Int<U>: CheckedOps,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
+    generate_decimal_per!(percent, 2);
+
+    generate_decimal_per!(permille, 4);
+
+    generate_decimal_per!(bps, 6);
+
+    generate_unchecked!(checked_ceil => ceil);
+
+    generate_unchecked!(checked_from_atomics => from_atomics, args impl Into<Int<U>>, u32);
+
     pub const fn zero() -> Self {
         Self(Int::<U>::ZERO)
     }
@@ -67,10 +79,6 @@ where
     pub fn is_zero(self) -> bool {
         self.0.is_zero()
     }
-
-    generate_decimal_per!(percent, 2);
-    generate_decimal_per!(permille, 4);
-    generate_decimal_per!(bps, 6);
 
     pub fn checked_add(self, rhs: Self) -> StdResult<Self> {
         self.0.checked_add(rhs.0).map(Self)
@@ -93,8 +101,6 @@ where
             floor.checked_add(Self::one())
         }
     }
-
-    generate_unchecked!(checked_ceil => ceil);
 
     pub fn checked_from_atomics(
         atomics: impl Into<Int<U>>,
@@ -122,8 +128,6 @@ where
             },
         })
     }
-
-    generate_unchecked!(checked_from_atomics => from_atomics, args impl Into<Int<U>>, u32);
 }
 
 // --- Mul / Div (Require Int<U>: NextNumber) ---
@@ -133,13 +137,17 @@ where
     <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
+    generate_unchecked!(checked_pow => pow, arg u32);
+
     pub fn checked_from_ratio(
         numerator: impl Into<Int<U>>,
         denominator: impl Into<Int<U>>,
     ) -> StdResult<Self> {
         let numerator: Int<U> = numerator.into();
         let denominator: Int<U> = denominator.into();
-        numerator.checked_multiply_ratio_floor(Self::decimal_fraction(), denominator).map(Self)
+        numerator
+            .checked_multiply_ratio_floor(Self::decimal_fraction(), denominator)
+            .map(Self)
     }
 
     pub fn from_ratio(numerator: impl Into<Int<U>>, denominator: impl Into<Int<U>>) -> Self {
@@ -179,8 +187,6 @@ where
 
         Ok(self * y)
     }
-
-    generate_unchecked!(checked_pow => pow, arg u32);
 }
 
 // --- Sqrt ---
@@ -237,24 +243,31 @@ where
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
     }
+
     fn mul_dec_floor(self, rhs: DR) -> Self {
         self.checked_mul_dec_floor(rhs).unwrap()
     }
+
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
     }
+
     fn mul_dec_ceil(self, rhs: DR) -> Self {
         self.checked_mul_dec_ceil(rhs).unwrap()
     }
+
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
     }
+
     fn div_dec_floor(self, rhs: DR) -> Self {
         self.checked_div_dec_floor(rhs).unwrap()
     }
+
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
     }
+
     fn div_dec_ceil(self, rhs: DR) -> Self {
         self.checked_div_dec_ceil(rhs).unwrap()
     }
@@ -358,7 +371,9 @@ mod display {
 
                 // This multiplication can't overflow because
                 // fractional < 10^DECIMAL_PLACES && fractional_factor <= 10^DECIMAL_PLACES
-                let fractional_part = Int::from(fractional).checked_mul(fractional_factor).unwrap();
+                let fractional_part = Int::from(fractional)
+                    .checked_mul(fractional_factor)
+                    .unwrap();
 
                 // for negative numbers, we need to subtract the fractional part
                 atomics = if is_neg {
@@ -441,7 +456,12 @@ mod serde {
 }
 
 // Decimal128
-generate_decimal!(name = Decimal128, inner_type = u128, decimal_places = 18, from_dec = []);
+generate_decimal!(
+    name = Decimal128,
+    inner_type = u128,
+    decimal_places = 18,
+    from_dec = []
+);
 // Decimal256
 generate_decimal!(
     name = Decimal256,
@@ -498,7 +518,10 @@ mod test {
         assert_eq!(-foo, SignedDecimal128::from_str("10").unwrap());
 
         let foo: Decimal128 = Decimal128::new(10_u64);
-        assert_eq!(TryInto::<Decimal256>::try_into(foo).unwrap(), Decimal256::new(10_u128));
+        assert_eq!(
+            TryInto::<Decimal256>::try_into(foo).unwrap(),
+            Decimal256::new(10_u128)
+        );
 
         let foo: Decimal128 = Decimal128::new(10_u64);
         assert_eq!(

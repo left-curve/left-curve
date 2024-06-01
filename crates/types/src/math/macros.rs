@@ -293,9 +293,9 @@ macro_rules! impl_number_bound {
         impl NumberConst for $t {
             const MAX: Self = $max;
             const MIN: Self = $min;
-            const ZERO: Self = $zero;
             const ONE: Self = $one;
             const TEN: Self = $ten;
+            const ZERO: Self = $zero;
         }
 
         // This is a compile-time check to ensure that the constants are of the correct type.
@@ -334,6 +334,7 @@ macro_rules! impl_bytable_std {
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_be_uint::<INPUT_SIZE, $rot>(data)
             }
+
             fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_le_uint::<INPUT_SIZE, $rot>(data)
             }
@@ -403,6 +404,7 @@ macro_rules! impl_bytable_bnum {
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_be_uint::<INPUT_SIZE, $rot>(data)
             }
+
             fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_le_uint::<INPUT_SIZE, $rot>(data)
             }
@@ -473,6 +475,7 @@ macro_rules! impl_bytable_ibnum {
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_be_int::<INPUT_SIZE, $rot>(data)
             }
+
             fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
                 grow_le_int::<INPUT_SIZE, $rot>(data)
             }
@@ -484,35 +487,43 @@ macro_rules! impl_bytable_ibnum {
 macro_rules! impl_checked_ops {
     ($t:ty) => {
         fn checked_add(self, other: Self) -> StdResult<Self> {
-            self.checked_add(other).ok_or_else(|| StdError::overflow_add(self, other))
+            self.checked_add(other)
+                .ok_or_else(|| StdError::overflow_add(self, other))
         }
 
         fn checked_sub(self, other: Self) -> StdResult<Self> {
-            self.checked_sub(other).ok_or_else(|| StdError::overflow_sub(self, other))
+            self.checked_sub(other)
+                .ok_or_else(|| StdError::overflow_sub(self, other))
         }
 
         fn checked_mul(self, other: Self) -> StdResult<Self> {
-            self.checked_mul(other).ok_or_else(|| StdError::overflow_mul(self, other))
+            self.checked_mul(other)
+                .ok_or_else(|| StdError::overflow_mul(self, other))
         }
 
         fn checked_div(self, other: Self) -> StdResult<Self> {
-            self.checked_div(other).ok_or_else(|| StdError::division_by_zero(self))
+            self.checked_div(other)
+                .ok_or_else(|| StdError::division_by_zero(self))
         }
 
         fn checked_rem(self, other: Self) -> StdResult<Self> {
-            self.checked_rem(other).ok_or_else(|| StdError::division_by_zero(self))
+            self.checked_rem(other)
+                .ok_or_else(|| StdError::division_by_zero(self))
         }
 
         fn checked_pow(self, other: u32) -> StdResult<Self> {
-            self.checked_pow(other).ok_or_else(|| StdError::overflow_pow(self, other))
+            self.checked_pow(other)
+                .ok_or_else(|| StdError::overflow_pow(self, other))
         }
 
         fn checked_shl(self, other: u32) -> StdResult<Self> {
-            self.checked_shl(other).ok_or_else(|| StdError::overflow_shl(self, other))
+            self.checked_shl(other)
+                .ok_or_else(|| StdError::overflow_shl(self, other))
         }
 
         fn checked_shr(self, other: u32) -> StdResult<Self> {
-            self.checked_shr(other).ok_or_else(|| StdError::overflow_shr(self, other))
+            self.checked_shr(other)
+                .ok_or_else(|| StdError::overflow_shr(self, other))
         }
 
         fn checked_ilog2(self) -> StdResult<u32> {
@@ -788,23 +799,23 @@ macro_rules! impl_assign {
 
 #[macro_export]
 macro_rules! call_inner {
-    (fn $op:ident, arg $other:ident, => Result<Self>) => {
+    (fn $op:ident,arg $other:ident, => Result < Self >) => {
         fn $op(self, other: $other) -> StdResult<Self> {
             self.0.$op(other).map(|val| Self(val))
         }
     };
-    (fn $op:ident, arg $other:ident, => Self) => {
+    (fn $op:ident,arg $other:ident, => Self) => {
         fn $op(self, other: $other) -> Self {
             Self(self.0.$op(other))
         }
     };
 
-    (fn $op:ident, field $inner:tt, => Result<Self>) => {
+    (fn $op:ident,field $inner:tt, => Result < Self >) => {
         fn $op(self, other: Self) -> StdResult<Self> {
             self.0.$op(other.$inner).map(|val| Self(val))
         }
     };
-    (fn $op:ident, field $inner:tt, => Self) => {
+    (fn $op:ident,field $inner:tt, => Self) => {
         fn $op(self, other: Self) -> Self {
             Self(self.0.$op(other.$inner))
         }
@@ -942,12 +953,12 @@ macro_rules! generate_unchecked {
             self.$checked().unwrap()
         }
     };
-    ($checked:tt => $name:ident, arg $arg:ident) => {
+    ($checked:tt => $name:ident,arg $arg:ident) => {
         pub fn $name(self, arg: $arg) -> Self {
             self.$checked(arg).unwrap()
         }
     };
-    ($checked:tt => $name:ident, args $arg1:ty, $arg2:ty) => {
+    ($checked:tt => $name:ident,args $arg1:ty, $arg2:ty) => {
         pub fn $name(arg1: $arg1, arg2: $arg2) -> Self {
             Self::$checked(arg1, arg2).unwrap()
         }

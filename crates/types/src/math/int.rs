@@ -3,8 +3,10 @@ use std::{
     str::FromStr,
 };
 
-use bnum::types::{I256, I512, U256, U512};
-use borsh::{BorshDeserialize, BorshSerialize};
+use {
+    bnum::types::{I256, I512, U256, U512},
+    borsh::{BorshDeserialize, BorshSerialize},
+};
 
 use crate::{
     call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
@@ -25,6 +27,7 @@ impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
     }
+
     pub fn new_from(value: impl Into<U>) -> Self {
         Self(value.into())
     }
@@ -46,9 +49,9 @@ where
 {
     pub const MAX: Self = Self(U::MAX);
     pub const MIN: Self = Self(U::MIN);
-    pub const ZERO: Self = Self(U::ZERO);
     pub const ONE: Self = Self(U::ONE);
     pub const TEN: Self = Self(U::TEN);
+    pub const ZERO: Self = Self(U::ZERO);
 }
 
 // --- Inner ---
@@ -175,7 +178,8 @@ where
         numerator: A,
         denominator: B,
     ) -> Self {
-        self.checked_multiply_ratio_floor(numerator, denominator).unwrap()
+        self.checked_multiply_ratio_floor(numerator, denominator)
+            .unwrap()
     }
 
     pub fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
@@ -240,7 +244,9 @@ mod display {
         type Err = StdError;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            U::from_str(s).map(Self).map_err(|err| StdError::parse_number::<Self>(s, err))
+            U::from_str(s)
+                .map(Self)
+                .map_err(|err| StdError::parse_number::<Self>(s, err))
         }
     }
 
@@ -313,10 +319,20 @@ mod serde {
 }
 
 // Uint64
-generate_int!(name = Uint64, inner_type = u64, from_int = [], from_std = [u32, u16, u8]);
+generate_int!(
+    name = Uint64,
+    inner_type = u64,
+    from_int = [],
+    from_std = [u32, u16, u8]
+);
 
 // Uint128
-generate_int!(name = Uint128, inner_type = u128, from_int = [Uint64], from_std = [u32, u16, u8]);
+generate_int!(
+    name = Uint128,
+    inner_type = u128,
+    from_int = [Uint64],
+    from_std = [u32, u16, u8]
+);
 
 // Uint256
 generate_int!(

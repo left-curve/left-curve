@@ -85,6 +85,9 @@ pub enum StdError {
     #[error("Right shift overflow: {a} >> {b}")]
     OverflowShr { a: String, b: u32 },
 
+    #[error("Negative square! type: {ty}, value: {value}")]
+    NegativeSquare { ty: &'static str, value: String },
+
     #[error("Invalid 0 log")]
     ZeroLog {},
 
