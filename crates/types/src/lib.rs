@@ -1,4 +1,5 @@
 mod address;
+mod api;
 mod app;
 mod bank;
 mod binary;
@@ -19,14 +20,13 @@ mod response;
 mod result;
 mod serde;
 mod timestamp;
-mod traits;
 mod tx;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
+    address::*, api::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
     event::*, hash::*, ibc::*, math::*, query::*, response::*, result::*, serde::*, timestamp::*,
-    traits::*, tx::*, utils::*,
+    tx::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256
