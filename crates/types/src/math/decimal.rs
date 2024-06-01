@@ -3,10 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use {
-    bnum::types::{I256, U256},
-    borsh::{BorshDeserialize, BorshSerialize},
-};
+use bnum::types::{I256, U256};
 
 use crate::{
     forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
@@ -16,9 +13,8 @@ use crate::{
 };
 
 use forward_ref::{forward_ref_binop, forward_ref_op_assign};
-#[derive(
-    BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
-)]
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Decimal<U, const S: usize>(pub(crate) Int<U>);
 
 impl<U, const S: usize> Inner for Decimal<U, S> {
@@ -400,18 +396,52 @@ mod serde {
 
     use crate::{CheckedOps, Decimal, Int, NumberConst};
 
+    // --- BorshSerialize ---
+    impl<U, const T: usize> borsh::BorshSerialize for Decimal<U, T>
+    where
+        Decimal<U, T>: Display,
+    {
+        fn serialize<W: std::io::prelude::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+            self.to_string().serialize(writer)
+        }
+    }
+
+    // --- BorshDeserialize ---
+    impl<U, const T: usize> borsh::BorshDeserialize for Decimal<U, T>
+    where
+        Decimal<U, T>: FromStr,
+        <Decimal<U, T> as std::str::FromStr>::Err: std::fmt::Display,
+    {
+        fn deserialize_reader<R: std::io::prelude::Read>(reader: &mut R) -> std::io::Result<Self> {
+            let s = String::deserialize_reader(reader)?;
+            s.parse::<Self>().map_err(|err| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "Error while BorshDeserialize {} into {}: {}",
+                        s,
+                        std::any::type_name::<Self>(),
+                        err
+                    ),
+                )
+            })
+        }
+    }
+
+    // --- Serialize ---
     impl<U, const T: usize> ser::Serialize for Decimal<U, T>
     where
-        U: Display,
+        Decimal<U, T>: Display,
     {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: ser::Serializer,
         {
-            serializer.serialize_str(&self.0.to_string())
+            serializer.serialize_str(&self.to_string())
         }
     }
 
+    /// --- Deserialize ---
     impl<'de, U, const S: usize> de::Deserialize<'de> for Decimal<U, S>
     where
         U: Default + NumberConst + FromStr,
@@ -492,6 +522,16 @@ mod test {
 
     use crate::{Decimal128, Decimal256, Int256, IntPerDec, SignedDecimal128, Uint128, Uint256};
 
+    pub trait DirectInto: Sized {
+        fn dinto<T: From<Self>>(self) -> T;
+    }
+
+    impl<U> DirectInto for U {
+        fn dinto<T: From<Self>>(self) -> T {
+            T::from(self)
+        }
+    }
+
     #[test]
     fn t1() {
         let val = SignedDecimal128::from_str("-2").unwrap();
@@ -531,5 +571,26 @@ mod test {
 
         let foo: Decimal128 = Decimal128::raw(u128::MAX.into());
         TryInto::<SignedDecimal128>::try_into(foo).unwrap_err();
+    }
+
+    #[test]
+    fn serde() {
+        let foo = Decimal128::from_str("2.5").unwrap();
+
+        let ser = serde_json::to_vec(&foo).unwrap();
+        let de = serde_json::from_slice::<Decimal128>(&ser).unwrap();
+        assert_eq!(foo, de);
+
+        let ser = borsh::to_vec(&foo).unwrap();
+        let de = borsh::from_slice::<Decimal128>(&ser).unwrap();
+        assert_eq!(foo, de);
+
+        // let ser = serde_json::to_vec(&foo).unwrap();
+        // let de = serde_json::from_slice::<Decimal256>(&ser).unwrap();
+        // assert_eq!(foo.dinto::<Decimal256>(), de);
+
+        // let ser = borsh::to_vec(&foo).unwrap();
+        // let de = borsh::from_slice::<Decimal256>(&ser).unwrap();
+        // assert_eq!(foo.into(), de);
     }
 }
