@@ -1,9 +1,8 @@
 use {
     crate::{
         call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
-        impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops,
-        math::traits::{Bytable, CheckedOps, NextNumber, NumberConst},
-        Inner, Sqrt, StdError, StdResult,
+        impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops, Bytable,
+        CheckedOps, Inner, NextNumber, NumberConst, Sqrt, StdError, StdResult,
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -383,7 +382,7 @@ impl_next!(Int256, Int512);
 mod test {
     use {
         super::*,
-        crate::math::macros::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+        crate::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
         bnum::types::{I256, I512, U256},
     };
 

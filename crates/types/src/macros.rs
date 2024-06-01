@@ -1,3 +1,7 @@
+//! This file contains macros that are mainly used to define math types, namely
+//! `Uint`, `Int`, `Decimal`, and `SignedDecimal`. They are generally not
+//! intended for use outside of this crate.
+
 /// Generate a [`Unit`](super::Int) type for a given inner type.
 ///
 /// ### Example
@@ -828,6 +832,32 @@ macro_rules! call_inner {
     };
 }
 
+/// Given that T == U is implemented, also implement &T == U and T == &U.
+/// Useful in creating math types.
+///
+/// Copied from CosmWasm:
+/// <https://github.com/CosmWasm/cosmwasm/blob/v1.5.3/packages/std/src/forward_ref.rs>
+#[macro_export]
+macro_rules! forward_ref_partial_eq {
+    ($t:ty, $u:ty) => {
+        // &T == U
+        impl<'a> PartialEq<$u> for &'a $t {
+            #[inline]
+            fn eq(&self, rhs: &$u) -> bool {
+                **self == *rhs
+            }
+        }
+
+        // T == &U
+        impl PartialEq<&$u> for $t {
+            #[inline]
+            fn eq(&self, rhs: &&$u) -> bool {
+                *self == **rhs
+            }
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! forward_ref_binop_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
@@ -859,7 +889,6 @@ macro_rules! forward_ref_binop_typed {
             }
         }
     };
-
 }
 
 #[macro_export]
@@ -960,88 +989,4 @@ macro_rules! generate_unchecked {
             Self::$checked(arg1, arg2).unwrap()
         }
     };
-}
-
-pub(crate) const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
-    input: [u8; INPUT_SIZE],
-) -> [u8; OUTPUT_SIZE] {
-    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
-
-    // check if sign bit is set
-    let mut output = if input[0] & 0b10000000 != 0 {
-        // negative number is filled up with 1s
-        [0b11111111u8; OUTPUT_SIZE]
-    } else {
-        [0u8; OUTPUT_SIZE]
-    };
-    let mut i = 0;
-
-    // copy input to the end of output
-    // copy_from_slice is not const, so we have to do this manually
-    while i < INPUT_SIZE {
-        output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
-        i += 1;
-    }
-
-    output
-}
-
-pub(crate) fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
-    input: [u8; INPUT_SIZE],
-) -> [u8; OUTPUT_SIZE] {
-    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
-
-    // check if sign bit is set
-    let mut output = if input[INPUT_SIZE - 1] & 0b10000000 != 0 {
-        // negative number is filled up with 1s
-        [0b11111111u8; OUTPUT_SIZE]
-    } else {
-        [0u8; OUTPUT_SIZE]
-    };
-    let mut i = 0;
-
-    // copy input to the beginning of output
-    // copy_from_slice is not const, so we have to do this manually
-    while i < INPUT_SIZE {
-        output[i] = input[i];
-        i += 1;
-    }
-
-    output
-}
-
-pub(crate) fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
-    input: [u8; INPUT_SIZE],
-) -> [u8; OUTPUT_SIZE] {
-    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
-
-    let mut output = [0u8; OUTPUT_SIZE];
-    let mut i = 0;
-
-    // copy input to the end of output
-    // copy_from_slice is not const, so we have to do this manually
-    while i < INPUT_SIZE {
-        output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
-        i += 1;
-    }
-
-    output
-}
-
-pub(crate) fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
-    input: [u8; INPUT_SIZE],
-) -> [u8; OUTPUT_SIZE] {
-    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
-
-    let mut output = [0u8; OUTPUT_SIZE];
-    let mut i = 0;
-
-    // copy input to the beginning of output
-    // copy_from_slice is not const, so we have to do this manually
-    while i < INPUT_SIZE {
-        output[i] = input[i];
-        i += 1;
-    }
-
-    output
 }

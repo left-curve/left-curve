@@ -1,5 +1,10 @@
 use {
-    crate::{Int, StdError, StdResult},
+    crate::{
+        grow_be_int, grow_be_uint, grow_le_int, grow_le_uint, impl_bytable_bnum,
+        impl_bytable_ibnum, impl_bytable_std, impl_checked_ops, impl_checked_ops_signed,
+        impl_checked_ops_unsigned, impl_number_bound, Int, StdError, StdResult,
+    },
+    bnum::types::{I256, I512, U256, U512},
     std::ops::{Add, Div},
 };
 
@@ -12,6 +17,18 @@ pub trait Inner {
     type U;
 }
 
+pub trait NextNumber {
+    type Next;
+}
+
+pub trait DecimalRef<U: NumberConst + CheckedOps> {
+    fn numerator(self) -> Int<U>;
+
+    fn denominator() -> Int<U>;
+}
+
+// ------------------------------- number const --------------------------------
+
 pub trait NumberConst {
     const MAX: Self;
     const MIN: Self;
@@ -19,6 +36,18 @@ pub trait NumberConst {
     const ONE: Self;
     const TEN: Self;
 }
+
+impl_number_bound!(u64, 0, u64::MAX, 0, 1, 10);
+impl_number_bound!(u128, 0, u128::MAX, 0, 1, 10);
+impl_number_bound!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
+impl_number_bound!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
+
+impl_number_bound!(i64, 0, i64::MAX, 0, 1, 10);
+impl_number_bound!(i128, 0, i128::MAX, 0, 1, 10);
+impl_number_bound!(I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN);
+impl_number_bound!(I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN);
+
+// ---------------------------------- bytable ----------------------------------
 
 pub trait Bytable<const S: usize>: Sized {
     const LEN: usize = S;
@@ -47,6 +76,18 @@ pub trait Bytable<const S: usize>: Sized {
         Self::from_le_bytes(Self::grow_le_bytes(data))
     }
 }
+
+impl_bytable_std!(u64, 8);
+impl_bytable_std!(u128, 16);
+impl_bytable_bnum!(U256, 32);
+impl_bytable_bnum!(U512, 64);
+
+impl_bytable_std!(i64, 8);
+impl_bytable_std!(i128, 16);
+impl_bytable_ibnum!(I256, 32, U256);
+impl_bytable_ibnum!(I512, 64, U512);
+
+// -------------------------------- checked ops --------------------------------
 
 pub trait CheckedOps: Sized {
     fn checked_add(self, other: Self) -> StdResult<Self>;
@@ -90,9 +131,17 @@ pub trait CheckedOps: Sized {
     fn is_zero(self) -> bool;
 }
 
-pub trait NextNumber {
-    type Next;
-}
+impl_checked_ops_unsigned!(u64);
+impl_checked_ops_unsigned!(u128);
+impl_checked_ops_unsigned!(U256);
+impl_checked_ops_unsigned!(U512);
+
+impl_checked_ops_signed!(i64);
+impl_checked_ops_signed!(i128);
+impl_checked_ops_signed!(I256);
+impl_checked_ops_signed!(I512);
+
+// -------------------------------- square root --------------------------------
 
 pub trait Sqrt: Sized {
     fn checked_sqrt(self) -> StdResult<Self>;
@@ -131,6 +180,8 @@ where
     }
 }
 
+// --------------------------- flooring and ceiling ----------------------------
+
 pub trait IntPerDec<U, AsU, DR>: Sized
 where
     Int<AsU>: Into<Int<U>>,
@@ -152,12 +203,6 @@ where
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
 
     fn div_dec_ceil(self, rhs: DR) -> Self;
-}
-
-pub trait DecimalRef<U: NumberConst + CheckedOps> {
-    fn numerator(self) -> Int<U>;
-
-    fn denominator() -> Int<U>;
 }
 
 // ----------------------------------- tests -----------------------------------
