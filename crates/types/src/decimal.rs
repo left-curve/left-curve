@@ -446,7 +446,8 @@ generate_decimal!(
     name = Decimal128,
     inner_type = u128,
     decimal_places = 18,
-    from_dec = []
+    from_dec = [],
+    try_from_dec = []
 );
 
 // Decimal256
@@ -454,7 +455,8 @@ generate_decimal!(
     name = Decimal256,
     inner_type = U256,
     decimal_places = 18,
-    from_dec = [Decimal128]
+    from_dec = [Decimal128],
+    try_from_dec = []
 );
 
 // SignedDecimal128

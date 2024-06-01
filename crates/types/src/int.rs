@@ -311,7 +311,8 @@ generate_int!(
     name = Uint64,
     inner_type = u64,
     from_int = [],
-    from_std = [u32, u16, u8]
+    from_std = [u32, u16, u8],
+    try_from_int = []
 );
 
 // Uint128
@@ -319,7 +320,8 @@ generate_int!(
     name = Uint128,
     inner_type = u128,
     from_int = [Uint64],
-    from_std = [u32, u16, u8]
+    from_std = [u32, u16, u8],
+    try_from_int = []
 );
 
 // Uint256
@@ -327,7 +329,8 @@ generate_int!(
     name = Uint256,
     inner_type = U256,
     from_int = [Uint64, Uint128],
-    from_std = [u32, u16, u8]
+    from_std = [u32, u16, u8],
+    try_from_int = []
 );
 
 // Uint512
@@ -335,7 +338,8 @@ generate_int!(
     name = Uint512,
     inner_type = U512,
     from_int = [Uint256, Uint64, Uint128],
-    from_std = [u32, u16, u8]
+    from_std = [u32, u16, u8],
+    try_from_int = []
 );
 
 // Int64
@@ -343,7 +347,8 @@ generate_int!(
     name = Int64,
     inner_type = i64,
     from_int = [],
-    from_std = [u32, u16, u8, i32, i16, i8]
+    from_std = [u32, u16, u8, i32, i16, i8],
+    try_from_int = []
 );
 
 // Int128
@@ -377,7 +382,6 @@ generate_int!(
 impl_next!(Uint64, Uint128);
 impl_next!(Uint128, Uint256);
 impl_next!(Uint256, Uint512);
-
 impl_next!(Int64, Int128);
 impl_next!(Int128, Int256);
 impl_next!(Int256, Int512);

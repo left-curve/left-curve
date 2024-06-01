@@ -141,21 +141,6 @@ macro_rules! generate_int {
             }
         }
     };
-
-    (
-        name = $name:ident,
-        inner_type = $inner:ty,
-        from_int = [$($from:ty),*],
-        from_std = [$($from_std:ty),*]
-    ) => {
-        generate_int!(
-            name = $name,
-            inner_type = $inner,
-            from_int = [$($from),*],
-            from_std = [$($from_std),*],
-            try_from_int = []
-        );
-    }
 }
 
 /// Generate a [`Decimal`](super::Decimal) type for a given inner type.
@@ -234,21 +219,6 @@ macro_rules! generate_decimal {
             }
         )*
     };
-
-    (
-        name = $name:ident,
-        inner_type = $inner:ty,
-        decimal_places = $decimal_places:expr,
-        from_dec = [$($from:ty),*]
-    ) => {
-        generate_decimal!(
-            name = $name,
-            inner_type = $inner,
-            decimal_places = $decimal_places,
-            from_dec = [$($from),*],
-            try_from_dec = []
-        );
-    }
 }
 
 /// **Syntax**:
