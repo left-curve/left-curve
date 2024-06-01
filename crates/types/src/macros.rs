@@ -224,16 +224,16 @@ macro_rules! generate_decimal {
 /// **Syntax**:
 ///
 /// ```ignore
-/// impl_number_bound!(type, max, min, zero, one);
+/// impl_number_const!(type, max, min, zero, one);
 /// ```
 ///
 /// **Example**:
 ///
 /// ```ignore
-/// impl_number_bound!(u64, u64::MAX, u64::MIN, 0, 1);
+/// impl_number_const!(u64, u64::MAX, u64::MIN, 0, 1);
 /// ```
 #[macro_export]
-macro_rules! impl_number_bound {
+macro_rules! impl_number_const {
     ($t:ty, $max:expr, $min:expr, $zero:expr, $one:expr, $ten:expr) => {
         impl NumberConst for $t {
             const MAX: Self = $max;

@@ -2,7 +2,7 @@ use {
     crate::{
         grow_be_int, grow_be_uint, grow_le_int, grow_le_uint, impl_bytable_bnum,
         impl_bytable_ibnum, impl_bytable_std, impl_checked_ops, impl_checked_ops_signed,
-        impl_checked_ops_unsigned, impl_number_bound, Int, StdError, StdResult,
+        impl_checked_ops_unsigned, impl_number_const, Int, StdError, StdResult,
     },
     bnum::types::{I256, I512, U256, U512},
     std::ops::{Add, Div},
@@ -37,15 +37,15 @@ pub trait NumberConst {
     const TEN: Self;
 }
 
-impl_number_bound!(u64, 0, u64::MAX, 0, 1, 10);
-impl_number_bound!(u128, 0, u128::MAX, 0, 1, 10);
-impl_number_bound!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
-impl_number_bound!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
+impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
+impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
+impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
+impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
 
-impl_number_bound!(i64, 0, i64::MAX, 0, 1, 10);
-impl_number_bound!(i128, 0, i128::MAX, 0, 1, 10);
-impl_number_bound!(I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN);
-impl_number_bound!(I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN);
+impl_number_const!(i64, 0, i64::MAX, 0, 1, 10);
+impl_number_const!(i128, 0, i128::MAX, 0, 1, 10);
+impl_number_const!(I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN);
+impl_number_const!(I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN);
 
 // ---------------------------------- bytable ----------------------------------
 
