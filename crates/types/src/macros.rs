@@ -713,55 +713,55 @@ macro_rules! impl_signed_ops {
 
 #[macro_export]
 macro_rules! impl_assign {
-        // args type = Self
-        (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-            impl<$($gen),*>core::ops::$imp for $t
-            where
-                $t: CheckedOps + Copy,
-            {
-                fn $method(&mut self, other: Self) {
-                    *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
-                }
-            }
-        };
-
-        // args type = other
-        (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
-            impl<U> core::ops::$imp<$other> for $t
-            where
-                $t: CheckedOps + Copy,
-            {
-                fn $method(&mut self, other: $other) {
-                    *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
-                }
-            }
-        };
-
-        // Decimal
-        (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
+    // args type = Self
+    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
+        impl<$($gen),*>core::ops::$imp for $t
+        where
+            $t: CheckedOps + Copy,
         {
-            impl<U, const S: usize> std::ops::$imp for $t
-            where
-                Int<U>: NextNumber + CheckedOps,
-                <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
-                U: NumberConst + Clone + PartialEq + Copy + FromStr,
-            {
-                fn $method(&mut self, other: Self) {
-                    *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
-                }
+            fn $method(&mut self, other: Self) {
+                *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
             }
-        };
+        }
+    };
 
-        // Ops self for other, output = Self
-        // Ex: AddAssign<Uint64> for Uint128;
-        (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
-            impl std::ops::$imp<$other> for $t {
-                fn $method(&mut self, other: $other) {
-                    *self = (*self).$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
-                }
+    // args type = other
+    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
+        impl<U> core::ops::$imp<$other> for $t
+        where
+            $t: CheckedOps + Copy,
+        {
+            fn $method(&mut self, other: $other) {
+                *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
             }
-        };
-    }
+        }
+    };
+
+    // Decimal
+    (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
+    {
+        impl<U, const S: usize> std::ops::$imp for $t
+        where
+            Int<U>: NextNumber + CheckedOps,
+            <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
+            U: NumberConst + Clone + PartialEq + Copy + FromStr,
+        {
+            fn $method(&mut self, other: Self) {
+                *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+    };
+
+    // Ops self for other, output = Self
+    // Ex: AddAssign<Uint64> for Uint128;
+    (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
+        impl std::ops::$imp<$other> for $t {
+            fn $method(&mut self, other: $other) {
+                *self = (*self).$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+    };
+}
 
 #[macro_export]
 macro_rules! call_inner {
