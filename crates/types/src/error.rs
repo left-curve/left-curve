@@ -85,6 +85,12 @@ pub enum StdError {
     #[error("Right shift overflow: {a} >> {b}")]
     OverflowShr { a: String, b: u32 },
 
+    #[error("Negative square! type: {ty}, value: {value}")]
+    NegativeSquare { ty: &'static str, value: String },
+
+    #[error("Invalid 0 log")]
+    ZeroLog {},
+
     #[error("Division by zero: {a} / 0")]
     DivisionByZero { a: String },
 
@@ -178,6 +184,10 @@ impl StdError {
         }
     }
 
+    pub fn zero_log() -> Self {
+        Self::ZeroLog {}
+    }
+
     pub fn division_by_zero<T: ToString>(a: T) -> Self {
         Self::DivisionByZero { a: a.to_string() }
     }
@@ -198,6 +208,17 @@ impl StdError {
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
+    }
+
+    pub fn negative_sqrt<T>(value: impl ToString) -> Self {
+        Self::NegativeSquare {
+            ty: type_name::<T>(),
+            value: value.to_string(),
+        }
+    }
+
+    pub fn generic_err(reason: impl ToString) -> Self {
+        Self::Generic(reason.to_string())
     }
 }
 

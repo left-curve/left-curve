@@ -1,5 +1,5 @@
 use {
-    crate::{StdError, StdResult, Uint128},
+    crate::{CheckedOps, StdError, StdResult, Uint128},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::{

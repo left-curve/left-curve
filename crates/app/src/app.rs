@@ -75,8 +75,8 @@ where
 
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
-        if block.height.u64() != 0 {
-            return Err(AppError::incorrect_block_height(0, block.height.u64()));
+        if block.height.number() != 0 {
+            return Err(AppError::incorrect_block_height(0, block.height.number()));
         }
 
         // save the config and genesis block. some genesis messages may need it
@@ -149,10 +149,10 @@ where
         // make sure the new block height is exactly the last finalized height
         // plus one. this ensures that block height always matches the BaseStore
         // version.
-        if block.height.u64() != last_finalized_block.height.u64() + 1 {
+        if block.height.number() != last_finalized_block.height.number() + 1 {
             return Err(AppError::incorrect_block_height(
-                last_finalized_block.height.u64() + 1,
-                block.height.u64(),
+                last_finalized_block.height.number() + 1,
+                block.height.number(),
             ));
         }
 
@@ -205,13 +205,13 @@ where
         let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
 
         // block height should match the DB version
-        debug_assert_eq!(block.height.u64(), version);
+        debug_assert_eq!(block.height.number(), version);
         // the merkle tree should never be empty because at least we always have
         // things like the config, last finalized block, ...
         debug_assert!(root_hash.is_some());
 
         info!(
-            height = block.height.u64(),
+            height = block.height.number(),
             timestamp = block.timestamp.seconds(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             "Finalized block"

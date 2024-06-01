@@ -44,16 +44,16 @@ impl Timestamp {
 
     #[inline]
     pub fn nanos(&self) -> u64 {
-        self.0.u64()
+        self.0.number()
     }
 
     #[inline]
     pub fn seconds(&self) -> u64 {
-        self.0.u64() / NANOS_PER_SECOND
+        self.0.number() / NANOS_PER_SECOND
     }
 
     #[inline]
     pub fn subsec_nanos(&self) -> u64 {
-        self.0.u64() % NANOS_PER_SECOND
+        self.0.number() % NANOS_PER_SECOND
     }
 }
