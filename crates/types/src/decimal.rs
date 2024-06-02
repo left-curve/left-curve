@@ -300,7 +300,7 @@ where
             let fractional_string = format!("{:0>padding$}", fractional.abs(), padding = S);
             f.write_str(&whole.abs().to_string())?;
             f.write_char('.')?;
-            f.write_str(&fractional_string.trim_end_matches('0').replace("-", ""))?;
+            f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
         }
 
         Ok(())
@@ -348,9 +348,7 @@ where
 
             // This multiplication can't overflow because
             // fractional < 10^DECIMAL_PLACES && fractional_factor <= 10^DECIMAL_PLACES
-            let fractional_part = Int::from(fractional)
-                .checked_mul(fractional_factor)
-                .unwrap();
+            let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
 
             // for negative numbers, we need to subtract the fractional part
             atomics = if is_neg {
