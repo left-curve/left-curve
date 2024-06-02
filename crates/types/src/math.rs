@@ -8,7 +8,7 @@ use {
     std::ops::{Add, Div},
 };
 
-/// Rappresent the inner type of the [`Int`].
+/// Describes the inner type of the [`Int`].
 ///
 /// This trait is used in [`generate_int!`](crate::generate_int!) and
 /// [`generate_decimal!`](crate::generate_decimal!) to get the inner type of a
@@ -17,10 +17,17 @@ pub trait Inner {
     type U;
 }
 
+/// Describes a number type can be casted to another type of a bigger word size.
+///
+/// For example, [`Uint128`] can be safety cast to [`Uint256`]. In this case,
+/// [`NextNumber`] trait should be implemented for [`Uint128`] with `Next` being
+/// [`Uint256`].
 pub trait NextNumber {
     type Next;
 }
 
+/// Describes a fixed-point number, which is represented by a numerator divided
+/// by a constant denominator.
 pub trait DecimalRef<U: NumberConst + CheckedOps> {
     fn numerator(self) -> Int<U>;
 
@@ -161,6 +168,7 @@ where
         + Copy
         + ToString,
 {
+    /// Computes an integer's square root using [Heron's method](https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Heron's_method).
     fn checked_sqrt(self) -> StdResult<Self> {
         if self == Self::ZERO {
             return Ok(Self::ZERO);
