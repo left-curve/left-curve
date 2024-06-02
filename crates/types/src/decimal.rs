@@ -496,18 +496,15 @@ mod tests {
         assert_eq!(-foo, SignedDecimal128::from_str("10").unwrap());
 
         let foo: Decimal128 = Decimal128::new(10_u64);
-        assert_eq!(
-            TryInto::<Decimal256>::try_into(foo).unwrap(),
-            Decimal256::new(10_u128)
-        );
+        assert_eq!(Decimal256::try_from(foo).unwrap(), Decimal256::new(10_u128));
 
         let foo: Decimal128 = Decimal128::new(10_u64);
         assert_eq!(
-            TryInto::<SignedDecimal128>::try_into(foo).unwrap(),
+            SignedDecimal128::try_from(foo).unwrap(),
             SignedDecimal128::new(10_u64)
         );
 
         let foo: Decimal128 = Decimal128::raw(u128::MAX.into());
-        TryInto::<SignedDecimal128>::try_into(foo).unwrap_err();
+        SignedDecimal128::try_from(foo).unwrap_err();
     }
 }

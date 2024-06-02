@@ -426,16 +426,16 @@ mod test {
         assert_eq!(foo.as_next(), Int512::new(I512::ONE));
 
         let foo = Int128::new(10);
-        assert_eq!(TryInto::<Uint128>::try_into(foo).unwrap(), Uint128::new(10));
+        assert_eq!(Uint128::try_from(foo).unwrap(), Uint128::new(10));
 
         let foo = Int128::new(-10);
-        TryInto::<Uint128>::try_into(foo).unwrap_err();
+        Uint128::try_from(foo).unwrap_err();
 
         let foo = Int128::new(10);
-        assert_eq!(TryInto::<u128>::try_into(foo).unwrap(), 10);
+        assert_eq!(u128::try_from(foo).unwrap(), 10);
 
         let foo = Int128::new(-10);
-        TryInto::<u128>::try_into(foo).unwrap_err();
+        u128::try_from(foo).unwrap_err();
     }
 
     #[test]
