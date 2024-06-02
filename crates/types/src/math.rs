@@ -198,19 +198,27 @@ where
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
 
-    fn mul_dec_floor(self, rhs: DR) -> Self;
-
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
-
-    fn mul_dec_ceil(self, rhs: DR) -> Self;
 
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
 
-    fn div_dec_floor(self, rhs: DR) -> Self;
-
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
 
-    fn div_dec_ceil(self, rhs: DR) -> Self;
+    fn mul_dec_floor(self, rhs: DR) -> Self {
+        self.checked_mul_dec_floor(rhs).unwrap()
+    }
+
+    fn mul_dec_ceil(self, rhs: DR) -> Self {
+        self.checked_mul_dec_ceil(rhs).unwrap()
+    }
+
+    fn div_dec_floor(self, rhs: DR) -> Self {
+        self.checked_div_dec_floor(rhs).unwrap()
+    }
+
+    fn div_dec_ceil(self, rhs: DR) -> Self {
+        self.checked_div_dec_ceil(rhs).unwrap()
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

@@ -244,32 +244,16 @@ where
         self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
     }
 
-    fn mul_dec_floor(self, rhs: DR) -> Self {
-        self.checked_mul_dec_floor(rhs).unwrap()
-    }
-
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
-    }
-
-    fn mul_dec_ceil(self, rhs: DR) -> Self {
-        self.checked_mul_dec_ceil(rhs).unwrap()
     }
 
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
     }
 
-    fn div_dec_floor(self, rhs: DR) -> Self {
-        self.checked_div_dec_floor(rhs).unwrap()
-    }
-
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
-    }
-
-    fn div_dec_ceil(self, rhs: DR) -> Self {
-        self.checked_div_dec_ceil(rhs).unwrap()
     }
 }
 
