@@ -830,7 +830,6 @@ macro_rules! forward_ref_partial_eq {
 #[macro_export]
 macro_rules! forward_ref_binop_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
-
         impl<$($gen),*> std::ops::$imp<$u> for &'_ $t where $t: std::ops::$imp<$u> + Copy {
             type Output = <$t as std::ops::$imp<$u>>::Output;
 
@@ -904,7 +903,10 @@ macro_rules! forward_ref_binop_decimal {
 #[macro_export]
 macro_rules! forward_ref_op_assign_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl <$($gen),*> std::ops::$imp<&$u> for $t where $t: std::ops::$imp<$u> + Copy {
+        impl <$($gen),*> std::ops::$imp<&$u> for $t
+        where
+            $t: std::ops::$imp<$u> + Copy,
+        {
             #[inline]
             fn $method(&mut self, other: &$u) {
                 std::ops::$imp::$method(self, *other);
