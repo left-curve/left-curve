@@ -131,7 +131,7 @@ where
 impl<U> Int<U>
 where
     Int<U>: NextNumber,
-    <Int<U> as NextNumber>::Next: From<Int<U>> + CheckedOps + ToString,
+    <Int<U> as NextNumber>::Next: CheckedOps + ToString,
 {
     /// Convert the current [`Int`] to [`NextNumber::Next`]
     ///
@@ -156,7 +156,7 @@ impl<U> Int<U>
 where
     U: NumberConst + PartialEq,
     Int<U>: NextNumber + CheckedOps + Copy,
-    <Int<U> as NextNumber>::Next: From<Int<U>> + CheckedOps + TryInto<Int<U>> + ToString + Clone,
+    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
 {
     pub fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,

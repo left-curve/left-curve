@@ -138,7 +138,7 @@ where
 impl<U, const S: usize> Decimal<U, S>
 where
     Int<U>: NextNumber + CheckedOps,
-    <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
+    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     generate_unchecked!(checked_pow => pow, arg u32);
@@ -159,7 +159,7 @@ where
         let numerator = self.0.full_mul(rhs.numerator());
         let denominator = <Int<U> as NextNumber>::Next::from(Self::decimal_fraction());
         let next_result = numerator.checked_div(denominator)?;
-        TryInto::<Int<U>>::try_into(next_result.clone())
+        Int::<U>::try_from(next_result.clone())
             .map(Self)
             .map_err(|_| StdError::overflow_conversion::<_, Int<U>>(next_result))
     }
@@ -238,7 +238,7 @@ where
     AsU: NumberConst + CheckedOps,
     U: NumberConst + CheckedOps + PartialEq,
     Int<U>: NextNumber + CheckedOps + Copy,
-    <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
+    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())

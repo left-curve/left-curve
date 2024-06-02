@@ -22,8 +22,8 @@ pub trait Inner {
 /// For example, [`Uint128`] can be safety cast to [`Uint256`]. In this case,
 /// [`NextNumber`] trait should be implemented for [`Uint128`] with `Next` being
 /// [`Uint256`].
-pub trait NextNumber {
-    type Next;
+pub trait NextNumber: Sized + TryFrom<Self::Next> {
+    type Next: From<Self>;
 }
 
 /// Describes a fixed-point number, which is represented by a numerator divided

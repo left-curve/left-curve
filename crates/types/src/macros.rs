@@ -637,7 +637,7 @@ macro_rules! impl_base_ops {
         impl<U, const S: usize> std::ops::$imp for $t
         where
             Int<U>: NextNumber + CheckedOps,
-            <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
+            <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
             U: NumberConst + Clone + PartialEq + Copy + FromStr,
         {
             type Output = Self;
@@ -742,7 +742,7 @@ macro_rules! impl_assign {
         impl<U, const S: usize> std::ops::$imp for $t
         where
             Int<U>: NextNumber + CheckedOps,
-            <Int<U> as NextNumber>::Next: From<Int<U>> + TryInto<Int<U>> + CheckedOps + ToString + Clone,
+            <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
             U: NumberConst + Clone + PartialEq + Copy + FromStr,
         {
             fn $method(&mut self, other: Self) {
