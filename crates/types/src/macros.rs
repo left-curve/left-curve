@@ -12,15 +12,15 @@
 ///     name = Int128,
 ///     // Inner type of the Int
 ///     inner_type = i128,
-///     // Implement From | TryInto from other Int types
+///     // Implement From | TryFrom from other Int types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_int = [Int64, Uint64]
-///     // Implement From | TryInto from other std types
+///     // Implement From | TryFrom from other std types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_std = [u32, u16, u8, i32, i16, i8]
-///     // Implement TryFrom | TryInto from other Int types
+///     // Implement TryFrom | TryFrom from other Int types
 ///     // Unsafe type where overflow is possible
 ///     try_from_int = [Uint128]
 /// );
@@ -51,20 +51,19 @@ macro_rules! generate_int {
                 }
             }
 
-            // Ex: TryInto<Uint64> for Uint128
-            impl TryInto<$from> for $name {
+            // Ex: TryFrom<Uint128> for Uint64
+            impl TryFrom<$name> for $from {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<$from> {
-                    <$from>::from_str(&self.to_string())
+                fn try_from(value: $name) -> StdResult<$from> {
+                    <$from>::from_str(&value.to_string())
                 }
-
             }
 
-            // Ex: TryInto<u64> for Uint128
-            impl TryInto<<$from as Inner>::U> for $name {
+            // Ex: TryFrom<Uint128> for u64
+            impl TryFrom<$name> for <$from as Inner>::U {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<<$from as Inner>::U> {
-                    <$from>::from_str(&self.to_string()).map(Into::into)
+                fn try_from(value: $name) -> StdResult<<$from as Inner>::U> {
+                    <$from>::from_str(&value.to_string()).map(Into::into)
                 }
             }
 
@@ -80,11 +79,12 @@ macro_rules! generate_int {
                 }
             }
 
-            impl TryInto<$from_std> for $name {
+            // Ex: TryFrom<Uint128> for u32
+            impl TryFrom<$name> for $from_std {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<$from_std> {
-                    <$from_std>::from_str(&self.to_string())
-                        .map_err(|_| StdError::overflow_conversion::<_, $from_std>(self))
+                fn try_from(value: $name) -> StdResult<$from_std> {
+                    <$from_std>::from_str(&value.to_string())
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
                 }
             }
 
@@ -109,20 +109,19 @@ macro_rules! generate_int {
                 }
             }
 
-            // Ex: TryInto<Uint64> for Uint128
-            impl TryInto<$try_from> for $name {
+            // Ex: TryFrom<Uint128> for Uint64
+            impl TryFrom<$name> for $try_from {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<$try_from> {
-                    <$try_from>::from_str(&self.to_string())
+                fn try_from(value: $name) -> StdResult<$try_from> {
+                    <$try_from>::from_str(&value.to_string())
                 }
-
             }
 
-            // Ex: TryInto<u64> for Uint128
-            impl TryInto<<$try_from as Inner>::U> for $name {
+            // Ex: TryFrom<Uint128> for u64
+            impl TryFrom<$name> for <$try_from as Inner>::U {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<<$try_from as Inner>::U> {
-                    <$try_from>::from_str(&self.to_string()).map(Into::into)
+                fn try_from(value: $name) -> StdResult<<$try_from as Inner>::U> {
+                    <$try_from>::from_str(&value.to_string()).map(Into::into)
                 }
             }
         )*
@@ -155,11 +154,11 @@ macro_rules! generate_int {
 ///     inner_type = I256,
 ///     // Number of decimal places
 ///     decimal_places = 18,
-///     // Implement From | TryInto from other Decimal types
+///     // Implement From | TryFrom from other Decimal types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_dec = [SignedDecimal128, Decimal128]
-///     // Implement TryFrom | TryInto from other Int types
+///     // Implement TryFrom | TryFrom from other Int types
 ///     // Unsafe type where overflow is possible
 ///     try_from_dec = [Decimal256]
 /// );
@@ -188,11 +187,11 @@ macro_rules! generate_decimal {
                 }
             }
 
-            // Ex: TryInto<Decimal128> for Decimal256
-            impl TryInto<$from> for $name {
+            // Ex: TryFrom<Decimal256> for Decimal128
+            impl TryFrom<$name> for $from {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<$from> {
-                    <$from>::from_str(&self.to_string())
+                fn try_from(value: $name) -> StdResult<$from> {
+                    <$from>::from_str(&value.to_string())
                 }
             }
 
@@ -210,11 +209,11 @@ macro_rules! generate_decimal {
                 }
             }
 
-            // Ex: TryInto<Decimal128> for Decimal256
-            impl TryInto<$try_from> for $name {
+            // Ex: TryFrom<Decimal256> for Decimal128
+            impl TryFrom<$name> for $try_from {
                 type Error = StdError;
-                fn try_into(self) -> StdResult<$try_from> {
-                    <$try_from>::from_str(&self.to_string())
+                fn try_from(value: $name) -> StdResult<$try_from> {
+                    <$try_from>::from_str(&value.to_string())
                 }
             }
         )*
