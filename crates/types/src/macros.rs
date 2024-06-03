@@ -233,7 +233,7 @@ macro_rules! generate_decimal {
 /// ```
 #[macro_export]
 macro_rules! impl_number_const {
-    ($t:ty, $max:expr, $min:expr, $zero:expr, $one:expr, $ten:expr) => {
+    ($t:ty, $min:expr, $max:expr, $zero:expr, $one:expr, $ten:expr) => {
         impl NumberConst for $t {
             const MAX: Self = $max;
             const MIN: Self = $min;
@@ -358,186 +358,114 @@ macro_rules! impl_bytable_bnum {
 }
 
 #[macro_export]
-macro_rules! impl_bytable_ibnum {
-    ($t:ty, $rot:literal, $unsigned:ty) => {
-        impl Bytable<$rot> for $t {
-            fn from_be_bytes(data: [u8; $rot]) -> Self {
-                let mut bytes = [0u64; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = u64::from_le_bytes([
-                        data[($rot / 8 - i - 1) * 8 + 7],
-                        data[($rot / 8 - i - 1) * 8 + 6],
-                        data[($rot / 8 - i - 1) * 8 + 5],
-                        data[($rot / 8 - i - 1) * 8 + 4],
-                        data[($rot / 8 - i - 1) * 8 + 3],
-                        data[($rot / 8 - i - 1) * 8 + 2],
-                        data[($rot / 8 - i - 1) * 8 + 1],
-                        data[($rot / 8 - i - 1) * 8],
-                    ])
-                }
-                Self::from_bits(<$unsigned>::from_digits(bytes))
-            }
-
-            fn from_le_bytes(data: [u8; $rot]) -> Self {
-                let mut bytes = [0u64; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = u64::from_le_bytes([
-                        data[i * 8],
-                        data[i * 8 + 1],
-                        data[i * 8 + 2],
-                        data[i * 8 + 3],
-                        data[i * 8 + 4],
-                        data[i * 8 + 5],
-                        data[i * 8 + 6],
-                        data[i * 8 + 7],
-                    ])
-                }
-                Self::from_bits(<$unsigned>::from_digits(bytes))
-            }
-
-            fn to_be_bytes(self) -> [u8; $rot] {
-                let words = self.to_bits();
-                let words = words.digits();
-                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
-            }
-
-            fn to_le_bytes(self) -> [u8; $rot] {
-                let words = self.to_bits();
-                let words = words.digits();
-                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[i].to_le_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
-            }
-
-            fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
-                grow_be_int::<INPUT_SIZE, $rot>(data)
-            }
-
-            fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
-                grow_le_int::<INPUT_SIZE, $rot>(data)
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! impl_checked_ops {
+macro_rules! impl_integer_number {
     ($t:ty) => {
-        fn checked_add(self, other: Self) -> StdResult<Self> {
-            self.checked_add(other)
-                .ok_or_else(|| StdError::overflow_add(self, other))
-        }
+        impl Number for $t
+        where
+            $t: NumberConst,
+        {
+            fn checked_add(self, other: Self) -> StdResult<Self> {
+                self.checked_add(other)
+                    .ok_or_else(|| StdError::overflow_add(self, other))
+            }
 
-        fn checked_sub(self, other: Self) -> StdResult<Self> {
-            self.checked_sub(other)
-                .ok_or_else(|| StdError::overflow_sub(self, other))
-        }
+            fn checked_sub(self, other: Self) -> StdResult<Self> {
+                self.checked_sub(other)
+                    .ok_or_else(|| StdError::overflow_sub(self, other))
+            }
 
-        fn checked_mul(self, other: Self) -> StdResult<Self> {
-            self.checked_mul(other)
-                .ok_or_else(|| StdError::overflow_mul(self, other))
-        }
+            fn checked_mul(self, other: Self) -> StdResult<Self> {
+                self.checked_mul(other)
+                    .ok_or_else(|| StdError::overflow_mul(self, other))
+            }
 
-        fn checked_div(self, other: Self) -> StdResult<Self> {
-            self.checked_div(other)
-                .ok_or_else(|| StdError::division_by_zero(self))
-        }
+            fn checked_div(self, other: Self) -> StdResult<Self> {
+                self.checked_div(other)
+                    .ok_or_else(|| StdError::division_by_zero(self))
+            }
 
-        fn checked_rem(self, other: Self) -> StdResult<Self> {
-            self.checked_rem(other)
-                .ok_or_else(|| StdError::division_by_zero(self))
-        }
+            fn checked_rem(self, other: Self) -> StdResult<Self> {
+                self.checked_rem(other)
+                    .ok_or_else(|| StdError::division_by_zero(self))
+            }
 
-        fn checked_pow(self, other: u32) -> StdResult<Self> {
-            self.checked_pow(other)
-                .ok_or_else(|| StdError::overflow_pow(self, other))
-        }
+            fn checked_pow(self, other: u32) -> StdResult<Self> {
+                self.checked_pow(other)
+                    .ok_or_else(|| StdError::overflow_pow(self, other))
+            }
 
-        fn checked_shl(self, other: u32) -> StdResult<Self> {
-            self.checked_shl(other)
-                .ok_or_else(|| StdError::overflow_shl(self, other))
-        }
+            fn checked_sqrt(self) -> StdResult<Self> {
+                let n = self;
+                if n == Self::ZERO {
+                    return Ok(Self::ZERO);
+                }
+                let mut x = n;
+                let mut y = (x + 1) >> 1;
+                while y < x {
+                    x = y;
+                    y = (x + n / x) >> 1;
+                }
+                Ok(x)
+            }
 
-        fn checked_shr(self, other: u32) -> StdResult<Self> {
-            self.checked_shr(other)
-                .ok_or_else(|| StdError::overflow_shr(self, other))
-        }
+            fn wrapping_add(self, other: Self) -> Self {
+                self.wrapping_add(other)
+            }
 
-        fn checked_ilog2(self) -> StdResult<u32> {
-            self.checked_ilog2().ok_or_else(|| StdError::zero_log())
-        }
+            fn wrapping_sub(self, other: Self) -> Self {
+                self.wrapping_sub(other)
+            }
 
-        fn checked_ilog10(self) -> StdResult<u32> {
-            self.checked_ilog10().ok_or_else(|| StdError::zero_log())
-        }
+            fn wrapping_mul(self, other: Self) -> Self {
+                self.wrapping_mul(other)
+            }
 
-        fn wrapping_add(self, other: Self) -> Self {
-            self.wrapping_add(other)
-        }
+            fn wrapping_pow(self, other: u32) -> Self {
+                self.wrapping_pow(other)
+            }
 
-        fn wrapping_sub(self, other: Self) -> Self {
-            self.wrapping_sub(other)
-        }
+            fn saturating_add(self, other: Self) -> Self {
+                self.saturating_add(other)
+            }
 
-        fn wrapping_mul(self, other: Self) -> Self {
-            self.wrapping_mul(other)
-        }
+            fn saturating_sub(self, other: Self) -> Self {
+                self.saturating_sub(other)
+            }
 
-        fn wrapping_pow(self, other: u32) -> Self {
-            self.wrapping_pow(other)
-        }
+            fn saturating_mul(self, other: Self) -> Self {
+                self.saturating_mul(other)
+            }
 
-        fn saturating_add(self, other: Self) -> Self {
-            self.saturating_add(other)
-        }
+            fn saturating_pow(self, other: u32) -> Self {
+                self.saturating_pow(other)
+            }
 
-        fn saturating_sub(self, other: Self) -> Self {
-            self.saturating_sub(other)
-        }
-
-        fn saturating_mul(self, other: Self) -> Self {
-            self.saturating_mul(other)
-        }
-
-        fn saturating_pow(self, other: u32) -> Self {
-            self.saturating_pow(other)
-        }
-
-        fn is_zero(self) -> bool {
-            self == Self::ZERO
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! impl_checked_ops_unsigned {
-    ($t:ty) => {
-        impl CheckedOps for $t {
-            impl_checked_ops!($t);
+            fn is_zero(self) -> bool {
+                self == Self::ZERO
+            }
 
             fn abs(self) -> Self {
                 self
             }
         }
-    };
-}
 
-#[macro_export]
-macro_rules! impl_checked_ops_signed {
-    ($t:ty) => {
-        impl CheckedOps for $t {
-            impl_checked_ops!($t);
+        impl Integer for $t {
+            fn checked_shl(self, other: u32) -> StdResult<Self> {
+                self.checked_shl(other)
+                    .ok_or_else(|| StdError::overflow_shl(self, other))
+            }
 
-            fn abs(self) -> Self {
-                self.abs()
+            fn checked_shr(self, other: u32) -> StdResult<Self> {
+                self.checked_shr(other)
+                    .ok_or_else(|| StdError::overflow_shr(self, other))
+            }
+
+            fn checked_ilog2(self) -> StdResult<u32> {
+                self.checked_ilog2().ok_or_else(|| StdError::zero_log())
+            }
+
+            fn checked_ilog10(self) -> StdResult<u32> {
+                self.checked_ilog10().ok_or_else(|| StdError::zero_log())
             }
         }
     };
@@ -555,10 +483,10 @@ macro_rules! impl_next {
 #[macro_export]
 macro_rules! impl_all_ops_and_assign {
     ($name:ident, $other:ty) => {
-        impl_base_ops!(impl Add, add for $name as $other where sub fn checked_add);
-        impl_base_ops!(impl Sub, sub for $name as $other where sub fn checked_sub);
-        impl_base_ops!(impl Mul, mul for $name as $other where sub fn checked_mul);
-        impl_base_ops!(impl Div, div for $name as $other where sub fn checked_div);
+        impl_number!(impl Add, add for $name as $other where sub fn checked_add);
+        impl_number!(impl Sub, sub for $name as $other where sub fn checked_sub);
+        impl_number!(impl Mul, mul for $name as $other where sub fn checked_mul);
+        impl_number!(impl Div, div for $name as $other where sub fn checked_div);
 
         forward_ref_binop!(impl Add, add for $name, $other);
         forward_ref_binop!(impl Sub, sub for $name, $other);
@@ -570,10 +498,10 @@ macro_rules! impl_all_ops_and_assign {
         forward_ref_binop!(impl Mul, mul for $other, $name);
         forward_ref_binop!(impl Div, div for $other, $name);
 
-        impl_assign!(impl AddAssign, add_assign for $name as $other where sub fn checked_add);
-        impl_assign!(impl SubAssign, sub_assign for $name as $other where sub fn checked_sub);
-        impl_assign!(impl MulAssign, mul_assign for $name as $other where sub fn checked_mul);
-        impl_assign!(impl DivAssign, div_assign for $name as $other where sub fn checked_div);
+        impl_assign_number!(impl AddAssign, add_assign for $name as $other where sub fn checked_add);
+        impl_assign_number!(impl SubAssign, sub_assign for $name as $other where sub fn checked_sub);
+        impl_assign_number!(impl MulAssign, mul_assign for $name as $other where sub fn checked_mul);
+        impl_assign_number!(impl DivAssign, div_assign for $name as $other where sub fn checked_div);
 
         forward_ref_op_assign!(impl AddAssign, add_assign for $name, $other);
         forward_ref_op_assign!(impl SubAssign, sub_assign for $name, $other);
@@ -583,30 +511,16 @@ macro_rules! impl_all_ops_and_assign {
 }
 
 #[macro_export]
-macro_rules! impl_base_ops {
+macro_rules! impl_number {
     // args type = Self
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<$($gen),*> std::ops::$imp for $t
         where
-            $t: CheckedOps,
+            $t: Number,
         {
             type Output = Self;
 
             fn $method(self, other: Self) -> Self {
-                self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
-            }
-        }
-    };
-
-    // args type = other
-    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
-        impl<$($gen),*> std::ops::$imp<$other> for $t
-        where
-            $t: CheckedOps,
-        {
-            type Output = Self;
-
-            fn $method(self, other: $other) -> Self {
                 self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
             }
         }
@@ -636,9 +550,22 @@ macro_rules! impl_base_ops {
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: usize> std::ops::$imp for $t
         where
-            Int<U>: NextNumber + CheckedOps,
-            <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
-            U: NumberConst + Clone + PartialEq + Copy + FromStr,
+        Self: Number,
+
+        {
+            type Output = Self;
+
+            fn $method(self, other: Self) -> Self {
+                self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+    };
+
+    // Decimal Self
+    (impl Signed with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
+        impl<T> std::ops::$imp for $t
+        where
+            Self: Number,
         {
             type Output = Self;
 
@@ -651,86 +578,31 @@ macro_rules! impl_base_ops {
 }
 
 #[macro_export]
-macro_rules! impl_signed_ops {
-    // Not
-    (impl<$($gen:tt),*> Not for $t:ty) => {
-        impl<$($gen),*> std::ops::Not for $t
+macro_rules! impl_integer {
+    // args type = other
+    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
+        impl<$($gen),*> std::ops::$imp<$other> for $t
         where
-            U: Not + Not<Output = U>,
+            $t: Integer,
         {
             type Output = Self;
 
-            fn not(self) -> Self {
-                Self(!self.0)
+            fn $method(self, other: $other) -> Self {
+                self.$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
             }
         }
-    };
-
-    // Neg
-    (impl<$($gen:tt),*> Neg for $t:ty) => {
-        impl<$($gen),*> std::ops::Neg for $t
-        where
-            U: Neg + Neg<Output = U>,
-        {
-            type Output = Self;
-
-            fn neg(self) -> Self {
-                Self(-self.0)
-            }
-        }
-    };
-
-    // Not Decimal
-    (impl Not for $t:ident) => {
-        impl<U, const S: usize> std::ops::Not for $t<U,S>
-        where
-            U: Not + Not<Output = U>,
-        {
-            type Output = Self;
-
-            fn not(self) -> Self {
-                Self(!self.0)
-            }
-        }
-    };
-
-    // Neg Decimal
-    (impl Neg for $t:ident) => {
-        impl<U, const S: usize> std::ops::Neg for $t<U,S>
-        where
-            U: Neg + Neg<Output = U>,
-        {
-            type Output = Self;
-
-            fn neg(self) -> Self {
-                Self(-self.0)
-            }
-        }
-
     };
 }
 
 #[macro_export]
-macro_rules! impl_assign {
+macro_rules! impl_assign_number {
     // args type = Self
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<$($gen),*>core::ops::$imp for $t
         where
-            $t: CheckedOps + Copy,
+            $t: Number + Copy,
         {
             fn $method(&mut self, other: Self) {
-                *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
-            }
-        }
-    };
-
-    // args type = other
-    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
-        impl<U> core::ops::$imp<$other> for $t
-        where
-            $t: CheckedOps + Copy,
-        {
-            fn $method(&mut self, other: $other) {
                 *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
             }
         }
@@ -741,9 +613,7 @@ macro_rules! impl_assign {
     {
         impl<U, const S: usize> std::ops::$imp for $t
         where
-            Int<U>: NextNumber + CheckedOps,
-            <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
-            U: NumberConst + Clone + PartialEq + Copy + FromStr,
+            Self: Number + Copy
         {
             fn $method(&mut self, other: Self) {
                 *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
@@ -757,6 +627,23 @@ macro_rules! impl_assign {
         impl std::ops::$imp<$other> for $t {
             fn $method(&mut self, other: $other) {
                 *self = (*self).$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_assign_integer {
+    // args type = other
+    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
+        impl<U> core::ops::$imp<$other> for $t
+        where
+            $t: Integer + Copy,
+        {
+            fn $method(&mut self, other: $other) {
+                *self = (*self)
+                    .$sub_method(other)
+                    .unwrap_or_else(|err| panic!("{err}"))
             }
         }
     };
@@ -791,6 +678,12 @@ macro_rules! call_inner {
     (fn $op:ident, => Self) => {
         fn $op(self) -> Self {
             Self(self.0.$op())
+        }
+    };
+
+    (fn $op:ident, => Result<Self>) => {
+        fn $op(self) -> StdResult<Self> {
+            self.0.$op().map(Self)
         }
     };
 

@@ -1,17 +1,17 @@
 use {
     crate::{
         call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
-        impl_all_ops_and_assign, impl_assign, impl_base_ops, impl_next, impl_signed_ops, Bytable,
-        CheckedOps, Inner, NextNumber, NumberConst, Sqrt, StdError, StdResult,
+        impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
+        impl_number, Bytable, Inner, Integer, NextNumber, Number, NumberConst, StdError, StdResult,
     },
-    bnum::types::{I256, I512, U256, U512},
+    bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         fmt::{self, Display},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
         str::FromStr,
     },
 };
@@ -43,15 +43,15 @@ where
 }
 
 // --- Const ---
-impl<U> Int<U>
+impl<U> NumberConst for Int<U>
 where
     U: NumberConst,
 {
-    pub const MAX: Self = Self(U::MAX);
-    pub const MIN: Self = Self(U::MIN);
-    pub const ONE: Self = Self(U::ONE);
-    pub const TEN: Self = Self(U::TEN);
-    pub const ZERO: Self = Self(U::ZERO);
+    const MAX: Self = Self(U::MAX);
+    const MIN: Self = Self(U::MIN);
+    const ONE: Self = Self(U::ONE);
+    const TEN: Self = Self(U::TEN);
+    const ZERO: Self = Self(U::ZERO);
 }
 
 // --- Inner ---
@@ -89,11 +89,11 @@ where
     }
 }
 
-// --- CheckedOps ---
+// --- Number ---
 #[rustfmt::skip]
-impl<U> CheckedOps for Int<U>
+impl<U> Number for Int<U>
 where
-    U: CheckedOps,
+    U: Number,
 {
     call_inner!(fn checked_add,    field 0, => Result<Self>);
     call_inner!(fn checked_sub,    field 0, => Result<Self>);
@@ -101,10 +101,6 @@ where
     call_inner!(fn checked_div,    field 0, => Result<Self>);
     call_inner!(fn checked_rem,    field 0, => Result<Self>);
     call_inner!(fn checked_pow,    arg u32, => Result<Self>);
-    call_inner!(fn checked_shl,    arg u32, => Result<Self>);
-    call_inner!(fn checked_shr,    arg u32, => Result<Self>);
-    call_inner!(fn checked_ilog2,           => StdResult<u32>);
-    call_inner!(fn checked_ilog10,          => StdResult<u32>);
     call_inner!(fn wrapping_add,   field 0, => Self);
     call_inner!(fn wrapping_sub,   field 0, => Self);
     call_inner!(fn wrapping_mul,   field 0, => Self);
@@ -115,23 +111,27 @@ where
     call_inner!(fn saturating_pow, arg u32, => Self);
     call_inner!(fn abs,                     => Self);
     call_inner!(fn is_zero,                 => bool);
+    call_inner!(fn checked_sqrt,            => Result<Self>);
+
 }
 
-// --- Sqrt ---
-impl<U> Sqrt for Int<U>
+// --- Integer ---
+#[rustfmt::skip]
+impl<U> Integer for Int<U>
 where
-    U: Copy + Sqrt,
-{
-    fn checked_sqrt(self) -> StdResult<Self> {
-        self.number().checked_sqrt().map(Self::new)
+    U: Integer
+    {
+    call_inner!(fn checked_shl, arg u32, => Result<Self>);
+    call_inner!(fn checked_shr, arg u32, => Result<Self>);
+    call_inner!(fn checked_ilog2,        => StdResult<u32>);
+    call_inner!(fn checked_ilog10,       => StdResult<u32>);
     }
-}
 
 // --- full_mull ---
 impl<U> Int<U>
 where
     Int<U>: NextNumber,
-    <Int<U> as NextNumber>::Next: CheckedOps + ToString,
+    <Int<U> as NextNumber>::Next: Number + ToString,
 {
     /// Convert the current [`Int`] to [`NextNumber::Next`]
     ///
@@ -155,8 +155,8 @@ where
 impl<U> Int<U>
 where
     U: NumberConst + PartialEq,
-    Int<U>: NextNumber + CheckedOps + Copy,
-    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
+    Int<U>: NextNumber + Number + Copy,
+    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
 {
     pub fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
@@ -199,22 +199,19 @@ where
     }
 }
 
-impl_signed_ops!(impl<U> Not for Int<U>);
-impl_signed_ops!(impl<U> Neg for Int<U>);
+impl_number!(impl<U> Add, add for Int<U> where sub fn checked_add);
+impl_number!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
+impl_number!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
+impl_number!(impl<U> Div, div for Int<U> where sub fn checked_div);
+impl_integer!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
+impl_integer!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
 
-impl_base_ops!(impl<U> Add, add for Int<U> where sub fn checked_add);
-impl_base_ops!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
-impl_base_ops!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
-impl_base_ops!(impl<U> Div, div for Int<U> where sub fn checked_div);
-impl_base_ops!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
-impl_base_ops!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
-
-impl_assign!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
-impl_assign!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
-impl_assign!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
-impl_assign!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
-impl_assign!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
-impl_assign!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
+impl_assign_number!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
+impl_assign_number!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
+impl_assign_number!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
+impl_assign_number!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
+impl_assign_integer!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
+impl_assign_integer!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
 
 forward_ref_binop_typed!(impl<U> Add, add for Int<U>, Int<U>);
 forward_ref_binop_typed!(impl<U> Sub, sub for Int<U>, Int<U>);
@@ -342,134 +339,13 @@ generate_int!(
     try_from_int = []
 );
 
-// Int64
-generate_int!(
-    name = Int64,
-    inner_type = i64,
-    from_int = [],
-    from_std = [u32, u16, u8, i32, i16, i8],
-    try_from_int = []
-);
-
-// Int128
-generate_int!(
-    name = Int128,
-    inner_type = i128,
-    from_int = [Int64, Uint64],
-    from_std = [u32, u16, u8, i32, i16, i8],
-    try_from_int = [Uint128]
-);
-
-// Int256
-generate_int!(
-    name = Int256,
-    inner_type = I256,
-    from_int = [Int64, Int128, Uint64, Uint128],
-    from_std = [u32, u16, u8, i32, i16, i8],
-    try_from_int = [Uint256]
-);
-
-// Int512
-generate_int!(
-    name = Int512,
-    inner_type = I512,
-    from_int = [Int64, Int128, Int256, Uint64, Uint128, Uint256],
-    from_std = [u32, u16, u8, i32, i16, i8],
-    try_from_int = [Uint512]
-);
-
 // Implementations of [`Next`] has to be done after all the types are defined.
 impl_next!(Uint64, Uint128);
 impl_next!(Uint128, Uint256);
 impl_next!(Uint256, Uint512);
-impl_next!(Int64, Int128);
-impl_next!(Int128, Int256);
-impl_next!(Int256, Int512);
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        crate::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
-        bnum::types::{I256, I512, U256},
-    };
-
     #[test]
-    fn t1() {
-        let a = (-2_i128).to_be_bytes();
-        let a = grow_be_int::<16, 32>(a);
-        let a = I256::from_be_bytes(a);
-        println!("{:?}", a);
-
-        let a = (-2_i128).to_le_bytes();
-        let a = grow_le_int::<16, 32>(a);
-        let a = I256::from_le_bytes(a);
-        println!("{:?}", a);
-
-        let a = (2_u128).to_be_bytes();
-        let a = grow_be_uint::<16, 32>(a);
-        let a = U256::from_be_bytes(a);
-        println!("{:?}", a);
-
-        let a = (2_i128).to_le_bytes();
-        let a = grow_le_uint::<16, 32>(a);
-        let a = I256::from_le_bytes(a);
-        println!("{:?}", a);
-    }
-
-    #[test]
-    fn t2_conversion() {
-        let foo = Int128::new(1);
-        assert_eq!(foo.as_next(), Int256::new(I256::ONE));
-
-        let foo = Int256::ONE;
-        assert_eq!(foo.as_next(), Int512::new(I512::ONE));
-
-        let foo = Int128::new(10);
-        assert_eq!(Uint128::try_from(foo).unwrap(), Uint128::new(10));
-
-        let foo = Int128::new(-10);
-        Uint128::try_from(foo).unwrap_err();
-
-        let foo = Int128::new(10);
-        assert_eq!(u128::try_from(foo).unwrap(), 10);
-
-        let foo = Int128::new(-10);
-        u128::try_from(foo).unwrap_err();
-    }
-
-    #[test]
-    fn t3_ops() {
-        let foo = Uint64::new(1);
-        let bar = Uint128::new(2);
-        assert_eq!(bar + foo, Uint128::new(3));
-
-        let foo = Int64::new(1);
-        assert_eq!(-foo, Int64::new(-1));
-
-        let foo = Uint64::new(10);
-        let bar = Int128::new(-10);
-        assert_eq!(bar + foo, Int128::new(0));
-        assert_eq!(foo + bar, Int128::new(0));
-
-        let foo = Uint64::new(10);
-        let bar = Uint128::new(20);
-        let zzz = Uint64::new(20);
-        assert_eq!(foo + zzz, Uint64::new(30));
-
-        // Check if additions between an owned value and a reference works.
-        // Clippy would complain "needless reference" here, so disable it.
-        #[allow(clippy::op_ref)]
-        {
-            assert_eq!(foo + &zzz, Uint64::new(30));
-            assert_eq!(&foo + zzz, Uint64::new(30));
-            assert_eq!(&foo + &zzz, Uint64::new(30));
-            assert_eq!(foo + &bar, Uint128::new(30));
-            assert_eq!(bar + &foo, Uint128::new(30));
-        }
-
-        let mut foo = Uint128::new(10);
-        foo += 10_u32;
-        assert_eq!(foo, Uint128::new(20));
-    }
+    fn test1() {}
 }

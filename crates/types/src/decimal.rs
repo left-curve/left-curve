@@ -1,18 +1,18 @@
 use {
     crate::{
-        forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
-        generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign,
-        impl_base_ops, impl_signed_ops, CheckedOps, DecimalRef, Inner, Int, IntPerDec, NextNumber,
-        NumberConst, Sqrt, StdError, StdResult,
+        call_inner, forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
+        generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
+        impl_number, DecimalRef, Inner, Int, IntPerDec, NextNumber, Number, NumberConst, StdError,
+        StdResult,
     },
-    bnum::types::{I256, U256},
+    bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         cmp::Ordering,
         fmt::{self, Display, Write},
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
         str::FromStr,
     },
 };
@@ -31,7 +31,7 @@ impl<U, const S: usize> Inner for Decimal<U, S> {
 // --- Init ---
 impl<U, const S: usize> Decimal<U, S>
 where
-    Int<U>: CheckedOps,
+    Int<U>: Number,
     U: NumberConst,
 {
     fn f_pow(exp: u32) -> Int<U> {
@@ -58,7 +58,7 @@ where
 // --- Base impl ---
 impl<U, const S: usize> Decimal<U, S>
 where
-    Int<U>: CheckedOps,
+    Int<U>: Number,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     generate_decimal_per!(percent, 2);
@@ -75,18 +75,6 @@ where
         Self(Self::decimal_fraction())
     }
 
-    pub fn is_zero(self) -> bool {
-        self.0.is_zero()
-    }
-
-    pub fn checked_add(self, rhs: Self) -> StdResult<Self> {
-        self.0.checked_add(rhs.0).map(Self)
-    }
-
-    pub fn checked_sub(self, rhs: Self) -> StdResult<Self> {
-        self.0.checked_sub(rhs.0).map(Self)
-    }
-
     pub fn floor(self) -> Self {
         let decimal_fraction = Self::decimal_fraction();
         Self((self.0 / decimal_fraction) * decimal_fraction)
@@ -97,7 +85,7 @@ where
         if floor == self {
             Ok(floor)
         } else {
-            floor.checked_add(Self::one())
+            floor.0.checked_add(Self::decimal_fraction()).map(Self)
         }
     }
 
@@ -134,29 +122,29 @@ where
     }
 }
 
-// --- Mul / Div (Require Int<U>: NextNumber) ---
-impl<U, const S: usize> Decimal<U, S>
+// --- Number ---
+impl<U, const S: usize> Number for Decimal<U, S>
 where
-    Int<U>: NextNumber + CheckedOps,
-    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
+    Decimal<U, S>: ToString,
+    Int<U>: NextNumber + Number + PartialOrd,
+    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
-    generate_unchecked!(checked_pow => pow, arg u32);
-    generate_unchecked!(checked_from_ratio => from_ratio, args impl Into<Int<U>>, impl Into<Int<U>>);
+    call_inner!(fn checked_add,    field 0, => Result<Self>);
+    call_inner!(fn checked_sub,    field 0, => Result<Self>);
+    call_inner!(fn wrapping_add,   field 0, => Self);
+    call_inner!(fn wrapping_sub,   field 0, => Self);
+    call_inner!(fn wrapping_mul,   field 0, => Self);
+    call_inner!(fn wrapping_pow,   arg u32, => Self);
+    call_inner!(fn saturating_add, field 0, => Self);
+    call_inner!(fn saturating_sub, field 0, => Self);
+    call_inner!(fn saturating_mul, field 0, => Self);
+    call_inner!(fn saturating_pow, arg u32, => Self);
+    call_inner!(fn abs,                     => Self);
+    call_inner!(fn is_zero,                 => bool);
 
-    pub fn checked_from_ratio(
-        numerator: impl Into<Int<U>>,
-        denominator: impl Into<Int<U>>,
-    ) -> StdResult<Self> {
-        let numerator: Int<U> = numerator.into();
-        let denominator: Int<U> = denominator.into();
-        numerator
-            .checked_multiply_ratio_floor(Self::decimal_fraction(), denominator)
-            .map(Self)
-    }
-
-    pub fn checked_mul(self, rhs: Self) -> StdResult<Self> {
-        let numerator = self.0.full_mul(rhs.numerator());
+    fn checked_mul(self, other: Self) -> StdResult<Self> {
+        let numerator = self.0.full_mul(other.numerator());
         let denominator = <Int<U> as NextNumber>::Next::from(Self::decimal_fraction());
         let next_result = numerator.checked_div(denominator)?;
         Int::<U>::try_from(next_result.clone())
@@ -164,11 +152,15 @@ where
             .map_err(|_| StdError::overflow_conversion::<_, Int<U>>(next_result))
     }
 
-    pub fn checked_div(self, rhs: Self) -> StdResult<Self> {
-        Decimal::checked_from_ratio(self.numerator(), rhs.numerator())
+    fn checked_div(self, other: Self) -> StdResult<Self> {
+        Decimal::checked_from_ratio(self.numerator(), other.numerator())
     }
 
-    pub fn checked_pow(mut self, mut exp: u32) -> StdResult<Self> {
+    fn checked_rem(self, other: Self) -> StdResult<Self> {
+        self.0.checked_rem(other.0).map(Self)
+    }
+
+    fn checked_pow(mut self, mut exp: u32) -> StdResult<Self> {
         if exp == 0 {
             return Ok(Decimal::zero());
         }
@@ -188,37 +180,57 @@ where
 
         Ok(self * y)
     }
-}
 
-// --- Sqrt ---
-impl<U, const S: usize> Sqrt for Decimal<U, S>
-where
-    Decimal<U, S>: ToString,
-    Int<U>: CheckedOps + NumberConst + Sqrt + Copy + PartialOrd + PartialEq,
-    U: NumberConst,
-{
+    // TODO: Check if this is the best way to implement this
     fn checked_sqrt(self) -> StdResult<Self> {
+        // With the current design, U should be only unsigned number.
+        // Leave this safety check here for now.
         if self.0 < Int::ZERO {
             return Err(StdError::negative_sqrt::<Self>(self));
         }
         let hundred = Int::TEN.checked_mul(Int::TEN)?;
         (0..=S as u32 / 2)
             .rev()
-            .find_map(|i| {
-                let inner_mul = hundred.checked_pow(i).unwrap();
+            .find_map(|i| -> Option<StdResult<Self>> {
+                let inner_mul = match hundred.checked_pow(i) {
+                    Ok(val) => val,
+                    Err(err) => return Some(Err(err)),
+                };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(S as u32 / 2 - i).unwrap();
-                    Self::raw(inner.sqrt().checked_mul(outer_mul).unwrap())
+                    let outer_mul = hundred.checked_pow(S as u32 / 2 - i)?;
+                    Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
-            })
-            .ok_or(StdError::Generic("Sqrt failed".to_string())) // TODO: add a StdError variant to handle this?
+            }).transpose()?
+            // TODO: add a StdError variant to handle this?
+            .ok_or(StdError::Generic("Sqrt failed".to_string()))
+    }
+}
+
+// --- Checked from ratio (require Int<U>: NextNumber) ---
+impl<U, const S: usize> Decimal<U, S>
+where
+    Int<U>: NextNumber + Number,
+    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
+    U: NumberConst + Clone + PartialEq + Copy + FromStr,
+{
+    generate_unchecked!(checked_from_ratio => from_ratio, args impl Into<Int<U>>, impl Into<Int<U>>);
+
+    pub fn checked_from_ratio(
+        numerator: impl Into<Int<U>>,
+        denominator: impl Into<Int<U>>,
+    ) -> StdResult<Self> {
+        let numerator: Int<U> = numerator.into();
+        let denominator: Int<U> = denominator.into();
+        numerator
+            .checked_multiply_ratio_floor(Self::decimal_fraction(), denominator)
+            .map(Self)
     }
 }
 
 // --- DecimalRef ---
 impl<U, const S: usize> DecimalRef<U> for Decimal<U, S>
 where
-    U: NumberConst + CheckedOps,
+    U: NumberConst + Number,
 {
     fn numerator(self) -> Int<U> {
         self.0
@@ -230,15 +242,14 @@ where
 }
 
 // --- IntperDecimal ---
-
 impl<U, AsU, DR> IntPerDec<U, AsU, DR> for Int<U>
 where
     Int<AsU>: Into<Int<U>>,
     DR: DecimalRef<AsU>,
-    AsU: NumberConst + CheckedOps,
-    U: NumberConst + CheckedOps + PartialEq,
-    Int<U>: NextNumber + CheckedOps + Copy,
-    <Int<U> as NextNumber>::Next: CheckedOps + ToString + Clone,
+    AsU: NumberConst + Number,
+    U: NumberConst + Number + PartialEq,
+    Int<U>: NextNumber + Number + Copy,
+    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
@@ -257,18 +268,15 @@ where
     }
 }
 
-impl_signed_ops!(impl Not for Decimal);
-impl_signed_ops!(impl Neg for Decimal);
+impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
+impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);
+impl_number!(impl Decimal with Mul, mul for Decimal<U, S> where sub fn checked_mul);
+impl_number!(impl Decimal with Div, div for Decimal<U, S> where sub fn checked_div);
 
-impl_base_ops!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
-impl_base_ops!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);
-impl_base_ops!(impl Decimal with Mul, mul for Decimal<U, S> where sub fn checked_mul);
-impl_base_ops!(impl Decimal with Div, div for Decimal<U, S> where sub fn checked_div);
-
-impl_assign!(impl Decimal with AddAssign, add_assign for Decimal<U, S> where sub fn checked_add);
-impl_assign!(impl Decimal with SubAssign, sub_assign for Decimal<U, S> where sub fn checked_sub);
-impl_assign!(impl Decimal with MulAssign, mul_assign for Decimal<U, S> where sub fn checked_mul);
-impl_assign!(impl Decimal with DivAssign, div_assign for Decimal<U, S> where sub fn checked_div);
+impl_assign_number!(impl Decimal with AddAssign, add_assign for Decimal<U, S> where sub fn checked_add);
+impl_assign_number!(impl Decimal with SubAssign, sub_assign for Decimal<U, S> where sub fn checked_sub);
+impl_assign_number!(impl Decimal with MulAssign, mul_assign for Decimal<U, S> where sub fn checked_mul);
+impl_assign_number!(impl Decimal with DivAssign, div_assign for Decimal<U, S> where sub fn checked_div);
 
 forward_ref_binop_decimal!(impl Add, add for Decimal<U, S>, Decimal<U, S>);
 forward_ref_binop_decimal!(impl Sub, sub for Decimal<U, S>, Decimal<U, S>);
@@ -280,9 +288,10 @@ forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Decimal<U, S>, Dec
 forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Decimal<U, S>, Decimal<U, S>);
 forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Decimal<U, S>, Decimal<U, S>);
 
+// --- Display ---
 impl<U, const S: usize> Display for Decimal<U, S>
 where
-    Int<U>: CheckedOps + Display + Copy,
+    Int<U>: Number + Display + Copy,
     U: NumberConst + PartialEq + PartialOrd,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -290,15 +299,11 @@ where
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
-        if whole < Int::ZERO || fractional < Int::ZERO {
-            write!(f, "-")?;
-        }
-
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
-            let fractional_string = format!("{:0>padding$}", fractional.abs(), padding = S);
-            f.write_str(&whole.abs().to_string())?;
+            let fractional_string = format!("{:0>padding$}", fractional, padding = S);
+            f.write_str(&whole.to_string())?;
             f.write_char('.')?;
             f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
         }
@@ -307,9 +312,10 @@ where
     }
 }
 
+// --- FromStr ---
 impl<U, const S: usize> FromStr for Decimal<U, S>
 where
-    Int<U>: CheckedOps + FromStr + Display,
+    Int<U>: Number + FromStr + Display,
     U: NumberConst,
 {
     type Err = StdError;
@@ -326,7 +332,6 @@ where
         let decimal_fractional = Self::decimal_fraction();
 
         let whole_part = parts_iter.next().unwrap(); // split always returns at least one element
-        let is_neg = whole_part.starts_with('-');
 
         let whole = whole_part
             .parse::<Int<U>>()
@@ -351,12 +356,9 @@ where
             let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
 
             // for negative numbers, we need to subtract the fractional part
-            atomics = if is_neg {
-                atomics.checked_sub(fractional_part)
-            } else {
-                atomics.checked_add(fractional_part)
-            }
-            .map_err(|_| StdError::generic_err("Value too big"))?;
+            atomics = atomics
+                .checked_add(fractional_part)
+                .map_err(|_| StdError::generic_err("Value too big"))?;
         }
 
         if parts_iter.next().is_some() {
@@ -383,7 +385,7 @@ impl<'de, U, const S: usize> de::Deserialize<'de> for Decimal<U, S>
 where
     U: Default + NumberConst + FromStr,
     <U as FromStr>::Err: Display,
-    Int<U>: CheckedOps + FromStr + Display,
+    Int<U>: Number + FromStr + Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -401,7 +403,7 @@ struct DecimalVisitor<U, const S: usize> {
 impl<'de, U, const S: usize> de::Visitor<'de> for DecimalVisitor<U, S>
 where
     U: NumberConst,
-    Int<U>: CheckedOps + FromStr + Display,
+    Int<U>: Number + FromStr + Display,
 {
     type Value = Decimal<U, S>;
 
@@ -441,70 +443,49 @@ generate_decimal!(
     try_from_dec = []
 );
 
-// SignedDecimal128
-generate_decimal!(
-    name = SignedDecimal128,
-    inner_type = i128,
-    decimal_places = 18,
-    from_dec = [],
-    try_from_dec = [Decimal128]
-);
-
-// SignedDecimal256
-generate_decimal!(
-    name = SignedDecimal256,
-    inner_type = I256,
-    decimal_places = 18,
-    from_dec = [SignedDecimal128, Decimal128],
-    try_from_dec = [Decimal256]
-);
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::{Int256, Uint128, Uint256},
-    };
+    use std::str::FromStr;
+
+    use crate::{Decimal128, Number};
 
     #[test]
     fn t1() {
-        let val = SignedDecimal128::from_str("-2").unwrap();
-        assert_eq!(val * val, SignedDecimal128::from_str("4").unwrap());
-
-        let value = Uint128::new(100);
-        let dec = Decimal128::from_str("2.5").unwrap();
-        let result = value.checked_mul_dec_floor(dec).unwrap();
-        assert_eq!(result, Uint128::new(250));
-
-        let value: Uint256 = 100_u128.into();
-        let dec = Decimal128::from_str("2.5").unwrap();
-        let result = value.checked_mul_dec_floor(dec).unwrap();
-        assert_eq!(result, Uint256::new(250_u128.into()));
-
-        let value: Int256 = (-10_i128).into();
-        let dec = Decimal128::from_str("2.5").unwrap();
-        assert_eq!(value.mul_dec_floor(dec), Int256::new_from(-25));
-
-        let foo = Decimal128::new(10_u64);
-        let bar = Decimal256::new(10_u128);
-        assert_eq!(bar + foo, Decimal256::new(20_u128));
-        assert_eq!(foo + bar, Decimal256::new(20_u128));
-
-        let foo = SignedDecimal128::from_str("-10").unwrap();
-        assert_eq!(-foo, SignedDecimal128::from_str("10").unwrap());
-
-        let foo: Decimal128 = Decimal128::new(10_u64);
-        assert_eq!(Decimal256::try_from(foo).unwrap(), Decimal256::new(10_u128));
-
-        let foo: Decimal128 = Decimal128::new(10_u64);
         assert_eq!(
-            SignedDecimal128::try_from(foo).unwrap(),
-            SignedDecimal128::new(10_u64)
+            Decimal128::one() + Decimal128::one(),
+            Decimal128::new(2_u128)
         );
 
-        let foo: Decimal128 = Decimal128::raw(u128::MAX.into());
-        SignedDecimal128::try_from(foo).unwrap_err();
+        assert_eq!(
+            Decimal128::new(10_u128)
+                .checked_add(Decimal128::new(20_u128))
+                .unwrap(),
+            Decimal128::new(30_u128)
+        );
+
+        assert_eq!(
+            Decimal128::new(3_u128)
+                .checked_rem(Decimal128::new(2_u128))
+                .unwrap(),
+            Decimal128::from_str("1").unwrap()
+        );
+
+        assert_eq!(
+            Decimal128::from_str("3.5")
+                .unwrap()
+                .checked_rem(Decimal128::new(2_u128))
+                .unwrap(),
+            Decimal128::from_str("1.5").unwrap()
+        );
+
+        assert_eq!(
+            Decimal128::from_str("3.5")
+                .unwrap()
+                .checked_rem(Decimal128::from_str("2.7").unwrap())
+                .unwrap(),
+            Decimal128::from_str("0.8").unwrap()
+        );
     }
 }
