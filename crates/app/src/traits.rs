@@ -208,12 +208,12 @@ pub trait Vm: Sized {
         Ok(from_json_slice(res_bytes)?)
     }
 
-    fn call_bank_transfer(
+    fn call_bank_execute(
         self,
         ctx: &Context,
         msg: &BankMsg,
     ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("bank_transfer", ctx, to_json_vec(msg)?)?;
+        let res_bytes = self.call_in_1_out_1("bank_execute", ctx, to_json_vec(msg)?)?;
         Ok(from_json_slice(res_bytes)?)
     }
 

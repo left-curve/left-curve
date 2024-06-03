@@ -76,7 +76,7 @@ fn accumulate_supply(
 }
 
 #[cfg_attr(not(feature = "library"), grug_export)]
-pub fn bank_transfer(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
+pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
         increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;

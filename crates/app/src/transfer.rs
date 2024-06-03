@@ -69,7 +69,7 @@ where
         simulate: None,
     };
     let msg = BankMsg { from, to, coins };
-    let resp = instance.call_bank_transfer(&ctx, &msg)?.into_std_result()?;
+    let resp = instance.call_bank_execute(&ctx, &msg)?.into_std_result()?;
 
     // handle submessages
     let mut events = vec![new_transfer_event(&ctx.contract, resp.attributes)];

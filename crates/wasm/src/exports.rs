@@ -376,7 +376,7 @@ where
 
 // ------------------------------- bank transfer -------------------------------
 
-pub fn do_bank_transfer<E>(
+pub fn do_bank_execute<E>(
     transfer_fn: &dyn Fn(SudoCtx, BankMsg) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
@@ -387,13 +387,13 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
-    let res = _do_bank_transfer(transfer_fn, &ctx_bytes, &msg_bytes);
+    let res = _do_bank_execute(transfer_fn, &ctx_bytes, &msg_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
 
-fn _do_bank_transfer<E>(
+fn _do_bank_execute<E>(
     transfer_fn: &dyn Fn(SudoCtx, BankMsg) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
