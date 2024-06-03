@@ -2,9 +2,9 @@ use {
     crate::{PrefixStore, QueryProvider},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Batch, Context,
+        from_json_slice, to_json_vec, BankMsg, BankQuery, BankQueryResponse, Batch, Context,
         GenericResult, Hash, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
-        Storage, SubMsgResult, TransferMsg, Tx,
+        Storage, SubMsgResult, Tx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -211,7 +211,7 @@ pub trait Vm: Sized {
     fn call_bank_transfer(
         self,
         ctx: &Context,
-        msg: &TransferMsg,
+        msg: &BankMsg,
     ) -> Result<GenericResult<Response>, Self::Error> {
         let res_bytes = self.call_in_1_out_1("bank_transfer", ctx, to_json_vec(msg)?)?;
         Ok(from_json_slice(res_bytes)?)
@@ -220,7 +220,7 @@ pub trait Vm: Sized {
     fn call_bank_query(
         self,
         ctx: &Context,
-        msg: &BankQueryMsg,
+        msg: &BankQuery,
     ) -> Result<GenericResult<BankQueryResponse>, Self::Error> {
         let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json_vec(msg)?)?;
         Ok(from_json_slice(res_bytes)?)

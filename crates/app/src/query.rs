@@ -5,7 +5,7 @@ use {
     },
     grug_storage::Bound,
     grug_types::{
-        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
+        AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
         Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
         WasmSmartResponse,
     },
@@ -31,7 +31,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Balance { address, denom })
+    _query_bank::<VM>(storage, block, &BankQuery::Balance { address, denom })
         .map(|res| res.as_balance())
 }
 
@@ -46,11 +46,15 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Balances {
-        address,
-        start_after,
-        limit,
-    })
+    _query_bank::<VM>(
+        storage,
+        block,
+        &BankQuery::Balances {
+            address,
+            start_after,
+            limit,
+        },
+    )
     .map(|res| res.as_balances())
 }
 
@@ -63,7 +67,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Supply { denom }).map(|res| res.as_supply())
+    _query_bank::<VM>(storage, block, &BankQuery::Supply { denom }).map(|res| res.as_supply())
 }
 
 pub fn query_supplies<VM>(
@@ -76,17 +80,14 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Supplies {
-        start_after,
-        limit,
-    })
-    .map(|res| res.as_supplies())
+    _query_bank::<VM>(storage, block, &BankQuery::Supplies { start_after, limit })
+        .map(|res| res.as_supplies())
 }
 
 pub fn _query_bank<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
-    msg: &BankQueryMsg,
+    msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
     VM: Vm,

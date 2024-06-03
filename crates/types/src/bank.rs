@@ -33,26 +33,20 @@ use {
     serde_with::skip_serializing_none,
 };
 
+/// The execute message that the host provides the bank contract during the
+/// `bank_execute` function call.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct TransferMsg {
+pub struct BankMsg {
     pub from: Addr,
     pub to: Addr,
     pub coins: Coins,
 }
 
-// Note: The bank contract MUST return query response that matches exactly the
-// request. E.g. if the request is BankQuery::Balance, the response must be
-// BankQueryResponse::Balance. It cannot be any other enum variant. Otherwise
-// the chain may panic and halt.
-//
-// We consider it safe to make this assumption, because bank is a "core"
-// contract, meaning it's not something that anyone can permissionless upload.
-// It is set by the developer at chain genesis, and only only updatable by
-// governance. We assume that the developer and governance have exercised
-// caution when creating their own custom bank contracts.
+/// The query message that the host provides the bank contract during the
+/// `bank_query` function call.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub enum BankQueryMsg {
+pub enum BankQuery {
     Balance {
         address: Addr,
         denom: String,
@@ -71,6 +65,16 @@ pub enum BankQueryMsg {
     },
 }
 
+/// The query response that the bank contract must return during the `bank_query`
+/// function call.
+///
+/// The response MUST match the query. For example, if the host queries
+/// `BankQuery::Balance`, the contract must return `BankQueryResponse::Balance`.
+/// Returning a different `BankQueryResponse` variant can cause the host to
+/// panic and the chain halted.
+///
+/// This said, we don't consider this a security vulnerability, because bank is
+/// a _privileged contract_ that must be approved by governance.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum BankQueryResponse {
     Balance(Coin),

@@ -3,7 +3,7 @@ use {
         create_vm_instance, handle_submessages, load_program, new_receive_event,
         new_transfer_event, AppError, AppResult, Vm, ACCOUNTS, CHAIN_ID, CONFIG,
     },
-    grug_types::{Addr, BlockInfo, Coins, Context, Event, Storage, TransferMsg},
+    grug_types::{Addr, BankMsg, BlockInfo, Coins, Context, Event, Storage},
     tracing::{info, warn},
 };
 
@@ -45,7 +45,7 @@ fn _do_transfer<VM>(
     to: Addr,
     coins: Coins,
     receive: bool,
-) -> AppResult<(Vec<Event>, TransferMsg)>
+) -> AppResult<(Vec<Event>, BankMsg)>
 where
     VM: Vm,
     AppError: From<VM::Error>,
@@ -68,7 +68,7 @@ where
         funds: None,
         simulate: None,
     };
-    let msg = TransferMsg { from, to, coins };
+    let msg = BankMsg { from, to, coins };
     let resp = instance.call_bank_transfer(&ctx, &msg)?.into_std_result()?;
 
     // handle submessages
@@ -94,9 +94,9 @@ where
 fn _do_receive<VM>(
     storage: Box<dyn Storage>,
     block: &BlockInfo,
-    msg: TransferMsg,
+    msg: BankMsg,
     mut events: Vec<Event>,
-) -> AppResult<(Vec<Event>, TransferMsg)>
+) -> AppResult<(Vec<Event>, BankMsg)>
 where
     VM: Vm,
     AppError: From<VM::Error>,

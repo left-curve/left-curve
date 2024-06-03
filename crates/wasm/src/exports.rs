@@ -5,9 +5,9 @@ use {
         ImmutableCtx, MutableCtx, Region, SudoCtx,
     },
     grug_types::{
-        from_borsh_slice, from_json_slice, to_json_vec, BankQueryMsg, BankQueryResponse, Context,
-        GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, SubMsgResult,
-        TransferMsg, Tx,
+        from_borsh_slice, from_json_slice, to_json_vec, BankMsg, BankQuery, BankQueryResponse,
+        Context, GenericResult, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response,
+        SubMsgResult, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -377,7 +377,7 @@ where
 // ------------------------------- bank transfer -------------------------------
 
 pub fn do_bank_transfer<E>(
-    transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
+    transfer_fn: &dyn Fn(SudoCtx, BankMsg) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -394,7 +394,7 @@ where
 }
 
 fn _do_bank_transfer<E>(
-    transfer_fn: &dyn Fn(SudoCtx, TransferMsg) -> Result<Response, E>,
+    transfer_fn: &dyn Fn(SudoCtx, BankMsg) -> Result<Response, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<Response>
@@ -411,7 +411,7 @@ where
 // -------------------------------- bank query ---------------------------------
 
 pub fn do_bank_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>,
+    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -428,7 +428,7 @@ where
 }
 
 fn _do_bank_query<E>(
-    query_fn: &dyn Fn(ImmutableCtx, BankQueryMsg) -> Result<BankQueryResponse, E>,
+    query_fn: &dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E>,
     ctx_bytes: &[u8],
     msg_bytes: &[u8],
 ) -> GenericResult<BankQueryResponse>
