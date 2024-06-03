@@ -46,15 +46,11 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(
-        storage,
-        block,
-        &BankQuery::Balances {
-            address,
-            start_after,
-            limit,
-        },
-    )
+    _query_bank::<VM>(storage, block, &BankQuery::Balances {
+        address,
+        start_after,
+        limit,
+    })
     .map(|res| res.as_balances())
 }
 
