@@ -46,6 +46,7 @@ pub struct BankMsg {
 /// `bank_query` function call.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum BankQuery {
     Balance {
         address: Addr,
@@ -76,6 +77,7 @@ pub enum BankQuery {
 /// This said, we don't consider this a security vulnerability, because bank is
 /// a _privileged contract_ that must be approved by governance.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum BankQueryResponse {
     Balance(Coin),
     Balances(Coins),
