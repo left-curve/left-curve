@@ -47,15 +47,4 @@ pub enum Message {
         new_code_hash: Hash,
         msg: Json,
     },
-    /// Create a new IBC light client.
-    ClientCreate {
-        code_hash: Hash,
-        client_state: Json,
-        consensus_state: Json,
-        salt: Binary,
-    },
-    /// Update the state of an IBC light client by submitting a new header.
-    ClientUpdate { client_id: Addr, header: Json },
-    /// Freeze an IBC light client by submitting evidence of a misbehavior.
-    ClientFreeze { client_id: Addr, misbehavior: Json },
 }
