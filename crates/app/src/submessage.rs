@@ -1,13 +1,6 @@
 use {
-    crate::{
-        create_vm_instance, load_program, new_reply_event, process_msg, AppError, AppResult,
-        CacheStore, SharedStore, Vm, ACCOUNTS, CHAIN_ID,
-    },
-    grug_types::{
-        Addr, BlockInfo, Context, Event, GenericResult, Json, ReplyOn, Storage, SubMessage,
-        SubMsgResult,
-    },
-    tracing::{info, warn},
+    crate::{do_reply, process_msg, AppError, AppResult, CacheStore, SharedStore, Vm},
+    grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
 /// Recursively execute submessages emitted in a contract response using a
@@ -40,8 +33,8 @@ pub fn handle_submessages<VM>(
     // Instead, we use the `dyn_clone::DynClone` trait:
     // https://docs.rs/dyn-clone/1.0.16/dyn_clone/
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
-    sender: &Addr,
+    block: BlockInfo,
+    sender: Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
 where
@@ -51,10 +44,13 @@ where
     let mut events = vec![];
     for submsg in submsgs {
         let cached = SharedStore::new(CacheStore::new(storage.clone(), None));
-        match (
-            submsg.reply_on,
-            process_msg::<VM>(Box::new(cached.share()), block, sender, submsg.msg),
-        ) {
+        let result = process_msg::<VM>(
+            Box::new(cached.share()),
+            block.clone(),
+            sender.clone(),
+            submsg.msg,
+        );
+        match (submsg.reply_on, result) {
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
@@ -62,10 +58,10 @@ where
                 events.extend(submsg_events.clone());
                 events.extend(do_reply::<VM>(
                     storage.clone(),
-                    block,
-                    sender,
+                    block.clone(),
+                    sender.clone(),
                     &payload,
-                    GenericResult::Ok(submsg_events),
+                    &GenericResult::Ok(submsg_events),
                 )?);
             },
             // error - callback requested
@@ -73,10 +69,10 @@ where
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
                 events.extend(do_reply::<VM>(
                     storage.clone(),
-                    block,
-                    sender,
+                    block.clone(),
+                    sender.clone(),
                     &payload,
-                    GenericResult::Err(err.to_string()),
+                    &GenericResult::Err(err.to_string()),
                 )?);
             },
             // success - callback not requested
@@ -92,72 +88,5 @@ where
             },
         };
     }
-    Ok(events)
-}
-
-pub fn do_reply<VM>(
-    storage: Box<dyn Storage>,
-    block: &BlockInfo,
-    contract: &Addr,
-    payload: &Json,
-    submsg_res: SubMsgResult,
-) -> AppResult<Vec<Event>>
-where
-    VM: Vm,
-    AppError: From<VM::Error>,
-{
-    match _do_reply::<VM>(storage, block, contract, payload, submsg_res) {
-        Ok(events) => {
-            info!(contract = contract.to_string(), "Performed callback");
-            Ok(events)
-        },
-        Err(err) => {
-            warn!(err = err.to_string(), "Failed to perform callback");
-            Err(err)
-        },
-    }
-}
-
-fn _do_reply<VM>(
-    storage: Box<dyn Storage>,
-    block: &BlockInfo,
-    contract: &Addr,
-    payload: &Json,
-    submsg_res: SubMsgResult,
-) -> AppResult<Vec<Event>>
-where
-    VM: Vm,
-    AppError: From<VM::Error>,
-{
-    let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, contract)?;
-
-    let program = load_program::<VM>(&storage, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), contract, program)?;
-
-    // call reply
-    let ctx = Context {
-        chain_id,
-        block_height: block.height,
-        block_timestamp: block.timestamp,
-        block_hash: block.hash.clone(),
-        contract: contract.clone(),
-        sender: None,
-        funds: None,
-        simulate: None,
-    };
-    let resp = instance
-        .call_reply(&ctx, payload, &submsg_res)?
-        .into_std_result()?;
-
-    // handle submessages
-    let mut events = vec![new_reply_event(contract, resp.attributes)];
-    events.extend(handle_submessages::<VM>(
-        storage,
-        block,
-        contract,
-        resp.submsgs,
-    )?);
-
     Ok(events)
 }

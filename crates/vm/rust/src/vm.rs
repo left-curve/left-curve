@@ -51,16 +51,14 @@ impl Vm for RustVm {
         Ok(out)
     }
 
-    fn call_in_1_out_1(
-        mut self,
-        name: &str,
-        ctx: &Context,
-        param1: impl AsRef<[u8]>,
-    ) -> VmResult<Vec<u8>> {
+    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    where
+        P: AsRef<[u8]>,
+    {
         let contract = get_contract!(self.program.index);
         let out = match name {
             "instantiate" => {
-                let msg = from_json_slice(param1)?;
+                let msg = from_json_slice(param)?;
                 let res = contract.instantiate(
                     ctx.clone(),
                     &mut self.storage,
@@ -71,19 +69,19 @@ impl Vm for RustVm {
                 to_json_vec(&res)?
             },
             "execute" => {
-                let msg = from_json_slice(param1)?;
+                let msg = from_json_slice(param)?;
                 let res =
                     contract.execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             "migrate" => {
-                let msg = from_json_slice(param1)?;
+                let msg = from_json_slice(param)?;
                 let res =
                     contract.migrate(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             "query" => {
-                let msg = from_json_slice(param1)?;
+                let msg = from_json_slice(param)?;
                 let res = contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
@@ -97,13 +95,17 @@ impl Vm for RustVm {
         Ok(out)
     }
 
-    fn call_in_2_out_1(
+    fn call_in_2_out_1<P1, P2>(
         mut self,
         name: &str,
         ctx: &Context,
-        param1: impl AsRef<[u8]>,
-        param2: impl AsRef<[u8]>,
-    ) -> VmResult<Vec<u8>> {
+        param1: &P1,
+        param2: &P2,
+    ) -> VmResult<Vec<u8>>
+    where
+        P1: AsRef<[u8]>,
+        P2: AsRef<[u8]>,
+    {
         let contract = get_contract!(self.program.index);
         let out = match name {
             "reply" => {

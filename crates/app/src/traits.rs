@@ -1,11 +1,7 @@
 use {
     crate::{PrefixStore, QueryProvider},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{
-        from_json_slice, to_json_vec, BankMsg, BankQuery, BankQueryResponse, Batch, Context,
-        GenericResult, Hash, IbcClientUpdateMsg, IbcClientVerifyMsg, Json, Response, StdError,
-        Storage, SubMsgResult, Tx,
-    },
+    grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -119,143 +115,25 @@ pub trait Vm: Sized {
 
     /// Call a function that takes exactly 1 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_1_out_1(
+    fn call_in_1_out_1<P>(
         self,
         name: &str,
         ctx: &Context,
-        param1: impl AsRef<[u8]>,
-    ) -> Result<Vec<u8>, Self::Error>;
+        param: &P,
+    ) -> Result<Vec<u8>, Self::Error>
+    where
+        P: AsRef<[u8]>;
 
     /// Call a function that takes exactly 2 input parameters (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_2_out_1(
+    fn call_in_2_out_1<P1, P2>(
         self,
         name: &str,
         ctx: &Context,
-        param1: impl AsRef<[u8]>,
-        param2: impl AsRef<[u8]>,
-    ) -> Result<Vec<u8>, Self::Error>;
-
-    fn call_instantiate(
-        self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("instantiate", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_execute(
-        self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("execute", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_query(self, ctx: &Context, msg: &Json) -> Result<GenericResult<Json>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("query", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_migrate(
-        self,
-        ctx: &Context,
-        msg: &Json,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("migrate", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_reply(
-        self,
-        ctx: &Context,
-        msg: &Json,
-        events: &SubMsgResult,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes =
-            self.call_in_2_out_1("reply", ctx, to_json_vec(msg)?, to_json_vec(events)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_receive(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_0_out_1("receive", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_before_block(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_0_out_1("before_block", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_after_block(self, ctx: &Context) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_0_out_1("after_block", ctx)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_before_tx(
-        self,
-        ctx: &Context,
-        tx: &Tx,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("before_tx", ctx, to_json_vec(tx)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_after_tx(self, ctx: &Context, tx: &Tx) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("after_tx", ctx, to_json_vec(tx)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_bank_execute(
-        self,
-        ctx: &Context,
-        msg: &BankMsg,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("bank_execute", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_bank_query(
-        self,
-        ctx: &Context,
-        msg: &BankQuery,
-    ) -> Result<GenericResult<BankQueryResponse>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("bank_query", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_ibc_client_create(
-        self,
-        ctx: &Context,
-        client_state: &Json,
-        consensus_state: &Json,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_2_out_1(
-            "ibc_client_create",
-            ctx,
-            to_json_vec(client_state)?,
-            to_json_vec(consensus_state)?,
-        )?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_ibc_client_update(
-        self,
-        ctx: &Context,
-        msg: &IbcClientUpdateMsg,
-    ) -> Result<GenericResult<Response>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("ibc_client_update", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
-
-    fn call_ibc_client_verify(
-        self,
-        ctx: &Context,
-        msg: &IbcClientVerifyMsg,
-    ) -> Result<GenericResult<()>, Self::Error> {
-        let res_bytes = self.call_in_1_out_1("ibc_client_verify", ctx, to_json_vec(msg)?)?;
-        Ok(from_json_slice(res_bytes)?)
-    }
+        param1: &P1,
+        param2: &P2,
+    ) -> Result<Vec<u8>, Self::Error>
+    where
+        P1: AsRef<[u8]>,
+        P2: AsRef<[u8]>;
 }

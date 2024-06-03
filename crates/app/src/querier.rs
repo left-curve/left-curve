@@ -26,7 +26,7 @@ where
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        process_query::<VM>(self.storage.clone(), &self.block, req)
+        process_query::<VM>(self.storage.clone(), self.block.clone(), req)
             .map_err(|err| StdError::Generic(err.to_string()))
     }
 }

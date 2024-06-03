@@ -89,7 +89,7 @@ where
         // the developer should examine the error, fix it, and retry.
         for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             info!(idx, "Processing genesis message");
-            process_msg::<VM>(Box::new(cached.clone()), &block, &GENESIS_SENDER, msg)?;
+            process_msg::<VM>(Box::new(cached.clone()), block.clone(), GENESIS_SENDER, msg)?;
         }
 
         // persist the state changes to disk
@@ -156,7 +156,7 @@ where
         }
 
         // call begin blockers
-        for (idx, contract) in cfg.begin_blockers.iter().enumerate() {
+        for (idx, contract) in cfg.begin_blockers.into_iter().enumerate() {
             debug!(
                 idx,
                 contract = contract.to_string(),
@@ -167,7 +167,7 @@ where
             // TODO: we need to think whether this is the desired behavior
             events.extend(do_before_block::<VM>(
                 Box::new(cached.share()),
-                &block,
+                block.clone(),
                 contract,
             )?);
         }
@@ -175,18 +175,18 @@ where
         // process transactions one-by-one
         for (idx, (tx_hash, tx)) in txs.into_iter().enumerate() {
             debug!(idx, ?tx_hash, "Processing transaction");
-            tx_results.push(process_tx::<_, VM>(cached.share(), &block, tx));
+            tx_results.push(process_tx::<_, VM>(cached.share(), block.clone(), tx));
         }
 
         // call end blockers
-        for (idx, contract) in cfg.end_blockers.iter().enumerate() {
+        for (idx, contract) in cfg.end_blockers.into_iter().enumerate() {
             debug!(idx, contract = contract.to_string(), "Calling end blocker");
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
             events.extend(do_after_block::<VM>(
                 Box::new(cached.share()),
-                &block,
+                block.clone(),
                 contract,
             )?);
         }
@@ -279,7 +279,7 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        process_query::<VM>(Box::new(store), &block, req)
+        process_query::<VM>(Box::new(store), block, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -313,7 +313,7 @@ where
     }
 }
 
-fn process_tx<S, VM>(storage: S, block: &BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
     VM: Vm,
@@ -326,7 +326,11 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(do_before_tx::<VM>(Box::new(cached.share()), block, &tx)?);
+    events.extend(do_before_tx::<VM>(
+        Box::new(cached.share()),
+        block.clone(),
+        &tx,
+    )?);
 
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
@@ -342,8 +346,8 @@ where
         debug!(idx, "Processing message");
         events.extend(process_msg::<VM>(
             Box::new(cached.share()),
-            block,
-            &tx.sender,
+            block.clone(),
+            tx.sender.clone(),
             msg.clone(),
         )?);
     }
@@ -361,8 +365,8 @@ where
 
 pub fn process_msg<VM>(
     mut storage: Box<dyn Storage>,
-    block: &BlockInfo,
-    sender: &Addr,
+    block: BlockInfo,
+    sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
 where
@@ -370,11 +374,11 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::SetConfig { new_cfg } => do_set_config(&mut storage, sender, &new_cfg),
+        Message::SetConfig { new_cfg } => do_set_config(&mut storage, &sender, &new_cfg),
         Message::Transfer { to, coins } => {
             do_transfer::<VM>(storage, block, sender.clone(), to, coins, true)
         },
-        Message::Upload { code } => do_upload(&mut storage, sender, code.into()),
+        Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
         Message::Instantiate {
             code_hash,
             msg,
@@ -386,18 +390,18 @@ where
             contract,
             msg,
             funds,
-        } => do_execute::<VM>(storage, block, &contract, sender, &msg, funds),
+        } => do_execute::<VM>(storage, block, contract, sender, &msg, funds),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate::<VM>(storage, block, &contract, sender, new_code_hash, &msg),
+        } => do_migrate::<VM>(storage, block, contract, sender, new_code_hash, &msg),
     }
 }
 
 pub fn process_query<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where
