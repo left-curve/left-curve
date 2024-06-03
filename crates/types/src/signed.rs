@@ -47,14 +47,10 @@ where
     T: NumberConst,
 {
     const MAX: Self = Self::new_positive(T::MAX);
-
     const MIN: Self = Self::new_negative(T::MAX);
-
-    const ZERO: Self = Self::new_positive(T::ZERO);
-
     const ONE: Self = Self::new_positive(T::ONE);
-
     const TEN: Self = Self::new_positive(T::TEN);
+    const ZERO: Self = Self::new_positive(T::ZERO);
 }
 
 // --- Number ---
@@ -356,9 +352,10 @@ where
     }
 }
 
-// Neg
+// --- Neg ---
 impl<T> Neg for Signed<T> {
     type Output = Self;
+
     fn neg(self) -> Self::Output {
         Self::new(self.inner, !self.is_positive)
     }
@@ -410,11 +407,6 @@ mod test {
             a.checked_pow(3).unwrap(),
             Int128::new_negative(1000_u128.into())
         );
-
-        println!("{}", -3 % -2);
-        println!("{}", 3 % -2);
-        println!("{}", 3 % 2);
-        println!("{}", -3 % 2);
     }
 
     #[test]

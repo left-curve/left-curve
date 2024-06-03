@@ -62,9 +62,13 @@ where
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     generate_decimal_per!(percent, 2);
+
     generate_decimal_per!(permille, 4);
+
     generate_decimal_per!(bps, 6);
+
     generate_unchecked!(checked_ceil => ceil);
+
     generate_unchecked!(checked_from_atomics => from_atomics, args impl Into<Int<U>>, u32);
 
     pub const fn zero() -> Self {
@@ -131,16 +135,27 @@ where
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     call_inner!(fn checked_add,    field 0, => Result<Self>);
+
     call_inner!(fn checked_sub,    field 0, => Result<Self>);
+
     call_inner!(fn wrapping_add,   field 0, => Self);
+
     call_inner!(fn wrapping_sub,   field 0, => Self);
+
     call_inner!(fn wrapping_mul,   field 0, => Self);
+
     call_inner!(fn wrapping_pow,   arg u32, => Self);
+
     call_inner!(fn saturating_add, field 0, => Self);
+
     call_inner!(fn saturating_sub, field 0, => Self);
+
     call_inner!(fn saturating_mul, field 0, => Self);
+
     call_inner!(fn saturating_pow, arg u32, => Self);
+
     call_inner!(fn abs,                     => Self);
+
     call_inner!(fn is_zero,                 => bool);
 
     fn checked_mul(self, other: Self) -> StdResult<Self> {

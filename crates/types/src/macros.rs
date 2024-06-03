@@ -635,7 +635,15 @@ macro_rules! impl_assign_number {
 #[macro_export]
 macro_rules! impl_assign_integer {
     // args type = other
-    (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
+    (
+        impl <
+        $($gen:tt),* >
+        $imp:ident,
+        $method:ident for
+        $t:ty where sub fn
+        $sub_method:ident,
+        $other:ty
+    ) => {
         impl<U> core::ops::$imp<$other> for $t
         where
             $t: Integer + Copy,
@@ -651,7 +659,7 @@ macro_rules! impl_assign_integer {
 
 #[macro_export]
 macro_rules! call_inner {
-    (fn $op:ident,arg $other:ident, => Result<Self>) => {
+    (fn $op:ident,arg $other:ident, => Result < Self >) => {
         fn $op(self, other: $other) -> StdResult<Self> {
             self.0.$op(other).map(|val| Self(val))
         }
@@ -663,7 +671,7 @@ macro_rules! call_inner {
         }
     };
 
-    (fn $op:ident,field $inner:tt, => Result<Self>) => {
+    (fn $op:ident,field $inner:tt, => Result < Self >) => {
         fn $op(self, other: Self) -> StdResult<Self> {
             self.0.$op(other.$inner).map(|val| Self(val))
         }
@@ -681,7 +689,7 @@ macro_rules! call_inner {
         }
     };
 
-    (fn $op:ident, => Result<Self>) => {
+    (fn $op:ident, => Result < Self >) => {
         fn $op(self) -> StdResult<Self> {
             self.0.$op().map(Self)
         }

@@ -3,9 +3,8 @@ use grug::grug_export;
 use {
     anyhow::bail,
     grug::{
-        grug_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Number, Coin, Coins,
-        ImmutableCtx, Map, MutableCtx, Order, Response, StdResult, Storage, SudoCtx, TransferMsg,
-        Uint128,
+        grug_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
+        MutableCtx, Number, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };
