@@ -1,5 +1,5 @@
 [package]
-name          = "grug-ibc-solomachine"
+name          = "grug-ibc-client-tendermint"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

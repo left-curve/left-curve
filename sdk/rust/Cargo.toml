@@ -31,7 +31,3 @@ tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
-grug-bank            = { path = "../../contracts/bank", features = ["library"] }
-grug-ibc-solomachine = { path = "../../contracts/ibc/clients/solomachine", features = ["library"] }
-hex-literal          = { workspace = true }
-tokio                = { workspace = true }

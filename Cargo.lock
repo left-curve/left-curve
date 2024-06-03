@@ -1354,7 +1354,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-ibc-solomachine"
+name = "grug-ibc-client-tendermint"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -1397,12 +1397,9 @@ dependencies = [
  "bip32",
  "grug",
  "grug-account",
- "grug-bank",
  "grug-crypto",
- "grug-ibc-solomachine",
  "grug-jmt",
  "hex",
- "hex-literal",
  "home",
  "k256",
  "pbkdf2",
@@ -1413,7 +1410,6 @@ dependencies = [
  "signature",
  "tendermint",
  "tendermint-rpc",
- "tokio",
 ]
 
 [[package]]

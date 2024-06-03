@@ -4,7 +4,7 @@ members  = [
   "bin",
   "contracts/account",
   "contracts/bank",
-  "contracts/ibc/clients/solomachine",
+  "contracts/ibc/clients/tendermint",
   "crates/app",
   "crates/crypto",
   "crates/db/disk",
