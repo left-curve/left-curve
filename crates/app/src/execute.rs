@@ -59,12 +59,12 @@ pub fn do_upload(
     match _do_upload(storage, uploader, code) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
-            info!(code_hash = _code_hash.to_string(), "Stored code");
+            info!(code_hash = _code_hash.to_string(), "Uploaded code");
             Ok(vec![event])
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to storage code");
+            warn!(err = err.to_string(), "Failed to upload code");
             Err(err)
         },
     }
