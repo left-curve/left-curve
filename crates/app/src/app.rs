@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::{debug, info};
 use {
     crate::{
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
@@ -11,7 +13,6 @@ use {
         Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },
     std::marker::PhantomData,
-    tracing::{debug, info},
 };
 
 /// The ABCI application.
@@ -87,8 +88,10 @@ where
         // it's expected that genesis messages should all successfully execute.
         // if anyone fails, it's fatal error and we abort the genesis.
         // the developer should examine the error, fix it, and retry.
-        for (idx, msg) in genesis_state.msgs.into_iter().enumerate() {
-            info!(idx, "Processing genesis message");
+        for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            info!(idx = _idx, "Processing genesis message");
+
             process_msg::<VM>(Box::new(cached.clone()), block.clone(), GENESIS_SENDER, msg)?;
         }
 
@@ -103,6 +106,7 @@ where
         // the config) so it shouldn't be empty.
         debug_assert!(root_hash.is_some());
 
+        #[cfg(feature = "tracing")]
         info!(
             chain_id,
             timestamp = block.timestamp.seconds(),
@@ -156,12 +160,14 @@ where
         }
 
         // call begin blockers
-        for (idx, contract) in cfg.begin_blockers.into_iter().enumerate() {
+        for (_idx, contract) in cfg.begin_blockers.into_iter().enumerate() {
+            #[cfg(feature = "tracing")]
             debug!(
-                idx,
+                idx = _idx,
                 contract = contract.to_string(),
                 "Calling begin blocker"
             );
+
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
@@ -173,14 +179,22 @@ where
         }
 
         // process transactions one-by-one
-        for (idx, (tx_hash, tx)) in txs.into_iter().enumerate() {
-            debug!(idx, ?tx_hash, "Processing transaction");
+        for (_idx, (_tx_hash, tx)) in txs.into_iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
+
             tx_results.push(process_tx::<_, VM>(cached.share(), block.clone(), tx));
         }
 
         // call end blockers
-        for (idx, contract) in cfg.end_blockers.into_iter().enumerate() {
-            debug!(idx, contract = contract.to_string(), "Calling end blocker");
+        for (_idx, contract) in cfg.end_blockers.into_iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            debug!(
+                idx = _idx,
+                contract = contract.to_string(),
+                "Calling end blocker"
+            );
+
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
@@ -209,6 +223,7 @@ where
         // things like the config, last finalized block, ...
         debug_assert!(root_hash.is_some());
 
+        #[cfg(feature = "tracing")]
         info!(
             height = block.height.u64(),
             timestamp = block.timestamp.seconds(),
@@ -223,6 +238,7 @@ where
     pub fn do_commit(&self) -> AppResult<()> {
         self.db.commit()?;
 
+        #[cfg(feature = "tracing")]
         info!(height = self.db.latest_version(), "Committed state");
 
         Ok(())
@@ -342,8 +358,10 @@ where
     // if any one of the msgs fails, the entire tx fails; abort, discard
     // uncommitted changes (the changes from the before_tx call earlier are
     // persisted)
-    for (idx, msg) in tx.msgs.iter().enumerate() {
-        debug!(idx, "Processing message");
+    for (_idx, msg) in tx.msgs.iter().enumerate() {
+        #[cfg(feature = "tracing")]
+        debug!(idx = _idx, "Processing message");
+
         events.extend(process_msg::<VM>(
             Box::new(cached.share()),
             block.clone(),

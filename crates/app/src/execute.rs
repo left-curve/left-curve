@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::{debug, info, warn};
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
@@ -8,7 +10,6 @@ use {
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
         Storage, SubMsgResult, Tx,
     },
-    tracing::{debug, info, warn},
 };
 
 // ---------------------------------- config -----------------------------------
@@ -20,10 +21,12 @@ pub fn do_set_config(
 ) -> AppResult<Vec<Event>> {
     match _do_set_config(storage, sender, new_cfg) {
         Ok(event) => {
+            #[cfg(feature = "tracing")]
             info!("Config set");
             Ok(vec![event])
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to set config");
             Err(err)
         },
@@ -54,11 +57,13 @@ pub fn do_upload(
     code: Vec<u8>,
 ) -> AppResult<Vec<Event>> {
     match _do_upload(storage, uploader, code) {
-        Ok((event, code_hash)) => {
-            info!(code_hash = code_hash.to_string(), "Stored code");
+        Ok((event, _code_hash)) => {
+            #[cfg(feature = "tracing")]
+            info!(code_hash = _code_hash.to_string(), "Stored code");
             Ok(vec![event])
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to storage code");
             Err(err)
         },
@@ -114,6 +119,7 @@ where
         receive,
     ) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(
                 from = from.to_string(),
                 to = to.to_string(),
@@ -123,6 +129,7 @@ where
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to transfer coins");
             Err(err)
         },
@@ -214,11 +221,13 @@ where
     AppError: From<VM::Error>,
 {
     match _do_instantiate::<VM>(storage, block, sender, code_hash, msg, salt, funds, admin) {
-        Ok((events, address)) => {
-            info!(address = address.to_string(), "Instantiated contract");
+        Ok((events, _address)) => {
+            #[cfg(feature = "tracing")]
+            info!(address = _address.to_string(), "Instantiated contract");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to instantiate contract");
             Err(err)
         },
@@ -308,10 +317,12 @@ where
 {
     match _do_execute::<VM>(storage, block, contract.clone(), sender, msg, funds) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Executed contract");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to execute contract");
             Err(err)
         },
@@ -382,10 +393,12 @@ where
 {
     match _do_migrate::<VM>(storage, block, contract.clone(), sender, new_code_hash, msg) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Migrated contract");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to execute contract");
             Err(err)
         },
@@ -449,10 +462,12 @@ where
 {
     match _do_reply::<VM>(storage, block, contract.clone(), msg, result) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Performed callback");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to perform callback");
             Err(err)
         },
@@ -504,6 +519,7 @@ where
     match _do_before_or_after_tx::<VM>("before_tx", storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
+            #[cfg(feature = "tracing")]
             debug!(
                 sender = tx.sender.to_string(),
                 "Called before transaction hook"
@@ -511,6 +527,7 @@ where
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(
                 err = err.to_string(),
                 "Failed to call before transaction hook"
@@ -532,6 +549,7 @@ where
     match _do_before_or_after_tx::<VM>("after_tx", storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
+            #[cfg(feature = "tracing")]
             debug!(
                 sender = tx.sender.to_string(),
                 "Called after transaction hook"
@@ -539,6 +557,7 @@ where
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(
                 err = err.to_string(),
                 "Failed to call after transaction hook"
@@ -584,10 +603,12 @@ where
 {
     match _do_before_or_after_block::<VM>("before_block", storage, block, contract.clone()) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called before block hook");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to call before block hook");
             Err(err)
         },
@@ -605,10 +626,12 @@ where
 {
     match _do_before_or_after_block::<VM>("after_block", storage, block, contract.clone()) {
         Ok(events) => {
+            #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called after block hook");
             Ok(events)
         },
         Err(err) => {
+            #[cfg(feature = "tracing")]
             warn!(err = err.to_string(), "Failed to call after block hook");
             Err(err)
         },

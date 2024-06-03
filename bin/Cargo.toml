@@ -20,7 +20,7 @@ clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
 dialoguer          = { workspace = true }
-grug-app           = { path = "../crates/app", features = ["abci"] }
+grug-app           = { path = "../crates/app", features = ["abci", "tracing"] }
 grug-db-disk       = { path = "../crates/db/disk" }
 grug-jmt           = { path = "../crates/jellyfish-merkle" }
 grug-sdk           = { path = "../sdk/rust" }
