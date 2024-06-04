@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use grug::grug_export;
-use grug::NumberConst;
 use {
     anyhow::bail,
     grug::{
         grug_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
-        MutableCtx, Number, Order, Response, StdResult, Storage, SudoCtx, TransferMsg, Uint128,
+        MutableCtx, Number, NumberConst, Order, Response, StdResult, Storage, SudoCtx, TransferMsg,
+        Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };

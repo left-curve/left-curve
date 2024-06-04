@@ -36,7 +36,6 @@ categories    = ["cryptography::cryptocurrencies"]
 aes-gcm            = "0.10"
 anyhow             = "1"
 bip32              = "0.5"
-bnum               = { git = "https://github.com/left-curve/bnum", rev = "d91209b"}
 borsh              = "1"
 clap               = "4"
 colored            = "2"
@@ -58,13 +57,6 @@ proptest           = "1"
 prost              = "0.12"
 quote              = "1"
 rand               = "0.8"
-# our fork of rust-rocksdb is based on the `v0.21.0` release and adds partial
-# support for the user-defined timestamp feature:
-# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-#
-# see the `v0.21.0-cw` branch. comparison:
-# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...left-curve:v0.21.0-cw
-rocksdb            = { git = "https://github.com/left-curve/rust-rocksdb", rev = "9015972" }
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"
@@ -83,6 +75,24 @@ tracing            = "0.1"
 tracing-subscriber = "0.3"
 tracing-test       = "0.2"
 wasmer             = "4"
+
+# our fork of rust-rocksdb is based on the `v0.11.0` release and adds borsh serialization;
+#
+# see the `v0.11.0` branch. comparison:
+# https://github.com/isaacholt100/bnum/compare/v0.11.0...left-curve:bnum:v0.11.0-grug
+[workspace.dependencies.bnum]
+git = "https://github.com/left-curve/bnum"
+rev = "cd61b9e"
+
+# our fork of rust-rocksdb is based on the `v0.21.0` release and adds partial
+# support for the user-defined timestamp feature:
+# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
+#
+# see the `v0.21.0-cw` branch. comparison:
+# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...left-curve:rust-rocksdb:v0.21.0-grug
+[workspace.dependencies.rocksdb]
+git = "https://github.com/left-curve/rust-rocksdb"
+rev = "9015972"
 
 [profile.release]
 codegen-units    = 1

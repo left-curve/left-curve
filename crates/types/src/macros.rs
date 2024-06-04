@@ -70,6 +70,9 @@ macro_rules! generate_int {
             }
 
             impl_all_ops_and_assign!($name, $from);
+
+            impl_all_ops_and_assign!($name, <$from as Inner>::U);
+
         )*
 
         // --- Impl From std ---
@@ -144,11 +147,40 @@ macro_rules! generate_decimal {
             pub const DECIMAL_PLACES: usize = $decimal_places;
         }
 
+        // Ex: From<U256> for Decimal256
+        impl From<$inner> for $name {
+            fn from(value: $inner) -> Self {
+                Self::raw(Int::new(value))
+            }
+        }
+
+        // Ex: From<Uint<U256>> for Decimal256
+        impl From<Int<$inner>> for $name {
+            fn from(value: Int<$inner>) -> Self {
+                Self::raw(value)
+            }
+        }
+
+        // --- From Decimal ---
         $(
             // Ex: From<Decimal128> for Decimal256
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
                     Self::from_decimal(value)
+                }
+            }
+
+            // Ex: From<Uint128> for Decimal256
+            impl From<Int<<$from as Inner>::U>> for $name {
+                fn from(value: Int<<$from as Inner>::U>) -> Self {
+                    Self::raw(value.into())
+                }
+            }
+
+            // Ex: From<u128> for Decimal256
+            impl From<<$from as Inner>::U> for $name {
+                fn from(value: <$from as Inner>::U) -> Self {
+                    Self::raw(value.into())
                 }
             }
 
@@ -160,9 +192,152 @@ macro_rules! generate_decimal {
                 }
             }
 
+            // Ex: TryFrom<Decimal256> for Uint128
+            impl TryFrom<$name> for Int<<$from as Inner>::U> {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<Int<<$from as Inner>::U>> {
+                    value.0.try_into().map(Self)
+                }
+            }
+
+            // Ex: TryFrom<Decimal256> for u128
+            impl TryFrom<$name> for <$from as Inner>::U {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<<$from as Inner>::U> {
+                    value.0.try_into()
+                }
+            }
+
             impl_all_ops_and_assign!($name, $from);
         )*
     };
+}
+
+#[macro_export]
+macro_rules! generate_signed {
+    (
+        name = $name:ident,
+        inner_type = $inner:ty,
+        from_signed = [$($from_signed:ty),*],
+        from_std = [$($from_std:ty),*]
+    ) => {
+        pub type $name = Signed<$inner>;
+
+        // Ex: From<Uint128> for Int128
+        impl From<$inner> for $name {
+            fn from(value: $inner) -> Self {
+                Self::new_positive(value)
+            }
+        }
+
+        // Ex: From<u128> for Int128
+        impl From<<$inner as Inner>::U> for $name {
+            fn from(value: <$inner as Inner>::U) -> Self {
+                Self::new_positive(<$inner>::new(value))
+            }
+        }
+
+        // Ex: TyFrom<Int128> for Uint128
+        impl TryFrom<$name> for $inner {
+            type Error = StdError;
+            fn try_from(value: $name) -> StdResult<Self> {
+                if !value.is_positive() {
+                    Err(StdError::overflow_conversion::<_, $inner>(value))
+                } else {
+                    Ok(value.inner)
+                }
+            }
+        }
+
+        impl_all_ops_and_assign!($name, $inner);
+        impl_all_ops_and_assign!($name, <$inner as Inner>::U);
+
+        // --- From other signed types ---
+        $(
+            // Ex: From<Int64> for Int128
+            impl From<$from_signed> for $name {
+                fn from(value: $from_signed) -> Self {
+                    Self::new(value.inner.into(), value.is_positive)
+                }
+            }
+
+            // Ex: From<Uint64> for Int128
+            impl From<<$from_signed as Inner>::U> for $name {
+                fn from(value: <$from_signed as Inner>::U) -> Self {
+                    Self::new_positive(value.into())
+                }
+            }
+
+            // Ex: From<u64> for Int128
+            impl From<<<$from_signed as Inner>::U as Inner>::U> for $name {
+                fn from(value: <<$from_signed as Inner>::U as Inner>::U) -> Self {
+                    Self::new_positive(value.into())
+                }
+            }
+
+            // Ex: TryFrom<Int128> for Int64
+            impl TryFrom<$name> for $from_signed {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<$from_signed> {
+                    <$from_signed as Inner>::U::try_from(value.inner)
+                        .map(|val| Self::new(val, value.is_positive))
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
+                }
+            }
+
+            // Ex: TryFrom<Int128> for Uint64
+            impl TryFrom<$name> for <$from_signed as Inner>::U {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<<$from_signed as Inner>::U> {
+                    if !value.is_positive{
+                        return Err(StdError::overflow_conversion::<_, $name>(value))
+                    }
+                    <$from_signed as Inner>::U::try_from(value.inner)
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
+                }
+            }
+
+            // Ex: TryFrom<Int128> for u64
+            impl TryFrom<$name> for <<$from_signed as Inner>::U as Inner>::U {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<<<$from_signed as Inner>::U as Inner>::U> {
+                    if !value.is_positive{
+                        return Err(StdError::overflow_conversion::<_, $name>(value))
+                    }
+                    <<$from_signed as Inner>::U as Inner>::U::try_from(value.inner)
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
+                }
+            }
+
+            impl_all_ops_and_assign!($name, $from_signed);
+            impl_all_ops_and_assign!($name, <$from_signed as Inner>::U);
+            impl_all_ops_and_assign!($name, <<$from_signed as Inner>::U as Inner>::U);
+        )*
+
+        // --- From std ---
+        $(
+            // Ex: From<u32> for Int128
+            impl From<$from_std> for $name {
+                fn from(value: $from_std) -> Self {
+                    Self::new_positive(value.into())
+                }
+            }
+
+            // Ex: TryFrom<Int128> for u32
+            impl TryFrom<$name> for $from_std {
+                type Error = StdError;
+                fn try_from(value: $name) -> StdResult<$from_std> {
+                    <$from_std>::try_from(value.inner)
+                        .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
+                }
+            }
+
+            impl_all_ops_and_assign!($name, $from_std);
+
+        )*
+    };
+
+    // --- From std ---
 }
 
 /// **Syntax**:
@@ -486,7 +661,7 @@ macro_rules! impl_number {
             type Output = $t;
 
             fn $method(self, other: $t) -> $t {
-                other + self
+                other.$sub_method(self.into()).unwrap_or_else(|err| panic!("{err}"))
             }
         }
     };
@@ -506,7 +681,7 @@ macro_rules! impl_number {
         }
     };
 
-    // Decimal Self
+    // Signed
     (impl Signed with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<T> std::ops::$imp for $t
         where
@@ -575,6 +750,19 @@ macro_rules! impl_assign_number {
             }
         }
     };
+
+    // Signed
+    (impl Signed with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
+    {
+        impl<T> std::ops::$imp for $t
+        where
+            Self: Number + Copy
+        {
+            fn $method(&mut self, other: Self) {
+                *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -640,6 +828,11 @@ macro_rules! call_inner {
         }
     };
 
+    (fn $op:ident, => $out:ty) => {
+        fn $op(self) -> $out {
+            self.0.$op()
+        }
+    };
     (fn $op:ident, => $out:ty) => {
         fn $op(self) -> $out {
             self.0.$op()

@@ -117,6 +117,7 @@ pub trait Number: Sized {
 
     fn abs(self) -> Self;
 
+    #[allow(clippy::wrong_self_convention)]
     fn is_zero(self) -> bool;
 }
 

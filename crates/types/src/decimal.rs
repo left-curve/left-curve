@@ -29,6 +29,17 @@ impl<U, const S: usize> Inner for Decimal<U, S> {
 }
 
 // --- Init ---
+impl<U, const S: usize> Decimal<U, S> {
+    /// Create a new [`Decimal`] **without** adding decimal places.
+    /// ```rust
+    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
+    /// let uint = Uint128::new(100_u128);
+    /// let decimal = Decimal128::raw(uint);
+    /// assert_eq!(decimal, Decimal128::from_str("0.000000000000000100").unwrap());
+    pub const fn raw(value: Int<U>) -> Self {
+        Self(value)
+    }
+}
 impl<U, const S: usize> Decimal<U, S>
 where
     Int<U>: Number,
@@ -54,16 +65,6 @@ where
     /// assert_eq!(decimal, Decimal128::from_str("100.0").unwrap());
     pub fn new(value: impl Into<Int<U>>) -> Self {
         Self(value.into() * Self::decimal_fraction())
-    }
-
-    /// Create a new [`Decimal`] **without** adding decimal places.
-    /// ```rust
-    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
-    /// let uint = Uint128::new(100_u128);
-    /// let decimal = Decimal128::raw(uint);
-    /// assert_eq!(decimal, Decimal128::from_str("0.000000000000000100").unwrap());
-    pub const fn raw(value: Int<U>) -> Self {
-        Self(value)
     }
 
     pub(crate) fn from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> Self
@@ -166,6 +167,17 @@ where
 
         Ok(Self(inner))
     }
+}
+
+impl<U, const S: usize> NumberConst for Decimal<U, S>
+where
+    U: NumberConst,
+{
+    const MAX: Self = Self::raw(Int::new(U::MAX));
+    const MIN: Self = Self::raw(Int::new(U::MIN));
+    const ONE: Self = Self::raw(Int::new(U::ONE));
+    const TEN: Self = Self::raw(Int::new(U::TEN));
+    const ZERO: Self = Self::raw(Int::new(U::ZERO));
 }
 
 // --- Number ---
@@ -325,26 +337,6 @@ where
     }
 }
 
-impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
-impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);
-impl_number!(impl Decimal with Mul, mul for Decimal<U, S> where sub fn checked_mul);
-impl_number!(impl Decimal with Div, div for Decimal<U, S> where sub fn checked_div);
-
-impl_assign_number!(impl Decimal with AddAssign, add_assign for Decimal<U, S> where sub fn checked_add);
-impl_assign_number!(impl Decimal with SubAssign, sub_assign for Decimal<U, S> where sub fn checked_sub);
-impl_assign_number!(impl Decimal with MulAssign, mul_assign for Decimal<U, S> where sub fn checked_mul);
-impl_assign_number!(impl Decimal with DivAssign, div_assign for Decimal<U, S> where sub fn checked_div);
-
-forward_ref_binop_decimal!(impl Add, add for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Sub, sub for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Mul, mul for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Div, div for Decimal<U, S>, Decimal<U, S>);
-
-forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Decimal<U, S>, Decimal<U, S>);
-
 // --- Display ---
 impl<U, const S: usize> Display for Decimal<U, S>
 where
@@ -426,18 +418,20 @@ where
     }
 }
 
+// --- serde::Serialize ---
 impl<U, const T: usize> ser::Serialize for Decimal<U, T>
 where
-    U: Display,
+    Self: Display,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&self.0.to_string())
+        serializer.serialize_str(&self.to_string())
     }
 }
 
+// --- serde::Deserialize ---
 impl<'de, U, const S: usize> de::Deserialize<'de> for Decimal<U, S>
 where
     U: Default + NumberConst + FromStr,
@@ -479,6 +473,26 @@ where
         }
     }
 }
+
+impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
+impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);
+impl_number!(impl Decimal with Mul, mul for Decimal<U, S> where sub fn checked_mul);
+impl_number!(impl Decimal with Div, div for Decimal<U, S> where sub fn checked_div);
+
+impl_assign_number!(impl Decimal with AddAssign, add_assign for Decimal<U, S> where sub fn checked_add);
+impl_assign_number!(impl Decimal with SubAssign, sub_assign for Decimal<U, S> where sub fn checked_sub);
+impl_assign_number!(impl Decimal with MulAssign, mul_assign for Decimal<U, S> where sub fn checked_mul);
+impl_assign_number!(impl Decimal with DivAssign, div_assign for Decimal<U, S> where sub fn checked_div);
+
+forward_ref_binop_decimal!(impl Add, add for Decimal<U, S>, Decimal<U, S>);
+forward_ref_binop_decimal!(impl Sub, sub for Decimal<U, S>, Decimal<U, S>);
+forward_ref_binop_decimal!(impl Mul, mul for Decimal<U, S>, Decimal<U, S>);
+forward_ref_binop_decimal!(impl Div, div for Decimal<U, S>, Decimal<U, S>);
+
+forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Decimal<U, S>, Decimal<U, S>);
+forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Decimal<U, S>, Decimal<U, S>);
+forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Decimal<U, S>, Decimal<U, S>);
+forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Decimal<U, S>, Decimal<U, S>);
 
 // ------------------------------ concrete types -------------------------------
 

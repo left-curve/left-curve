@@ -23,6 +23,7 @@ use {
 )]
 pub struct Int<U>(pub(crate) U);
 
+// --- Init ---
 impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
@@ -42,7 +43,7 @@ where
     }
 }
 
-// --- Const ---
+// --- Constants ---
 impl<U> NumberConst for Int<U>
 where
     U: NumberConst,
@@ -199,35 +200,7 @@ where
     }
 }
 
-impl_number!(impl<U> Add, add for Int<U> where sub fn checked_add);
-impl_number!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
-impl_number!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
-impl_number!(impl<U> Div, div for Int<U> where sub fn checked_div);
-impl_integer!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
-impl_integer!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
-
-impl_assign_number!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
-impl_assign_number!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
-impl_assign_number!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
-impl_assign_number!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
-impl_assign_integer!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
-impl_assign_integer!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
-
-forward_ref_binop_typed!(impl<U> Add, add for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Sub, sub for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Mul, mul for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Div, div for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Rem, rem for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Shl, shl for Int<U>, u32);
-forward_ref_binop_typed!(impl<U> Shr, shr for Int<U>, u32);
-
-forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
-forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
-
+// --- FromStr ---
 impl<U> FromStr for Int<U>
 where
     U: FromStr,
@@ -242,6 +215,7 @@ where
     }
 }
 
+// --- Display ---
 impl<U> fmt::Display for Int<U>
 where
     U: Display,
@@ -251,6 +225,7 @@ where
     }
 }
 
+// --- serde::Serialize ---
 impl<U> ser::Serialize for Int<U>
 where
     U: Display,
@@ -263,6 +238,7 @@ where
     }
 }
 
+// --- serde::Deserialize ---
 impl<'de, U> de::Deserialize<'de> for Int<U>
 where
     U: Default + FromStr,
@@ -300,6 +276,35 @@ where
         v.parse::<U>().map(Int::<U>).map_err(E::custom)
     }
 }
+
+impl_number!(impl<U> Add, add for Int<U> where sub fn checked_add);
+impl_number!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
+impl_number!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
+impl_number!(impl<U> Div, div for Int<U> where sub fn checked_div);
+impl_integer!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
+impl_integer!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
+
+impl_assign_number!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
+impl_assign_number!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
+impl_assign_number!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
+impl_assign_number!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
+impl_assign_integer!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
+impl_assign_integer!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
+
+forward_ref_binop_typed!(impl<U> Add, add for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Sub, sub for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Mul, mul for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Div, div for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Rem, rem for Int<U>, Int<U>);
+forward_ref_binop_typed!(impl<U> Shl, shl for Int<U>, u32);
+forward_ref_binop_typed!(impl<U> Shr, shr for Int<U>, u32);
+
+forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
+forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
+forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
 
 // ------------------------------ concrete types -------------------------------
 
