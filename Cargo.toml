@@ -36,7 +36,7 @@ categories    = ["cryptography::cryptocurrencies"]
 aes-gcm            = "0.10"
 anyhow             = "1"
 bip32              = "0.5"
-bnum               = "0.8"
+bnum               = { git = "https://github.com/left-curve/bnum", rev = "c2ebcb9", features = ["nightly"]}
 borsh              = "1"
 clap               = "4"
 colored            = "2"

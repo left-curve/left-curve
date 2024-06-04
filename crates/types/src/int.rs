@@ -309,7 +309,6 @@ generate_int!(
     inner_type = u64,
     from_int = [],
     from_std = [u32, u16, u8],
-    try_from_int = []
 );
 
 // Uint128
@@ -318,7 +317,6 @@ generate_int!(
     inner_type = u128,
     from_int = [Uint64],
     from_std = [u32, u16, u8],
-    try_from_int = []
 );
 
 // Uint256
@@ -327,7 +325,6 @@ generate_int!(
     inner_type = U256,
     from_int = [Uint64, Uint128],
     from_std = [u32, u16, u8],
-    try_from_int = []
 );
 
 // Uint512
@@ -336,7 +333,6 @@ generate_int!(
     inner_type = U512,
     from_int = [Uint256, Uint64, Uint128],
     from_std = [u32, u16, u8],
-    try_from_int = []
 );
 
 // Implementations of [`Next`] has to be done after all the types are defined.

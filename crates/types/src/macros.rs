@@ -31,7 +31,6 @@ macro_rules! generate_int {
         inner_type = $inner:ty,
         from_int = [$($from:ty),*],
         from_std = [$($from_std:ty),*],
-        try_from_int = [$($try_from:ty),*]
     ) => {
         pub type $name = Int<$inner>;
 
@@ -40,14 +39,14 @@ macro_rules! generate_int {
             // Ex: From<Uint64> for Uint128
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
-                    Self::from_str(&value.to_string()).unwrap() // Safe unwrap
+                    Self(value.number().into())
                 }
             }
 
             // Ex: From<u64> for Uint128
             impl From<<$from as Inner>::U> for $name {
                 fn from(value: <$from as Inner>::U) -> Self {
-                    Self::from_str(&value.to_string()).unwrap() // Safe unwrap
+                    Self(value.into())
                 }
             }
 
@@ -55,7 +54,9 @@ macro_rules! generate_int {
             impl TryFrom<$name> for $from {
                 type Error = StdError;
                 fn try_from(value: $name) -> StdResult<$from> {
-                    <$from>::from_str(&value.to_string())
+                    <$from as Inner>::U::try_from(value.number())
+                        .map(Self)
+                        .map_err(|_| StdError::overflow_conversion::<_, $from>(value))
                 }
             }
 
@@ -63,7 +64,8 @@ macro_rules! generate_int {
             impl TryFrom<$name> for <$from as Inner>::U {
                 type Error = StdError;
                 fn try_from(value: $name) -> StdResult<<$from as Inner>::U> {
-                    <$from>::from_str(&value.to_string()).map(Into::into)
+                    <$from as Inner>::U::try_from(value.number())
+                        .map_err(|_| StdError::overflow_conversion::<_, $from>(value))
                 }
             }
 
@@ -83,47 +85,13 @@ macro_rules! generate_int {
             impl TryFrom<$name> for $from_std {
                 type Error = StdError;
                 fn try_from(value: $name) -> StdResult<$from_std> {
-                    <$from_std>::from_str(&value.to_string())
-                        .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
+                    <$from_std>::try_from(value.number())
+                    .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
                 }
             }
 
             // --- Impl ops ---
             impl_all_ops_and_assign!($name, $from_std);
-        )*
-
-        $(
-            // Ex: TryFrom<Uint128> for Int128
-            impl TryFrom<$try_from> for $name {
-                type Error = StdError;
-                fn try_from(value: $try_from) -> StdResult<Self> {
-                    Self::from_str(&value.to_string())
-                }
-            }
-
-            // Ex: From<u64> for Uint128
-            impl TryFrom<<$try_from as Inner>::U> for $name {
-                type Error = StdError;
-                fn try_from(value: <$try_from as Inner>::U) -> StdResult<Self> {
-                    Self::from_str(&value.to_string())
-                }
-            }
-
-            // Ex: TryFrom<Uint128> for Uint64
-            impl TryFrom<$name> for $try_from {
-                type Error = StdError;
-                fn try_from(value: $name) -> StdResult<$try_from> {
-                    <$try_from>::from_str(&value.to_string())
-                }
-            }
-
-            // Ex: TryFrom<Uint128> for u64
-            impl TryFrom<$name> for <$try_from as Inner>::U {
-                type Error = StdError;
-                fn try_from(value: $name) -> StdResult<<$try_from as Inner>::U> {
-                    <$try_from>::from_str(&value.to_string()).map(Into::into)
-                }
-            }
         )*
 
         // Ex: From<u128> for Uint128
