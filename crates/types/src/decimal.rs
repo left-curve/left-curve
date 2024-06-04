@@ -46,12 +46,54 @@ where
         Self::f_pow(S as u32)
     }
 
+    /// Create a new [`Decimal`] adding decimal places.
+    /// ```rust
+    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
+    /// let uint = Uint128::new(100_u128);
+    /// let decimal = Decimal128::new(uint);
+    /// assert_eq!(decimal, Decimal128::from_str("100.0").unwrap());
     pub fn new(value: impl Into<Int<U>>) -> Self {
         Self(value.into() * Self::decimal_fraction())
     }
 
+    /// Create a new [`Decimal`] **without** adding decimal places.
+    /// ```rust
+    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
+    /// let uint = Uint128::new(100_u128);
+    /// let decimal = Decimal128::raw(uint);
+    /// assert_eq!(decimal, Decimal128::from_str("0.000000000000000100").unwrap());
     pub const fn raw(value: Int<U>) -> Self {
         Self(value)
+    }
+
+    pub(crate) fn from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> Self
+    where
+        Int<U>: From<Int<OU>>,
+    {
+        if OS > S {
+            let adjusted_precision = Self::f_pow((OS - S) as u32);
+            Self(Int::<U>::from(other.0) / adjusted_precision)
+        } else {
+            let adjusted_precision = Self::f_pow((S - OS) as u32);
+            Self(Int::<U>::from(other.0) * adjusted_precision)
+        }
+    }
+
+    pub(crate) fn try_from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> StdResult<Self>
+    where
+        Int<U>: TryFrom<Int<OU>, Error = StdError>,
+    {
+        if OS > S {
+            let adjusted_precision = Self::f_pow((OS - S) as u32);
+            Int::<U>::try_from(other.0)
+                .map(|val| val.checked_div(adjusted_precision))?
+                .map(Self)
+        } else {
+            let adjusted_precision = Self::f_pow((S - OS) as u32);
+            Int::<U>::try_from(other.0)
+                .map(|val| val.checked_mul(adjusted_precision))?
+                .map(Self)
+        }
     }
 }
 
@@ -446,7 +488,6 @@ generate_decimal!(
     inner_type = u128,
     decimal_places = 18,
     from_dec = [],
-    try_from_dec = []
 );
 
 // Decimal256
@@ -455,8 +496,13 @@ generate_decimal!(
     inner_type = U256,
     decimal_places = 18,
     from_dec = [Decimal128],
-    try_from_dec = []
 );
+
+// impl From<Decimal128> for Decimal256 {
+//     fn from(value: Decimal128) -> Self {
+//         todo!()
+//     }
+// }
 
 // ----------------------------------- tests -----------------------------------
 
@@ -464,7 +510,12 @@ generate_decimal!(
 mod tests {
     use std::str::FromStr;
 
-    use crate::{Decimal128, Number};
+    use bnum::{
+        errors::TryFromIntError,
+        types::{U256, U512},
+    };
+
+    use crate::{Decimal128, Decimal256, Number};
 
     #[test]
     fn t1() {
@@ -502,5 +553,36 @@ mod tests {
                 .unwrap(),
             Decimal128::from_str("0.8").unwrap()
         );
+    }
+
+    #[test]
+    fn t2_conversion() {
+        let u256 = U256::from(42_u64);
+        let u512: U512 = u256.into();
+        assert_eq!(u512, U512::from(42_u64));
+
+        let u256: U256 = TryFrom::<U512>::try_from(u512).unwrap();
+        assert_eq!(u256, U256::from(42_u64));
+
+        let u256: Result<U256, TryFromIntError> = TryFrom::<U512>::try_from(U512::MAX);
+        assert!(u256.is_err());
+
+        let u256 = U256::MAX;
+        let mut u512: U512 = u256.into();
+        let _: U256 = TryFrom::<U512>::try_from(u512).unwrap();
+
+        u512 += U512::ONE;
+
+        let u256: Result<U256, TryFromIntError> = TryFrom::<U512>::try_from(U512::MAX);
+        assert!(u256.is_err());
+    }
+
+    #[test]
+    fn t3_conversion() {
+        let foo = Decimal128::new(10_u128);
+        assert_eq!(Decimal256::new(10_u128), Decimal256::from(foo));
+
+        let foo = Decimal256::new(10_u128);
+        assert_eq!(Decimal128::new(10_u128), Decimal128::try_from(foo).unwrap())
     }
 }

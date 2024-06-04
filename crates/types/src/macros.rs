@@ -137,7 +137,6 @@ macro_rules! generate_decimal {
         inner_type = $inner:ty,
         decimal_places = $decimal_places:expr,
         from_dec = [$($from:ty),*],
-        try_from_dec = [$($try_from:ty),*]
     ) => {
         pub type $name = Decimal<$inner, $decimal_places>;
 
@@ -149,9 +148,7 @@ macro_rules! generate_decimal {
             // Ex: From<Decimal128> for Decimal256
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
-                    // This is safe.
-                    // But it's depend on the data passed on the macro
-                    Self::from_str(&value.to_string()).unwrap()
+                    Self::from_decimal(value)
                 }
             }
 
@@ -159,31 +156,11 @@ macro_rules! generate_decimal {
             impl TryFrom<$name> for $from {
                 type Error = StdError;
                 fn try_from(value: $name) -> StdResult<$from> {
-                    <$from>::from_str(&value.to_string())
+                    <$from>::try_from_decimal(value)
                 }
             }
 
             impl_all_ops_and_assign!($name, $from);
-        )*
-
-        $(
-            // Ex: TryFrom<Decimal128> for Decimal256
-            impl TryFrom<$try_from> for $name {
-                type Error = StdError;
-                fn try_from(value: $try_from) -> StdResult<Self> {
-                    // This is safe.
-                    // But it's depend on the data passed on the macro
-                    Self::from_str(&value.to_string())
-                }
-            }
-
-            // Ex: TryFrom<Decimal256> for Decimal128
-            impl TryFrom<$name> for $try_from {
-                type Error = StdError;
-                fn try_from(value: $name) -> StdResult<$try_from> {
-                    <$try_from>::from_str(&value.to_string())
-                }
-            }
         )*
     };
 }

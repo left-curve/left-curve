@@ -1,5 +1,6 @@
 #[cfg(not(feature = "library"))]
 use grug::grug_export;
+use grug::NumberConst;
 use {
     anyhow::bail,
     grug::{
