@@ -13,7 +13,6 @@ use {
         crypto::{ProofOp, ProofOps},
         google::protobuf::Timestamp as TmTimestamp,
     },
-    tracing::Value,
 };
 
 impl<DB, VM> App<DB, VM>
@@ -22,11 +21,10 @@ where
     VM: Vm + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
-    pub fn start_abci_server(
-        self,
-        read_buf_size: usize,
-        addr: impl ToSocketAddrs + Value,
-    ) -> Result<(), ABCIError> {
+    pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
+    where
+        A: ToSocketAddrs,
+    {
         ServerBuilder::new(read_buf_size).bind(addr, self)?.listen()
     }
 }

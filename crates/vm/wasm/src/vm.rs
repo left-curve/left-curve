@@ -78,17 +78,15 @@ impl Vm for WasmVm {
         read_then_wipe(env, &mut wasm_store, res_ptr)
     }
 
-    fn call_in_1_out_1(
-        mut self,
-        name: &str,
-        ctx: &Context,
-        param1: impl AsRef<[u8]>,
-    ) -> VmResult<Vec<u8>> {
+    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    where
+        P: AsRef<[u8]>,
+    {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
-        let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
+        let param1_ptr = write_to_memory(env, &mut wasm_store, param.as_ref())?;
         let res_ptr: u32 = env
             .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), param1_ptr.into()])?
             .try_into()
@@ -97,13 +95,17 @@ impl Vm for WasmVm {
         read_then_wipe(env, &mut wasm_store, res_ptr)
     }
 
-    fn call_in_2_out_1(
+    fn call_in_2_out_1<P1, P2>(
         mut self,
         name: &str,
         ctx: &Context,
-        param1: impl AsRef<[u8]>,
-        param2: impl AsRef<[u8]>,
-    ) -> VmResult<Vec<u8>> {
+        param1: &P1,
+        param2: &P2,
+    ) -> VmResult<Vec<u8>>
+    where
+        P1: AsRef<[u8]>,
+        P2: AsRef<[u8]>,
+    {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 

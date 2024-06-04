@@ -3,9 +3,8 @@ use grug::grug_export;
 use {
     anyhow::bail,
     grug::{
-        grug_derive, Addr, BankQueryMsg, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Map,
-        MutableCtx, Number, NumberConst, Order, Response, StdResult, Storage, SudoCtx, TransferMsg,
-        Uint128,
+        grug_derive, Addr, BankMsg, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx,
+        Map, MutableCtx, Order, Response, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };
@@ -77,7 +76,7 @@ fn accumulate_supply(
 }
 
 #[cfg_attr(not(feature = "library"), grug_export)]
-pub fn bank_transfer(ctx: SudoCtx, msg: TransferMsg) -> StdResult<Response> {
+pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     for coin in &msg.coins {
         decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
         increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
@@ -209,18 +208,18 @@ fn decrease_balance(
 // BankQuery::Balance, the response must be BankQueryResponse::Balance.
 // It cannot be any other enum variant. Otherwise the chain may panic and halt.
 #[cfg_attr(not(feature = "library"), grug_export)]
-pub fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> StdResult<BankQueryResponse> {
+pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQueryMsg::Balance { address, denom } => {
+        BankQuery::Balance { address, denom } => {
             query_balance(ctx, address, denom).map(BankQueryResponse::Balance)
         },
-        BankQueryMsg::Balances {
+        BankQuery::Balances {
             address,
             start_after,
             limit,
         } => query_balances(ctx, address, start_after, limit).map(BankQueryResponse::Balances),
-        BankQueryMsg::Supply { denom } => query_supply(ctx, denom).map(BankQueryResponse::Supply),
-        BankQueryMsg::Supplies { start_after, limit } => {
+        BankQuery::Supply { denom } => query_supply(ctx, denom).map(BankQueryResponse::Supply),
+        BankQuery::Supplies { start_after, limit } => {
             query_supplies(ctx, start_after, limit).map(BankQueryResponse::Supplies)
         },
     }

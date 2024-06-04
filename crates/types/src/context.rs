@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Coins, Hash, Timestamp, Uint64},
+    crate::{Addr, BlockInfo, Coins},
     borsh::{BorshDeserialize, BorshSerialize},
 };
 
@@ -8,9 +8,7 @@ use {
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct Context {
     pub chain_id: String,
-    pub block_height: Uint64,
-    pub block_timestamp: Timestamp,
-    pub block_hash: Hash,
+    pub block: BlockInfo,
     pub contract: Addr,
     pub sender: Option<Addr>,
     pub funds: Option<Coins>,

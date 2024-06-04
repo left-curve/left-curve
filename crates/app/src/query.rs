@@ -1,11 +1,11 @@
 use {
     crate::{
-        create_vm_instance, load_program, AppError, AppResult, PrefixStore, Vm, ACCOUNTS, CHAIN_ID,
-        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, PrefixStore, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG,
+        CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
-        AccountResponse, Addr, BankQueryMsg, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
+        AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
         Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
         WasmSmartResponse,
     },
@@ -23,7 +23,7 @@ pub fn query_info(storage: &dyn Storage) -> AppResult<InfoResponse> {
 
 pub fn query_balance<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     address: Addr,
     denom: String,
 ) -> AppResult<Coin>
@@ -31,13 +31,13 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Balance { address, denom })
+    _query_bank::<VM>(storage, block, &BankQuery::Balance { address, denom })
         .map(|res| res.as_balance())
 }
 
 pub fn query_balances<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     address: Addr,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -46,7 +46,7 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Balances {
+    _query_bank::<VM>(storage, block, &BankQuery::Balances {
         address,
         start_after,
         limit,
@@ -54,21 +54,23 @@ where
     .map(|res| res.as_balances())
 }
 
+#[rustfmt::skip]
 pub fn query_supply<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     denom: String,
 ) -> AppResult<Coin>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Supply { denom }).map(|res| res.as_supply())
+    _query_bank::<VM>(storage, block, &BankQuery::Supply { denom })
+        .map(|res| res.as_supply())
 }
 
 pub fn query_supplies<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
@@ -76,46 +78,31 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, &BankQueryMsg::Supplies {
-        start_after,
-        limit,
-    })
-    .map(|res| res.as_supplies())
+    _query_bank::<VM>(storage, block, &BankQuery::Supplies { start_after, limit })
+        .map(|res| res.as_supplies())
 }
 
-pub fn _query_bank<VM>(
+fn _query_bank<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
-    msg: &BankQueryMsg,
+    block: BlockInfo,
+    msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    // load program code
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &cfg.bank)?;
-
-    // create VM instance
-    let program = load_program::<VM>(&storage, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(storage.clone(), block.clone(), &cfg.bank, program)?;
-
-    // call query
     let ctx = Context {
         chain_id,
-        block_height: block.height,
-        block_timestamp: block.timestamp,
-        block_hash: block.hash.clone(),
+        block,
         contract: cfg.bank,
         sender: None,
         funds: None,
         simulate: None,
     };
-    instance
-        .call_bank_query(&ctx, msg)?
-        .into_std_result()
-        .map_err(Into::into)
+    call_in_1_out_1::<VM, _, _>("bank_query", storage, &account.code_hash, &ctx, msg)
 }
 
 pub fn query_code(storage: &dyn Storage, hash: Hash) -> AppResult<Binary> {
@@ -184,7 +171,7 @@ pub fn query_wasm_raw(
 
 pub fn query_wasm_smart<VM>(
     storage: Box<dyn Storage>,
-    block: &BlockInfo,
+    block: BlockInfo,
     contract: Addr,
     msg: Json,
 ) -> AppResult<WasmSmartResponse>
@@ -194,22 +181,15 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
-
-    let program = load_program::<VM>(&storage, &account.code_hash)?;
-    let instance = create_vm_instance::<VM>(storage, block.clone(), &contract, program)?;
-
-    // call query
     let ctx = Context {
         chain_id,
+        block,
         contract,
-        block_height: block.height,
-        block_timestamp: block.timestamp,
-        block_hash: block.hash.clone(),
         sender: None,
         funds: None,
         simulate: None,
     };
-    let data = instance.call_query(&ctx, &msg)?.into_std_result()?;
+    let data = call_in_1_out_1::<VM, _, Json>("query", storage, &account.code_hash, &ctx, &msg)?;
 
     Ok(WasmSmartResponse {
         contract: ctx.contract,

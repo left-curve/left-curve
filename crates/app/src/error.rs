@@ -35,8 +35,8 @@ pub enum AppError {
     #[error("Sender is not the admin! sender: {sender}, admin: {admin}")]
     NotAdmin { sender: Addr, admin: Addr },
 
-    #[error("Wasm byte code with hash `{hash}` already exists")]
-    CodeExists { hash: Hash },
+    #[error("Wasm byte code with hash `{code_hash}` already exists")]
+    CodeExists { code_hash: Hash },
 
     #[error("Account with address `{address}` already exists")]
     AccountExists { address: Addr },
@@ -58,8 +58,8 @@ impl AppError {
         Self::NotAdmin { sender, admin }
     }
 
-    pub fn code_exists(hash: Hash) -> Self {
-        Self::CodeExists { hash }
+    pub fn code_exists(code_hash: Hash) -> Self {
+        Self::CodeExists { code_hash }
     }
 
     pub fn account_exists(address: Addr) -> Self {

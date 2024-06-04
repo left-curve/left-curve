@@ -70,10 +70,10 @@ These are mandatory entry points for the chain's **bank** contract.
 
 ```rust
 #[grug_export]
-fn bank_transfer(ctx: SudoCtx, msg: BankTransferMsg) -> Result<Response, Error>;
+fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> Result<Response, Error>;
 
 #[grug_export]
-fn bank_query(ctx: ImmutableCtx, msg: BankQueryMsg) -> Result<BankQueryResponse, Error>;
+fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> Result<BankQueryResponse, Error>;
 ```
 
 ## Gas
@@ -89,20 +89,11 @@ fn handle_fee(ctx: SudoCtx, report: GasReport) -> Result<Response>;
 
 ## IBC
 
-Contracts that are to be used as IBC light clients must implement the following entry points:
+Contracts that are to be used as IBC light clients must implement the following entry point:
 
 ```rust
-/// Called upon client creation. It allows the client to perform validation on
-/// the initial consensus state and set the client state, consensus state, and
-/// any client-specific metadata necessary for correct light client operation.
 #[grug_export]
-fn ibc_client_create(ctx: MutableCtx, client_state: Json, consensus_state: Json) -> Result<Response>;
-
-#[grug_export]
-fn ibc_client_update(ctx: MutableCtx, msg: IbcClientUpdateMsg) -> Result<Response>;
-
-#[grug_export]
-fn ibc_client_verify(ctx: ImmutableCtx, msg: IbcClientVerifyMsg) -> Result<()>;
+fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -> Result<()>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:
