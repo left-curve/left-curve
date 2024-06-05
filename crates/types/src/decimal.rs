@@ -2,8 +2,8 @@ use {
     crate::{
         call_inner, forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
         generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
-        impl_number, DecimalRef, Inner, Int, IntPerDec, NextNumber, Number, NumberConst, StdError,
-        StdResult,
+        impl_number, DecimalRef, Inner, Int, IntPerDec, MultiplyRatio, NextNumber, Number,
+        NumberConst, Sign, StdError, StdResult,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -98,6 +98,12 @@ where
     }
 }
 
+// --- Sign ---
+impl<U, const S: usize> Sign for Decimal<U, S> {
+    fn sign(self) -> bool {
+        true
+    }
+}
 // --- Base impl ---
 impl<U, const S: usize> Decimal<U, S>
 where
@@ -169,6 +175,7 @@ where
     }
 }
 
+// --- Constants ---
 impl<U, const S: usize> NumberConst for Decimal<U, S>
 where
     U: NumberConst,
@@ -313,12 +320,10 @@ where
 // --- IntperDecimal ---
 impl<U, AsU, DR> IntPerDec<U, AsU, DR> for Int<U>
 where
+    Int<U>: MultiplyRatio,
     Int<AsU>: Into<Int<U>>,
     DR: DecimalRef<AsU>,
     AsU: NumberConst + Number,
-    U: NumberConst + Number + PartialEq,
-    Int<U>: NextNumber + Number + Copy,
-    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
@@ -473,6 +478,7 @@ where
         }
     }
 }
+
 
 impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
 impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);

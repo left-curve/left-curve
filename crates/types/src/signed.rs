@@ -1,8 +1,9 @@
 use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        Number, NumberConst, StdError, StdResult, Uint128, Uint256, Uint64,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256,
+        DecimalRef, Inner, Int, IntPerDec, MultiplyRatio, Number, NumberConst, Sign, StdError,
+        StdResult, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
@@ -42,12 +43,16 @@ impl<T> Signed<T> {
             is_positive: false,
         }
     }
+}
 
-    pub fn is_positive(self) -> bool {
+// --- Sign ---
+impl<T> Sign for Signed<T> {
+    fn sign(self) -> bool {
         self.is_positive
     }
 }
 
+// --- Inner ---
 impl<T> Inner for Signed<T> {
     type U = T;
 }
@@ -333,6 +338,53 @@ where
     }
 }
 
+// --- DecimalRef ---
+impl<T, AsT> DecimalRef<AsT> for Signed<T>
+where
+    T: DecimalRef<AsT>,
+    AsT: NumberConst + Number,
+{
+    fn numerator(self) -> Int<AsT> {
+        self.inner.numerator().into()
+    }
+
+    fn denominator() -> Int<AsT> {
+        T::denominator().into()
+    }
+}
+
+// --- IntPerDecimal ---
+impl<T, AsT, DR> IntPerDec<T, AsT, DR> for Signed<T>
+where
+    T: MultiplyRatio + From<Int<AsT>>,
+    DR: DecimalRef<AsT> + Sign + Copy,
+    AsT: NumberConst + Number,
+{
+    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
+        self.inner
+            .checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
+            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+    }
+
+    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
+        self.inner
+            .checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
+            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+    }
+
+    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
+        self.inner
+            .checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
+            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+    }
+
+    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
+        self.inner
+            .checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
+            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+    }
+}
+
 // --- Display ---
 impl<T> Display for Signed<T>
 where
@@ -494,7 +546,9 @@ generate_signed!(
 mod test {
     use std::str::FromStr;
 
-    use crate::{Decimal128, Int128, Number, NumberConst, SignedDecimal128, SignedDecimal256};
+    use crate::{
+        Decimal128, Int128, IntPerDec, Number, NumberConst, SignedDecimal128, SignedDecimal256,
+    };
 
     #[test]
     fn t1_ops() {
@@ -588,5 +642,23 @@ mod test {
         let ser = borsh::to_vec(&foo).unwrap();
         let des: SignedDecimal256 = borsh::from_slice(&ser).unwrap();
         assert_eq!(foo, des);
+    }
+
+    #[test]
+    fn t5_signed_int_per_dec() {
+        let foo = Int128::new_negative(10_u128.into());
+        let res = foo
+            .checked_mul_dec_floor(Decimal128::from_str("2").unwrap())
+            .unwrap();
+
+        assert_eq!(res, Int128::new_negative(20_u128.into()));
+
+        let foo = Int128::new_negative(10_u128.into());
+
+        let res = foo
+            .checked_mul_dec_floor(SignedDecimal128::from_str("-2").unwrap())
+            .unwrap();
+
+        assert_eq!(res, Int128::new_positive(20_u128.into()));
     }
 }

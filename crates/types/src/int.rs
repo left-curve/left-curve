@@ -2,7 +2,8 @@ use {
     crate::{
         call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
         impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
-        impl_number, Bytable, Inner, Integer, NextNumber, Number, NumberConst, StdError, StdResult,
+        impl_number, Bytable, Inner, Integer, MultiplyRatio, NextNumber, Number, NumberConst, Sign,
+        StdError, StdResult,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -40,6 +41,13 @@ where
 {
     pub const fn number(self) -> U {
         self.0
+    }
+}
+
+// --- Sign ---
+impl<U> Sign for Int<U> {
+    fn sign(self) -> bool {
+        true
     }
 }
 
@@ -153,20 +161,19 @@ where
 }
 
 // --- multiply_ratio ---
-impl<U> Int<U>
+impl<U> MultiplyRatio for Int<U>
 where
     U: NumberConst + PartialEq,
     Int<U>: NextNumber + Number + Copy,
     <Int<U> as NextNumber>::Next: Number + ToString + Clone,
 {
-    pub fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
+    fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
         numerator: A,
         denominator: B,
     ) -> StdResult<Self> {
         let numerator: Self = numerator.into();
         let denominator: <Int<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
-
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
         next_result
             .clone()
@@ -174,16 +181,7 @@ where
             .map_err(|_| StdError::overflow_conversion::<_, Self>(next_result))
     }
 
-    pub fn multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> Self {
-        self.checked_multiply_ratio_floor(numerator, denominator)
-            .unwrap()
-    }
-
-    pub fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
+    fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
         self,
         numerator: A,
         denominator: B,

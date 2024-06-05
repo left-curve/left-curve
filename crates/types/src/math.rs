@@ -148,12 +148,7 @@ pub trait ShiftOps: Sized {
 
 // --------------------------- flooring and ceiling ----------------------------
 
-pub trait IntPerDec<U, AsU, DR>: Sized
-where
-    Int<AsU>: Into<Int<U>>,
-    DR: DecimalRef<AsU>,
-    AsU: NumberConst + Number,
-{
+pub trait IntPerDec<U, AsU, DR>: Sized {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
 
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
@@ -177,6 +172,26 @@ where
     fn div_dec_ceil(self, rhs: DR) -> Self {
         self.checked_div_dec_ceil(rhs).unwrap()
     }
+}
+
+pub trait MultiplyRatio: Sized {
+    fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
+        self,
+        numerator: A,
+        denominator: B,
+    ) -> StdResult<Self>;
+
+    fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
+        self,
+        numerator: A,
+        denominator: B,
+    ) -> StdResult<Self>;
+}
+
+// -------------------------------- signed --------------------------------
+
+pub trait Sign {
+    fn sign(self) -> bool;
 }
 
 // ----------------------------------- tests -----------------------------------

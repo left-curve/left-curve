@@ -241,7 +241,7 @@ macro_rules! generate_signed {
         impl TryFrom<$name> for $inner {
             type Error = StdError;
             fn try_from(value: $name) -> StdResult<Self> {
-                if !value.is_positive() {
+                if !value.sign() {
                     Err(StdError::overflow_conversion::<_, $inner>(value))
                 } else {
                     Ok(value.inner)
