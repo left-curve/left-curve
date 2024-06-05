@@ -40,6 +40,7 @@ impl<U, const S: usize> Decimal<U, S> {
         Self(value)
     }
 }
+
 impl<U, const S: usize> Decimal<U, S>
 where
     Int<U>: Number,
@@ -104,6 +105,7 @@ impl<U, const S: usize> Sign for Decimal<U, S> {
         true
     }
 }
+
 // --- Base impl ---
 impl<U, const S: usize> Decimal<U, S>
 where
@@ -478,7 +480,6 @@ where
         }
     }
 }
-
 
 impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
 impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);

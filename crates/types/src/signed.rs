@@ -342,14 +342,13 @@ where
 impl<T, AsT> DecimalRef<AsT> for Signed<T>
 where
     T: DecimalRef<AsT>,
-    AsT: NumberConst + Number,
 {
     fn numerator(self) -> Int<AsT> {
-        self.inner.numerator().into()
+        self.inner.numerator()
     }
 
     fn denominator() -> Int<AsT> {
-        T::denominator().into()
+        T::denominator()
     }
 }
 
