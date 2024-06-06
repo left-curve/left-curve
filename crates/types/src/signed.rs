@@ -1,9 +1,9 @@
 use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256,
-        DecimalRef, Inner, Int, IntPerDec, MultiplyRatio, Number, NumberConst, Sign, StdError,
-        StdResult, Uint128, Uint256, Uint64,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
+        Int, IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
+        Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
@@ -338,10 +338,10 @@ where
     }
 }
 
-// --- DecimalRef ---
-impl<T, AsT> DecimalRef<AsT> for Signed<T>
+// --- Rational ---
+impl<T, AsT> Rational<AsT> for Signed<T>
 where
-    T: DecimalRef<AsT>,
+    T: Rational<AsT>,
 {
     fn numerator(self) -> Int<AsT> {
         self.inner.numerator()
@@ -356,7 +356,7 @@ where
 impl<T, AsT, DR> IntPerDec<T, AsT, DR> for Signed<T>
 where
     T: MultiplyRatio + From<Int<AsT>>,
-    DR: DecimalRef<AsT> + Sign + Copy,
+    DR: Rational<AsT> + Sign + Copy,
     AsT: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {

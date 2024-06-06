@@ -24,9 +24,12 @@ pub trait NextNumber: Sized + TryFrom<Self::Next> {
     type Next: From<Self>;
 }
 
-/// Describes a fixed-point number, which is represented by a numerator divided
-/// by a constant denominator.
-pub trait DecimalRef<U> {
+/// Describes a number that can be expressed as the quotient or fraction of two
+/// integers.
+///
+/// Note that here we only concern the absolute value of the rational number.
+/// Hence, both the numerator and denominator are positive.
+pub trait Rational<U> {
     fn numerator(self) -> Int<U>;
 
     fn denominator() -> Int<U>;
