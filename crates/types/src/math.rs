@@ -35,14 +35,20 @@ pub trait Rational<U> {
     fn denominator() -> Int<U>;
 }
 
+/// Describes a number that can take on both positive and negative values.
+// TODO: what should be the return value if the number is zero?
+pub trait Sign {
+    fn is_positive(self) -> bool;
+}
+
 // ------------------------------- number const --------------------------------
 
 pub trait NumberConst {
-    const MAX: Self;
     const MIN: Self;
-    const ZERO: Self;
+    const MAX: Self;
     const ONE: Self;
     const TEN: Self;
+    const ZERO: Self;
 }
 
 impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
@@ -179,12 +185,6 @@ pub trait MultiplyRatio: Sized {
         numerator: A,
         denominator: B,
     ) -> StdResult<Self>;
-}
-
-// -------------------------------- signed --------------------------------
-
-pub trait Sign {
-    fn is_positive(self) -> bool;
 }
 
 // ----------------------------------- tests -----------------------------------
