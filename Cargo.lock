@@ -303,7 +303,7 @@ dependencies = [
 [[package]]
 name = "bnum"
 version = "0.11.0"
-source = "git+https://github.com/left-curve/bnum?rev=cd61b9e#cd61b9e29290dded1c5320e62061d57ea17a436d"
+source = "git+https://github.com/left-curve/bnum?rev=91dfe8a#91dfe8a34402c11f3ecae8b0eeab5f091f0aa2fb"
 dependencies = [
  "borsh",
 ]

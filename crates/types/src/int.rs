@@ -345,6 +345,80 @@ impl_next!(Uint256, Uint512);
 
 #[cfg(test)]
 mod test {
-    #[test]
-    fn test1() {}
+    use {
+        crate::{Int, Number, Uint128, Uint256},
+        paste::paste,
+        std::{fmt::Debug, str::FromStr},
+        test_case::test_case,
+    };
+
+    // 1: Example of wrapping test inside macro.
+    // This has the best flexibility but is harder to read.
+    macro_rules! base_math {
+        ($x:expr, $y:expr, $tt:tt, $id:literal) => {
+            paste! {
+                #[test]
+                fn [<$id>]() {
+                    assert_eq!($x + $y, $tt::from_str("30").unwrap());
+
+                }
+            }
+        };
+    }
+
+    base_math!(
+        Uint128::new(20),
+        Uint128::new(10),
+        Uint128,
+        "uint_base_128_1"
+    );
+    base_math!(
+        Uint256::new(20_u128.into()),
+        Uint256::new(10_u128.into()),
+        Uint256,
+        "uint_base_256_1"
+    );
+
+    // 2: TestCase.
+    // This is the most readable way to write tests, but require to define typing.
+    // Is the most limitated one.
+    #[test_case(Uint128::new(20), Uint128::new(10) ; "uint_base_128_2")]
+    #[test_case(Uint256::new(20_u128.into()), Uint256::new(10_u128.into()) ; "uint_base_256_2")]
+    fn base_ops<X>(x: Int<X>, y: Int<X>)
+    where
+        Int<X>: Number + FromStr + PartialEq + Debug,
+        <Int<X> as std::str::FromStr>::Err: Debug,
+    {
+        assert_eq!(x + y, Int::<X>::from_str("30").unwrap());
+    }
+
+    // 3: grug_test_case.
+    // With only one macro, is possible to define multiple tests.
+    // On the macro call is possible to define the body of the test.
+    // The main limitation is that i've not found a way to properly assery the result.
+    // for example assert_eq!(x + y, Int::new(30)) is not possible because the closure has no knowledge of the type of Int.;
+    // is there a way to do it?
+    macro_rules! grug_test_case {
+        (
+            $(
+                [$($param_value:expr),+ ; $fn_name:ident]
+            ),*,
+            $body:block
+        ) => {
+            $(
+                #[test]
+                fn $fn_name() {
+                    ($body)($($param_value),*);
+                }
+            )*
+        };
+    }
+
+    grug_test_case!(
+        [Uint128::new(20),             Uint128::new(10)            ; test1 ],
+        [Uint256::new(20_u128.into()), Uint256::new(10_u128.into()); test2 ],
+        {|x, y| {
+            let _ = x - y;
+        }}
+    );
 }

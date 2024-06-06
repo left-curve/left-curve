@@ -82,7 +82,7 @@ wasmer             = "4"
 # https://github.com/isaacholt100/bnum/compare/v0.11.0...left-curve:bnum:v0.11.0-grug
 [workspace.dependencies.bnum]
 git = "https://github.com/left-curve/bnum"
-rev = "cd61b9e"
+rev = "91dfe8a"
 
 # our fork of rust-rocksdb is based on the `v0.21.0` release and adds partial
 # support for the user-defined timestamp feature:
