@@ -133,19 +133,6 @@ impl_integer_number!(u128);
 impl_integer_number!(U256);
 impl_integer_number!(U512);
 
-// -------------------------------- pow op --------------------------------
-
-pub trait PowOp: Sized {
-    fn checked_pow(self, other: u32) -> StdResult<Self>;
-}
-
-// -------------------------------- shift ops --------------------------------
-
-pub trait ShiftOps: Sized {
-    fn checked_shl(self, other: u32) -> StdResult<Self>;
-    fn checked_shr(self, other: u32) -> StdResult<Self>;
-}
-
 // --------------------------- flooring and ceiling ----------------------------
 
 pub trait IntPerDec<U, AsU, DR>: Sized {
