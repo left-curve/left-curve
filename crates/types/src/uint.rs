@@ -46,7 +46,7 @@ where
 
 // --- Sign ---
 impl<U> Sign for Uint<U> {
-    fn is_positive(self) -> bool {
+    fn is_positive(&self) -> bool {
         true
     }
 }

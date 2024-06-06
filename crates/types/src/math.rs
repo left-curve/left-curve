@@ -38,7 +38,7 @@ pub trait Rational<U> {
 /// Describes a number that can take on both positive and negative values.
 // TODO: what should be the return value if the number is zero?
 pub trait Sign {
-    fn is_positive(self) -> bool;
+    fn is_positive(&self) -> bool;
 }
 
 // ------------------------------- number const --------------------------------

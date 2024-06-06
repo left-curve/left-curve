@@ -2,7 +2,7 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        Uint, IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
+        IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult, Uint,
         Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -47,7 +47,7 @@ impl<T> Signed<T> {
 
 // --- Sign ---
 impl<T> Sign for Signed<T> {
-    fn is_positive(self) -> bool {
+    fn is_positive(&self) -> bool {
         self.is_positive
     }
 }
