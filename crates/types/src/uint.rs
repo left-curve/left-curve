@@ -1,6 +1,6 @@
 use {
     crate::{
-        call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_int,
+        call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
         impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
         impl_number, Bytable, Inner, Integer, MultiplyRatio, NextNumber, Number, NumberConst, Sign,
         StdError, StdResult,
@@ -22,10 +22,10 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Int<U>(pub(crate) U);
+pub struct Uint<U>(pub(crate) U);
 
 // --- Init ---
-impl<U> Int<U> {
+impl<U> Uint<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
     }
@@ -35,7 +35,7 @@ impl<U> Int<U> {
     }
 }
 
-impl<U> Int<U>
+impl<U> Uint<U>
 where
     U: Copy,
 {
@@ -45,14 +45,14 @@ where
 }
 
 // --- Sign ---
-impl<U> Sign for Int<U> {
+impl<U> Sign for Uint<U> {
     fn is_positive(self) -> bool {
         true
     }
 }
 
 // --- Constants ---
-impl<U> NumberConst for Int<U>
+impl<U> NumberConst for Uint<U>
 where
     U: NumberConst,
 {
@@ -64,12 +64,12 @@ where
 }
 
 // --- Inner ---
-impl<U> Inner for Int<U> {
+impl<U> Inner for Uint<U> {
     type U = U;
 }
 
 // --- Bytable ---
-impl<U, const S: usize> Bytable<S> for Int<U>
+impl<U, const S: usize> Bytable<S> for Uint<U>
 where
     U: Bytable<S>,
 {
@@ -100,7 +100,7 @@ where
 
 // --- Number ---
 #[rustfmt::skip]
-impl<U> Number for Int<U>
+impl<U> Number for Uint<U>
 where
     U: Number,
 {
@@ -126,7 +126,7 @@ where
 
 // --- Integer ---
 #[rustfmt::skip]
-impl<U> Integer for Int<U>
+impl<U> Integer for Uint<U>
 where
     U: Integer
     {
@@ -137,35 +137,38 @@ where
     }
 
 // --- full_mull ---
-impl<U> Int<U>
+impl<U> Uint<U>
 where
-    Int<U>: NextNumber,
-    <Int<U> as NextNumber>::Next: Number + ToString,
+    Uint<U>: NextNumber,
+    <Uint<U> as NextNumber>::Next: Number + ToString,
 {
-    /// Convert the current [`Int`] to [`NextNumber::Next`]
+    /// Convert the current [`Uint`] to [`NextNumber::Next`]
     ///
     /// Example: [`Uint64`] -> [`Uint128`]
-    pub fn as_next(self) -> <Int<U> as NextNumber>::Next {
-        <Int<U> as NextNumber>::Next::from(self)
+    pub fn as_next(self) -> <Uint<U> as NextNumber>::Next {
+        <Uint<U> as NextNumber>::Next::from(self)
     }
 
-    pub fn checked_full_mul(self, rhs: impl Into<Self>) -> StdResult<<Int<U> as NextNumber>::Next> {
-        let s = <Int<U> as NextNumber>::Next::from(self);
-        let r = <Int<U> as NextNumber>::Next::from(rhs.into());
+    pub fn checked_full_mul(
+        self,
+        rhs: impl Into<Self>,
+    ) -> StdResult<<Uint<U> as NextNumber>::Next> {
+        let s = <Uint<U> as NextNumber>::Next::from(self);
+        let r = <Uint<U> as NextNumber>::Next::from(rhs.into());
         s.checked_mul(r)
     }
 
-    pub fn full_mul(self, rhs: impl Into<Self>) -> <Int<U> as NextNumber>::Next {
+    pub fn full_mul(self, rhs: impl Into<Self>) -> <Uint<U> as NextNumber>::Next {
         self.checked_full_mul(rhs).unwrap()
     }
 }
 
 // --- multiply_ratio ---
-impl<U> MultiplyRatio for Int<U>
+impl<U> MultiplyRatio for Uint<U>
 where
     U: NumberConst + PartialEq,
-    Int<U>: NextNumber + Number + Copy,
-    <Int<U> as NextNumber>::Next: Number + ToString + Clone,
+    Uint<U>: NextNumber + Number + Copy,
+    <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
 {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
@@ -173,7 +176,7 @@ where
         denominator: B,
     ) -> StdResult<Self> {
         let numerator: Self = numerator.into();
-        let denominator: <Int<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
+        let denominator: <Uint<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
         next_result
             .clone()
@@ -199,7 +202,7 @@ where
 }
 
 // --- FromStr ---
-impl<U> FromStr for Int<U>
+impl<U> FromStr for Uint<U>
 where
     U: FromStr,
     <U as FromStr>::Err: ToString,
@@ -214,7 +217,7 @@ where
 }
 
 // --- Display ---
-impl<U> fmt::Display for Int<U>
+impl<U> fmt::Display for Uint<U>
 where
     U: Display,
 {
@@ -224,7 +227,7 @@ where
 }
 
 // --- serde::Serialize ---
-impl<U> ser::Serialize for Int<U>
+impl<U> ser::Serialize for Uint<U>
 where
     U: Display,
 {
@@ -237,7 +240,7 @@ where
 }
 
 // --- serde::Deserialize ---
-impl<'de, U> de::Deserialize<'de> for Int<U>
+impl<'de, U> de::Deserialize<'de> for Uint<U>
 where
     U: Default + FromStr,
     <U as FromStr>::Err: Display,
@@ -260,7 +263,7 @@ where
     U: FromStr,
     <U as FromStr>::Err: Display,
 {
-    type Value = Int<U>;
+    type Value = Uint<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         // TODO: Change this message in base at the type of U
@@ -271,43 +274,43 @@ where
     where
         E: de::Error,
     {
-        v.parse::<U>().map(Int::<U>).map_err(E::custom)
+        v.parse::<U>().map(Uint::<U>).map_err(E::custom)
     }
 }
 
-impl_number!(impl<U> Add, add for Int<U> where sub fn checked_add);
-impl_number!(impl<U> Sub, sub for Int<U> where sub fn checked_sub);
-impl_number!(impl<U> Mul, mul for Int<U> where sub fn checked_mul);
-impl_number!(impl<U> Div, div for Int<U> where sub fn checked_div);
-impl_integer!(impl<U> Shl, shl for Int<U> where sub fn checked_shl, u32);
-impl_integer!(impl<U> Shr, shr for Int<U> where sub fn checked_shr, u32);
+impl_number!(impl<U> Add, add for Uint<U> where sub fn checked_add);
+impl_number!(impl<U> Sub, sub for Uint<U> where sub fn checked_sub);
+impl_number!(impl<U> Mul, mul for Uint<U> where sub fn checked_mul);
+impl_number!(impl<U> Div, div for Uint<U> where sub fn checked_div);
+impl_integer!(impl<U> Shl, shl for Uint<U> where sub fn checked_shl, u32);
+impl_integer!(impl<U> Shr, shr for Uint<U> where sub fn checked_shr, u32);
 
-impl_assign_number!(impl<U> AddAssign, add_assign for Int<U> where sub fn checked_add);
-impl_assign_number!(impl<U> SubAssign, sub_assign for Int<U> where sub fn checked_sub);
-impl_assign_number!(impl<U> MulAssign, mul_assign for Int<U> where sub fn checked_mul);
-impl_assign_number!(impl<U> DivAssign, div_assign for Int<U> where sub fn checked_div);
-impl_assign_integer!(impl<U> ShrAssign, shr_assign for Int<U> where sub fn checked_shr, u32);
-impl_assign_integer!(impl<U> ShlAssign, shl_assign for Int<U> where sub fn checked_shl, u32);
+impl_assign_number!(impl<U> AddAssign, add_assign for Uint<U> where sub fn checked_add);
+impl_assign_number!(impl<U> SubAssign, sub_assign for Uint<U> where sub fn checked_sub);
+impl_assign_number!(impl<U> MulAssign, mul_assign for Uint<U> where sub fn checked_mul);
+impl_assign_number!(impl<U> DivAssign, div_assign for Uint<U> where sub fn checked_div);
+impl_assign_integer!(impl<U> ShrAssign, shr_assign for Uint<U> where sub fn checked_shr, u32);
+impl_assign_integer!(impl<U> ShlAssign, shl_assign for Uint<U> where sub fn checked_shl, u32);
 
-forward_ref_binop_typed!(impl<U> Add, add for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Sub, sub for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Mul, mul for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Div, div for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Rem, rem for Int<U>, Int<U>);
-forward_ref_binop_typed!(impl<U> Shl, shl for Int<U>, u32);
-forward_ref_binop_typed!(impl<U> Shr, shr for Int<U>, u32);
+forward_ref_binop_typed!(impl<U> Add, add for Uint<U>, Uint<U>);
+forward_ref_binop_typed!(impl<U> Sub, sub for Uint<U>, Uint<U>);
+forward_ref_binop_typed!(impl<U> Mul, mul for Uint<U>, Uint<U>);
+forward_ref_binop_typed!(impl<U> Div, div for Uint<U>, Uint<U>);
+forward_ref_binop_typed!(impl<U> Rem, rem for Uint<U>, Uint<U>);
+forward_ref_binop_typed!(impl<U> Shl, shl for Uint<U>, u32);
+forward_ref_binop_typed!(impl<U> Shr, shr for Uint<U>, u32);
 
-forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Int<U>, Int<U>);
-forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Int<U>, u32);
-forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Int<U>, u32);
+forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Uint<U>, Uint<U>);
+forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Uint<U>, Uint<U>);
+forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Uint<U>, Uint<U>);
+forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Uint<U>, Uint<U>);
+forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Uint<U>, u32);
+forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Uint<U>, u32);
 
 // ------------------------------ concrete types -------------------------------
 
 // Uint64
-generate_int!(
+generate_uint!(
     name = Uint64,
     inner_type = u64,
     from_int = [],
@@ -315,7 +318,7 @@ generate_int!(
 );
 
 // Uint128
-generate_int!(
+generate_uint!(
     name = Uint128,
     inner_type = u128,
     from_int = [Uint64],
@@ -323,7 +326,7 @@ generate_int!(
 );
 
 // Uint256
-generate_int!(
+generate_uint!(
     name = Uint256,
     inner_type = U256,
     from_int = [Uint64, Uint128],
@@ -331,7 +334,7 @@ generate_int!(
 );
 
 // Uint512
-generate_int!(
+generate_uint!(
     name = Uint512,
     inner_type = U512,
     from_int = [Uint256, Uint64, Uint128],
@@ -346,7 +349,7 @@ impl_next!(Uint256, Uint512);
 #[cfg(test)]
 mod test {
     use {
-        crate::{Int, Number, Uint128, Uint256},
+        crate::{Number, Uint, Uint128, Uint256},
         paste::paste,
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
@@ -384,19 +387,19 @@ mod test {
     // Is the most limitated one.
     #[test_case(Uint128::new(20), Uint128::new(10) ; "uint_base_128_2")]
     #[test_case(Uint256::new(20_u128.into()), Uint256::new(10_u128.into()) ; "uint_base_256_2")]
-    fn base_ops<X>(x: Int<X>, y: Int<X>)
+    fn base_ops<X>(x: Uint<X>, y: Uint<X>)
     where
-        Int<X>: Number + FromStr + PartialEq + Debug,
-        <Int<X> as std::str::FromStr>::Err: Debug,
+        Uint<X>: Number + FromStr + PartialEq + Debug,
+        <Uint<X> as std::str::FromStr>::Err: Debug,
     {
-        assert_eq!(x + y, Int::<X>::from_str("30").unwrap());
+        assert_eq!(x + y, Uint::<X>::from_str("30").unwrap());
     }
 
     // 3: grug_test_case.
     // With only one macro, is possible to define multiple tests.
     // On the macro call is possible to define the body of the test.
     // The main limitation is that i've not found a way to properly assery the result.
-    // for example assert_eq!(x + y, Int::new(30)) is not possible because the closure has no knowledge of the type of Int.;
+    // for example assert_eq!(x + y, Uint::new(30)) is not possible because the closure has no knowledge of the type of Uint.;
     // is there a way to do it?
     macro_rules! grug_test_case {
         (

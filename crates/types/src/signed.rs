@@ -2,7 +2,7 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        Int, IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
+        Uint, IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
         Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -343,11 +343,11 @@ impl<T, AsT> Rational<AsT> for Signed<T>
 where
     T: Rational<AsT>,
 {
-    fn numerator(self) -> Int<AsT> {
+    fn numerator(self) -> Uint<AsT> {
         self.inner.numerator()
     }
 
-    fn denominator() -> Int<AsT> {
+    fn denominator() -> Uint<AsT> {
         T::denominator()
     }
 }
@@ -355,7 +355,7 @@ where
 // --- IntPerDecimal ---
 impl<T, AsT, DR> IntPerDec<T, AsT, DR> for Signed<T>
 where
-    T: MultiplyRatio + From<Int<AsT>>,
+    T: MultiplyRatio + From<Uint<AsT>>,
     DR: Rational<AsT> + Sign + Copy,
     AsT: NumberConst + Number,
 {

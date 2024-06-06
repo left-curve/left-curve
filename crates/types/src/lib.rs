@@ -12,7 +12,6 @@ mod error;
 mod event;
 mod hash;
 mod ibc;
-mod int;
 mod macros;
 mod math;
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,12 +23,13 @@ mod serde;
 mod signed;
 mod timestamp;
 mod tx;
+mod uint;
 mod utils;
 
 pub use {
     address::*, api::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, decimal::*,
-    empty::*, error::*, event::*, hash::*, ibc::*, int::*, math::*, query::*, response::*,
-    result::*, serde::*, signed::*, timestamp::*, tx::*, utils::*,
+    empty::*, error::*, event::*, hash::*, ibc::*, math::*, query::*, response::*, result::*,
+    serde::*, signed::*, timestamp::*, tx::*, uint::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256

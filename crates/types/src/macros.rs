@@ -1,18 +1,17 @@
-//! This file contains macros that are mainly used to define math types, namely
-//! `Uint`, `Int`, `Decimal`, and `SignedDecimal`. They are generally not
-//! intended for use outside of this crate.
+//! This file contains macros that are mainly used to define math types.
+//! They are generally not intended for use outside of this crate.
 
-/// Generate a [`Unit`](super::Int) type for a given inner type.
+/// Generate a [`Uint`](super::Uint) type for a given inner type.
 ///
 /// ### Example
 ///
 /// ```ignore
-/// generate_int!(
-///     // The name of the Int
+/// generate_uint!(
+///     // The name of the Uint
 ///     name = Int128,
-///     // Inner type of the Int
+///     // Inner type of the Uint
 ///     inner_type = i128,
-///     // Implement From | TryFrom from other Int types
+///     // Implement From | TryFrom from other Uint types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_int = [Int64, Uint64]
@@ -20,21 +19,21 @@
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_std = [u32, u16, u8, i32, i16, i8]
-///     // Implement TryFrom | TryFrom from other Int types
+///     // Implement TryFrom | TryFrom from other Uint types
 ///     // Unsafe type where overflow is possible
 ///     try_from_int = [Uint128]
 /// );
 #[macro_export]
-macro_rules! generate_int {
+macro_rules! generate_uint {
     (
         name = $name:ident,
         inner_type = $inner:ty,
         from_int = [$($from:ty),*],
         from_std = [$($from_std:ty),*],
     ) => {
-        pub type $name = Int<$inner>;
+        pub type $name = Uint<$inner>;
 
-        // --- Impl From Int and from inner type ---
+        // --- Impl From Uint and from inner type ---
         $(
             // Ex: From<Uint64> for Uint128
             impl From<$from> for $name {
@@ -118,10 +117,10 @@ macro_rules! generate_int {
 /// ### Example
 ///
 /// ```ignore
-/// generate_int!(
-///     // The name of the Int
+/// generate_uint!(
+///     // The name of the Uint
 ///     name = SignedDecimal256,
-///     // Inner type of the Int
+///     // Inner type of the Uint
 ///     inner_type = I256,
 ///     // Number of decimal places
 ///     decimal_places = 18,
@@ -129,7 +128,7 @@ macro_rules! generate_int {
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
 ///     from_dec = [SignedDecimal128, Decimal128]
-///     // Implement TryFrom | TryFrom from other Int types
+///     // Implement TryFrom | TryFrom from other Uint types
 ///     // Unsafe type where overflow is possible
 ///     try_from_dec = [Decimal256]
 /// );
@@ -150,13 +149,13 @@ macro_rules! generate_decimal {
         // Ex: From<U256> for Decimal256
         impl From<$inner> for $name {
             fn from(value: $inner) -> Self {
-                Self::raw(Int::new(value))
+                Self::raw(Uint::new(value))
             }
         }
 
         // Ex: From<Uint<U256>> for Decimal256
-        impl From<Int<$inner>> for $name {
-            fn from(value: Int<$inner>) -> Self {
+        impl From<Uint<$inner>> for $name {
+            fn from(value: Uint<$inner>) -> Self {
                 Self::raw(value)
             }
         }
@@ -171,8 +170,8 @@ macro_rules! generate_decimal {
             }
 
             // Ex: From<Uint128> for Decimal256
-            impl From<Int<<$from as Inner>::U>> for $name {
-                fn from(value: Int<<$from as Inner>::U>) -> Self {
+            impl From<Uint<<$from as Inner>::U>> for $name {
+                fn from(value: Uint<<$from as Inner>::U>) -> Self {
                     Self::raw(value.into())
                 }
             }
@@ -193,9 +192,9 @@ macro_rules! generate_decimal {
             }
 
             // Ex: TryFrom<Decimal256> for Uint128
-            impl TryFrom<$name> for Int<<$from as Inner>::U> {
+            impl TryFrom<$name> for Uint<<$from as Inner>::U> {
                 type Error = StdError;
-                fn try_from(value: $name) -> StdResult<Int<<$from as Inner>::U>> {
+                fn try_from(value: $name) -> StdResult<Uint<<$from as Inner>::U>> {
                     value.0.try_into().map(Self)
                 }
             }
@@ -972,7 +971,7 @@ macro_rules! forward_ref_op_assign_decimal {
 #[macro_export]
 macro_rules! generate_decimal_per {
     ($name:ident, $shift:expr) => {
-        pub fn $name(x: impl Into<Int<U>>) -> Self {
+        pub fn $name(x: impl Into<Uint<U>>) -> Self {
             let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(($shift) as u32));
             Self::raw(atomic)
         }

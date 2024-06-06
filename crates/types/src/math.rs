@@ -1,16 +1,16 @@
 use {
     crate::{
         grow_be_uint, grow_le_uint, impl_bytable_bnum, impl_bytable_std, impl_integer_number,
-        impl_number_const, Int, StdError, StdResult,
+        impl_number_const, StdError, StdResult, Uint,
     },
     bnum::types::{U256, U512},
 };
 
-/// Describes the inner type of the [`Int`].
+/// Describes the inner type of the [`Uint`].
 ///
-/// This trait is used in [`generate_int!`](crate::generate_int!) and
+/// This trait is used in [`generate_uint!`](crate::generate_uint!) and
 /// [`generate_decimal!`](crate::generate_decimal!) to get the inner type of a
-/// [`Int`] and implement the conversion from the inner type to the [`Int`].
+/// [`Uint`] and implement the conversion from the inner type to the [`Uint`].
 pub trait Inner {
     type U;
 }
@@ -30,9 +30,9 @@ pub trait NextNumber: Sized + TryFrom<Self::Next> {
 /// Note that here we only concern the absolute value of the rational number.
 /// Hence, both the numerator and denominator are positive.
 pub trait Rational<U> {
-    fn numerator(self) -> Int<U>;
+    fn numerator(self) -> Uint<U>;
 
-    fn denominator() -> Int<U>;
+    fn denominator() -> Uint<U>;
 }
 
 /// Describes a number that can take on both positive and negative values.
