@@ -47,7 +47,7 @@ impl<T> Signed<T> {
 
 // --- Sign ---
 impl<T> Sign for Signed<T> {
-    fn sign(self) -> bool {
+    fn is_positive(self) -> bool {
         self.is_positive
     }
 }
@@ -362,25 +362,25 @@ where
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
-            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
     }
 
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
-            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
     }
 
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
     }
 
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.is_positive == rhs.sign()))
+            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
     }
 }
 

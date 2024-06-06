@@ -181,7 +181,7 @@ pub trait MultiplyRatio: Sized {
 // -------------------------------- signed --------------------------------
 
 pub trait Sign {
-    fn sign(self) -> bool;
+    fn is_positive(self) -> bool;
 }
 
 // ----------------------------------- tests -----------------------------------
