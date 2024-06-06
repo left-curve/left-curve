@@ -8,20 +8,20 @@
 /// ```ignore
 /// generate_uint!(
 ///     // The name of the Uint
-///     name = Int128,
+///     name = Uint128,
 ///     // Inner type of the Uint
-///     inner_type = i128,
+///     inner_type = u128,
 ///     // Implement From | TryFrom from other Uint types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
-///     from_int = [Int64, Uint64]
+///     from_int = [Uint64],
 ///     // Implement From | TryFrom from other std types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
-///     from_std = [u32, u16, u8, i32, i16, i8]
+///     from_std = [u128, u32, u16, u8],
 ///     // Implement TryFrom | TryFrom from other Uint types
 ///     // Unsafe type where overflow is possible
-///     try_from_int = [Uint128]
+///     try_from_int = [Int128],
 /// );
 #[macro_export]
 macro_rules! generate_uint {
@@ -69,9 +69,7 @@ macro_rules! generate_uint {
             }
 
             impl_all_ops_and_assign!($name, $from);
-
             impl_all_ops_and_assign!($name, <$from as Inner>::U);
-
         )*
 
         // --- Impl From std ---
@@ -119,18 +117,15 @@ macro_rules! generate_uint {
 /// ```ignore
 /// generate_uint!(
 ///     // The name of the Uint
-///     name = SignedDecimal256,
+///     name = Decimal256,
 ///     // Inner type of the Uint
-///     inner_type = I256,
+///     inner_type = Uint256,
 ///     // Number of decimal places
 ///     decimal_places = 18,
 ///     // Implement From | TryFrom from other Decimal types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
-///     from_dec = [SignedDecimal128, Decimal128]
-///     // Implement TryFrom | TryFrom from other Uint types
-///     // Unsafe type where overflow is possible
-///     try_from_dec = [Decimal256]
+///     from_dec = [SignedDecimal128, Decimal128],
 /// );
 #[macro_export]
 macro_rules! generate_decimal {
@@ -186,6 +181,7 @@ macro_rules! generate_decimal {
             // Ex: TryFrom<Decimal256> for Decimal128
             impl TryFrom<$name> for $from {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<$from> {
                     <$from>::try_from_decimal(value)
                 }
@@ -194,6 +190,7 @@ macro_rules! generate_decimal {
             // Ex: TryFrom<Decimal256> for Uint128
             impl TryFrom<$name> for Uint<<$from as Inner>::U> {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<Uint<<$from as Inner>::U>> {
                     value.0.try_into().map(Self)
                 }
@@ -202,6 +199,7 @@ macro_rules! generate_decimal {
             // Ex: TryFrom<Decimal256> for u128
             impl TryFrom<$name> for <$from as Inner>::U {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<<$from as Inner>::U> {
                     value.0.try_into()
                 }
@@ -239,6 +237,7 @@ macro_rules! generate_signed {
         // Ex: TyFrom<Int128> for Uint128
         impl TryFrom<$name> for $inner {
             type Error = StdError;
+
             fn try_from(value: $name) -> StdResult<Self> {
                 if !value.is_positive() {
                     Err(StdError::overflow_conversion::<_, $inner>(value))
@@ -277,6 +276,7 @@ macro_rules! generate_signed {
             // Ex: TryFrom<Int128> for Int64
             impl TryFrom<$name> for $from_signed {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<$from_signed> {
                     <$from_signed as Inner>::U::try_from(value.inner)
                         .map(|val| Self::new(val, value.is_positive))
@@ -287,6 +287,7 @@ macro_rules! generate_signed {
             // Ex: TryFrom<Int128> for Uint64
             impl TryFrom<$name> for <$from_signed as Inner>::U {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<<$from_signed as Inner>::U> {
                     if !value.is_positive{
                         return Err(StdError::overflow_conversion::<_, $name>(value))
@@ -299,6 +300,7 @@ macro_rules! generate_signed {
             // Ex: TryFrom<Int128> for u64
             impl TryFrom<$name> for <<$from_signed as Inner>::U as Inner>::U {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<<<$from_signed as Inner>::U as Inner>::U> {
                     if !value.is_positive{
                         return Err(StdError::overflow_conversion::<_, $name>(value))
@@ -325,6 +327,7 @@ macro_rules! generate_signed {
             // Ex: TryFrom<Int128> for u32
             impl TryFrom<$name> for $from_std {
                 type Error = StdError;
+
                 fn try_from(value: $name) -> StdResult<$from_std> {
                     <$from_std>::try_from(value.inner)
                         .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
@@ -332,7 +335,6 @@ macro_rules! generate_signed {
             }
 
             impl_all_ops_and_assign!($name, $from_std);
-
         )*
     };
 
@@ -651,6 +653,7 @@ macro_rules! impl_number {
     (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
         impl std::ops::$imp<$other> for $t {
             type Output = Self;
+
             fn $method(self, other: $other) -> Self {
                 self.$sub_method(other.into()).unwrap_or_else(|err| panic!("{err}"))
             }
@@ -669,8 +672,7 @@ macro_rules! impl_number {
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: usize> std::ops::$imp for $t
         where
-        Self: Number,
-
+            Self: Number,
         {
             type Output = Self;
 
@@ -728,11 +730,10 @@ macro_rules! impl_assign_number {
     };
 
     // Decimal
-    (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
-    {
+    (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: usize> std::ops::$imp for $t
         where
-            Self: Number + Copy
+            Self: Number + Copy,
         {
             fn $method(&mut self, other: Self) {
                 *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
@@ -751,11 +752,10 @@ macro_rules! impl_assign_number {
     };
 
     // Signed
-    (impl Signed with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) =>
-    {
+    (impl Signed with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<T> std::ops::$imp for $t
         where
-            Self: Number + Copy
+            Self: Number + Copy,
         {
             fn $method(&mut self, other: Self) {
                 *self = (*self).$sub_method(other).unwrap_or_else(|err| panic!("{err}"))
