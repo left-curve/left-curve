@@ -123,8 +123,11 @@ pub trait Number: Sized {
 
 pub trait Integer: Sized {
     fn checked_ilog2(self) -> StdResult<u32>;
+
     fn checked_ilog10(self) -> StdResult<u32>;
+
     fn checked_shl(self, other: u32) -> StdResult<Self>;
+
     fn checked_shr(self, other: u32) -> StdResult<Self>;
 }
 
