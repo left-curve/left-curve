@@ -156,7 +156,7 @@ pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-pub fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
@@ -180,7 +180,7 @@ pub fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-pub fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
@@ -198,7 +198,7 @@ pub fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-pub fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+pub const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
