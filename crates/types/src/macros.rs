@@ -425,7 +425,7 @@ macro_rules! impl_bytable_bnum {
                         bytes[($rot / 8 - i - 1) * 8 + 2],
                         bytes[($rot / 8 - i - 1) * 8 + 1],
                         bytes[($rot / 8 - i - 1) * 8],
-                    ])
+                    ]);
                 }
                 Self::from_digits(digits)
             }
@@ -442,7 +442,7 @@ macro_rules! impl_bytable_bnum {
                         bytes[i * 8 + 5],
                         bytes[i * 8 + 6],
                         bytes[i * 8 + 7],
-                    ])
+                    ]);
                 }
                 Self::from_digits(digits)
             }
