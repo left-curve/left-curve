@@ -413,38 +413,38 @@ macro_rules! impl_bytable_std {
 macro_rules! impl_bytable_bnum {
     ($t:ty, $rot:literal) => {
         impl Bytable<$rot> for $t {
-            fn from_be_bytes(data: [u8; $rot]) -> Self {
-                let mut bytes = [0u64; $rot / 8];
+            fn from_be_bytes(bytes: [u8; $rot]) -> Self {
+                let mut digits = [0u64; $rot / 8];
                 for i in 0..$rot / 8 {
-                    bytes[i] = u64::from_le_bytes([
-                        data[($rot / 8 - i - 1) * 8 + 7],
-                        data[($rot / 8 - i - 1) * 8 + 6],
-                        data[($rot / 8 - i - 1) * 8 + 5],
-                        data[($rot / 8 - i - 1) * 8 + 4],
-                        data[($rot / 8 - i - 1) * 8 + 3],
-                        data[($rot / 8 - i - 1) * 8 + 2],
-                        data[($rot / 8 - i - 1) * 8 + 1],
-                        data[($rot / 8 - i - 1) * 8],
+                    digits[i] = u64::from_le_bytes([
+                        bytes[($rot / 8 - i - 1) * 8 + 7],
+                        bytes[($rot / 8 - i - 1) * 8 + 6],
+                        bytes[($rot / 8 - i - 1) * 8 + 5],
+                        bytes[($rot / 8 - i - 1) * 8 + 4],
+                        bytes[($rot / 8 - i - 1) * 8 + 3],
+                        bytes[($rot / 8 - i - 1) * 8 + 2],
+                        bytes[($rot / 8 - i - 1) * 8 + 1],
+                        bytes[($rot / 8 - i - 1) * 8],
                     ])
                 }
-                Self::from_digits(bytes)
+                Self::from_digits(digits)
             }
 
-            fn from_le_bytes(data: [u8; $rot]) -> Self {
-                let mut bytes = [0u64; $rot / 8];
+            fn from_le_bytes(bytes: [u8; $rot]) -> Self {
+                let mut digits = [0u64; $rot / 8];
                 for i in 0..$rot / 8 {
-                    bytes[i] = u64::from_le_bytes([
-                        data[i * 8],
-                        data[i * 8 + 1],
-                        data[i * 8 + 2],
-                        data[i * 8 + 3],
-                        data[i * 8 + 4],
-                        data[i * 8 + 5],
-                        data[i * 8 + 6],
-                        data[i * 8 + 7],
+                    digits[i] = u64::from_le_bytes([
+                        bytes[i * 8],
+                        bytes[i * 8 + 1],
+                        bytes[i * 8 + 2],
+                        bytes[i * 8 + 3],
+                        bytes[i * 8 + 4],
+                        bytes[i * 8 + 5],
+                        bytes[i * 8 + 6],
+                        bytes[i * 8 + 7],
                     ])
                 }
-                Self::from_digits(bytes)
+                Self::from_digits(digits)
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
