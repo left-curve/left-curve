@@ -191,10 +191,27 @@ pub trait MultiplyRatio: Sized {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Number, Uint128};
+    use {
+        crate::{Bytable, Number, Uint128},
+        bnum::types::U256,
+    };
 
     #[test]
-    fn sqrt() {
+    fn bytable_works() {
+        // Pick a random number that is above U128 range but within U256 range
+        let val = U256::parse_str_radix("1361129467683753853853498429727072845824", 10);
+
+        // Convert it to big endian bytes and back, should get the same value
+        let recovered = U256::from_be_bytes(val.to_be_bytes());
+        assert_eq!(val, recovered);
+
+        // Same thing for little endian
+        let recovered = U256::from_le_bytes(val.to_le_bytes());
+        assert_eq!(val, recovered);
+    }
+
+    #[test]
+    fn square_root_works() {
         let val: u128 = 100;
         assert_eq!(val.checked_sqrt().unwrap(), 10);
 
