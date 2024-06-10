@@ -515,16 +515,17 @@ macro_rules! impl_integer_number {
                     .ok_or_else(|| StdError::overflow_pow(self, other))
             }
 
+            /// Compute a _positive_ integer's _floored_ square root using the
+            /// [Babylonian method](https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Heron's_method).
             fn checked_sqrt(self) -> StdResult<Self> {
-                let n = self;
-                if n == Self::ZERO {
+                if self.is_zero() {
                     return Ok(Self::ZERO);
                 }
-                let mut x = n;
+                let mut x = self;
                 let mut y = (x + 1) >> 1;
                 while y < x {
                     x = y;
-                    y = (x + n / x) >> 1;
+                    y = (x + self / x) >> 1;
                 }
                 Ok(x)
             }
