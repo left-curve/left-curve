@@ -192,30 +192,62 @@ pub trait MultiplyRatio: Sized {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bytable, Number, Uint128},
-        bnum::types::U256,
+        crate::{Bytable, Number, NumberConst, Uint128, Uint256},
+        proptest::{array::uniform32, prelude::*},
     };
 
-    #[test]
-    fn bytable_works() {
-        // Pick a random number that is above U128 range but within U256 range
-        let val = U256::parse_str_radix("1361129467683753853853498429727072845824", 10);
+    proptest! {
+        /// Ensure the bytable methods work for `Uint128`.
+        #[test]
+        fn integer_bytable_works_128(number in any::<u128>()) {
+            let number = Uint128::from(number);
 
-        // Convert it to big endian bytes and back, should get the same value
-        let recovered = U256::from_be_bytes(val.to_be_bytes());
-        assert_eq!(val, recovered);
+            // Convert the number to big endian bytes and back, should get the
+            // the same value
+            let recovered = Uint128::from_be_bytes(number.to_be_bytes());
+            prop_assert_eq!(number, recovered);
 
-        // Same thing for little endian
-        let recovered = U256::from_le_bytes(val.to_le_bytes());
-        assert_eq!(val, recovered);
-    }
+            // Same thing for little endian
+            let recovered = Uint128::from_le_bytes(number.to_le_bytes());
+            prop_assert_eq!(number, recovered);
+        }
 
-    #[test]
-    fn square_root_works() {
-        let val: u128 = 100;
-        assert_eq!(val.checked_sqrt().unwrap(), 10);
+        /// The same test as above, but for `Uint256`.
+        #[test]
+        fn integer_bytable_works_256(bytes in uniform32(any::<u8>())) {
+            let number = Uint256::from_le_bytes(bytes);
 
-        let val = Uint128::new(64);
-        assert_eq!(val.checked_sqrt().unwrap(), Uint128::new(8));
+            // Convert the number to big endian bytes and back, should get the
+            // the same value
+            let recovered = Uint256::from_be_bytes(number.to_be_bytes());
+            prop_assert_eq!(number, recovered);
+
+            // Same thing for little endian
+            let recovered = Uint256::from_le_bytes(number.to_le_bytes());
+            prop_assert_eq!(number, recovered);
+        }
+
+        /// Ensure the `checked_sqrt` method works for `Uint128`.
+        ///
+        /// Since our square root method returns the _floored_ result, we make
+        /// sure that:
+        /// - `root ** 2 <= square`
+        /// - `(root + 1) ** 2 > square`
+        #[test]
+        fn integer_sqrt_works_128(square in any::<u128>()) {
+            let square = Uint128::from(square);
+            let root = square.checked_sqrt().unwrap();
+            prop_assert!(root * root <= square);
+            prop_assert!((root + Uint128::ONE) * (root + Uint128::ONE) > square);
+        }
+
+        /// The same test as above, but for `Uint256`.
+        #[test]
+        fn integer_sqrt_works_256(bytes in uniform32(any::<u8>())) {
+            let square = Uint256::from_le_bytes(bytes);
+            let root = square.checked_sqrt().unwrap();
+            prop_assert!(root * root <= square);
+            prop_assert!((root + Uint128::ONE) * (root + Uint128::ONE) > square);
+        }
     }
 }
