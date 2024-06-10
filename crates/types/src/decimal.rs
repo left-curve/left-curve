@@ -30,12 +30,18 @@ impl<U, const S: usize> Inner for Decimal<U, S> {
 
 // --- Init ---
 impl<U, const S: usize> Decimal<U, S> {
-    /// Create a new [`Decimal`] **without** adding decimal places.
+    /// Create a new [`Decimal`] _without_ adding decimal places.
+    ///
     /// ```rust
-    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
-    /// let uint = Uint128::new(100_u128);
+    /// use {
+    ///     grug_types::{Decimal128, Uint128},
+    ///     std::str::FromStr,
+    /// };
+    ///
+    /// let uint = Uint128::new(100);
     /// let decimal = Decimal128::raw(uint);
     /// assert_eq!(decimal, Decimal128::from_str("0.000000000000000100").unwrap());
+    /// ```
     pub const fn raw(value: Uint<U>) -> Self {
         Self(value)
     }
@@ -59,11 +65,17 @@ where
     }
 
     /// Create a new [`Decimal`] adding decimal places.
+    ///
     /// ```rust
-    /// use {grug_types::{Decimal128, Uint128}, std::str::FromStr};
-    /// let uint = Uint128::new(100_u128);
+    /// use {
+    ///     grug_types::{Decimal128, Uint128},
+    ///     std::str::FromStr,
+    /// };
+    ///
+    /// let uint = Uint128::new(100);
     /// let decimal = Decimal128::new(uint);
     /// assert_eq!(decimal, Decimal128::from_str("100.0").unwrap());
+    /// ```
     pub fn new(value: impl Into<Uint<U>>) -> Self {
         Self(value.into() * Self::decimal_fraction())
     }
