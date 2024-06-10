@@ -449,7 +449,7 @@ macro_rules! impl_bytable_bnum {
 
             fn to_be_bytes(self) -> [u8; $rot] {
                 let words = self.digits();
-                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
+                let mut bytes = [[0u8; 8]; $rot / 8];
                 for i in 0..$rot / 8 {
                     bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
                 }
@@ -459,7 +459,7 @@ macro_rules! impl_bytable_bnum {
 
             fn to_le_bytes(self) -> [u8; $rot] {
                 let words = self.digits();
-                let mut bytes: [[u8; 8]; $rot / 8] = [[0u8; 8]; $rot / 8];
+                let mut bytes = [[0u8; 8]; $rot / 8];
                 for i in 0..$rot / 8 {
                     bytes[i] = words[i].to_le_bytes();
                 }
