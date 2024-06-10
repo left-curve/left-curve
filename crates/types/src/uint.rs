@@ -121,20 +121,19 @@ where
     call_inner!(fn abs,                     => Self);
     call_inner!(fn is_zero,                 => bool);
     call_inner!(fn checked_sqrt,            => Result<Self>);
-
 }
 
 // --- Integer ---
 #[rustfmt::skip]
 impl<U> Integer for Uint<U>
 where
-    U: Integer
-    {
+    U: Integer,
+{
     call_inner!(fn checked_shl, arg u32, => Result<Self>);
     call_inner!(fn checked_shr, arg u32, => Result<Self>);
     call_inner!(fn checked_ilog2,        => StdResult<u32>);
     call_inner!(fn checked_ilog10,       => StdResult<u32>);
-    }
+}
 
 // --- full_mull ---
 impl<U> Uint<U>
