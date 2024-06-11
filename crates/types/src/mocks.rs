@@ -91,10 +91,6 @@ impl Api for MockApi {
         recovery_id: u8,
     ) -> StdResult<Vec<u8>> {
         secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
-            .map(|pk| {
-                // Note: convert the public key to _compressed_ bytes
-                pk.to_encoded_point(true).to_bytes().to_vec()
-            })
             .map_err(|_| StdError::VerificationFailed)
     }
 
