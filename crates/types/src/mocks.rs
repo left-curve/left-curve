@@ -76,22 +76,22 @@ impl Api for MockApi {
         println!("Contract emitted debug message! addr = {addr}, msg = {msg}");
     }
 
-    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
-    }
-
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
         secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
     fn secp256k1_pubkey_recover(
         &self,
         msg_hash: &[u8],
-        r: &[u8],
-        s: &[u8],
-        v: u8,
+        sig: &[u8],
+        recovery_id: u8,
     ) -> StdResult<Vec<u8>> {
-        secp256k1_pubkey_recover(msg_hash, r, s, v).map_err(|_| StdError::VerificationFailed)
+        secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
+            .map_err(|_| StdError::VerificationFailed)
     }
 
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {

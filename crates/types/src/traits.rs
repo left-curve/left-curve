@@ -103,17 +103,17 @@ pub trait Api {
     /// contracts.
     fn debug(&self, addr: &Addr, msg: &str);
 
-    /// Verify an Secp256k1 signature with the given hashed message and public
-    /// key.
-    ///
-    /// Note: this function takes the hash of the message, not the prehash.
-    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
-
     /// Verify an Secp256r1 signature with the given hashed message and public
     /// key.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+
+    /// Verify an Secp256k1 signature with the given hashed message and public
+    /// key.
+    ///
+    /// Note: this function takes the hash of the message, not the prehash.
+    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
     /// Recover the compressed byte of the `public key` from the `signature` and `message hash`.
     /// - **r**: the first `32 bytes` of the signature;
@@ -124,9 +124,8 @@ pub trait Api {
     fn secp256k1_pubkey_recover(
         &self,
         msg_hash: &[u8],
-        r: &[u8],
-        s: &[u8],
-        v: u8,
+        sig: &[u8],
+        recovery_id: u8,
     ) -> StdResult<Vec<u8>>;
 
     /// Verify an ED25519 signature with the given hashed message and public

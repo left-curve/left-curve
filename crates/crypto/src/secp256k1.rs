@@ -3,16 +3,19 @@ use {
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
+const SECP256K1_PUBKEY_LEN: usize = 32;
 const SECP256K1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
     let msg = Identity256::from_slice(msg_hash)?;
-    // NOTE: sig.into() here will panic if the byte slice is of incorrect length,
-    // crashing the node. we must safe guard this
-    to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let sig = Signature::from_bytes(sig.into())?;
-    let vk = VerifyingKey::from_sec1_bytes(pk)?;
+
+    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
+    let sig = Signature::from_bytes(&sig.into())?;
+
+    let vk = to_sized::<SECP256K1_PUBKEY_LEN>(pk)?;
+    let vk = VerifyingKey::from_sec1_bytes(&vk)?;
+
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
 
@@ -30,31 +33,29 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
 /// Note: This function takes the hash of the message, not the prehash.
 pub fn secp256k1_pubkey_recover(
     msg_hash: &[u8],
-    r: &[u8],
-    s: &[u8],
-    v: u8,
+    sig: &[u8],
+    recovery_id: u8,
 ) -> CryptoResult<Vec<u8>> {
-    let msg_hash = to_sized::<32>(msg_hash)?;
-    let r = to_sized::<{ SECP256K1_SIGNATURE_LEN / 2 }>(r)?;
-    let s = to_sized::<{ SECP256K1_SIGNATURE_LEN / 2 }>(s)?;
+    let msg = Identity256::from_slice(&msg_hash)?;
 
-    let mut id = match v {
+    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
+    let mut sig = Signature::from_bytes(&sig.into())?;
+
+    let mut id = match recovery_id {
         0 => RecoveryId::new(false, false),
         1 => RecoveryId::new(true, false),
-        _ => return Err(CryptoError::InvalidRecoveryId { id: v }),
+        _ => return Err(CryptoError::InvalidRecoveryId { recovery_id }),
     };
-
-    let mut sig = Signature::from_scalars(r, s)?;
-
-    let message_digest = Identity256::from_slice(&msg_hash)?;
 
     if let Some(normalized) = sig.normalize_s() {
         sig = normalized;
         id = RecoveryId::new(!id.is_y_odd(), id.is_x_reduced());
     }
 
-    let pubkey = VerifyingKey::recover_from_digest(message_digest, &sig, id)?;
-    Ok(pubkey.to_encoded_point(true).as_bytes().into())
+    // Convert the public key to _compressed_ bytes
+    VerifyingKey::recover_from_digest(msg, &sig, id)
+        .map(|pk| pk.to_encoded_point(true).as_bytes().into())
+        .map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -131,19 +132,15 @@ mod tests {
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
         let msg = hash(prehash_msg);
-        let (sig, recover) = sk.sign_digest_recoverable(msg.clone()).unwrap();
-        let sig = sig.to_bytes().to_vec();
+        let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
 
-        // recover pub key
-        {
-            let recovered_pk = secp256k1_pubkey_recover(
-                msg.as_bytes(),
-                &sig[..SECP256K1_SIGNATURE_LEN / 2],
-                &sig[SECP256K1_SIGNATURE_LEN / 2..],
-                recover.to_byte(),
-            )
-            .unwrap();
-            assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
-        }
+        let recovered_pk = secp256k1_pubkey_recover(
+            msg.as_bytes(),
+            sig.to_vec().as_slice(),
+            recovery_id.to_byte(),
+        )
+        .unwrap();
+
+        assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
     }
 }

@@ -34,10 +34,9 @@ extern "C" {
 
     // crypto methods
     // return value of 0 means ok; any value other than 0 means error.
-    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-    fn secp256k1_pubkey_recover(msg_hash_ptr: usize, r_ptr: usize, s_ptr: usize, v: u8) -> usize;
-
+    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256k1_pubkey_recover(msg_hash_ptr: usize, sig_ptr: usize, recovery_id: u8) -> usize;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
 }
@@ -186,27 +185,6 @@ impl Api for ExternalApi {
         unsafe { debug(addr_ptr as usize, msg_ptr as usize) }
     }
 
-    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        let msg_hash_region = Region::build(msg_hash);
-        let msg_hash_ptr = &*msg_hash_region as *const Region;
-
-        let sig_region = Region::build(sig);
-        let sig_ptr = &*sig_region as *const Region;
-
-        let pk_region = Region::build(pk);
-        let pk_ptr = &*pk_region as *const Region;
-
-        let return_value =
-            unsafe { secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
-
-        if return_value == 0 {
-            Ok(())
-        } else {
-            // TODO: more useful error codes
-            Err(StdError::VerificationFailed)
-        }
-    }
-
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
         let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
@@ -228,24 +206,41 @@ impl Api for ExternalApi {
         }
     }
 
+    fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        let msg_hash_region = Region::build(msg_hash);
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let sig_region = Region::build(sig);
+        let sig_ptr = &*sig_region as *const Region;
+
+        let pk_region = Region::build(pk);
+        let pk_ptr = &*pk_region as *const Region;
+
+        let return_value =
+            unsafe { secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
+
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
+        }
+    }
+
     fn secp256k1_pubkey_recover(
         &self,
         msg_hash: &[u8],
-        r: &[u8],
-        s: &[u8],
-        v: u8,
+        sig: &[u8],
+        recovery_id: u8,
     ) -> StdResult<Vec<u8>> {
         let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
 
-        let r_region = Region::build(r);
-        let r_ptr = &*r_region as *const Region;
-
-        let s_region = Region::build(s);
-        let s_ptr = &*s_region as *const Region;
+        let sig_region = Region::build(sig);
+        let sig_ptr = &*sig_region as *const Region;
 
         let pk_ptr = unsafe {
-            secp256k1_pubkey_recover(msg_hash_ptr as usize, r_ptr as usize, s_ptr as usize, v)
+            secp256k1_pubkey_recover(msg_hash_ptr as usize, sig_ptr as usize, recovery_id)
         };
 
         if pk_ptr == 0 {

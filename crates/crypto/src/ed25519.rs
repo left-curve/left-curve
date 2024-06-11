@@ -11,14 +11,13 @@ const ED25519_SIGNATURE_LEN: usize = 64;
 ///
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn ed25519_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
-    // Validation
     let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
-    let pk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
+    let sig = Signature::from(sig);
 
-    let vk = VerifyingKey::from_bytes(&pk)?;
+    let vk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
+    let vk = VerifyingKey::from_bytes(&vk)?;
 
-    vk.verify_strict(msg_hash, &Signature::from(sig))
-        .map_err(Into::into)
+    vk.verify_strict(msg_hash, &sig).map_err(Into::into)
 }
 
 /// Verify a batch of ED25519 signatures with the given hashed message and public
@@ -35,14 +34,19 @@ pub fn ed25519_batch_verify(
         .zip(pks.into_iter())
         .map(|(sig, pk)| {
             let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
-            let pk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
-            Ok((Signature::from_bytes(&sig), VerifyingKey::from_bytes(&pk)?))
+            let sig = Signature::from(sig);
+
+            let vk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
+            let vk = VerifyingKey::from_bytes(&vk)?;
+
+            Ok((sig, vk))
         })
         .collect::<CryptoResult<Vec<_>>>()?
         .into_iter()
         .unzip();
 
-    // ed25519_dalek::verify_batch alredy check the length of messages, signatures and verifying_keys
+    // No need to check the three slices (`msgs_hash`, `sigs`, `pks`) are of the
+    // length; `ed25519_dalek::verify_batch` already does this.
     ed25519_dalek::verify_batch(msgs_hash, &sigs, &vks).map_err(Into::into)
 }
 

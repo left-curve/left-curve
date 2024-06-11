@@ -98,6 +98,16 @@ macro_rules! impl_methods {
             }
 
             #[inline]
+            pub fn secp256r1_verify(
+                &self,
+                msg_hash: &[u8],
+                sig: &[u8],
+                pk: &[u8],
+            ) -> StdResult<()> {
+                self.api.secp256r1_verify(msg_hash, sig, pk)
+            }
+
+            #[inline]
             pub fn secp256k1_verify(
                 &self,
                 msg_hash: &[u8],
@@ -108,13 +118,29 @@ macro_rules! impl_methods {
             }
 
             #[inline]
-            pub fn secp256r1_verify(
+            pub fn secp256k1_pubkey_recover(
                 &self,
                 msg_hash: &[u8],
                 sig: &[u8],
-                pk: &[u8],
+                recovery_id: u8,
+            ) -> StdResult<Vec<u8>> {
+                self.api
+                    .secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
+            }
+
+            #[inline]
+            pub fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+                self.api.ed25519_verify(msg_hash, sig, pk)
+            }
+
+            #[inline]
+            pub fn ed25519_batch_verify(
+                &self,
+                msgs_hash: &[&[u8]],
+                sigs: &[&[u8]],
+                pks: &[&[u8]],
             ) -> StdResult<()> {
-                self.api.secp256r1_verify(msg_hash, sig, pk)
+                self.api.ed25519_batch_verify(msgs_hash, sigs, pks)
             }
 
             #[inline]
