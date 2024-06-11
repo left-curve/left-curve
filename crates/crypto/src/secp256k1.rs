@@ -1,9 +1,6 @@
 use {
-    crate::{functions::assert_len, CryptoError, CryptoResult, Identity256},
-    k256::{
-        ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
-        PublicKey,
-    },
+    crate::{functions::to_sized, CryptoError, CryptoResult, Identity256},
+    k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
 /// NOTE: This function takes the hash of the message, not the prehash.
@@ -11,9 +8,7 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg = Identity256::from_slice(msg_hash)?;
     // NOTE: sig.into() here will panic if the byte slice is of incorrect length,
     // crashing the node. we must safe guard this
-    if sig.len() != 64 {
-        return Err(CryptoError::incorrect_length(64, sig.len()));
-    }
+    to_sized::<64>(sig)?;
     let sig = Signature::from_bytes(sig.into())?;
     let vk = VerifyingKey::from_sec1_bytes(pk)?;
     vk.verify_digest(msg, &sig).map_err(Into::into)
@@ -24,6 +19,9 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
 /// - **s**: the last `32 bytes` of the signature;
 /// - **v**: the `recovery id`.
 ///
+/// `v` must be 0 or 1. The values 2 and 3 are unsupported by this implementation,
+/// which is the same restriction as Ethereum has (https://github.com/ethereum/go-ethereum/blob/v1.9.25/internal/ethapi/api.go#L466-L469).
+/// All other values are invalid.
 /// Note: this function takes the hash of the message, not the prehash.
 pub fn secp256k1_pubkey_recover(
     msg_hash: &[u8],
@@ -31,26 +29,27 @@ pub fn secp256k1_pubkey_recover(
     s: &[u8],
     v: u8,
 ) -> CryptoResult<Vec<u8>> {
-    assert_len(r, 32)?;
-    assert_len(s, 32)?;
+    let msg_hash = to_sized::<32>(msg_hash)?;
+    let r = to_sized::<32>(r)?;
+    let s = to_sized::<32>(s)?;
 
-    // Last byte is the recovery id
-    let recovery_id =
-        RecoveryId::from_byte(v).ok_or(CryptoError::invalid_recovery_id(RecoveryId::MAX, v))?;
+    let mut id = match v {
+        0 => RecoveryId::new(false, false),
+        1 => RecoveryId::new(true, false),
+        _ => return Err(CryptoError::invalid_recovery_id(v)),
+    };
 
-    let sig = Signature::from_bytes(
-        r.iter()
-            .cloned()
-            .chain(s.iter().cloned())
-            .collect::<Vec<u8>>()
-            .as_slice()
-            .into(),
-    )?;
+    let mut sig = Signature::from_scalars(r, s)?;
 
-    let verifying_key =
-        VerifyingKey::recover_from_digest(Identity256::from_slice(msg_hash)?, &sig, recovery_id)?;
+    let message_digest = Identity256::from_slice(&msg_hash)?;
 
-    Ok(PublicKey::from(verifying_key).to_sec1_bytes().into())
+    if let Some(normalized) = sig.normalize_s() {
+        sig = normalized;
+        id = RecoveryId::new(!id.is_y_odd(), id.is_x_reduced());
+    }
+
+    let pubkey = VerifyingKey::recover_from_digest(message_digest, &sig, id)?;
+    Ok(pubkey.to_encoded_point(true).as_bytes().into())
 }
 
 // ----------------------------------- tests -----------------------------------
