@@ -5,7 +5,15 @@ use {
     },
 };
 
-// a convenience method for use in tests.
+/// Cast a slice to a fixed length array. Error if the size is incorrect.
+pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
+    data.try_into().map_err(|_| CryptoError::IncorrectLength {
+        expect: S,
+        actual: data.len(),
+    })
+}
+
+/// Perform SHA-256 hash on the given data, and return the digest as an `Identity256`.
 #[cfg(test)]
 pub(crate) fn hash(data: &[u8]) -> Identity256 {
     use digest::Digest;

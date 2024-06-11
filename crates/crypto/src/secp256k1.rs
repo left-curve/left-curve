@@ -1,5 +1,5 @@
 use {
-    crate::{functions::to_sized, CryptoError, CryptoResult, Identity256},
+    crate::{to_sized, CryptoError, CryptoResult, Identity256},
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 

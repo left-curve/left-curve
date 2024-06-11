@@ -1,5 +1,5 @@
 use {
-    crate::{functions::to_sized, CryptoResult},
+    crate::{to_sized, CryptoResult},
     ed25519_dalek::{Signature, VerifyingKey},
 };
 
