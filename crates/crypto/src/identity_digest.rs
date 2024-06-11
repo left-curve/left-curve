@@ -63,6 +63,10 @@ impl Identity256 {
         })
     }
 
+    pub fn into_bytes(self) -> [u8; 32] {
+        self.bytes.into()
+    }
+
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
