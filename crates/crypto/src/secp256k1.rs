@@ -36,7 +36,7 @@ pub fn secp256k1_pubkey_recover(
     sig: &[u8],
     recovery_id: u8,
 ) -> CryptoResult<Vec<u8>> {
-    let msg = Identity256::from_slice(&msg_hash)?;
+    let msg = Identity256::from_slice(msg_hash)?;
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
     let mut sig = Signature::from_bytes(&sig.into())?;

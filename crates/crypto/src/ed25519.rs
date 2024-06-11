@@ -30,8 +30,8 @@ pub fn ed25519_batch_verify(
     pks: &[&[u8]],
 ) -> CryptoResult<()> {
     let (sigs, vks): (Vec<_>, Vec<_>) = sigs
-        .into_iter()
-        .zip(pks.into_iter())
+        .iter()
+        .zip(pks.iter())
         .map(|(sig, pk)| {
             let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
             let sig = Signature::from(sig);
