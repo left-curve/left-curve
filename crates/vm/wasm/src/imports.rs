@@ -231,21 +231,3 @@ pub fn ed25519_batch_verify(
         Err(_) => Ok(1),
     }
 }
-
-pub fn bls_verify(
-    mut fe: FunctionEnvMut<Environment>,
-    msg_hash_ptr: u32,
-    sig_ptr: u32,
-    pk_ptr: u32,
-) -> VmResult<i32> {
-    let (env, wasm_store) = fe.data_and_store_mut();
-
-    let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
-    let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
-    let pk = read_from_memory(env, &wasm_store, pk_ptr)?;
-
-    match grug_crypto::bls_verify(&msg_hash, &sig, &pk) {
-        Ok(()) => Ok(0),
-        Err(_) => Ok(1),
-    }
-}

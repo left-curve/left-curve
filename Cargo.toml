@@ -36,7 +36,6 @@ categories    = ["cryptography::cryptocurrencies"]
 aes-gcm            = "0.10"
 anyhow             = "1"
 bip32              = "0.5"
-bls-signatures     = "0.15"
 bnum               = "0.8"
 borsh              = "1"
 clap               = "4"
