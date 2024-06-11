@@ -31,16 +31,15 @@ pub fn ed25519_batch_verify(
     pks: &[&[u8]],
 ) -> CryptoResult<()> {
     let (sigs, vks): (Vec<_>, Vec<_>) = sigs
-        .iter()
-        .zip(pks.iter())
+        .into_iter()
+        .zip(pks.into_iter())
         .map(|(sig, pk)| {
             let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
             let pk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
             Ok((Signature::from_bytes(&sig), VerifyingKey::from_bytes(&pk)?))
         })
         .collect::<CryptoResult<Vec<_>>>()?
-        .iter()
-        .cloned()
+        .into_iter()
         .unzip();
 
     // ed25519_dalek::verify_batch alredy check the length of messages, signatures and verifying_keys
