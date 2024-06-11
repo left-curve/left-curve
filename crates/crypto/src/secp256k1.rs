@@ -3,7 +3,7 @@ use {
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
-const SECP256K1_PUBKEY_LEN: usize = 32;
+const SECP256K1_PUBKEY_LEN: usize = 33;
 const SECP256K1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
@@ -19,7 +19,8 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
 
-/// Recover the secp256k1 public key as from the _hashed_ message and signature.
+/// Recover the Secp256k1 public key as SEC1 bytes from the _hashed_ message and
+/// signature.
 ///
 /// - `r`: the first 32 bytes of the signature;
 /// - `s`: the last 32 bytes of the signature;
@@ -34,7 +35,7 @@ pub fn secp256k1_pubkey_recover(
     msg_hash: &[u8],
     sig: &[u8],
     recovery_id: u8,
-) -> CryptoResult<VerifyingKey> {
+) -> CryptoResult<Vec<u8>> {
     let msg = Identity256::from_slice(msg_hash)?;
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
@@ -51,8 +52,10 @@ pub fn secp256k1_pubkey_recover(
         id = RecoveryId::new(!id.is_y_odd(), id.is_x_reduced());
     }
 
-    // Convert the public key to _compressed_ bytes
-    VerifyingKey::recover_from_digest(msg, &sig, id).map_err(Into::into)
+    // Convert the public key to SEC1 bytes
+    VerifyingKey::recover_from_digest(msg, &sig, id)
+        .map(|vk| vk.to_sec1_bytes().to_vec())
+        .map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -76,50 +79,28 @@ mod tests {
         let sig: Signature = sk.sign_digest(msg.clone());
 
         // valid signature
-        {
-            assert!(secp256k1_verify(
-                msg.as_bytes(),
-                &sig.to_bytes(),
-                vk.to_encoded_point(true).as_bytes()
-            )
-            .is_ok());
-        }
+        assert!(secp256k1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
 
         // incorrect private key
-        {
-            let false_sk = SigningKey::random(&mut OsRng);
-            let false_sig: Signature = false_sk.sign_digest(msg.clone());
-            assert!(secp256k1_verify(
-                msg.as_bytes(),
-                &false_sig.to_bytes(),
-                vk.to_encoded_point(true).as_bytes()
-            )
-            .is_err());
-        }
+        let false_sk = SigningKey::random(&mut OsRng);
+        let false_sig: Signature = false_sk.sign_digest(msg.clone());
+        assert!(
+            secp256k1_verify(msg.as_bytes(), &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+        );
 
         // incorrect public key
-        {
-            let false_sk = SigningKey::random(&mut OsRng);
-            let false_vk = VerifyingKey::from(&false_sk);
-            assert!(secp256k1_verify(
-                msg.as_bytes(),
-                &sig.to_bytes(),
-                false_vk.to_encoded_point(true).as_bytes()
-            )
-            .is_err());
-        }
+        let false_sk = SigningKey::random(&mut OsRng);
+        let false_vk = VerifyingKey::from(&false_sk);
+        assert!(
+            secp256k1_verify(msg.as_bytes(), &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err()
+        );
 
         // incorrect message
-        {
-            let false_prehash_msg = b"Larry";
-            let false_msg = hash(false_prehash_msg);
-            assert!(secp256k1_verify(
-                false_msg.as_bytes(),
-                &sig.to_bytes(),
-                vk.to_encoded_point(true).as_bytes()
-            )
-            .is_err());
-        }
+        let false_prehash_msg = b"Larry";
+        let false_msg = hash(false_prehash_msg);
+        assert!(
+            secp256k1_verify(false_msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+        );
     }
 
     #[test]
@@ -137,6 +118,6 @@ mod tests {
             recovery_id.to_byte(),
         )
         .unwrap();
-        assert_eq!(recovered_pk, vk);
+        assert_eq!(recovered_pk, vk.to_sec1_bytes().to_vec());
     }
 }
