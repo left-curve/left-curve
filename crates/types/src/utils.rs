@@ -1,3 +1,5 @@
+use crate::{StdError, StdResult};
+
 /// Combine a namespace a one or more keys into a full byte path.
 ///
 /// The namespace and all keys other than the last one is prefixed with
@@ -123,4 +125,72 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // this unwrap can't fail since split at position 2
     let len = u16::from_be_bytes(len_bytes.try_into().unwrap());
     bytes.split_at(len as usize)
+}
+
+/// Safely converts input of type T to u32.
+/// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
+pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
+    input
+        .try_into()
+        .map_err(|_| StdError::overflow_conversion::<T, u32>(input))
+}
+
+/// Encodes multiple sections of data into one vector.
+///
+/// Each section is suffixed by a section length encoded as big endian uint32.
+/// Using suffixes instead of prefixes allows reading sections in reverse order,
+/// such that the first element does not need to be re-allocated if the contract's
+/// data structure supports truncation (such as a Rust vector).
+///
+/// The resulting data looks like this:
+///
+/// ```ignore
+/// section1 || section1_len || section2 || section2_len || section3 || section3_len || …
+/// ```
+pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
+    let mut out_len: usize = sections.iter().map(|section| section.len()).sum();
+    out_len += 4 * sections.len();
+    let mut out_data = Vec::with_capacity(out_len);
+    for section in sections {
+        let section_len = to_u32(section.len())?.to_be_bytes();
+        out_data.extend_from_slice(section);
+        out_data.extend_from_slice(&section_len);
+    }
+    debug_assert_eq!(out_data.len(), out_len);
+    debug_assert_eq!(out_data.capacity(), out_len);
+    Ok(out_data)
+}
+
+/// Decodes sections of data into multiple slices.
+///
+/// Each encoded section is suffixed by a section length, encoded as big endian uint32.
+///
+/// See also: `encode_section`.
+pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {
+    let mut result: Vec<&[u8]> = vec![];
+    let mut remaining_len = data.len();
+    while remaining_len >= 4 {
+        let tail_len = u32::from_be_bytes([
+            data[remaining_len - 4],
+            data[remaining_len - 3],
+            data[remaining_len - 2],
+            data[remaining_len - 1],
+        ]) as usize;
+        result.push(&data[remaining_len - 4 - tail_len..remaining_len - 4]);
+        remaining_len -= 4 + tail_len;
+    }
+    result.reverse();
+    result
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{decode_sections, encode_sections};
+
+    #[test]
+    fn encode_decode() {
+        let data: &[&[u8]] = &[b"this", b"is", b"composite", b"array"];
+        let encoded = encode_sections(data).unwrap();
+        assert_eq!(data, decode_sections(&encoded));
+    }
 }

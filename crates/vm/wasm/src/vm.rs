@@ -1,7 +1,8 @@
 use {
     crate::{
-        db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
-        secp256k1_verify, secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
+        db_next, db_read, db_remove, db_scan, db_write, debug, ed25519_batch_verify,
+        ed25519_verify, query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify,
+        secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
     },
     grug_app::{PrefixStore, QueryProvider, Vm},
     grug_types::{to_borsh_vec, Context},
@@ -45,7 +46,10 @@ impl Vm for WasmVm {
                 "debug" => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
                 "query_chain" => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
                 "secp256k1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
-                "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify)
+                "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
+                "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_pubkey_recover),
+                "ed25519_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify),
+                "ed25519_batch_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_batch_verify),
             }
         };
 

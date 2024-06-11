@@ -1,5 +1,6 @@
 use {
     grug_app::AppError,
+    grug_crypto::CryptoError,
     grug_types::StdError,
     std::string::FromUtf8Error,
     thiserror::Error,
@@ -22,6 +23,9 @@ pub enum VmError {
 
     #[error(transparent)]
     Runtime(#[from] RuntimeError),
+
+    #[error(transparent)]
+    Crypto(#[from] CryptoError),
 
     // the wasmer CompileError and InstantiateError are big (56 and 128 bytes,
     // respectively). we get a clippy warning if we wrap them directly here in
