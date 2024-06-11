@@ -1,3 +1,4 @@
+mod bls;
 mod ed25519;
 mod error;
 mod functions;
@@ -6,6 +7,7 @@ mod secp256k1;
 mod secp256r1;
 
 pub use crate::{
+    bls::bls_verify,
     ed25519::{ed25519_batch_verify, ed25519_verify},
     error::{CryptoError, CryptoResult},
     identity_digest::Identity256,

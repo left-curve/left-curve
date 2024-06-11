@@ -134,6 +134,7 @@ pub trait Api {
     ///
     /// NOTE: This function takes the hash of the message, not the prehash.
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+
     /// Verify a batch of ED25519 signatures with the given hashed message and public
     /// key.
     /// NOTE: This function takes the hash of the messages, not the prehash.
@@ -143,6 +144,12 @@ pub trait Api {
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()>;
+
+    /// Verify an BLS signature with the given hashed message and public
+    /// key.
+    ///
+    /// Note: this function takes the hash of the message, not the prehash.
+    fn bls_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 }
 
 // ---------------------------------- querier ----------------------------------

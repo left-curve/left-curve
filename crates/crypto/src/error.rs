@@ -5,6 +5,9 @@ pub enum CryptoError {
     #[error(transparent)]
     Signature(#[from] signature::Error),
 
+    #[error(transparent)]
+    Bls(#[from] bls_signatures::Error),
+
     #[error("data is of incorrect length: expecting {expect}, found {actual}")]
     IncorrectLength { expect: usize, actual: usize },
 

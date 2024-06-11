@@ -10,12 +10,13 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-digest        = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["batch"] }
-k256          = { workspace = true }
-p256          = { workspace = true }
-signature     = { workspace = true }
-thiserror     = { workspace = true }
+bls-signatures = { workspace = true }
+digest         = { workspace = true }
+ed25519-dalek  = { workspace = true, features = ["batch"] }
+k256           = { workspace = true }
+p256           = { workspace = true }
+signature      = { workspace = true }
+thiserror      = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }

@@ -41,6 +41,8 @@ extern "C" {
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
 
+    fn bls_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+
 }
 
 // ---------------------------------- storage ----------------------------------
@@ -297,6 +299,27 @@ impl Api for ExternalApi {
         let return_value = unsafe {
             ed25519_verify_batch(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
         };
+
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
+        }
+    }
+
+    fn bls_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        let msg_hash_region = Region::build(msg_hash);
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let sig_region = Region::build(sig);
+        let sig_ptr = &*sig_region as *const Region;
+
+        let pk_region = Region::build(pk);
+        let pk_ptr = &*pk_region as *const Region;
+
+        let return_value =
+            unsafe { bls_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
         if return_value == 0 {
             Ok(())
