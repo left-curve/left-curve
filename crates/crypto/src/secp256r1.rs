@@ -39,7 +39,7 @@ mod tests {
         {
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_ok());
@@ -51,7 +51,7 @@ mod tests {
             let false_sig: Signature = false_sk.sign_digest(msg.clone());
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                false_sig.to_vec().as_slice(),
+                &false_sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -63,7 +63,7 @@ mod tests {
             let false_vk = VerifyingKey::from(&false_sk);
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 false_vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -75,7 +75,7 @@ mod tests {
             let false_msg = hash(false_prehash_msg);
             assert!(secp256r1_verify(
                 false_msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());

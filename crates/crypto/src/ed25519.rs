@@ -65,27 +65,21 @@ mod test {
 
         // valid signature
         {
-            assert!(ed25519_verify(msg.as_bytes(), sig.to_vec().as_slice(), vk.as_bytes()).is_ok());
+            assert!(ed25519_verify(msg.as_bytes(), &sig.to_bytes(), vk.as_bytes()).is_ok());
         }
 
         // incorrect private key
         {
             let false_sk = SigningKey::generate(&mut OsRng);
             let false_sig: Signature = false_sk.sign(msg.as_bytes());
-            assert!(
-                ed25519_verify(msg.as_bytes(), false_sig.to_vec().as_slice(), vk.as_bytes(),)
-                    .is_err()
-            );
+            assert!(ed25519_verify(msg.as_bytes(), &false_sig.to_bytes(), vk.as_bytes()).is_err());
         }
 
         // incorrect message
         {
             let false_prehash_msg = b"Larry";
             let false_msg = hash(false_prehash_msg);
-            assert!(
-                ed25519_verify(false_msg.as_bytes(), sig.to_vec().as_slice(), vk.as_bytes())
-                    .is_err()
-            );
+            assert!(ed25519_verify(false_msg.as_bytes(), &sig.to_bytes(), vk.as_bytes()).is_err());
         }
     }
 

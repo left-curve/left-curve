@@ -81,7 +81,7 @@ mod tests {
         {
             assert!(secp256k1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_ok());
@@ -93,7 +93,7 @@ mod tests {
             let false_sig: Signature = false_sk.sign_digest(msg.clone());
             assert!(secp256k1_verify(
                 msg.as_bytes(),
-                false_sig.to_vec().as_slice(),
+                &false_sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -105,7 +105,7 @@ mod tests {
             let false_vk = VerifyingKey::from(&false_sk);
             assert!(secp256k1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 false_vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -117,7 +117,7 @@ mod tests {
             let false_msg = hash(false_prehash_msg);
             assert!(secp256k1_verify(
                 false_msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -132,14 +132,17 @@ mod tests {
         let prehash_msg = b"Jake";
         let msg = hash(prehash_msg);
         let (sig, recover) = sk.sign_digest_recoverable(msg.clone()).unwrap();
-
         let sig = sig.to_bytes().to_vec();
-        let (r, s) = sig.split_at(sig.len() / 2);
 
         // recover pub key
         {
-            let recovered_pk =
-                secp256k1_pubkey_recover(msg.as_bytes(), r, s, recover.to_byte()).unwrap();
+            let recovered_pk = secp256k1_pubkey_recover(
+                msg.as_bytes(),
+                &sig[..SECP256K1_SIGNATURE_LEN / 2],
+                &sig[SECP256K1_SIGNATURE_LEN / 2..],
+                recover.to_byte(),
+            )
+            .unwrap();
             assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
         }
     }
