@@ -1,7 +1,8 @@
 use {
     crate::{
         db_next, db_read, db_remove, db_scan, db_write, debug, query_chain, read_then_wipe,
-        secp256k1_verify, secp256r1_verify, write_to_memory, Environment, VmError, VmResult,
+        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, write_to_memory, Environment,
+        VmError, VmResult,
     },
     grug_app::{PrefixStore, QueryProvider, Vm},
     grug_types::{to_borsh_vec, Context},
@@ -45,7 +46,9 @@ impl Vm for WasmVm {
                 "debug" => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
                 "query_chain" => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
                 "secp256k1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
-                "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify)
+                "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
+                "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_pubkey_recover)
+
             }
         };
 
@@ -113,11 +116,11 @@ impl Vm for WasmVm {
         let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut wasm_store, param2.as_ref())?;
         let res_ptr: u32 = env
-            .call_function1(&mut wasm_store, name, &[
-                ctx_ptr.into(),
-                param1_ptr.into(),
-                param2_ptr.into(),
-            ])?
+            .call_function1(
+                &mut wasm_store,
+                name,
+                &[ctx_ptr.into(), param1_ptr.into(), param2_ptr.into()],
+            )?
             .try_into()
             .map_err(VmError::ReturnType)?;
 

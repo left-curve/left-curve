@@ -36,6 +36,7 @@ extern "C" {
     // return value of 0 means ok; any value other than 0 means error.
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256k1_pubkey_recover(msg_hash_ptr: usize, r_ptr: usize, s_ptr: usize, v: u8) -> usize;
 }
 
 // ---------------------------------- storage ----------------------------------
@@ -222,6 +223,35 @@ impl Api for ExternalApi {
             // TODO: more useful error codes
             Err(StdError::VerificationFailed)
         }
+    }
+
+    fn secp256k1_pubkey_recover(
+        &self,
+        msg_hash: &[u8],
+        r: &[u8],
+        s: &[u8],
+        v: u8,
+    ) -> StdResult<Vec<u8>> {
+        let msg_hash_region = Region::build(msg_hash);
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let r_region = Region::build(r);
+        let r_ptr = &*r_region as *const Region;
+
+        let s_region = Region::build(s);
+        let s_ptr = &*s_region as *const Region;
+
+        let pk_ptr = unsafe {
+            secp256k1_pubkey_recover(msg_hash_ptr as usize, r_ptr as usize, s_ptr as usize, v)
+        };
+
+        if pk_ptr == 0 {
+            // we interpret a zero pointer as meaning the key doesn't exist
+            // TODO: more useful error codes
+            return Err(StdError::VerificationFailed);
+        }
+
+        unsafe { Ok(Region::consume(pk_ptr as *mut Region)) }
     }
 }
 

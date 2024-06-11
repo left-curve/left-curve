@@ -167,3 +167,21 @@ pub fn secp256r1_verify(
         Err(_) => Ok(1),
     }
 }
+
+pub fn secp256k1_pubkey_recover(
+    mut fe: FunctionEnvMut<Environment>,
+    msg_hash_ptr: u32,
+    r_ptr: u32,
+    s_ptr: u32,
+    v: u8,
+) -> VmResult<u32> {
+    let (env, mut wasm_store) = fe.data_and_store_mut();
+
+    let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
+    let r = read_from_memory(env, &wasm_store, r_ptr)?;
+    let s = read_from_memory(env, &wasm_store, s_ptr)?;
+
+    let pk = grug_crypto::secp256k1_pubkey_recover(&msg_hash, &r, &s, v)?;
+
+    write_to_memory(env, &mut wasm_store, &pk)
+}
