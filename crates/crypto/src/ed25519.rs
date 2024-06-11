@@ -30,15 +30,15 @@ pub fn ed25519_batch_verify(
     sigs: &[&[u8]],
     pks: &[&[u8]],
 ) -> CryptoResult<()> {
-    let (sigs, vks): (Vec<Signature>, Vec<VerifyingKey>) = sigs
+    let (sigs, vks): (Vec<_>, Vec<_>) = sigs
         .iter()
         .zip(pks.iter())
-        .map(|(sig, pk)| -> CryptoResult<(Signature, VerifyingKey)> {
+        .map(|(sig, pk)| {
             let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
             let pk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
             Ok((Signature::from_bytes(&sig), VerifyingKey::from_bytes(&pk)?))
         })
-        .collect::<CryptoResult<Vec<(Signature, VerifyingKey)>>>()?
+        .collect::<CryptoResult<Vec<_>>>()?
         .iter()
         .cloned()
         .unzip();
