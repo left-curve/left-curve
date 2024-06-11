@@ -1,6 +1,7 @@
-use ed25519_dalek::{Signature, VerifyingKey};
-
-use crate::{functions::to_sized, CryptoResult};
+use {
+    crate::{functions::to_sized, CryptoResult},
+    ed25519_dalek::{Signature, VerifyingKey},
+};
 
 const ED25519_PUBKEY_LEN: usize = 32;
 const ED25519_SIGNATURE_LEN: usize = 64;
@@ -47,13 +48,10 @@ pub fn ed25519_batch_verify(
 #[cfg(test)]
 mod test {
     use {
+        super::*,
+        crate::identity_digest::hash,
         ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey},
         rand::rngs::OsRng,
-    };
-
-    use crate::{
-        ed25519::{ed25519_batch_verify, ed25519_verify},
-        identity_digest::hash,
     };
 
     #[test]
