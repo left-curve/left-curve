@@ -1,5 +1,10 @@
 use {
-    grug_app::AppError, grug_crypto::CryptoError, grug_types::StdError, std::string::FromUtf8Error, thiserror::Error, wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError}
+    grug_app::AppError,
+    grug_crypto::CryptoError,
+    grug_types::StdError,
+    std::string::FromUtf8Error,
+    thiserror::Error,
+    wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
 
 #[derive(Debug, Error)]
