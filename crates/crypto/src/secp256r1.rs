@@ -1,18 +1,21 @@
 use {
-    crate::{CryptoError, CryptoResult, Identity256},
+    crate::{to_sized, CryptoResult, Identity256},
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
+
+const SECP256R1_PUBKEY_LEN: usize = 32;
+const SECP256R1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
     let msg = Identity256::from_slice(msg_hash)?;
-    // NOTE: sig.into() here will panic if the byte slice is of incorrect length,
-    // crashing the node. we must safe guard this
-    if sig.len() != 64 {
-        return Err(CryptoError::incorrect_length(64, sig.len()));
-    }
-    let sig = Signature::from_bytes(sig.into())?;
-    let vk = VerifyingKey::from_sec1_bytes(pk)?;
+
+    let sig = to_sized::<SECP256R1_SIGNATURE_LEN>(sig)?;
+    let sig = Signature::from_bytes(&sig.into())?;
+
+    let vk = to_sized::<SECP256R1_PUBKEY_LEN>(pk)?;
+    let vk = VerifyingKey::from_sec1_bytes(&vk)?;
+
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
 
@@ -40,7 +43,7 @@ mod tests {
         {
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_ok());
@@ -52,7 +55,7 @@ mod tests {
             let false_sig: Signature = false_sk.sign_digest(msg.clone());
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                false_sig.to_vec().as_slice(),
+                &false_sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -64,7 +67,7 @@ mod tests {
             let false_vk = VerifyingKey::from(&false_sk);
             assert!(secp256r1_verify(
                 msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 false_vk.to_encoded_point(true).as_bytes()
             )
             .is_err());
@@ -76,7 +79,7 @@ mod tests {
             let false_msg = hash(false_prehash_msg);
             assert!(secp256r1_verify(
                 false_msg.as_bytes(),
-                sig.to_vec().as_slice(),
+                &sig.to_bytes(),
                 vk.to_encoded_point(true).as_bytes()
             )
             .is_err());

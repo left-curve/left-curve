@@ -114,17 +114,46 @@ pub trait Api {
     /// contracts.
     fn debug(&self, addr: &Addr, msg: &str);
 
+    /// Verify an Secp256r1 signature with the given hashed message and public
+    /// key.
+    ///
+    /// Note: this function takes the hash of the message, not the prehash.
+    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+
     /// Verify an Secp256k1 signature with the given hashed message and public
     /// key.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
-    /// Verify an Secp256r1 signature with the given hashed message and public
-    /// key.
+    /// Recover the compressed byte of the `public key` from the `signature` and `message hash`.
+    /// - **r**: the first `32 bytes` of the signature;
+    /// - **s**: the last `32 bytes` of the signature;
+    /// - **v**: the `recovery id`.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
-    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+    fn secp256k1_pubkey_recover(
+        &self,
+        msg_hash: &[u8],
+        sig: &[u8],
+        recovery_id: u8,
+    ) -> StdResult<Vec<u8>>;
+
+    /// Verify an ED25519 signature with the given hashed message and public
+    /// key.
+    ///
+    /// NOTE: This function takes the hash of the message, not the prehash.
+    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+
+    /// Verify a batch of ED25519 signatures with the given hashed message and public
+    /// key.
+    /// NOTE: This function takes the hash of the messages, not the prehash.
+    fn ed25519_batch_verify(
+        &self,
+        msgs_hash: &[&[u8]],
+        sigs: &[&[u8]],
+        pks: &[&[u8]],
+    ) -> StdResult<()>;
 }
 
 // ---------------------------------- querier ----------------------------------

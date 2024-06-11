@@ -1,6 +1,9 @@
 use {
     crate::{Addr, Api, Order, Record, StdError, StdResult, Storage},
-    grug_crypto::{secp256k1_verify, secp256r1_verify},
+    grug_crypto::{
+        ed25519_batch_verify, ed25519_verify, secp256k1_pubkey_recover, secp256k1_verify,
+        secp256r1_verify,
+    },
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -73,11 +76,38 @@ impl Api for MockApi {
         println!("Contract emitted debug message! addr = {addr}, msg = {msg}");
     }
 
+    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+    }
+
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
         secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
-    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+    fn secp256k1_pubkey_recover(
+        &self,
+        msg_hash: &[u8],
+        sig: &[u8],
+        recovery_id: u8,
+    ) -> StdResult<Vec<u8>> {
+        secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
+            .map(|pk| {
+                // Note: convert the public key to _compressed_ bytes
+                pk.to_encoded_point(true).to_bytes().to_vec()
+            })
+            .map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn ed25519_batch_verify(
+        &self,
+        msgs_hash: &[&[u8]],
+        sigs: &[&[u8]],
+        pks: &[&[u8]],
+    ) -> StdResult<()> {
+        ed25519_batch_verify(msgs_hash, sigs, pks).map_err(|_| StdError::VerificationFailed)
     }
 }

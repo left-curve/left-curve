@@ -1,8 +1,8 @@
 use {
     crate::Region,
     grug_types::{
-        from_json_slice, to_json_vec, Addr, Api, GenericResult, Order, Querier, QueryRequest,
-        QueryResponse, Record, StdError, StdResult, Storage,
+        encode_sections, from_json_slice, to_json_vec, Addr, Api, GenericResult, Order, Querier,
+        QueryRequest, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -34,8 +34,11 @@ extern "C" {
 
     // crypto methods
     // return value of 0 means ok; any value other than 0 means error.
-    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256k1_pubkey_recover(msg_hash_ptr: usize, sig_ptr: usize, recovery_id: u8) -> usize;
+    fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
 }
 
 // ---------------------------------- storage ----------------------------------
@@ -182,6 +185,27 @@ impl Api for ExternalApi {
         unsafe { debug(addr_ptr as usize, msg_ptr as usize) }
     }
 
+    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        let msg_hash_region = Region::build(msg_hash);
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let sig_region = Region::build(sig);
+        let sig_ptr = &*sig_region as *const Region;
+
+        let pk_region = Region::build(pk);
+        let pk_ptr = &*pk_region as *const Region;
+
+        let return_value =
+            unsafe { secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
+
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
+        }
+    }
+
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
         let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
@@ -203,7 +227,32 @@ impl Api for ExternalApi {
         }
     }
 
-    fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+    fn secp256k1_pubkey_recover(
+        &self,
+        msg_hash: &[u8],
+        sig: &[u8],
+        recovery_id: u8,
+    ) -> StdResult<Vec<u8>> {
+        let msg_hash_region = Region::build(msg_hash);
+        let msg_hash_ptr = &*msg_hash_region as *const Region;
+
+        let sig_region = Region::build(sig);
+        let sig_ptr = &*sig_region as *const Region;
+
+        let pk_ptr = unsafe {
+            secp256k1_pubkey_recover(msg_hash_ptr as usize, sig_ptr as usize, recovery_id)
+        };
+
+        if pk_ptr == 0 {
+            // we interpret a zero pointer as meaning the key doesn't exist
+            // TODO: more useful error codes
+            return Err(StdError::VerificationFailed);
+        }
+
+        unsafe { Ok(Region::consume(pk_ptr as *mut Region)) }
+    }
+
+    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
         let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
 
@@ -214,7 +263,34 @@ impl Api for ExternalApi {
         let pk_ptr = &*pk_region as *const Region;
 
         let return_value =
-            unsafe { secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
+            unsafe { ed25519_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
+
+        if return_value == 0 {
+            Ok(())
+        } else {
+            // TODO: more useful error codes
+            Err(StdError::VerificationFailed)
+        }
+    }
+
+    fn ed25519_batch_verify(
+        &self,
+        msgs_hash: &[&[u8]],
+        sigs: &[&[u8]],
+        pks: &[&[u8]],
+    ) -> StdResult<()> {
+        let msgs_hash_region = Region::build(&encode_sections(msgs_hash)?);
+        let msgs_hash_ptr = &*msgs_hash_region as *const Region;
+
+        let sigs_region = Region::build(&encode_sections(sigs)?);
+        let sigs_ptr = &*sigs_region as *const Region;
+
+        let pks_region = Region::build(&encode_sections(pks)?);
+        let pks_ptr = &*pks_region as *const Region;
+
+        let return_value = unsafe {
+            ed25519_verify_batch(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
+        };
 
         if return_value == 0 {
             Ok(())

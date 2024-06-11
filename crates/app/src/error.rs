@@ -17,58 +17,32 @@ pub enum AppError {
     #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
     ProofNotSupported,
 
-    #[error("The sender does not have permission to perform this action")]
+    #[error("sender does not have permission to perform this action")]
     Unauthorized,
 
-    #[error("Incorrect block height! expecting: {expect}, actual: {actual}")]
+    #[error("incorrect block height! expecting: {expect}, actual: {actual}")]
     IncorrectBlockHeight { expect: u64, actual: u64 },
 
-    #[error("Owner account is not set")]
+    #[error("owner account is not set")]
     OwnerNotSet,
 
-    #[error("Sender is not the owner! sender: {sender}, owner: {owner}")]
+    #[error("sender is not the owner! sender: {sender}, owner: {owner}")]
     NotOwner { sender: Addr, owner: Addr },
 
-    #[error("Admin account is not set")]
+    #[error("admin account is not set")]
     AdminNotSet,
 
-    #[error("Sender is not the admin! sender: {sender}, admin: {admin}")]
+    #[error("sender is not the admin! sender: {sender}, admin: {admin}")]
     NotAdmin { sender: Addr, admin: Addr },
 
-    #[error("Wasm byte code with hash `{code_hash}` already exists")]
+    #[error("code with hash `{code_hash}` already exists")]
     CodeExists { code_hash: Hash },
 
-    #[error("Account with address `{address}` already exists")]
+    #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
 
-    #[error("Code hash is not allowed as IBC client: `{code_hash}`")]
+    #[error("code hash is not allowed as IBC client: `{code_hash}`")]
     NotAllowedClient { code_hash: Hash },
 }
 
-impl AppError {
-    pub fn incorrect_block_height(expect: u64, actual: u64) -> Self {
-        Self::IncorrectBlockHeight { expect, actual }
-    }
-
-    pub fn not_owner(sender: Addr, owner: Addr) -> Self {
-        Self::NotOwner { sender, owner }
-    }
-
-    pub fn not_admin(sender: Addr, admin: Addr) -> Self {
-        Self::NotAdmin { sender, admin }
-    }
-
-    pub fn code_exists(code_hash: Hash) -> Self {
-        Self::CodeExists { code_hash }
-    }
-
-    pub fn account_exists(address: Addr) -> Self {
-        Self::AccountExists { address }
-    }
-
-    pub fn not_allowed_client(code_hash: Hash) -> Self {
-        Self::NotAllowedClient { code_hash }
-    }
-}
-
-pub type AppResult<T> = std::result::Result<T, AppError>;
+pub type AppResult<T> = core::result::Result<T, AppError>;
