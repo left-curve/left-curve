@@ -182,10 +182,11 @@ pub fn secp256k1_pubkey_recover(
     let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
 
     match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id) {
-        // Successfully recovered the public key. Write it to wasm memory
-        // and return the memory address.
-        Ok(pk) => write_to_memory(env, &mut wasm_store, &pk),
-        // An error has occured. Return 0 indicating there's an error.
+        Ok(pk) => {
+            // Convert the pubkey to _compressed_ bytes
+            let pk = pk.to_encoded_point(true).to_bytes();
+            write_to_memory(env, &mut wasm_store, &pk)
+        },
         Err(_) => Ok(0),
     }
 }

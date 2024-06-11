@@ -19,8 +19,7 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
 
-/// Recover the secp256k1 public key as _compressed_ bytes from the _hashed_
-/// message and signature.
+/// Recover the secp256k1 public key as from the _hashed_ message and signature.
 ///
 /// - `r`: the first 32 bytes of the signature;
 /// - `s`: the last 32 bytes of the signature;
@@ -35,7 +34,7 @@ pub fn secp256k1_pubkey_recover(
     msg_hash: &[u8],
     sig: &[u8],
     recovery_id: u8,
-) -> CryptoResult<Vec<u8>> {
+) -> CryptoResult<VerifyingKey> {
     let msg = Identity256::from_slice(msg_hash)?;
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
@@ -53,9 +52,7 @@ pub fn secp256k1_pubkey_recover(
     }
 
     // Convert the public key to _compressed_ bytes
-    VerifyingKey::recover_from_digest(msg, &sig, id)
-        .map(|pk| pk.to_encoded_point(true).as_bytes().into())
-        .map_err(Into::into)
+    VerifyingKey::recover_from_digest(msg, &sig, id).map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -140,7 +137,6 @@ mod tests {
             recovery_id.to_byte(),
         )
         .unwrap();
-
-        assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
+        assert_eq!(recovered_pk, vk);
     }
 }
