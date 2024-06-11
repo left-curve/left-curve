@@ -52,7 +52,10 @@ impl Identity256 {
     /// To convert from a byte slice of fixed size of 32 bytes, use `from_bytes`.
     pub fn from_slice(slice: &[u8]) -> CryptoResult<Self> {
         if slice.len() != 32 {
-            return Err(CryptoError::incorrect_length(32, slice.len()));
+            return Err(CryptoError::IncorrectLength {
+                expect: 32,
+                actual: slice.len(),
+            });
         }
 
         Ok(Self {

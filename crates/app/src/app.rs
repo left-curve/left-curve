@@ -76,7 +76,10 @@ where
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
         if block.height.u64() != 0 {
-            return Err(AppError::incorrect_block_height(0, block.height.u64()));
+            return Err(AppError::IncorrectBlockHeight {
+                expect: 0,
+                actual: block.height.u64(),
+            });
         }
 
         // save the config and genesis block. some genesis messages may need it
@@ -153,10 +156,10 @@ where
         // plus one. this ensures that block height always matches the BaseStore
         // version.
         if block.height.u64() != last_finalized_block.height.u64() + 1 {
-            return Err(AppError::incorrect_block_height(
-                last_finalized_block.height.u64() + 1,
-                block.height.u64(),
-            ));
+            return Err(AppError::IncorrectBlockHeight {
+                expect: last_finalized_block.height.u64() + 1,
+                actual: block.height.u64(),
+            });
         }
 
         // call begin blockers

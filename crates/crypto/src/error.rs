@@ -12,14 +12,4 @@ pub enum CryptoError {
     InvalidRecoveryId { id: u8 },
 }
 
-impl CryptoError {
-    pub fn incorrect_length(expect: usize, actual: usize) -> Self {
-        Self::IncorrectLength { expect, actual }
-    }
-
-    pub fn invalid_recovery_id(id: u8) -> Self {
-        Self::InvalidRecoveryId { id }
-    }
-}
-
-pub type CryptoResult<T> = std::result::Result<T, CryptoError>;
+pub type CryptoResult<T> = core::result::Result<T, CryptoError>;

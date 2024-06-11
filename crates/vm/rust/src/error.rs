@@ -15,4 +15,4 @@ impl From<VmError> for AppError {
     }
 }
 
-pub type VmResult<T> = std::result::Result<T, VmError>;
+pub type VmResult<T> = core::result::Result<T, VmError>;

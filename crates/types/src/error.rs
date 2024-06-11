@@ -15,86 +15,86 @@ pub enum StdError {
 
     // TODO: rename this. this means an error is thrown by the host over the FFI.
     // something like `StdError::Host` may be more appropriate.
-    #[error("Generic error: {0}")]
+    #[error("generic error: {0}")]
     Generic(String),
 
     // TODO: add more details to this
-    #[error("Signature verification failed")]
+    #[error("signature verification failed")]
     VerificationFailed,
 
-    #[error("Failed to parse string `{value}` into {ty}: {reason}")]
+    #[error("failed to parse string `{value}` into {ty}: {reason}")]
     ParseNumber {
         ty: &'static str,
         value: String,
         reason: String,
     },
 
-    #[error("Failed to parse into Coins: {reason}")]
+    #[error("failed to parse into Coins: {reason}")]
     ParseCoins { reason: String },
 
-    #[error("Invalid payment: expecting {expect} coins, found {actual}")]
+    #[error("invalid payment: expecting {expect} coins, found {actual}")]
     Payment { expect: usize, actual: usize },
 
-    #[error("Cannot find denom `{denom}` in coins")]
+    #[error("cannot find denom `{denom}` in coins")]
     DenomNotFound { denom: String },
 
-    #[error("Data not found! type: {ty}, storage key: {key}")]
+    #[error("data not found! type: {ty}, storage key: {key}")]
     DataNotFound { ty: &'static str, key: String },
 
-    #[error("Cannot find iterator with ID {iterator_id}")]
+    #[error("cannot find iterator with ID {iterator_id}")]
     IteratorNotFound { iterator_id: i32 },
 
-    #[error("Conversion overflow: {source_type}({value}) > {target_type}::MAX")]
+    #[error("conversion overflow: {source_type}({value}) > {target_type}::MAX")]
     OverflowConversion {
         source_type: &'static str,
         target_type: &'static str,
         value: String,
     },
 
-    #[error("Addition overflow: {a} + {b} > {ty}::MAX")]
+    #[error("addition overflow: {a} + {b} > {ty}::MAX")]
     OverflowAdd {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("Subtraction overflow: {a} - {b} < {ty}::MIN")]
+    #[error("subtraction overflow: {a} - {b} < {ty}::MIN")]
     OverflowSub {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("Multiplication overflow: {a} * {b} > {ty}::MAX")]
+    #[error("multiplication overflow: {a} * {b} > {ty}::MAX")]
     OverflowMul {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("Power overflow: {a} ^ {b} > {ty}::MAX")]
+    #[error("power overflow: {a} ^ {b} > {ty}::MAX")]
     OverflowPow {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("Left shift overflow: {a} << {b}")]
+    #[error("left shift overflow: {a} << {b}")]
     OverflowShl { a: String, b: u32 },
 
-    #[error("Right shift overflow: {a} >> {b}")]
+    #[error("right shift overflow: {a} >> {b}")]
     OverflowShr { a: String, b: u32 },
 
-    #[error("Division by zero: {a} / 0")]
+    #[error("division by zero: {a} / 0")]
     DivisionByZero { a: String },
 
-    #[error("Remainder by zero: {a} % 0")]
+    #[error("remainder by zero: {a} % 0")]
     RemainderByZero { a: String },
 
-    #[error("Failed to serialize into json! type: {ty}, reason: {reason}")]
+    #[error("failed to serialize into json! type: {ty}, reason: {reason}")]
     Serialize { ty: &'static str, reason: String },
 
-    #[error("Failed to deserialize from json! type: {ty}, reason: {reason}")]
+    #[error("failed to deserialize from json! type: {ty}, reason: {reason}")]
     Deserialize { ty: &'static str, reason: String },
 }
 
@@ -178,11 +178,11 @@ impl StdError {
         }
     }
 
-    pub fn division_by_zero<T: ToString>(a: T) -> Self {
+    pub fn division_by_zero(a: impl ToString) -> Self {
         Self::DivisionByZero { a: a.to_string() }
     }
 
-    pub fn remainder_by_zero<T: ToString>(a: T) -> Self {
+    pub fn remainder_by_zero(a: impl ToString) -> Self {
         Self::RemainderByZero { a: a.to_string() }
     }
 
@@ -201,4 +201,4 @@ impl StdError {
     }
 }
 
-pub type StdResult<T> = std::result::Result<T, StdError>;
+pub type StdResult<T> = core::result::Result<T, StdError>;

@@ -42,4 +42,4 @@ impl From<DbError> for AppError {
     }
 }
 
-pub type DbResult<T> = std::result::Result<T, DbError>;
+pub type DbResult<T> = core::result::Result<T, DbError>;

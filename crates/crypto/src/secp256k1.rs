@@ -41,7 +41,7 @@ pub fn secp256k1_pubkey_recover(
     let mut id = match v {
         0 => RecoveryId::new(false, false),
         1 => RecoveryId::new(true, false),
-        _ => return Err(CryptoError::invalid_recovery_id(v)),
+        _ => return Err(CryptoError::InvalidRecoveryId { id: v }),
     };
 
     let mut sig = Signature::from_scalars(r, s)?;

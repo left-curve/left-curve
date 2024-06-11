@@ -40,7 +40,10 @@ fn _do_set_config(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) ->
         return Err(AppError::OwnerNotSet);
     };
     if sender != owner {
-        return Err(AppError::not_owner(sender.clone(), owner));
+        return Err(AppError::NotOwner {
+            sender: sender.clone(),
+            owner,
+        });
     }
 
     // save the new config
