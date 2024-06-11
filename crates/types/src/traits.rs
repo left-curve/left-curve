@@ -128,6 +128,21 @@ pub trait Api {
         s: &[u8],
         v: u8,
     ) -> StdResult<Vec<u8>>;
+
+    /// Verify an ED25519 signature with the given hashed message and public
+    /// key.
+    ///
+    /// NOTE: This function takes the hash of the message, not the prehash.
+    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
+    /// Verify a batch of ED25519 signatures with the given hashed message and public
+    /// key.
+    /// NOTE: This function takes the hash of the messages, not the prehash.
+    fn ed25519_batch_verify(
+        &self,
+        msgs_hash: &[&[u8]],
+        sigs: &[&[u8]],
+        pks: &[&[u8]],
+    ) -> StdResult<()>;
 }
 
 // ---------------------------------- querier ----------------------------------

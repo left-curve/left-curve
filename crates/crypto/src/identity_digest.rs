@@ -13,6 +13,7 @@ pub(crate) fn hash(data: &[u8]) -> Identity256 {
     let mut hasher = sha2::Sha256::new();
     // I don't fully understand why it's necessary to use this syntax instead of
     // hasher.update(data)
+
     Digest::update(&mut hasher, data);
     let bytes = hasher.finalize();
 

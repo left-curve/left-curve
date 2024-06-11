@@ -3,12 +3,14 @@ use {
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
+const SECP256K1_SIGNATURE_LEN: usize = 64;
+
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
     let msg = Identity256::from_slice(msg_hash)?;
     // NOTE: sig.into() here will panic if the byte slice is of incorrect length,
     // crashing the node. we must safe guard this
-    to_sized::<64>(sig)?;
+    to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
     let sig = Signature::from_bytes(sig.into())?;
     let vk = VerifyingKey::from_sec1_bytes(pk)?;
     vk.verify_digest(msg, &sig).map_err(Into::into)
@@ -30,8 +32,8 @@ pub fn secp256k1_pubkey_recover(
     v: u8,
 ) -> CryptoResult<Vec<u8>> {
     let msg_hash = to_sized::<32>(msg_hash)?;
-    let r = to_sized::<32>(r)?;
-    let s = to_sized::<32>(s)?;
+    let r = to_sized::<{ SECP256K1_SIGNATURE_LEN / 2 }>(r)?;
+    let s = to_sized::<{ SECP256K1_SIGNATURE_LEN / 2 }>(s)?;
 
     let mut id = match v {
         0 => RecoveryId::new(false, false),

@@ -1,6 +1,9 @@
 use {
     crate::{Addr, Api, Order, Record, StdError, StdResult, Storage},
-    grug_crypto::{secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify},
+    grug_crypto::{
+        ed25519_batch_verify, ed25519_verify, secp256k1_pubkey_recover, secp256k1_verify,
+        secp256r1_verify,
+    },
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -89,5 +92,18 @@ impl Api for MockApi {
         v: u8,
     ) -> StdResult<Vec<u8>> {
         secp256k1_pubkey_recover(msg_hash, r, s, v).map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
+        ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn ed25519_batch_verify(
+        &self,
+        msgs_hash: &[&[u8]],
+        sigs: &[&[u8]],
+        pks: &[&[u8]],
+    ) -> StdResult<()> {
+        ed25519_batch_verify(msgs_hash, sigs, pks).map_err(|_| StdError::VerificationFailed)
     }
 }
