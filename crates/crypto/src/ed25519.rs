@@ -20,8 +20,10 @@ pub fn ed25519_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()
     vk.verify_strict(msg_hash, &Signature::from(sig))
         .map_err(Into::into)
 }
+
 /// Verify a batch of ED25519 signatures with the given hashed message and public
 /// key.
+///
 /// NOTE: This function takes the hash of the messages, not the prehash.
 pub fn ed25519_batch_verify(
     msgs_hash: &[&[u8]],
