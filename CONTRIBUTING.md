@@ -87,6 +87,49 @@ mod tests {
 }
 ```
 
+## Trait bounds
+
+When implementing methods that involve generic types, the relevant trait bounds must be as tight as possible. This means if a trait is not required for this implementation, it must not be included in the bound.
+
+Trait bound should be _direct_. See the following example on what this means:
+
+```diff
+impl<U, const S: u32> FromStr for Decimal<U, S>
+where
+    Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
+{
+    // ...
+}
+
+impl<'de, U, const S: u32> de::Visitor<'de> for DecimalVisitor<U, S>
+where
+-   Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
++   Decimal<U, S>: FromStr,
+    <Decimal<U, S> as FromStr>::Err: Display,
+{
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Decimal::from_str(v).map_err(E::custom)
+    }
+}
+```
+
+Here the two ways of writing the trait bound (in red and green) for `DecimalVisitor` are completely equivalent, because
+
+```
+Uint<U>: NumberConst + Number + Display + FromStr + From<u128>
+```
+
+implies
+
+```
+Decimal<U, S>: FromStr
+```
+
+However, the visitor utilizes `Decimal`'s `from_str` method; it doesn't `Uint`'s number or display properties. Therefore, and green trait bound on `Decimal` is _direct_ and preferred, while the red one on `Uint` is _indirect_.
+
 ## Grouping imports
 
 Use a single `use` statement at the beginning of the file to import all necessary dependencies:
@@ -103,6 +146,19 @@ use {
   serde::{de, ser},
   std::str::FromStr,
 };
+```
+
+## Error messages
+
+Error messages should be lowercase, according to [Rust API guidelines](https://github.com/rust-lang/api-guidelines/blob/master/src/interoperability.md#examples-of-error-messages) (also see [a relevant discussion here](https://github.com/rust-lang/api-guidelines/issues/79)).
+
+```diff
+#[derive(Debug, thiserror::Error)]
+pub enum StdError {
+-   #[error("Division by zero: {a} / 0")]
++   #[error("division by zero: {a} / 0")]
+    DivisionByZero { a: String },
+}
 ```
 
 ## Comments
