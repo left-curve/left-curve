@@ -408,7 +408,7 @@ impl_next!(Uint256, Uint512);
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod test {
+mod tests {
     use {
         crate::{Number, Uint, Uint128, Uint256},
         std::{fmt::Debug, str::FromStr},
