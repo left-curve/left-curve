@@ -407,15 +407,16 @@ where
 
 impl<T> FromStr for Signed<T>
 where
-    T: FromStr<Err = StdError>,
+    T: FromStr,
+    StdError: From<<T as FromStr>::Err>,
 {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(s) = s.strip_prefix('-') {
-            T::from_str(s).map(Self::new_negative)
+            T::from_str(s).map(Self::new_negative).map_err(Into::into)
         } else {
-            T::from_str(s).map(Self::new_positive)
+            T::from_str(s).map(Self::new_positive).map_err(Into::into)
         }
     }
 }
