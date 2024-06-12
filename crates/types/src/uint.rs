@@ -24,7 +24,6 @@ use {
 )]
 pub struct Uint<U>(pub(crate) U);
 
-// --- Init ---
 impl<U> Uint<U> {
     pub const fn new(value: U) -> Self {
         Self(value)

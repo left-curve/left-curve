@@ -57,11 +57,6 @@ pub trait NumberConst {
     const ZERO: Self;
 }
 
-/// Describes the decimal fraction for fixed-pointed numbers.
-pub trait DecimalFraction<U> {
-    const FRACTION: Uint<U>;
-}
-
 /// Describes a number that can be convert to and from raw binary representations.
 pub trait Bytable<const S: usize>: Sized {
     const LEN: usize = S;

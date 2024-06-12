@@ -85,17 +85,17 @@ pub enum StdError {
     #[error("right shift overflow: {a} >> {b}")]
     OverflowShr { a: String, b: u32 },
 
-    #[error("negative square! type: {ty}, value: {value}")]
-    NegativeSquare { ty: &'static str, value: String },
-
-    #[error("invalid 0 log")]
-    ZeroLog {},
-
-    #[error("Division by zero: {a} / 0")]
+    #[error("division by zero: {a} / 0")]
     DivisionByZero { a: String },
 
     #[error("remainder by zero: {a} % 0")]
     RemainderByZero { a: String },
+
+    #[error("square root of negative: sqrt({a})")]
+    NegativeSqrt { a: String },
+
+    #[error("logarithm of zero")]
+    ZeroLog,
 
     #[error("failed to serialize into json! type: {ty}, reason: {reason}")]
     Serialize { ty: &'static str, reason: String },
@@ -184,16 +184,20 @@ impl StdError {
         }
     }
 
-    pub fn zero_log() -> Self {
-        Self::ZeroLog {}
-    }
-
     pub fn division_by_zero(a: impl ToString) -> Self {
         Self::DivisionByZero { a: a.to_string() }
     }
 
     pub fn remainder_by_zero(a: impl ToString) -> Self {
         Self::RemainderByZero { a: a.to_string() }
+    }
+
+    pub fn zero_log() -> Self {
+        Self::ZeroLog
+    }
+
+    pub fn negative_sqrt<T>(a: impl ToString) -> Self {
+        Self::NegativeSqrt { a: a.to_string() }
     }
 
     pub fn serialize<T>(reason: impl ToString) -> Self {
@@ -207,13 +211,6 @@ impl StdError {
         Self::Deserialize {
             ty: type_name::<T>(),
             reason: reason.to_string(),
-        }
-    }
-
-    pub fn negative_sqrt<T>(value: impl ToString) -> Self {
-        Self::NegativeSquare {
-            ty: type_name::<T>(),
-            value: value.to_string(),
         }
     }
 

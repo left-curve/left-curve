@@ -137,10 +137,6 @@ macro_rules! generate_decimal {
     ) => {
         pub type $name = Decimal<$inner, $decimal_places>;
 
-        impl $name {
-            pub const DECIMAL_PLACES: usize = $decimal_places;
-        }
-
         // Ex: From<U256> for Decimal256
         impl From<$inner> for $name {
             fn from(value: $inner) -> Self {
@@ -682,7 +678,7 @@ macro_rules! impl_number {
 
     // Decimal Self
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: usize> std::ops::$imp for $t
+        impl<U, const S: u32> std::ops::$imp for $t
         where
             Self: Number,
         {
@@ -743,7 +739,7 @@ macro_rules! impl_assign_number {
 
     // Decimal
     (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: usize> std::ops::$imp for $t
+        impl<U, const S: u32> std::ops::$imp for $t
         where
             Self: Number + Copy,
         {
@@ -862,7 +858,7 @@ macro_rules! forward_ref_binop_typed {
 #[macro_export]
 macro_rules! forward_ref_binop_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: usize> std::ops::$imp<$u> for &'_ $t
+        impl<U, const S: u32> std::ops::$imp<$u> for &'_ $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -874,7 +870,7 @@ macro_rules! forward_ref_binop_decimal {
             }
         }
 
-        impl<U, const S: usize> std::ops::$imp<&$u> for $t
+        impl<U, const S: u32> std::ops::$imp<&$u> for $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -886,7 +882,7 @@ macro_rules! forward_ref_binop_decimal {
             }
         }
 
-        impl<U, const S: usize> std::ops::$imp<&$u> for &'_ $t
+        impl<U, const S: u32> std::ops::$imp<&$u> for &'_ $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -918,7 +914,7 @@ macro_rules! forward_ref_op_assign_typed {
 #[macro_export]
 macro_rules! forward_ref_op_assign_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: usize> std::ops::$imp<&$u> for $t
+        impl<U, const S: u32> std::ops::$imp<&$u> for $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
