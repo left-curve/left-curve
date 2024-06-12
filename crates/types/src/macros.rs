@@ -481,6 +481,14 @@ macro_rules! impl_bytable_bnum {
 #[macro_export]
 macro_rules! impl_integer_number {
     ($t:ty) => {
+        impl Sign for $t {
+            fn is_negative(&self) -> bool {
+                // This macro is only applied to unsigned number types (`u64`,
+                // `u128`, `U256`, `U512`) which cannot be negative.
+                false
+            }
+        }
+
         impl Number for $t
         where
             $t: NumberConst,
@@ -490,6 +498,9 @@ macro_rules! impl_integer_number {
             }
 
             fn abs(self) -> Self {
+                // This macro is only applied to unsigned number types (`u64`,
+                // `u128`, `U256`, `U512`) for which the absolute values are
+                // simply themselves.
                 self
             }
 
@@ -915,38 +926,6 @@ macro_rules! forward_ref_op_assign_decimal {
             fn $method(&mut self, other: &$u) {
                 std::ops::$imp::$method(self, *other);
             }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! generate_decimal_per {
-    ($name:ident, $shift:expr) => {
-        pub fn $name(x: impl Into<Uint<U>>) -> Self {
-            let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(($shift) as u32));
-            Self::raw(atomic)
-        }
-    };
-}
-
-/// Generate `unchecked fn` from `checked fn`
-#[macro_export]
-macro_rules! generate_unchecked {
-    ($checked:tt => $name:ident) => {
-        pub fn $name(self) -> Self {
-            self.$checked().unwrap()
-        }
-    };
-
-    ($checked:tt => $name:ident,arg $arg:ident) => {
-        pub fn $name(self, arg: $arg) -> Self {
-            self.$checked(arg).unwrap()
-        }
-    };
-
-    ($checked:tt => $name:ident,args $arg1:ty, $arg2:ty) => {
-        pub fn $name(arg1: $arg1, arg2: $arg2) -> Self {
-            Self::$checked(arg1, arg2).unwrap()
         }
     };
 }

@@ -24,6 +24,10 @@ pub trait Inner {
 /// [`Uint256`].
 pub trait NextNumber: Sized + TryFrom<Self::Next> {
     type Next: From<Self>;
+
+    fn into_next(self) -> Self::Next {
+        self.into()
+    }
 }
 
 /// Describes a number that can take on negative values.
@@ -38,7 +42,7 @@ pub trait Sign {
 /// Note that here we only concern the absolute value of the rational number.
 /// Hence, both the numerator and denominator are positive.
 pub trait Fraction<U> {
-    fn numerator(self) -> Uint<U>;
+    fn numerator(&self) -> Uint<U>;
 
     fn denominator() -> Uint<U>;
 }
@@ -51,6 +55,11 @@ pub trait NumberConst {
     const ONE: Self;
     const TEN: Self;
     const ZERO: Self;
+}
+
+/// Describes the decimal fraction for fixed-pointed numbers.
+pub trait DecimalFraction<U> {
+    const FRACTION: Uint<U>;
 }
 
 /// Describes a number that can be convert to and from raw binary representations.

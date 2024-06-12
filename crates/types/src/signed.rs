@@ -1,8 +1,8 @@
 use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        MultiplyFraction, MultiplyRatio, Number, NumberConst, Fraction, Sign, StdError, StdResult,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Fraction,
+        Inner, MultiplyFraction, MultiplyRatio, Number, NumberConst, Sign, StdError, StdResult,
         Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -31,7 +31,6 @@ pub struct Signed<T> {
     pub(crate) negative: bool,
 }
 
-// --- Init ---
 impl<T> Signed<T> {
     pub const fn new(abs: T, negative: bool) -> Self {
         Self { abs, negative }
@@ -52,19 +51,16 @@ impl<T> Signed<T> {
     }
 }
 
-// --- Sign ---
+impl<T> Inner for Signed<T> {
+    type U = T;
+}
+
 impl<T> Sign for Signed<T> {
     fn is_negative(&self) -> bool {
         self.negative
     }
 }
 
-// --- Inner ---
-impl<T> Inner for Signed<T> {
-    type U = T;
-}
-
-// --- Constants ---
 impl<T> NumberConst for Signed<T>
 where
     T: NumberConst,
@@ -76,10 +72,9 @@ where
     const ZERO: Self = Self::new_positive(T::ZERO);
 }
 
-// --- Number ---
 impl<T> Number for Signed<T>
 where
-    T: Number + PartialOrd + NumberConst + Copy + Sub<Output = T>,
+    T: NumberConst + Number + Copy + PartialOrd + Sub<Output = T>,
     Self: Display,
 {
     fn is_zero(&self) -> bool {
@@ -358,7 +353,7 @@ impl<T, AsT> Fraction<AsT> for Signed<T>
 where
     T: Fraction<AsT>,
 {
-    fn numerator(self) -> Uint<AsT> {
+    fn numerator(&self) -> Uint<AsT> {
         self.abs.numerator()
     }
 
@@ -371,7 +366,7 @@ where
 impl<T, AsT, F> MultiplyFraction<F, AsT> for Signed<T>
 where
     T: MultiplyRatio + From<Uint<AsT>>,
-    F: Fraction<AsT> + Sign + Copy,
+    F: Fraction<AsT> + Sign,
     AsT: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {

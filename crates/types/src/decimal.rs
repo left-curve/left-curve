@@ -1,9 +1,8 @@
 use {
     crate::{
         forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
-        generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
-        impl_number, Fraction, Inner, MultiplyRatio, NextNumber, Number, NumberConst, Sign,
-        StdError, StdResult, Uint,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Fraction, Inner, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, StdError, StdResult, Uint,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -24,11 +23,6 @@ use {
 )]
 pub struct Decimal<U, const S: usize>(pub(crate) Uint<U>);
 
-impl<U, const S: usize> Inner for Decimal<U, S> {
-    type U = U;
-}
-
-// --- Init ---
 impl<U, const S: usize> Decimal<U, S> {
     /// Create a new [`Decimal`] _without_ adding decimal places.
     ///
@@ -45,23 +39,30 @@ impl<U, const S: usize> Decimal<U, S> {
     pub const fn raw(value: Uint<U>) -> Self {
         Self(value)
     }
-}
-
-impl<U, const S: usize> Decimal<U, S>
-where
-    Uint<U>: Number,
-    U: NumberConst,
-{
-    fn f_pow(exp: u32) -> Uint<U> {
-        Uint::TEN.checked_pow(exp).unwrap()
-    }
 
     pub fn numerator(self) -> Uint<U> {
         self.0
     }
+}
+
+impl<U, const S: usize> Decimal<U, S>
+where
+    U: NumberConst + Number,
+{
+    fn f_pow(exp: u32) -> Uint<U> {
+        Uint::<U>::TEN.checked_pow(exp).unwrap()
+    }
 
     pub fn decimal_fraction() -> Uint<U> {
         Self::f_pow(S as u32)
+    }
+
+    pub const fn zero() -> Self {
+        Self(Uint::<U>::ZERO)
+    }
+
+    pub fn one() -> Self {
+        Self(Self::decimal_fraction())
     }
 
     /// Create a new [`Decimal`] adding decimal places.
@@ -80,80 +81,19 @@ where
         Self(value.into() * Self::decimal_fraction())
     }
 
-    pub(crate) fn from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> Self
-    where
-        Uint<U>: From<Uint<OU>>,
-    {
-        if OS > S {
-            let adjusted_precision = Self::f_pow((OS - S) as u32);
-            Self(Uint::<U>::from(other.0) / adjusted_precision)
-        } else {
-            let adjusted_precision = Self::f_pow((S - OS) as u32);
-            Self(Uint::<U>::from(other.0) * adjusted_precision)
-        }
+    pub fn new_percent(x: impl Into<Uint<U>>) -> Self {
+        let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(2));
+        Self::raw(atomic)
     }
 
-    pub(crate) fn try_from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> StdResult<Self>
-    where
-        Uint<U>: TryFrom<Uint<OU>, Error = StdError>,
-    {
-        if OS > S {
-            let adjusted_precision = Self::f_pow((OS - S) as u32);
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_div(adjusted_precision))?
-                .map(Self)
-        } else {
-            let adjusted_precision = Self::f_pow((S - OS) as u32);
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_mul(adjusted_precision))?
-                .map(Self)
-        }
-    }
-}
-
-// --- Sign ---
-impl<U, const S: usize> Sign for Decimal<U, S> {
-    fn is_negative(&self) -> bool {
-        false
-    }
-}
-
-// --- Base impl ---
-impl<U, const S: usize> Decimal<U, S>
-where
-    Uint<U>: Number,
-    U: NumberConst + Clone + PartialEq + Copy + FromStr,
-{
-    generate_decimal_per!(percent, 2);
-
-    generate_decimal_per!(permille, 4);
-
-    generate_decimal_per!(bps, 6);
-
-    generate_unchecked!(checked_ceil => ceil);
-
-    generate_unchecked!(checked_from_atomics => from_atomics, args impl Into<Uint<U>>, u32);
-
-    pub const fn zero() -> Self {
-        Self(Uint::<U>::ZERO)
+    pub fn new_permille(x: impl Into<Uint<U>>) -> Self {
+        let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(4));
+        Self::raw(atomic)
     }
 
-    pub fn one() -> Self {
-        Self(Self::decimal_fraction())
-    }
-
-    pub fn floor(self) -> Self {
-        let decimal_fraction = Self::decimal_fraction();
-        Self((self.0 / decimal_fraction) * decimal_fraction)
-    }
-
-    pub fn checked_ceil(self) -> StdResult<Self> {
-        let floor = self.floor();
-        if floor == self {
-            Ok(floor)
-        } else {
-            floor.0.checked_add(Self::decimal_fraction()).map(Self)
-        }
+    pub fn new_bps(x: impl Into<Uint<U>>) -> Self {
+        let atomic = x.into() * (Self::decimal_fraction() / Self::f_pow(6));
+        Self::raw(atomic)
     }
 
     pub fn checked_from_atomics(
@@ -187,9 +127,73 @@ where
 
         Ok(Self(inner))
     }
+
+    pub(crate) fn from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> Self
+    where
+        Uint<U>: From<Uint<OU>>,
+    {
+        if OS > S {
+            let adjusted_precision = Self::f_pow((OS - S) as u32);
+            Self(Uint::<U>::from(other.0) / adjusted_precision)
+        } else {
+            let adjusted_precision = Self::f_pow((S - OS) as u32);
+            Self(Uint::<U>::from(other.0) * adjusted_precision)
+        }
+    }
+
+    pub(crate) fn try_from_decimal<OU, const OS: usize>(other: Decimal<OU, OS>) -> StdResult<Self>
+    where
+        Uint<U>: TryFrom<Uint<OU>, Error = StdError>,
+    {
+        if OS > S {
+            let adjusted_precision = Self::f_pow((OS - S) as u32);
+            Uint::<U>::try_from(other.0)
+                .map(|val| val.checked_div(adjusted_precision))?
+                .map(Self)
+        } else {
+            let adjusted_precision = Self::f_pow((S - OS) as u32);
+            Uint::<U>::try_from(other.0)
+                .map(|val| val.checked_mul(adjusted_precision))?
+                .map(Self)
+        }
+    }
 }
 
-// --- Constants ---
+impl<U, const S: usize> Decimal<U, S>
+where
+    U: NumberConst + Number + Copy,
+{
+    pub fn floor(self) -> Self {
+        let decimal_fraction = Self::decimal_fraction();
+        Self((self.0 / decimal_fraction) * decimal_fraction)
+    }
+}
+
+impl<U, const S: usize> Decimal<U, S>
+where
+    U: NumberConst + Number + Copy + PartialEq,
+{
+    pub fn checked_ceil(self) -> StdResult<Self> {
+        let floor = self.floor();
+        if floor == self {
+            Ok(floor)
+        } else {
+            floor.0.checked_add(Self::decimal_fraction()).map(Self)
+        }
+    }
+}
+
+impl<U, const S: usize> Inner for Decimal<U, S> {
+    type U = U;
+}
+
+impl<U, const S: usize> Sign for Decimal<U, S> {
+    fn is_negative(&self) -> bool {
+        false
+    }
+}
+
+// TODO: this can be confusing
 impl<U, const S: usize> NumberConst for Decimal<U, S>
 where
     U: NumberConst,
@@ -201,13 +205,12 @@ where
     const ZERO: Self = Self::raw(Uint::new(U::ZERO));
 }
 
-// --- Number ---
 impl<U, const S: usize> Number for Decimal<U, S>
 where
     Decimal<U, S>: ToString,
-    Uint<U>: NextNumber + Number + PartialOrd,
+    U: NumberConst + Number + Clone + PartialEq + PartialOrd + Copy + FromStr,
+    Uint<U>: NextNumber,
     <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
-    U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
@@ -322,15 +325,12 @@ where
     }
 }
 
-// --- Checked from ratio (require Uint<U>: NextNumber) ---
 impl<U, const S: usize> Decimal<U, S>
 where
-    Uint<U>: NextNumber + Number,
+    U: NumberConst + Number + Clone + PartialEq + Copy + FromStr,
+    Uint<U>: NextNumber,
     <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
-    U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
-    generate_unchecked!(checked_from_ratio => from_ratio, args impl Into<Uint<U>>, impl Into<Uint<U>>);
-
     pub fn checked_from_ratio(
         numerator: impl Into<Uint<U>>,
         denominator: impl Into<Uint<U>>,
@@ -343,12 +343,11 @@ where
     }
 }
 
-// --- Fraction ---
 impl<U, const S: usize> Fraction<U> for Decimal<U, S>
 where
-    U: NumberConst + Number,
+    U: NumberConst + Number + Copy,
 {
-    fn numerator(self) -> Uint<U> {
+    fn numerator(&self) -> Uint<U> {
         self.0
     }
 
@@ -357,11 +356,10 @@ where
     }
 }
 
-// --- Display ---
 impl<U, const S: usize> Display for Decimal<U, S>
 where
-    Uint<U>: Number + Display + Copy,
-    U: NumberConst + PartialEq + PartialOrd,
+    U: NumberConst + Number + PartialEq + PartialOrd,
+    Uint<U>: Display + Copy,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::decimal_fraction();
@@ -384,8 +382,8 @@ where
 // --- FromStr ---
 impl<U, const S: usize> FromStr for Decimal<U, S>
 where
-    Uint<U>: Number + FromStr + Display,
-    U: NumberConst,
+    U: NumberConst + Number,
+    Uint<U>: FromStr + Display,
 {
     type Err = StdError;
 
@@ -454,9 +452,9 @@ where
 // --- serde::Deserialize ---
 impl<'de, U, const S: usize> de::Deserialize<'de> for Decimal<U, S>
 where
-    U: Default + NumberConst + FromStr,
+    U: NumberConst + Number + Default + FromStr,
     <U as FromStr>::Err: Display,
-    Uint<U>: Number + FromStr + Display,
+    Uint<U>: FromStr + Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -473,8 +471,8 @@ struct DecimalVisitor<U, const S: usize> {
 
 impl<'de, U, const S: usize> de::Visitor<'de> for DecimalVisitor<U, S>
 where
-    U: NumberConst,
-    Uint<U>: Number + FromStr + Display,
+    U: NumberConst + Number,
+    Uint<U>: FromStr + Display,
 {
     type Value = Decimal<U, S>;
 
@@ -516,7 +514,6 @@ forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Decimal<U, S>, Dec
 
 // ------------------------------ concrete types -------------------------------
 
-// Decimal128
 generate_decimal!(
     name = Decimal128,
     inner_type = u128,
@@ -524,7 +521,6 @@ generate_decimal!(
     from_dec = [],
 );
 
-// Decimal256
 generate_decimal!(
     name = Decimal256,
     inner_type = U256,
@@ -532,24 +528,18 @@ generate_decimal!(
     from_dec = [Decimal128],
 );
 
-// impl From<Decimal128> for Decimal256 {
-//     fn from(value: Decimal128) -> Self {
-//         todo!()
-//     }
-// }
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use bnum::{
-        errors::TryFromIntError,
-        types::{U256, U512},
+    use {
+        crate::{Decimal128, Decimal256, Number},
+        bnum::{
+            errors::TryFromIntError,
+            types::{U256, U512},
+        },
+        std::str::FromStr,
     };
-
-    use crate::{Decimal128, Decimal256, Number};
 
     #[test]
     fn t1() {

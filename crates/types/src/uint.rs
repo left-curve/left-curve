@@ -2,8 +2,8 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
         impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
-        impl_number, Bytable, Inner, Integer, MultiplyFraction, MultiplyRatio, NextNumber, Number,
-        NumberConst, Fraction, Sign, StdError, StdResult,
+        impl_number, Bytable, Fraction, Inner, Integer, MultiplyFraction, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, StdError, StdResult,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -30,6 +30,7 @@ impl<U> Uint<U> {
         Self(value)
     }
 
+    // TODO: this necessary?
     pub fn new_from(value: impl Into<U>) -> Self {
         Self(value.into())
     }
@@ -39,19 +40,21 @@ impl<U> Uint<U>
 where
     U: Copy,
 {
-    pub const fn number(self) -> U {
+    pub const fn number(&self) -> U {
         self.0
     }
 }
 
-// --- Sign ---
+impl<U> Inner for Uint<U> {
+    type U = U;
+}
+
 impl<U> Sign for Uint<U> {
     fn is_negative(&self) -> bool {
         false
     }
 }
 
-// --- Constants ---
 impl<U> NumberConst for Uint<U>
 where
     U: NumberConst,
@@ -63,12 +66,6 @@ where
     const ZERO: Self = Self(U::ZERO);
 }
 
-// --- Inner ---
-impl<U> Inner for Uint<U> {
-    type U = U;
-}
-
-// --- Bytable ---
 impl<U, const S: usize> Bytable<S> for Uint<U>
 where
     U: Bytable<S>,
@@ -98,8 +95,6 @@ where
     }
 }
 
-// --- Number ---
-#[rustfmt::skip]
 impl<U> Number for Uint<U>
 where
     U: Number,
@@ -175,8 +170,6 @@ where
     }
 }
 
-// --- Integer ---
-#[rustfmt::skip]
 impl<U> Integer for Uint<U>
 where
     U: Integer,
@@ -198,34 +191,24 @@ where
     }
 }
 
-// --- full_mull ---
 impl<U> Uint<U>
 where
     Uint<U>: NextNumber,
-    <Uint<U> as NextNumber>::Next: Number + ToString,
+    <Uint<U> as NextNumber>::Next: Number,
 {
-    /// Convert the current [`Uint`] to [`NextNumber::Next`]
-    ///
-    /// Example: [`Uint64`] -> [`Uint128`]
-    pub fn as_next(self) -> <Uint<U> as NextNumber>::Next {
-        <Uint<U> as NextNumber>::Next::from(self)
-    }
-
     pub fn checked_full_mul(
         self,
         rhs: impl Into<Self>,
     ) -> StdResult<<Uint<U> as NextNumber>::Next> {
-        let s = <Uint<U> as NextNumber>::Next::from(self);
-        let r = <Uint<U> as NextNumber>::Next::from(rhs.into());
+        let s = self.into_next();
+        let r = rhs.into().into_next();
         s.checked_mul(r)
     }
 }
 
-// --- multiply_ratio ---
 impl<U> MultiplyRatio for Uint<U>
 where
-    U: NumberConst + PartialEq,
-    Uint<U>: NextNumber + Number + Copy,
+    Uint<U>: NextNumber + NumberConst + Number + Copy,
     <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
 {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
@@ -233,8 +216,7 @@ where
         numerator: A,
         denominator: B,
     ) -> StdResult<Self> {
-        let numerator: Self = numerator.into();
-        let denominator: <Uint<U> as NextNumber>::Next = Into::<Self>::into(denominator).into();
+        let denominator = denominator.into().into_next();
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
         next_result
             .clone()
@@ -250,21 +232,19 @@ where
         let numerator: Self = numerator.into();
         let dividend = self.checked_full_mul(numerator)?;
         let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
-        let remained = dividend.checked_rem(floor_result.as_next())?;
+        let remained = dividend.checked_rem(floor_result.into_next())?;
         if !remained.is_zero() {
-            Self::ONE.checked_add(floor_result)
+            floor_result.checked_add(Self::ONE)
         } else {
             Ok(floor_result)
         }
     }
 }
 
-// --- IntperDecimal ---
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
     Uint<U>: MultiplyRatio + From<Uint<AsU>>,
     F: Fraction<AsU>,
-    AsU: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
@@ -283,7 +263,6 @@ where
     }
 }
 
-// --- FromStr ---
 impl<U> FromStr for Uint<U>
 where
     U: FromStr,
@@ -298,65 +277,68 @@ where
     }
 }
 
-// --- Display ---
 impl<U> fmt::Display for Uint<U>
 where
     U: Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+        write!(f, "{}", self.0)
     }
 }
 
-// --- serde::Serialize ---
 impl<U> ser::Serialize for Uint<U>
 where
-    U: Display,
+    Uint<U>: Display,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&self.0.to_string())
+        serializer.serialize_str(&self.to_string())
     }
 }
 
-// --- serde::Deserialize ---
 impl<'de, U> de::Deserialize<'de> for Uint<U>
 where
-    U: Default + FromStr,
-    <U as FromStr>::Err: Display,
+    Uint<U>: FromStr,
+    <Uint<U> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(UintVisitor::<U>::default())
+        deserializer.deserialize_str(UintVisitor::<U>::new())
     }
 }
 
-#[derive(Default)]
 struct UintVisitor<U> {
     _marker: PhantomData<U>,
 }
 
+impl<U> UintVisitor<U> {
+    pub fn new() -> Self {
+        Self {
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<'de, U> de::Visitor<'de> for UintVisitor<U>
 where
-    U: FromStr,
-    <U as FromStr>::Err: Display,
+    Uint<U>: FromStr,
+    <Uint<U> as FromStr>::Err: Display,
 {
     type Value = Uint<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // TODO: Change this message in base at the type of U
-        f.write_str("a string-encoded 256-bit unsigned integer")
+        f.write_str("a string-encoded unsigned integer")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        v.parse::<U>().map(Uint::<U>).map_err(E::custom)
+        Uint::<U>::from_str(v).map_err(E::custom)
     }
 }
 
@@ -391,7 +373,6 @@ forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Uint<U>, u32);
 
 // ------------------------------ concrete types -------------------------------
 
-// Uint64
 generate_uint!(
     name = Uint64,
     inner_type = u64,
@@ -399,7 +380,6 @@ generate_uint!(
     from_std = [u32, u16, u8],
 );
 
-// Uint128
 generate_uint!(
     name = Uint128,
     inner_type = u128,
@@ -407,7 +387,6 @@ generate_uint!(
     from_std = [u32, u16, u8],
 );
 
-// Uint256
 generate_uint!(
     name = Uint256,
     inner_type = U256,
@@ -415,7 +394,6 @@ generate_uint!(
     from_std = [u32, u16, u8],
 );
 
-// Uint512
 generate_uint!(
     name = Uint512,
     inner_type = U512,
@@ -423,87 +401,28 @@ generate_uint!(
     from_std = [u32, u16, u8],
 );
 
-// Implementations of [`Next`] has to be done after all the types are defined.
+// TODO: can we merge these into `generate_uint`?
 impl_next!(Uint64, Uint128);
 impl_next!(Uint128, Uint256);
 impl_next!(Uint256, Uint512);
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod test {
     use {
         crate::{Number, Uint, Uint128, Uint256},
-        paste::paste,
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
     };
 
-    // 1: Example of wrapping test inside macro.
-    // This has the best flexibility but is harder to read.
-    macro_rules! base_math {
-        ($x:expr, $y:expr, $tt:tt, $id:literal) => {
-            paste! {
-                #[test]
-                fn [<$id>]() {
-                    assert_eq!($x + $y, $tt::from_str("30").unwrap());
-
-                }
-            }
-        };
-    }
-
-    base_math!(
-        Uint128::new(20),
-        Uint128::new(10),
-        Uint128,
-        "uint_base_128_1"
-    );
-    base_math!(
-        Uint256::new(20_u128.into()),
-        Uint256::new(10_u128.into()),
-        Uint256,
-        "uint_base_256_1"
-    );
-
-    // 2: TestCase.
-    // This is the most readable way to write tests, but require to define typing.
-    // Is the most limitated one.
     #[test_case(Uint128::new(20), Uint128::new(10) ; "uint_base_128_2")]
-    #[test_case(Uint256::new(20_u128.into()), Uint256::new(10_u128.into()) ; "uint_base_256_2")]
-    fn base_ops<X>(x: Uint<X>, y: Uint<X>)
+    #[test_case(Uint256::new(20u128.into()), Uint256::new(10u128.into()) ; "uint_base_256_2")]
+    fn adding<X>(x: Uint<X>, y: Uint<X>)
     where
         Uint<X>: Number + FromStr + PartialEq + Debug,
         <Uint<X> as std::str::FromStr>::Err: Debug,
     {
         assert_eq!(x + y, Uint::<X>::from_str("30").unwrap());
     }
-
-    // 3: grug_test_case.
-    // With only one macro, is possible to define multiple tests.
-    // On the macro call is possible to define the body of the test.
-    // The main limitation is that i've not found a way to properly assery the result.
-    // for example assert_eq!(x + y, Uint::new(30)) is not possible because the closure has no knowledge of the type of Uint.;
-    // is there a way to do it?
-    macro_rules! grug_test_case {
-        (
-            $(
-                [$($param_value:expr),+ ; $fn_name:ident]
-            ),*,
-            $body:block
-        ) => {
-            $(
-                #[test]
-                fn $fn_name() {
-                    ($body)($($param_value),*);
-                }
-            )*
-        };
-    }
-
-    grug_test_case!(
-        [Uint128::new(20),             Uint128::new(10)            ; test1 ],
-        [Uint256::new(20_u128.into()), Uint256::new(10_u128.into()); test2 ],
-        {|x, y| {
-            let _ = x - y;
-        }}
-    );
 }
