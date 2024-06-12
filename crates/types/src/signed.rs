@@ -2,7 +2,7 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        MultiplyFraction, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
+        MultiplyFraction, MultiplyRatio, Number, NumberConst, Fraction, Sign, StdError, StdResult,
         Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -353,10 +353,10 @@ where
     }
 }
 
-// --- Rational ---
-impl<T, AsT> Rational<AsT> for Signed<T>
+// --- Fraction ---
+impl<T, AsT> Fraction<AsT> for Signed<T>
 where
-    T: Rational<AsT>,
+    T: Fraction<AsT>,
 {
     fn numerator(self) -> Uint<AsT> {
         self.abs.numerator()
@@ -371,7 +371,7 @@ where
 impl<T, AsT, F> MultiplyFraction<F, AsT> for Signed<T>
 where
     T: MultiplyRatio + From<Uint<AsT>>,
-    F: Rational<AsT> + Sign + Copy,
+    F: Fraction<AsT> + Sign + Copy,
     AsT: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {

@@ -37,7 +37,7 @@ pub trait Sign {
 ///
 /// Note that here we only concern the absolute value of the rational number.
 /// Hence, both the numerator and denominator are positive.
-pub trait Rational<U> {
+pub trait Fraction<U> {
     fn numerator(self) -> Uint<U>;
 
     fn denominator() -> Uint<U>;
@@ -152,7 +152,7 @@ pub trait MultiplyRatio: Sized {
 /// Describes operations between a number and a decimal type.
 pub trait MultiplyFraction<F, U>: Sized
 where
-    F: Rational<U>,
+    F: Fraction<U>,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self>;
 

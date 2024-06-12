@@ -2,7 +2,7 @@ use {
     crate::{
         forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
         generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
-        impl_number, Inner, MultiplyRatio, NextNumber, Number, NumberConst, Rational, Sign,
+        impl_number, Fraction, Inner, MultiplyRatio, NextNumber, Number, NumberConst, Sign,
         StdError, StdResult, Uint,
     },
     bnum::types::U256,
@@ -343,8 +343,8 @@ where
     }
 }
 
-// --- Rational ---
-impl<U, const S: usize> Rational<U> for Decimal<U, S>
+// --- Fraction ---
+impl<U, const S: usize> Fraction<U> for Decimal<U, S>
 where
     U: NumberConst + Number,
 {

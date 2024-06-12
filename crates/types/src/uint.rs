@@ -3,7 +3,7 @@ use {
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
         impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
         impl_number, Bytable, Inner, Integer, MultiplyFraction, MultiplyRatio, NextNumber, Number,
-        NumberConst, Rational, Sign, StdError, StdResult,
+        NumberConst, Fraction, Sign, StdError, StdResult,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -263,7 +263,7 @@ where
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
     Uint<U>: MultiplyRatio + From<Uint<AsU>>,
-    F: Rational<AsU>,
+    F: Fraction<AsU>,
     AsU: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
