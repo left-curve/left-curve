@@ -430,7 +430,7 @@ impl<T> Neg for Signed<T> {
 
 impl<T> PartialEq for Signed<T>
 where
-    T: Number + PartialEq + Copy,
+    T: Number + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         // Zeroes are always equal, regardless of the sign (+0 = -0)
@@ -441,11 +441,11 @@ where
     }
 }
 
-impl<T> Eq for Signed<T> where T: Number + PartialEq + Copy {}
+impl<T> Eq for Signed<T> where T: Number + PartialEq {}
 
 impl<T> PartialOrd for Signed<T>
 where
-    T: Ord + Number + Copy,
+    T: Number + Ord,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -454,7 +454,7 @@ where
 
 impl<T> Ord for Signed<T>
 where
-    T: Ord + Number + Copy,
+    T: Number + Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self.is_negative(), other.is_negative()) {
