@@ -38,7 +38,7 @@ impl<'de> Deserialize<'de> for Key {
             uncompressed: String,
         }
 
-        // Deserialize solo i campi richiesti in una struttura temporanea
+        // Deserialize the uncompressed key
         let temp = TempKey::deserialize(deserializer)?;
 
         let uncompressed_byte = hex::decode(&temp.uncompressed).unwrap();
