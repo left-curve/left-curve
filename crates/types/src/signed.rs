@@ -2,8 +2,8 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Inner,
-        IntPerDec, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult, Uint,
-        Uint128, Uint256, Uint64,
+        MultiplyFraction, MultiplyRatio, Number, NumberConst, Rational, Sign, StdError, StdResult,
+        Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
@@ -368,33 +368,33 @@ where
 }
 
 // --- IntPerDecimal ---
-impl<T, AsT, DR> IntPerDec<T, AsT, DR> for Signed<T>
+impl<T, AsT, F> MultiplyFraction<F, AsT> for Signed<T>
 where
     T: MultiplyRatio + From<Uint<AsT>>,
-    DR: Rational<AsT> + Sign + Copy,
+    F: Rational<AsT> + Sign + Copy,
     AsT: NumberConst + Number,
 {
-    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
+    fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
+            .checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
-    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
+    fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
+            .checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
-    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
+    fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
+            .checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
-    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
+    fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
+            .checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 }
@@ -559,10 +559,10 @@ generate_signed!(
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
-    use crate::{
-        Decimal128, Int128, IntPerDec, Number, NumberConst, SignedDecimal128, SignedDecimal256,
+    use {
+        super::*,
+        crate::{Decimal128, Int128, SignedDecimal128, SignedDecimal256},
+        std::str::FromStr,
     };
 
     #[test]

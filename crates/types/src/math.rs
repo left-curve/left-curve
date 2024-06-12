@@ -150,14 +150,17 @@ pub trait MultiplyRatio: Sized {
 }
 
 /// Describes operations between a number and a decimal type.
-pub trait IntPerDec<U, AsU, DR>: Sized {
-    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
+pub trait MultiplyFraction<F, U>: Sized
+where
+    F: Rational<U>,
+{
+    fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self>;
 
-    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+    fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self>;
 
-    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
+    fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self>;
 
-    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+    fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self>;
 }
 
 // ------------------------------ implementations ------------------------------

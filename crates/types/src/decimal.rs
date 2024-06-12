@@ -2,8 +2,8 @@ use {
     crate::{
         forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
         generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
-        impl_number, Inner, IntPerDec, MultiplyRatio, NextNumber, Number, NumberConst, Rational,
-        Sign, StdError, StdResult, Uint,
+        impl_number, Inner, MultiplyRatio, NextNumber, Number, NumberConst, Rational, Sign,
+        StdError, StdResult, Uint,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -354,31 +354,6 @@ where
 
     fn denominator() -> Uint<U> {
         Self::decimal_fraction()
-    }
-}
-
-// --- IntperDecimal ---
-impl<U, AsU, DR> IntPerDec<U, AsU, DR> for Uint<U>
-where
-    Uint<U>: MultiplyRatio,
-    Uint<AsU>: Into<Uint<U>>,
-    DR: Rational<AsU>,
-    AsU: NumberConst + Number,
-{
-    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
-        self.checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
-    }
-
-    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
-        self.checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
-    }
-
-    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
-        self.checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
-    }
-
-    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
-        self.checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
     }
 }
 
