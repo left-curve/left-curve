@@ -505,7 +505,6 @@ where
     type Value = Decimal<U, S>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // TODO: Change this message in base at the type of U
         f.write_str("string-encoded decimal")
     }
 

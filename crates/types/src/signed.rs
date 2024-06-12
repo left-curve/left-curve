@@ -348,7 +348,6 @@ where
     }
 }
 
-// --- Fraction ---
 impl<T, AsT> Fraction<AsT> for Signed<T>
 where
     T: Fraction<AsT>,
@@ -362,7 +361,6 @@ where
     }
 }
 
-// --- IntPerDecimal ---
 impl<T, AsT, F> MultiplyFraction<F, AsT> for Signed<T>
 where
     T: MultiplyRatio + From<Uint<AsT>>,
@@ -394,7 +392,6 @@ where
     }
 }
 
-// --- Display ---
 impl<T> Display for Signed<T>
 where
     T: Number + Display,
@@ -408,7 +405,6 @@ where
     }
 }
 
-// --- FromStr ---
 impl<T> FromStr for Signed<T>
 where
     T: FromStr<Err = StdError>,
@@ -424,7 +420,6 @@ where
     }
 }
 
-// --- Neg ---
 impl<T> Neg for Signed<T> {
     type Output = Self;
 
@@ -433,7 +428,6 @@ impl<T> Neg for Signed<T> {
     }
 }
 
-// --- PartialEq ---
 impl<T> PartialEq for Signed<T>
 where
     T: Number + PartialEq + Copy,
@@ -447,10 +441,8 @@ where
     }
 }
 
-// --- Eq ---
 impl<T> Eq for Signed<T> where T: Number + PartialEq + Copy {}
 
-// --- PartialOrd ---
 impl<T> PartialOrd for Signed<T>
 where
     T: Ord + Number + Copy,
@@ -460,7 +452,6 @@ where
     }
 }
 
-// --- Ord ---
 impl<T> Ord for Signed<T>
 where
     T: Ord + Number + Copy,
