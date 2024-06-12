@@ -1,6 +1,6 @@
 use {
     crate::{
-        call_inner, forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
+        forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
         generate_decimal_per, generate_unchecked, impl_all_ops_and_assign, impl_assign_number,
         impl_number, Inner, IntPerDec, MultiplyRatio, NextNumber, Number, NumberConst, Rational,
         Sign, StdError, StdResult, Uint,
@@ -209,32 +209,26 @@ where
     <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
     U: NumberConst + Clone + PartialEq + Copy + FromStr,
 {
-    call_inner!(fn checked_add,    field 0, => Result<Self>);
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
 
-    call_inner!(fn checked_sub,    field 0, => Result<Self>);
+    fn abs(self) -> Self {
+        // `Decimal` represents an unsigned decimal number, so the absolute
+        // value is sipmly itself.
+        self
+    }
 
-    call_inner!(fn wrapping_add,   field 0, => Self);
+    fn checked_add(self, other: Self) -> StdResult<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
 
-    call_inner!(fn wrapping_sub,   field 0, => Self);
-
-    call_inner!(fn wrapping_mul,   field 0, => Self);
-
-    call_inner!(fn wrapping_pow,   arg u32, => Self);
-
-    call_inner!(fn saturating_add, field 0, => Self);
-
-    call_inner!(fn saturating_sub, field 0, => Self);
-
-    call_inner!(fn saturating_mul, field 0, => Self);
-
-    call_inner!(fn saturating_pow, arg u32, => Self);
-
-    call_inner!(fn abs,                     => Self);
-
-    call_inner!(fn is_zero,                 => bool);
+    fn checked_sub(self, other: Self) -> StdResult<Self> {
+        self.0.checked_sub(other.0).map(Self)
+    }
 
     fn checked_mul(self, other: Self) -> StdResult<Self> {
-        let numerator = self.0.full_mul(other.numerator());
+        let numerator = self.0.checked_full_mul(other.numerator())?;
         let denominator = <Uint<U> as NextNumber>::Next::from(Self::decimal_fraction());
         let next_result = numerator.checked_div(denominator)?;
         Uint::<U>::try_from(next_result.clone())
@@ -293,6 +287,38 @@ where
             }).transpose()?
             // TODO: add a StdError variant to handle this?
             .ok_or(StdError::Generic("Sqrt failed".to_string()))
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
+    fn wrapping_sub(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
+    }
+
+    fn wrapping_mul(self, other: Self) -> Self {
+        Self(self.0.wrapping_mul(other.0))
+    }
+
+    fn wrapping_pow(self, other: u32) -> Self {
+        Self(self.0.wrapping_pow(other))
+    }
+
+    fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+
+    fn saturating_mul(self, other: Self) -> Self {
+        Self(self.0.saturating_mul(other.0))
+    }
+
+    fn saturating_pow(self, other: u32) -> Self {
+        Self(self.0.saturating_pow(other))
     }
 }
 

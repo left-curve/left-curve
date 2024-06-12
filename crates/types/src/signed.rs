@@ -75,6 +75,14 @@ where
     T: Number + PartialOrd + NumberConst + Copy + Sub<Output = T>,
     Self: Display,
 {
+    fn is_zero(&self) -> bool {
+        self.inner.is_zero()
+    }
+
+    fn abs(self) -> Self {
+        Self::new_positive(self.inner)
+    }
+
     fn checked_add(self, other: Self) -> StdResult<Self> {
         match (self.is_positive, other.is_positive) {
             (true, true) => self.inner.checked_add(other.inner).map(Self::new_positive),
@@ -319,14 +327,6 @@ where
         };
         let result = self.inner.saturating_pow(other);
         Self::new(result, pow_sign)
-    }
-
-    fn abs(self) -> Self {
-        Self::new_positive(self.inner)
-    }
-
-    fn is_zero(self) -> bool {
-        self.inner.is_zero()
     }
 
     fn checked_sqrt(self) -> crate::StdResult<Self> {

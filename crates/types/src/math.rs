@@ -93,7 +93,12 @@ impl_bytable_bnum!(U512, 64);
 
 // -------------------------------- checked ops --------------------------------
 
+/// Describes methods that all math types must implement.
 pub trait Number: Sized {
+    fn is_zero(&self) -> bool;
+
+    fn abs(self) -> Self;
+
     fn checked_add(self, other: Self) -> StdResult<Self>;
 
     fn checked_sub(self, other: Self) -> StdResult<Self>;
@@ -123,13 +128,10 @@ pub trait Number: Sized {
     fn saturating_mul(self, other: Self) -> Self;
 
     fn saturating_pow(self, other: u32) -> Self;
-
-    fn abs(self) -> Self;
-
-    #[allow(clippy::wrong_self_convention)]
-    fn is_zero(self) -> bool;
 }
 
+/// Describes methods that integer types must implement, which may not be
+/// relevant for non-integer types.
 pub trait Integer: Sized {
     fn checked_ilog2(self) -> StdResult<u32>;
 
@@ -155,22 +157,6 @@ pub trait IntPerDec<U, AsU, DR>: Sized {
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
 
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
-
-    fn mul_dec_floor(self, rhs: DR) -> Self {
-        self.checked_mul_dec_floor(rhs).unwrap()
-    }
-
-    fn mul_dec_ceil(self, rhs: DR) -> Self {
-        self.checked_mul_dec_ceil(rhs).unwrap()
-    }
-
-    fn div_dec_floor(self, rhs: DR) -> Self {
-        self.checked_div_dec_floor(rhs).unwrap()
-    }
-
-    fn div_dec_ceil(self, rhs: DR) -> Self {
-        self.checked_div_dec_ceil(rhs).unwrap()
-    }
 }
 
 pub trait MultiplyRatio: Sized {

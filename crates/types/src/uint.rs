@@ -1,6 +1,6 @@
 use {
     crate::{
-        call_inner, forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
+        forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
         impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
         impl_number, Bytable, Inner, Integer, MultiplyRatio, NextNumber, Number, NumberConst, Sign,
         StdError, StdResult,
@@ -104,23 +104,75 @@ impl<U> Number for Uint<U>
 where
     U: Number,
 {
-    call_inner!(fn checked_add,    field 0, => Result<Self>);
-    call_inner!(fn checked_sub,    field 0, => Result<Self>);
-    call_inner!(fn checked_mul,    field 0, => Result<Self>);
-    call_inner!(fn checked_div,    field 0, => Result<Self>);
-    call_inner!(fn checked_rem,    field 0, => Result<Self>);
-    call_inner!(fn checked_pow,    arg u32, => Result<Self>);
-    call_inner!(fn wrapping_add,   field 0, => Self);
-    call_inner!(fn wrapping_sub,   field 0, => Self);
-    call_inner!(fn wrapping_mul,   field 0, => Self);
-    call_inner!(fn wrapping_pow,   arg u32, => Self);
-    call_inner!(fn saturating_add, field 0, => Self);
-    call_inner!(fn saturating_sub, field 0, => Self);
-    call_inner!(fn saturating_mul, field 0, => Self);
-    call_inner!(fn saturating_pow, arg u32, => Self);
-    call_inner!(fn abs,                     => Self);
-    call_inner!(fn is_zero,                 => bool);
-    call_inner!(fn checked_sqrt,            => Result<Self>);
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+
+    fn abs(self) -> Self {
+        // `Uint` represents an unsigned integer, so the absolute value is
+        // sipmly itself.
+        self
+    }
+
+    fn checked_add(self, other: Self) -> StdResult<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
+    fn checked_sub(self, other: Self) -> StdResult<Self> {
+        self.0.checked_sub(other.0).map(Self)
+    }
+
+    fn checked_mul(self, other: Self) -> StdResult<Self> {
+        self.0.checked_mul(other.0).map(Self)
+    }
+
+    fn checked_div(self, other: Self) -> StdResult<Self> {
+        self.0.checked_div(other.0).map(Self)
+    }
+
+    fn checked_rem(self, other: Self) -> StdResult<Self> {
+        self.0.checked_rem(other.0).map(Self)
+    }
+
+    fn checked_pow(self, other: u32) -> StdResult<Self> {
+        self.0.checked_pow(other).map(Self)
+    }
+
+    fn checked_sqrt(self) -> StdResult<Self> {
+        self.0.checked_sqrt().map(Self)
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
+    fn wrapping_sub(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
+    }
+
+    fn wrapping_mul(self, other: Self) -> Self {
+        Self(self.0.wrapping_mul(other.0))
+    }
+
+    fn wrapping_pow(self, other: u32) -> Self {
+        Self(self.0.wrapping_pow(other))
+    }
+
+    fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+
+    fn saturating_mul(self, other: Self) -> Self {
+        Self(self.0.saturating_mul(other.0))
+    }
+
+    fn saturating_pow(self, other: u32) -> Self {
+        Self(self.0.saturating_pow(other))
+    }
 }
 
 // --- Integer ---
@@ -129,10 +181,21 @@ impl<U> Integer for Uint<U>
 where
     U: Integer,
 {
-    call_inner!(fn checked_shl, arg u32, => Result<Self>);
-    call_inner!(fn checked_shr, arg u32, => Result<Self>);
-    call_inner!(fn checked_ilog2,        => StdResult<u32>);
-    call_inner!(fn checked_ilog10,       => StdResult<u32>);
+    fn checked_ilog2(self) -> StdResult<u32> {
+        self.0.checked_ilog2()
+    }
+
+    fn checked_ilog10(self) -> StdResult<u32> {
+        self.0.checked_ilog10()
+    }
+
+    fn checked_shl(self, other: u32) -> StdResult<Self> {
+        self.0.checked_shl(other).map(Self)
+    }
+
+    fn checked_shr(self, other: u32) -> StdResult<Self> {
+        self.0.checked_shr(other).map(Self)
+    }
 }
 
 // --- full_mull ---
@@ -155,10 +218,6 @@ where
         let s = <Uint<U> as NextNumber>::Next::from(self);
         let r = <Uint<U> as NextNumber>::Next::from(rhs.into());
         s.checked_mul(r)
-    }
-
-    pub fn full_mul(self, rhs: impl Into<Self>) -> <Uint<U> as NextNumber>::Next {
-        self.checked_full_mul(rhs).unwrap()
     }
 }
 

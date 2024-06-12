@@ -485,6 +485,14 @@ macro_rules! impl_integer_number {
         where
             $t: NumberConst,
         {
+            fn is_zero(&self) -> bool {
+                *self == Self::ZERO
+            }
+
+            fn abs(self) -> Self {
+                self
+            }
+
             fn checked_add(self, other: Self) -> StdResult<Self> {
                 self.checked_add(other)
                     .ok_or_else(|| StdError::overflow_add(self, other))
@@ -560,14 +568,6 @@ macro_rules! impl_integer_number {
 
             fn saturating_pow(self, other: u32) -> Self {
                 self.saturating_pow(other)
-            }
-
-            fn is_zero(self) -> bool {
-                self == Self::ZERO
-            }
-
-            fn abs(self) -> Self {
-                self
             }
         }
 
@@ -786,56 +786,6 @@ macro_rules! impl_assign_integer {
                     .$sub_method(other)
                     .unwrap_or_else(|err| panic!("{err}"))
             }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! call_inner {
-    (fn $op:ident,arg $other:ident, => Result < Self >) => {
-        fn $op(self, other: $other) -> StdResult<Self> {
-            self.0.$op(other).map(|val| Self(val))
-        }
-    };
-
-    (fn $op:ident,arg $other:ident, => Self) => {
-        fn $op(self, other: $other) -> Self {
-            Self(self.0.$op(other))
-        }
-    };
-
-    (fn $op:ident,field $inner:tt, => Result < Self >) => {
-        fn $op(self, other: Self) -> StdResult<Self> {
-            self.0.$op(other.$inner).map(|val| Self(val))
-        }
-    };
-
-    (fn $op:ident,field $inner:tt, => Self) => {
-        fn $op(self, other: Self) -> Self {
-            Self(self.0.$op(other.$inner))
-        }
-    };
-
-    (fn $op:ident, => Self) => {
-        fn $op(self) -> Self {
-            Self(self.0.$op())
-        }
-    };
-
-    (fn $op:ident, => Result < Self >) => {
-        fn $op(self) -> StdResult<Self> {
-            self.0.$op().map(Self)
-        }
-    };
-
-    (fn $op:ident, => $out:ty) => {
-        fn $op(self) -> $out {
-            self.0.$op()
-        }
-    };
-    (fn $op:ident, => $out:ty) => {
-        fn $op(self) -> $out {
-            self.0.$op()
         }
     };
 }
