@@ -6,7 +6,9 @@ use {
     bnum::types::{U256, U512},
 };
 
-/// Describes the inner type of the [`Uint`].
+// ---------------------------------- traits -----------------------------------
+
+/// Describes a type that wraps another type.
 ///
 /// This trait is used in [`generate_uint!`](crate::generate_uint!) and
 /// [`generate_decimal!`](crate::generate_decimal!) to get the inner type of a
@@ -24,6 +26,12 @@ pub trait NextNumber: Sized + TryFrom<Self::Next> {
     type Next: From<Self>;
 }
 
+/// Describes a number that can take on negative values.
+/// Zero is considered non-negative, for which this should return `false`.
+pub trait Sign {
+    fn is_negative(&self) -> bool;
+}
+
 /// Describes a number that can be expressed as the quotient or fraction of two
 /// integers.
 ///
@@ -35,14 +43,8 @@ pub trait Rational<U> {
     fn denominator() -> Uint<U>;
 }
 
-/// Describes a number that can take on negative values.
-/// Zero is considered non-negative, for which this should return `false`.
-pub trait Sign {
-    fn is_negative(&self) -> bool;
-}
-
-// ------------------------------- number const --------------------------------
-
+/// Describes a number's associated constants: minimum and maximum; zero, one,
+/// and ten.
 pub trait NumberConst {
     const MIN: Self;
     const MAX: Self;
@@ -51,13 +53,7 @@ pub trait NumberConst {
     const ZERO: Self;
 }
 
-impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
-impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
-impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
-impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
-
-// ---------------------------------- bytable ----------------------------------
-
+/// Describes a number that can be convert to and from raw binary representations.
 pub trait Bytable<const S: usize>: Sized {
     const LEN: usize = S;
 
@@ -86,14 +82,7 @@ pub trait Bytable<const S: usize>: Sized {
     }
 }
 
-impl_bytable_std!(u64, 8);
-impl_bytable_std!(u128, 16);
-impl_bytable_bnum!(U256, 32);
-impl_bytable_bnum!(U512, 64);
-
-// -------------------------------- checked ops --------------------------------
-
-/// Describes methods that all math types must implement.
+/// Describes basic operations that all math types must implement.
 pub trait Number: Sized {
     fn is_zero(&self) -> bool;
 
@@ -130,7 +119,7 @@ pub trait Number: Sized {
     fn saturating_pow(self, other: u32) -> Self;
 }
 
-/// Describes methods that integer types must implement, which may not be
+/// Describes operations that integer types must implement, which may not be
 /// relevant for non-integer types.
 pub trait Integer: Sized {
     fn checked_ilog2(self) -> StdResult<u32>;
@@ -142,23 +131,10 @@ pub trait Integer: Sized {
     fn checked_shr(self, other: u32) -> StdResult<Self>;
 }
 
-impl_integer_number!(u64);
-impl_integer_number!(u128);
-impl_integer_number!(U256);
-impl_integer_number!(U512);
-
-// --------------------------- flooring and ceiling ----------------------------
-
-pub trait IntPerDec<U, AsU, DR>: Sized {
-    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
-
-    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
-
-    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
-
-    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
-}
-
+/// Describes operations where a number is multiplied by a numerator then
+/// immediately divided by a denominator.
+/// This is different from applying a multiplication and a division sequentially,
+/// because the multiplication part can overflow.
 pub trait MultiplyRatio: Sized {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
@@ -172,6 +148,34 @@ pub trait MultiplyRatio: Sized {
         denominator: B,
     ) -> StdResult<Self>;
 }
+
+/// Describes operations between a number and a decimal type.
+pub trait IntPerDec<U, AsU, DR>: Sized {
+    fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self>;
+
+    fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+
+    fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self>;
+
+    fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self>;
+}
+
+// ------------------------------ implementations ------------------------------
+
+impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
+impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
+impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
+impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
+
+impl_bytable_std!(u64, 8);
+impl_bytable_std!(u128, 16);
+impl_bytable_bnum!(U256, 32);
+impl_bytable_bnum!(U512, 64);
+
+impl_integer_number!(u64);
+impl_integer_number!(u128);
+impl_integer_number!(U256);
+impl_integer_number!(U512);
 
 // ----------------------------------- tests -----------------------------------
 
