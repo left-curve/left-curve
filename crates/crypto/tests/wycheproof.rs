@@ -43,7 +43,7 @@ impl<'de> Deserialize<'de> for Key {
 
         let uncompressed_byte = hex::decode(&temp.uncompressed).unwrap();
 
-        // Since this struct is both used from the sepc256k1 and sepc256r1 tests, we need to check the length of the key
+        // Since this struct is both used from the sepc256k1 and sepc256r1 tests, try to verify the key in one of the two formats or return an error
         let compressed =
             // sep256k1
             if let Ok(vk) = k256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
