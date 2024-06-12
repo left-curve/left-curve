@@ -22,7 +22,7 @@ use {
 pub struct Signed<T> {
     /// The number's absolute value. Should be an _unsigned_ number type, such
     /// as `Uint<T>` or `Decimal<T>`.
-    pub(crate) inner: T,
+    pub(crate) abs: T,
     /// Whether this number is negative. Irrelevant if absolute value is zero.
     ///
     /// This means zero can have two valid representations: `+0` and `-0`.
@@ -33,20 +33,20 @@ pub struct Signed<T> {
 
 // --- Init ---
 impl<T> Signed<T> {
-    pub const fn new(inner: T, negative: bool) -> Self {
-        Self { inner, negative }
+    pub const fn new(abs: T, negative: bool) -> Self {
+        Self { abs, negative }
     }
 
-    pub const fn new_positive(inner: T) -> Self {
+    pub const fn new_positive(abs: T) -> Self {
         Self {
-            inner,
+            abs,
             negative: false,
         }
     }
 
-    pub const fn new_negative(inner: T) -> Self {
+    pub const fn new_negative(abs: T) -> Self {
         Self {
-            inner,
+            abs,
             negative: true,
         }
     }
@@ -83,71 +83,71 @@ where
     Self: Display,
 {
     fn is_zero(&self) -> bool {
-        self.inner.is_zero()
+        self.abs.is_zero()
     }
 
     fn abs(self) -> Self {
-        Self::new_positive(self.inner)
+        Self::new_positive(self.abs)
     }
 
     fn checked_add(self, other: Self) -> StdResult<Self> {
         match (self.is_negative(), other.is_negative()) {
-            (false, false) => self.inner.checked_add(other.inner).map(Self::new_positive),
+            (false, false) => self.abs.checked_add(other.abs).map(Self::new_positive),
             (false, true) => {
-                if self.inner > other.inner {
-                    self.inner.checked_sub(other.inner).map(Self::new_positive)
+                if self.abs > other.abs {
+                    self.abs.checked_sub(other.abs).map(Self::new_positive)
                 } else {
-                    other.inner.checked_sub(self.inner).map(Self::new_negative)
+                    other.abs.checked_sub(self.abs).map(Self::new_negative)
                 }
             },
             (true, false) => {
-                if self.inner > other.inner {
-                    self.inner.checked_sub(other.inner).map(Self::new_negative)
+                if self.abs > other.abs {
+                    self.abs.checked_sub(other.abs).map(Self::new_negative)
                 } else {
-                    other.inner.checked_sub(self.inner).map(Self::new_positive)
+                    other.abs.checked_sub(self.abs).map(Self::new_positive)
                 }
             },
-            (true, true) => self.inner.checked_add(other.inner).map(Self::new_negative),
+            (true, true) => self.abs.checked_add(other.abs).map(Self::new_negative),
         }
     }
 
     fn checked_sub(self, other: Self) -> StdResult<Self> {
         match (self.is_negative(), other.is_negative()) {
             (false, false) => {
-                if self.inner > other.inner {
-                    self.inner.checked_sub(other.inner).map(Self::new_positive)
+                if self.abs > other.abs {
+                    self.abs.checked_sub(other.abs).map(Self::new_positive)
                 } else {
-                    other.inner.checked_sub(self.inner).map(Self::new_negative)
+                    other.abs.checked_sub(self.abs).map(Self::new_negative)
                 }
             },
-            (false, true) => self.inner.checked_add(other.inner).map(Self::new_positive),
-            (true, false) => self.inner.checked_add(other.inner).map(Self::new_negative),
+            (false, true) => self.abs.checked_add(other.abs).map(Self::new_positive),
+            (true, false) => self.abs.checked_add(other.abs).map(Self::new_negative),
             (true, true) => {
-                if self.inner > other.inner {
-                    self.inner.checked_sub(other.inner).map(Self::new_negative)
+                if self.abs > other.abs {
+                    self.abs.checked_sub(other.abs).map(Self::new_negative)
                 } else {
-                    other.inner.checked_sub(self.inner).map(Self::new_positive)
+                    other.abs.checked_sub(self.abs).map(Self::new_positive)
                 }
             },
         }
     }
 
     fn checked_mul(self, other: Self) -> StdResult<Self> {
-        self.inner
-            .checked_mul(other.inner)
+        self.abs
+            .checked_mul(other.abs)
             .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
     }
 
     fn checked_div(self, other: Self) -> StdResult<Self> {
-        self.inner
-            .checked_div(other.inner)
+        self.abs
+            .checked_div(other.abs)
             .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
     }
 
     /// On signed number, the remainder sign is the same as the dividend.
     fn checked_rem(self, other: Self) -> StdResult<Self> {
-        self.inner
-            .checked_rem(other.inner)
+        self.abs
+            .checked_rem(other.abs)
             .map(|val| Self::new(val, self.is_negative()))
     }
 
@@ -159,7 +159,7 @@ where
         } else {
             self.is_negative()
         };
-        self.inner
+        self.abs
             .checked_pow(other)
             .map(|inner| Self::new(inner, negative))
     }
@@ -168,9 +168,9 @@ where
         match (self.is_negative(), other.is_negative()) {
             // + + + => + + | Wrapping is possible
             (false, false) => {
-                let result = self.inner.wrapping_add(other.inner);
+                let result = self.abs.wrapping_add(other.abs);
                 // Wrapped occurred
-                if result < self.inner {
+                if result < self.abs {
                     Self::new_negative(T::MAX - result)
                 } else {
                     Self::new_positive(result)
@@ -178,25 +178,25 @@ where
             },
             // + + - => + - | Wrapping is not possible
             (false, true) => {
-                if self.inner > other.inner {
-                    Self::new_positive(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_positive(self.abs - other.abs)
                 } else {
-                    Self::new_negative(other.inner - self.inner)
+                    Self::new_negative(other.abs - self.abs)
                 }
             },
             // - + + => - + | Wrapping is not possible
             (true, false) => {
-                if self.inner > other.inner {
-                    Self::new_negative(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_negative(self.abs - other.abs)
                 } else {
-                    Self::new_positive(other.inner - self.inner)
+                    Self::new_positive(other.abs - self.abs)
                 }
             },
             // - + - => - - | Wrapping is possible
             (true, true) => {
-                let result = self.inner.wrapping_add(other.inner);
+                let result = self.abs.wrapping_add(other.abs);
                 // Wrapped occurred
-                if result < self.inner {
+                if result < self.abs {
                     Self::new_positive(T::MAX - result)
                 } else {
                     Self::new_negative(result)
@@ -209,17 +209,17 @@ where
         match (self.is_negative(), other.is_negative()) {
             // + - + => + - | Wrapping is not possible
             (false, false) => {
-                if self.inner > other.inner {
-                    Self::new_positive(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_positive(self.abs - other.abs)
                 } else {
-                    Self::new_negative(other.inner - self.inner)
+                    Self::new_negative(other.abs - self.abs)
                 }
             },
             // + - - => + + | Wrapping is possible
             (false, true) => {
-                let result = self.inner.wrapping_add(other.inner);
+                let result = self.abs.wrapping_add(other.abs);
                 // Wrapped occurred
-                if result < self.inner {
+                if result < self.abs {
                     Self::new_negative(T::MAX - result)
                 } else {
                     Self::new_positive(result)
@@ -227,9 +227,9 @@ where
             },
             // - - + => - - | Wrapping is possible
             (true, false) => {
-                let result = self.inner.wrapping_add(other.inner);
+                let result = self.abs.wrapping_add(other.abs);
                 // Wrapped occurred
-                if result < self.inner {
+                if result < self.abs {
                     Self::new_positive(T::MAX - result)
                 } else {
                     Self::new_negative(result)
@@ -237,17 +237,17 @@ where
             },
             // - - - => - + | Wrapping is not possible
             (true, true) => {
-                if self.inner > other.inner {
-                    Self::new_negative(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_negative(self.abs - other.abs)
                 } else {
-                    Self::new_positive(other.inner - self.inner)
+                    Self::new_positive(other.abs - self.abs)
                 }
             },
         }
     }
 
     fn wrapping_mul(self, other: Self) -> Self {
-        let result = self.inner.wrapping_mul(other.inner);
+        let result = self.abs.wrapping_mul(other.abs);
         Self::new(result, self.is_negative() == other.is_negative())
     }
 
@@ -259,7 +259,7 @@ where
         } else {
             self.is_negative()
         };
-        let result = self.inner.wrapping_pow(other);
+        let result = self.abs.wrapping_pow(other);
         Self::new(result, negative)
     }
 
@@ -267,28 +267,28 @@ where
         match (self.is_negative(), other.is_negative()) {
             // + + + => + + | Saturing is possible
             (false, false) => {
-                let result = self.inner.saturating_add(other.inner);
+                let result = self.abs.saturating_add(other.abs);
                 Self::new_positive(result)
             },
             // + + - => + - | Saturing is not possible
             (false, true) => {
-                if self.inner > other.inner {
-                    Self::new_positive(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_positive(self.abs - other.abs)
                 } else {
-                    Self::new_negative(other.inner - self.inner)
+                    Self::new_negative(other.abs - self.abs)
                 }
             },
             // - + + => - + | Saturing is not possible
             (true, false) => {
-                if self.inner > other.inner {
-                    Self::new_negative(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_negative(self.abs - other.abs)
                 } else {
-                    Self::new_positive(other.inner - self.inner)
+                    Self::new_positive(other.abs - self.abs)
                 }
             },
             // - + - => - - | Saturing is possible
             (true, true) => {
-                let result = self.inner.saturating_add(other.inner);
+                let result = self.abs.saturating_add(other.abs);
                 Self::new_negative(result)
             },
         }
@@ -298,35 +298,35 @@ where
         match (self.is_negative(), other.is_negative()) {
             // + - + => + - | Saturing is not possible
             (false, false) => {
-                if self.inner > other.inner {
-                    Self::new_positive(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_positive(self.abs - other.abs)
                 } else {
-                    Self::new_negative(other.inner - self.inner)
+                    Self::new_negative(other.abs - self.abs)
                 }
             },
             // + - - => + + | Saturing is possible
             (false, true) => {
-                let result = self.inner.saturating_mul(other.inner);
+                let result = self.abs.saturating_mul(other.abs);
                 Self::new_positive(result)
             },
             // - - + => - - | Saturing is possible
             (true, false) => {
-                let result = self.inner.saturating_add(other.inner);
+                let result = self.abs.saturating_add(other.abs);
                 Self::new_negative(result)
             },
             // - - - => - + | Saturing is not possible
             (true, true) => {
-                if self.inner > other.inner {
-                    Self::new_negative(self.inner - other.inner)
+                if self.abs > other.abs {
+                    Self::new_negative(self.abs - other.abs)
                 } else {
-                    Self::new_positive(other.inner - self.inner)
+                    Self::new_positive(other.abs - self.abs)
                 }
             },
         }
     }
 
     fn saturating_mul(self, other: Self) -> Self {
-        let result = self.inner.saturating_mul(other.inner);
+        let result = self.abs.saturating_mul(other.abs);
         Self::new(result, self.is_negative() == other.is_negative())
     }
 
@@ -338,7 +338,7 @@ where
         } else {
             self.is_negative()
         };
-        let result = self.inner.saturating_pow(other);
+        let result = self.abs.saturating_pow(other);
         Self::new(result, negative)
     }
 
@@ -349,7 +349,7 @@ where
             return Err(crate::StdError::negative_sqrt::<Self>(self));
         }
 
-        self.inner.checked_sqrt().map(Self::new_positive)
+        self.abs.checked_sqrt().map(Self::new_positive)
     }
 }
 
@@ -359,7 +359,7 @@ where
     T: Rational<AsT>,
 {
     fn numerator(self) -> Uint<AsT> {
-        self.inner.numerator()
+        self.abs.numerator()
     }
 
     fn denominator() -> Uint<AsT> {
@@ -375,25 +375,25 @@ where
     AsT: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
-        self.inner
+        self.abs
             .checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
-        self.inner
+        self.abs
             .checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
-        self.inner
+        self.abs
             .checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
-        self.inner
+        self.abs
             .checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
             .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
@@ -406,9 +406,9 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_negative() {
-            write!(f, "-{}", self.inner)
+            write!(f, "-{}", self.abs)
         } else {
-            write!(f, "{}", self.inner)
+            write!(f, "{}", self.abs)
         }
     }
 }
@@ -434,7 +434,7 @@ impl<T> Neg for Signed<T> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self::new(self.inner, !self.negative)
+        Self::new(self.abs, !self.negative)
     }
 }
 
@@ -445,10 +445,10 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         // Zeroes are always equal, regardless of the sign (+0 = -0)
-        if self.inner.is_zero() && other.inner.is_zero() {
+        if self.abs.is_zero() && other.abs.is_zero() {
             return true;
         }
-        self.inner == other.inner && self.negative == other.negative
+        self.abs == other.abs && self.negative == other.negative
     }
 }
 
@@ -472,22 +472,22 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self.is_negative(), other.is_negative()) {
-            (false, false) => self.inner.cmp(&other.inner),
+            (false, false) => self.abs.cmp(&other.abs),
             (false, true) => {
-                if self.inner.is_zero() && other.inner.is_zero() {
+                if self.abs.is_zero() && other.abs.is_zero() {
                     Ordering::Equal
                 } else {
                     Ordering::Greater
                 }
             },
             (true, false) => {
-                if self.inner.is_zero() && other.inner.is_zero() {
+                if self.abs.is_zero() && other.abs.is_zero() {
                     Ordering::Equal
                 } else {
                     Ordering::Less
                 }
             },
-            (true, true) => other.inner.cmp(&self.inner),
+            (true, true) => other.abs.cmp(&self.abs),
         }
     }
 }

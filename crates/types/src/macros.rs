@@ -242,7 +242,7 @@ macro_rules! generate_signed {
                 if value.is_negative() {
                     Err(StdError::overflow_conversion::<_, $inner>(value))
                 } else {
-                    Ok(value.inner)
+                    Ok(value.abs)
                 }
             }
         }
@@ -255,7 +255,7 @@ macro_rules! generate_signed {
             // Ex: From<Int64> for Int128
             impl From<$from_signed> for $name {
                 fn from(value: $from_signed) -> Self {
-                    Self::new(value.inner.into(), value.is_negative())
+                    Self::new(value.abs.into(), value.is_negative())
                 }
             }
 
@@ -278,7 +278,7 @@ macro_rules! generate_signed {
                 type Error = StdError;
 
                 fn try_from(value: $name) -> StdResult<$from_signed> {
-                    <$from_signed as Inner>::U::try_from(value.inner)
+                    <$from_signed as Inner>::U::try_from(value.abs)
                         .map(|val| Self::new(val, value.is_negative()))
                         .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
                 }
@@ -292,7 +292,7 @@ macro_rules! generate_signed {
                     if value.is_negative() {
                         return Err(StdError::overflow_conversion::<_, $name>(value))
                     }
-                    <$from_signed as Inner>::U::try_from(value.inner)
+                    <$from_signed as Inner>::U::try_from(value.abs)
                         .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
                 }
             }
@@ -305,7 +305,7 @@ macro_rules! generate_signed {
                     if value.is_negative() {
                         return Err(StdError::overflow_conversion::<_, $name>(value))
                     }
-                    <<$from_signed as Inner>::U as Inner>::U::try_from(value.inner)
+                    <<$from_signed as Inner>::U as Inner>::U::try_from(value.abs)
                         .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
                 }
             }
@@ -329,7 +329,7 @@ macro_rules! generate_signed {
                 type Error = StdError;
 
                 fn try_from(value: $name) -> StdResult<$from_std> {
-                    <$from_std>::try_from(value.inner)
+                    <$from_std>::try_from(value.abs)
                         .map_err(|_| StdError::overflow_conversion::<_, $from_std>(value))
                 }
             }
