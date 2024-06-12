@@ -89,8 +89,9 @@ impl Api for MockApi {
         msg_hash: &[u8],
         sig: &[u8],
         recovery_id: u8,
+        compressed: bool,
     ) -> StdResult<Vec<u8>> {
-        secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
+        secp256k1_pubkey_recover(msg_hash, sig, recovery_id, compressed)
             .map_err(|_| StdError::VerificationFailed)
     }
 

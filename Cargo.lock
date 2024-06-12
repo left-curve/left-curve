@@ -1373,10 +1373,14 @@ version = "0.0.0"
 dependencies = [
  "digest 0.10.7",
  "ed25519-dalek",
+ "hex",
  "k256",
  "p256",
  "rand",
+ "serde",
+ "serde_json",
  "sha2 0.10.8",
+ "sha3",
  "signature",
  "thiserror",
 ]
@@ -1593,6 +1597,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "hex-literal"
@@ -3013,6 +3020,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest 0.10.7",
+]
+
+[[package]]
+name = "sha3"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
+dependencies = [
+ "digest 0.10.7",
+ "keccak",
 ]
 
 [[package]]

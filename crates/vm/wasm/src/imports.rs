@@ -175,13 +175,20 @@ pub fn secp256k1_pubkey_recover(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     recovery_id: u8,
+    compressed: u8,
 ) -> VmResult<u32> {
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &wasm_store, msg_hash_ptr)?;
     let sig = read_from_memory(env, &wasm_store, sig_ptr)?;
 
-    match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id) {
+    let compressed = match compressed {
+        0 => false,
+        1 => true,
+        _ => return Ok(0),
+    };
+
+    match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
         Ok(pk) => write_to_memory(env, &mut wasm_store, &pk),
         Err(_) => Ok(0),
     }

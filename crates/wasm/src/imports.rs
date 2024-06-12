@@ -36,7 +36,12 @@ extern "C" {
     // return value of 0 means ok; any value other than 0 means error.
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-    fn secp256k1_pubkey_recover(msg_hash_ptr: usize, sig_ptr: usize, recovery_id: u8) -> usize;
+    fn secp256k1_pubkey_recover(
+        msg_hash_ptr: usize,
+        sig_ptr: usize,
+        recovery_id: u8,
+        compressed: u8,
+    ) -> usize;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
 }
@@ -232,6 +237,7 @@ impl Api for ExternalApi {
         msg_hash: &[u8],
         sig: &[u8],
         recovery_id: u8,
+        compressed: bool,
     ) -> StdResult<Vec<u8>> {
         let msg_hash_region = Region::build(msg_hash);
         let msg_hash_ptr = &*msg_hash_region as *const Region;
@@ -240,7 +246,12 @@ impl Api for ExternalApi {
         let sig_ptr = &*sig_region as *const Region;
 
         let pk_ptr = unsafe {
-            secp256k1_pubkey_recover(msg_hash_ptr as usize, sig_ptr as usize, recovery_id)
+            secp256k1_pubkey_recover(
+                msg_hash_ptr as usize,
+                sig_ptr as usize,
+                recovery_id,
+                compressed as u8,
+            )
         };
 
         if pk_ptr == 0 {

@@ -102,7 +102,7 @@ impl SigningKey {
     }
 
     pub fn sign_digest(&self, digest: &[u8; 32]) -> Vec<u8> {
-        let digest = Identity256::from_bytes(digest);
+        let digest = Identity256::from(*digest);
         let signature: Signature = self.inner.sign_digest(digest);
         signature.to_vec()
     }

@@ -126,6 +126,7 @@ pub trait Api {
         msg_hash: &[u8],
         sig: &[u8],
         recovery_id: u8,
+        compressed: bool,
     ) -> StdResult<Vec<u8>>;
 
     /// Verify an ED25519 signature with the given hashed message and public

@@ -1,9 +1,10 @@
 use {
-    crate::{to_sized, CryptoError, CryptoResult, Identity256},
+    crate::{to_sized, validate_length, CryptoError, CryptoResult, Identity256},
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
-const SECP256K1_PUBKEY_LEN: usize = 33;
+const SECP256K1_PUBKEY_COMPRESSED_LEN: usize = 33;
+const SECP256K1_PUBKEY_UNCOMPRESSES_LEN: usize = 65;
 const SECP256K1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
@@ -11,10 +12,22 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg = Identity256::from_slice(msg_hash)?;
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let sig = Signature::from_bytes(&sig.into())?;
+    let mut sig = Signature::from_bytes(&sig.into())?;
 
-    let vk = to_sized::<SECP256K1_PUBKEY_LEN>(pk)?;
-    let vk = VerifyingKey::from_sec1_bytes(&vk)?;
+    // High-S signatures require normalization since our verification implementation
+    // rejects them by default. If we had a verifier that does not restrict to
+    // low-S only, this step was not needed.
+    if let Some(normalized) = sig.normalize_s() {
+        sig = normalized;
+    }
+
+    validate_length!(
+        pk,
+        SECP256K1_PUBKEY_COMPRESSED_LEN,
+        SECP256K1_PUBKEY_UNCOMPRESSES_LEN
+    )?;
+
+    let vk = VerifyingKey::from_sec1_bytes(pk)?;
 
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
@@ -35,6 +48,7 @@ pub fn secp256k1_pubkey_recover(
     msg_hash: &[u8],
     sig: &[u8],
     recovery_id: u8,
+    compressed: bool,
 ) -> CryptoResult<Vec<u8>> {
     let msg = Identity256::from_slice(msg_hash)?;
 
@@ -54,7 +68,7 @@ pub fn secp256k1_pubkey_recover(
 
     // Convert the public key to SEC1 bytes
     VerifyingKey::recover_from_digest(msg, &sig, id)
-        .map(|vk| vk.to_sec1_bytes().to_vec())
+        .map(|vk| vk.to_encoded_point(compressed).to_bytes().into())
         .map_err(Into::into)
 }
 
@@ -64,7 +78,7 @@ pub fn secp256k1_pubkey_recover(
 mod tests {
     use {
         super::*,
-        crate::identity_digest::hash,
+        crate::sha256,
         k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
         rand::rngs::OsRng,
     };
@@ -75,7 +89,7 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = hash(prehash_msg);
+        let msg = Identity256::from(sha256(prehash_msg));
         let sig: Signature = sk.sign_digest(msg.clone());
 
         // valid signature
@@ -97,10 +111,8 @@ mod tests {
 
         // incorrect message
         let false_prehash_msg = b"Larry";
-        let false_msg = hash(false_prehash_msg);
-        assert!(
-            secp256k1_verify(false_msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
-        );
+        let false_msg = sha256(false_prehash_msg);
+        assert!(secp256k1_verify(&false_msg, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
     }
 
     #[test]
@@ -109,15 +121,25 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = hash(prehash_msg);
+        let msg = Identity256::from(sha256(prehash_msg));
         let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
 
         let recovered_pk = secp256k1_pubkey_recover(
             msg.as_bytes(),
             sig.to_vec().as_slice(),
             recovery_id.to_byte(),
+            true,
         )
         .unwrap();
-        assert_eq!(recovered_pk, vk.to_sec1_bytes().to_vec());
+        assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
+
+        let recovered_pk = secp256k1_pubkey_recover(
+            msg.as_bytes(),
+            sig.to_vec().as_slice(),
+            recovery_id.to_byte(),
+            false,
+        )
+        .unwrap();
+        assert_eq!(recovered_pk, vk.to_encoded_point(false).as_bytes());
     }
 }
