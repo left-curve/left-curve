@@ -113,8 +113,8 @@ where
 
 // --- Sign ---
 impl<U, const S: usize> Sign for Decimal<U, S> {
-    fn is_positive(&self) -> bool {
-        true
+    fn is_negative(&self) -> bool {
+        false
     }
 }
 

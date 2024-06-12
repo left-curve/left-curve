@@ -20,35 +20,42 @@ use {
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy)]
 pub struct Signed<T> {
+    /// The number's absolute value. Should be an _unsigned_ number type, such
+    /// as `Uint<T>` or `Decimal<T>`.
     pub(crate) inner: T,
-    pub(crate) is_positive: bool,
+    /// Whether this number is negative. Irrelevant if absolute value is zero.
+    ///
+    /// This means zero can have two valid representations: `+0` and `-0`.
+    /// We must be careful when implementing the `PartialEq` trait to account
+    /// for this situation.
+    pub(crate) negative: bool,
 }
 
 // --- Init ---
 impl<T> Signed<T> {
-    pub const fn new(inner: T, is_positive: bool) -> Self {
-        Self { inner, is_positive }
+    pub const fn new(inner: T, negative: bool) -> Self {
+        Self { inner, negative }
     }
 
     pub const fn new_positive(inner: T) -> Self {
         Self {
             inner,
-            is_positive: true,
+            negative: false,
         }
     }
 
     pub const fn new_negative(inner: T) -> Self {
         Self {
             inner,
-            is_positive: false,
+            negative: true,
         }
     }
 }
 
 // --- Sign ---
 impl<T> Sign for Signed<T> {
-    fn is_positive(&self) -> bool {
-        self.is_positive
+    fn is_negative(&self) -> bool {
+        self.negative
     }
 }
 
@@ -84,38 +91,38 @@ where
     }
 
     fn checked_add(self, other: Self) -> StdResult<Self> {
-        match (self.is_positive, other.is_positive) {
-            (true, true) => self.inner.checked_add(other.inner).map(Self::new_positive),
-            (true, false) => {
+        match (self.is_negative(), other.is_negative()) {
+            (false, false) => self.inner.checked_add(other.inner).map(Self::new_positive),
+            (false, true) => {
                 if self.inner > other.inner {
                     self.inner.checked_sub(other.inner).map(Self::new_positive)
                 } else {
                     other.inner.checked_sub(self.inner).map(Self::new_negative)
                 }
             },
-            (false, true) => {
+            (true, false) => {
                 if self.inner > other.inner {
                     self.inner.checked_sub(other.inner).map(Self::new_negative)
                 } else {
                     other.inner.checked_sub(self.inner).map(Self::new_positive)
                 }
             },
-            (false, false) => self.inner.checked_add(other.inner).map(Self::new_negative),
+            (true, true) => self.inner.checked_add(other.inner).map(Self::new_negative),
         }
     }
 
     fn checked_sub(self, other: Self) -> StdResult<Self> {
-        match (self.is_positive, other.is_positive) {
-            (true, true) => {
+        match (self.is_negative(), other.is_negative()) {
+            (false, false) => {
                 if self.inner > other.inner {
                     self.inner.checked_sub(other.inner).map(Self::new_positive)
                 } else {
                     other.inner.checked_sub(self.inner).map(Self::new_negative)
                 }
             },
-            (true, false) => self.inner.checked_add(other.inner).map(Self::new_positive),
-            (false, true) => self.inner.checked_add(other.inner).map(Self::new_negative),
-            (false, false) => {
+            (false, true) => self.inner.checked_add(other.inner).map(Self::new_positive),
+            (true, false) => self.inner.checked_add(other.inner).map(Self::new_negative),
+            (true, true) => {
                 if self.inner > other.inner {
                     self.inner.checked_sub(other.inner).map(Self::new_negative)
                 } else {
@@ -125,40 +132,42 @@ where
         }
     }
 
-    fn checked_mul(self, other: Self) -> crate::StdResult<Self> {
+    fn checked_mul(self, other: Self) -> StdResult<Self> {
         self.inner
             .checked_mul(other.inner)
-            .map(|inner| Self::new(inner, self.is_positive == other.is_positive))
+            .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
     }
 
-    fn checked_div(self, other: Self) -> crate::StdResult<Self> {
+    fn checked_div(self, other: Self) -> StdResult<Self> {
         self.inner
             .checked_div(other.inner)
-            .map(|inner| Self::new(inner, self.is_positive == other.is_positive))
+            .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
     }
 
     /// On signed number, the remainder sign is the same as the dividend.
-    fn checked_rem(self, other: Self) -> crate::StdResult<Self> {
+    fn checked_rem(self, other: Self) -> StdResult<Self> {
         self.inner
             .checked_rem(other.inner)
-            .map(|val| Self::new(val, self.is_positive))
+            .map(|val| Self::new(val, self.is_negative()))
     }
 
-    fn checked_pow(self, other: u32) -> crate::StdResult<Self> {
-        let pow_sign = if other % 2 == 0 {
-            true
+    fn checked_pow(self, other: u32) -> StdResult<Self> {
+        // If the exponent is even, the result must be non-negative; otherwise,
+        // the result has the same sign as the base.
+        let negative = if other % 2 == 0 {
+            false
         } else {
-            self.is_positive
+            self.is_negative()
         };
         self.inner
             .checked_pow(other)
-            .map(|inner| Self::new(inner, pow_sign))
+            .map(|inner| Self::new(inner, negative))
     }
 
     fn wrapping_add(self, other: Self) -> Self {
-        match (self.is_positive, other.is_positive) {
+        match (self.is_negative(), other.is_negative()) {
             // + + + => + + | Wrapping is possible
-            (true, true) => {
+            (false, false) => {
                 let result = self.inner.wrapping_add(other.inner);
                 // Wrapped occurred
                 if result < self.inner {
@@ -168,7 +177,7 @@ where
                 }
             },
             // + + - => + - | Wrapping is not possible
-            (true, false) => {
+            (false, true) => {
                 if self.inner > other.inner {
                     Self::new_positive(self.inner - other.inner)
                 } else {
@@ -176,7 +185,7 @@ where
                 }
             },
             // - + + => - + | Wrapping is not possible
-            (false, true) => {
+            (true, false) => {
                 if self.inner > other.inner {
                     Self::new_negative(self.inner - other.inner)
                 } else {
@@ -184,7 +193,7 @@ where
                 }
             },
             // - + - => - - | Wrapping is possible
-            (false, false) => {
+            (true, true) => {
                 let result = self.inner.wrapping_add(other.inner);
                 // Wrapped occurred
                 if result < self.inner {
@@ -197,9 +206,9 @@ where
     }
 
     fn wrapping_sub(self, other: Self) -> Self {
-        match (self.is_positive, other.is_positive) {
+        match (self.is_negative(), other.is_negative()) {
             // + - + => + - | Wrapping is not possible
-            (true, true) => {
+            (false, false) => {
                 if self.inner > other.inner {
                     Self::new_positive(self.inner - other.inner)
                 } else {
@@ -207,7 +216,7 @@ where
                 }
             },
             // + - - => + + | Wrapping is possible
-            (true, false) => {
+            (false, true) => {
                 let result = self.inner.wrapping_add(other.inner);
                 // Wrapped occurred
                 if result < self.inner {
@@ -217,7 +226,7 @@ where
                 }
             },
             // - - + => - - | Wrapping is possible
-            (false, true) => {
+            (true, false) => {
                 let result = self.inner.wrapping_add(other.inner);
                 // Wrapped occurred
                 if result < self.inner {
@@ -227,7 +236,7 @@ where
                 }
             },
             // - - - => - + | Wrapping is not possible
-            (false, false) => {
+            (true, true) => {
                 if self.inner > other.inner {
                     Self::new_negative(self.inner - other.inner)
                 } else {
@@ -239,28 +248,30 @@ where
 
     fn wrapping_mul(self, other: Self) -> Self {
         let result = self.inner.wrapping_mul(other.inner);
-        Self::new(result, self.is_positive == other.is_positive)
+        Self::new(result, self.is_negative() == other.is_negative())
     }
 
     fn wrapping_pow(self, other: u32) -> Self {
-        let pow_sign = if other % 2 == 0 {
+        // If the exponent is even, the result must be non-negative; otherwise,
+        // the result has the same sign as the base.
+        let negative = if other % 2 == 0 {
             true
         } else {
-            self.is_positive
+            self.is_negative()
         };
         let result = self.inner.wrapping_pow(other);
-        Self::new(result, pow_sign)
+        Self::new(result, negative)
     }
 
     fn saturating_add(self, other: Self) -> Self {
-        match (self.is_positive, other.is_positive) {
+        match (self.is_negative(), other.is_negative()) {
             // + + + => + + | Saturing is possible
-            (true, true) => {
+            (false, false) => {
                 let result = self.inner.saturating_add(other.inner);
                 Self::new_positive(result)
             },
             // + + - => + - | Saturing is not possible
-            (true, false) => {
+            (false, true) => {
                 if self.inner > other.inner {
                     Self::new_positive(self.inner - other.inner)
                 } else {
@@ -268,7 +279,7 @@ where
                 }
             },
             // - + + => - + | Saturing is not possible
-            (false, true) => {
+            (true, false) => {
                 if self.inner > other.inner {
                     Self::new_negative(self.inner - other.inner)
                 } else {
@@ -276,7 +287,7 @@ where
                 }
             },
             // - + - => - - | Saturing is possible
-            (false, false) => {
+            (true, true) => {
                 let result = self.inner.saturating_add(other.inner);
                 Self::new_negative(result)
             },
@@ -284,9 +295,9 @@ where
     }
 
     fn saturating_sub(self, other: Self) -> Self {
-        match (self.is_positive, other.is_positive) {
+        match (self.is_negative(), other.is_negative()) {
             // + - + => + - | Saturing is not possible
-            (true, true) => {
+            (false, false) => {
                 if self.inner > other.inner {
                     Self::new_positive(self.inner - other.inner)
                 } else {
@@ -294,17 +305,17 @@ where
                 }
             },
             // + - - => + + | Saturing is possible
-            (true, false) => {
+            (false, true) => {
                 let result = self.inner.saturating_mul(other.inner);
                 Self::new_positive(result)
             },
             // - - + => - - | Saturing is possible
-            (false, true) => {
+            (true, false) => {
                 let result = self.inner.saturating_add(other.inner);
                 Self::new_negative(result)
             },
             // - - - => - + | Saturing is not possible
-            (false, false) => {
+            (true, true) => {
                 if self.inner > other.inner {
                     Self::new_negative(self.inner - other.inner)
                 } else {
@@ -316,21 +327,25 @@ where
 
     fn saturating_mul(self, other: Self) -> Self {
         let result = self.inner.saturating_mul(other.inner);
-        Self::new(result, self.is_positive == other.is_positive)
+        Self::new(result, self.is_negative() == other.is_negative())
     }
 
     fn saturating_pow(self, other: u32) -> Self {
-        let pow_sign = if other % 2 == 0 {
+        // If the exponent is even, the result must be non-negative; otherwise,
+        // the result has the same sign as the base.
+        let negative = if other % 2 == 0 {
             true
         } else {
-            self.is_positive
+            self.is_negative()
         };
         let result = self.inner.saturating_pow(other);
-        Self::new(result, pow_sign)
+        Self::new(result, negative)
     }
 
     fn checked_sqrt(self) -> crate::StdResult<Self> {
-        if !self.is_positive {
+        // Cannot take square root of a negative number.
+        // This should work for `-0` though.
+        if self.is_negative() && !self.is_zero() {
             return Err(crate::StdError::negative_sqrt::<Self>(self));
         }
 
@@ -362,25 +377,25 @@ where
     fn checked_mul_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_floor(rhs.numerator(), DR::denominator())
-            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
+            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_mul_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_ceil(rhs.numerator(), DR::denominator())
-            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
+            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_div_dec_floor(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_floor(DR::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
+            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 
     fn checked_div_dec_ceil(self, rhs: DR) -> StdResult<Self> {
         self.inner
             .checked_multiply_ratio_ceil(DR::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.is_positive == rhs.is_positive()))
+            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
     }
 }
 
@@ -390,10 +405,10 @@ where
     T: Number + Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.is_positive {
-            write!(f, "{}", self.inner)
-        } else {
+        if self.is_negative() {
             write!(f, "-{}", self.inner)
+        } else {
+            write!(f, "{}", self.inner)
         }
     }
 }
@@ -419,7 +434,7 @@ impl<T> Neg for Signed<T> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self::new(self.inner, !self.is_positive)
+        Self::new(self.inner, !self.negative)
     }
 }
 
@@ -429,10 +444,11 @@ where
     T: Number + PartialEq + Copy,
 {
     fn eq(&self, other: &Self) -> bool {
+        // Zeroes are always equal, regardless of the sign (+0 = -0)
         if self.inner.is_zero() && other.inner.is_zero() {
             return true;
         }
-        self.inner == other.inner && self.is_positive == other.is_positive
+        self.inner == other.inner && self.negative == other.negative
     }
 }
 
@@ -455,23 +471,23 @@ where
     T: Ord + Number + Copy,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self.is_positive, other.is_positive) {
-            (true, true) => self.inner.cmp(&other.inner),
-            (true, false) => {
+        match (self.is_negative(), other.is_negative()) {
+            (false, false) => self.inner.cmp(&other.inner),
+            (false, true) => {
                 if self.inner.is_zero() && other.inner.is_zero() {
                     Ordering::Equal
                 } else {
                     Ordering::Greater
                 }
             },
-            (false, true) => {
+            (true, false) => {
                 if self.inner.is_zero() && other.inner.is_zero() {
                     Ordering::Equal
                 } else {
                     Ordering::Less
                 }
             },
-            (false, false) => other.inner.cmp(&self.inner),
+            (true, true) => other.inner.cmp(&self.inner),
         }
     }
 }

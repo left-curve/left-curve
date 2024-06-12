@@ -239,7 +239,7 @@ macro_rules! generate_signed {
             type Error = StdError;
 
             fn try_from(value: $name) -> StdResult<Self> {
-                if !value.is_positive() {
+                if value.is_negative() {
                     Err(StdError::overflow_conversion::<_, $inner>(value))
                 } else {
                     Ok(value.inner)
@@ -255,7 +255,7 @@ macro_rules! generate_signed {
             // Ex: From<Int64> for Int128
             impl From<$from_signed> for $name {
                 fn from(value: $from_signed) -> Self {
-                    Self::new(value.inner.into(), value.is_positive)
+                    Self::new(value.inner.into(), value.is_negative())
                 }
             }
 
@@ -279,7 +279,7 @@ macro_rules! generate_signed {
 
                 fn try_from(value: $name) -> StdResult<$from_signed> {
                     <$from_signed as Inner>::U::try_from(value.inner)
-                        .map(|val| Self::new(val, value.is_positive))
+                        .map(|val| Self::new(val, value.is_negative()))
                         .map_err(|_| StdError::overflow_conversion::<_, $from_signed>(value))
                 }
             }
@@ -289,7 +289,7 @@ macro_rules! generate_signed {
                 type Error = StdError;
 
                 fn try_from(value: $name) -> StdResult<<$from_signed as Inner>::U> {
-                    if !value.is_positive{
+                    if value.is_negative() {
                         return Err(StdError::overflow_conversion::<_, $name>(value))
                     }
                     <$from_signed as Inner>::U::try_from(value.inner)
@@ -302,7 +302,7 @@ macro_rules! generate_signed {
                 type Error = StdError;
 
                 fn try_from(value: $name) -> StdResult<<<$from_signed as Inner>::U as Inner>::U> {
-                    if !value.is_positive{
+                    if value.is_negative() {
                         return Err(StdError::overflow_conversion::<_, $name>(value))
                     }
                     <<$from_signed as Inner>::U as Inner>::U::try_from(value.inner)

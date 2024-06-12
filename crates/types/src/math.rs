@@ -35,10 +35,10 @@ pub trait Rational<U> {
     fn denominator() -> Uint<U>;
 }
 
-/// Describes a number that can take on both positive and negative values.
-// TODO: what should be the return value if the number is zero?
+/// Describes a number that can take on negative values.
+/// Zero is considered non-negative, for which this should return `false`.
 pub trait Sign {
-    fn is_positive(&self) -> bool;
+    fn is_negative(&self) -> bool;
 }
 
 // ------------------------------- number const --------------------------------
