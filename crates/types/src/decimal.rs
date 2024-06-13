@@ -486,13 +486,13 @@ where
 }
 
 struct DecimalVisitor<U, const S: u32> {
-    marker: PhantomData<U>,
+    _marker: PhantomData<U>,
 }
 
 impl<U, const S: u32> DecimalVisitor<U, S> {
     pub fn new() -> Self {
         Self {
-            marker: PhantomData,
+            _marker: PhantomData,
         }
     }
 }

@@ -502,7 +502,6 @@ forward_ref_op_assign_typed!(impl<T> DivAssign, div_assign for Signed<T>, Signed
 
 // ------------------------------ concrete types -------------------------------
 
-// Int64
 generate_signed!(
     name = Int64,
     inner_type = Uint64,
@@ -510,7 +509,6 @@ generate_signed!(
     from_std = [u8, u16, u32]
 );
 
-// Int128
 generate_signed!(
     name = Int128,
     inner_type = Uint128,
@@ -518,7 +516,6 @@ generate_signed!(
     from_std = [u8, u16, u32]
 );
 
-// Int256
 generate_signed!(
     name = Int256,
     inner_type = Uint256,
@@ -526,7 +523,6 @@ generate_signed!(
     from_std = [u8, u16, u32]
 );
 
-// SignedDecimal128
 generate_signed!(
     name = SignedDecimal128,
     inner_type = Decimal128,
@@ -534,7 +530,6 @@ generate_signed!(
     from_std = []
 );
 
-// SignedDecimal256
 generate_signed!(
     name = SignedDecimal256,
     inner_type = Decimal256,
