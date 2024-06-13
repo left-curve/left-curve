@@ -22,9 +22,9 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Decimal<U, const S: u32>(pub(crate) Uint<U>);
+pub struct Udec<U, const S: u32>(pub(crate) Uint<U>);
 
-impl<U, const S: u32> Decimal<U, S> {
+impl<U, const S: u32> Udec<U, S> {
     /// Ratio between the inner integer value and the decimal value it
     /// represents.
     ///
@@ -35,17 +35,17 @@ impl<U, const S: u32> Decimal<U, S> {
     /// Number of decimal digits to be interpreted as decimal places.
     pub const DECIMAL_PLACES: u32 = S;
 
-    /// Create a new [`Decimal`] _without_ adding decimal places.
+    /// Create a new [`Udec`] _without_ adding decimal places.
     ///
     /// ```rust
     /// use {
-    ///     grug_types::{Decimal128, Uint128},
+    ///     grug_types::{Udec128, Uint128},
     ///     std::str::FromStr,
     /// };
     ///
     /// let uint = Uint128::new(100);
-    /// let decimal = Decimal128::raw(uint);
-    /// assert_eq!(decimal, Decimal128::from_str("0.000000000000000100").unwrap());
+    /// let decimal = Udec128::raw(uint);
+    /// assert_eq!(decimal, Udec128::from_str("0.000000000000000100").unwrap());
     /// ```
     pub const fn raw(value: Uint<U>) -> Self {
         Self(value)
@@ -56,7 +56,7 @@ impl<U, const S: u32> Decimal<U, S> {
     }
 }
 
-impl<U, const S: u32> NumberConst for Decimal<U, S>
+impl<U, const S: u32> NumberConst for Udec<U, S>
 where
     Uint<U>: NumberConst,
 {
@@ -69,7 +69,7 @@ where
     const ZERO: Self = Self(Uint::ZERO);
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: From<u128>,
 {
@@ -83,21 +83,21 @@ where
     }
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: Number + From<u128>,
 {
-    /// Create a new [`Decimal`] adding decimal places.
+    /// Create a new [`Udec`] adding decimal places.
     ///
     /// ```rust
     /// use {
-    ///     grug_types::{Decimal128, Uint128},
+    ///     grug_types::{Udec128, Uint128},
     ///     std::str::FromStr,
     /// };
     ///
     /// let uint = Uint128::new(100);
-    /// let decimal = Decimal128::new(uint);
-    /// assert_eq!(decimal, Decimal128::from_str("100.0").unwrap());
+    /// let decimal = Udec128::new(uint);
+    /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
     /// ```
     pub fn new(value: impl Into<Uint<U>>) -> Self {
         Self(value.into() * Self::decimal_fraction())
@@ -116,7 +116,7 @@ where
     }
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: NumberConst + Number + From<u128>,
 {
@@ -153,7 +153,7 @@ where
     }
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: MultiplyRatio + From<u128>,
 {
@@ -169,17 +169,17 @@ where
     }
 }
 
-// Methods for converting one `Decimal` value to another `Decimal` type with a
+// Methods for converting one `Udec` value to another `Udec` type with a
 // different word size and decimal places.
 //
 // We can't implement the `From` and `TryFrom` traits here, because it would
 // conflict with the standard library's `impl From<T> for T`, as we can't yet
 // specify that `U != OU` or `S != OS` with stable Rust.
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: NumberConst + Number,
 {
-    pub fn from_decimal<OU, const OS: u32>(other: Decimal<OU, OS>) -> Self
+    pub fn from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> Self
     where
         Uint<U>: From<Uint<OU>>,
     {
@@ -192,7 +192,7 @@ where
         }
     }
 
-    pub fn try_from_decimal<OU, const OS: u32>(other: Decimal<OU, OS>) -> StdResult<Self>
+    pub fn try_from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> StdResult<Self>
     where
         Uint<U>: TryFrom<Uint<OU>>,
         StdError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
@@ -211,7 +211,7 @@ where
     }
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     U: Copy,
     Uint<U>: Number + From<u128>,
@@ -229,7 +229,7 @@ where
     }
 }
 
-impl<U, const S: u32> Decimal<U, S>
+impl<U, const S: u32> Udec<U, S>
 where
     U: Copy + PartialEq,
     Uint<U>: Number + From<u128>,
@@ -244,17 +244,17 @@ where
     }
 }
 
-impl<U, const S: u32> Inner for Decimal<U, S> {
+impl<U, const S: u32> Inner for Udec<U, S> {
     type U = U;
 }
 
-impl<U, const S: u32> Sign for Decimal<U, S> {
+impl<U, const S: u32> Sign for Udec<U, S> {
     fn is_negative(&self) -> bool {
         false
     }
 }
 
-impl<U, const S: u32> Fraction<U> for Decimal<U, S>
+impl<U, const S: u32> Fraction<U> for Udec<U, S>
 where
     Uint<U>: Number + Copy + From<u128>,
 {
@@ -267,7 +267,7 @@ where
     }
 }
 
-impl<U, const S: u32> Number for Decimal<U, S>
+impl<U, const S: u32> Number for Udec<U, S>
 where
     U: NumberConst + Number + Copy + PartialEq + PartialOrd,
     Uint<U>: NextNumber + Display + From<u128>,
@@ -278,7 +278,7 @@ where
     }
 
     fn abs(self) -> Self {
-        // `Decimal` represents an unsigned decimal number, so the absolute
+        // `Udec` represents an unsigned decimal number, so the absolute
         // value is sipmly itself.
         self
     }
@@ -303,7 +303,7 @@ where
     }
 
     fn checked_div(self, other: Self) -> StdResult<Self> {
-        Decimal::checked_from_ratio(self.numerator(), other.numerator())
+        Udec::checked_from_ratio(self.numerator(), other.numerator())
     }
 
     fn checked_rem(self, other: Self) -> StdResult<Self> {
@@ -315,7 +315,7 @@ where
             return Ok(Self::one());
         }
 
-        let mut y = Decimal::one();
+        let mut y = Udec::one();
         while exp > 1 {
             if exp % 2 == 0 {
                 self = self.checked_mul(self)?;
@@ -386,7 +386,7 @@ where
     }
 }
 
-impl<U, const S: u32> Display for Decimal<U, S>
+impl<U, const S: u32> Display for Udec<U, S>
 where
     Uint<U>: Number + Copy + Display + From<u128>,
 {
@@ -408,13 +408,13 @@ where
     }
 }
 
-impl<U, const S: u32> FromStr for Decimal<U, S>
+impl<U, const S: u32> FromStr for Udec<U, S>
 where
     Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 {
     type Err = StdError;
 
-    /// Converts the decimal string to a Decimal
+    /// Converts the decimal string to a Udec
     /// Possible inputs: "1.23", "1", "000012", "1.123000000"
     /// Disallowed: "", ".23"
     ///
@@ -456,11 +456,11 @@ where
             return Err(StdError::generic_err("Unexpected number of dots"));
         }
 
-        Ok(Decimal(atomics))
+        Ok(Udec(atomics))
     }
 }
 
-impl<U, const T: u32> ser::Serialize for Decimal<U, T>
+impl<U, const T: u32> ser::Serialize for Udec<U, T>
 where
     Self: Display,
 {
@@ -472,10 +472,10 @@ where
     }
 }
 
-impl<'de, U, const S: u32> de::Deserialize<'de> for Decimal<U, S>
+impl<'de, U, const S: u32> de::Deserialize<'de> for Udec<U, S>
 where
-    Decimal<U, S>: FromStr,
-    <Decimal<U, S> as FromStr>::Err: Display,
+    Udec<U, S>: FromStr,
+    <Udec<U, S> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -499,10 +499,10 @@ impl<U, const S: u32> DecimalVisitor<U, S> {
 
 impl<'de, U, const S: u32> de::Visitor<'de> for DecimalVisitor<U, S>
 where
-    Decimal<U, S>: FromStr,
-    <Decimal<U, S> as FromStr>::Err: Display,
+    Udec<U, S>: FromStr,
+    <Udec<U, S> as FromStr>::Err: Display,
 {
-    type Value = Decimal<U, S>;
+    type Value = Udec<U, S>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("string-encoded decimal")
@@ -512,44 +512,44 @@ where
     where
         E: de::Error,
     {
-        Decimal::from_str(v).map_err(E::custom)
+        Udec::from_str(v).map_err(E::custom)
     }
 }
 
-impl_number!(impl Decimal with Add, add for Decimal<U, S> where sub fn checked_add);
-impl_number!(impl Decimal with Sub, sub for Decimal<U, S> where sub fn checked_sub);
-impl_number!(impl Decimal with Mul, mul for Decimal<U, S> where sub fn checked_mul);
-impl_number!(impl Decimal with Div, div for Decimal<U, S> where sub fn checked_div);
+impl_number!(impl Udec with Add, add for Udec<U, S> where sub fn checked_add);
+impl_number!(impl Udec with Sub, sub for Udec<U, S> where sub fn checked_sub);
+impl_number!(impl Udec with Mul, mul for Udec<U, S> where sub fn checked_mul);
+impl_number!(impl Udec with Div, div for Udec<U, S> where sub fn checked_div);
 
-impl_assign_number!(impl Decimal with AddAssign, add_assign for Decimal<U, S> where sub fn checked_add);
-impl_assign_number!(impl Decimal with SubAssign, sub_assign for Decimal<U, S> where sub fn checked_sub);
-impl_assign_number!(impl Decimal with MulAssign, mul_assign for Decimal<U, S> where sub fn checked_mul);
-impl_assign_number!(impl Decimal with DivAssign, div_assign for Decimal<U, S> where sub fn checked_div);
+impl_assign_number!(impl Udec with AddAssign, add_assign for Udec<U, S> where sub fn checked_add);
+impl_assign_number!(impl Udec with SubAssign, sub_assign for Udec<U, S> where sub fn checked_sub);
+impl_assign_number!(impl Udec with MulAssign, mul_assign for Udec<U, S> where sub fn checked_mul);
+impl_assign_number!(impl Udec with DivAssign, div_assign for Udec<U, S> where sub fn checked_div);
 
-forward_ref_binop_decimal!(impl Add, add for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Sub, sub for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Mul, mul for Decimal<U, S>, Decimal<U, S>);
-forward_ref_binop_decimal!(impl Div, div for Decimal<U, S>, Decimal<U, S>);
+forward_ref_binop_decimal!(impl Add, add for Udec<U, S>, Udec<U, S>);
+forward_ref_binop_decimal!(impl Sub, sub for Udec<U, S>, Udec<U, S>);
+forward_ref_binop_decimal!(impl Mul, mul for Udec<U, S>, Udec<U, S>);
+forward_ref_binop_decimal!(impl Div, div for Udec<U, S>, Udec<U, S>);
 
-forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Decimal<U, S>, Decimal<U, S>);
-forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Decimal<U, S>, Decimal<U, S>);
+forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Udec<U, S>, Udec<U, S>);
+forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Udec<U, S>, Udec<U, S>);
+forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Udec<U, S>, Udec<U, S>);
+forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Udec<U, S>, Udec<U, S>);
 
 // ------------------------------ concrete types -------------------------------
 
 generate_decimal!(
-    name = Decimal128,
+    name = Udec128,
     inner_type = u128,
     decimal_places = 18,
     from_dec = [],
 );
 
 generate_decimal!(
-    name = Decimal256,
+    name = Udec256,
     inner_type = U256,
     decimal_places = 18,
-    from_dec = [Decimal128],
+    from_dec = [Udec128],
 );
 
 // ----------------------------------- tests -----------------------------------
@@ -557,7 +557,7 @@ generate_decimal!(
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Decimal128, Decimal256, Number},
+        crate::{Udec256, Number, Udec128},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -567,39 +567,36 @@ mod tests {
 
     #[test]
     fn t1() {
-        assert_eq!(
-            Decimal128::one() + Decimal128::one(),
-            Decimal128::new(2_u128)
-        );
+        assert_eq!(Udec128::one() + Udec128::one(), Udec128::new(2_u128));
 
         assert_eq!(
-            Decimal128::new(10_u128)
-                .checked_add(Decimal128::new(20_u128))
+            Udec128::new(10_u128)
+                .checked_add(Udec128::new(20_u128))
                 .unwrap(),
-            Decimal128::new(30_u128)
+            Udec128::new(30_u128)
         );
 
         assert_eq!(
-            Decimal128::new(3_u128)
-                .checked_rem(Decimal128::new(2_u128))
+            Udec128::new(3_u128)
+                .checked_rem(Udec128::new(2_u128))
                 .unwrap(),
-            Decimal128::from_str("1").unwrap()
+            Udec128::from_str("1").unwrap()
         );
 
         assert_eq!(
-            Decimal128::from_str("3.5")
+            Udec128::from_str("3.5")
                 .unwrap()
-                .checked_rem(Decimal128::new(2_u128))
+                .checked_rem(Udec128::new(2_u128))
                 .unwrap(),
-            Decimal128::from_str("1.5").unwrap()
+            Udec128::from_str("1.5").unwrap()
         );
 
         assert_eq!(
-            Decimal128::from_str("3.5")
+            Udec128::from_str("3.5")
                 .unwrap()
-                .checked_rem(Decimal128::from_str("2.7").unwrap())
+                .checked_rem(Udec128::from_str("2.7").unwrap())
                 .unwrap(),
-            Decimal128::from_str("0.8").unwrap()
+            Udec128::from_str("0.8").unwrap()
         );
     }
 
@@ -627,10 +624,10 @@ mod tests {
 
     #[test]
     fn t3_conversion() {
-        let foo = Decimal128::new(10_u128);
-        assert_eq!(Decimal256::new(10_u128), Decimal256::from(foo));
+        let foo = Udec128::new(10_u128);
+        assert_eq!(Udec256::new(10_u128), Udec256::from(foo));
 
-        let foo = Decimal256::new(10_u128);
-        assert_eq!(Decimal128::new(10_u128), Decimal128::try_from(foo).unwrap())
+        let foo = Udec256::new(10_u128);
+        assert_eq!(Udec128::new(10_u128), Udec128::try_from(foo).unwrap())
     }
 }

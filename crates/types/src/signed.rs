@@ -1,9 +1,9 @@
 use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Fraction,
-        Inner, MultiplyFraction, MultiplyRatio, NonZero, Number, NumberConst, Sign, StdError,
-        StdResult, Uint, Uint128, Uint256, Uint64,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Fraction, Inner,
+        MultiplyFraction, MultiplyRatio, NonZero, Number, NumberConst, Sign, StdError, StdResult,
+        Udec128, Udec256, Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
@@ -21,7 +21,7 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy)]
 pub struct Signed<T> {
     /// The number's absolute value. Should be an _unsigned_ number type, such
-    /// as `Uint<T>` or `Decimal<T>`.
+    /// as `Uint<T>` or `Udec<T>`.
     pub(crate) abs: T,
     /// Whether this number is negative. Irrelevant if absolute value is zero.
     ///
@@ -525,14 +525,14 @@ generate_signed!(
 
 generate_signed!(
     name = SignedDecimal128,
-    inner_type = Decimal128,
+    inner_type = Udec128,
     from_signed = [],
     from_std = []
 );
 
 generate_signed!(
     name = SignedDecimal256,
-    inner_type = Decimal256,
+    inner_type = Udec256,
     from_signed = [SignedDecimal128],
     from_std = []
 );
@@ -543,7 +543,7 @@ generate_signed!(
 mod test {
     use {
         super::*,
-        crate::{Decimal128, Int128, SignedDecimal128, SignedDecimal256},
+        crate::{Int128, SignedDecimal128, SignedDecimal256, Udec128},
         std::str::FromStr,
     };
 
@@ -583,8 +583,8 @@ mod test {
             Int128::new_negative(1000_u128.into())
         );
 
-        let a = SignedDecimal128::new_positive(Decimal128::from_str("10").unwrap());
-        let b = SignedDecimal128::new_negative(Decimal128::from_str("10").unwrap());
+        let a = SignedDecimal128::new_positive(Udec128::from_str("10").unwrap());
+        let b = SignedDecimal128::new_negative(Udec128::from_str("10").unwrap());
 
         assert_eq!(a + b, SignedDecimal128::ZERO);
         assert_eq!(a + a, SignedDecimal128::from_str("20").unwrap());
@@ -593,8 +593,8 @@ mod test {
         assert!(a > b);
         assert!(b < a);
         assert_eq!(
-            SignedDecimal128::new_positive(Decimal128::new(0_u128)),
-            SignedDecimal128::new_negative(Decimal128::new(0_u128))
+            SignedDecimal128::new_positive(Udec128::new(0_u128)),
+            SignedDecimal128::new_negative(Udec128::new(0_u128))
         );
 
         let a = Int128::new_negative(10_u128.into());
@@ -620,7 +620,7 @@ mod test {
         let foo = SignedDecimal128::from_str("-10.5").unwrap();
         assert_eq!(
             foo,
-            SignedDecimal128::new_negative(Decimal128::from_str("10.5").unwrap())
+            SignedDecimal128::new_negative(Udec128::from_str("10.5").unwrap())
         );
     }
 
@@ -645,7 +645,7 @@ mod test {
     fn t5_signed_int_per_dec() {
         let foo = Int128::new_negative(10_u128.into());
         let res = foo
-            .checked_mul_dec_floor(Decimal128::from_str("2").unwrap())
+            .checked_mul_dec_floor(Udec128::from_str("2").unwrap())
             .unwrap();
 
         assert_eq!(res, Int128::new_negative(20_u128.into()));

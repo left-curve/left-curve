@@ -110,22 +110,22 @@ macro_rules! generate_uint {
     };
 }
 
-/// Generate a [`Decimal`](super::Decimal) type for a given inner type.
+/// Generate a [`Udec`](super::Udec) type for a given inner type.
 ///
 /// ### Example
 ///
 /// ```ignore
 /// generate_uint!(
 ///     // The name of the Uint
-///     name = Decimal256,
+///     name = Udec256,
 ///     // Inner type of the Uint
 ///     inner_type = Uint256,
 ///     // Number of decimal places
 ///     decimal_places = 18,
-///     // Implement From | TryFrom from other Decimal types
+///     // Implement From | TryFrom from other Udec types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
-///     from_dec = [SignedDecimal128, Decimal128],
+///     from_dec = [SignedDecimal128, Udec128],
 /// );
 #[macro_export]
 macro_rules! generate_decimal {
@@ -135,46 +135,46 @@ macro_rules! generate_decimal {
         decimal_places = $decimal_places:expr,
         from_dec = [$($from:ty),*],
     ) => {
-        pub type $name = Decimal<$inner, $decimal_places>;
+        pub type $name = Udec<$inner, $decimal_places>;
 
-        // Ex: From<U256> for Decimal256
+        // Ex: From<U256> for Udec256
         impl From<$inner> for $name {
             fn from(value: $inner) -> Self {
                 Self::raw(Uint::new(value))
             }
         }
 
-        // Ex: From<Uint<U256>> for Decimal256
+        // Ex: From<Uint<U256>> for Udec256
         impl From<Uint<$inner>> for $name {
             fn from(value: Uint<$inner>) -> Self {
                 Self::raw(value)
             }
         }
 
-        // --- From Decimal ---
+        // --- From Udec ---
         $(
-            // Ex: From<Decimal128> for Decimal256
+            // Ex: From<Udec128> for Udec256
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
                     Self::from_decimal(value)
                 }
             }
 
-            // Ex: From<Uint128> for Decimal256
+            // Ex: From<Uint128> for Udec256
             impl From<Uint<<$from as Inner>::U>> for $name {
                 fn from(value: Uint<<$from as Inner>::U>) -> Self {
                     Self::raw(value.into())
                 }
             }
 
-            // Ex: From<u128> for Decimal256
+            // Ex: From<u128> for Udec256
             impl From<<$from as Inner>::U> for $name {
                 fn from(value: <$from as Inner>::U) -> Self {
                     Self::raw(value.into())
                 }
             }
 
-            // Ex: TryFrom<Decimal256> for Decimal128
+            // Ex: TryFrom<Udec256> for Udec128
             impl TryFrom<$name> for $from {
                 type Error = StdError;
 
@@ -183,7 +183,7 @@ macro_rules! generate_decimal {
                 }
             }
 
-            // Ex: TryFrom<Decimal256> for Uint128
+            // Ex: TryFrom<Udec256> for Uint128
             impl TryFrom<$name> for Uint<<$from as Inner>::U> {
                 type Error = StdError;
 
@@ -192,7 +192,7 @@ macro_rules! generate_decimal {
                 }
             }
 
-            // Ex: TryFrom<Decimal256> for u128
+            // Ex: TryFrom<Udec256> for u128
             impl TryFrom<$name> for <$from as Inner>::U {
                 type Error = StdError;
 
@@ -657,7 +657,7 @@ macro_rules! impl_number {
 
     // Ops self for other, output = Self
     // Ex: Add<Uint64> for Uint128 => Uint128
-    // Ex: Add<Decimal128> for Decimal256 => Decimal256
+    // Ex: Add<Udec128> for Udec256 => Udec256
     (impl $imp:ident, $method:ident for $t:ty as $other:ty where sub fn $sub_method:ident) => {
         impl std::ops::$imp<$other> for $t {
             type Output = Self;
@@ -676,8 +676,8 @@ macro_rules! impl_number {
         }
     };
 
-    // Decimal Self
-    (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
+    // Udec Self
+    (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: u32> std::ops::$imp for $t
         where
             Self: Number,
@@ -737,8 +737,8 @@ macro_rules! impl_assign_number {
         }
     };
 
-    // Decimal
-    (impl Decimal with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
+    // Udec
+    (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
         impl<U, const S: u32> std::ops::$imp for $t
         where
             Self: Number + Copy,
