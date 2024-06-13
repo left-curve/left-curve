@@ -28,6 +28,5 @@ thiserror     = { workspace = true }
 grug-crypto = { path = "../crypto" }
 
 [dev-dependencies]
-paste     = { workspace = true }
 proptest  = { workspace = true }
 test-case = { workspace = true }

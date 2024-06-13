@@ -1631,7 +1631,6 @@ dependencies = [
  "grug-crypto",
  "hex",
  "hex-literal",
- "paste",
  "proptest",
  "prost",
  "serde",
