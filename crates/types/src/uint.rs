@@ -430,7 +430,7 @@ impl_next!(Uint256, Uint512);
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::SignedDecimal128};
+    use {super::*, crate::Dec128};
 
     /// Make sure we can't multiply a positive integer by a negative decimal.
     #[test]
@@ -438,14 +438,14 @@ mod tests {
         let lhs = Uint128::new(123);
 
         // Multiplying with a negative fraction should fail
-        let rhs = SignedDecimal128::from_str("-0.1").unwrap();
+        let rhs = Dec128::from_str("-0.1").unwrap();
         assert!(lhs.checked_mul_dec_floor(rhs).is_err());
         assert!(lhs.checked_mul_dec_ceil(rhs).is_err());
         assert!(lhs.checked_div_dec_floor(rhs).is_err());
         assert!(lhs.checked_div_dec_ceil(rhs).is_err());
 
         // Multiplying with negative zero is allowed though
-        let rhs = SignedDecimal128::from_str("-0").unwrap();
+        let rhs = Dec128::from_str("-0").unwrap();
         assert!(lhs.checked_mul_dec_floor(rhs).unwrap().is_zero());
         assert!(lhs.checked_mul_dec_ceil(rhs).unwrap().is_zero());
 

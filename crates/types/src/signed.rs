@@ -524,16 +524,16 @@ generate_signed!(
 );
 
 generate_signed!(
-    name = SignedDecimal128,
+    name = Dec128,
     inner_type = Udec128,
     from_signed = [],
     from_std = []
 );
 
 generate_signed!(
-    name = SignedDecimal256,
+    name = Dec256,
     inner_type = Udec256,
-    from_signed = [SignedDecimal128],
+    from_signed = [Dec128],
     from_std = []
 );
 
@@ -543,7 +543,7 @@ generate_signed!(
 mod test {
     use {
         super::*,
-        crate::{Int128, SignedDecimal128, SignedDecimal256, Udec128},
+        crate::{Dec128, Dec256, Int128, Udec128},
         std::str::FromStr,
     };
 
@@ -583,18 +583,18 @@ mod test {
             Int128::new_negative(1000_u128.into())
         );
 
-        let a = SignedDecimal128::new_positive(Udec128::from_str("10").unwrap());
-        let b = SignedDecimal128::new_negative(Udec128::from_str("10").unwrap());
+        let a = Dec128::new_positive(Udec128::from_str("10").unwrap());
+        let b = Dec128::new_negative(Udec128::from_str("10").unwrap());
 
-        assert_eq!(a + b, SignedDecimal128::ZERO);
-        assert_eq!(a + a, SignedDecimal128::from_str("20").unwrap());
-        assert_eq!(b + b, SignedDecimal128::from_str("-20").unwrap());
+        assert_eq!(a + b, Dec128::ZERO);
+        assert_eq!(a + a, Dec128::from_str("20").unwrap());
+        assert_eq!(b + b, Dec128::from_str("-20").unwrap());
 
         assert!(a > b);
         assert!(b < a);
         assert_eq!(
-            SignedDecimal128::new_positive(Udec128::new(0_u128)),
-            SignedDecimal128::new_negative(Udec128::new(0_u128))
+            Dec128::new_positive(Udec128::new(0_u128)),
+            Dec128::new_negative(Udec128::new(0_u128))
         );
 
         let a = Int128::new_negative(10_u128.into());
@@ -617,27 +617,27 @@ mod test {
 
     #[test]
     fn t3_conversion() {
-        let foo = SignedDecimal128::from_str("-10.5").unwrap();
+        let foo = Dec128::from_str("-10.5").unwrap();
         assert_eq!(
             foo,
-            SignedDecimal128::new_negative(Udec128::from_str("10.5").unwrap())
+            Dec128::new_negative(Udec128::from_str("10.5").unwrap())
         );
     }
 
     #[test]
     fn t4_serde() {
-        let foo = SignedDecimal128::from_str("-10.5").unwrap();
+        let foo = Dec128::from_str("-10.5").unwrap();
         let ser = serde_json::to_string(&foo).unwrap();
-        let des: SignedDecimal128 = serde_json::from_str(&ser).unwrap();
+        let des: Dec128 = serde_json::from_str(&ser).unwrap();
         assert_eq!(foo, des);
 
-        let foo = SignedDecimal256::from_str("-10.5").unwrap();
+        let foo = Dec256::from_str("-10.5").unwrap();
         let ser = serde_json::to_string(&foo).unwrap();
-        let des: SignedDecimal256 = serde_json::from_str(&ser).unwrap();
+        let des: Dec256 = serde_json::from_str(&ser).unwrap();
         assert_eq!(foo, des);
 
         let ser = borsh::to_vec(&foo).unwrap();
-        let des: SignedDecimal256 = borsh::from_slice(&ser).unwrap();
+        let des: Dec256 = borsh::from_slice(&ser).unwrap();
         assert_eq!(foo, des);
     }
 
@@ -653,7 +653,7 @@ mod test {
         let foo = Int128::new_negative(10_u128.into());
 
         let res = foo
-            .checked_mul_dec_floor(SignedDecimal128::from_str("-2").unwrap())
+            .checked_mul_dec_floor(Dec128::from_str("-2").unwrap())
             .unwrap();
 
         assert_eq!(res, Int128::new_positive(20_u128.into()));

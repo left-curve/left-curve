@@ -125,7 +125,7 @@ macro_rules! generate_uint {
 ///     // Implement From | TryFrom from other Udec types
 ///     // Safe type where overflow is not possible
 ///     // It also impls Base ops (Add, Sub ecc..) vs this type
-///     from_dec = [SignedDecimal128, Udec128],
+///     from_dec = [Dec128, Udec128],
 /// );
 #[macro_export]
 macro_rules! generate_decimal {
