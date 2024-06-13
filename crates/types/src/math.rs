@@ -44,6 +44,8 @@ pub trait Sign {
 pub trait Fraction<U> {
     fn numerator(&self) -> Uint<U>;
 
+    // Note: Must not return zero.
+    // TODO: Check for non-zero at runtime? crypto-bigint has a `NonZero<T>` type.
     fn denominator() -> Uint<U>;
 }
 

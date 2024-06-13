@@ -242,10 +242,16 @@ where
 
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
-    Uint<U>: MultiplyRatio + From<Uint<AsU>> + ToString,
-    F: Fraction<AsU> + Sign + ToString,
+    Uint<U>: NumberConst + MultiplyRatio + From<Uint<AsU>> + ToString,
+    F: Number + Fraction<AsU> + Sign + ToString,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
+        // If the right hand side is zero, then simply return zero.
+        if rhs.is_zero() {
+            return Ok(Self::ZERO);
+        }
+        // The left hand side is `Uint`, a non-negative type, so multiplication
+        // with any non-zero negative number goes out of bound.
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
@@ -253,6 +259,9 @@ where
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_zero() {
+            return Ok(Self::ZERO);
+        }
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
@@ -427,9 +436,20 @@ mod tests {
     #[test]
     fn multiply_fraction_by_negative() {
         let lhs = Uint128::new(123);
+
+        // Multiplying with a negative fraction should fail
         let rhs = SignedDecimal128::from_str("-0.1").unwrap();
         assert!(lhs.checked_mul_dec_floor(rhs).is_err());
         assert!(lhs.checked_mul_dec_ceil(rhs).is_err());
+        assert!(lhs.checked_div_dec_floor(rhs).is_err());
+        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
+
+        // Multiplying with negative zero is allowed though
+        let rhs = SignedDecimal128::from_str("-0").unwrap();
+        assert!(lhs.checked_mul_dec_floor(rhs).unwrap().is_zero());
+        assert!(lhs.checked_mul_dec_ceil(rhs).unwrap().is_zero());
+
+        // Dividing by zero should fail
         assert!(lhs.checked_div_dec_floor(rhs).is_err());
         assert!(lhs.checked_div_dec_ceil(rhs).is_err());
     }
