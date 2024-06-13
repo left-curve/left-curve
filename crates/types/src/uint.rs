@@ -398,6 +398,7 @@ generate_uint!(
     inner_type = u64,
     from_int = [],
     from_std = [u32, u16, u8],
+    doc = "64-bit unsigned integer.",
 );
 
 generate_uint!(
@@ -405,6 +406,7 @@ generate_uint!(
     inner_type = u128,
     from_int = [Uint64],
     from_std = [u32, u16, u8],
+    doc = "128-bit unsigned integer.",
 );
 
 generate_uint!(
@@ -412,6 +414,7 @@ generate_uint!(
     inner_type = U256,
     from_int = [Uint64, Uint128],
     from_std = [u32, u16, u8],
+    doc = "256-bit unsigned integer.",
 );
 
 generate_uint!(
@@ -419,6 +422,7 @@ generate_uint!(
     inner_type = U512,
     from_int = [Uint256, Uint64, Uint128],
     from_std = [u32, u16, u8],
+    doc = "512-bit unsigned integer.",
 );
 
 // TODO: can we merge these into `generate_uint`?

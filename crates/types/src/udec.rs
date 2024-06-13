@@ -543,6 +543,7 @@ generate_decimal!(
     inner_type = u128,
     decimal_places = 18,
     from_dec = [],
+    doc = "128-bit unsigned fixed-point number with 18 decimal places.",
 );
 
 generate_decimal!(
@@ -550,6 +551,7 @@ generate_decimal!(
     inner_type = U256,
     decimal_places = 18,
     from_dec = [Udec128],
+    doc = "256-bit unsigned fixed-point number with 18 decimal places.",
 );
 
 // ----------------------------------- tests -----------------------------------
@@ -557,7 +559,7 @@ generate_decimal!(
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Udec256, Number, Udec128},
+        crate::{Number, Udec128, Udec256},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},

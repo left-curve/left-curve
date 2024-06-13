@@ -506,35 +506,40 @@ generate_signed!(
     name = Int64,
     inner_type = Uint64,
     from_signed = [],
-    from_std = [u8, u16, u32]
+    from_std = [u8, u16, u32],
+    doc = "64-bit signed integer.",
 );
 
 generate_signed!(
     name = Int128,
     inner_type = Uint128,
     from_signed = [Int64],
-    from_std = [u8, u16, u32]
+    from_std = [u8, u16, u32],
+    doc = "128-bit signed integer.",
 );
 
 generate_signed!(
     name = Int256,
     inner_type = Uint256,
     from_signed = [Int64, Int128],
-    from_std = [u8, u16, u32]
+    from_std = [u8, u16, u32],
+    doc = "256-bit signed integer.",
 );
 
 generate_signed!(
     name = Dec128,
     inner_type = Udec128,
     from_signed = [],
-    from_std = []
+    from_std = [],
+    doc = "128-bit signed fixed-point number with 18 decimal places.",
 );
 
 generate_signed!(
     name = Dec256,
     inner_type = Udec256,
     from_signed = [Dec128],
-    from_std = []
+    from_std = [],
+    doc = "256-bit signed fixed-point number with 18 decimal places.",
 );
 
 // ----------------------------------- tests -----------------------------------

@@ -30,7 +30,9 @@ macro_rules! generate_uint {
         inner_type = $inner:ty,
         from_int = [$($from:ty),*],
         from_std = [$($from_std:ty),*],
+        doc = $doc:literal,
     ) => {
+        #[doc = $doc]
         pub type $name = Uint<$inner>;
 
         // --- Impl From Uint and from inner type ---
@@ -134,7 +136,9 @@ macro_rules! generate_decimal {
         inner_type = $inner:ty,
         decimal_places = $decimal_places:expr,
         from_dec = [$($from:ty),*],
+        doc = $doc:literal,
     ) => {
+        #[doc = $doc]
         pub type $name = Udec<$inner, $decimal_places>;
 
         // Ex: From<U256> for Udec256
@@ -212,8 +216,10 @@ macro_rules! generate_signed {
         name = $name:ident,
         inner_type = $inner:ty,
         from_signed = [$($from_signed:ty),*],
-        from_std = [$($from_std:ty),*]
+        from_std = [$($from_std:ty),*],
+        doc = $doc:literal,
     ) => {
+        #[doc = $doc]
         pub type $name = Signed<$inner>;
 
         // Ex: From<Uint128> for Int128
