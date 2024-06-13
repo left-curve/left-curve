@@ -1,5 +1,4 @@
 mod address;
-mod api;
 mod app;
 mod bank;
 mod binary;
@@ -12,6 +11,7 @@ mod error;
 mod event;
 mod hash;
 mod ibc;
+mod imports;
 mod macros;
 mod math;
 #[cfg(not(target_arch = "wasm32"))]
@@ -27,8 +27,8 @@ mod uint;
 mod utils;
 
 pub use {
-    address::*, api::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, decimal::*,
-    empty::*, error::*, event::*, hash::*, ibc::*, math::*, query::*, response::*, result::*,
+    address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, decimal::*, empty::*,
+    error::*, event::*, hash::*, ibc::*, imports::*, math::*, query::*, response::*, result::*,
     serde::*, signed::*, timestamp::*, tx::*, uint::*, utils::*,
 };
 
