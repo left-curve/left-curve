@@ -9,14 +9,14 @@ use {
 
 // ----------------------------------- types -----------------------------------
 
-/// A wrapper over number types that ensures it is non-zero.
+/// A wrapper over a number that ensures it is non-zero.
 pub struct NonZero<T>(T);
 
 impl<T> NonZero<T>
 where
     T: Number,
 {
-    /// Create a new non-zero number. Panic if a zero is provided.
+    /// Create a new non-zero wrapper. Panic if a zero is provided.
     pub fn new(inner: T) -> Self {
         if inner.is_zero() {
             panic!(
@@ -29,7 +29,7 @@ where
 }
 
 impl<T> NonZero<T> {
-    /// Consume self, return the wrapped number.
+    /// Consume the wrapper, return the wrapped number.
     pub fn into_inner(self) -> T {
         self.0
     }
