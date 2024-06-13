@@ -2,8 +2,8 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal128, Decimal256, Fraction,
-        Inner, MultiplyFraction, MultiplyRatio, Number, NumberConst, Sign, StdError, StdResult,
-        Uint, Uint128, Uint256, Uint64,
+        Inner, MultiplyFraction, MultiplyRatio, NonZero, Number, NumberConst, Sign, StdError,
+        StdResult, Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},
@@ -356,7 +356,7 @@ where
         self.abs.numerator()
     }
 
-    fn denominator() -> Uint<AsT> {
+    fn denominator() -> NonZero<Uint<AsT>> {
         T::denominator()
     }
 }
@@ -369,25 +369,25 @@ where
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
+            .checked_multiply_ratio_floor(rhs.numerator(), F::denominator().into_inner())
             .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
+            .checked_multiply_ratio_ceil(rhs.numerator(), F::denominator().into_inner())
             .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
+            .checked_multiply_ratio_floor(F::denominator().into_inner(), rhs.numerator())
             .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
-            .checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
+            .checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
             .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 }

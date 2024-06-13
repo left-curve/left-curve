@@ -255,7 +255,7 @@ where
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
-        self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
+        self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator().into_inner())
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
@@ -265,21 +265,21 @@ where
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
-        self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
+        self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator().into_inner())
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
         if rhs.is_negative() {
             return Err(StdError::negative_div(self, rhs));
         }
-        self.checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
+        self.checked_multiply_ratio_floor(F::denominator().into_inner(), rhs.numerator())
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
         if rhs.is_negative() {
             return Err(StdError::negative_div(self, rhs));
         }
-        self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
+        self.checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
     }
 }
 

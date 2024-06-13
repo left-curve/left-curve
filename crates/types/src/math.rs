@@ -4,7 +4,36 @@ use {
         impl_number_const, StdError, StdResult, Uint,
     },
     bnum::types::{U256, U512},
+    std::any::type_name,
 };
+
+// ----------------------------------- types -----------------------------------
+
+/// A wrapper over number types that ensures it is non-zero.
+pub struct NonZero<T>(T);
+
+impl<T> NonZero<T>
+where
+    T: Number,
+{
+    /// Create a new non-zero number. Panic if a zero is provided.
+    pub fn new(inner: T) -> Self {
+        if inner.is_zero() {
+            panic!(
+                "expecting a non-zero number, got {}::ZERO",
+                type_name::<T>()
+            );
+        }
+        Self(inner)
+    }
+}
+
+impl<T> NonZero<T> {
+    /// Consume self, return the wrapped number.
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
 
 // ---------------------------------- traits -----------------------------------
 
@@ -17,11 +46,11 @@ pub trait Inner {
     type U;
 }
 
-/// Describes a number type can be casted to another type of a bigger word size.
+/// Describes a number type can be cast into another type of a bigger word size.
 ///
-/// For example, [`Uint128`] can be safety cast to [`Uint256`]. In this case,
-/// [`NextNumber`] trait should be implemented for [`Uint128`] with `Next` being
-/// [`Uint256`].
+/// For example, [`Uint128`](crate::Uint128) can be safety cast to [`Uint256`](crate::Uint256).
+/// In this case, [`NextNumber`] trait should be implemented for [`Uint128`](crate::Uint128)
+/// with `Next` being [`Uint256`](crate::Uint256).
 pub trait NextNumber: Sized + TryFrom<Self::Next> {
     type Next: From<Self>;
 
@@ -36,17 +65,15 @@ pub trait Sign {
     fn is_negative(&self) -> bool;
 }
 
-/// Describes a number that can be expressed as the quotient or fraction of two
-/// integers.
+/// Describes a number that can be expressed as the quotient of two integers.
 ///
-/// Note that here we only concern the absolute value of the rational number.
-/// Hence, both the numerator and denominator are positive.
+/// Note that here we only concern the fraction's absolute value. Both the
+/// numerator and denominator here are negative. This trait is intended to be
+/// used together with [`Sign`] To account for negative fractions.
 pub trait Fraction<U> {
     fn numerator(&self) -> Uint<U>;
 
-    // Note: Must not return zero.
-    // TODO: Check for non-zero at runtime? crypto-bigint has a `NonZero<T>` type.
-    fn denominator() -> Uint<U>;
+    fn denominator() -> NonZero<Uint<U>>;
 }
 
 /// Describes a number's associated constants: minimum and maximum; zero, one,
@@ -191,9 +218,15 @@ impl_integer_number!(U512);
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bytable, Number, NumberConst, Uint128, Uint256},
+        crate::{Bytable, NonZero, Number, NumberConst, Uint128, Uint256},
         proptest::{array::uniform32, prelude::*},
     };
+
+    #[test]
+    #[should_panic]
+    fn non_zero_works() {
+        let _ = NonZero::new(Uint128::ZERO);
+    }
 
     proptest! {
         /// Ensure the bytable methods work for `Uint128`.

@@ -2,7 +2,7 @@ use {
     crate::{
         forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Fraction, Inner, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, StdError, StdResult, Uint,
+        NextNumber, NonZero, Number, NumberConst, Sign, StdError, StdResult, Uint,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -256,14 +256,14 @@ impl<U, const S: u32> Sign for Decimal<U, S> {
 
 impl<U, const S: u32> Fraction<U> for Decimal<U, S>
 where
-    Uint<U>: Copy + From<u128>,
+    Uint<U>: Number + Copy + From<u128>,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
     }
 
-    fn denominator() -> Uint<U> {
-        Self::decimal_fraction()
+    fn denominator() -> NonZero<Uint<U>> {
+        NonZero::new(Self::decimal_fraction())
     }
 }
 
