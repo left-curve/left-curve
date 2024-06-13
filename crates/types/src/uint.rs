@@ -425,7 +425,7 @@ mod tests {
 
     /// Make sure we can't multiply a positive integer by a negative decimal.
     #[test]
-    fn multiply_ratio_fraction_by_negative() {
+    fn multiply_fraction_by_negative() {
         let lhs = Uint128::new(123);
         let rhs = SignedDecimal128::from_str("-0.1").unwrap();
         assert!(lhs.checked_mul_dec_floor(rhs).is_err());
