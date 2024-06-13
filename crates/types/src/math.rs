@@ -88,7 +88,7 @@ pub trait NumberConst {
 
 /// Describes a number that can be convert to and from raw binary representations.
 pub trait Bytable<const S: usize>: Sized {
-    const LEN: usize = S;
+    const BYTE_LEN: usize = S;
 
     fn from_be_bytes(data: [u8; S]) -> Self;
 
@@ -97,10 +97,6 @@ pub trait Bytable<const S: usize>: Sized {
     fn to_be_bytes(self) -> [u8; S];
 
     fn to_le_bytes(self) -> [u8; S];
-
-    fn byte_len() -> usize {
-        S
-    }
 
     fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S];
 
