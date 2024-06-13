@@ -130,13 +130,13 @@ where
     fn checked_mul(self, other: Self) -> StdResult<Self> {
         self.abs
             .checked_mul(other.abs)
-            .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
+            .map(|inner| Self::new(inner, self.is_negative() != other.is_negative()))
     }
 
     fn checked_div(self, other: Self) -> StdResult<Self> {
         self.abs
             .checked_div(other.abs)
-            .map(|inner| Self::new(inner, self.is_negative() == other.is_negative()))
+            .map(|inner| Self::new(inner, self.is_negative() != other.is_negative()))
     }
 
     /// On signed number, the remainder sign is the same as the dividend.
@@ -243,7 +243,7 @@ where
 
     fn wrapping_mul(self, other: Self) -> Self {
         let result = self.abs.wrapping_mul(other.abs);
-        Self::new(result, self.is_negative() == other.is_negative())
+        Self::new(result, self.is_negative() != other.is_negative())
     }
 
     fn wrapping_pow(self, other: u32) -> Self {
@@ -322,7 +322,7 @@ where
 
     fn saturating_mul(self, other: Self) -> Self {
         let result = self.abs.saturating_mul(other.abs);
-        Self::new(result, self.is_negative() == other.is_negative())
+        Self::new(result, self.is_negative() != other.is_negative())
     }
 
     fn saturating_pow(self, other: u32) -> Self {
@@ -370,25 +370,25 @@ where
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
             .checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
-            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
+            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
             .checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
-            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
+            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
         self.abs
             .checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
+            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
         self.abs
             .checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
-            .map(|res| Self::new(res, self.negative == rhs.is_negative()))
+            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
     }
 }
 
@@ -597,9 +597,9 @@ mod test {
 
         assert!(a > b);
         assert!(b < a);
-        assert!(
-            SignedDecimal128::new_positive(Decimal128::new(0_u128))
-                == SignedDecimal128::new_negative(Decimal128::new(0_u128))
+        assert_eq!(
+            SignedDecimal128::new_positive(Decimal128::new(0_u128)),
+            SignedDecimal128::new_negative(Decimal128::new(0_u128))
         );
 
         let a = Int128::new_negative(10_u128.into());
