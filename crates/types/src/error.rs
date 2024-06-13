@@ -91,6 +91,20 @@ pub enum StdError {
     #[error("remainder by zero: {a} % 0")]
     RemainderByZero { a: String },
 
+    #[error("multiply a non-negative lhs with a negative rhs: {ty}({a}) * {b}")]
+    NegativeMul {
+        ty: &'static str,
+        a: String,
+        b: String,
+    },
+
+    #[error("divide a non-negative lhs with a negative rhs: {ty}({a}) / {b}")]
+    NegativeDiv {
+        ty: &'static str,
+        a: String,
+        b: String,
+    },
+
     #[error("square root of negative: sqrt({a})")]
     NegativeSqrt { a: String },
 
@@ -194,6 +208,22 @@ impl StdError {
 
     pub fn zero_log() -> Self {
         Self::ZeroLog
+    }
+
+    pub fn negative_mul<A: ToString, B: ToString>(a: A, b: B) -> Self {
+        Self::NegativeMul {
+            ty: type_name::<A>(),
+            a: a.to_string(),
+            b: b.to_string(),
+        }
+    }
+
+    pub fn negative_div<A: ToString, B: ToString>(a: A, b: B) -> Self {
+        Self::NegativeDiv {
+            ty: type_name::<A>(),
+            a: a.to_string(),
+            b: b.to_string(),
+        }
     }
 
     pub fn negative_sqrt<T>(a: impl ToString) -> Self {

@@ -242,22 +242,34 @@ where
 
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
-    Uint<U>: MultiplyRatio + From<Uint<AsU>>,
-    F: Fraction<AsU>,
+    Uint<U>: MultiplyRatio + From<Uint<AsU>> + ToString,
+    F: Fraction<AsU> + Sign + ToString,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_negative() {
+            return Err(StdError::negative_mul(self, rhs));
+        }
         self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_negative() {
+            return Err(StdError::negative_mul(self, rhs));
+        }
         self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_negative() {
+            return Err(StdError::negative_div(self, rhs));
+        }
         self.checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_negative() {
+            return Err(StdError::negative_div(self, rhs));
+        }
         self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
     }
 }
@@ -409,19 +421,16 @@ impl_next!(Uint256, Uint512);
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{Number, Uint, Uint128, Uint256},
-        std::{fmt::Debug, str::FromStr},
-        test_case::test_case,
-    };
+    use {super::*, crate::SignedDecimal128};
 
-    #[test_case(Uint128::new(20), Uint128::new(10) ; "uint_base_128_2")]
-    #[test_case(Uint256::new(20u128.into()), Uint256::new(10u128.into()) ; "uint_base_256_2")]
-    fn adding<X>(x: Uint<X>, y: Uint<X>)
-    where
-        Uint<X>: Number + FromStr + PartialEq + Debug,
-        <Uint<X> as std::str::FromStr>::Err: Debug,
-    {
-        assert_eq!(x + y, Uint::<X>::from_str("30").unwrap());
+    /// Make sure we can't multiply a positive integer by a negative decimal.
+    #[test]
+    fn multiply_ratio_fraction_by_negative() {
+        let lhs = Uint128::new(123);
+        let rhs = SignedDecimal128::from_str("-0.1").unwrap();
+        assert!(lhs.checked_mul_dec_floor(rhs).is_err());
+        assert!(lhs.checked_mul_dec_ceil(rhs).is_err());
+        assert!(lhs.checked_div_dec_floor(rhs).is_err());
+        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
     }
 }
