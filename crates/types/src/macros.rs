@@ -483,10 +483,14 @@ macro_rules! impl_bytable_bnum {
 #[macro_export]
 macro_rules! impl_integer_number {
     ($t:ty) => {
+        // This macro is only applied to unsigned number types (`u64`,
+        // `u128`, `U256`, `U512`) which cannot be negative.
         impl Sign for $t {
+            fn abs(self) -> Self {
+                self
+            }
+
             fn is_negative(&self) -> bool {
-                // This macro is only applied to unsigned number types (`u64`,
-                // `u128`, `U256`, `U512`) which cannot be negative.
                 false
             }
         }

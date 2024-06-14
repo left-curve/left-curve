@@ -56,6 +56,10 @@ impl<T> Inner for Signed<T> {
 }
 
 impl<T> Sign for Signed<T> {
+    fn abs(self) -> Self {
+        Self::new_positive(self.abs)
+    }
+
     fn is_negative(&self) -> bool {
         self.negative
     }
@@ -372,33 +376,49 @@ where
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
         if self.negative == rhs.is_negative() {
-            self.abs.checked_mul_dec_floor(rhs).map(Self::new_positive)
+            self.abs
+                .checked_mul_dec_floor(rhs.abs())
+                .map(Self::new_positive)
         } else {
-            self.abs.checked_mul_dec_ceil(rhs).map(Self::new_negative)
+            self.abs
+                .checked_mul_dec_ceil(rhs.abs())
+                .map(Self::new_negative)
         }
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
         if self.negative == rhs.is_negative() {
-            self.abs.checked_mul_dec_ceil(rhs).map(Self::new_positive)
+            self.abs
+                .checked_mul_dec_ceil(rhs.abs())
+                .map(Self::new_positive)
         } else {
-            self.abs.checked_mul_dec_floor(rhs).map(Self::new_negative)
+            self.abs
+                .checked_mul_dec_floor(rhs.abs())
+                .map(Self::new_negative)
         }
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
         if self.negative == rhs.is_negative() {
-            self.abs.checked_div_dec_floor(rhs).map(Self::new_positive)
+            self.abs
+                .checked_div_dec_floor(rhs.abs())
+                .map(Self::new_positive)
         } else {
-            self.abs.checked_div_dec_ceil(rhs).map(Self::new_negative)
+            self.abs
+                .checked_div_dec_ceil(rhs.abs())
+                .map(Self::new_negative)
         }
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
         if self.negative == rhs.is_negative() {
-            self.abs.checked_div_dec_ceil(rhs).map(Self::new_positive)
+            self.abs
+                .checked_div_dec_ceil(rhs.abs())
+                .map(Self::new_positive)
         } else {
-            self.abs.checked_div_dec_floor(rhs).map(Self::new_negative)
+            self.abs
+                .checked_div_dec_floor(rhs.abs())
+                .map(Self::new_negative)
         }
     }
 }
@@ -568,6 +588,7 @@ mod test {
         super::*,
         crate::{Dec128, Dec256, Int128, Udec128},
         std::str::FromStr,
+        test_case::test_case,
     };
 
     #[test]
@@ -664,21 +685,31 @@ mod test {
         assert_eq!(foo, des);
     }
 
-    #[test]
-    fn t5_signed_int_per_dec() {
-        let foo = Int128::new_negative(10_u128.into());
-        let res = foo
-            .checked_mul_dec_floor(Udec128::from_str("2").unwrap())
-            .unwrap();
-
-        assert_eq!(res, Int128::new_negative(20_u128.into()));
-
-        let foo = Int128::new_negative(10_u128.into());
-
-        let res = foo
-            .checked_mul_dec_floor(Dec128::from_str("-2").unwrap())
-            .unwrap();
-
-        assert_eq!(res, Int128::new_positive(20_u128.into()));
+    #[test_case(
+        Int128::from_str("10").unwrap(),
+        Dec128::from_str("3.14").unwrap(),
+        Int128::from_str("31").unwrap();
+        "positive_times_positive"
+    )]
+    #[test_case(
+        Int128::from_str("-10").unwrap(),
+        Dec128::from_str("3.14").unwrap(),
+        Int128::from_str("-32").unwrap();
+        "negative_times_positive"
+    )]
+    #[test_case(
+        Int128::from_str("10").unwrap(),
+        Dec128::from_str("-3.14").unwrap(),
+        Int128::from_str("-32").unwrap();
+        "positive_times_negative"
+    )]
+    #[test_case(
+        Int128::from_str("-10").unwrap(),
+        Dec128::from_str("-3.14").unwrap(),
+        Int128::from_str("31").unwrap();
+        "negative_times_negative"
+    )]
+    fn signed_mul_dec_floor(lhs: Int128, rhs: Dec128, out: Int128) {
+        assert_eq!(lhs.checked_mul_dec_floor(rhs).unwrap(), out);
     }
 }

@@ -62,6 +62,8 @@ pub trait NextNumber: Sized + TryFrom<Self::Next> {
 /// Describes a number that can take on negative values.
 /// Zero is considered non-negative, for which this should return `false`.
 pub trait Sign {
+    fn abs(self) -> Self;
+
     fn is_negative(&self) -> bool;
 }
 

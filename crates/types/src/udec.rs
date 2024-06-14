@@ -244,6 +244,10 @@ impl<U, const S: u32> Inner for Udec<U, S> {
 }
 
 impl<U, const S: u32> Sign for Udec<U, S> {
+    fn abs(self) -> Self {
+        self
+    }
+
     fn is_negative(&self) -> bool {
         false
     }

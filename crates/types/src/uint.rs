@@ -49,6 +49,10 @@ impl<U> Inner for Uint<U> {
 }
 
 impl<U> Sign for Uint<U> {
+    fn abs(self) -> Self {
+        self
+    }
+
     fn is_negative(&self) -> bool {
         false
     }
