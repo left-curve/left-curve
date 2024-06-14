@@ -24,6 +24,6 @@ sha3          = { workspace = true }
 [dev-dependencies]
 rand       = { workspace = true }
 sha2       = { workspace = true }
-serde      = { workspace = true, default-features = false, features = ["derive", "alloc"] }
+serde      = { workspace = true, features = ["derive", "alloc"] }
 serde_json = { workspace = true }
 hex        = { workspace = true, features = ["serde"] }
