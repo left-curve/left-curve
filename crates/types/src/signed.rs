@@ -361,34 +361,45 @@ where
     }
 }
 
+// NOTE: When a negative number is floored, it should round to the negative side,
+// e.g. floor(-3.14) is -4, not -3. So we should be ceiling the absolute value
+// in this case.
 impl<T, AsT, F> MultiplyFraction<F, AsT> for Signed<T>
 where
-    T: MultiplyRatio + From<Uint<AsT>>,
+    T: MultiplyFraction<F, AsT>,
     F: Fraction<AsT> + Sign,
     AsT: NumberConst + Number,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
-        self.abs
-            .checked_multiply_ratio_floor(rhs.numerator(), F::denominator().into_inner())
-            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
+        if self.negative == rhs.is_negative() {
+            self.abs.checked_mul_dec_floor(rhs).map(Self::new_positive)
+        } else {
+            self.abs.checked_mul_dec_ceil(rhs).map(Self::new_negative)
+        }
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
-        self.abs
-            .checked_multiply_ratio_ceil(rhs.numerator(), F::denominator().into_inner())
-            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
+        if self.negative == rhs.is_negative() {
+            self.abs.checked_mul_dec_ceil(rhs).map(Self::new_positive)
+        } else {
+            self.abs.checked_mul_dec_floor(rhs).map(Self::new_negative)
+        }
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
-        self.abs
-            .checked_multiply_ratio_floor(F::denominator().into_inner(), rhs.numerator())
-            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
+        if self.negative == rhs.is_negative() {
+            self.abs.checked_div_dec_floor(rhs).map(Self::new_positive)
+        } else {
+            self.abs.checked_div_dec_ceil(rhs).map(Self::new_negative)
+        }
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
-        self.abs
-            .checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
-            .map(|res| Self::new(res, self.negative != rhs.is_negative()))
+        if self.negative == rhs.is_negative() {
+            self.abs.checked_div_dec_ceil(rhs).map(Self::new_positive)
+        } else {
+            self.abs.checked_div_dec_floor(rhs).map(Self::new_negative)
+        }
     }
 }
 
