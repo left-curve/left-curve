@@ -42,7 +42,7 @@ pub fn blake2b_512(message: &[u8]) -> [u8; 64] {
     Blake2b512::digest(message).into()
 }
 
-pub fn blake2b_512_truncated(message: &[u8]) -> [u8; 64] {
+pub fn blake2b_512_truncated(message: &[u8]) -> [u8; 32] {
     truncate(&Blake2b512::digest(message)).unwrap()
 }
 
