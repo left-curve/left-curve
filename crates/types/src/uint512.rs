@@ -99,7 +99,7 @@ impl TryFrom<Uint512> for Uint256 {
             words[2].to_le_bytes(),
             words[3].to_le_bytes(),
         ];
-        let lower = unsafe { mem::transmute(lower) };
+        let lower = unsafe { mem::transmute::<[[u8; 8]; 4], [u8; 32]>(lower) };
 
         Ok(Uint256::from_le_bytes(lower))
     }
