@@ -2,8 +2,8 @@ use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_signed,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Fraction, Inner,
-        MultiplyFraction, MultiplyRatio, NonZero, Number, NumberConst, Sign, StdError, StdResult,
-        Udec128, Udec256, Uint, Uint128, Uint256, Uint64,
+        MultiplyFraction, NonZero, Number, NumberConst, Sign, StdError, StdResult, Udec128,
+        Udec256, Uint, Uint128, Uint256, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     forward_ref::{forward_ref_binop, forward_ref_op_assign},

@@ -1,8 +1,8 @@
 use {
     crate::{
         forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Fraction, Inner, MultiplyRatio,
-        NextNumber, NonZero, Number, NumberConst, Sign, StdError, StdResult, Uint,
+        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal, Fraction, Inner,
+        MultiplyRatio, NextNumber, NonZero, Number, NumberConst, Sign, StdError, StdResult, Uint,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -211,31 +211,26 @@ where
     }
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U, const S: u32> Decimal for Udec<U, S>
 where
-    U: Copy,
+    U: Copy + PartialEq,
     Uint<U>: Number + From<u128>,
 {
-    pub fn floor(self) -> Self {
+    fn checked_floor(self) -> StdResult<Self> {
         // There are two ways to floor:
         // 1. inner / decimal_fraction * decimal_fraction
         // 2. inner - inner % decimal_fraction
         // Method 2 is faster because Rem is roughly as fast as or slightly
         // faster than Div, while Sub is significantly faster than Mul.
         //
-        // `checked_rem` can be safely unwrapped here because the decimal
-        // fraction is non-zero.
-        Self(self.0 - self.0.checked_rem(Self::decimal_fraction()).unwrap())
+        // This flooring operation in fact can never fail, because flooring an
+        // unsigned decimal goes down to 0 at most. However, flooring a _signed_
+        // decimal may underflow.
+        Ok(Self(self.0 - self.0.checked_rem(Self::decimal_fraction())?))
     }
-}
 
-impl<U, const S: u32> Udec<U, S>
-where
-    U: Copy + PartialEq,
-    Uint<U>: Number + From<u128>,
-{
-    pub fn checked_ceil(self) -> StdResult<Self> {
-        let floor = self.floor();
+    fn checked_ceil(self) -> StdResult<Self> {
+        let floor = self.checked_floor()?;
         if floor == self {
             Ok(floor)
         } else {

@@ -160,6 +160,14 @@ pub trait Integer: Sized {
     fn checked_shr(self, other: u32) -> StdResult<Self>;
 }
 
+/// Describes operations that decimal types must implement, which may not be
+/// relevant for non-decimal types.
+pub trait Decimal: Sized {
+    fn checked_floor(self) -> StdResult<Self>;
+
+    fn checked_ceil(self) -> StdResult<Self>;
+}
+
 /// Describes operations where a number is multiplied by a numerator then
 /// immediately divided by a denominator.
 /// This is different from applying a multiplication and a division sequentially,
