@@ -78,7 +78,7 @@ pub fn secp256k1_pubkey_recover(
 mod tests {
     use {
         super::*,
-        crate::sha256,
+        crate::sha2_256,
         k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
         rand::rngs::OsRng,
     };
@@ -89,7 +89,7 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = Identity256::from(sha256(prehash_msg));
+        let msg = Identity256::from(sha2_256(prehash_msg));
         let sig: Signature = sk.sign_digest(msg.clone());
 
         // valid signature
@@ -111,7 +111,7 @@ mod tests {
 
         // incorrect message
         let false_prehash_msg = b"Larry";
-        let false_msg = sha256(false_prehash_msg);
+        let false_msg = sha2_256(false_prehash_msg);
         assert!(secp256k1_verify(&false_msg, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
     }
 
@@ -121,7 +121,7 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = Identity256::from(sha256(prehash_msg));
+        let msg = Identity256::from(sha2_256(prehash_msg));
         let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
 
         let recovered_pk = secp256k1_pubkey_recover(

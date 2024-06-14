@@ -10,6 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+blake2        = { workspace = true }
+blake3        = { workspace = true }
 digest        = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["batch"] }
 k256          = { workspace = true }

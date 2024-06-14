@@ -1,5 +1,5 @@
 use {
-    grug_crypto::{keccak_256, secp256k1_verify, secp256r1_verify, sha256},
+    grug_crypto::{keccak_256, secp256k1_verify, secp256r1_verify, sha2_256},
     serde::Deserialize,
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
@@ -163,14 +163,14 @@ const SECP256K1_KECCAK256: &str = "./testdata/rootberg/ecdsa_secp256k1_keccak256
 rootberg_test!(K1 =>
     ecdsa_secp256k1_sha256_compressed,
     SECP256K1_SHA256,
-    sha256,
+    sha2_256,
     compressed
 );
 
 rootberg_test!(K1 =>
     ecdsa_secp256k1_sha256_uncompressed,
     SECP256K1_SHA256,
-    sha256,
+    sha2_256,
     uncompressed
 );
 
@@ -196,14 +196,14 @@ const SECP256R1_KECCAK256: &str = "./testdata/rootberg/ecdsa_secp256r1_keccak256
 rootberg_test!(R1 =>
     ecdsa_secp256r1_sha256_compressed,
     SECP256R1_SHA256,
-    sha256,
+    sha2_256,
     compressed
 );
 
 rootberg_test!(R1 =>
     ecdsa_secp256r1_sha256_uncompressed,
     SECP256R1_SHA256,
-    sha256,
+    sha2_256,
     uncompressed
 );
 

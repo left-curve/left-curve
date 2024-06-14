@@ -36,7 +36,7 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
 mod tests {
     use {
         super::*,
-        crate::sha256,
+        crate::sha2_256,
         p256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
         rand::rngs::OsRng,
     };
@@ -47,7 +47,7 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = Identity256::from(sha256(prehash_msg));
+        let msg = Identity256::from(sha2_256(prehash_msg));
         let sig: Signature = sk.sign_digest(msg.clone());
 
         // valid signature
@@ -69,7 +69,7 @@ mod tests {
 
         // incorrect message
         let false_prehash_msg = b"Larry";
-        let false_msg = sha256(false_prehash_msg);
+        let false_msg = sha2_256(false_prehash_msg);
         assert!(secp256r1_verify(
             &false_msg,
             &sig.to_bytes(),

@@ -1,5 +1,8 @@
 use {
-    grug_crypto::{secp256k1_verify, secp256r1_verify, sha256, sha3_256, sha3_512, sha512},
+    grug_crypto::{
+        secp256k1_verify, secp256r1_verify, sha2_256, sha2_512_truncated, sha3_256,
+        sha3_512_truncated,
+    },
     serde::Deserialize,
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
@@ -317,28 +320,28 @@ const SECP256K1_SHA3_512: &str = "./testdata/wycheproof/ecdsa_secp256k1_sha3_512
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha256_compressed,
     SECP256K1_SHA256,
-    sha256,
+    sha2_256,
     compressed
 );
 
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha256_uncompressed,
     SECP256K1_SHA256,
-    sha256,
+    sha2_256,
     uncompressed
 );
 
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha512_compressed,
     SECP256K1_SHA512,
-    sha512,
+    sha2_512_truncated,
     compressed
 );
 
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha512_uncompressed,
     SECP256K1_SHA512,
-    sha512,
+    sha2_512_truncated,
     uncompressed
 );
 
@@ -359,14 +362,14 @@ wycheproof_test!(K1 =>
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha3_512_compressed,
     SECP256K1_SHA3_512,
-    sha3_512,
+    sha3_512_truncated,
     compressed
 );
 
 wycheproof_test!(K1 =>
     ecdsa_secp256k1_sha3_512_uncompressed,
     SECP256K1_SHA3_512,
-    sha3_512,
+    sha3_512_truncated,
     uncompressed
 );
 
@@ -380,28 +383,28 @@ const SECP256R1_SHA3_512: &str = "./testdata/wycheproof/ecdsa_secp256r1_sha3_512
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha256_compressed,
     SECP256R1_SHA256,
-    sha256,
+    sha2_256,
     compressed
 );
 
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha256_uncompressed,
     SECP256R1_SHA256,
-    sha256,
+    sha2_256,
     uncompressed
 );
 
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha512_compressed,
     SECP256R1_SHA512,
-    sha512,
+    sha2_512_truncated,
     compressed
 );
 
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha512_uncompressed,
     SECP256R1_SHA512,
-    sha512,
+    sha2_512_truncated,
     uncompressed
 );
 
@@ -422,13 +425,13 @@ wycheproof_test!(R1 =>
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha3_512_compressed,
     SECP256R1_SHA3_512,
-    sha3_512,
+    sha3_512_truncated,
     compressed
 );
 
 wycheproof_test!(R1 =>
     ecdsa_secp256r1_sha3_512_uncompressed,
     SECP256R1_SHA3_512,
-    sha3_512,
+    sha3_512_truncated,
     uncompressed
 );
