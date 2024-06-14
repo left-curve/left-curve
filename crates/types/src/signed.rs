@@ -511,6 +511,13 @@ forward_ref_op_assign_typed!(impl<T> SubAssign, sub_assign for Signed<T>, Signed
 forward_ref_op_assign_typed!(impl<T> MulAssign, mul_assign for Signed<T>, Signed<T>);
 forward_ref_op_assign_typed!(impl<T> DivAssign, div_assign for Signed<T>, Signed<T>);
 
+// TODO: missing implementations for Signed:
+// - impl<T> Integer for Signed<T> where T: Integer
+// - impl<T> Decimal for Signed<T> where T: Decimal
+// - impl<T> MultiplyRatio for Signd<T> where T: MultiplyRatio
+// - Signed<Uint<T>>: full_mul
+// - Signed<Udec<T>>: one, decimal_fraction, new_percent/permille/bps, checked_from_atomics/ratio
+
 // ------------------------------ concrete types -------------------------------
 
 generate_signed!(
