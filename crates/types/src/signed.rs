@@ -61,6 +61,19 @@ impl<T> Sign for Signed<T> {
     }
 }
 
+impl<T, AsT> Fraction<AsT> for Signed<T>
+where
+    T: Fraction<AsT>,
+{
+    fn numerator(&self) -> Uint<AsT> {
+        self.abs.numerator()
+    }
+
+    fn denominator() -> NonZero<Uint<AsT>> {
+        T::denominator()
+    }
+}
+
 impl<T> NumberConst for Signed<T>
 where
     T: NumberConst,
@@ -345,19 +358,6 @@ where
         }
 
         self.abs.checked_sqrt().map(Self::new_positive)
-    }
-}
-
-impl<T, AsT> Fraction<AsT> for Signed<T>
-where
-    T: Fraction<AsT>,
-{
-    fn numerator(&self) -> Uint<AsT> {
-        self.abs.numerator()
-    }
-
-    fn denominator() -> NonZero<Uint<AsT>> {
-        T::denominator()
     }
 }
 
