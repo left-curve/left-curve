@@ -16,14 +16,14 @@ digest        = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["batch"] }
 k256          = { workspace = true }
 p256          = { workspace = true }
-signature     = { workspace = true }
-thiserror     = { workspace = true }
 sha2          = { workspace = true }
 sha3          = { workspace = true }
+signature     = { workspace = true }
+thiserror     = { workspace = true }
 
 [dev-dependencies]
+hex        = { workspace = true, features = ["serde"] }
 rand       = { workspace = true }
-sha2       = { workspace = true }
 serde      = { workspace = true, features = ["derive", "alloc"] }
 serde_json = { workspace = true }
-hex        = { workspace = true, features = ["serde"] }
+sha2       = { workspace = true }
