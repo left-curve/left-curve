@@ -50,9 +50,10 @@ pub fn blake3(message: &[u8]) -> [u8; 32] {
     blake3::hash(message).into()
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-
     macro_rules! hash_test {
         ($hash_fn:ident, $world:expr => $hexed:expr) => {
             #[test]
