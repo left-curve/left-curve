@@ -1,7 +1,7 @@
 mod shared;
 
 use {
-    grug_crypto::{keccak_256, secp256k1_verify, secp256r1_verify, sha2_256},
+    grug_crypto::{keccak256, secp256k1_verify, secp256r1_verify, sha2_256},
     serde::Deserialize,
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
@@ -177,14 +177,14 @@ rootberg_test!(K1 =>
 rootberg_test!(K1 =>
     ecdsa_secp256k1_keccak256_compressed,
     SECP256K1_KECCAK256,
-    keccak_256,
+    keccak256,
     compressed
 );
 
 rootberg_test!(K1 =>
     ecdsa_secp256k1_keccak256_uncompressed,
     SECP256K1_KECCAK256,
-    keccak_256,
+    keccak256,
     uncompressed
 );
 
@@ -210,13 +210,13 @@ rootberg_test!(R1 =>
 rootberg_test!(R1 =>
     ecdsa_secp256r1_keccak256_compressed,
     SECP256R1_KECCAK256,
-    keccak_256,
+    keccak256,
     compressed
 );
 
 rootberg_test!(R1 =>
     ecdsa_secp256r1_keccak256_uncompressed,
     SECP256R1_KECCAK256,
-    keccak_256,
+    keccak256,
     uncompressed
 );
