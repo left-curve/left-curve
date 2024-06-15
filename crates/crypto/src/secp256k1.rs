@@ -20,7 +20,7 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
         sig = normalized;
     }
 
-    if SECP256K1_PUBKEY_LENS.contains(&pk.len()) {
+    if !SECP256K1_PUBKEY_LENS.contains(&pk.len()) {
         return Err(CryptoError::IncorrectLengths {
             expect: &SECP256K1_PUBKEY_LENS,
             actual: pk.len(),
