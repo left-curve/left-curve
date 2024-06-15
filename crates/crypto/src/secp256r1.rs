@@ -27,8 +27,9 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
         });
     }
 
-    let vk = VerifyingKey::from_sec1_bytes(pk)?;
-    vk.verify_digest(msg, &sig).map_err(Into::into)
+    VerifyingKey::from_sec1_bytes(pk)?
+        .verify_digest(msg, &sig)
+        .map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
