@@ -50,12 +50,14 @@ pub fn blake3(message: &[u8]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
+    use hex_literal::hex;
+
     macro_rules! hash_test {
         ($hash_fn:ident, $world:expr => $hexed:expr) => {
             #[test]
             fn $hash_fn() {
                 let hash = super::$hash_fn($world.as_bytes());
-                assert_eq!(hash.to_vec(), hex::decode($hexed).unwrap())
+                assert_eq!(hash, hex!($hexed))
             }
         };
     }

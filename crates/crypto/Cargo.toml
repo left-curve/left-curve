@@ -22,8 +22,9 @@ signature     = { workspace = true }
 thiserror     = { workspace = true }
 
 [dev-dependencies]
-hex        = { workspace = true, features = ["serde"] }
-rand       = { workspace = true }
-serde      = { workspace = true, features = ["derive", "alloc"] }
-serde_json = { workspace = true }
-sha2       = { workspace = true }
+hex         = { workspace = true, features = ["serde"] }
+hex-literal = { workspace = true }
+rand        = { workspace = true }
+serde       = { workspace = true, features = ["derive", "alloc"] }
+serde_json  = { workspace = true }
+sha2        = { workspace = true }

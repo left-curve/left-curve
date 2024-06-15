@@ -1546,6 +1546,7 @@ dependencies = [
  "digest 0.10.7",
  "ed25519-dalek",
  "hex",
+ "hex-literal",
  "k256",
  "p256",
  "rand",
