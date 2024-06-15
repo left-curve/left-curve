@@ -87,6 +87,14 @@ impl Identity256 {
     }
 }
 
+impl From<[u8; 32]> for Identity256 {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self {
+            bytes: *GenericArray::from_slice(&bytes),
+        }
+    }
+}
+
 impl OutputSizeUser for Identity256 {
     type OutputSize = U32;
 }
@@ -105,11 +113,3 @@ impl FixedOutput for Identity256 {
 }
 
 impl HashMarker for Identity256 {}
-
-impl From<[u8; 32]> for Identity256 {
-    fn from(bytes: [u8; 32]) -> Self {
-        Self {
-            bytes: *GenericArray::from_slice(&bytes),
-        }
-    }
-}
