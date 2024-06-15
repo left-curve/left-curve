@@ -1,9 +1,5 @@
 use {
     crate::{Addr, Api, Order, Record, StdError, StdResult, Storage},
-    grug_crypto::{
-        ed25519_batch_verify, ed25519_verify, secp256k1_pubkey_recover, secp256k1_verify,
-        secp256r1_verify,
-    },
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -77,11 +73,11 @@ impl Api for MockApi {
     }
 
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
     fn secp256k1_pubkey_recover(
@@ -91,12 +87,12 @@ impl Api for MockApi {
         recovery_id: u8,
         compressed: bool,
     ) -> StdResult<Vec<u8>> {
-        secp256k1_pubkey_recover(msg_hash, sig, recovery_id, compressed)
+        grug_crypto::secp256k1_pubkey_recover(msg_hash, sig, recovery_id, compressed)
             .map_err(|_| StdError::VerificationFailed)
     }
 
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
     fn ed25519_batch_verify(
@@ -105,6 +101,47 @@ impl Api for MockApi {
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()> {
-        ed25519_batch_verify(msgs_hash, sigs, pks).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::ed25519_batch_verify(msgs_hash, sigs, pks)
+            .map_err(|_| StdError::VerificationFailed)
+    }
+
+    fn sha2_256(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::sha2_256(data)
+    }
+
+    fn sha2_512(&self, data: &[u8]) -> [u8; 64] {
+        grug_crypto::sha2_512(data)
+    }
+
+    fn sha2_512_truncated(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::sha2_512_truncated(data)
+    }
+
+    fn sha3_256(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::sha3_256(data)
+    }
+
+    fn sha3_512(&self, data: &[u8]) -> [u8; 64] {
+        grug_crypto::sha3_512(data)
+    }
+
+    fn sha3_512_truncated(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::sha3_512_truncated(data)
+    }
+
+    fn keccak256(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::keccak256(data)
+    }
+
+    fn blake2s_256(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::blake2s_256(data)
+    }
+
+    fn blake2b_512(&self, data: &[u8]) -> [u8; 64] {
+        grug_crypto::blake2b_512(data)
+    }
+
+    fn blake3(&self, data: &[u8]) -> [u8; 32] {
+        grug_crypto::blake3(data)
     }
 }

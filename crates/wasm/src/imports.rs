@@ -6,34 +6,23 @@ use {
     },
 };
 
-// these are the method that the host must implement.
-// we use usize to denote memory addresses, and i32 to denote other data.
+// These are the method that the host must implement.
+// We use `usize` to denote memory addresses, and `i32` to denote other data.
 extern "C" {
-    // database operations.
+    // Database operations.
     //
-    // note that these methods are not fallible. the reason is that if a DB op
+    // Note that these methods are not fallible. the reason is that if a DB op
     // indeed fails, the host should have thrown an error and kill the execution.
     // from the Wasm module's perspective, if a response is received, the DB op
     // must have succeeded.
-    //
-    // read ops (no state mutation):
     fn db_read(key_ptr: usize) -> usize;
     fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> i32;
     fn db_next(iterator_id: i32) -> usize;
-
-    // write ops (mutate the state):
     fn db_write(key_ptr: usize, value_ptr: usize);
     fn db_remove(key_ptr: usize);
 
-    // print a debug message to the client's CLI output.
-    fn debug(addr_ptr: usize, msg_ptr: usize);
-
-    // send a query request to the chain.
-    // not to be confused with the query export.
-    fn query_chain(req: usize) -> usize;
-
-    // crypto methods
-    // return value of 0 means ok; any value other than 0 means error.
+    // Signature verification
+    // Return value of 0 means ok; any value other than 0 means error.
     fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn secp256k1_pubkey_recover(
@@ -44,6 +33,25 @@ extern "C" {
     ) -> usize;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
     fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
+
+    // Hashes
+    fn sha2_256(data_ptr: usize) -> usize;
+    fn sha2_512(data_ptr: usize) -> usize;
+    fn sha2_512_truncated(data_ptr: usize) -> usize;
+    fn sha3_256(data_ptr: usize) -> usize;
+    fn sha3_512(data_ptr: usize) -> usize;
+    fn sha3_512_truncated(data_ptr: usize) -> usize;
+    fn keccak256(data_ptr: usize) -> usize;
+    fn blake2s_256(data_ptr: usize) -> usize;
+    fn blake2b_512(data_ptr: usize) -> usize;
+    fn blake3(data_ptr: usize) -> usize;
+
+    // Print a debug message to the client's CLI output.
+    fn debug(addr_ptr: usize, msg_ptr: usize);
+
+    // Send a query request to the chain.
+    // Not to be confused with the `query` export.
+    fn query_chain(req: usize) -> usize;
 }
 
 // ---------------------------------- storage ----------------------------------
@@ -180,7 +188,45 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 
 pub struct ExternalApi;
 
+macro_rules! impl_hash_method {
+    ($name:ident, $len:literal) => {
+        fn $name(&self, data: &[u8]) -> [u8; $len] {
+            let data_region = Region::build(data);
+            let data_ptr = &*data_region as *const Region;
+
+            let hash_region = unsafe {
+                let hash_ptr = $name(data_ptr as usize);
+                Region::consume(hash_ptr as *mut Region)
+            };
+
+            // We trust the host returns a hash of the correct length, therefore
+            // unwrapping it here safely.
+            hash_region.try_into().unwrap()
+        }
+    };
+}
+
 impl Api for ExternalApi {
+    impl_hash_method!(sha2_256, 32);
+
+    impl_hash_method!(sha2_512, 64);
+
+    impl_hash_method!(sha2_512_truncated, 32);
+
+    impl_hash_method!(sha3_256, 32);
+
+    impl_hash_method!(sha3_512, 64);
+
+    impl_hash_method!(sha3_512_truncated, 32);
+
+    impl_hash_method!(keccak256, 32);
+
+    impl_hash_method!(blake2s_256, 32);
+
+    impl_hash_method!(blake2b_512, 64);
+
+    impl_hash_method!(blake3, 32);
+
     fn debug(&self, addr: &Addr, msg: &str) {
         let addr_region = Region::build(addr);
         let addr_ptr = &*addr_region as *const Region;

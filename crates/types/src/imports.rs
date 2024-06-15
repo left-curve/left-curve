@@ -99,10 +99,12 @@ dyn_clone::clone_trait_object!(Storage);
 
 // ------------------------------------ api ------------------------------------
 
-// note: I prefer to use generics (e.g. `impl AsRef<[u8]>`) instead of `&[u8]`
-// for the method parameters, but by doing that the trait won't be object-safe
-// (i.e. we won't be able to do `&dyn Api`). traits with methods that have
-// generic methods can't be object-safe.
+// Note: I prefer to use generics (e.g. `impl AsRef<[u8]>`) over `&[u8]` for
+// input data, but by doing that the trait won't be object-safe (i.e. we won't
+// be able to do `&dyn Api`). Traits with methods that have generic parameters
+// can't be object-safe.
+//
+// Also note that trait methods must include `&self` in order to be object-safe.
 pub trait Api {
     /// Send a message to the host, which will be printed to the host's logging.
     /// Takes two arguments: the contract's address as raw bytes, and the message
@@ -155,6 +157,36 @@ pub trait Api {
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()>;
+
+    /// Perform the SHA2-256 hash.
+    fn sha2_256(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the SHA2-512 hash.
+    fn sha2_512(&self, data: &[u8]) -> [u8; 64];
+
+    /// Perform the SHA2-512 hash, truncated to the first 32 bytes.
+    fn sha2_512_truncated(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the SHA3-256 hash.
+    fn sha3_256(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the SHA3-512 hash.
+    fn sha3_512(&self, data: &[u8]) -> [u8; 64];
+
+    /// Perform the SHA3-512 hash, truncated to the first 32 bytes.
+    fn sha3_512_truncated(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the Keccak-256 hash.
+    fn keccak256(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the BLAKE2s-256 hash.
+    fn blake2s_256(&self, data: &[u8]) -> [u8; 32];
+
+    /// Perform the BLAKE2b-512 hash.
+    fn blake2b_512(&self, data: &[u8]) -> [u8; 64];
+
+    /// Perform the BLAKE3 hash.
+    fn blake3(&self, data: &[u8]) -> [u8; 32];
 }
 
 // ---------------------------------- querier ----------------------------------

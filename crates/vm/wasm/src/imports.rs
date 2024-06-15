@@ -233,3 +233,27 @@ pub fn ed25519_batch_verify(
         Err(_) => Ok(1),
     }
 }
+
+macro_rules! impl_hash_method {
+    ($name:ident) => {
+        pub fn $name(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
+            let (env, mut wasm_store) = fe.data_and_store_mut();
+
+            let data = read_from_memory(env, &wasm_store, data_ptr)?;
+            let hash = grug_crypto::$name(&data);
+
+            write_to_memory(env, &mut wasm_store, &hash)
+        }
+    };
+}
+
+impl_hash_method!(sha2_256);
+impl_hash_method!(sha2_512);
+impl_hash_method!(sha2_512_truncated);
+impl_hash_method!(sha3_256);
+impl_hash_method!(sha3_512);
+impl_hash_method!(sha3_512_truncated);
+impl_hash_method!(keccak256);
+impl_hash_method!(blake2s_256);
+impl_hash_method!(blake2b_512);
+impl_hash_method!(blake3);
