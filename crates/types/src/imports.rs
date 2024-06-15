@@ -10,8 +10,12 @@
 //! traits.
 
 use {
-    crate::{Addr, Batch, Op, Order, QueryRequest, QueryResponse, Record, StdResult},
+    crate::{
+        from_json_value, to_json_value, AccountResponse, Addr, Batch, Binary, Coins, Hash,
+        InfoResponse, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
+    },
     dyn_clone::DynClone,
+    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 // ---------------------------------- storage ----------------------------------
@@ -195,4 +199,117 @@ pub trait Querier {
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse>;
+}
+
+/// Wraps around a `Querier` to provide some convenience methods.
+///
+/// This is necessary because the `query_wasm_smart` method involves generics,
+/// and a traits with generic methods isn't object-safe (i.e. we won't be able
+/// to do `&dyn Querier`).
+pub struct QuerierWrapper<'a> {
+    inner: &'a dyn Querier,
+}
+
+impl<'a> QuerierWrapper<'a> {
+    pub fn new(inner: &'a dyn Querier) -> Self {
+        Self { inner }
+    }
+
+    pub fn query(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+        self.inner.query_chain(req)
+    }
+
+    pub fn query_info(&self) -> StdResult<InfoResponse> {
+        self.inner
+            .query_chain(QueryRequest::Info {})
+            .map(|res| res.as_info())
+    }
+
+    pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
+        self.inner
+            .query_chain(QueryRequest::Balance { address, denom })
+            .map(|res| res.as_balance().amount)
+    }
+
+    pub fn query_balances(
+        &self,
+        address: Addr,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> StdResult<Coins> {
+        self.inner
+            .query_chain(QueryRequest::Balances {
+                address,
+                start_after,
+                limit,
+            })
+            .map(|res| res.as_balances())
+    }
+
+    pub fn query_supply(&self, denom: String) -> StdResult<Uint128> {
+        self.inner
+            .query_chain(QueryRequest::Supply { denom })
+            .map(|res| res.as_supply().amount)
+    }
+
+    pub fn query_supplies(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> StdResult<Coins> {
+        self.inner
+            .query_chain(QueryRequest::Supplies { start_after, limit })
+            .map(|res| res.as_supplies())
+    }
+
+    pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
+        self.inner
+            .query_chain(QueryRequest::Code { hash })
+            .map(|res| res.as_code())
+    }
+
+    pub fn query_codes(
+        &self,
+        start_after: Option<Hash>,
+        limit: Option<u32>,
+    ) -> StdResult<Vec<Hash>> {
+        self.inner
+            .query_chain(QueryRequest::Codes { start_after, limit })
+            .map(|res| res.as_codes())
+    }
+
+    pub fn query_account(&self, address: Addr) -> StdResult<AccountResponse> {
+        self.inner
+            .query_chain(QueryRequest::Account { address })
+            .map(|res| res.as_account())
+    }
+
+    pub fn query_accounts(
+        &self,
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    ) -> StdResult<Vec<AccountResponse>> {
+        self.inner
+            .query_chain(QueryRequest::Accounts { start_after, limit })
+            .map(|res| res.as_accounts())
+    }
+
+    pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
+        self.inner
+            .query_chain(QueryRequest::WasmRaw { contract, key })
+            .map(|res| res.as_wasm_raw().value)
+    }
+
+    pub fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
+        &self,
+        contract: Addr,
+        msg: &M,
+    ) -> StdResult<R> {
+        self.inner
+            .query_chain(QueryRequest::WasmSmart {
+                contract,
+                msg: to_json_value(msg)?,
+            })
+            .and_then(|res| from_json_value(res.as_wasm_smart().data))
+    }
 }

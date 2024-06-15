@@ -3,12 +3,10 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_value, Api, Context, GenericResult, Json, Querier, Response, Storage,
-        SubMsgResult,
-    },
-    grug_wasm::{
-        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, return_into_generic_result,
-        unwrap_into_generic_result, ImmutableCtx, MutableCtx, SudoCtx,
+        from_json_value, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        return_into_generic_result, unwrap_into_generic_result, Api, Context, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, Storage, SubMsgResult,
+        SudoCtx,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,

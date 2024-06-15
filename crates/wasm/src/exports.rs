@@ -1,12 +1,10 @@
 use {
-    crate::{
-        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
-        unwrap_into_generic_result, AuthCtx, ExternalApi, ExternalQuerier, ExternalStorage,
-        ImmutableCtx, MutableCtx, Region, SudoCtx,
-    },
+    crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
     grug_types::{
-        from_borsh_slice, from_json_slice, to_json_vec, BankMsg, BankQuery, BankQueryResponse,
-        Context, GenericResult, IbcClientQuery, Json, Response, SubMsgResult, Tx,
+        from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
+        make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, BankMsg, BankQuery,
+        BankQueryResponse, Context, GenericResult, IbcClientQuery, ImmutableCtx, Json, MutableCtx,
+        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
 };

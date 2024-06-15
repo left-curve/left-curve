@@ -16,4 +16,3 @@ grug-types     = { path = "../types" }
 grug-vm-rust   = { path = "../vm/rust" }
 
 [dev-dependencies]
-grug-wasm = { path = "../wasm" }

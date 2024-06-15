@@ -15,7 +15,6 @@ elsa        = { workspace = true }
 grug-app    = { path = "../../app" }
 grug-crypto = { path = "../../crypto" }
 grug-types  = { path = "../../types" }
-grug-wasm   = { path = "../../wasm" }
 serde       = { workspace = true }
 thiserror   = { workspace = true }
 

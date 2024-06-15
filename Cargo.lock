@@ -1657,7 +1657,6 @@ dependencies = [
  "grug-db-memory",
  "grug-types",
  "grug-vm-rust",
- "grug-wasm",
 ]
 
 [[package]]
@@ -1691,7 +1690,6 @@ dependencies = [
  "grug-app",
  "grug-crypto",
  "grug-types",
- "grug-wasm",
  "serde",
  "thiserror",
 ]
