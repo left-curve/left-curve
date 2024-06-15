@@ -53,11 +53,11 @@ mod tests {
     use hex_literal::hex;
 
     macro_rules! hash_test {
-        ($hash_fn:ident, $world:expr => $hexed:expr) => {
+        ($hash_fn:ident, $word:expr => $hash:expr) => {
             #[test]
             fn $hash_fn() {
-                let hash = super::$hash_fn($world.as_bytes());
-                assert_eq!(hash, hex!($hexed))
+                let hash = super::$hash_fn($word.as_bytes());
+                assert_eq!(hash, hex!($hash))
             }
         };
     }
