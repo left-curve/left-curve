@@ -50,11 +50,13 @@ pub fn ed25519_batch_verify(
     ed25519_dalek::verify_batch(msgs_hash, &sigs, &vks).map_err(Into::into)
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
-mod test {
+mod tests {
     use {
         super::*,
-        crate::{identity_digest::hash, Identity256},
+        crate::{sha2_256, Identity256},
         ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey},
         rand::rngs::OsRng,
     };
@@ -64,21 +66,21 @@ mod test {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = hash(prehash_msg);
-        let sig = sk.sign(msg.as_bytes());
+        let msg = sha2_256(prehash_msg);
+        let sig = sk.sign(&msg);
 
         // valid signature
-        assert!(ed25519_verify(msg.as_bytes(), &sig.to_bytes(), vk.as_bytes()).is_ok());
+        assert!(ed25519_verify(&msg, &sig.to_bytes(), vk.as_bytes()).is_ok());
 
         // incorrect private key
         let false_sk = SigningKey::generate(&mut OsRng);
-        let false_sig: Signature = false_sk.sign(msg.as_bytes());
-        assert!(ed25519_verify(msg.as_bytes(), &false_sig.to_bytes(), vk.as_bytes()).is_err());
+        let false_sig: Signature = false_sk.sign(&msg);
+        assert!(ed25519_verify(&msg, &false_sig.to_bytes(), vk.as_bytes()).is_err());
 
         // incorrect message
         let false_prehash_msg = b"Larry";
-        let false_msg = hash(false_prehash_msg);
-        assert!(ed25519_verify(false_msg.as_bytes(), &sig.to_bytes(), vk.as_bytes()).is_err());
+        let false_msg = sha2_256(false_prehash_msg);
+        assert!(ed25519_verify(&false_msg, &sig.to_bytes(), vk.as_bytes()).is_err());
     }
 
     #[test]
@@ -115,7 +117,7 @@ mod test {
     fn ed25519_sign(prehash_msg: &str) -> (Identity256, [u8; 64], [u8; 32]) {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg = hash(prehash_msg.as_bytes());
+        let msg = Identity256::from(sha2_256(prehash_msg.as_bytes()));
         let sig = sk.sign(msg.as_bytes());
         (msg, sig.to_bytes(), vk.to_bytes())
     }

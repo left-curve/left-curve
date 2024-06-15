@@ -5,7 +5,7 @@ use {
     },
 };
 
-/// Cast a slice to a fixed length array. Error if the size is incorrect.
+/// Try cast a slice to a fixed length array. Error if the size is incorrect.
 pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
     data.try_into().map_err(|_| CryptoError::IncorrectLength {
         expect: S,
@@ -13,18 +13,15 @@ pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
     })
 }
 
-/// Perform SHA-256 hash on the given data, and return the digest as an `Identity256`.
-#[cfg(test)]
-pub(crate) fn hash(data: &[u8]) -> Identity256 {
-    use digest::Digest;
-
-    let mut hasher = sha2::Sha256::new();
-    // I don't fully understand why it's necessary to use this syntax instead of
-    // hasher.update(data)
-    Digest::update(&mut hasher, data);
-    let bytes = hasher.finalize();
-
-    Identity256 { bytes }
+/// Truncate a slice to a fixed length array. Error if the size is less than the fixed length.
+pub fn truncate<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
+    if data.len() < S {
+        return Err(CryptoError::ExceedsMaximumLength {
+            max_length: S,
+            actual_length: data.len(),
+        });
+    }
+    to_sized(&data[..S])
 }
 
 /// To utilize the `signature::DigestVerifier::verify_digest` method, the digest
@@ -47,14 +44,6 @@ pub struct Identity256 {
 }
 
 impl Identity256 {
-    /// Convert from a byte slice of fixed length of 32 bytes.
-    /// To convert from byte slices of unknown lengths, use `from_slice`.
-    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
-        Self {
-            bytes: *GenericArray::from_slice(bytes),
-        }
-    }
-
     /// Convert from a byte slice of unknown length. Error if the length isn't
     /// exactly 32 bytes.
     /// To convert from a byte slice of fixed size of 32 bytes, use `from_bytes`.
@@ -77,6 +66,14 @@ impl Identity256 {
 
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
+    }
+}
+
+impl From<[u8; 32]> for Identity256 {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self {
+            bytes: *GenericArray::from_slice(&bytes),
+        }
     }
 }
 

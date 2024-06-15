@@ -123,9 +123,10 @@ macro_rules! impl_methods {
                 msg_hash: &[u8],
                 sig: &[u8],
                 recovery_id: u8,
+                compressed: bool,
             ) -> StdResult<Vec<u8>> {
                 self.api
-                    .secp256k1_pubkey_recover(msg_hash, sig, recovery_id)
+                    .secp256k1_pubkey_recover(msg_hash, sig, recovery_id, compressed)
             }
 
             #[inline]

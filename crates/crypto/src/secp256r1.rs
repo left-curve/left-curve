@@ -1,9 +1,9 @@
 use {
-    crate::{to_sized, CryptoResult, Identity256},
+    crate::{to_sized, CryptoError, CryptoResult, Identity256},
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
-const SECP256R1_PUBKEY_LEN: usize = 65;
+const SECP256R1_PUBKEY_LENS: [usize; 2] = [33, 65]; // compressed, uncompressed
 const SECP256R1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
@@ -11,12 +11,25 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg = Identity256::from_slice(msg_hash)?;
 
     let sig = to_sized::<SECP256R1_SIGNATURE_LEN>(sig)?;
-    let sig = Signature::from_bytes(&sig.into())?;
+    let mut sig = Signature::from_bytes(&sig.into())?;
 
-    let vk = to_sized::<SECP256R1_PUBKEY_LEN>(pk)?;
-    let vk = VerifyingKey::from_sec1_bytes(&vk)?;
+    // High-S signatures require normalization since our verification implementation
+    // rejects them by default. If we had a verifier that does not restrict to
+    // low-S only, this step was not needed.
+    if let Some(normalized) = sig.normalize_s() {
+        sig = normalized;
+    }
 
-    vk.verify_digest(msg, &sig).map_err(Into::into)
+    if !SECP256R1_PUBKEY_LENS.contains(&pk.len()) {
+        return Err(CryptoError::IncorrectLengths {
+            expect: &SECP256R1_PUBKEY_LENS,
+            actual: pk.len(),
+        });
+    }
+
+    VerifyingKey::from_sec1_bytes(pk)?
+        .verify_digest(msg, &sig)
+        .map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -25,7 +38,7 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
 mod tests {
     use {
         super::*,
-        crate::identity_digest::hash,
+        crate::sha2_256,
         p256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
         rand::rngs::OsRng,
     };
@@ -36,7 +49,7 @@ mod tests {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let prehash_msg = b"Jake";
-        let msg = hash(prehash_msg);
+        let msg = Identity256::from(sha2_256(prehash_msg));
         let sig: Signature = sk.sign_digest(msg.clone());
 
         // valid signature
@@ -58,9 +71,12 @@ mod tests {
 
         // incorrect message
         let false_prehash_msg = b"Larry";
-        let false_msg = hash(false_prehash_msg);
-        assert!(
-            secp256r1_verify(false_msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
-        );
+        let false_msg = sha2_256(false_prehash_msg);
+        assert!(secp256r1_verify(
+            &false_msg,
+            &sig.to_bytes(),
+            vk.to_encoded_point(true).as_bytes()
+        )
+        .is_err());
     }
 }

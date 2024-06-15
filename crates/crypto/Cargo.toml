@@ -10,13 +10,21 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+blake2        = { workspace = true }
+blake3        = { workspace = true }
 digest        = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["batch"] }
 k256          = { workspace = true }
 p256          = { workspace = true }
+sha2          = { workspace = true }
+sha3          = { workspace = true }
 signature     = { workspace = true }
 thiserror     = { workspace = true }
 
 [dev-dependencies]
-rand = { workspace = true }
-sha2 = { workspace = true }
+hex         = { workspace = true, features = ["serde"] }
+hex-literal = { workspace = true }
+rand        = { workspace = true }
+serde       = { workspace = true, features = ["derive", "alloc"] }
+serde_json  = { workspace = true }
+sha2        = { workspace = true }
