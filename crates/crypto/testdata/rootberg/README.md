@@ -1,15 +1,12 @@
 # Rootberg test data
 
-This folder contains test vectors from
-[Project Rootberg](https://github.com/bleichenbacher-daniel/Rooterberg) to
-increase the test coverage of public key recovery implementations.
+This folder contains test vectors from [Project Rootberg](https://github.com/bleichenbacher-daniel/Rooterberg) to increase the test coverage of public key recovery implementations.
 
 This test data is used by integration tests in `test/rootberg_*.rs`.
 
 ## Update
 
-To ensure integrity of the files and update them to the latest version, run this
-from the repo root:
+To ensure integrity of the files and update them to the latest version, run this from the repo root:
 
 ```sh
 (cd packages/crypto/testdata/rootberg \
