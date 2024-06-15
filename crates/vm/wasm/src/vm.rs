@@ -40,37 +40,28 @@ impl Vm for WasmVm {
         let fe = FunctionEnv::new(&mut wasm_store, Environment::new(storage, querier));
         let import_obj = imports! {
             "env" => {
-                // Database
-                "db_read" => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
-                "db_scan" => Function::new_typed_with_env(&mut wasm_store, &fe, db_scan),
-                "db_next" => Function::new_typed_with_env(&mut wasm_store, &fe, db_next),
-                "db_write" => Function::new_typed_with_env(&mut wasm_store, &fe, db_write),
-                "db_remove" => Function::new_typed_with_env(&mut wasm_store, &fe, db_remove),
-
-                // Signature verification
-                "secp256k1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
-                "secp256r1_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
+                "db_read"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
+                "db_scan"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_scan),
+                "db_next"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_next),
+                "db_write"                 => Function::new_typed_with_env(&mut wasm_store, &fe, db_write),
+                "db_remove"                => Function::new_typed_with_env(&mut wasm_store, &fe, db_remove),
+                "secp256k1_verify"         => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
+                "secp256r1_verify"         => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
                 "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_pubkey_recover),
-                "ed25519_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify),
-                "ed25519_batch_verify" => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_batch_verify),
-
-                // Hashes
-                "sha2_256" => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_256),
-                "sha2_512" => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512),
-                "sha2_512_truncated" => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512_truncated),
-                "sha3_256" => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_256),
-                "sha3_512" => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512),
-                "sha3_512_truncated" => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512_truncated),
-                "keccak256" => Function::new_typed_with_env(&mut wasm_store, &fe, keccak256),
-                "blake2s_256" => Function::new_typed_with_env(&mut wasm_store, &fe, blake2s_256),
-                "blake2b_512" => Function::new_typed_with_env(&mut wasm_store, &fe, blake2b_512),
-                "blake3" => Function::new_typed_with_env(&mut wasm_store, &fe, blake3),
-
-                // Debug
-                "debug" => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
-
-                // Querier
-                "query_chain" => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
+                "ed25519_verify"           => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify),
+                "ed25519_batch_verify"     => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_batch_verify),
+                "sha2_256"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_256),
+                "sha2_512"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512),
+                "sha2_512_truncated"       => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512_truncated),
+                "sha3_256"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_256),
+                "sha3_512"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512),
+                "sha3_512_truncated"       => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512_truncated),
+                "keccak256"                => Function::new_typed_with_env(&mut wasm_store, &fe, keccak256),
+                "blake2s_256"              => Function::new_typed_with_env(&mut wasm_store, &fe, blake2s_256),
+                "blake2b_512"              => Function::new_typed_with_env(&mut wasm_store, &fe, blake2b_512),
+                "blake3"                   => Function::new_typed_with_env(&mut wasm_store, &fe, blake3),
+                "debug"                    => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
+                "query_chain"              => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
             }
         };
 
