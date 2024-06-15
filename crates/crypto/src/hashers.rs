@@ -34,16 +34,16 @@ pub fn keccak256(data: &[u8]) -> [u8; 32] {
     Keccak256::digest(data).into()
 }
 
-pub fn blake2s_256(message: &[u8]) -> [u8; 32] {
-    Blake2s256::digest(message).into()
+pub fn blake2s_256(data: &[u8]) -> [u8; 32] {
+    Blake2s256::digest(data).into()
 }
 
-pub fn blake2b_512(message: &[u8]) -> [u8; 64] {
-    Blake2b512::digest(message).into()
+pub fn blake2b_512(data: &[u8]) -> [u8; 64] {
+    Blake2b512::digest(data).into()
 }
 
-pub fn blake3(message: &[u8]) -> [u8; 32] {
-    blake3::hash(message).into()
+pub fn blake3(data: &[u8]) -> [u8; 32] {
+    blake3::hash(data).into()
 }
 
 // ----------------------------------- tests -----------------------------------
