@@ -1,4 +1,9 @@
+//! This file contains helper functions for use in implementing database- or
+//! math- related functionalities. Generally they involve manipulating raw bytes.
+
 use crate::{StdError, StdResult};
+
+// --------------------------------- database ----------------------------------
 
 /// Combine a namespace a one or more keys into a full byte path.
 ///
@@ -111,6 +116,16 @@ pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     key[namespace.len()..].to_vec()
 }
 
+// ------------------------------------ FFI ------------------------------------
+
+/// Safely converts input of type T to u32.
+/// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
+pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
+    input
+        .try_into()
+        .map_err(|_| StdError::overflow_conversion::<T, u32>(input))
+}
+
 /// Given a compound key consisting of [k1, k2, ..., kN] (N > 1) that is encoded
 /// in the following way:
 ///
@@ -125,14 +140,6 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // this unwrap can't fail since split at position 2
     let len = u16::from_be_bytes(len_bytes.try_into().unwrap());
     bytes.split_at(len as usize)
-}
-
-/// Safely converts input of type T to u32.
-/// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
-pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
-    input
-        .try_into()
-        .map_err(|_| StdError::overflow_conversion::<T, u32>(input))
 }
 
 /// Encodes multiple sections of data into one vector.
@@ -179,12 +186,101 @@ pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {
         result.push(&data[remaining_len - 4 - tail_len..remaining_len - 4]);
         remaining_len -= 4 + tail_len;
     }
+    debug_assert!(remaining_len == 0);
     result.reverse();
     result
 }
 
+// ----------------------------------- math ------------------------------------
+
+pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+    input: [u8; INPUT_SIZE],
+) -> [u8; OUTPUT_SIZE] {
+    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
+    // check if sign bit is set
+    let mut output = if input[0] & 0b10000000 != 0 {
+        // negative number is filled up with 1s
+        [0b11111111u8; OUTPUT_SIZE]
+    } else {
+        [0u8; OUTPUT_SIZE]
+    };
+    let mut i = 0;
+
+    // copy input to the end of output
+    // copy_from_slice is not const, so we have to do this manually
+    while i < INPUT_SIZE {
+        output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
+        i += 1;
+    }
+
+    output
+}
+
+pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+    input: [u8; INPUT_SIZE],
+) -> [u8; OUTPUT_SIZE] {
+    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
+    // check if sign bit is set
+    let mut output = if input[INPUT_SIZE - 1] & 0b10000000 != 0 {
+        // negative number is filled up with 1s
+        [0b11111111u8; OUTPUT_SIZE]
+    } else {
+        [0u8; OUTPUT_SIZE]
+    };
+    let mut i = 0;
+
+    // copy input to the beginning of output
+    // copy_from_slice is not const, so we have to do this manually
+    while i < INPUT_SIZE {
+        output[i] = input[i];
+        i += 1;
+    }
+
+    output
+}
+
+pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+    input: [u8; INPUT_SIZE],
+) -> [u8; OUTPUT_SIZE] {
+    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
+    let mut output = [0u8; OUTPUT_SIZE];
+    let mut i = 0;
+
+    // copy input to the end of output
+    // copy_from_slice is not const, so we have to do this manually
+    while i < INPUT_SIZE {
+        output[OUTPUT_SIZE - INPUT_SIZE + i] = input[i];
+        i += 1;
+    }
+
+    output
+}
+
+pub const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+    input: [u8; INPUT_SIZE],
+) -> [u8; OUTPUT_SIZE] {
+    debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
+
+    let mut output = [0u8; OUTPUT_SIZE];
+    let mut i = 0;
+
+    // copy input to the beginning of output
+    // copy_from_slice is not const, so we have to do this manually
+    while i < INPUT_SIZE {
+        output[i] = input[i];
+        i += 1;
+    }
+
+    output
+}
+
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{decode_sections, encode_sections};
 
     #[test]

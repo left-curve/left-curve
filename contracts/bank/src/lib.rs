@@ -4,7 +4,8 @@ use {
     anyhow::bail,
     grug::{
         grug_derive, Addr, BankMsg, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx,
-        Map, MutableCtx, Order, Response, StdResult, Storage, SudoCtx, Uint128,
+        Map, MutableCtx, Number, NumberConst, Order, Response, StdResult, Storage, SudoCtx,
+        Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };
