@@ -1,12 +1,12 @@
+mod shared;
+
 use {
     grug_crypto::{keccak_256, secp256k1_verify, secp256r1_verify, sha2_256},
     serde::Deserialize,
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
 
-mod shared;
-
-// ----------------------------------- file struct -----------------------------------
+// -------------------------------- file struct --------------------------------
 
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +61,7 @@ pub fn combine_signature(sig: &Sig) -> Vec<u8> {
     signature
 }
 
-// ----------------------------------- test definition -----------------------------------
+// ------------------------------ test definition ------------------------------
 
 macro_rules! rootberg_test {
     (
@@ -155,7 +155,7 @@ macro_rules! rootberg_test {
     };
 }
 
-// ----------------------------------- secp256k1 tests -----------------------------------
+// ------------------------------ secp256k1 tests ------------------------------
 
 const SECP256K1_SHA256: &str = "./testdata/rootberg/ecdsa_secp256k1_sha_256_raw.json";
 const SECP256K1_KECCAK256: &str = "./testdata/rootberg/ecdsa_secp256k1_keccak256_raw.json";
@@ -188,7 +188,7 @@ rootberg_test!(K1 =>
     uncompressed
 );
 
-// ----------------------------------- secp256r1 tests -----------------------------------
+// ------------------------------ secp256r1 tests ------------------------------
 
 const SECP256R1_SHA256: &str = "./testdata/rootberg/ecdsa_secp256r1_sha_256_raw.json";
 const SECP256R1_KECCAK256: &str = "./testdata/rootberg/ecdsa_secp256r1_keccak256_raw.json";

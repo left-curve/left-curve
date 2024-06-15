@@ -1,8 +1,10 @@
-use {grug_crypto::secp256k1_pubkey_recover, serde::de::DeserializeOwned};
+use {
+    grug_crypto::secp256k1_pubkey_recover,
+    serde::de::DeserializeOwned,
+    std::{fs::File, io::BufReader},
+};
 
 pub fn read_file<F: DeserializeOwned>(path: &str) -> F {
-    use std::{fs::File, io::BufReader};
-
     // Open the file in read-only mode with buffer.
     let file = File::open(path).unwrap();
     let reader = BufReader::new(file);

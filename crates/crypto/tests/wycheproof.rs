@@ -1,3 +1,5 @@
+mod shared;
+
 use {
     grug_crypto::{
         secp256k1_verify, secp256r1_verify, sha2_256, sha2_512_truncated, sha3_256,
@@ -7,9 +9,7 @@ use {
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
 
-mod shared;
-
-// ----------------------------------- file struct -----------------------------------
+// -------------------------------- file struct --------------------------------
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +76,7 @@ pub struct TestCase {
     pub result: String,
 }
 
-// ----------------------------------- test definition -----------------------------------
+// ------------------------------ test definition ------------------------------
 
 macro_rules! wycheproof_test {
     (
@@ -265,6 +265,7 @@ fn from_der(data: &[u8]) -> Result<[u8; 64], String> {
     let mut out = [0u8; 64];
     out[0..32].copy_from_slice(&r);
     out[32..].copy_from_slice(&s);
+
     Ok(out)
 }
 
@@ -373,7 +374,7 @@ wycheproof_test!(K1 =>
     uncompressed
 );
 
-// ----------------------------------- secp256r1 tests -----------------------------------
+// ------------------------------ secp256r1 tests ------------------------------
 
 const SECP256R1_SHA256: &str = "./testdata/wycheproof/ecdsa_secp256r1_sha256_test.json";
 const SECP256R1_SHA512: &str = "./testdata/wycheproof/ecdsa_secp256r1_sha512_test.json";
