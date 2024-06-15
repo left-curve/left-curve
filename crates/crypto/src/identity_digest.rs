@@ -24,24 +24,6 @@ pub fn truncate<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
     to_sized(&data[..S])
 }
 
-#[macro_export]
-macro_rules! validate_length {
-    ($data:expr, $($len:expr),+) => {
-        {
-            let actual_length = $data.len();
-            let expected_lengths = vec![$($len),+];
-            if expected_lengths.contains(&actual_length) {
-                Ok(())
-            } else {
-                Err($crate::CryptoError::IncorrectLengths {
-                    expect: expected_lengths,
-                    actual: actual_length,
-                })
-            }
-        }
-    };
-}
-
 /// To utilize the `signature::DigestVerifier::verify_digest` method, the digest
 /// must implement the `digest::Digest` trait, which in turn requires the
 /// following traits:

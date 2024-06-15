@@ -8,8 +8,11 @@ pub enum CryptoError {
     #[error("data is of incorrect length: expecting {expect}, found {actual}")]
     IncorrectLength { expect: usize, actual: usize },
 
-    #[error("data is of incorrect length: expecting on of {expect:?}, found {actual}")]
-    IncorrectLengths { expect: Vec<usize>, actual: usize },
+    #[error("data is of incorrect length: expecting one of {expect:?}, found {actual}")]
+    IncorrectLengths {
+        expect: &'static [usize],
+        actual: usize,
+    },
 
     #[error("invalid recovery id {recovery_id}")]
     InvalidRecoveryId { recovery_id: u8 },

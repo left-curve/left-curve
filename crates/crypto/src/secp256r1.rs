@@ -1,10 +1,9 @@
 use {
-    crate::{to_sized, validate_length, CryptoResult, Identity256},
+    crate::{to_sized, CryptoError, CryptoResult, Identity256},
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
-const SECP256R1_PUBKEY_COMPRESSED_LEN: usize = 33;
-const SECP256R1_PUBKEY_UNCOMPRESSED_LEN: usize = 65;
+const SECP256R1_PUBKEY_LENS: [usize; 2] = [33, 65]; // compressed, uncompressed
 const SECP256R1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
@@ -21,11 +20,13 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
         sig = normalized;
     }
 
-    validate_length!(
-        pk,
-        SECP256R1_PUBKEY_COMPRESSED_LEN,
-        SECP256R1_PUBKEY_UNCOMPRESSED_LEN
-    )?;
+    if SECP256R1_PUBKEY_LENS.contains(&pk.len()) {
+        return Err(CryptoError::IncorrectLengths {
+            expect: &SECP256R1_PUBKEY_LENS,
+            actual: pk.len(),
+        });
+    }
+
     let vk = VerifyingKey::from_sec1_bytes(pk)?;
     vk.verify_digest(msg, &sig).map_err(Into::into)
 }
