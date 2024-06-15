@@ -50,8 +50,10 @@ pub fn ed25519_batch_verify(
     ed25519_dalek::verify_batch(msgs_hash, &sigs, &vks).map_err(Into::into)
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
-mod test {
+mod tests {
     use {
         super::*,
         crate::{sha2_256, Identity256},
