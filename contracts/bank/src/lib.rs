@@ -6,5 +6,5 @@ pub mod state;
 pub mod types;
 
 #[cfg(not(feature = "library"))]
-pub use exports::*;
-pub use {execute::*, query::*, state::*, types::*};
+pub use crate::exports::*;
+pub use crate::{execute::*, query::*, state::*, types::*};
