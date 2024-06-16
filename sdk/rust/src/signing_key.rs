@@ -114,8 +114,18 @@ impl SigningKey {
         chain_id: &str,
         sequence: u32,
     ) -> anyhow::Result<Tx> {
-        let sign_bytes = grug_account::sign_bytes(&msgs, &sender, chain_id, sequence)?;
+        // Generate sign bytes
+        let sign_bytes = grug_account::make_sign_bytes(
+            grug_crypto::sha2_256,
+            &msgs,
+            &sender,
+            chain_id,
+            sequence,
+        )?;
+
+        // Sign the sign bytes
         let signature = self.sign_digest(&sign_bytes);
+
         Ok(Tx {
             sender,
             msgs,

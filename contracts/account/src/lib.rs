@@ -7,7 +7,6 @@ use {
         ImmutableCtx, Incrementor, Item, Json, MapKey, Message, MutableCtx, RawKey, Response,
         StdError, StdResult, Tx,
     },
-    sha2::{Digest, Sha256},
 };
 
 const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
@@ -93,37 +92,37 @@ impl<'a> MapKey for &'a PublicKey {
     }
 }
 
-/// Given details of a transaction, produce the bytes that the sender needs to
-/// sign (hashed).
+/// Generate the bytes that the sender of a transaction needs to sign.
 ///
 /// The bytes are defined as:
 ///
 /// ```plain
-/// bytes := blake3(json(msgs) | sender_addr | chain_id | sequence)
+/// bytes := hash(json(msgs) | sender | chain_id | sequence)
 /// ```
 ///
-/// where:
-/// - `sender_addr` is a 32 bytes address of the sender;
+/// Parameters:
+///
+/// - `hash` is a hash function; this account implementation uses SHA2-256;
+/// - `msgs` is the list of messages in the transaction;
+/// - `sender` is a 32 bytes address of the sender;
 /// - `chain_id` is the chain ID in UTF-8 encoding;
 /// - `sequence` is the sender account's sequence in 32-bit big endian encoding.
-///
-/// TODO: json here is ambiguous, i.e. what padding and linebreak character to
-/// use, the order of fields... elaborate it.
-///
-/// TODO: is it efficient to do hashing in the contract? maybe move this to the
-/// host??
-pub fn sign_bytes(
+pub fn make_sign_bytes<Hasher, const HASH_LEN: usize>(
+    hasher: Hasher,
     msgs: &[Message],
     sender: &Addr,
     chain_id: &str,
     sequence: u32,
-) -> anyhow::Result<[u8; 32]> {
-    let mut hasher = Sha256::new();
-    hasher.update(&to_json_vec(&msgs)?);
-    hasher.update(sender);
-    hasher.update(chain_id.as_bytes());
-    hasher.update(sequence.to_be_bytes());
-    Ok(hasher.finalize().into())
+) -> StdResult<[u8; HASH_LEN]>
+where
+    Hasher: Fn(&[u8]) -> [u8; HASH_LEN],
+{
+    let mut prehash = Vec::new();
+    prehash.extend(to_json_vec(&msgs)?);
+    prehash.extend(sender.as_ref());
+    prehash.extend(chain_id.as_bytes());
+    prehash.extend(sequence.to_be_bytes());
+    Ok(hasher(&prehash))
 }
 
 #[cfg_attr(not(feature = "library"), grug_export)]
@@ -152,17 +151,25 @@ pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let sequence = SEQUENCE.load(ctx.storage)?;
 
     // prepare the hash that is expected to have been signed
-    let msg_hash = sign_bytes(&tx.msgs, &tx.sender, &ctx.chain_id, sequence)?;
+    let hash = make_sign_bytes(
+        // Note: We can't use a trait method as a function pointer. Need to use
+        // a closure instead.
+        |prehash| ctx.api.sha2_256(prehash),
+        &tx.msgs,
+        &tx.sender,
+        &ctx.chain_id,
+        sequence,
+    )?;
 
     // verify the signature
     // skip if we are in simulate mode
     if !ctx.simulate {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
-                ctx.api.secp256k1_verify(&msg_hash, &tx.credential, bytes)?;
+                ctx.api.secp256k1_verify(&hash, &tx.credential, bytes)?;
             },
             PublicKey::Secp256r1(bytes) => {
-                ctx.api.secp256r1_verify(&msg_hash, &tx.credential, bytes)?;
+                ctx.api.secp256r1_verify(&hash, &tx.credential, bytes)?;
             },
         }
     }
