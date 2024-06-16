@@ -1,9 +1,9 @@
-pub mod execute;
+mod execute;
 #[cfg(not(feature = "library"))]
-pub mod exports;
-pub mod query;
-pub mod state;
-pub mod types;
+mod exports;
+mod query;
+mod state;
+mod types;
 
 #[cfg(not(feature = "library"))]
 pub use crate::exports::*;
