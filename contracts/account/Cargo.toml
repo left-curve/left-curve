@@ -18,4 +18,5 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-grug = { path = "../../crates/std" }
+anyhow = { workspace = true }
+grug   = { path = "../../crates/std" }

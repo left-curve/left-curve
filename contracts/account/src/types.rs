@@ -16,7 +16,8 @@ pub struct InstantiateMsg {
 
 #[grug_derive(serde)]
 pub enum ExecuteMsg {
-    // TODO: add a method to update the public key
+    /// Change the public key associated with the account to a new one.
+    UpdateKey { new_public_key: PublicKey },
 }
 
 #[grug_derive(serde)]

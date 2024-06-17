@@ -1480,6 +1480,7 @@ dependencies = [
 name = "grug-account"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "grug",
 ]
 

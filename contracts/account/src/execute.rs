@@ -1,6 +1,7 @@
 use {
     crate::{PublicKey, PUBLIC_KEY, SEQUENCE},
-    grug::{to_json_vec, Addr, AuthCtx, Message, Response, StdResult, Storage, Tx},
+    anyhow::ensure,
+    grug::{to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx},
 };
 
 /// Generate the bytes that the sender of a transaction needs to sign.
@@ -48,6 +49,16 @@ pub fn initialize(storage: &mut dyn Storage, public_key: &PublicKey) -> StdResul
 
     // Initialize the sequence number to zero
     SEQUENCE.initialize(storage)?;
+
+    Ok(Response::new())
+}
+
+pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result<Response> {
+    // Only the account itself can update its key
+    ensure!(ctx.sender == ctx.contract, "Nice try lol");
+
+    // Save the new public key
+    PUBLIC_KEY.save(ctx.storage, new_public_key)?;
 
     Ok(Response::new())
 }
