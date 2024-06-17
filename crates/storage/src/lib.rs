@@ -9,8 +9,9 @@ mod map;
 mod path;
 mod prefix;
 mod set;
+mod index_prefix;
 
 pub use {
     bound::*, encoding::*, incrementor::*, index_map::*, indexes::*, item::*, key::*, map::*,
-    path::*, prefix::*, set::*,
+    path::*, prefix::*, set::*, index_prefix::*,
 };

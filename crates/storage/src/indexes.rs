@@ -1,5 +1,6 @@
 use {
-    crate::{Map, MapKey},
+    crate::{Borsh, IndexPrefix, Map, MapKey},
+    borsh::BorshDeserialize,
     grug_types::{StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -25,13 +26,14 @@ pub trait Index<T> {
 /// more important, as the type-safe bound key type.
 /// This type must match the encompassing `IndexedMap` primary key type,
 /// or its owned variant.
-pub struct MultiIndex<'a, IK, T, PK> {
+pub struct MultiIndex<'a, IK, T, PK, E = Borsh> {
     index: fn(&[u8], &T) -> IK,
     idx_namespace: &'a [u8],
     // note, we collapse the ik - combining everything under the namespace - and concatenating the pk
     idx_map: Map<'a, &'a [u8], u32>,
     pk_namespace: &'a [u8],
-    phantom: PhantomData<PK>,
+    phantom_pk: PhantomData<PK>,
+    phantom_e: PhantomData<E>,
 }
 
 impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK> {
@@ -45,7 +47,8 @@ impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK> {
             idx_namespace: idx_namespace.as_bytes(),
             idx_map: Map::new(idx_namespace),
             pk_namespace: pk_namespace.as_bytes(),
-            phantom: PhantomData,
+            phantom_pk: PhantomData,
+            phantom_e: PhantomData,
         }
     }
 }
@@ -56,6 +59,7 @@ where
 {
     fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()> {
         let idx = (self.index)(pk, data).joined_extra_key(pk);
+
         self.idx_map.save(store, &idx, &(pk.len() as u32))
     }
 
@@ -66,24 +70,39 @@ where
     }
 }
 
+// ----------------------------------- encoding -----------------------------------
+
+impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK, Borsh>
+where
+    IK: MapKey,
+    T: BorshDeserialize,
+{
+    pub fn no_prefix_raw(&self) -> IndexPrefix<IK, T, Borsh> {
+        IndexPrefix::with_deserialization_functions(self.idx_namespace, &[], self.pk_namespace)
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
+
     use borsh::{BorshDeserialize, BorshSerialize};
     use grug_types::MockStorage;
 
     use crate::{Borsh, Index, IndexList, IndexedMap, MultiIndex};
 
-    #[derive(BorshSerialize, BorshDeserialize)]
+    #[derive(BorshSerialize, BorshDeserialize, Debug)]
     struct Foo {
         pub name: String,
+        pub non_indexed: String,
     }
 
     impl Foo {
-        pub fn new(name: &str) -> Self {
+        pub fn new(name: &str, non_indexed: &str) -> Self {
             Foo {
                 name: name.to_string(),
+                non_indexed: non_indexed.to_string(),
             }
         }
     }
@@ -113,8 +132,21 @@ mod tests {
 
         let map = foo();
 
-        map.save(&mut deps, 1, &Foo::new("name")).unwrap();
-        map.save(&mut deps, 2, &Foo::new("name")).unwrap();
-        map.save(&mut deps, 3, &Foo::new("name")).unwrap();
+        map.save(&mut deps, 1, &Foo::new("bar", "1")).unwrap();
+        map.save(&mut deps, 2, &Foo::new("bar", "2")).unwrap();
+        map.save(&mut deps, 3, &Foo::new("bar", "3")).unwrap();
+        map.save(&mut deps, 4, &Foo::new("foo", "4")).unwrap();
+
+        map.load(&deps, 1).unwrap();
+
+        let a = map
+            .idx
+            .name
+            .no_prefix_raw()
+            .range_raw(&mut deps, None, None, grug_types::Order::Ascending)
+            .map(|val| val.unwrap())
+            .collect::<Vec<_>>();
+
+        println!("{:#?}", a);
     }
 }
