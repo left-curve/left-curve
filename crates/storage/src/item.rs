@@ -37,71 +37,34 @@ where
     }
 }
 
-// ----------------------------------- borsh -----------------------------------
+// ----------------------------------- encoding -----------------------------------
 
-impl<'a, T> Item<'a, T, Borsh>
-where
-    T: BorshSerialize,
-{
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-        self.path().save(storage, data)
-    }
+macro_rules! item_encoding {
+    ($encoding:tt where $($where:tt)+) => {
+        impl<'a, T> Item<'a, T, $encoding>
+        where $($where)+ {
+            pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+                self.path().save(storage, data)
+            }
+
+            pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+                self.path().may_load(storage)
+            }
+
+            pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+                self.path().load(storage)
+            }
+
+            pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
+            where
+                A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+                E: From<StdError>,
+            {
+                self.path().update(storage, action)
+            }
+        }
+    };
 }
 
-impl<'a, T> Item<'a, T, Borsh>
-where
-    T: BorshDeserialize,
-{
-    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
-        self.path().may_load(storage)
-    }
-
-    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
-        self.path().load(storage)
-    }
-}
-
-impl<'a, T> Item<'a, T>
-where
-    T: BorshSerialize + BorshDeserialize,
-{
-    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
-    where
-        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
-        E: From<StdError>,
-    {
-        self.path().update(storage, action)
-    }
-}
-
-// ----------------------------------- proto -----------------------------------
-
-impl<'a, T> Item<'a, T, Proto>
-where
-    T: Message,
-{
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) {
-        self.path().save(storage, data)
-    }
-}
-
-impl<'a, T> Item<'a, T, Proto>
-where
-    T: Message + Default,
-{
-    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
-        self.path().may_load(storage)
-    }
-
-    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
-        self.path().load(storage)
-    }
-
-    pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
-    where
-        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
-        E: From<StdError>,
-    {
-        self.path().update(storage, action)
-    }
-}
+item_encoding!(Borsh where T: BorshSerialize + BorshDeserialize);
+item_encoding!(Proto where T: Message + Default);

@@ -125,10 +125,12 @@ where
     T: Message,
 {
     // Note that for Protobuf, this function doesn't need to return a Result,
-    // because proto serialization always succeeds.
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) {
+    // because proto serialization always succeeds. Anyway a Result is returned
+    // to unify the return type among the different implementations.
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
         let bytes = to_proto_vec(data);
         storage.write(self.storage_key, &bytes);
+        Ok(())
     }
 }
 
@@ -160,7 +162,7 @@ where
         let maybe_data = action(self.may_load(storage)?)?;
 
         if let Some(data) = &maybe_data {
-            self.save(storage, data);
+            self.save(storage, data)?;
         } else {
             self.remove(storage);
         }

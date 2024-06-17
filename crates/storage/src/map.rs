@@ -101,98 +101,47 @@ where
     }
 }
 
-// ----------------------------------- borsh -----------------------------------
+// ----------------------------------- encoding -----------------------------------
 
-impl<'a, K, T> Map<'a, K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshSerialize,
-{
-    pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
-        self.path(k).as_path().save(storage, data)
-    }
+macro_rules! map_encoding {
+    ($encoding:tt where $($where:tt)+) => {
+        impl<'a, K, T> Map<'a, K, T, $encoding>
+        where K: MapKey, $($where)+
+        {
+            pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
+                self.path(k).as_path().save(storage, data)
+            }
+
+            pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
+                self.path(k).as_path().may_load(storage)
+            }
+
+            pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
+                self.path(k).as_path().load(storage)
+            }
+
+            #[allow(clippy::type_complexity)]
+            pub fn range<'b>(
+                &self,
+                storage: &'b dyn Storage,
+                min: Option<Bound<K>>,
+                max: Option<Bound<K>>,
+                order: Order,
+            ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+                self.no_prefix().range(storage, min, max, order)
+            }
+
+            pub fn update<A, E>(&self, storage: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
+            where
+                A: FnOnce(Option<T>) -> Result<Option<T>, E>,
+                E: From<StdError>,
+            {
+                self.path(k).as_path().update(storage, action)
+            }
+
+        }
+    };
 }
 
-impl<'a, K, T> Map<'a, K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshDeserialize,
-{
-    pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
-        self.path(k).as_path().may_load(storage)
-    }
-
-    pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
-        self.path(k).as_path().load(storage)
-    }
-
-    #[allow(clippy::type_complexity)]
-    pub fn range<'b>(
-        &self,
-        storage: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(storage, min, max, order)
-    }
-}
-
-impl<'a, K, T> Map<'a, K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshSerialize + BorshDeserialize,
-{
-    pub fn update<A, E>(&self, storage: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
-    where
-        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
-        E: From<StdError>,
-    {
-        self.path(k).as_path().update(storage, action)
-    }
-}
-
-// ----------------------------------- proto -----------------------------------
-
-impl<'a, K, T> Map<'a, K, T, Proto>
-where
-    K: MapKey,
-    T: Message,
-{
-    pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) {
-        self.path(k).as_path().save(storage, data)
-    }
-}
-
-impl<'a, K, T> Map<'a, K, T, Proto>
-where
-    K: MapKey,
-    T: Message + Default,
-{
-    pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
-        self.path(k).as_path().may_load(storage)
-    }
-
-    pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
-        self.path(k).as_path().load(storage)
-    }
-
-    pub fn update<A, E>(&self, storage: &mut dyn Storage, k: K, action: A) -> Result<Option<T>, E>
-    where
-        A: FnOnce(Option<T>) -> Result<Option<T>, E>,
-        E: From<StdError>,
-    {
-        self.path(k).as_path().update(storage, action)
-    }
-
-    #[allow(clippy::type_complexity)]
-    pub fn range<'b>(
-        &self,
-        storage: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(storage, min, max, order)
-    }
-}
+map_encoding!(Borsh where T: BorshSerialize + BorshDeserialize);
+map_encoding!(Proto where T: Message + Default);

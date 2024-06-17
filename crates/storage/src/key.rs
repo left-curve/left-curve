@@ -55,6 +55,10 @@ pub trait MapKey: Sized {
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
+
+    fn joined_extra_key(&self, key: &[u8]) -> Vec<u8> {
+        nested_namespaces_with_key(None, &self.raw_keys(), Some(&key))
+    }
 }
 
 impl MapKey for () {
@@ -131,6 +135,20 @@ impl MapKey for &Hash {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
+    }
+}
+
+impl MapKey for String {
+    type Output = String;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Ref(self.as_bytes())]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
 
