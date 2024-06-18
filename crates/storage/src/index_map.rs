@@ -105,6 +105,16 @@ where
     ) {
         self.no_prefix().clear(storage, min, max, limit)
     }
+
+    pub fn range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().range(storage, min, max, order)
+    }
 }
 
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
@@ -123,27 +133,8 @@ where
 
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
-    K: MapKey,
-    I: IndexList<T>,
-
-    E: Encoding<T>,
-{
-    pub fn range<'b>(
-        &self,
-        storage: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(storage, min, max, order)
-    }
-}
-
-impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
-where
     K: MapKey + Clone,
     I: IndexList<T>,
-
     E: Encoding<T>,
 {
     pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
@@ -319,12 +310,15 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
-            (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
+                (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
+            ]
+        );
 
         let val = index
             .idx
@@ -334,12 +328,15 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1, Foo::new("bar", "s_bar", 101)),
-            (2, Foo::new("bar", "s_bar", 102)),
-            (3, Foo::new("bar", "s_foo", 103)),
-            (4, Foo::new("foo", "s_foo", 104))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+                (3, Foo::new("bar", "s_foo", 103)),
+                (4, Foo::new("foo", "s_foo", 104))
+            ]
+        );
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -355,10 +352,13 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
+            ]
+        );
 
         let val = index
             .idx
@@ -368,10 +368,13 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1, Foo::new("bar", "s_bar", 101)),
-            (2, Foo::new("bar", "s_bar", 102)),
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+            ]
+        );
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -387,11 +390,14 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
+            ]
+        );
 
         let val = index
             .idx
@@ -401,11 +407,14 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (1, Foo::new("bar", "s_bar", 101)),
-            (2, Foo::new("bar", "s_bar", 102)),
-            (3, Foo::new("bar", "s_foo", 103))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+                (3, Foo::new("bar", "s_foo", 103))
+            ]
+        );
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -429,11 +438,14 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(val, vec![
-            (101, Foo::new("bar", "s_bar", 101)),
-            (102, Foo::new("bar", "s_bar", 102)),
-            (103, Foo::new("bar", "s_foo", 103)),
-            (104, Foo::new("foo", "s_foo", 104))
-        ]);
+        assert_eq!(
+            val,
+            vec![
+                (101, Foo::new("bar", "s_bar", 101)),
+                (102, Foo::new("bar", "s_bar", 102)),
+                (103, Foo::new("bar", "s_foo", 103)),
+                (104, Foo::new("foo", "s_foo", 104))
+            ]
+        );
     }
 }
