@@ -70,12 +70,9 @@ where
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let (min, max) = range_bounds(&self.prefix, min, max);
         let prefix = self.prefix.clone();
-        // TODO: this is really inefficient because the host needs to load both
-        // the key and value into Wasm memory. we should create a `scan_keys`
-        // import that only loads the keys.
         let iter = storage
-            .scan(Some(&min), Some(&max), order)
-            .map(move |(k, _)| {
+            .scan_keys(Some(&min), Some(&max), order)
+            .map(move |k| {
                 debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
                 trim(&prefix, &k)
             });
@@ -97,14 +94,22 @@ where
         Box::new(iter)
     }
 
-    pub fn clear(
+    pub fn values_raw<'a>(
         &self,
-        _storage: &mut dyn Storage,
-        _min: Option<Bound<K>>,
-        _max: Option<Bound<K>>,
-        _limit: Option<usize>,
-    ) {
-        todo!() // TODO: implement this after we're added a `remove_range` method to Storage
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let (min, max) = range_bounds(&self.prefix, min, max);
+        let iter = storage.scan_values(Some(&min), Some(&max), order);
+
+        Box::new(iter)
+    }
+
+    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
+        let (min, max) = range_bounds(&self.prefix, min, max);
+        storage.remove_range(Some(&min), Some(&max))
     }
 }
 
@@ -128,6 +133,23 @@ where
                 let value = from_borsh_slice(value_raw)?;
                 Ok((key, value))
             });
+
+        Box::new(iter)
+    }
+
+    pub fn values<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'a>
+    where
+        T: 'a,
+    {
+        let iter = self
+            .values_raw(storage, min, max, order)
+            .map(from_borsh_slice);
 
         Box::new(iter)
     }
