@@ -150,5 +150,3 @@ fn des_kv<T, K: MapKey, E: Encoding<T>>(
     let (pk, v) = recover_pk!(store, pk_namespace, kv);
     Ok((K::deserialize(&pk)?, v))
 }
-
-// ----------------------------------- encoding -----------------------------------
