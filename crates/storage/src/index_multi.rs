@@ -1,12 +1,10 @@
 use {
-    crate::{Borsh, Index, IndexPrefix, Map, MapKey, Proto},
-    borsh::BorshDeserialize,
+    crate::{Borsh, Encoding, Index, IndexPrefix, Map, MapKey},
     grug_types::{StdResult, Storage},
-    prost::Message,
     std::marker::PhantomData,
 };
 
-pub struct MultiIndex<'a, IK, T, PK, E = Borsh> {
+pub struct MultiIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     index: fn(&[u8], &T) -> IK,
     idx_namespace: &'a [u8],
     idx_map: Map<'a, &'a [u8], u32>,
@@ -15,7 +13,7 @@ pub struct MultiIndex<'a, IK, T, PK, E = Borsh> {
     phantom_e: PhantomData<E>,
 }
 
-impl<'a, IK, T, PK> Index<T> for MultiIndex<'a, IK, T, PK>
+impl<'a, IK, T, PK, E: Encoding<T>> Index<T> for MultiIndex<'a, IK, T, PK, E>
 where
     IK: MapKey,
 {
@@ -31,7 +29,7 @@ where
     }
 }
 
-impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK> {
+impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E> {
     pub const fn new(
         idx_fn: fn(&[u8], &T) -> IK,
         pk_namespace: &'a str,
@@ -48,42 +46,32 @@ impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK> {
     }
 }
 
-// ----------------------------------- encoding -----------------------------------
+impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E>
+where
+    PK: MapKey,
+    IK: MapKey,
+{
+    pub fn no_prefix(&self) -> IndexPrefix<PK, T, E> {
+        IndexPrefix::<_, _, E>::with_deserialization_functions(
+            self.idx_namespace,
+            &[],
+            self.pk_namespace,
+        )
+    }
 
-macro_rules! multi_index_encoding {
-    ($encoding:tt where $($where:tt)+) => {
-        impl<'a, IK, T, PK> MultiIndex<'a, IK, T, PK, $encoding>
-        where
-            PK: MapKey,
-            IK: MapKey,
-            $($where)+
-        {
-            pub fn no_prefix(&self) -> IndexPrefix<PK, T, $encoding> {
-                IndexPrefix::<_, _, $encoding>::with_deserialization_functions(
-                    self.idx_namespace,
-                    &[],
-                    self.pk_namespace,
-                )
-            }
+    pub fn prefix(&self, p: IK) -> IndexPrefix<PK, T, E> {
+        IndexPrefix::<_, _, E>::with_deserialization_functions(
+            self.idx_namespace,
+            &p.raw_keys(),
+            self.pk_namespace,
+        )
+    }
 
-            pub fn prefix(&self, p: IK) -> IndexPrefix<PK, T, $encoding> {
-                IndexPrefix::<_, _, $encoding>::with_deserialization_functions(
-                    self.idx_namespace,
-                    &p.raw_keys(),
-                    self.pk_namespace,
-                )
-            }
-
-            pub fn sub_prefix(&self, p: IK::Prefix) -> IndexPrefix<PK, T, $encoding> {
-                IndexPrefix::<_, _, $encoding>::with_deserialization_functions(
-                    self.idx_namespace,
-                    &p.raw_keys(),
-                    self.pk_namespace,
-                )
-            }
-        }
-    };
+    pub fn sub_prefix(&self, p: IK::Prefix) -> IndexPrefix<PK, T, E> {
+        IndexPrefix::<_, _, E>::with_deserialization_functions(
+            self.idx_namespace,
+            &p.raw_keys(),
+            self.pk_namespace,
+        )
+    }
 }
-
-multi_index_encoding!(Borsh where T: BorshDeserialize);
-multi_index_encoding!(Proto where T: Message + Default);

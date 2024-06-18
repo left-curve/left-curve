@@ -1,12 +1,10 @@
 use {
-    crate::{Borsh, Encoding, Path, Proto},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{Borsh, Encoding, Path},
     grug_types::{StdError, StdResult, Storage},
-    prost::Message,
     std::marker::PhantomData,
 };
 
-pub struct Item<'a, T, E: Encoding = Borsh> {
+pub struct Item<'a, T, E: Encoding<T> = Borsh> {
     storage_key: &'a [u8],
     data: PhantomData<T>,
     encoding: PhantomData<E>,
@@ -14,7 +12,7 @@ pub struct Item<'a, T, E: Encoding = Borsh> {
 
 impl<'a, T, E> Item<'a, T, E>
 where
-    E: Encoding,
+    E: Encoding<T>,
 {
     pub const fn new(storage_key: &'a str) -> Self {
         Self {
@@ -37,34 +35,27 @@ where
     }
 }
 
-// ----------------------------------- encoding -----------------------------------
+impl<'a, T, E> Item<'a, T, E>
+where
+    E: Encoding<T>,
+{
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        self.path().save(storage, data)
+    }
 
-macro_rules! item_encoding {
-    ($encoding:tt where $($where:tt)+) => {
-        impl<'a, T> Item<'a, T, $encoding>
-        where $($where)+ {
-            pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-                self.path().save(storage, data)
-            }
+    pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
+        self.path().may_load(storage)
+    }
 
-            pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
-                self.path().may_load(storage)
-            }
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        self.path().load(storage)
+    }
 
-            pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
-                self.path().load(storage)
-            }
-
-            pub fn update<A, E>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, E>
-            where
-                A: FnOnce(Option<T>) -> Result<Option<T>, E>,
-                E: From<StdError>,
-            {
-                self.path().update(storage, action)
-            }
-        }
-    };
+    pub fn update<A, Err>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, Err>
+    where
+        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
+        Err: From<StdError>,
+    {
+        self.path().update(storage, action)
+    }
 }
-
-item_encoding!(Borsh where T: BorshSerialize + BorshDeserialize);
-item_encoding!(Proto where T: Message + Default);

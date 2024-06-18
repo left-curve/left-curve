@@ -1,11 +1,9 @@
 use {
-    crate::{Borsh, Encoding, Index, Map, MapKey, Proto},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{Borsh, Encoding, Index, Map, MapKey},
     grug_types::{StdError, StdResult, Storage},
-    prost::Message,
     std::marker::PhantomData,
 };
-pub struct UniqueIndex<'a, IK, T, PK, E: Encoding = Borsh> {
+pub struct UniqueIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     index: fn(&T) -> IK,
     idx_map: Map<'a, IK, T, E>,
     _idx_namespace: &'a [u8],
@@ -15,7 +13,7 @@ pub struct UniqueIndex<'a, IK, T, PK, E: Encoding = Borsh> {
 
 impl<'a, IK, T, PK, E> UniqueIndex<'a, IK, T, PK, E>
 where
-    E: Encoding,
+    E: Encoding<T>,
 {
     pub const fn new(idx_fn: fn(&T) -> IK, idx_namespace: &'static str) -> Self {
         UniqueIndex {
@@ -28,48 +26,37 @@ where
     }
 }
 
-// ----------------------------------- encoding -----------------------------------
+impl<'a, IK, T, PK, E> Index<T> for UniqueIndex<'a, IK, T, PK, E>
+where
+    IK: MapKey,
+    E: Encoding<T>,
+    T: Clone,
+{
+    fn save(&self, store: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
+        let idx = (self.index)(data);
+        self.idx_map
+            .update(store, idx, |existing| -> StdResult<_> {
+                match existing {
+                    Some(_) => Err(StdError::generic_err("Violates unique constraint on index")),
+                    None => Ok(Some(data.clone())),
+                }
+            })?;
+        Ok(())
+    }
 
-macro_rules! unique_index_encoding {
-    ($encoding:tt where $($where:tt)+) => {
-        impl<'a, IK, T, PK> Index<T> for UniqueIndex<'a, IK, T, PK, $encoding>
-        where
-            IK: MapKey,
-            $($where)+,
-            T: Clone,
-        {
-            fn save(&self, store: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
-                let idx = (self.index)(data);
-                self.idx_map
-                    .update(store, idx, |existing| -> StdResult<_> {
-                        match existing {
-                            Some(_) => {
-                                Err(StdError::generic_err("Violates unique constraint on index"))
-                            },
-                            None => Ok(Some(data.clone())),
-                        }
-                    })?;
-                Ok(())
-            }
-
-            fn remove(&self, store: &mut dyn Storage, _pk: &[u8], old_data: &T) -> StdResult<()> {
-                let idx = (self.index)(old_data);
-                self.idx_map.remove(store, idx);
-                Ok(())
-            }
-        }
-
-        impl<'a, IK, T, PK> UniqueIndex<'a, IK, T, PK, $encoding>
-        where
-            IK: MapKey,
-            $($where)+,
-        {
-            pub fn map(&self) -> &Map<'a, IK, T, $encoding> {
-                &self.idx_map
-            }
-        }
-    };
+    fn remove(&self, store: &mut dyn Storage, _pk: &[u8], old_data: &T) -> StdResult<()> {
+        let idx = (self.index)(old_data);
+        self.idx_map.remove(store, idx);
+        Ok(())
+    }
 }
 
-unique_index_encoding!(Borsh where T: BorshDeserialize + BorshSerialize);
-unique_index_encoding!(Proto where T: Message + Default);
+impl<'a, IK, T, PK, E> UniqueIndex<'a, IK, T, PK, E>
+where
+    IK: MapKey,
+    E: Encoding<T>,
+{
+    pub fn map(&self) -> &Map<'a, IK, T, E> {
+        &self.idx_map
+    }
+}

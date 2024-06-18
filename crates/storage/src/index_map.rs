@@ -1,8 +1,6 @@
 use {
-    crate::{Borsh, Bound, Encoding, Map, MapKey, Prefix, Proto},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{Borsh, Bound, Encoding, Map, MapKey, Prefix},
     grug_types::{Order, Record, StdError, StdResult, Storage},
-    prost::Message,
 };
 
 pub trait IndexList<T> {
@@ -14,7 +12,7 @@ pub trait Index<T> {
     fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) -> StdResult<()>;
 }
 
-pub struct IndexedMap<'a, K, T, I, E: Encoding = Borsh> {
+pub struct IndexedMap<'a, K, T, I, E: Encoding<T> = Borsh> {
     pk_namespace: &'a [u8],
     primary: Map<'a, K, T, E>,
     /// This is meant to be read directly to get the proper types, like:
@@ -22,9 +20,9 @@ pub struct IndexedMap<'a, K, T, I, E: Encoding = Borsh> {
     pub idx: I,
 }
 
-impl<'a, K, T, I, E> IndexedMap<'a, K, T, I, E>
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
-    E: Encoding,
+    E: Encoding<T>,
     K: MapKey,
     I: IndexList<T>,
 {
@@ -41,11 +39,11 @@ where
     }
 }
 
-impl<'a, K, T, I, E> IndexedMap<'a, K, T, I, E>
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
     K: MapKey,
     I: IndexList<T>,
-    E: Encoding,
+    E: Encoding<T>,
 {
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
         self.no_prefix()
@@ -109,112 +107,100 @@ where
     }
 }
 
-// ----------------------------------- encoding -----------------------------------
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+where
+    K: MapKey,
+    E: Encoding<T>,
+{
+    pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
+        self.primary.load(storage, key)
+    }
 
-macro_rules! index_map_encoding {
-    ($encoding:tt where $($where:tt)+) => {
-        impl<'a, K, T, I> IndexedMap<'a, K, T, I, $encoding>
-        where
-            K: MapKey,
-            $($where)+
-        {
-            pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
-                self.primary.load(storage, key)
-            }
-
-            pub fn may_load(&self, storage: &dyn Storage, key: K) -> StdResult<Option<T>> {
-                self.primary.may_load(storage, key)
-            }
-        }
-
-        impl<'a, K, T, I> IndexedMap<'a, K, T, I, $encoding>
-        where
-            K: MapKey,
-            I: IndexList<T>,
-            $($where)+
-        {
-            pub fn range<'b>(
-                &self,
-                storage: &'b dyn Storage,
-                min: Option<Bound<K>>,
-                max: Option<Bound<K>>,
-                order: Order,
-            ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-                self.no_prefix().range(storage, min, max, order)
-            }
-        }
-
-        impl<'a, K, T, I> IndexedMap<'a, K, T, I, $encoding>
-        where
-            K: MapKey + Clone,
-            I: IndexList<T>,
-            $($where)+
-        {
-            pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
-                let old_data = self.may_load(storage, key.clone())?;
-                self.replace(storage, key, Some(data), old_data.as_ref())
-            }
-
-            pub fn remove(&'a self, storage: &mut dyn Storage, key: K) -> StdResult<()> {
-                let old_data = self.may_load(storage, key.clone())?;
-                self.replace(storage, key, None, old_data.as_ref())
-            }
-
-            pub fn replace(
-                &'a self,
-                storage: &mut dyn Storage,
-                key: K,
-                data: Option<&T>,
-                old_data: Option<&T>,
-            ) -> StdResult<()> {
-                // this is the key *relative* to the primary map namespace
-                let pk = key.serialize();
-                if let Some(old) = old_data {
-                    for index in self.idx.get_indexes() {
-                        index.remove(storage, &pk, old)?;
-                    }
-                }
-                if let Some(updated) = data {
-                    for index in self.idx.get_indexes() {
-                        index.save(storage, &pk, updated)?;
-                    }
-                    self.primary.save(storage, key, updated)?;
-                } else {
-                    self.primary.remove(storage, key);
-                }
-                Ok(())
-            }
-        }
-
-        impl<'a, K, T, I> IndexedMap<'a, K, T, I, $encoding>
-        where
-            K: MapKey + Clone,
-            I: IndexList<T>,
-            $($where)+,
-            T: Clone
-        {
-            pub fn update<A, Err>(
-                &'a self,
-                storage: &mut dyn Storage,
-                key: K,
-                action: A,
-            ) -> Result<T, Err>
-            where
-                A: FnOnce(Option<T>) -> Result<T, Err>,
-                Err: From<StdError>,
-            {
-                let input = self.may_load(storage, key.clone())?;
-                let old_val = input.clone();
-                let output = action(input)?;
-                self.replace(storage, key, Some(&output), old_val.as_ref())?;
-                Ok(output)
-            }
-        }
-    };
+    pub fn may_load(&self, storage: &dyn Storage, key: K) -> StdResult<Option<T>> {
+        self.primary.may_load(storage, key)
+    }
 }
 
-index_map_encoding!(Borsh where T: BorshSerialize + BorshDeserialize);
-index_map_encoding!(Proto where T: Message + Default);
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+where
+    K: MapKey,
+    I: IndexList<T>,
+
+    E: Encoding<T>,
+{
+    pub fn range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().range(storage, min, max, order)
+    }
+}
+
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+where
+    K: MapKey + Clone,
+    I: IndexList<T>,
+
+    E: Encoding<T>,
+{
+    pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
+        let old_data = self.may_load(storage, key.clone())?;
+        self.replace(storage, key, Some(data), old_data.as_ref())
+    }
+
+    pub fn remove(&'a self, storage: &mut dyn Storage, key: K) -> StdResult<()> {
+        let old_data = self.may_load(storage, key.clone())?;
+        self.replace(storage, key, None, old_data.as_ref())
+    }
+
+    pub fn replace(
+        &'a self,
+        storage: &mut dyn Storage,
+        key: K,
+        data: Option<&T>,
+        old_data: Option<&T>,
+    ) -> StdResult<()> {
+        // this is the key *relative* to the primary map namespace
+        let pk = key.serialize();
+        if let Some(old) = old_data {
+            for index in self.idx.get_indexes() {
+                index.remove(storage, &pk, old)?;
+            }
+        }
+        if let Some(updated) = data {
+            for index in self.idx.get_indexes() {
+                index.save(storage, &pk, updated)?;
+            }
+            self.primary.save(storage, key, updated)?;
+        } else {
+            self.primary.remove(storage, key);
+        }
+        Ok(())
+    }
+}
+
+impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+where
+    K: MapKey + Clone,
+    I: IndexList<T>,
+    T: Clone,
+    E: Encoding<T>,
+{
+    pub fn update<A, Err>(&'a self, storage: &mut dyn Storage, key: K, action: A) -> Result<T, Err>
+    where
+        A: FnOnce(Option<T>) -> Result<T, Err>,
+        Err: From<StdError>,
+    {
+        let input = self.may_load(storage, key.clone())?;
+        let old_val = input.clone();
+        let output = action(input)?;
+        self.replace(storage, key, Some(&output), old_val.as_ref())?;
+        Ok(output)
+    }
+}
 
 // ----------------------------------- tests -----------------------------------
 
@@ -222,19 +208,15 @@ index_map_encoding!(Proto where T: Message + Default);
 mod tests {
 
     use {
-        crate::{
-            Borsh, Encoding, Index, IndexList, IndexedMap, Map, MultiIndex, Proto, UniqueIndex,
-        },
+        crate::{Borsh, Encoding, Index, IndexList, IndexedMap, MultiIndex, Proto, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{
-            from_proto_slice, to_proto_vec, MockStorage, Order, StdError, StdResult, Uint128,
-        },
+        grug_types::{MockStorage, Order, StdError, StdResult},
         prost::Message,
         std::{str::from_utf8, vec},
         test_case::test_case,
     };
 
-    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Message)]
+    #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Message, Clone)]
     struct Foo {
         #[prost(string, tag = "1")]
         pub name: String,
@@ -254,15 +236,15 @@ mod tests {
         }
     }
 
-    struct FooIndexes<'a, E: Encoding = Borsh> {
+    struct FooIndexes<'a, E: Encoding<Foo> = Borsh> {
         pub name: MultiIndex<'a, String, Foo, u64>,
         pub name_surname: MultiIndex<'a, (String, String), Foo, u64>,
         pub id: UniqueIndex<'a, u32, Foo, u64, E>,
     }
 
-    impl<'a, E: Encoding> IndexList<Foo> for FooIndexes<'a, E> {
+    impl<'a, E: Encoding<Foo>> IndexList<Foo> for FooIndexes<'a, E> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<Foo>> + '_> {
-            let v: Vec<&dyn Index<Foo>> = vec![&self.name, &self.name_surname];
+            let v: Vec<&dyn Index<Foo>> = vec![&self.name, &self.name_surname, &self.id];
             Box::new(v.into_iter())
         }
     }
@@ -281,7 +263,7 @@ mod tests {
         IndexedMap::new("pk_namespace", indexes)
     }
 
-    fn foo_t<'a, E: Encoding>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E> {
+    fn foo_t<'a, E: Encoding<Foo>>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E> {
         let indexes = FooIndexes::<E> {
             name: MultiIndex::new(|_, data| data.name.clone(), "pk_namespace", "name"),
             name_surname: MultiIndex::new(
@@ -298,13 +280,13 @@ mod tests {
     fn default<'a>() -> (MockStorage, IndexedMap<'a, u64, Foo, FooIndexes<'a>, Borsh>) {
         let mut deps = MockStorage::new();
         let map = foo();
-        map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 100))
+        map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 101))
             .unwrap();
-        map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 101))
+        map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 102))
             .unwrap();
-        map.save(&mut deps, 3, &Foo::new("bar", "s_foo", 102))
+        map.save(&mut deps, 3, &Foo::new("bar", "s_foo", 103))
             .unwrap();
-        map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 103))
+        map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 104))
             .unwrap();
         (deps, map)
     }
@@ -313,13 +295,13 @@ mod tests {
         ($e:tt) => {{
             let mut deps = MockStorage::new();
             let map = foo_t::<$e>();
-            map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 100))
+            map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 101))
                 .unwrap();
-            map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 101))
+            map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 102))
                 .unwrap();
-            map.save(&mut deps, 3, &Foo::new("bar", "s_foo", 102))
+            map.save(&mut deps, 3, &Foo::new("bar", "s_foo", 103))
                 .unwrap();
-            map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 103))
+            map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 104))
                 .unwrap();
             (deps, map)
         }};
@@ -365,15 +347,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
-                (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
+            (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
+        ]);
 
         let val = map
             .idx
@@ -383,15 +362,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103)),
-                (4, Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103)),
+            (4, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 
     #[test]
@@ -406,13 +382,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
+        ]);
 
         let val = map
             .idx
@@ -422,13 +395,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 100)),
-                (2, Foo::new("bar", "s_bar", 101)),
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+        ]);
     }
 
     #[test]
@@ -443,14 +413,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
+        ]);
 
         let val = map
             .idx
@@ -460,26 +427,26 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103))
+        ]);
     }
 
     #[test_case(default_t!(Proto); "unique_proto")]
     #[test_case(default_t!(Borsh); "unique_borsh")]
-    fn unique<E: Encoding>((deps, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>)) {}
+    fn unique<E: Encoding<Foo>>(
+        (_deps, _index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
+    ) {
+    }
 
     #[test]
     fn unique_2() {
-        let (mut deps, index) = default();
+        let (deps, index) = default();
 
         let k = 101_u32;
-        // let a = index.idx.id.map().load(&mut deps, k).unwrap();
-        // println!("{:?}", a);
+        let a = index.idx.id.map().load(&deps, k).unwrap();
+        println!("{:?}", a);
     }
 }
