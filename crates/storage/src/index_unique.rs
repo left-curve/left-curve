@@ -13,7 +13,10 @@ pub struct UniqueIndex<'a, IK, T, PK, E: Encoding = Borsh> {
     phantom_e: PhantomData<E>,
 }
 
-impl<'a, IK, T, PK> UniqueIndex<'a, IK, T, PK> {
+impl<'a, IK, T, PK, E> UniqueIndex<'a, IK, T, PK, E>
+where
+    E: Encoding,
+{
     pub const fn new(idx_fn: fn(&T) -> IK, idx_namespace: &'static str) -> Self {
         UniqueIndex {
             index: idx_fn,
