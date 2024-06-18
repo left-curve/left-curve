@@ -43,21 +43,9 @@ where
         let iter = self
             .inner
             .range_raw(store, min, max, order)
-            .map(move |kv| (de_fn)(store, &pk_name, kv));
+            .map(move |kv| (de_fn)(store, pk_name, kv));
 
         Box::new(iter)
-
-        // Cosmwasm impl
-
-        // let mapped = range_with_prefix(
-        //     store,
-        //     &self.inner.storage_prefix,
-        //     min.map(|b| b.to_raw_bound()),
-        //     max.map(|b| b.to_raw_bound()),
-        //     order,
-        // )
-        // .map(move |kv| (de_fn)(store, &pk_name, kv));
-        // Box::new(mapped)
     }
 
     pub fn range(
@@ -76,9 +64,46 @@ where
         let iter = self
             .inner
             .range_raw(store, min, max, order)
-            .map(move |kv| (de_fn)(store, &pk_name, kv));
+            .map(move |kv| (de_fn)(store, pk_name, kv));
 
         Box::new(iter)
+    }
+
+    pub fn keys_raw(
+        &self,
+        store: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.inner.keys_raw(store, min, max, order)
+    }
+
+    pub fn keys(
+        &self,
+        store: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<<K as MapKey>::Output>> + 'b> {
+        self.inner.keys(store, min, max, order)
+    }
+
+    pub fn clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        limit: Option<usize>,
+    ) {
+        self.inner.clear(storage, min, max, limit)
+    }
+
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.inner
+            .keys_raw(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
     }
 }
 
