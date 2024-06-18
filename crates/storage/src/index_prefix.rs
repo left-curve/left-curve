@@ -103,7 +103,7 @@ macro_rules! recover_pk {
     }};
 }
 
-macro_rules! generate_kv_fn {
+macro_rules! generate_deserialize_fn {
     (v $fn_name:ident, $fn_des:ident where $($where:tt)+) => {
         fn $fn_name<$($where)+>(store: &dyn Storage, pk_namespace: &[u8], kv: Record) -> StdResult<(Vec<u8>, T)> {
             Ok(recover_pk!(k store, pk_namespace, kv, $fn_des))
@@ -117,10 +117,10 @@ macro_rules! generate_kv_fn {
     };
 }
 
-generate_kv_fn!(v  borsh_deserialize_multi_v,  from_borsh_slice where T: BorshDeserialize);
-generate_kv_fn!(kv borsh_deserialize_multi_kv, from_borsh_slice where T: BorshDeserialize);
-generate_kv_fn!(v  proto_deserialize_multi_v,  from_proto_slice where T: Message + Default);
-generate_kv_fn!(kv proto_deserialize_multi_kv, from_proto_slice where T: Message + Default);
+generate_deserialize_fn!(v  borsh_deserialize_multi_v,  from_borsh_slice where T: BorshDeserialize);
+generate_deserialize_fn!(kv borsh_deserialize_multi_kv, from_borsh_slice where T: BorshDeserialize);
+generate_deserialize_fn!(v  proto_deserialize_multi_v,  from_proto_slice where T: Message + Default);
+generate_deserialize_fn!(kv proto_deserialize_multi_kv, from_proto_slice where T: Message + Default);
 
 macro_rules! index_prefix_encoding {
     ($encoding:tt, $fn_dv:ident, $fn_dkv:ident where $($where:tt)+  ) => {
