@@ -13,7 +13,10 @@ pub struct Map<'a, K, T, E: Encoding = Borsh> {
     encoding: PhantomData<E>,
 }
 
-impl<'a, K, T> Map<'a, K, T> {
+impl<'a, K, T, E> Map<'a, K, T, E>
+where
+    E: Encoding,
+{
     pub const fn new(namespace: &'a str) -> Self {
         // TODO: add a maximum length for namespace
         // see comments of increment_last_byte function for rationale

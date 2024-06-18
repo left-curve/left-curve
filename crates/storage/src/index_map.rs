@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Index, Map, MapKey, Prefix, Proto},
+    crate::{Borsh, Bound, Encoding, Map, MapKey, Prefix, Proto},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Order, Record, StdError, StdResult, Storage},
     prost::Message,
@@ -9,6 +9,10 @@ pub trait IndexList<T> {
     fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<T>> + '_>;
 }
 
+pub trait Index<T> {
+    fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()>;
+    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) -> StdResult<()>;
+}
 /// `IndexedMap` works like a `Map` but has a secondary index
 pub struct IndexedMap<'a, K, T, I, E: Encoding = Borsh> {
     pk_namespace: &'a [u8],
