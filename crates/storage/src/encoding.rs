@@ -8,6 +8,9 @@ use {
 pub trait Encoding<T> {
     fn encode(data: &T) -> StdResult<Vec<u8>>;
     fn decode(data: &[u8]) -> StdResult<T>;
+    /// This method is required for the `Prefix` implementation.
+    /// It is used to decode the length of the value in the prefix.
+    /// Since the Prifex has only E: Encoding<T> bound, we need to provide this method.
     fn decode_u32(data: &[u8]) -> StdResult<u32>;
 }
 
@@ -26,9 +29,6 @@ where
         from_borsh_slice(data)
     }
 
-    /// This method is required for the `Prefix` implementation.
-    /// It is used to decode the length of the value in the prefix.
-    /// Since the Prifex has only E: Encoding<T> bound, we need to provide this method.
     fn decode_u32(data: &[u8]) -> StdResult<u32> {
         from_borsh_slice(data)
     }
