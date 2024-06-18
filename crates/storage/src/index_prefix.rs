@@ -1,9 +1,11 @@
-use borsh::BorshDeserialize;
-use grug_types::{
-    from_borsh_slice, nested_namespaces_with_key, Order, Record, StdError, StdResult, Storage,
+use {
+    crate::{Borsh, Bound, Encoding, MapKey, Prefix, RawKey},
+    borsh::BorshDeserialize,
+    grug_types::{
+        from_borsh_slice, nested_namespaces_with_key, Order, Record, StdError, StdResult, Storage,
+    },
+    prost::Message,
 };
-
-use crate::{Borsh, Bound, Encoding, MapKey, Prefix, RawKey};
 
 pub struct IndexPrefix<'a, K, T, E: Encoding = Borsh>
 where
@@ -56,11 +58,68 @@ where
         // .map(move |kv| (de_fn)(store, &pk_name, kv));
         // Box::new(mapped)
     }
+
+    pub fn range(
+        &self,
+        store: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>
+    where
+        T: 'b,
+    {
+        let de_fn = self.de_fn_kv;
+        let pk_name = self.pk_name;
+
+        let iter = self
+            .inner
+            .range_raw(store, min, max, order)
+            .map(move |kv| (de_fn)(store, &pk_name, kv));
+
+        Box::new(iter)
+    }
 }
 
 // ----------------------------------- encoding -----------------------------------
 
-fn deserialize_multi_v<T: BorshDeserialize>(
+macro_rules! index_prefix_encoding {
+    ($encoding:tt where $($where:tt)+) => {
+        impl<'a, K, T> IndexPrefix<'a, K, T, $encoding>
+        where
+            K: MapKey,
+            $($where)+,
+        {
+            pub fn with_deserialization_functions(
+                top_name: &[u8],
+                sub_names: &[RawKey],
+                pk_name: &'a [u8],
+            ) -> Self {
+                Self {
+                    inner: Prefix::new(top_name, sub_names),
+                    pk_name,
+                    de_fn_kv: borsh_deserialize_multi_kv::<K, _>,
+                    de_fn_v: borsh_deserialize_multi_v,
+                }
+            }
+        }
+    };
+}
+
+/// Recover pk from last part of k.
+///
+/// Return `(pk, full_key)`
+fn recover_pk(pk_namespace: &[u8], key: &[u8], pk_len: u32) -> (Vec<u8>, Vec<u8>) {
+    let offset = key.len() - pk_len as usize;
+    let pk = &key[offset..];
+    let empty_prefixes: &[&[u8]] = &[];
+    (
+        pk.to_vec(),
+        nested_namespaces_with_key(Some(pk_namespace), empty_prefixes, Some(&pk)),
+    )
+}
+
+fn borsh_deserialize_multi_v<T: BorshDeserialize>(
     store: &dyn Storage,
     pk_namespace: &[u8],
     kv: Record,
@@ -70,13 +129,7 @@ fn deserialize_multi_v<T: BorshDeserialize>(
     // Deserialize pk_len
     let pk_len = from_borsh_slice::<u32>(&pk_len)?;
 
-    // Recover pk from last part of k
-    let offset = key.len() - pk_len as usize;
-    let pk = &key[offset..];
-
-    let empty_prefixes: &[&[u8]] = &[];
-
-    let full_key = nested_namespaces_with_key(Some(pk_namespace), empty_prefixes, Some(&pk));
+    let (pk, full_key) = recover_pk(pk_namespace, &key, pk_len);
 
     let v = store
         .read(&full_key)
@@ -86,7 +139,7 @@ fn deserialize_multi_v<T: BorshDeserialize>(
     Ok((pk.to_vec(), v))
 }
 
-fn deserialize_multi_kv<K: MapKey, T: BorshDeserialize>(
+fn borsh_deserialize_multi_kv<K: MapKey, T: BorshDeserialize>(
     store: &dyn Storage,
     pk_namespace: &[u8],
     kv: Record,
@@ -96,11 +149,7 @@ fn deserialize_multi_kv<K: MapKey, T: BorshDeserialize>(
     // Deserialize pk_len
     let pk_len = from_borsh_slice::<u32>(&pk_len)?;
 
-    // Recover pk from last part of k
-    let offset = key.len() - pk_len as usize;
-    let pk = &key[offset..];
-
-    let full_key = nested_namespaces_with_key(Some(pk_namespace), &[&[]], Some(&pk));
+    let (pk, full_key) = recover_pk(pk_namespace, &key, pk_len);
 
     let v = store
         .read(&full_key)
@@ -110,21 +159,30 @@ fn deserialize_multi_kv<K: MapKey, T: BorshDeserialize>(
     Ok((K::deserialize(&pk)?, v))
 }
 
-impl<'a, K, T> IndexPrefix<'a, K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshDeserialize,
-{
-    pub fn with_deserialization_functions(
-        top_name: &[u8],
-        sub_names: &[RawKey],
-        pk_name: &'a [u8],
-    ) -> Self {
-        Self {
-            inner: Prefix::new(top_name, sub_names),
-            pk_name,
-            de_fn_kv: deserialize_multi_kv::<K, _>,
-            de_fn_v: deserialize_multi_v,
-        }
-    }
+fn _proto_deserialize_multi_v<T: Message>(
+    _store: &dyn Storage,
+    _pk_namespace: &[u8],
+    _kv: Record,
+) -> StdResult<(Vec<u8>, T)> {
+    todo!()
 }
+index_prefix_encoding!(Borsh where T: BorshDeserialize);
+
+// impl<'a, K, T> IndexPrefix<'a, K, T, Borsh>
+// where
+//     K: MapKey,
+//     T: BorshDeserialize,
+// {
+//     pub fn with_deserialization_functions(
+//         top_name: &[u8],
+//         sub_names: &[RawKey],
+//         pk_name: &'a [u8],
+//     ) -> Self {
+//         Self {
+//             inner: Prefix::new(top_name, sub_names),
+//             pk_name,
+//             de_fn_kv: borsh_deserialize_multi_kv::<K, _>,
+//             de_fn_v: borsh_deserialize_multi_v,
+//         }
+//     }
+// }

@@ -2,16 +2,16 @@ mod bound;
 mod encoding;
 mod incrementor;
 mod index_map;
-mod indexes;
+mod index_multi;
+mod index_prefix;
 mod item;
 mod key;
 mod map;
 mod path;
 mod prefix;
 mod set;
-mod index_prefix;
 
 pub use {
-    bound::*, encoding::*, incrementor::*, index_map::*, indexes::*, item::*, key::*, map::*,
-    path::*, prefix::*, set::*, index_prefix::*,
+    bound::*, encoding::*, incrementor::*, index_map::*, index_multi::*, index_prefix::*, item::*,
+    key::*, map::*, path::*, prefix::*, set::*,
 };
