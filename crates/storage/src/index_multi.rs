@@ -7,7 +7,9 @@ use {
 pub struct MultiIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     index: fn(&[u8], &T) -> IK,
     idx_namespace: &'a [u8],
-    idx_map: Map<'a, &'a [u8], u32>,
+    /// Use the Borsh encoding to encode the len of the pk.
+    /// Handling also the case would require E: Encoding<u32>.
+    idx_map: Map<'a, &'a [u8], u32, Borsh>,
     pk_namespace: &'a [u8],
     phantom_pk: PhantomData<PK>,
     phantom_e: PhantomData<E>,
@@ -19,7 +21,8 @@ where
 {
     fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()> {
         let idx = (self.index)(pk, data).joined_extra_key(pk);
-        self.idx_map.save(store, &idx, &(pk.len() as u32))
+        let pk_len = pk.len() as u32;
+        self.idx_map.save(store, &idx, &pk_len)
     }
 
     fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) -> StdResult<()> {

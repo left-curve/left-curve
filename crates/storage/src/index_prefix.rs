@@ -1,6 +1,8 @@
 use {
     crate::{Borsh, Bound, Encoding, MapKey, Prefix, RawKey},
-    grug_types::{nested_namespaces_with_key, Order, Record, StdError, StdResult, Storage},
+    grug_types::{
+        from_borsh_slice, nested_namespaces_with_key, Order, Record, StdError, StdResult, Storage,
+    },
 };
 
 pub struct IndexPrefix<'a, K, T, E: Encoding<T> = Borsh>
@@ -9,8 +11,6 @@ where
 {
     inner: Prefix<K, T, E>,
     pk_name: &'a [u8],
-    // de_fn_kv: DeserializeKvFn<K, T>,
-    // de_fn_v: DeserializeVFn<T>,
 }
 
 impl<'b, K, T, E> IndexPrefix<'b, K, T, E>
@@ -105,7 +105,7 @@ where
         top_name: &[u8],
         sub_names: &[RawKey],
         pk_name: &'a [u8],
-    ) -> Self {
+    ) -> IndexPrefix<'a, K, T, E> {
         Self {
             inner: Prefix::<_, _, E>::new(top_name, sub_names),
             pk_name,
@@ -118,7 +118,7 @@ where
 macro_rules! recover_pk {
     ($store:expr, $pk_namespace:expr, $kv:expr) => {{
         let (key, pk_len) = $kv;
-        let pk_len = E::decode_u32(&pk_len)?;
+        let pk_len: u32 = from_borsh_slice(&pk_len)?;
         let offset = key.len() - pk_len as usize;
         let pk = &key[offset..];
         let empty_prefixes: &[&[u8]] = &[];

@@ -237,8 +237,8 @@ mod tests {
     }
 
     struct FooIndexes<'a, E: Encoding<Foo> = Borsh> {
-        pub name: MultiIndex<'a, String, Foo, u64>,
-        pub name_surname: MultiIndex<'a, (String, String), Foo, u64>,
+        pub name: MultiIndex<'a, String, Foo, u64, E>,
+        pub name_surname: MultiIndex<'a, (String, String), Foo, u64, E>,
         pub id: UniqueIndex<'a, u32, Foo, u64, E>,
     }
 
@@ -249,21 +249,7 @@ mod tests {
         }
     }
 
-    fn foo<'a>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, Borsh>, Borsh> {
-        let indexes = FooIndexes {
-            name: MultiIndex::new(|_, data| data.name.clone(), "pk_namespace", "name"),
-            name_surname: MultiIndex::new(
-                |_, data| (data.name.clone(), data.surname.clone()),
-                "pk_namespace",
-                "name_surname",
-            ),
-            id: UniqueIndex::new(|data| data.id, "pk_namespace"),
-        };
-
-        IndexedMap::new("pk_namespace", indexes)
-    }
-
-    fn foo_t<'a, E: Encoding<Foo>>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E> {
+    fn foo<'a, E: Encoding<Foo>>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E> {
         let indexes = FooIndexes::<E> {
             name: MultiIndex::new(|_, data| data.name.clone(), "pk_namespace", "name"),
             name_surname: MultiIndex::new(
@@ -271,15 +257,16 @@ mod tests {
                 "pk_namespace",
                 "name_surname",
             ),
-            id: UniqueIndex::new(|data| data.id, "pk_namespace"),
+            id: UniqueIndex::new(|data| data.id, "unique_ns"),
         };
 
         IndexedMap::<u64, Foo, FooIndexes<'a, E>, E>::new("pk_namespace", indexes)
     }
 
-    fn default<'a>() -> (MockStorage, IndexedMap<'a, u64, Foo, FooIndexes<'a>, Borsh>) {
+    fn default<'a, E: Encoding<Foo>>(
+    ) -> (MockStorage, IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E>) {
         let mut deps = MockStorage::new();
-        let map = foo();
+        let map: IndexedMap<u64, Foo, FooIndexes<E>, E> = foo::<E>();
         map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 101))
             .unwrap();
         map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 102))
@@ -289,22 +276,6 @@ mod tests {
         map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 104))
             .unwrap();
         (deps, map)
-    }
-
-    macro_rules! default_t {
-        ($e:tt) => {{
-            let mut deps = MockStorage::new();
-            let map = foo_t::<$e>();
-            map.save(&mut deps, 1, &Foo::new("bar", "s_bar", 101))
-                .unwrap();
-            map.save(&mut deps, 2, &Foo::new("bar", "s_bar", 102))
-                .unwrap();
-            map.save(&mut deps, 3, &Foo::new("bar", "s_foo", 103))
-                .unwrap();
-            map.save(&mut deps, 4, &Foo::new("foo", "s_foo", 104))
-                .unwrap();
-            (deps, map)
-        }};
     }
 
     fn _keys_to_utf8(bytes: &[u8]) -> StdResult<Vec<String>> {
@@ -335,11 +306,12 @@ mod tests {
         Ok(res)
     }
 
-    #[test]
-    fn index_no_prefix() {
-        let (deps, map) = default();
-
-        let val = map
+    #[test_case(default::<Proto>(); "proto")]
+    #[test_case(default::<Borsh>(); "borsh")]
+    fn index_no_prefix<E: Encoding<Foo>>(
+        (deps, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
+    ) {
+        let val = index
             .idx
             .name_surname
             .no_prefix()
@@ -354,7 +326,7 @@ mod tests {
             (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
         ]);
 
-        let val = map
+        let val = index
             .idx
             .name_surname
             .no_prefix()
@@ -370,11 +342,12 @@ mod tests {
         ]);
     }
 
-    #[test]
-    fn index_prefix() {
-        let (deps, map) = default();
-
-        let val = map
+    #[test_case(default::<Proto>(); "proto")]
+    #[test_case(default::<Borsh>(); "borsh")]
+    fn index_prefix<E: Encoding<Foo>>(
+        (deps, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
+    ) {
+        let val = index
             .idx
             .name_surname
             .prefix(("bar".to_string(), "s_bar".to_string()))
@@ -387,7 +360,7 @@ mod tests {
             (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
         ]);
 
-        let val = map
+        let val = index
             .idx
             .name_surname
             .prefix(("bar".to_string(), "s_bar".to_string()))
@@ -401,11 +374,12 @@ mod tests {
         ]);
     }
 
-    #[test]
-    fn index_sub_prefix() {
-        let (deps, map) = default();
-
-        let val = map
+    #[test_case(default::<Proto>(); "proto")]
+    #[test_case(default::<Borsh>(); "borsh")]
+    fn index_sub_prefix<E: Encoding<Foo>>(
+        (deps, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
+    ) {
+        let val = index
             .idx
             .name_surname
             .sub_prefix("bar".to_string())
@@ -419,7 +393,7 @@ mod tests {
             (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
         ]);
 
-        let val = map
+        let val = index
             .idx
             .name_surname
             .sub_prefix("bar".to_string())
@@ -434,19 +408,32 @@ mod tests {
         ]);
     }
 
-    #[test_case(default_t!(Proto); "unique_proto")]
-    #[test_case(default_t!(Borsh); "unique_borsh")]
+    #[test_case(default::<Proto>(); "proto")]
+    #[test_case(default::<Borsh>(); "borsh")]
     fn unique<E: Encoding<Foo>>(
-        (_deps, _index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
+        (mut deps, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
     ) {
-    }
+        let val = index.idx.id.map().load(&deps, 103).unwrap();
+        assert_eq!(val, Foo::new("bar", "s_foo", 103));
 
-    #[test]
-    fn unique_2() {
-        let (deps, index) = default();
+        // Try to save a duplicate
+        index
+            .save(&mut deps, 5, &Foo::new("bar", "s_foo", 103))
+            .unwrap_err();
 
-        let k = 101_u32;
-        let a = index.idx.id.map().load(&deps, k).unwrap();
-        println!("{:?}", a);
+        let val = index
+            .idx
+            .id
+            .map()
+            .range(&deps, None, None, Order::Ascending)
+            .map(|val| val.unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(val, vec![
+            (101, Foo::new("bar", "s_bar", 101)),
+            (102, Foo::new("bar", "s_bar", 102)),
+            (103, Foo::new("bar", "s_foo", 103)),
+            (104, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 }
