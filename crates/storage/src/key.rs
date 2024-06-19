@@ -197,6 +197,25 @@ impl_integer_map_key!(
     i128, Val128, u128, Val128,
 );
 
+// Our implementation of serializing tuple keys is different from CosmWasm's,
+// because theirs doesn't work for nested tuples:
+// <https://github.com/CosmWasm/cw-storage-plus/issues/81>
+//
+// For example, consider the following key: `((A, B), (C, D))`. With CosmWasm's
+// implementation, it will be serialized as:
+//
+// len(A) | A | len(B) | B | len(C) | C | D
+//
+// When deserializing, the contract doesn't know where (A, B) ends and where
+// (C, D) starts, which results in errors.
+//
+// With our implementation, this is deserialized as:
+//
+// len(A+B) | len(A) | A | B | len(C) | C | D
+//
+// There is no ambiguity, and deserialization works.
+//
+// See the `nested_tuple_key` test at the bottom of this file for a demo.
 impl<A, B> MapKey for (A, B)
 where
     A: MapKey,
@@ -207,10 +226,9 @@ where
     type Suffix = B;
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        let mut keys = vec![];
-        keys.extend(self.0.raw_keys());
-        keys.extend(self.1.raw_keys());
-        keys
+        let a = self.0.serialize();
+        let b = self.1.serialize();
+        vec![RawKey::Owned(a), RawKey::Owned(b)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -232,11 +250,10 @@ where
     type Suffix = (B, C);
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        let mut keys = vec![];
-        keys.extend(self.0.raw_keys());
-        keys.extend(self.1.raw_keys());
-        keys.extend(self.2.raw_keys());
-        keys
+        let a = self.0.serialize();
+        let b = self.1.serialize();
+        let c = self.2.serialize();
+        vec![RawKey::Owned(a), RawKey::Owned(b), RawKey::Owned(c)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -246,5 +263,41 @@ where
         let b = B::deserialize(b_bytes)?;
         let c = C::deserialize(c_bytes)?;
         Ok((a, b, c))
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+#[rustfmt::skip]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn triple_tuple_key() {
+        type TripleTuple<'a> = (&'a str, &'a str, &'a str);
+
+        let (a, b, c) = ("larry", "jake", "pumpkin");
+        let serialized = (a, b, c).serialize();
+        let deserialized = TripleTuple::deserialize(&serialized).unwrap();
+
+        assert_eq!(
+            deserialized,
+            (a.to_string(), b.to_string(), c.to_string()),
+        );
+    }
+
+    #[test]
+    fn nested_tuple_key() {
+        type NestedTuple<'a> = ((&'a str, &'a str), (&'a str, &'a str));
+
+        let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
+        let serialized = ((a, b), (c, d)).serialize();
+        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+
+        assert_eq!(
+            deserialized,
+            ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
+        );
     }
 }
