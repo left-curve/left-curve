@@ -175,10 +175,9 @@ where
     type Suffix = B;
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        let mut keys = vec![];
-        keys.extend(self.0.raw_keys());
-        keys.extend(self.1.raw_keys());
-        keys
+        let a = self.0.serialize();
+        let b = self.1.serialize();
+        vec![RawKey::Owned(a), RawKey::Owned(b)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -200,11 +199,10 @@ where
     type Suffix = (B, C);
 
     fn raw_keys(&self) -> Vec<RawKey> {
-        let mut keys = vec![];
-        keys.extend(self.0.raw_keys());
-        keys.extend(self.1.raw_keys());
-        keys.extend(self.2.raw_keys());
-        keys
+        let a = self.0.serialize();
+        let b = self.1.serialize();
+        let c = self.2.serialize();
+        vec![RawKey::Owned(a), RawKey::Owned(b), RawKey::Owned(c)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -214,5 +212,26 @@ where
         let b = B::deserialize(b_bytes)?;
         let c = C::deserialize(c_bytes)?;
         Ok((a, b, c))
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[rustfmt::skip]
+    fn nested_tuple_key() {
+        type NestedTuple = ((&'static str, &'static str), (&'static str, &'static str));
+
+        let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
+        let serialized = ((a, b), (c, d)).serialize();
+        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+        assert_eq!(
+            deserialized,
+            ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
+        );
     }
 }
