@@ -285,28 +285,24 @@ mod tests {
         }
     }
 
-    /// Iterating all records under a specific index value.
     #[test]
-    fn multi_of_value() {
+    fn multi_index_works() {
         let storage = setup_test();
 
-        let val = FOO
-            .idx
-            .name_surname
-            .of(("bar".to_string(), "s_bar".to_string()))
-            .range(&storage, None, None, Order::Ascending)
-            .collect::<StdResult<Vec<_>>>()
-            .unwrap();
+        // Iterating all records under a specific index value.
+        {
+            let val = FOO
+                .idx
+                .name_surname
+                .of(("bar".to_string(), "s_bar".to_string()))
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-        assert_eq!(val, vec![
-            (1, Foo::new("bar", "s_bar", 101)),
-            (2, Foo::new("bar", "s_bar", 102)),
-        ]);
-    }
-
-    /// Iterating records under a specific index value, with a primary key prefix.
-    #[test]
-    fn multi_of_value_prefixed() {
-        todo!()
+            assert_eq!(val, vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+            ]);
+        }
     }
 }
