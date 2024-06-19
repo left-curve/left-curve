@@ -237,17 +237,32 @@ where
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
+#[rustfmt::skip]
 mod tests {
     use super::*;
 
     #[test]
-    #[rustfmt::skip]
+    fn triple_tuple_key() {
+        type TripleTuple<'a> = (&'a str, &'a str, &'a str);
+
+        let (a, b, c) = ("larry", "jake", "pumpkin");
+        let serialized = (a, b, c).serialize();
+        let deserialized = TripleTuple::deserialize(&serialized).unwrap();
+
+        assert_eq!(
+            deserialized,
+            (a.to_string(), b.to_string(), c.to_string()),
+        );
+    }
+
+    #[test]
     fn nested_tuple_key() {
-        type NestedTuple = ((&'static str, &'static str), (&'static str, &'static str));
+        type NestedTuple<'a> = ((&'a str, &'a str), (&'a str, &'a str));
 
         let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
         let serialized = ((a, b), (c, d)).serialize();
         let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+
         assert_eq!(
             deserialized,
             ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
