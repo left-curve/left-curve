@@ -8,19 +8,19 @@ use {
 /// An indexer that allows multiple records in the primary map to have the same
 /// index value.
 pub struct MultiIndex<'a, PK, IK, T, E: Encoding<T> = Borsh> {
-    index: fn(PK, &T) -> IK,
+    indexer: fn(PK, &T) -> IK,
     index_set: Set<'a, (IK, PK)>,
     primary_map: Map<'a, PK, T, E>,
 }
 
 impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
     pub const fn new(
-        idx_fn: fn(PK, &T) -> IK,
+        indexer: fn(PK, &T) -> IK,
         pk_namespace: &'a str,
         idx_namespace: &'static str,
     ) -> Self {
         MultiIndex {
-            index: idx_fn,
+            indexer,
             index_set: Set::new(idx_namespace),
             primary_map: Map::new(pk_namespace),
         }
@@ -33,12 +33,12 @@ where
     IK: MapKey,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.index)(pk.clone(), data);
+        let idx = (self.indexer)(pk.clone(), data);
         self.index_set.insert(storage, (idx, pk))
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
-        let idx = (self.index)(pk.clone(), old_data);
+        let idx = (self.indexer)(pk.clone(), old_data);
         self.index_set.remove(storage, (idx, pk))
     }
 }

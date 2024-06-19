@@ -16,7 +16,7 @@ use {
 pub struct UniqueIndex<'a, IK, T, E: Encoding<T> = Borsh> {
     /// A function that takes a piece of data, and return the index key it
     /// should be indexed at.
-    index: fn(&T) -> IK,
+    indexer: fn(&T) -> IK,
     /// Data indexed by the index key.
     idx_map: Map<'a, IK, T, E>,
 }
@@ -27,9 +27,9 @@ where
 {
     /// Note: The developer must make sure that `idx_namespace` is not the same
     /// as the primary map namespace.
-    pub const fn new(idx_fn: fn(&T) -> IK, idx_namespace: &'static str) -> Self {
+    pub const fn new(indexer: fn(&T) -> IK, idx_namespace: &'static str) -> Self {
         UniqueIndex {
-            index: idx_fn,
+            indexer,
             idx_map: Map::new(idx_namespace),
         }
     }
@@ -56,7 +56,7 @@ where
     T: Clone,
 {
     fn save(&self, storage: &mut dyn Storage, _pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.index)(data);
+        let idx = (self.indexer)(data);
 
         // Ensure that indexes are unique.
         if self.idx_map.has(storage, idx.clone()) {
@@ -68,7 +68,7 @@ where
     }
 
     fn remove(&self, storage: &mut dyn Storage, _pk: PK, old_data: &T) {
-        let idx = (self.index)(old_data);
+        let idx = (self.indexer)(old_data);
         self.idx_map.remove(storage, idx);
     }
 }
