@@ -1,7 +1,7 @@
 use {
     crate::{Borsh, Encoding, Index, Map, MapKey},
     grug_types::{StdError, StdResult, Storage},
-    std::marker::PhantomData,
+    std::{marker::PhantomData, ops::Deref},
 };
 
 pub struct UniqueIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
@@ -50,12 +50,13 @@ where
     }
 }
 
-impl<'a, IK, T, PK, E> UniqueIndex<'a, IK, T, PK, E>
+impl<'a, IK, T, PK, E> Deref for UniqueIndex<'a, IK, T, PK, E>
 where
-    IK: MapKey,
     E: Encoding<T>,
 {
-    pub fn map(&self) -> &Map<'a, IK, T, E> {
+    type Target = Map<'a, IK, T, E>;
+
+    fn deref(&self) -> &Self::Target {
         &self.idx_map
     }
 }

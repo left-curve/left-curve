@@ -369,7 +369,7 @@ mod tests {
     fn unique<E: Encoding<Foo>>(
         (mut storage, index): (MockStorage, IndexedMap<u64, Foo, FooIndexes<E>, E>),
     ) {
-        let val = index.idx.id.map().load(&storage, 103).unwrap();
+        let val = index.idx.id.load(&storage, 103).unwrap();
         assert_eq!(val, Foo::new("bar", "s_foo", 103));
 
         // Try to save a duplicate
@@ -380,7 +380,6 @@ mod tests {
         let val = index
             .idx
             .id
-            .map()
             .range(&storage, None, None, Order::Ascending)
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
