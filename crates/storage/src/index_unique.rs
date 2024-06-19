@@ -8,7 +8,6 @@ pub struct UniqueIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     idx_map: Map<'a, IK, T, E>,
     _idx_namespace: &'a [u8],
     phantom_pk: PhantomData<PK>,
-    phantom_e: PhantomData<E>,
 }
 
 impl<'a, IK, T, PK, E> UniqueIndex<'a, IK, T, PK, E>
@@ -21,7 +20,6 @@ where
             idx_map: Map::new(idx_namespace),
             _idx_namespace: idx_namespace.as_bytes(),
             phantom_pk: PhantomData,
-            phantom_e: PhantomData,
         }
     }
 }
