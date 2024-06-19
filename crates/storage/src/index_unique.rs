@@ -4,15 +4,20 @@ use {
     std::ops::Deref,
 };
 
+/// An indexer that ensures that indexes are unique, meaning no two records in
+/// the primary map may have the same index.
+///
+/// Internally, a `UniqueIndex` is a wrapper around a `Map` that maps index keys
+/// to values. Essentially, when a key-value pair is stored in the `Map`, the
+/// value is stored twice:
+///
+/// - In the primary map: (pk_namespace, pk) => value
+/// - in the index map: (idx_namespace, ik) => value
 pub struct UniqueIndex<'a, IK, T, E: Encoding<T> = Borsh> {
     /// A function that takes a piece of data, and return the index key it
     /// should be indexed at.
     index: fn(&T) -> IK,
     /// Data indexed by the index key.
-    ///
-    /// Essentially, in an index map, each piece of data is stored twice.
-    /// Once in the primary map under the primary key, then again here under the
-    /// index key.
     idx_map: Map<'a, IK, T, E>,
 }
 
@@ -21,8 +26,7 @@ where
     E: Encoding<T>,
 {
     /// Note: The developer must make sure that `idx_namespace` is not the same
-    /// as the primary map namespace. It isn't possible for the `UniqueIndex` to
-    /// assert this at compile time.
+    /// as the primary map namespace.
     pub const fn new(idx_fn: fn(&T) -> IK, idx_namespace: &'static str) -> Self {
         UniqueIndex {
             index: idx_fn,
@@ -54,8 +58,7 @@ where
     fn save(&self, storage: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
         let idx = (self.index)(data);
 
-        // Enforce that indexes are unique: two records in the primary map
-        // cannot have the same index.
+        // Ensure that indexes are unique.
         if self.idx_map.has(storage, idx.clone()) {
             // TODO: create a `StdError::DuplicateData` for this?
             return Err(StdError::generic_err("Violates unique constraint on index"));

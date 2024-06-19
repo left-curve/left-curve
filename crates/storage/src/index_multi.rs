@@ -15,22 +15,6 @@ pub struct MultiIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     phantom_e: PhantomData<E>,
 }
 
-impl<'a, IK, T, PK, E: Encoding<T>> Index<T> for MultiIndex<'a, IK, T, PK, E>
-where
-    IK: MapKey,
-{
-    fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()> {
-        let idx = (self.index)(pk, data).joined_extra_key(pk);
-        let pk_len = pk.len() as u32;
-        self.idx_map.save(store, &idx, &pk_len)
-    }
-
-    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) {
-        let idx = (self.index)(pk, old_data).joined_extra_key(pk);
-        self.idx_map.remove(store, &idx);
-    }
-}
-
 impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E> {
     pub const fn new(
         idx_fn: fn(&[u8], &T) -> IK,
@@ -45,6 +29,22 @@ impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E> {
             phantom_pk: PhantomData,
             phantom_e: PhantomData,
         }
+    }
+}
+
+impl<'a, IK, T, PK, E: Encoding<T>> Index<T> for MultiIndex<'a, IK, T, PK, E>
+where
+    IK: MapKey,
+{
+    fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()> {
+        let idx = (self.index)(pk, data).joined_extra_key(pk);
+        let pk_len = pk.len() as u32;
+        self.idx_map.save(store, &idx, &pk_len)
+    }
+
+    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) {
+        let idx = (self.index)(pk, old_data).joined_extra_key(pk);
+        self.idx_map.remove(store, &idx);
     }
 }
 
