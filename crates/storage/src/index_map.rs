@@ -198,9 +198,8 @@ mod tests {
     use {
         crate::{Borsh, Encoding, Index, IndexList, IndexedMap, MultiIndex, Proto, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{MockStorage, Order, StdError, StdResult},
+        grug_types::{MockStorage, Order},
         prost::Message,
-        std::{str::from_utf8, vec},
         test_case::test_case,
     };
 
@@ -266,33 +265,6 @@ mod tests {
         (storage, map)
     }
 
-    fn _keys_to_utf8(bytes: &[u8]) -> StdResult<Vec<String>> {
-        let mut bytes = bytes.to_vec();
-        let mut res = vec![];
-
-        while !bytes.is_empty() {
-            let len = bytes.drain(0..2).collect::<Vec<_>>();
-            let len = u16::from_be_bytes(len.try_into().unwrap());
-            let decoded_key = if len > bytes.len() as u16 || len == 0 {
-                let decoded_key = from_utf8(&bytes)
-                    .map_err(|_| StdError::generic_err("Invalid parse to utf8"))?
-                    .to_string();
-                bytes.clear();
-                decoded_key
-            } else {
-                let (raw_key, rest) = bytes.split_at(len as usize);
-                let decoded_key = from_utf8(raw_key)
-                    .map_err(|_| StdError::generic_err("Invalid parse to utf8"))?
-                    .to_string();
-                bytes = rest.to_vec();
-                decoded_key
-            };
-            res.push(decoded_key);
-        }
-
-        Ok(res)
-    }
-
     #[test_case(default::<Proto>(); "proto")]
     #[test_case(default::<Borsh>(); "borsh")]
     fn index_no_prefix<E: Encoding<Foo>>(
@@ -306,15 +278,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
-                (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
+            (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
+        ]);
 
         let val = index
             .idx
@@ -324,15 +293,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103)),
-                (4, Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103)),
+            (4, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -348,13 +314,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
+        ]);
 
         let val = index
             .idx
@@ -364,13 +327,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -386,14 +346,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
+        ]);
 
         let val = index
             .idx
@@ -403,14 +360,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103))
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -434,14 +388,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (101, Foo::new("bar", "s_bar", 101)),
-                (102, Foo::new("bar", "s_bar", 102)),
-                (103, Foo::new("bar", "s_foo", 103)),
-                (104, Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (101, Foo::new("bar", "s_bar", 101)),
+            (102, Foo::new("bar", "s_bar", 102)),
+            (103, Foo::new("bar", "s_foo", 103)),
+            (104, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 }
