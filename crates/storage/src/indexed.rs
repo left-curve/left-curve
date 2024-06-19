@@ -195,7 +195,7 @@ mod tests {
         grug_types::{MockStorage, Order, StdResult},
     };
 
-    const FOO: IndexedMap<u64, Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
+    const FOOS: IndexedMap<u64, Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
         name: MultiIndex::new(|_, data| data.name.clone(), "foo", "foo__name"),
         name_surname: MultiIndex::new(
             |_, data| (data.name.clone(), data.surname.clone()),
@@ -244,7 +244,7 @@ mod tests {
             (3, "bar", "s_foo", 103),
             (4, "foo", "s_foo", 104),
         ] {
-            FOO.save(&mut storage, key, &Foo::new(name, surname, id))
+            FOOS.save(&mut storage, key, &Foo::new(name, surname, id))
                 .unwrap();
         }
 
@@ -257,19 +257,19 @@ mod tests {
 
         // Load a single data by the index
         {
-            let val = FOO.idx.id.load(&storage, 103).unwrap();
+            let val = FOOS.idx.id.load(&storage, 103).unwrap();
             assert_eq!(val, Foo::new("bar", "s_foo", 103));
         }
 
         // Try to save a data with duplicate index; should fail
         {
-            FOO.save(&mut storage, 5, &Foo::new("bar", "s_foo", 103))
+            FOOS.save(&mut storage, 5, &Foo::new("bar", "s_foo", 103))
                 .unwrap_err();
         }
 
         // Iterate index values and data
         {
-            let val = FOO
+            let val = FOOS
                 .idx
                 .id
                 .range(&storage, None, None, Order::Ascending)
@@ -291,7 +291,7 @@ mod tests {
 
         // Iterating all records under a specific index value.
         {
-            let val = FOO
+            let val = FOOS
                 .idx
                 .name_surname
                 .of(("bar".to_string(), "s_bar".to_string()))

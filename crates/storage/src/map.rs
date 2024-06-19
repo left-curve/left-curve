@@ -172,7 +172,7 @@ mod test {
         grug_types::MockStorage,
     };
 
-    const FOO: Map<u64, Foo> = Map::new("foo");
+    const FOOS: Map<u64, Foo> = Map::new("foo");
 
     #[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq)]
     struct Foo {
@@ -198,7 +198,7 @@ mod test {
             (3, "name_3", "surname_3"),
             (4, "name_4", "surname_4"),
         ] {
-            FOO.save(&mut storage, key, &Foo::new(name, surname))
+            FOOS.save(&mut storage, key, &Foo::new(name, surname))
                 .unwrap();
         }
 
@@ -209,7 +209,7 @@ mod test {
     fn map_works() {
         let storage = setup_test();
 
-        let first = FOO.load(&storage, 1).unwrap();
+        let first = FOOS.load(&storage, 1).unwrap();
         assert_eq!(first, Foo::new("name_1", "surname_1"));
     }
 }
