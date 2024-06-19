@@ -24,7 +24,6 @@ pub struct IndexedMap<'a, K, T, I, E: Encoding<T> = Borsh> {
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
     K: MapKey,
-    E: Encoding<T>,
 {
     pub const fn new(pk_namespace: &'static str, indexes: I) -> Self {
         IndexedMap {
@@ -122,7 +121,6 @@ impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
     K: MapKey + Clone,
     I: IndexList<T>,
-    E: Encoding<T>,
 {
     pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
         let old_data = self.may_load(storage, key.clone())?;
@@ -170,7 +168,6 @@ where
     K: MapKey + Clone,
     T: Clone,
     I: IndexList<T>,
-    E: Encoding<T>,
 {
     pub fn update<A, Err>(
         &'a self,
