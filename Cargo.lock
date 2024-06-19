@@ -1645,7 +1645,6 @@ dependencies = [
  "borsh",
  "grug-types",
  "prost",
- "rand",
  "test-case",
 ]
 
