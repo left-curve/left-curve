@@ -285,21 +285,15 @@ mod tests {
         }
     }
 
-    /// Iterating all index values and records.
-    #[test]
-    fn multi() {
-        todo!()
-    }
-
     /// Iterating all records under a specific index value.
     #[test]
-    fn multi_of() {
+    fn multi_of_value() {
         let storage = setup_test();
 
         let val = FOO
             .idx
             .name_surname
-            .of(("bar".to_string(), "s_bar".to_string()))
+            .of_value(("bar".to_string(), "s_bar".to_string()))
             .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
@@ -312,7 +306,7 @@ mod tests {
 
     /// Iterating records under a specific index value, with a primary key prefix.
     #[test]
-    fn multi_of_prefix() {
+    fn multi_of_value_prefixed() {
         todo!()
     }
 }

@@ -27,20 +27,6 @@ impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
     }
 }
 
-impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E>
-where
-    PK: MapKey,
-    IK: MapKey,
-{
-    /// Iterate records under a specific index value.
-    pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, E> {
-        IndexPrefix {
-            prefix: self.index_set.prefix(idx),
-            primary_map: &self.primary_map,
-        }
-    }
-}
-
 impl<'a, PK, IK, T, E: Encoding<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
 where
     PK: MapKey + Clone,
@@ -57,6 +43,20 @@ where
     }
 }
 
+impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E>
+where
+    PK: MapKey,
+    IK: MapKey,
+{
+    /// Iterate records under a specific index value.
+    pub fn of_value(&self, idx: IK) -> IndexPrefix<PK, T, E> {
+        IndexPrefix {
+            prefix: self.index_set.prefix(idx),
+            primary_map: &self.primary_map,
+        }
+    }
+}
+
 // ---------------------------------- prefix -----------------------------------
 
 pub struct IndexPrefix<'a, PK, T, E: Encoding<T>> {
@@ -69,6 +69,7 @@ where
     PK: MapKey,
     E: Encoding<T>,
 {
+    /// Iterate the raw primary keys and raw values under the given index value.
     pub fn range_raw<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -95,6 +96,7 @@ where
         Box::new(iter)
     }
 
+    /// Iterate the primary keys and values under the given index value.
     pub fn range<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -118,6 +120,7 @@ where
         Box::new(iter)
     }
 
+    /// Iterate the raw primary keys under the given index value.
     pub fn keys_raw<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -128,6 +131,7 @@ where
         self.prefix.keys_raw(storage, min, max, order)
     }
 
+    /// Iterate the primary keys under the given index value.
     pub fn keys<'b>(
         &self,
         storage: &'b dyn Storage,
