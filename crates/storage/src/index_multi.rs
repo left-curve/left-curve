@@ -1,75 +1,120 @@
 use {
-    crate::{Borsh, Encoding, Index, IndexPrefix, Map, MapKey},
-    grug_types::{StdResult, Storage},
-    std::marker::PhantomData,
+    crate::{Borsh, Bound, Encoding, Index, Map, MapKey, Prefix, Set},
+    grug_types::{Empty, Order, Record, StdResult, Storage},
 };
 
-pub struct MultiIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
-    index: fn(&[u8], &T) -> IK,
-    idx_namespace: &'a [u8],
-    /// Use the Borsh encoding to encode the len of the pk.
-    /// Handling also the case would require E: Encoding<u32>.
-    idx_map: Map<'a, &'a [u8], u32, Borsh>,
-    pk_namespace: &'a [u8],
-    phantom_pk: PhantomData<PK>,
-    phantom_e: PhantomData<E>,
+// -------------------------------- multi index --------------------------------
+
+/// An indexer that allows multiple records in the primary map to have the same
+/// index value.
+pub struct MultiIndex<'a, PK, IK, T, E: Encoding<T> = Borsh> {
+    index: fn(PK, &T) -> IK,
+    index_set: Set<'a, (IK, PK)>,
+    primary_map: Map<'a, PK, T, E>,
 }
 
-impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E> {
+impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
     pub const fn new(
-        idx_fn: fn(&[u8], &T) -> IK,
+        idx_fn: fn(PK, &T) -> IK,
         pk_namespace: &'a str,
         idx_namespace: &'static str,
     ) -> Self {
         MultiIndex {
             index: idx_fn,
-            idx_namespace: idx_namespace.as_bytes(),
-            idx_map: Map::new(idx_namespace),
-            pk_namespace: pk_namespace.as_bytes(),
-            phantom_pk: PhantomData,
-            phantom_e: PhantomData,
+            index_set: Set::new(idx_namespace),
+            primary_map: Map::new(pk_namespace),
         }
     }
 }
 
-impl<'a, IK, T, PK, E: Encoding<T>> Index<T> for MultiIndex<'a, IK, T, PK, E>
-where
-    IK: MapKey,
-{
-    fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()> {
-        let idx = (self.index)(pk, data).joined_extra_key(pk);
-        let pk_len = pk.len() as u32;
-        self.idx_map.save(store, &idx, &pk_len)
-    }
-
-    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) {
-        let idx = (self.index)(pk, old_data).joined_extra_key(pk);
-        self.idx_map.remove(store, &idx);
-    }
-}
-
-impl<'a, IK, T, PK, E: Encoding<T>> MultiIndex<'a, IK, T, PK, E>
+impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E>
 where
     PK: MapKey,
     IK: MapKey,
 {
-    pub fn no_prefix(&self) -> IndexPrefix<PK, T, E, (IK, PK)> {
-        IndexPrefix::with_deserialization_functions(self.idx_namespace, &[], self.pk_namespace)
+    /// Iterate records under a specific index value.
+    pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, E> {
+        IndexPrefix {
+            prefix: self.index_set.prefix(idx),
+            primary_map: &self.primary_map,
+        }
+    }
+}
+
+impl<'a, PK, IK, T, E: Encoding<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
+where
+    PK: MapKey + Clone,
+    IK: MapKey,
+{
+    fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
+        let idx = (self.index)(pk.clone(), data);
+        self.index_set.insert(storage, (idx, pk))
     }
 
-    pub fn prefix(&self, p: IK) -> IndexPrefix<PK, T, E, PK> {
-        IndexPrefix::with_deserialization_functions(
-            self.idx_namespace,
-            &p.raw_keys(),
-            self.pk_namespace,
-        )
+    fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
+        let idx = (self.index)(pk.clone(), old_data);
+        self.index_set.remove(storage, (idx, pk))
+    }
+}
+
+// ---------------------------------- prefix -----------------------------------
+
+pub struct IndexPrefix<'a, PK, T, E: Encoding<T>> {
+    prefix: Prefix<PK, Empty, Borsh>,
+    primary_map: &'a Map<'a, PK, T, E>,
+}
+
+impl<'a, PK, T, E> IndexPrefix<'a, PK, T, E>
+where
+    PK: MapKey,
+    E: Encoding<T>,
+{
+    pub fn range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .keys_raw(storage, min, max, order)
+            .map(|pk_raw| {
+                // Load the data corresponding to the primary key from the
+                // primary map.
+                //
+                // If the indexed map works correctly, the data should always exist,
+                // so we can safely unwrap the `Option` here.
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                (pk_raw, v_raw)
+            });
+
+        Box::new(iter)
     }
 
-    pub fn sub_prefix(&self, p: IK::Prefix) -> IndexPrefix<PK, T, E, (IK::Suffix, PK)> {
-        IndexPrefix::with_deserialization_functions(
-            self.idx_namespace,
-            &p.raw_keys(),
-            self.pk_namespace,
-        )
+    pub fn range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(PK::Output, T)>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .keys_raw(storage, min, max, order)
+            .map(|pk_raw| {
+                let pk = PK::deserialize(&pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+                let v = E::decode(&v_raw)?;
+                Ok((pk, v))
+            });
+
+        Box::new(iter)
     }
 }

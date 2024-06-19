@@ -1646,7 +1646,6 @@ dependencies = [
  "borsh",
  "grug-types",
  "prost",
- "test-case",
 ]
 
 [[package]]

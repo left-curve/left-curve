@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix},
+    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix, RawKey},
     grug_types::{Order, StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -38,11 +38,15 @@ where
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, E, K> {
+    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, E> {
+        PathBuf::new(self.namespace, &[], Some(&RawKey::Ref(key_raw)))
+    }
+
+    fn no_prefix(&self) -> Prefix<K, T, E> {
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E, K::Suffix> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E> {
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 
@@ -52,12 +56,57 @@ where
             .is_none()
     }
 
-    pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
-        self.path(k).as_path().exists(storage)
+    pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
+        self.path_raw(key_raw).as_path().exists(storage)
     }
 
-    pub fn remove(&self, storage: &mut dyn Storage, k: K) {
-        self.path(k).as_path().remove(storage)
+    pub fn has(&self, storage: &dyn Storage, key: K) -> bool {
+        self.path(key).as_path().exists(storage)
+    }
+
+    pub fn may_load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.path_raw(key_raw).as_path().may_load_raw(storage)
+    }
+
+    pub fn may_load(&self, storage: &dyn Storage, key: K) -> StdResult<Option<T>> {
+        self.path(key).as_path().may_load(storage)
+    }
+
+    pub fn load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.path_raw(key_raw).as_path().load_raw(storage)
+    }
+
+    pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
+        self.path(key).as_path().load(storage)
+    }
+
+    pub fn save_raw(&self, storage: &mut dyn Storage, key_raw: &[u8], data_raw: &[u8]) {
+        self.path_raw(key_raw).as_path().save_raw(storage, data_raw)
+    }
+
+    pub fn save(&self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
+        self.path(key).as_path().save(storage, data)
+    }
+
+    pub fn remove_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) {
+        self.path_raw(key_raw).as_path().remove(storage)
+    }
+
+    pub fn remove(&self, storage: &mut dyn Storage, key: K) {
+        self.path(key).as_path().remove(storage)
+    }
+
+    pub fn update<A, Err>(
+        &self,
+        storage: &mut dyn Storage,
+        key: K,
+        action: A,
+    ) -> Result<Option<T>, Err>
+    where
+        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
+        Err: From<StdError>,
+    {
+        self.path(key).as_path().update(storage, action)
     }
 
     #[allow(clippy::type_complexity)]
@@ -69,6 +118,17 @@ where
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'b> {
         self.no_prefix().range_raw(storage, min, max, order)
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().range(storage, min, max, order)
     }
 
     pub fn keys_raw<'b>(
@@ -100,42 +160,6 @@ where
     ) {
         self.no_prefix().clear(storage, min, max, limit)
     }
-
-    pub fn save(&self, storage: &mut dyn Storage, k: K, data: &T) -> StdResult<()> {
-        self.path(k).as_path().save(storage, data)
-    }
-
-    pub fn may_load(&self, storage: &dyn Storage, k: K) -> StdResult<Option<T>> {
-        self.path(k).as_path().may_load(storage)
-    }
-
-    pub fn load(&self, storage: &dyn Storage, k: K) -> StdResult<T> {
-        self.path(k).as_path().load(storage)
-    }
-
-    #[allow(clippy::type_complexity)]
-    pub fn range<'b>(
-        &self,
-        storage: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(storage, min, max, order)
-    }
-
-    pub fn update<A, Err>(
-        &self,
-        storage: &mut dyn Storage,
-        k: K,
-        action: A,
-    ) -> Result<Option<T>, Err>
-    where
-        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
-        Err: From<StdError>,
-    {
-        self.path(k).as_path().update(storage, action)
-    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -143,18 +167,16 @@ where
 #[cfg(test)]
 mod test {
     use {
-        crate::{Borsh, Encoding, Map, Proto},
+        crate::Map,
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::MockStorage,
-        prost::Message,
-        test_case::test_case,
     };
 
-    #[derive(BorshDeserialize, BorshSerialize, Message, PartialEq)]
+    const FOO: Map<u64, Foo> = Map::new("foo");
+
+    #[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq)]
     struct Foo {
-        #[prost(string, tag = "1")]
         name: String,
-        #[prost(string, tag = "2")]
         surname: String,
     }
 
@@ -167,26 +189,27 @@ mod test {
         }
     }
 
-    fn default<'a, E: Encoding<Foo>>() -> (MockStorage, Map<'a, u64, Foo, E>) {
+    fn setup_test() -> MockStorage {
         let mut storage = MockStorage::new();
-        let map = Map::new("borsh");
-        map.save(&mut storage, 1, &Foo::new("name_1", "surname_1"))
-            .unwrap();
-        map.save(&mut storage, 2, &Foo::new("name_2", "surname_2"))
-            .unwrap();
-        map.save(&mut storage, 3, &Foo::new("name_3", "surname_3"))
-            .unwrap();
-        map.save(&mut storage, 4, &Foo::new("name_4", "surname_4"))
-            .unwrap();
-        map.save(&mut storage, 5, &Foo::new("name_5", "surname_5"))
-            .unwrap();
-        (storage, map)
+
+        for (key, name, surname) in [
+            (1, "name_1", "surname_1"),
+            (2, "name_2", "surname_2"),
+            (3, "name_3", "surname_3"),
+            (4, "name_4", "surname_4"),
+        ] {
+            FOO.save(&mut storage, key, &Foo::new(name, surname))
+                .unwrap();
+        }
+
+        storage
     }
 
-    #[test_case(default::<Proto>(); "proto")]
-    #[test_case(default::<Borsh>(); "borsh")]
-    fn test<E: Encoding<Foo>>((storage, map): (MockStorage, Map<u64, Foo, E>)) {
-        let first = map.load(&storage, 1).unwrap();
+    #[test]
+    fn map_works() {
+        let storage = setup_test();
+
+        let first = FOO.load(&storage, 1).unwrap();
         assert_eq!(first, Foo::new("name_1", "surname_1"));
     }
 }

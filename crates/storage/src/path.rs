@@ -53,14 +53,8 @@ where
         storage.read(self.storage_key).is_some()
     }
 
-    pub fn remove(&self, storage: &mut dyn Storage) {
-        storage.remove(self.storage_key);
-    }
-
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-        let bytes = E::encode(data)?;
-        storage.write(self.storage_key, &bytes);
-        Ok(())
+    pub fn may_load_raw(&self, storage: &dyn Storage) -> Option<Vec<u8>> {
+        storage.read(self.storage_key)
     }
 
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
@@ -70,11 +64,31 @@ where
             .transpose()
     }
 
+    pub fn load_raw(&self, storage: &dyn Storage) -> StdResult<Vec<u8>> {
+        storage
+            .read(self.storage_key)
+            .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
+    }
+
     pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
         storage
             .read(self.storage_key)
             .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
             .and_then(|val| E::decode(&val))
+    }
+
+    pub fn save_raw(&self, storage: &mut dyn Storage, data_raw: &[u8]) {
+        storage.write(self.storage_key, &data_raw)
+    }
+
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        let data_raw = E::encode(data)?;
+        storage.write(self.storage_key, &data_raw);
+        Ok(())
+    }
+
+    pub fn remove(&self, storage: &mut dyn Storage) {
+        storage.remove(self.storage_key);
     }
 
     pub fn update<A, Err>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, Err>

@@ -15,4 +15,3 @@ grug-types = { path = "../types" }
 prost      = { workspace = true }
 
 [dev-dependencies]
-test-case  = { workspace = true }

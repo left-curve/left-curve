@@ -49,13 +49,13 @@ where
     }
 }
 
-impl<'a, IK, T, E> Index<T> for UniqueIndex<'a, IK, T, E>
+impl<'a, PK, IK, T, E> Index<PK, T> for UniqueIndex<'a, IK, T, E>
 where
     IK: MapKey + Clone,
     E: Encoding<T>,
     T: Clone,
 {
-    fn save(&self, storage: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
+    fn save(&self, storage: &mut dyn Storage, _pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.index)(data);
 
         // Ensure that indexes are unique.
@@ -67,7 +67,7 @@ where
         self.idx_map.save(storage, idx, data)
     }
 
-    fn remove(&self, storage: &mut dyn Storage, _pk: &[u8], old_data: &T) {
+    fn remove(&self, storage: &mut dyn Storage, _pk: PK, old_data: &T) {
         let idx = (self.index)(old_data);
         self.idx_map.remove(storage, idx);
     }
