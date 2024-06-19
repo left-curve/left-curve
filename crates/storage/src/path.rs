@@ -78,7 +78,7 @@ where
     }
 
     pub fn save_raw(&self, storage: &mut dyn Storage, data_raw: &[u8]) {
-        storage.write(self.storage_key, &data_raw)
+        storage.write(self.storage_key, data_raw)
     }
 
     pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
