@@ -223,7 +223,7 @@ mod tests {
     struct FooIndexes<'a, E: Encoding<Foo> = Borsh> {
         pub name: MultiIndex<'a, String, Foo, u64, E>,
         pub name_surname: MultiIndex<'a, (String, String), Foo, u64, E>,
-        pub id: UniqueIndex<'a, u32, Foo, u64, E>,
+        pub id: UniqueIndex<'a, u32, Foo, E>,
     }
 
     impl<'a, E: Encoding<Foo>> IndexList<Foo> for FooIndexes<'a, E> {
