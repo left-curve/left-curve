@@ -234,7 +234,7 @@ mod tests {
     }
 
     fn foo<'a, E: Encoding<Foo>>() -> IndexedMap<'a, u64, Foo, FooIndexes<'a, E>, E> {
-        let indexes = FooIndexes::<E> {
+        let indexes = FooIndexes {
             name: MultiIndex::new(|_, data| data.name.clone(), "pk_namespace", "name"),
             name_surname: MultiIndex::new(
                 |_, data| (data.name.clone(), data.surname.clone()),
@@ -244,7 +244,7 @@ mod tests {
             id: UniqueIndex::new(|data| data.id, "unique_ns"),
         };
 
-        IndexedMap::<u64, Foo, FooIndexes<'a, E>, E>::new("pk_namespace", indexes)
+        IndexedMap::new("pk_namespace", indexes)
     }
 
     fn default<'a, E: Encoding<Foo>>(
