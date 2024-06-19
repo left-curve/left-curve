@@ -47,7 +47,6 @@ impl<'a, T, E: Encoding<T>> Incrementor<'a, T, E> {
 
 impl<'a, T, E: Encoding<T>> Incrementor<'a, T, E>
 where
-    // T: BorshSerialize + BorshDeserialize + Increment,
     T: Increment,
 {
     pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
