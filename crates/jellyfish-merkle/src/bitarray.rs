@@ -140,8 +140,8 @@ impl<'a> MapKey for &'a BitArray {
     fn raw_keys(&self) -> Vec<RawKey> {
         let num_bytes = self.num_bits.div_ceil(8);
         vec![
-            RawKey::Val16((self.num_bits as u16).to_be_bytes()),
-            RawKey::Ref(&self.bytes[..num_bytes]),
+            RawKey::Owned((self.num_bits as u16).to_be_bytes().to_vec()),
+            RawKey::Borrowed(&self.bytes[..num_bytes]),
         ]
     }
 
