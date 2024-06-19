@@ -136,9 +136,9 @@ pub fn index_list(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input
 
-        impl cw_storage_plus::IndexList<#ty> for #struct_ty<'_> {
-            fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn cw_storage_plus::Index<#ty>> + '_> {
-                let v: Vec<&dyn cw_storage_plus::Index<#ty>> = vec![#(#names),*];
+        impl grug::IndexList<#ty> for #struct_ty<'_> {
+            fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn grug::Index<#ty>> + '_> {
+                let v: Vec<&dyn grug::Index<#ty>> = vec![#(#names),*];
                 Box::new(v.into_iter())
             }
         }
