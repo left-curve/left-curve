@@ -52,7 +52,7 @@ where
             .is_none()
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, E> {
+    fn no_prefix(&self) -> Prefix<K, T, E, K> {
         Prefix::new(self.pk_namespace, &[])
     }
 
@@ -310,15 +310,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
-                (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103)),
+            (4_u64.to_be_bytes().to_vec(), Foo::new("foo", "s_foo", 104))
+        ]);
 
         let val = index
             .idx
@@ -328,15 +325,12 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103)),
-                (4, Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103)),
+            (4, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -352,13 +346,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102))
+        ]);
 
         let val = index
             .idx
@@ -368,13 +359,10 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -390,14 +378,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
-                (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
-                (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 101)),
+            (2_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_bar", 102)),
+            (3_u64.to_be_bytes().to_vec(), Foo::new("bar", "s_foo", 103))
+        ]);
 
         let val = index
             .idx
@@ -407,14 +392,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103))
-            ]
-        );
+        assert_eq!(val, vec![
+            (1, Foo::new("bar", "s_bar", 101)),
+            (2, Foo::new("bar", "s_bar", 102)),
+            (3, Foo::new("bar", "s_foo", 103))
+        ]);
     }
 
     #[test_case(default::<Proto>(); "proto")]
@@ -438,14 +420,11 @@ mod tests {
             .map(|val| val.unwrap())
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            val,
-            vec![
-                (101, Foo::new("bar", "s_bar", 101)),
-                (102, Foo::new("bar", "s_bar", 102)),
-                (103, Foo::new("bar", "s_foo", 103)),
-                (104, Foo::new("foo", "s_foo", 104))
-            ]
-        );
+        assert_eq!(val, vec![
+            (101, Foo::new("bar", "s_bar", 101)),
+            (102, Foo::new("bar", "s_bar", 102)),
+            (103, Foo::new("bar", "s_foo", 103)),
+            (104, Foo::new("foo", "s_foo", 104))
+        ]);
     }
 }

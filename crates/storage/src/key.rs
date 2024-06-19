@@ -96,6 +96,20 @@ impl MapKey for &[u8] {
     }
 }
 
+impl MapKey for Vec<u8> {
+    type Output = Vec<u8>;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Ref(self)]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        Ok(bytes.to_vec())
+    }
+}
+
 impl MapKey for &str {
     type Output = String;
     type Prefix = ();

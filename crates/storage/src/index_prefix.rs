@@ -5,24 +5,25 @@ use {
     },
 };
 
-pub struct IndexPrefix<'a, K, T, E: Encoding<T> = Borsh>
+pub struct IndexPrefix<'a, K, T, E: Encoding<T> = Borsh, B = Vec<u8>>
 where
     K: MapKey,
 {
-    inner: Prefix<K, T, E>,
+    inner: Prefix<K, T, E, B>,
     pk_name: &'a [u8],
 }
 
-impl<'b, K, T, E> IndexPrefix<'b, K, T, E>
+impl<'b, K, T, E, B> IndexPrefix<'b, K, T, E, B>
 where
+    B: MapKey,
     K: MapKey,
     E: Encoding<T>,
 {
     pub fn range_raw(
         &self,
         store: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(Vec<u8>, T)>> + 'b>
     where
@@ -41,8 +42,8 @@ where
     pub fn range(
         &self,
         store: &'b dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>
     where
@@ -96,7 +97,7 @@ where
     }
 }
 
-impl<'a, K, T, E> IndexPrefix<'a, K, T, E>
+impl<'a, K, T, E, B> IndexPrefix<'a, K, T, E, B>
 where
     K: MapKey,
     E: Encoding<T>,
@@ -105,12 +106,10 @@ where
         top_name: &[u8],
         sub_names: &[RawKey],
         pk_name: &'a [u8],
-    ) -> IndexPrefix<'a, K, T, E> {
+    ) -> Self {
         Self {
-            inner: Prefix::<_, _, E>::new(top_name, sub_names),
+            inner: Prefix::new(top_name, sub_names),
             pk_name,
-            // de_fn_kv: $fn_dkv::<K, _>,
-            // de_fn_v: $fn_dv,
         }
     }
 }

@@ -38,11 +38,11 @@ where
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, E> {
+    fn no_prefix(&self) -> Prefix<K, T, E, K> {
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E, K::Suffix> {
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 

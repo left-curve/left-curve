@@ -54,24 +54,20 @@ where
     PK: MapKey,
     IK: MapKey,
 {
-    pub fn no_prefix(&self) -> IndexPrefix<PK, T, E> {
-        IndexPrefix::<_, _, E>::with_deserialization_functions(
-            self.idx_namespace,
-            &[],
-            self.pk_namespace,
-        )
+    pub fn no_prefix(&self) -> IndexPrefix<PK, T, E, (IK, PK)> {
+        IndexPrefix::with_deserialization_functions(self.idx_namespace, &[], self.pk_namespace)
     }
 
-    pub fn prefix(&self, p: IK) -> IndexPrefix<PK, T, E> {
-        IndexPrefix::<_, _, E>::with_deserialization_functions(
+    pub fn prefix(&self, p: IK) -> IndexPrefix<PK, T, E, PK> {
+        IndexPrefix::with_deserialization_functions(
             self.idx_namespace,
             &p.raw_keys(),
             self.pk_namespace,
         )
     }
 
-    pub fn sub_prefix(&self, p: IK::Prefix) -> IndexPrefix<PK, T, E> {
-        IndexPrefix::<_, _, E>::with_deserialization_functions(
+    pub fn sub_prefix(&self, p: IK::Prefix) -> IndexPrefix<PK, T, E, (IK::Suffix, PK)> {
+        IndexPrefix::with_deserialization_functions(
             self.idx_namespace,
             &p.raw_keys(),
             self.pk_namespace,

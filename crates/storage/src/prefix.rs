@@ -7,14 +7,15 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct Prefix<K, T, E: Encoding<T> = Borsh> {
+pub struct Prefix<K, T, E: Encoding<T> = Borsh, B = Vec<u8>> {
     prefix: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,
     encoding: PhantomData<E>,
+    bound: PhantomData<B>,
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, E, B> Prefix<K, T, E, B>
 where
     E: Encoding<T>,
 {
@@ -24,12 +25,14 @@ where
             suffix: PhantomData,
             data: PhantomData,
             encoding: PhantomData,
+            bound: PhantomData,
         }
     }
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, E, B> Prefix<K, T, E, B>
 where
+    B: MapKey,
     K: MapKey,
     E: Encoding<T>,
 {
@@ -37,8 +40,8 @@ where
     pub fn range_raw<'a>(
         &self,
         storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
         // compute start and end bounds
@@ -109,8 +112,8 @@ where
     pub fn range<'a>(
         &self,
         storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
         let iter = self
