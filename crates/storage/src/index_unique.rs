@@ -3,6 +3,7 @@ use {
     grug_types::{StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
+
 pub struct UniqueIndex<'a, IK, T, PK, E: Encoding<T> = Borsh> {
     index: fn(&T) -> IK,
     idx_map: Map<'a, IK, T, E>,
