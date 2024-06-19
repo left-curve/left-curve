@@ -7,6 +7,7 @@ use {
 /// A marker that designates encoding schemes.
 pub trait Encoding<T> {
     fn encode(data: &T) -> StdResult<Vec<u8>>;
+
     fn decode(data: &[u8]) -> StdResult<T>;
 }
 
