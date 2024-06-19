@@ -197,11 +197,6 @@ mod tests {
 
     const FOOS: IndexedMap<u64, Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
         name: MultiIndex::new(|_, data| data.name.clone(), "foo", "foo__name"),
-        name_surname: MultiIndex::new(
-            |_, data| (data.name.clone(), data.surname.clone()),
-            "foo",
-            "foo__name_surname",
-        ),
         id: UniqueIndex::new(|data| data.id, "foo__id"),
     });
 
@@ -224,13 +219,12 @@ mod tests {
 
     struct FooIndexes<'a, E: Encoding<Foo> = Borsh> {
         pub name: MultiIndex<'a, u64, String, Foo, E>,
-        pub name_surname: MultiIndex<'a, u64, (String, String), Foo, E>,
         pub id: UniqueIndex<'a, u32, Foo, E>,
     }
 
     impl<'a, E: Encoding<Foo>> IndexList<u64, Foo> for FooIndexes<'a, E> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<u64, Foo>> + '_> {
-            let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.name_surname, &self.id];
+            let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.id];
             Box::new(v.into_iter())
         }
     }
@@ -293,8 +287,8 @@ mod tests {
         {
             let val = FOOS
                 .idx
-                .name_surname
-                .of(("bar".to_string(), "s_bar".to_string()))
+                .name
+                .of("bar".to_string())
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
