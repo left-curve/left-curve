@@ -49,7 +49,7 @@ where
     IK: MapKey,
 {
     /// Iterate records under a specific index value.
-    pub fn of_value(&self, idx: IK) -> IndexPrefix<PK, T, E> {
+    pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, E> {
         IndexPrefix {
             prefix: self.index_set.prefix(idx),
             primary_map: &self.primary_map,

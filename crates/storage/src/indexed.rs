@@ -293,7 +293,7 @@ mod tests {
         let val = FOO
             .idx
             .name_surname
-            .of_value(("bar".to_string(), "s_bar".to_string()))
+            .of(("bar".to_string(), "s_bar".to_string()))
             .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
