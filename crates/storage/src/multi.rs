@@ -117,4 +117,24 @@ where
 
         Box::new(iter)
     }
+
+    pub fn keys_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.prefix.keys_raw(storage, min, max, order)
+    }
+
+    pub fn keys<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<PK::Output>> + 'b> {
+        self.prefix.keys(storage, min, max, order)
+    }
 }
