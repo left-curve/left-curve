@@ -25,10 +25,9 @@ where
         self.idx_map.save(store, &idx, &pk_len)
     }
 
-    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) -> StdResult<()> {
+    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) {
         let idx = (self.index)(pk, old_data).joined_extra_key(pk);
         self.idx_map.remove(store, &idx);
-        Ok(())
     }
 }
 

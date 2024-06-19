@@ -10,7 +10,7 @@ pub trait IndexList<T> {
 pub trait Index<T> {
     fn save(&self, store: &mut dyn Storage, pk: &[u8], data: &T) -> StdResult<()>;
 
-    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T) -> StdResult<()>;
+    fn remove(&self, store: &mut dyn Storage, pk: &[u8], old_data: &T);
 }
 
 pub struct IndexedMap<'a, K, T, I, E: Encoding<T> = Borsh> {
@@ -145,7 +145,7 @@ where
         // If old data exists, its index is to be deleted.
         if let Some(old) = old_data {
             for index in self.idx.get_indexes() {
-                index.remove(storage, &pk, old)?;
+                index.remove(storage, &pk, old);
             }
         }
 

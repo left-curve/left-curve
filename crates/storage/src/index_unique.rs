@@ -47,25 +47,25 @@ where
 
 impl<'a, IK, T, E> Index<T> for UniqueIndex<'a, IK, T, E>
 where
-    IK: MapKey,
+    IK: MapKey + Clone,
     E: Encoding<T>,
     T: Clone,
 {
-    fn save(&self, store: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
+    fn save(&self, storage: &mut dyn Storage, _pk: &[u8], data: &T) -> StdResult<()> {
         let idx = (self.index)(data);
-        self.idx_map
-            .update(store, idx, |existing| -> StdResult<_> {
-                match existing {
-                    Some(_) => Err(StdError::generic_err("Violates unique constraint on index")),
-                    None => Ok(Some(data.clone())),
-                }
-            })?;
-        Ok(())
+
+        // Enforce that indexes are unique: two records in the primary map
+        // cannot have the same index.
+        if self.idx_map.has(storage, idx.clone()) {
+            // TODO: create a `StdError::DuplicateData` for this?
+            return Err(StdError::generic_err("Violates unique constraint on index"));
+        }
+
+        self.idx_map.save(storage, idx, data)
     }
 
-    fn remove(&self, store: &mut dyn Storage, _pk: &[u8], old_data: &T) -> StdResult<()> {
+    fn remove(&self, storage: &mut dyn Storage, _pk: &[u8], old_data: &T) {
         let idx = (self.index)(old_data);
-        self.idx_map.remove(store, idx);
-        Ok(())
+        self.idx_map.remove(storage, idx);
     }
 }
