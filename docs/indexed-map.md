@@ -35,8 +35,16 @@ struct OrderIndexes<'a> {
 }
 
 const ORDERS: IndexedMap<OrderId, Order, OrderIndexes> = IndexedMap::new("orders", OrderIndexes {
-    limit_price: MultiIndex::new(|order| *order.limit_price, "orders__price"),
-    expiration: MultiIndex::new(|order| *order.expiration, "orders__exp"),
+    limit_price: MultiIndex::new(
+        |order| *order.limit_price,
+        "owners",
+        "orders__price",
+    ),
+    expiration: MultiIndex::new(
+        |order| *order.expiration,
+        "owners",
+        "orders__exp",
+    ),
 });
 ```
 
