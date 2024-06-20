@@ -1,19 +1,19 @@
 use {
-    crate::{Borsh, Bound, Encoding, Key, PathBuf, Prefix},
+    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix},
     grug_types::{Order, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Map<'a, K, T, E: Encoding<T> = Borsh> {
+pub struct Map<'a, K, T, C: Codec<T> = Borsh> {
     namespace: &'a [u8],
     key: PhantomData<K>,
     data: PhantomData<T>,
-    encoding: PhantomData<E>,
+    codec: PhantomData<C>,
 }
 
-impl<'a, K, T, E> Map<'a, K, T, E>
+impl<'a, K, T, C> Map<'a, K, T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     pub const fn new(namespace: &'a str) -> Self {
         // TODO: add a maximum length for namespace
@@ -22,31 +22,31 @@ where
             namespace: namespace.as_bytes(),
             key: PhantomData,
             data: PhantomData,
-            encoding: PhantomData,
+            codec: PhantomData,
         }
     }
 }
 
-impl<'a, K, T, E> Map<'a, K, T, E>
+impl<'a, K, T, C> Map<'a, K, T, C>
 where
     K: Key,
-    E: Encoding<T>,
+    C: Codec<T>,
 {
-    fn path(&self, key: K) -> PathBuf<T, E> {
+    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+        PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
+    }
+
+    fn path(&self, key: K) -> PathBuf<T, C> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, E> {
-        PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
-    }
-
-    fn no_prefix(&self) -> Prefix<K, T, E> {
+    fn no_prefix(&self) -> Prefix<K, T, C> {
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
         Prefix::new(self.namespace, &prefix.raw_keys())
     }
 

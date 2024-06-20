@@ -1,51 +1,51 @@
 use {
-    crate::{Borsh, Encoding},
+    crate::{Borsh, Codec},
     grug_types::{nested_namespaces_with_key, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct PathBuf<T, E: Encoding<T> = Borsh> {
+pub struct PathBuf<T, C: Codec<T> = Borsh> {
     storage_key: Vec<u8>,
     data: PhantomData<T>,
-    encoding: PhantomData<E>,
+    codec: PhantomData<C>,
 }
 
-impl<T, E> PathBuf<T, E>
+impl<T, C> PathBuf<T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>], maybe_key: Option<&Cow<[u8]>>) -> Self {
         Self {
             storage_key: nested_namespaces_with_key(Some(namespace), prefixes, maybe_key),
             data: PhantomData,
-            encoding: PhantomData,
+            codec: PhantomData,
         }
     }
 
-    pub fn as_path(&self) -> Path<'_, T, E> {
+    pub fn as_path(&self) -> Path<'_, T, C> {
         Path {
             storage_key: self.storage_key.as_slice(),
             data: self.data,
-            encoding: self.encoding,
+            codec: self.codec,
         }
     }
 }
 
-pub struct Path<'a, T, E: Encoding<T> = Borsh> {
+pub struct Path<'a, T, C: Codec<T> = Borsh> {
     storage_key: &'a [u8],
     data: PhantomData<T>,
-    encoding: PhantomData<E>,
+    codec: PhantomData<C>,
 }
 
-impl<'a, T, E> Path<'a, T, E>
+impl<'a, T, C> Path<'a, T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     pub(crate) fn from_raw(storage_key: &'a [u8]) -> Self {
         Self {
             storage_key,
             data: PhantomData,
-            encoding: PhantomData,
+            codec: PhantomData,
         }
     }
 
@@ -60,7 +60,7 @@ where
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         storage
             .read(self.storage_key)
-            .map(|val| E::decode(&val))
+            .map(|val| C::decode(&val))
             .transpose()
     }
 
@@ -74,7 +74,7 @@ where
         storage
             .read(self.storage_key)
             .ok_or_else(|| StdError::data_not_found::<T>(self.storage_key))
-            .and_then(|val| E::decode(&val))
+            .and_then(|val| C::decode(&val))
     }
 
     pub fn save_raw(&self, storage: &mut dyn Storage, data_raw: &[u8]) {
@@ -82,7 +82,7 @@ where
     }
 
     pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-        let data_raw = E::encode(data)?;
+        let data_raw = C::encode(data)?;
         storage.write(self.storage_key, &data_raw);
         Ok(())
     }

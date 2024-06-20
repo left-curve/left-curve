@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Key, Map, Prefix},
+    crate::{Borsh, Bound, Codec, Key, Map, Prefix},
     grug_types::{Order, Record, StdError, StdResult, Storage},
 };
 
@@ -13,15 +13,15 @@ pub trait Index<K, T> {
     fn remove(&self, store: &mut dyn Storage, pk: K, old_data: &T);
 }
 
-pub struct IndexedMap<'a, K, T, I, E: Encoding<T> = Borsh> {
+pub struct IndexedMap<'a, K, T, I, C: Codec<T> = Borsh> {
     pk_namespace: &'a [u8],
-    primary: Map<'a, K, T, E>,
+    primary: Map<'a, K, T, C>,
     /// This is meant to be read directly to get the proper types, like:
     /// `map.idx.owner.items(...)`.
     pub idx: I,
 }
 
-impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
 where
     K: Key,
 {
@@ -33,11 +33,11 @@ where
         }
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, E> {
+    fn no_prefix(&self) -> Prefix<K, T, C> {
         Prefix::new(self.pk_namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, E> {
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
         Prefix::new(self.pk_namespace, &prefix.raw_keys())
     }
 
@@ -117,7 +117,7 @@ where
     }
 }
 
-impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
 where
     K: Key + Clone,
     I: IndexList<K, T>,
@@ -160,7 +160,7 @@ where
     }
 }
 
-impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
+impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
 where
     K: Key + Clone,
     T: Clone,
@@ -190,7 +190,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Borsh, Encoding, Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
+        crate::{Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::{MockStorage, Order, StdResult},
     };
@@ -217,12 +217,12 @@ mod tests {
         }
     }
 
-    struct FooIndexes<'a, E: Encoding<Foo> = Borsh> {
-        pub name: MultiIndex<'a, u64, String, Foo, E>,
-        pub id: UniqueIndex<'a, u32, Foo, E>,
+    struct FooIndexes<'a> {
+        pub name: MultiIndex<'a, u64, String, Foo>,
+        pub id: UniqueIndex<'a, u32, Foo>,
     }
 
-    impl<'a, E: Encoding<Foo>> IndexList<u64, Foo> for FooIndexes<'a, E> {
+    impl<'a> IndexList<u64, Foo> for FooIndexes<'a> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<u64, Foo>> + '_> {
             let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.id];
             Box::new(v.into_iter())

@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Key, RawBound},
+    crate::{Borsh, Bound, Codec, Key, RawBound},
     grug_types::{
         concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
         Record, StdResult, Storage,
@@ -7,16 +7,16 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Prefix<K, T, E: Encoding<T> = Borsh> {
+pub struct Prefix<K, T, C: Codec<T> = Borsh> {
     prefix: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,
-    encoding: PhantomData<E>,
+    codec: PhantomData<C>,
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, C> Prefix<K, T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>]) -> Self {
         Self {
@@ -27,15 +27,15 @@ where
             ),
             suffix: PhantomData,
             data: PhantomData,
-            encoding: PhantomData,
+            codec: PhantomData,
         }
     }
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, C> Prefix<K, T, C>
 where
     K: Key,
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     #[allow(clippy::type_complexity)]
     pub fn range_raw<'a>(
@@ -75,7 +75,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|(key_raw, value_raw)| {
                 let key = K::deserialize(&key_raw)?;
-                let value = E::decode(&value_raw)?;
+                let value = C::decode(&value_raw)?;
                 Ok((key, value))
             });
 

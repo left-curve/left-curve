@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Encoding, Index, Key, Map},
+    crate::{Borsh, Codec, Index, Key, Map},
     grug_types::{StdError, StdResult, Storage},
     std::ops::Deref,
 };
@@ -13,17 +13,17 @@ use {
 ///
 /// - In the primary map: (pk_namespace, pk) => value
 /// - in the index map: (idx_namespace, ik) => value
-pub struct UniqueIndex<'a, IK, T, E: Encoding<T> = Borsh> {
+pub struct UniqueIndex<'a, IK, T, C: Codec<T> = Borsh> {
     /// A function that takes a piece of data, and return the index key it
     /// should be indexed at.
     indexer: fn(&T) -> IK,
     /// Data indexed by the index key.
-    idx_map: Map<'a, IK, T, E>,
+    idx_map: Map<'a, IK, T, C>,
 }
 
-impl<'a, IK, T, E> UniqueIndex<'a, IK, T, E>
+impl<'a, IK, T, C> UniqueIndex<'a, IK, T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     /// Note: The developer must make sure that `idx_namespace` is not the same
     /// as the primary map namespace.
@@ -38,21 +38,21 @@ where
 // Since the `UniqueIndex` is essentially a wrapper of a `Map` (`self.idx_map`),
 // we let it dereference to the inner map. This way, users are able to directly
 // call methods on the inner map, such as `range`, `prefix`, etc.
-impl<'a, IK, T, E> Deref for UniqueIndex<'a, IK, T, E>
+impl<'a, IK, T, C> Deref for UniqueIndex<'a, IK, T, C>
 where
-    E: Encoding<T>,
+    C: Codec<T>,
 {
-    type Target = Map<'a, IK, T, E>;
+    type Target = Map<'a, IK, T, C>;
 
     fn deref(&self) -> &Self::Target {
         &self.idx_map
     }
 }
 
-impl<'a, PK, IK, T, E> Index<PK, T> for UniqueIndex<'a, IK, T, E>
+impl<'a, PK, IK, T, C> Index<PK, T> for UniqueIndex<'a, IK, T, C>
 where
     IK: Key + Clone,
-    E: Encoding<T>,
+    C: Codec<T>,
     T: Clone,
 {
     fn save(&self, storage: &mut dyn Storage, _pk: PK, data: &T) -> StdResult<()> {

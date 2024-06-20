@@ -4,8 +4,8 @@ use {
     prost::Message,
 };
 
-/// A marker that designates encoding schemes.
-pub trait Encoding<T> {
+/// A marker that designates encoding/decoding schemes.
+pub trait Codec<T> {
     fn encode(data: &T) -> StdResult<Vec<u8>>;
 
     fn decode(data: &[u8]) -> StdResult<T>;
@@ -14,7 +14,7 @@ pub trait Encoding<T> {
 /// Represents the Borsh encoding scheme.
 pub struct Borsh;
 
-impl<T> Encoding<T> for Borsh
+impl<T> Codec<T> for Borsh
 where
     T: BorshSerialize + BorshDeserialize,
 {
@@ -30,7 +30,7 @@ where
 /// Represents the Protobuf encoding scheme.
 pub struct Proto;
 
-impl<T> Encoding<T> for Proto
+impl<T> Codec<T> for Proto
 where
     T: Message + Default,
 {

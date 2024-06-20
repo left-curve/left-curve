@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Index, Key, Map, Prefix, Set},
+    crate::{Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
 };
 
@@ -7,13 +7,13 @@ use {
 
 /// An indexer that allows multiple records in the primary map to have the same
 /// index value.
-pub struct MultiIndex<'a, PK, IK, T, E: Encoding<T> = Borsh> {
+pub struct MultiIndex<'a, PK, IK, T, C: Codec<T> = Borsh> {
     indexer: fn(PK, &T) -> IK,
     index_set: Set<'a, (IK, PK)>,
-    primary_map: Map<'a, PK, T, E>,
+    primary_map: Map<'a, PK, T, C>,
 }
 
-impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
+impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C> {
     pub const fn new(
         indexer: fn(PK, &T) -> IK,
         pk_namespace: &'a str,
@@ -27,7 +27,7 @@ impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
     }
 }
 
-impl<'a, PK, IK, T, E: Encoding<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
+impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key + Clone,
     IK: Key,
@@ -43,13 +43,13 @@ where
     }
 }
 
-impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E>
+impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key,
     IK: Key,
 {
     /// Iterate records under a specific index value.
-    pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, E> {
+    pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, C> {
         IndexPrefix {
             prefix: self.index_set.prefix(idx),
             primary_map: &self.primary_map,
@@ -59,15 +59,15 @@ where
 
 // ---------------------------------- prefix -----------------------------------
 
-pub struct IndexPrefix<'a, PK, T, E: Encoding<T>> {
+pub struct IndexPrefix<'a, PK, T, C: Codec<T>> {
     prefix: Prefix<PK, Empty, Borsh>,
-    primary_map: &'a Map<'a, PK, T, E>,
+    primary_map: &'a Map<'a, PK, T, C>,
 }
 
-impl<'a, PK, T, E> IndexPrefix<'a, PK, T, E>
+impl<'a, PK, T, C> IndexPrefix<'a, PK, T, C>
 where
     PK: Key,
-    E: Encoding<T>,
+    C: Codec<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
     pub fn range_raw<'b>(
@@ -113,7 +113,7 @@ where
             .map(|pk_raw| {
                 let pk = PK::deserialize(&pk_raw)?;
                 let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
-                let v = E::decode(&v_raw)?;
+                let v = C::decode(&v_raw)?;
                 Ok((pk, v))
             });
 
