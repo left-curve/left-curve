@@ -18,8 +18,11 @@ extern "C" {
     fn db_read(key_ptr: usize) -> usize;
     fn db_scan(min_ptr: usize, max_ptr: usize, order: i32) -> i32;
     fn db_next(iterator_id: i32) -> usize;
+    fn db_next_key(iterator_id: i32) -> usize;
+    fn db_next_value(iterator_id: i32) -> usize;
     fn db_write(key_ptr: usize, value_ptr: usize);
     fn db_remove(key_ptr: usize);
+    fn db_remove_range(min_ptr: usize, max_ptr: usize);
 
     // Signature verification
     // Return value of 0 means ok; any value other than 0 means error.
@@ -91,17 +94,34 @@ impl Storage for ExternalStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // IMPORTANT: we must to keep the Regions in scope until end of the func
-        // make sure to se `as_ref` so that the Regions don't get consumed
-        let min_region = min.map(Region::build);
-        let min_ptr = get_optional_region_ptr(min_region.as_ref());
-
-        let max_region = max.map(Region::build);
-        let max_ptr = get_optional_region_ptr(max_region.as_ref());
-
-        let iterator_id = unsafe { db_scan(min_ptr, max_ptr, order.into()) };
-
+        let iterator_id = unsafe { register_iterator(min, max, order) };
         Box::new(ExternalIterator { iterator_id })
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let iterator_id = unsafe { register_iterator(min, max, order) };
+        Box::new(ExternalPartialIterator {
+            iterator_id,
+            is_keys: true,
+        })
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let iterator_id = unsafe { register_iterator(min, max, order) };
+        Box::new(ExternalPartialIterator {
+            iterator_id,
+            is_keys: false,
+        })
     }
 
     // note: cosmwasm doesn't allow empty values:
@@ -124,8 +144,20 @@ impl Storage for ExternalStorage {
 
         unsafe { db_remove(key_ptr as usize) }
     }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        let min_region = min.map(Region::build);
+        let min_ptr = get_optional_region_ptr(min_region.as_ref());
+
+        let max_region = max.map(Region::build);
+        let max_ptr = get_optional_region_ptr(max_region.as_ref());
+
+        unsafe { db_remove_range(min_ptr, max_ptr) }
+    }
 }
 
+/// Iterator wrapper over the `db_next` import, which iterates over both the
+/// raw keys and raw values.
 pub struct ExternalIterator {
     iterator_id: i32,
 }
@@ -136,13 +168,55 @@ impl Iterator for ExternalIterator {
     fn next(&mut self) -> Option<Self::Item> {
         let ptr = unsafe { db_next(self.iterator_id) };
 
-        // the host returning a zero pointer means iteration has finished
+        // The host returning a zero pointer means iteration has reached end.
         if ptr == 0 {
             return None;
         }
 
         unsafe { Some(split_tail(Region::consume(ptr as *mut Region))) }
     }
+}
+
+/// Iterator wrapper over either the `db_next_key` or `db_next_value` imports,
+/// which iterates over either only the raw keys, or only the raw values.
+pub struct ExternalPartialIterator {
+    iterator_id: i32,
+    /// If `true`, the iterator uses the `db_next_key` to iterate over raw keys;
+    /// otherwise, it uses `db_next_value` to iterate over raw values.
+    is_keys: bool,
+}
+
+impl Iterator for ExternalPartialIterator {
+    type Item = Vec<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ptr = unsafe {
+            if self.is_keys {
+                db_next_key(self.iterator_id)
+            } else {
+                db_next_value(self.iterator_id)
+            }
+        };
+
+        // The host returning a zero pointer means iteration has reached end.
+        if ptr == 0 {
+            return None;
+        }
+
+        unsafe { Some(Region::consume(ptr as *mut Region)) }
+    }
+}
+
+unsafe fn register_iterator(min: Option<&[u8]>, max: Option<&[u8]>, order: Order) -> i32 {
+    // IMPORTANT: We must to keep the `Region`s in scope until end of the func.
+    // Make sure to use `as_ref` so that the `Region`s don't get consumed.
+    let min_region = min.map(Region::build);
+    let min_ptr = get_optional_region_ptr(min_region.as_ref());
+
+    let max_region = max.map(Region::build);
+    let max_ptr = get_optional_region_ptr(max_region.as_ref());
+
+    db_scan(min_ptr, max_ptr, order.into())
 }
 
 // clippy has a false positive here. we have to take Option<&Box<Region>>,
