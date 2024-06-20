@@ -133,6 +133,8 @@ impl PartialEq<Hash> for BitArray {
 }
 
 impl<'a> Key for &'a BitArray {
+    type IndexPrefix = u16;
+    type IndexSuffix = &'a [u8];
     type Output = BitArray;
     type Prefix = u16;
     type Suffix = &'a [u8];
@@ -151,6 +153,23 @@ impl<'a> Key for &'a BitArray {
         let mut bytes = [0u8; BitArray::MAX_BYTE_LENGTH];
         bytes[..b.len()].copy_from_slice(b);
         Ok(BitArray { num_bits, bytes })
+    }
+
+    fn index_prefix(&self) -> Self::Prefix {
+        self.num_bits as u16
+    }
+
+    fn index_suffix(&self) -> Self::Suffix {
+        let num_bytes = self.num_bits.div_ceil(8);
+        &self.bytes[..num_bytes]
+    }
+
+    fn deserialize_from_index(bytes: &[u8]) -> StdResult<Self::Output> {
+        Self::deserialize(bytes)
+    }
+
+    fn adjust_from_index(bytes: &[u8]) -> &[u8] {
+        bytes
     }
 }
 

@@ -197,6 +197,11 @@ mod tests {
 
     const FOOS: IndexedMap<u64, Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
         name: MultiIndex::new(|_, data| data.name.clone(), "foo", "foo__name"),
+        name_surname: MultiIndex::new(
+            |_, data| (data.name.clone(), data.surname.clone()),
+            "foo",
+            "foo__name_surname",
+        ),
         id: UniqueIndex::new(|data| data.id, "foo__id"),
     });
 
@@ -219,12 +224,37 @@ mod tests {
 
     struct FooIndexes<'a> {
         pub name: MultiIndex<'a, u64, String, Foo>,
+        pub name_surname: MultiIndex<'a, u64, (String, String), Foo>,
         pub id: UniqueIndex<'a, u32, Foo>,
     }
 
     impl<'a> IndexList<u64, Foo> for FooIndexes<'a> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<u64, Foo>> + '_> {
-            let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.id];
+            let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.id, &self.name_surname];
+            Box::new(v.into_iter())
+        }
+    }
+
+    const TUPLE_FOOS: IndexedMap<(u64, u64), Foo, TupleFooIndexes> =
+        IndexedMap::new("foo", TupleFooIndexes {
+            name: MultiIndex::new(|_, data| data.name.clone(), "foo", "foo__name"),
+            name_surname: MultiIndex::new(
+                |_, data| (data.name.clone(), data.surname.clone()),
+                "foo",
+                "foo__name_surname",
+            ),
+            id: UniqueIndex::new(|data| data.id, "foo__id"),
+        });
+    struct TupleFooIndexes<'a> {
+        pub name: MultiIndex<'a, (u64, u64), String, Foo>,
+        pub name_surname: MultiIndex<'a, (u64, u64), (String, String), Foo>,
+        pub id: UniqueIndex<'a, u32, Foo>,
+    }
+
+    impl<'a> IndexList<(u64, u64), Foo> for TupleFooIndexes<'a> {
+        fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<(u64, u64), Foo>> + '_> {
+            let v: Vec<&dyn Index<(u64, u64), Foo>> =
+                vec![&self.name, &self.id, &self.name_surname];
             Box::new(v.into_iter())
         }
     }
@@ -235,7 +265,7 @@ mod tests {
         for (key, name, surname, id) in [
             (1, "bar", "s_bar", 101),
             (2, "bar", "s_bar", 102),
-            (3, "bar", "s_foo", 103),
+            (3, "bar", "s_fooes", 103),
             (4, "foo", "s_foo", 104),
         ] {
             FOOS.save(&mut storage, key, &Foo::new(name, surname, id))
@@ -252,12 +282,12 @@ mod tests {
         // Load a single data by the index
         {
             let val = FOOS.idx.id.load(&storage, 103).unwrap();
-            assert_eq!(val, Foo::new("bar", "s_foo", 103));
+            assert_eq!(val, Foo::new("bar", "s_fooes", 103));
         }
 
         // Try to save a data with duplicate index; should fail
         {
-            FOOS.save(&mut storage, 5, &Foo::new("bar", "s_foo", 103))
+            FOOS.save(&mut storage, 5, &Foo::new("bar", "s_fooes", 103))
                 .unwrap_err();
         }
 
@@ -273,7 +303,7 @@ mod tests {
             assert_eq!(val, vec![
                 (101, Foo::new("bar", "s_bar", 101)),
                 (102, Foo::new("bar", "s_bar", 102)),
-                (103, Foo::new("bar", "s_foo", 103)),
+                (103, Foo::new("bar", "s_fooes", 103)),
                 (104, Foo::new("foo", "s_foo", 104))
             ]);
         }
@@ -296,8 +326,114 @@ mod tests {
             assert_eq!(val, vec![
                 (1, Foo::new("bar", "s_bar", 101)),
                 (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103)),
+                (3, Foo::new("bar", "s_fooes", 103)),
             ]);
+        }
+    }
+
+    #[test]
+    fn multi_index_tuple_works() {
+        let storage = setup_test();
+
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .of_prefix("bar".to_string())
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+                (3, Foo::new("bar", "s_fooes", 103)),
+            ]);
+        }
+
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .of(("bar".to_string(), "s_bar".to_string()))
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                (1, Foo::new("bar", "s_bar", 101)),
+                (2, Foo::new("bar", "s_bar", 102)),
+            ]);
+        }
+    }
+
+    #[test]
+    fn multi_index_tuple_tuple_works() {
+        {
+            let storage = &mut MockStorage::new();
+            TUPLE_FOOS
+                .save(storage, (0, 1), &Foo::new("foo", "s_bar", 101))
+                .unwrap();
+            TUPLE_FOOS
+                .save(storage, (0, 2), &Foo::new("foo", "s_bar", 102))
+                .unwrap();
+            TUPLE_FOOS
+                .save(storage, (1, 1), &Foo::new("foo", "s_bar", 103))
+                .unwrap();
+            TUPLE_FOOS
+                .save(storage, (1, 2), &Foo::new("foo", "s_fooes", 104))
+                .unwrap();
+
+            // OF PREFIX
+            {
+                let val = TUPLE_FOOS
+                    .idx
+                    .name_surname
+                    .of_prefix("foo".to_string())
+                    .range(storage, None, None, Order::Ascending)
+                    .collect::<StdResult<Vec<_>>>()
+                    .unwrap();
+
+                assert_eq!(val, vec![
+                    ((0, 1), Foo::new("foo", "s_bar", 101)),
+                    ((0, 2), Foo::new("foo", "s_bar", 102)),
+                    ((1, 1), Foo::new("foo", "s_bar", 103)),
+                    ((1, 2), Foo::new("foo", "s_fooes", 104)),
+                ]);
+            }
+
+            // OF
+            {
+                let val = TUPLE_FOOS
+                    .idx
+                    .name_surname
+                    .of(("foo".to_string(), "s_bar".to_string()))
+                    .range(storage, None, None, Order::Ascending)
+                    .collect::<StdResult<Vec<_>>>()
+                    .unwrap();
+
+                assert_eq!(val, vec![
+                    ((0, 1), Foo::new("foo", "s_bar", 101)),
+                    ((0, 2), Foo::new("foo", "s_bar", 102)),
+                    ((1, 1), Foo::new("foo", "s_bar", 103)),
+                ]);
+            }
+
+            // OF SUFFIX
+            {
+                let val = TUPLE_FOOS
+                    .idx
+                    .name_surname
+                    .of_suffix(("foo".to_string(), "s_bar".to_string()), 0)
+                    .range(storage, None, None, Order::Ascending)
+                    .collect::<StdResult<Vec<_>>>()
+                    .unwrap();
+
+                assert_eq!(val, vec![
+                    ((0, 1), Foo::new("foo", "s_bar", 101)),
+                    ((0, 2), Foo::new("foo", "s_bar", 102)),
+                ]);
+            }
         }
     }
 }
