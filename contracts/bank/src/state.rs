@@ -1,9 +1,10 @@
 use grug::{Addr, Map, Uint128};
 
-/// Token balances, indexed by user addresses then denoms.
-// TODO: make this an IndexMap that's also indexed by the denom, so that we can
-// have a query that lists all holders of a denom.
-pub const BALANCES: Map<(&Addr, &str), Uint128> = Map::new("b");
-
 /// Total supplies of tokens, indexed by denoms.
 pub const SUPPLIES: Map<&str, Uint128> = Map::new("s");
+
+/// Token balances, indexed first by user addresses, then by denoms.
+pub const BALANCES_BY_ADDR: Map<(&Addr, &str), Uint128> = Map::new("bu");
+
+/// Token balances, indexed first by denoms, then by user addresses.
+pub const BALANCES_BY_DENOM: Map<(&str, &Addr), Uint128> = Map::new("bd");

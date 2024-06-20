@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, MapKey, PathBuf, Prefix},
+    crate::{Borsh, Bound, Key, PathBuf, Prefix},
     grug_types::{Empty, Order, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -26,7 +26,7 @@ impl<'a, T> Set<'a, T> {
 
 impl<'a, T> Set<'a, T>
 where
-    T: MapKey,
+    T: Key,
 {
     fn path(&self, item: T) -> PathBuf<Empty> {
         let mut raw_keys = item.raw_keys();

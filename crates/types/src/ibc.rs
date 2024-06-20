@@ -57,7 +57,7 @@ pub enum IbcClientQuery {
 /// `ibc_client_query` function call.
 ///
 /// Similar to the bank contract, the response _must_ match the query (see the
-/// docs on [`BankQueryResponse`] for details.)
+/// docs on [`BankQueryResponse`](crate::BankQueryResponse) for details.)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IbcClientQueryResponse {

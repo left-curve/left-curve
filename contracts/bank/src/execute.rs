@@ -1,5 +1,5 @@
 use {
-    crate::{BALANCES, SUPPLIES},
+    crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
     std::collections::HashMap,
 };
@@ -15,7 +15,8 @@ pub fn initialize(
 
     for (address, coins) in initial_balances {
         for coin in coins {
-            BALANCES.save(storage, (&address, &coin.denom), &coin.amount)?;
+            BALANCES_BY_ADDR.save(storage, (&address, &coin.denom), &coin.amount)?;
+            BALANCES_BY_DENOM.save(storage, (&coin.denom, &address), &coin.amount)?;
             accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
     }
@@ -136,10 +137,12 @@ fn increase_balance(
     denom: &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    BALANCES.update(storage, (address, denom), |balance| {
+    let action = |balance: Option<Uint128>| {
         let balance = balance.unwrap_or_default().checked_add(amount)?;
         Ok(Some(balance))
-    })
+    };
+    BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
+    BALANCES_BY_DENOM.update(storage, (denom, address), action)
 }
 
 /// Decrease an account's balance of a token by the given amount.
@@ -150,7 +153,7 @@ fn decrease_balance(
     denom: &str,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    BALANCES.update(storage, (address, denom), |balance| {
+    let action = |balance: Option<Uint128>| {
         let balance = balance.unwrap_or_default().checked_sub(amount)?;
         // if balance is reduced to zero, delete it, to save disk space
         if balance.is_zero() {
@@ -158,5 +161,7 @@ fn decrease_balance(
         } else {
             Ok(Some(balance))
         }
-    })
+    };
+    BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
+    BALANCES_BY_DENOM.update(storage, (denom, address), action)
 }

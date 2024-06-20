@@ -1,48 +1,49 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, Proto, RawBound, RawKey},
-    borsh::BorshDeserialize,
+    crate::{Borsh, Bound, Codec, Key, RawBound},
     grug_types::{
-        concat, extend_one_byte, from_borsh_slice, from_proto_slice, increment_last_byte,
-        nested_namespaces_with_key, trim, Order, StdResult, Storage,
+        concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
+        Record, StdResult, Storage,
     },
-    prost::Message,
-    std::marker::PhantomData,
+    std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Prefix<K, T, E: Encoding = Borsh> {
+pub struct Prefix<K, T, C: Codec<T> = Borsh> {
     prefix: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,
-    encoding: PhantomData<E>,
+    codec: PhantomData<C>,
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, C> Prefix<K, T, C>
 where
-    E: Encoding,
+    C: Codec<T>,
 {
-    pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
+    pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>]) -> Self {
         Self {
-            prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
+            prefix: nested_namespaces_with_key(
+                Some(namespace),
+                prefixes,
+                <Option<&Cow<[u8]>>>::None,
+            ),
             suffix: PhantomData,
             data: PhantomData,
-            encoding: PhantomData,
+            codec: PhantomData,
         }
     }
 }
 
-impl<K, T, E> Prefix<K, T, E>
+impl<K, T, C> Prefix<K, T, C>
 where
-    K: MapKey,
-    E: Encoding,
+    K: Key,
+    C: Codec<T>,
 {
-    #[allow(clippy::type_complexity)]
     pub fn range_raw<'a>(
         &self,
         storage: &'a dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
@@ -56,6 +57,25 @@ where
             .map(move |(k, v)| {
                 debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
                 (trim(&prefix, &k), v)
+            });
+
+        Box::new(iter)
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn range<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
+        let iter = self
+            .range_raw(storage, min, max, order)
+            .map(|(key_raw, value_raw)| {
+                let key = K::deserialize(&key_raw)?;
+                let value = C::decode(&value_raw)?;
+                Ok((key, value))
             });
 
         Box::new(iter)
@@ -107,80 +127,27 @@ where
         Box::new(iter)
     }
 
-    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
-        let (min, max) = range_bounds(&self.prefix, min, max);
-        storage.remove_range(Some(&min), Some(&max))
-    }
-}
-
-impl<K, T> Prefix<K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshDeserialize,
-{
-    #[allow(clippy::type_complexity)]
-    pub fn range<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .map(|(key_raw, value_raw)| {
-                let key = K::deserialize(&key_raw)?;
-                let value = from_borsh_slice(value_raw)?;
-                Ok((key, value))
-            });
-
-        Box::new(iter)
-    }
-
     pub fn values<'a>(
         &self,
         storage: &'a dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'a>
-    where
-        T: 'a,
-    {
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'a> {
         let iter = self
             .values_raw(storage, min, max, order)
-            .map(from_borsh_slice);
+            .map(|value_raw| C::decode(&value_raw));
 
         Box::new(iter)
     }
-}
 
-impl<K, T> Prefix<K, T, Proto>
-where
-    K: MapKey,
-    T: Message + Default,
-{
-    #[allow(clippy::type_complexity)]
-    pub fn range<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .map(|(key_raw, value_raw)| {
-                let key = K::deserialize(&key_raw)?;
-                let value = from_proto_slice(value_raw)?;
-                Ok((key, value))
-            });
-
-        Box::new(iter)
+    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
+        let (min, max) = range_bounds(&self.prefix, min, max);
+        storage.remove_range(Some(&min), Some(&max))
     }
 }
 
-fn range_bounds<K: MapKey>(
+fn range_bounds<K: Key>(
     prefix: &[u8],
     min: Option<Bound<K>>,
     max: Option<Bound<K>>,

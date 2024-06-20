@@ -1,12 +1,12 @@
 use {
     crate::{
-        burn, initialize, mint, query_balance, query_balances, query_supplies, query_supply,
-        transfer, ExecuteMsg, InstantiateMsg,
+        burn, initialize, mint, query_balance, query_balances, query_holders, query_supplies,
+        query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     anyhow::bail,
     grug::{
-        grug_export, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, MutableCtx, Response,
-        StdResult, SudoCtx,
+        grug_export, to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json,
+        MutableCtx, Response, StdResult, SudoCtx,
     },
 };
 
@@ -19,12 +19,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     // We do not expect anyone to send any fund to this contract.
     // Throw an error to revert the transfer.
-    bail!("Go away");
-}
-
-#[grug_export]
-pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    transfer(ctx.storage, &msg.from, &msg.to, &msg.coins)
+    bail!("go away");
 }
 
 #[grug_export]
@@ -37,6 +32,22 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
             amount,
         } => burn(ctx, from, denom, amount),
     }
+}
+
+#[grug_export]
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+    match msg {
+        QueryMsg::Holders {
+            denom,
+            start_after,
+            limit,
+        } => to_json_value(&query_holders(ctx.storage, denom, start_after, limit)?),
+    }
+}
+
+#[grug_export]
+pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
+    transfer(ctx.storage, &msg.from, &msg.to, &msg.coins)
 }
 
 #[grug_export]
