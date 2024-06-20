@@ -1,7 +1,7 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix, RawKey},
+    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix},
     grug_types::{Order, StdError, StdResult, Storage},
-    std::marker::PhantomData,
+    std::{borrow::Cow, marker::PhantomData},
 };
 
 pub struct Map<'a, K, T, E: Encoding<T> = Borsh> {
@@ -39,7 +39,7 @@ where
     }
 
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, E> {
-        PathBuf::new(self.namespace, &[], Some(&RawKey::Borrowed(key_raw)))
+        PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
     fn no_prefix(&self) -> Prefix<K, T, E> {

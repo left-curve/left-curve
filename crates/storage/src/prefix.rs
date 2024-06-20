@@ -1,10 +1,10 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, RawBound, RawKey},
+    crate::{Borsh, Bound, Encoding, MapKey, RawBound},
     grug_types::{
         concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
         Record, StdResult, Storage,
     },
-    std::marker::PhantomData,
+    std::{borrow::Cow, marker::PhantomData},
 };
 
 pub struct Prefix<K, T, E: Encoding<T> = Borsh> {
@@ -18,9 +18,13 @@ impl<K, T, E> Prefix<K, T, E>
 where
     E: Encoding<T>,
 {
-    pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
+    pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>]) -> Self {
         Self {
-            prefix: nested_namespaces_with_key(Some(namespace), prefixes, <Option<&RawKey>>::None),
+            prefix: nested_namespaces_with_key(
+                Some(namespace),
+                prefixes,
+                <Option<&Cow<[u8]>>>::None,
+            ),
             suffix: PhantomData,
             data: PhantomData,
             encoding: PhantomData,

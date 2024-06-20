@@ -1,7 +1,7 @@
 use {
-    grug_storage::{MapKey, RawKey},
+    grug_storage::MapKey,
     grug_types::{split_one_key, Hash, Order, StdResult},
-    std::fmt,
+    std::{borrow::Cow, fmt},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -137,11 +137,11 @@ impl<'a> MapKey for &'a BitArray {
     type Prefix = u16;
     type Suffix = &'a [u8];
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let num_bytes = self.num_bits.div_ceil(8);
         vec![
-            RawKey::Owned((self.num_bits as u16).to_be_bytes().to_vec()),
-            RawKey::Borrowed(&self.bytes[..num_bytes]),
+            Cow::Owned((self.num_bits as u16).to_be_bytes().to_vec()),
+            Cow::Borrowed(&self.bytes[..num_bytes]),
         ]
     }
 

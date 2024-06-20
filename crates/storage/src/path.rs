@@ -1,7 +1,7 @@
 use {
-    crate::{Borsh, Encoding, RawKey},
+    crate::{Borsh, Encoding},
     grug_types::{nested_namespaces_with_key, StdError, StdResult, Storage},
-    std::marker::PhantomData,
+    std::{borrow::Cow, marker::PhantomData},
 };
 
 pub struct PathBuf<T, E: Encoding<T> = Borsh> {
@@ -14,7 +14,7 @@ impl<T, E> PathBuf<T, E>
 where
     E: Encoding<T>,
 {
-    pub fn new(namespace: &[u8], prefixes: &[RawKey], maybe_key: Option<&RawKey>) -> Self {
+    pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>], maybe_key: Option<&Cow<[u8]>>) -> Self {
         Self {
             storage_key: nested_namespaces_with_key(Some(namespace), prefixes, maybe_key),
             data: PhantomData,
