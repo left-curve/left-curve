@@ -11,7 +11,7 @@ use {
 ///
 /// Additionally, compound keys can be split into `Prefix` and `Suffix`, which
 /// are useful in iterations.
-pub trait Key: Sized {
+pub trait Key {
     /// For compound keys, the first element; e.g. for `(A, B)`, `A` is the
     /// prefix. For single keys, use `()`.
     type Prefix: Key;
