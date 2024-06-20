@@ -87,7 +87,10 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        // Currently we simply iterate both keys and values, and discard the
+        // values. This isn't efficient.
+        // TODO: optimize this
+        Box::new(self.scan(min, max, order).map(|(k, _)| k))
     }
 
     fn scan_values<'a>(
@@ -96,7 +99,7 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        Box::new(self.scan(min, max, order).map(|(_, v)| v))
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {

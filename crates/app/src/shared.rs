@@ -97,7 +97,7 @@ impl<S: Storage> Storage for SharedStore<S> {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        Box::new(self.scan(min, max, order).map(|(k, _)| k))
     }
 
     fn scan_values<'a>(
@@ -106,7 +106,7 @@ impl<S: Storage> Storage for SharedStore<S> {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        Box::new(self.scan(min, max, order).map(|(_, v)| v))
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
