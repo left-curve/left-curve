@@ -321,10 +321,7 @@ impl Storage for StateStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let opts = new_read_options(Some(self.version), min, max);
-        let mode = match order {
-            Order::Ascending => IteratorMode::Start,
-            Order::Descending => IteratorMode::End,
-        };
+        let mode = into_iterator_mode(order);
         let iter = self
             .inner
             .db
@@ -344,7 +341,19 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        let opts = new_read_options(Some(self.version), min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, _) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state storage: {err}");
+                });
+                k.to_vec()
+            });
+        Box::new(iter)
     }
 
     fn scan_values<'a>(
@@ -353,7 +362,19 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        let opts = new_read_options(Some(self.version), min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (_, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state storage: {err}");
+                });
+                v.to_vec()
+            });
+        Box::new(iter)
     }
 
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
@@ -364,12 +385,20 @@ impl Storage for StateStorage {
         unreachable!("write function called on read-only storage");
     }
 
-    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+    fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
     }
 }
 
 // ---------------------------------- helpers ----------------------------------
+
+#[inline]
+fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
+    match order {
+        Order::Ascending => IteratorMode::Start,
+        Order::Descending => IteratorMode::End,
+    }
+}
 
 // TODO: rocksdb tuning? see:
 // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
