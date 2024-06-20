@@ -59,14 +59,7 @@ extern "C" {
 
 // ---------------------------------- storage ----------------------------------
 
-/// A zero-size convenience wrapper around the database imports. Provides more
-/// ergonomic functions.
-///
-/// For entry points where state mutation is allowed (such as instantiate and
-/// execute) a mutable reference of ExternalStorage is included in the context.
-/// For entry points where state mutation isn't allowed (such as query), an
-/// immutable reference is included. This prevents the contract from calling
-/// the write/remove methods. Of course, the host must also set safeguards!
+/// A zero-sized wrapper over database-related FFI fucntions.
 #[derive(Clone)]
 pub struct ExternalStorage;
 
@@ -260,6 +253,8 @@ fn split_tail(mut data: Vec<u8>) -> Record {
 
 // ------------------------------------ api ------------------------------------
 
+/// A zero-sized wrapper over cryptography-related (signature verification and
+/// hashing) FFI fucntions.
 pub struct ExternalApi;
 
 macro_rules! impl_hash_method {
@@ -434,6 +429,7 @@ impl Api for ExternalApi {
 
 // ---------------------------------- querier ----------------------------------
 
+/// A zero-size wrapper over the `query_chain` FFI function.
 pub struct ExternalQuerier;
 
 impl Querier for ExternalQuerier {
