@@ -172,6 +172,8 @@ macro_rules! impl_integer_map_key {
 
 impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
+// Double tuple keys.
+//
 // Our implementation of serializing tuple keys is different from CosmWasm's,
 // because theirs doesn't work for nested tuples:
 // <https://github.com/CosmWasm/cw-storage-plus/issues/81>
@@ -214,6 +216,8 @@ where
     }
 }
 
+// Triple tuple keys. We use this in grug-jmt for storing orphaned nodes:
+// https://github.com/left-curve/grug/blob/main/crates/jellyfish-merkle/src/tree.rs#L47
 impl<A, B, C> Key for (A, B, C)
 where
     A: Key,
@@ -238,6 +242,38 @@ where
         let b = B::deserialize(b_bytes)?;
         let c = C::deserialize(c_bytes)?;
         Ok((a, b, c))
+    }
+}
+
+// Quadruple tuple keys. We use this in `MultiIndex` for `IndexedMap`.
+impl<A, B, C, D> Key for (A, B, C, D)
+where
+    A: Key,
+    B: Key,
+    C: Key,
+    D: Key,
+{
+    type Output = (A::Output, B::Output, C::Output, D::Output);
+    type Prefix = (A, B);
+    type Suffix = (C, D);
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        let a = self.0.serialize();
+        let b = self.1.serialize();
+        let c = self.2.serialize();
+        let d = self.3.serialize();
+        vec![Cow::Owned(a), Cow::Owned(b), Cow::Owned(c), Cow::Owned(d)]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (a_bytes, bcd_bytes) = split_one_key(bytes);
+        let (b_bytes, cd_bytes) = split_one_key(bcd_bytes);
+        let (c_bytes, d_bytes) = split_one_key(cd_bytes);
+        let a = A::deserialize(a_bytes)?;
+        let b = B::deserialize(b_bytes)?;
+        let c = C::deserialize(c_bytes)?;
+        let d = D::deserialize(d_bytes)?;
+        Ok((a, b, c, d))
     }
 }
 
