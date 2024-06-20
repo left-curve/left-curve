@@ -141,4 +141,45 @@ where
     ) -> Box<dyn Iterator<Item = StdResult<PK::Output>> + 'b> {
         self.prefix.keys(storage, min, max, order)
     }
+
+    /// Iterate the raw values under the given index value.
+    pub fn values_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .keys_raw(storage, min, max, order)
+            .map(|pk_raw| self.primary_map.load_raw(storage, &pk_raw).unwrap());
+
+        Box::new(iter)
+    }
+
+    /// Iterate the values under the given index value.
+    pub fn values<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<PK>>,
+        max: Option<Bound<PK>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .keys_raw(storage, min, max, order)
+            .map(|pk_raw| {
+                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+                C::decode(&v_raw)
+            });
+
+        Box::new(iter)
+    }
 }

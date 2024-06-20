@@ -106,14 +106,28 @@ where
         self.no_prefix().keys(storage, min, max, order)
     }
 
-    pub fn clear(
+    pub fn values_raw<'b>(
         &self,
-        storage: &mut dyn Storage,
+        storage: &'b dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
-        limit: Option<usize>,
-    ) {
-        self.no_prefix().clear(storage, min, max, limit)
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().values_raw(storage, min, max, order)
+    }
+
+    pub fn values<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        self.no_prefix().values(storage, min, max, order)
+    }
+
+    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
+        self.no_prefix().clear(storage, min, max)
     }
 }
 

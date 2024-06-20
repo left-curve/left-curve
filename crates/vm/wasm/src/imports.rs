@@ -1,5 +1,7 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    crate::{
+        read_from_memory, write_to_memory, ContextData, Environment, Iterator, VmError, VmResult,
+    },
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
@@ -12,10 +14,8 @@ pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u3
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    let maybe_value = env.with_context_data(|ctx| -> VmResult<_> { Ok(ctx.storage.read(&key)) })?;
-
-    // if the record doesn't exist, we return a zero pointer
-    let Some(value) = maybe_value else {
+    // If the record doesn't exist, return a zero pointer.
+    let Some(value) = env.with_context_data(|ctx| VmResult::Ok(ctx.storage.read(&key)))? else {
         return Ok(0);
     };
 
@@ -30,7 +30,7 @@ pub fn db_scan(
 ) -> VmResult<i32> {
     let (env, wasm_store) = fe.data_and_store_mut();
 
-    // parse iteration parameters provided by the module and create iterator
+    // Parse iteration parameters provided by the module and create iterator.
     let min = if min_ptr != 0 {
         Some(read_from_memory(env, &wasm_store, min_ptr)?)
     } else {
@@ -44,7 +44,7 @@ pub fn db_scan(
     let order = order.try_into()?;
     let iterator = Iterator::new(min, max, order);
 
-    // insert the iterator into the ContextData, incrementing the next ID
+    // Insert the iterator into the `ContextData`, incrementing the next ID.
     env.with_context_data_mut(|ctx| -> VmResult<_> {
         let iterator_id = ctx.next_iterator_id;
         ctx.iterators.insert(iterator_id, iterator);
@@ -56,31 +56,34 @@ pub fn db_scan(
 pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
-    let maybe_record = env.with_context_data_mut(|ctx| -> VmResult<_> {
-        let iterator = ctx
-            .iterators
-            .get_mut(&iterator_id)
-            .ok_or(VmError::IteratorNotFound { iterator_id })?;
-        Ok(iterator.next(&ctx.storage))
-    })?;
-
-    // if the iterator has reached its end, return a zero pointer
-    let Some(record) = maybe_record else {
+    // If the iterator has reached its end, return a zero pointer.
+    let Some(record) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
         return Ok(0);
     };
 
     write_to_memory(env, &mut wasm_store, &encode_record(record))
 }
 
-// Pack a KV pair into a single byte array in the following format:
-// key | value | len(key)
-// where len() is two bytes (u16 big endian)
-#[inline]
-fn encode_record((mut k, v): Record) -> Vec<u8> {
-    let key_len = k.len();
-    k.extend(v);
-    k.extend_from_slice(&(key_len as u16).to_be_bytes());
-    k
+pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
+    let (env, mut wasm_store) = fe.data_and_store_mut();
+
+    // If the iterator has reached its end, return a zero pointer.
+    let Some((key, _)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
+        return Ok(0);
+    };
+
+    write_to_memory(env, &mut wasm_store, &key)
+}
+
+pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
+    let (env, mut wasm_store) = fe.data_and_store_mut();
+
+    // If the iterator has reached its end, return a zero pointer.
+    let Some((_, value)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
+        return Ok(0);
+    };
+
+    write_to_memory(env, &mut wasm_store, &value)
 }
 
 pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u32) -> VmResult<()> {
@@ -102,6 +105,30 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
 
     env.with_context_data_mut(|ctx| -> VmResult<_> {
         ctx.storage.remove(&key);
+        Ok(())
+    })
+}
+
+pub fn db_remove_range(
+    mut fe: FunctionEnvMut<Environment>,
+    min_ptr: u32,
+    max_ptr: u32,
+) -> VmResult<()> {
+    let (env, wasm_store) = fe.data_and_store_mut();
+
+    let min = if min_ptr != 0 {
+        Some(read_from_memory(env, &wasm_store, min_ptr)?)
+    } else {
+        None
+    };
+    let max = if max_ptr != 0 {
+        Some(read_from_memory(env, &wasm_store, max_ptr)?)
+    } else {
+        None
+    };
+
+    env.with_context_data_mut(|ctx| -> VmResult<_> {
+        ctx.storage.remove_range(min.as_deref(), max.as_deref());
         Ok(())
     })
 }
@@ -257,3 +284,25 @@ impl_hash_method!(keccak256);
 impl_hash_method!(blake2s_256);
 impl_hash_method!(blake2b_512);
 impl_hash_method!(blake3);
+
+fn next_record(ctx: &mut ContextData, iterator_id: i32) -> VmResult<Option<Record>> {
+    ctx.iterators
+        .get_mut(&iterator_id)
+        .ok_or(VmError::IteratorNotFound { iterator_id })
+        .map(|iter| iter.next(&ctx.storage))
+}
+
+/// Pack a KV pair into a single byte array in the following format:
+///
+/// ```plain
+/// key | value | len(key)
+/// ```
+///
+/// where `len()` is two bytes (u16 big endian).
+#[inline]
+fn encode_record((mut k, v): Record) -> Vec<u8> {
+    let key_len = k.len();
+    k.extend(v);
+    k.extend_from_slice(&(key_len as u16).to_be_bytes());
+    k
+}

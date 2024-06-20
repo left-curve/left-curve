@@ -91,12 +91,34 @@ impl<S: Storage> Storage for SharedStore<S> {
         Box::new(SharedIter::new(self.read_access(), min, max, order))
     }
 
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        Box::new(self.scan(min, max, order).map(|(k, _)| k))
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        Box::new(self.scan(min, max, order).map(|(_, v)| v))
+    }
+
     fn write(&mut self, key: &[u8], value: &[u8]) {
         self.write_access().write(key, value)
     }
 
     fn remove(&mut self, key: &[u8]) {
         self.write_access().remove(key)
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        self.write_access().remove_range(min, max)
     }
 
     fn flush(&mut self, batch: Batch) {
