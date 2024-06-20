@@ -151,7 +151,7 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
 ///
 /// The resulting data looks like this:
 ///
-/// ```ignore
+/// ```plain
 /// section1 || section1_len || section2 || section2_len || section3 || section3_len || …
 /// ```
 pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
