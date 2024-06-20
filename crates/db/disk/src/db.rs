@@ -264,11 +264,33 @@ impl Storage for StateCommitment {
         unimplemented!("this isn't used by the Merkle tree");
     }
 
+    fn scan_keys<'a>(
+        &'a self,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        unimplemented!("this isn't used by the Merkle tree");
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        unimplemented!("this isn't used by the Merkle tree");
+    }
+
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
         unreachable!("write function called on read-only storage");
     }
 
     fn remove(&mut self, _key: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+
+    fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
     }
 }
@@ -316,6 +338,24 @@ impl Storage for StateStorage {
         Box::new(iter)
     }
 
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        todo!()
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        todo!()
+    }
+
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
         unreachable!("write function called on read-only storage");
     }
@@ -324,7 +364,7 @@ impl Storage for StateStorage {
         unreachable!("write function called on read-only storage");
     }
 
-    fn flush(&mut self, _batch: Batch) {
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
     }
 }

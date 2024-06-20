@@ -81,6 +81,24 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
         Box::new(Merged::new(base, pending, order))
     }
 
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        todo!()
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        todo!()
+    }
+
     fn write(&mut self, key: &[u8], value: &[u8]) {
         self.pending
             .insert(key.to_vec(), Op::Insert(value.to_vec()));
@@ -88,6 +106,20 @@ impl<S: Storage + Clone> Storage for CacheStore<S> {
 
     fn remove(&mut self, key: &[u8]) {
         self.pending.insert(key.to_vec(), Op::Delete);
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        // Find all keys within the bounds and mark them all as to be deleted.
+        // We use `self.scan_keys` here, which scans both the base and pending.
+        // We have to collect the iterator, because the iterator holds an
+        //
+        // immutable reference to `self`, but `self.pending.extend` requires a
+        // mutable reference, which can't coexist.
+        let deletes = self
+            .scan_keys(min, max, Order::Ascending)
+            .map(|key| (key, Op::Delete))
+            .collect::<Vec<_>>();
+        self.pending.extend(deletes);
     }
 
     fn flush(&mut self, batch: Batch) {
