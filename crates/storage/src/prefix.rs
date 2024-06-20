@@ -1,15 +1,13 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, Proto, RawBound, RawKey},
-    borsh::BorshDeserialize,
+    crate::{Borsh, Bound, Encoding, MapKey, RawBound, RawKey},
     grug_types::{
-        concat, extend_one_byte, from_borsh_slice, from_proto_slice, increment_last_byte,
-        nested_namespaces_with_key, trim, Order, StdResult, Storage,
+        concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
+        Record, StdResult, Storage,
     },
-    prost::Message,
     std::marker::PhantomData,
 };
 
-pub struct Prefix<K, T, E: Encoding = Borsh> {
+pub struct Prefix<K, T, E: Encoding<T> = Borsh> {
     prefix: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,
@@ -18,7 +16,7 @@ pub struct Prefix<K, T, E: Encoding = Borsh> {
 
 impl<K, T, E> Prefix<K, T, E>
 where
-    E: Encoding,
+    E: Encoding<T>,
 {
     pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
         Self {
@@ -33,7 +31,7 @@ where
 impl<K, T, E> Prefix<K, T, E>
 where
     K: MapKey,
-    E: Encoding,
+    E: Encoding<T>,
 {
     #[allow(clippy::type_complexity)]
     pub fn range_raw<'a>(
@@ -42,7 +40,7 @@ where
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // compute start and end bounds
         // note that the store considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait)
@@ -56,6 +54,25 @@ where
             .map(move |(k, v)| {
                 debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
                 (trim(&prefix, &k), v)
+            });
+
+        Box::new(iter)
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn range<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
+        let iter = self
+            .range_raw(storage, min, max, order)
+            .map(|(key_raw, value_raw)| {
+                let key = K::deserialize(&key_raw)?;
+                let value = E::decode(&value_raw)?;
+                Ok((key, value))
             });
 
         Box::new(iter)
@@ -105,56 +122,6 @@ where
         _limit: Option<usize>,
     ) {
         todo!() // TODO: implement this after we're added a `remove_range` method to Storage
-    }
-}
-
-impl<K, T> Prefix<K, T, Borsh>
-where
-    K: MapKey,
-    T: BorshDeserialize,
-{
-    #[allow(clippy::type_complexity)]
-    pub fn range<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .map(|(key_raw, value_raw)| {
-                let key = K::deserialize(&key_raw)?;
-                let value = from_borsh_slice(value_raw)?;
-                Ok((key, value))
-            });
-
-        Box::new(iter)
-    }
-}
-
-impl<K, T> Prefix<K, T, Proto>
-where
-    K: MapKey,
-    T: Message + Default,
-{
-    #[allow(clippy::type_complexity)]
-    pub fn range<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .map(|(key_raw, value_raw)| {
-                let key = K::deserialize(&key_raw)?;
-                let value = from_proto_slice(value_raw)?;
-                Ok((key, value))
-            });
-
-        Box::new(iter)
     }
 }
 

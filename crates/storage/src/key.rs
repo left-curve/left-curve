@@ -63,7 +63,20 @@ impl MapKey for () {
     }
 }
 
-// TODO: create a Binary type and replace this with &Binary
+impl MapKey for Vec<u8> {
+    type Output = Vec<u8>;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self)]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        Ok(bytes.to_vec())
+    }
+}
+
 impl MapKey for &[u8] {
     type Output = Vec<u8>;
     type Prefix = ();
@@ -75,6 +88,20 @@ impl MapKey for &[u8] {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         Ok(bytes.to_vec())
+    }
+}
+
+impl MapKey for String {
+    type Output = String;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.as_bytes())]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
 
