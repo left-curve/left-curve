@@ -254,9 +254,9 @@ impl Storage for StateStorage {
         let min = min.map_or(Bound::Unbounded, Bound::Included);
         let max = max.map_or(Bound::Unbounded, Bound::Excluded);
         let vec = self.db.with_read(|inner| {
-            // TODO: here we must collect the items into a Vec, instead of
-            // returning the iterator, otherwise we get a lifetime error which
-            // I can't comprehend.
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as longa as the read lock, which goes out of
+            // scope at the end of the function.
             inner
                 .state_storage
                 .range::<_, [u8]>((min, max), self.version)
@@ -275,7 +275,12 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        // Here we take the approach of iterating both the keys and the values,
+        // and simply discard the values. Apparently this isn't efficient since
+        // in `scan` we clone the values for no purpose. This said, db/memory is
+        // for running tests only, so this is ok.
+        let iter = self.scan(min, max, order).map(|(k, _)| k);
+        Box::new(iter)
     }
 
     fn scan_values<'a>(
@@ -284,7 +289,8 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        todo!()
+        let iter = self.scan(min, max, order).map(|(_, v)| v);
+        Box::new(iter)
     }
 
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
