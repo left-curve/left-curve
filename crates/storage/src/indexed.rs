@@ -296,6 +296,7 @@ mod tests {
             assert_eq!(val, vec![
                 (1, Foo::new("bar", "s_bar", 101)),
                 (2, Foo::new("bar", "s_bar", 102)),
+                (3, Foo::new("bar", "s_foo", 103)),
             ]);
         }
     }

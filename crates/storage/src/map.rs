@@ -39,7 +39,7 @@ where
     }
 
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, E> {
-        PathBuf::new(self.namespace, &[], Some(&RawKey::Ref(key_raw)))
+        PathBuf::new(self.namespace, &[], Some(&RawKey::Borrowed(key_raw)))
     }
 
     fn no_prefix(&self) -> Prefix<K, T, E> {
