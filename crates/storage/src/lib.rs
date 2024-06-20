@@ -1,6 +1,6 @@
 mod bound;
 mod codec;
-mod incrementor;
+mod counter;
 mod indexed;
 mod item;
 mod key;
@@ -12,6 +12,6 @@ mod set;
 mod unique;
 
 pub use {
-    bound::*, codec::*, incrementor::*, indexed::*, item::*, key::*, map::*, multi::*, path::*,
+    bound::*, codec::*, counter::*, indexed::*, item::*, key::*, map::*, multi::*, path::*,
     prefix::*, set::*, unique::*,
 };

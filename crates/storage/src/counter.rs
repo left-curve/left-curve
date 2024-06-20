@@ -33,11 +33,11 @@ impl_increment!(u8, u16, u32, u64, u128);
 
 /// An abstraction over `Item`. Stores a single number that is monotonically
 /// incremented one unit at a time.
-pub struct Incrementor<'a, T, C: Codec<T> = Borsh> {
+pub struct Counter<'a, T, C: Codec<T> = Borsh> {
     item: Item<'a, T, C>,
 }
 
-impl<'a, T, C: Codec<T>> Incrementor<'a, T, C> {
+impl<'a, T, C: Codec<T>> Counter<'a, T, C> {
     pub const fn new(storage_key: &'a str) -> Self {
         Self {
             item: Item::new(storage_key),
@@ -45,7 +45,7 @@ impl<'a, T, C: Codec<T>> Incrementor<'a, T, C> {
     }
 }
 
-impl<'a, T, C: Codec<T>> Incrementor<'a, T, C>
+impl<'a, T, C: Codec<T>> Counter<'a, T, C>
 where
     T: Increment,
 {
