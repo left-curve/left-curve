@@ -15,7 +15,7 @@ pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u3
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
     // If the record doesn't exist, return a zero pointer.
-    let Some(value) = env.with_context_data(|ctx| Ok(ctx.storage.read(&key)))? else {
+    let Some(value) = env.with_context_data(|ctx| VmResult::Ok(ctx.storage.read(&key)))? else {
         return Ok(0);
     };
 
@@ -45,7 +45,7 @@ pub fn db_scan(
     let iterator = Iterator::new(min, max, order);
 
     // Insert the iterator into the `ContextData`, incrementing the next ID.
-    env.with_context_data_mut(|ctx| {
+    env.with_context_data_mut(|ctx| -> VmResult<_> {
         let iterator_id = ctx.next_iterator_id;
         ctx.iterators.insert(iterator_id, iterator);
         ctx.next_iterator_id += 1;
@@ -57,7 +57,7 @@ pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResul
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some(record) = env.with_context_data_mut(get_next_record)? else {
+    let Some(record) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
         return Ok(0);
     };
 
@@ -68,7 +68,7 @@ pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmR
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((key, _)) = env.with_context_data_mut(get_next_record)? else {
+    let Some((key, _)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
         return Ok(0);
     };
 
@@ -79,7 +79,7 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((_, value)) = env.with_context_data_mut(get_next_record)? else {
+    let Some((_, value)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
         return Ok(0);
     };
 
@@ -92,7 +92,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
     let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
-    env.with_context_data_mut(|ctx| {
+    env.with_context_data_mut(|ctx| -> VmResult<_> {
         ctx.storage.write(&key, &value);
         Ok(())
     })
@@ -103,7 +103,7 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    env.with_context_data_mut(|ctx| {
+    env.with_context_data_mut(|ctx| -> VmResult<_> {
         ctx.storage.remove(&key);
         Ok(())
     })
@@ -127,7 +127,7 @@ pub fn db_remove_range(
         None
     };
 
-    env.with_context_data_mut(|ctx| {
+    env.with_context_data_mut(|ctx| -> VmResult<_> {
         ctx.storage.remove_range(min.as_deref(), max.as_deref());
         Ok(())
     })
@@ -285,7 +285,7 @@ impl_hash_method!(blake2s_256);
 impl_hash_method!(blake2b_512);
 impl_hash_method!(blake3);
 
-fn get_next_record(ctx: &mut ContextData) -> VmResult<Option<Record>> {
+fn next_record(ctx: &mut ContextData, iterator_id: i32) -> VmResult<Option<Record>> {
     ctx.iterators
         .get_mut(&iterator_id)
         .ok_or(VmError::IteratorNotFound { iterator_id })
