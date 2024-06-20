@@ -1,19 +1,5 @@
 use grug_types::{concat, increment_last_byte, Order, Record, Storage};
 
-macro_rules! prefixed_range_bounds {
-    ($prefix:expr, $min:ident, $max:ident) => {{
-        let min = match $min {
-            Some(bytes) => concat($prefix, bytes),
-            None => $prefix.to_vec(),
-        };
-        let max = match $max {
-            Some(bytes) => concat($prefix, bytes),
-            None => increment_last_byte($prefix.to_vec()),
-        };
-        (min, max)
-    }};
-}
-
 #[derive(Clone)]
 pub struct PrefixStore {
     storage: Box<dyn Storage>,
@@ -48,7 +34,7 @@ impl Storage for PrefixStore {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let (min, max) = prefixed_range_bounds!(&self.namespace, min, max);
+        let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
         self.storage.scan(Some(&min), Some(&max), order)
     }
 
@@ -58,7 +44,7 @@ impl Storage for PrefixStore {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let (min, max) = prefixed_range_bounds!(&self.namespace, min, max);
+        let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
         self.storage.scan_keys(Some(&min), Some(&max), order)
     }
 
@@ -68,7 +54,7 @@ impl Storage for PrefixStore {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let (min, max) = prefixed_range_bounds!(&self.namespace, min, max);
+        let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
         self.storage.scan_values(Some(&min), Some(&max), order)
     }
 
@@ -83,7 +69,24 @@ impl Storage for PrefixStore {
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
-        let (min, max) = prefixed_range_bounds!(&self.namespace, min, max);
+        let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
         self.storage.remove_range(Some(&min), Some(&max))
     }
+}
+
+#[inline]
+fn prefixed_range_bounds(
+    prefix: &[u8],
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> (Vec<u8>, Vec<u8>) {
+    let min = match min {
+        Some(bytes) => concat(prefix, bytes),
+        None => prefix.to_vec(),
+    };
+    let max = match max {
+        Some(bytes) => concat(prefix, bytes),
+        None => increment_last_byte(prefix.to_vec()),
+    };
+    (min, max)
 }
