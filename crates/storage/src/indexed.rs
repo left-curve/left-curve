@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Map, MapKey, Prefix},
+    crate::{Borsh, Bound, Encoding, Key, Map, Prefix},
     grug_types::{Order, Record, StdError, StdResult, Storage},
 };
 
@@ -23,7 +23,7 @@ pub struct IndexedMap<'a, K, T, I, E: Encoding<T> = Borsh> {
 
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
-    K: MapKey,
+    K: Key,
 {
     pub const fn new(pk_namespace: &'static str, indexes: I) -> Self {
         IndexedMap {
@@ -119,7 +119,7 @@ where
 
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
-    K: MapKey + Clone,
+    K: Key + Clone,
     I: IndexList<K, T>,
 {
     pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
@@ -162,7 +162,7 @@ where
 
 impl<'a, K, T, I, E: Encoding<T>> IndexedMap<'a, K, T, I, E>
 where
-    K: MapKey + Clone,
+    K: Key + Clone,
     T: Clone,
     I: IndexList<K, T>,
 {

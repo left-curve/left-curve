@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Encoding, Index, Map, MapKey},
+    crate::{Borsh, Encoding, Index, Key, Map},
     grug_types::{StdError, StdResult, Storage},
     std::ops::Deref,
 };
@@ -51,7 +51,7 @@ where
 
 impl<'a, PK, IK, T, E> Index<PK, T> for UniqueIndex<'a, IK, T, E>
 where
-    IK: MapKey + Clone,
+    IK: Key + Clone,
     E: Encoding<T>,
     T: Clone,
 {

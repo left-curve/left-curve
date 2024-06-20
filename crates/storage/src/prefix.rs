@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, RawBound},
+    crate::{Borsh, Bound, Encoding, Key, RawBound},
     grug_types::{
         concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
         Record, StdResult, Storage,
@@ -34,7 +34,7 @@ where
 
 impl<K, T, E> Prefix<K, T, E>
 where
-    K: MapKey,
+    K: Key,
     E: Encoding<T>,
 {
     #[allow(clippy::type_complexity)]
@@ -129,7 +129,7 @@ where
     }
 }
 
-fn range_bounds<K: MapKey>(
+fn range_bounds<K: Key>(
     prefix: &[u8],
     min: Option<Bound<K>>,
     max: Option<Bound<K>>,

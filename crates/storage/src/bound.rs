@@ -1,4 +1,4 @@
-use crate::MapKey;
+use crate::Key;
 
 /// Like Bound but only with the raw binary variants.
 pub enum RawBound {
@@ -9,7 +9,7 @@ pub enum RawBound {
 /// Describe the limit for iteration.
 ///
 /// Typically we use an `Option<Bound<T>>` in contracts, where `T` implements
-/// the `MapKey` trait.
+/// the `Key` trait.
 ///
 /// Compared to `std::ops::Bound`, it removes the unbounded option (which is to
 /// be represented by a `None`), and introduces the "raw" variants. We don't use
@@ -33,7 +33,7 @@ impl<K> Bound<K> {
 
 impl<K> From<Bound<K>> for RawBound
 where
-    K: MapKey,
+    K: Key,
 {
     fn from(bound: Bound<K>) -> Self {
         match bound {

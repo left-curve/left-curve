@@ -11,14 +11,14 @@ use {
 ///
 /// Additionally, compound keys can be split into `Prefix` and `Suffix`, which
 /// are useful in iterations.
-pub trait MapKey: Sized {
+pub trait Key: Sized {
     /// For compound keys, the first element; e.g. for `(A, B)`, `A` is the
     /// prefix. For single keys, use `()`.
-    type Prefix: MapKey;
+    type Prefix: Key;
 
     /// For compound keys, the elements minus the first one; e.g. for `(A, B)`,
     /// `B` is the suffix. For single keys, use ().
-    type Suffix: MapKey;
+    type Suffix: Key;
 
     /// The type the deserialize into, which may be different from the key
     /// itself.
@@ -40,7 +40,7 @@ pub trait MapKey: Sized {
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
 }
 
-impl MapKey for () {
+impl Key for () {
     type Output = ();
     type Prefix = ();
     type Suffix = ();
@@ -60,7 +60,7 @@ impl MapKey for () {
     }
 }
 
-impl MapKey for Vec<u8> {
+impl Key for Vec<u8> {
     type Output = Vec<u8>;
     type Prefix = ();
     type Suffix = ();
@@ -74,7 +74,7 @@ impl MapKey for Vec<u8> {
     }
 }
 
-impl MapKey for &[u8] {
+impl Key for &[u8] {
     type Output = Vec<u8>;
     type Prefix = ();
     type Suffix = ();
@@ -88,7 +88,7 @@ impl MapKey for &[u8] {
     }
 }
 
-impl MapKey for String {
+impl Key for String {
     type Output = String;
     type Prefix = ();
     type Suffix = ();
@@ -102,7 +102,7 @@ impl MapKey for String {
     }
 }
 
-impl MapKey for &str {
+impl Key for &str {
     type Output = String;
     type Prefix = ();
     type Suffix = ();
@@ -116,7 +116,7 @@ impl MapKey for &str {
     }
 }
 
-impl MapKey for &Addr {
+impl Key for &Addr {
     type Output = Addr;
     type Prefix = ();
     type Suffix = ();
@@ -130,7 +130,7 @@ impl MapKey for &Addr {
     }
 }
 
-impl MapKey for &Hash {
+impl Key for &Hash {
     type Output = Hash;
     type Prefix = ();
     type Suffix = ();
@@ -146,7 +146,7 @@ impl MapKey for &Hash {
 
 macro_rules! impl_integer_map_key {
     ($($t:ty),+ $(,)?) => {
-        $(impl MapKey for $t {
+        $(impl Key for $t {
             type Prefix = ();
             type Suffix = ();
             type Output = $t;
@@ -191,10 +191,10 @@ impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 // There is no ambiguity, and deserialization works.
 //
 // See the `nested_tuple_key` test at the bottom of this file for a demo.
-impl<A, B> MapKey for (A, B)
+impl<A, B> Key for (A, B)
 where
-    A: MapKey,
-    B: MapKey,
+    A: Key,
+    B: Key,
 {
     type Output = (A::Output, B::Output);
     type Prefix = A;
@@ -214,11 +214,11 @@ where
     }
 }
 
-impl<A, B, C> MapKey for (A, B, C)
+impl<A, B, C> Key for (A, B, C)
 where
-    A: MapKey,
-    B: MapKey,
-    C: MapKey,
+    A: Key,
+    B: Key,
+    C: Key,
 {
     type Output = (A::Output, B::Output, C::Output);
     type Prefix = A;

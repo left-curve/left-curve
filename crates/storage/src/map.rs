@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, MapKey, PathBuf, Prefix},
+    crate::{Borsh, Bound, Encoding, Key, PathBuf, Prefix},
     grug_types::{Order, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -29,7 +29,7 @@ where
 
 impl<'a, K, T, E> Map<'a, K, T, E>
 where
-    K: MapKey,
+    K: Key,
     E: Encoding<T>,
 {
     fn path(&self, key: K) -> PathBuf<T, E> {

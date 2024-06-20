@@ -1,5 +1,5 @@
 use {
-    grug_storage::MapKey,
+    grug_storage::Key,
     grug_types::{split_one_key, Hash, Order, StdResult},
     std::{borrow::Cow, fmt},
 };
@@ -132,7 +132,7 @@ impl PartialEq<Hash> for BitArray {
     }
 }
 
-impl<'a> MapKey for &'a BitArray {
+impl<'a> Key for &'a BitArray {
     type Output = BitArray;
     type Prefix = u16;
     type Suffix = &'a [u8];

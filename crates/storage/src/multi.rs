@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Encoding, Index, Map, MapKey, Prefix, Set},
+    crate::{Borsh, Bound, Encoding, Index, Key, Map, Prefix, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
 };
 
@@ -29,8 +29,8 @@ impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E> {
 
 impl<'a, PK, IK, T, E: Encoding<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
 where
-    PK: MapKey + Clone,
-    IK: MapKey,
+    PK: Key + Clone,
+    IK: Key,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(pk.clone(), data);
@@ -45,8 +45,8 @@ where
 
 impl<'a, PK, IK, T, E: Encoding<T>> MultiIndex<'a, PK, IK, T, E>
 where
-    PK: MapKey,
-    IK: MapKey,
+    PK: Key,
+    IK: Key,
 {
     /// Iterate records under a specific index value.
     pub fn of(&self, idx: IK) -> IndexPrefix<PK, T, E> {
@@ -66,7 +66,7 @@ pub struct IndexPrefix<'a, PK, T, E: Encoding<T>> {
 
 impl<'a, PK, T, E> IndexPrefix<'a, PK, T, E>
 where
-    PK: MapKey,
+    PK: Key,
     E: Encoding<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
