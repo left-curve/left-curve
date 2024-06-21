@@ -3,24 +3,55 @@ use {
     std::{borrow::Cow, mem},
 };
 
-macro_rules! empty_prefix_suffix {
-    () => {
-        fn index_prefix(&self) -> Self::IndexPrefix {
-            ()
+macro_rules! impl_multi_index_key {
+    ($to:ty, $suffix:ty) => {
+        impl MultiIndexKey for $to {
+            type MIPrefix = ();
+            type MISuffix = $suffix;
+
+            fn index_prefix(&self) -> Self::MIPrefix {
+                ()
+            }
+
+            fn index_suffix(&self) -> Self::MISuffix {
+                self
+            }
         }
 
-        fn index_suffix(&self) -> Self::IndexSuffix {
-            self
-        }
+        impl MultiIndexInnerKey for $to {}
     };
-    ($fn:ident) => {
-        fn index_prefix(&self) -> Self::IndexPrefix {
-            ()
+    ($to:ty, $suffix:ty, $fn:ident) => {
+        impl MultiIndexKey for $to {
+            type MIPrefix = ();
+            type MISuffix = $suffix;
+
+            fn index_prefix(&self) -> Self::MIPrefix {
+                ()
+            }
+
+            fn index_suffix(&self) -> Self::MISuffix {
+                self.$fn()
+            }
         }
 
-        fn index_suffix(&self) -> Self::IndexSuffix {
-            self.$fn()
+        impl MultiIndexInnerKey for $to {}
+    };
+
+    (&'a $to:ty) => {
+        impl<'a> MultiIndexKey for &'a $to {
+            type MIPrefix = ();
+            type MISuffix = &'a $to;
+
+            fn index_prefix(&self) -> Self::MIPrefix {
+                ()
+            }
+
+            fn index_suffix(&self) -> Self::MISuffix {
+                self
+            }
         }
+
+        impl<'a> MultiIndexInnerKey for &'a $to {}
     };
 }
 
@@ -44,16 +75,6 @@ pub trait Key {
     /// `B` is the suffix. For single keys, use ().
     type Suffix: Key;
 
-    /// Prefix used on multi index.
-    /// For single keys, use `()`.
-    /// For compound keys, use the first half elements; e.g. for `(A, B)`, `A` is the
-    type IndexPrefix: Key;
-
-    /// Suffix used on multi index.
-    /// For single keys, use Self.
-    /// For compound keys, use the second half elements; e.g. for `(A, B)`, `B` is the
-    type IndexSuffix: Key;
-
     /// The type the deserialize into, which may be different from the key
     /// itself.
     ///
@@ -76,10 +97,23 @@ pub trait Key {
     fn joined_extra_key(&self, key: &[u8]) -> Vec<u8> {
         nested_namespaces_with_key(None, &self.raw_keys(), Some(&key))
     }
+}
 
-    fn index_prefix(&self) -> Self::IndexPrefix;
+/// Describes a key used by MultiIndex.
+pub trait MultiIndexKey: Key {
+    /// Prefix used on multi index.
+    /// For single keys, use `()`.
+    /// For compound keys, use the first half elements; e.g. for `(A, B)`, `A` is the
+    type MIPrefix: Key;
 
-    fn index_suffix(&self) -> Self::IndexSuffix;
+    /// Suffix used on multi index.
+    /// For single keys, use Self.
+    /// For compound keys, use the second half elements; e.g. for `(A, B)`, `B` is the
+    type MISuffix: Key;
+
+    fn index_prefix(&self) -> Self::MIPrefix;
+
+    fn index_suffix(&self) -> Self::MISuffix;
 
     /// Deserialization fn used on MultiIndex.
     /// When IndexMap serialize the key, it serialize the Index::Prefix and Index::Suffix.
@@ -102,14 +136,19 @@ pub trait Key {
     }
 }
 
+/// Rappresent a valid `MIPrefix` / `MISuffix` for a `MultiIndex`.
+///
+/// On impl `MultiIndexKey` for `(A, B)`, both `A` and `B` have to implement `MultiIndexInnerKey`.
+///
+/// `MultiIndexInnerKey` is implemented only on `Keys` that return a single `RawKey`` when deserialized, avoiding to have nested tuples.
+///
+/// This ensure at compilation time that a `MultiIndexKey` is valid for a `MultiIndex`.
+pub trait MultiIndexInnerKey: Key {}
+
 impl Key for () {
-    type IndexPrefix = ();
-    type IndexSuffix = ();
     type Output = ();
     type Prefix = ();
     type Suffix = ();
-
-    empty_prefix_suffix!(clone);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
@@ -126,15 +165,13 @@ impl Key for () {
     }
 }
 
+impl_multi_index_key!((), (), clone);
+
 // TODO: create a Binary type and replace this with &Binary
 impl Key for &[u8] {
-    type IndexPrefix = ();
-    type IndexSuffix = Vec<u8>;
     type Output = Vec<u8>;
     type Prefix = ();
     type Suffix = ();
-
-    empty_prefix_suffix!(to_vec);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self)]
@@ -144,15 +181,13 @@ impl Key for &[u8] {
         Ok(bytes.to_vec())
     }
 }
+
+impl_multi_index_key!(&[u8], Vec<u8>, to_vec);
 
 impl Key for Vec<u8> {
-    type IndexPrefix = ();
-    type IndexSuffix = Vec<u8>;
     type Output = Vec<u8>;
     type Prefix = ();
     type Suffix = ();
-
-    empty_prefix_suffix!(clone);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self)]
@@ -163,14 +198,12 @@ impl Key for Vec<u8> {
     }
 }
 
+impl_multi_index_key!(Vec<u8>, Vec<u8>, clone);
+
 impl Key for &str {
-    type IndexPrefix = ();
-    type IndexSuffix = String;
     type Output = String;
     type Prefix = ();
     type Suffix = ();
-
-    empty_prefix_suffix!(to_string);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self.as_bytes())]
@@ -181,15 +214,13 @@ impl Key for &str {
     }
 }
 
+impl_multi_index_key!(&str, String, to_string);
+
 impl<'a> Key for &'a Addr {
-    type IndexPrefix = ();
-    type IndexSuffix = &'a Addr;
     type Output = Addr;
     type Prefix = ();
     type Suffix = ();
 
-    empty_prefix_suffix!();
-
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self.as_ref())]
     }
@@ -199,15 +230,13 @@ impl<'a> Key for &'a Addr {
     }
 }
 
+impl_multi_index_key!(&'a Addr);
+
 impl<'a> Key for &'a Hash {
-    type IndexPrefix = ();
-    type IndexSuffix = &'a Hash;
     type Output = Hash;
     type Prefix = ();
     type Suffix = ();
 
-    empty_prefix_suffix!();
-
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self.as_ref())]
     }
@@ -217,14 +246,12 @@ impl<'a> Key for &'a Hash {
     }
 }
 
+impl_multi_index_key!(&'a Hash);
+
 impl Key for String {
-    type IndexPrefix = ();
-    type IndexSuffix = String;
     type Output = String;
     type Prefix = ();
     type Suffix = ();
-
-    empty_prefix_suffix!(clone);
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![RawKey::Borrowed(self.as_bytes())]
@@ -235,37 +262,7 @@ impl Key for String {
     }
 }
 
-macro_rules! impl_integer_map_key {
-    ($($t:ty),+ $(,)?) => {
-        $(impl Key for $t {
-            type IndexPrefix = ();
-            type IndexSuffix = $t;
-            type Prefix = ();
-            type Suffix = ();
-            type Output = $t;
-
-            fn raw_keys(&self) -> Vec<RawKey> {
-                vec![RawKey::Owned(self.to_be_bytes().to_vec())]
-            }
-
-            fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-                let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output>(format!(
-                        "wrong number of bytes: expecting {}, got {}",
-                        mem::size_of::<Self>(),
-                        bytes.len(),
-                    )));
-                };
-
-                Ok(Self::from_be_bytes(bytes))
-            }
-
-            empty_prefix_suffix!(clone);
-        })*
-    }
-}
-
-impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+impl_multi_index_key!(String, String, clone);
 
 // Our implementation of serializing tuple keys is different from CosmWasm's,
 // because theirs doesn't work for nested tuples:
@@ -288,11 +285,9 @@ impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 // See the `nested_tuple_key` test at the bottom of this file for a demo.
 impl<A, B> Key for (A, B)
 where
-    A: Key + Clone,
-    B: Key + Clone,
+    A: Key,
+    B: Key,
 {
-    type IndexPrefix = A;
-    type IndexSuffix = B;
     type Output = (A::Output, B::Output);
     type Prefix = A;
     type Suffix = B;
@@ -309,12 +304,21 @@ where
         let b = B::deserialize(b_bytes)?;
         Ok((a, b))
     }
+}
 
-    fn index_prefix(&self) -> Self::IndexPrefix {
+impl<A, B> MultiIndexKey for (A, B)
+where
+    A: MultiIndexInnerKey + Clone,
+    B: MultiIndexInnerKey + Clone,
+{
+    type MIPrefix = A;
+    type MISuffix = B;
+
+    fn index_prefix(&self) -> Self::MIPrefix {
         self.0.clone()
     }
 
-    fn index_suffix(&self) -> Self::IndexSuffix {
+    fn index_suffix(&self) -> Self::MISuffix {
         self.1.clone()
     }
 
@@ -329,12 +333,10 @@ where
 
 impl<A, B, C> Key for (A, B, C)
 where
-    A: Key + Clone,
-    B: Key + Clone,
-    C: Key + Clone,
+    A: Key,
+    B: Key,
+    C: Key,
 {
-    type IndexPrefix = A;
-    type IndexSuffix = (B, C);
     type Output = (A::Output, B::Output, C::Output);
     type Prefix = A;
     type Suffix = (B, C);
@@ -354,33 +356,15 @@ where
         let c = C::deserialize(c_bytes)?;
         Ok((a, b, c))
     }
-
-    fn index_prefix(&self) -> Self::IndexPrefix {
-        self.0.clone()
-    }
-
-    fn index_suffix(&self) -> Self::IndexSuffix {
-        (self.1.clone(), self.2.clone())
-    }
-
-    fn deserialize_from_index(_bytes: &[u8]) -> StdResult<Self::Output> {
-        todo!("tuple 3 can be implemented as MultiIndex key??")
-    }
-
-    fn adjust_from_index(_bytes: &[u8]) -> &[u8] {
-        todo!("tuple 3 can be implemented as MultiIndex key??")
-    }
 }
 
 impl<A, B, C, D> Key for (A, B, C, D)
 where
-    A: Key + Clone,
-    B: Key + Clone,
-    C: Key + Clone,
-    D: Key + Clone,
+    A: Key,
+    B: Key,
+    C: Key,
+    D: Key,
 {
-    type IndexPrefix = (A, B);
-    type IndexSuffix = (C, D);
     type Output = (A::Output, B::Output, C::Output, D::Output);
     type Prefix = (A, B);
     type Suffix = (C, D);
@@ -411,23 +395,40 @@ where
 
         Ok((a, b, c, d))
     }
+}
 
-    fn index_prefix(&self) -> Self::IndexPrefix {
-        (self.0.clone(), self.1.clone())
-    }
+macro_rules! impl_integer_map_key {
+    ($($t:ty),+ $(,)?) => {
+        $(impl Key for $t {
 
-    fn index_suffix(&self) -> Self::IndexSuffix {
-        (self.2.clone(), self.3.clone())
-    }
+            type Prefix = ();
+            type Suffix = ();
+            type Output = $t;
 
-    fn deserialize_from_index(_bytes: &[u8]) -> StdResult<Self::Output> {
-        todo!("tuple 4 can be implemented as MultiIndex key??")
-    }
+            fn raw_keys(&self) -> Vec<RawKey> {
+                vec![RawKey::Owned(self.to_be_bytes().to_vec())]
+            }
 
-    fn adjust_from_index(_bytes: &[u8]) -> &[u8] {
-        todo!("tuple 4 can be implemented as MultiIndex key??")
+            fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+                let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
+                    return Err(StdError::deserialize::<Self::Output>(format!(
+                        "wrong number of bytes: expecting {}, got {}",
+                        mem::size_of::<Self>(),
+                        bytes.len(),
+                    )));
+                };
+
+                Ok(Self::from_be_bytes(bytes))
+            }
+
+        }
+
+        impl_multi_index_key!($t, $t, clone);
+    )*
     }
 }
+
+impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
 // ----------------------------------- tests -----------------------------------
 

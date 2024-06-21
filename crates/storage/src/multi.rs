@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
+    crate::{Borsh, Bound, Codec, Index, Key, Map, MultiIndexKey, Prefix, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
 };
 
@@ -9,29 +9,21 @@ use {
 /// index value.
 pub struct MultiIndex<'a, PK, IK, T, E: Codec<T> = Borsh>
 where
-    PK: Key,
-    IK: Key,
+    PK: MultiIndexKey,
+    IK: MultiIndexKey,
 {
-    indexer: fn(PK, &T) -> IK,
-    index_set: Set<
-        'a,
-        (
-            IK::IndexPrefix,
-            IK::IndexSuffix,
-            PK::IndexPrefix,
-            PK::IndexSuffix,
-        ),
-    >,
+    indexer: fn(&PK, &T) -> IK,
+    index_set: Set<'a, (IK::MIPrefix, IK::MISuffix, PK::MIPrefix, PK::MISuffix)>,
     primary_map: Map<'a, PK, T, E>,
 }
 
 impl<'a, PK, IK, T, E: Codec<T>> MultiIndex<'a, PK, IK, T, E>
 where
-    PK: Key,
-    IK: Key,
+    PK: MultiIndexKey,
+    IK: MultiIndexKey,
 {
     pub const fn new(
-        indexer: fn(PK, &T) -> IK,
+        indexer: fn(&PK, &T) -> IK,
         pk_namespace: &'a str,
         idx_namespace: &'static str,
     ) -> Self {
@@ -45,15 +37,11 @@ where
 
 impl<'a, PK, IK, T, E: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
 where
-    PK: Key + Clone,
-    IK: Key,
-    IK::IndexPrefix: Key + Clone,
-    IK::IndexSuffix: Key + Clone,
-    PK::IndexPrefix: Key + Clone,
-    PK::IndexSuffix: Key + Clone,
+    PK: MultiIndexKey,
+    IK: MultiIndexKey,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.indexer)(pk.clone(), data);
+        let idx = (self.indexer)(&pk, data);
         // idx.
         self.index_set.insert(
             storage,
@@ -67,7 +55,7 @@ where
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
-        let idx = (self.indexer)(pk.clone(), old_data);
+        let idx = (self.indexer)(&pk, old_data);
         self.index_set.remove(
             storage,
             (
@@ -82,15 +70,11 @@ where
 
 impl<'a, PK, IK, T, E: Codec<T>> MultiIndex<'a, PK, IK, T, E>
 where
-    PK: Key,
-    IK: Key,
-    IK::IndexPrefix: Key + Clone,
-    IK::IndexSuffix: Key + Clone,
-    PK::IndexPrefix: Key + Clone,
-    PK::IndexSuffix: Key + Clone,
+    PK: MultiIndexKey,
+    IK: MultiIndexKey,
 {
     /// Iterate records under a specific index value.
-    pub fn of(&self, idx: IK) -> IndexPrefix<(IK::IndexPrefix, IK::IndexSuffix), PK, T, E> {
+    pub fn of(&self, idx: IK) -> IndexPrefix<(IK::MIPrefix, IK::MISuffix), PK, T, E> {
         // Create a tuple to have the correct len before keys
         let t = (idx.index_prefix(), idx.index_suffix());
         IndexPrefix {
@@ -101,7 +85,7 @@ where
     }
 
     /// Iterate records under a specific index prefix value.
-    pub fn of_prefix(&self, idx: IK::IndexPrefix) -> IndexPrefix<IK::IndexPrefix, PK, T, E> {
+    pub fn of_prefix(&self, idx: IK::MIPrefix) -> IndexPrefix<IK::MIPrefix, PK, T, E> {
         // IndexPrefix<T> What should be T?
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
@@ -115,8 +99,8 @@ where
         &self,
         // Should be better to have idx; (IK::IndexPrefix, IK::IndexSuffix, PK::IndexPrefix)
         idx: IK,
-        suffix: PK::IndexPrefix,
-    ) -> IndexPrefix<IK::IndexSuffix, PK, T, E> {
+        suffix: PK::MIPrefix,
+    ) -> IndexPrefix<IK::MISuffix, PK, T, E> {
         // IndexPrefix<T> What should be T?
         // Create a tuple to have the correct len before keys
         let t = (idx.index_prefix(), idx.index_suffix(), suffix);
@@ -138,8 +122,8 @@ pub struct IndexPrefix<'a, RIK, PK, T, E: Codec<T>> {
 
 impl<'a, RIK, PK, T, E> IndexPrefix<'a, RIK, PK, T, E>
 where
-    RIK: Key,
-    PK: Key,
+    RIK: MultiIndexKey,
+    PK: MultiIndexKey,
     E: Codec<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
