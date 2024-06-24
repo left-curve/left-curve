@@ -80,13 +80,7 @@ where
         self.no_prefix().keys(storage, min, max, order)
     }
 
-    pub fn clear(
-        &self,
-        storage: &mut dyn Storage,
-        min: Option<Bound<T>>,
-        max: Option<Bound<T>>,
-        limit: Option<usize>,
-    ) {
-        self.no_prefix().clear(storage, min, max, limit)
+    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<T>>, max: Option<Bound<T>>) {
+        self.no_prefix().clear(storage, min, max)
     }
 }
