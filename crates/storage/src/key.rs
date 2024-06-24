@@ -25,9 +25,7 @@ macro_rules! impl_multi_index_key {
             type MIPrefix = ();
             type MISuffix = $suffix;
 
-            fn index_prefix(&self) -> Self::MIPrefix {
-                ()
-            }
+            fn index_prefix(&self) -> Self::MIPrefix {}
 
             fn index_suffix(&self) -> Self::MISuffix {
                 self.$fn()
@@ -42,9 +40,7 @@ macro_rules! impl_multi_index_key {
             type MIPrefix = ();
             type MISuffix = &'a $to;
 
-            fn index_prefix(&self) -> Self::MIPrefix {
-                ()
-            }
+            fn index_prefix(&self) -> Self::MIPrefix {}
 
             fn index_suffix(&self) -> Self::MISuffix {
                 self

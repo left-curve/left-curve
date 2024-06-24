@@ -7,17 +7,18 @@ use {
 
 /// An indexer that allows multiple records in the primary map to have the same
 /// index value.
-pub struct MultiIndex<'a, PK, IK, T, E: Codec<T> = Borsh>
+pub struct MultiIndex<'a, PK, IK, T, C: Codec<T> = Borsh>
 where
     PK: MultiIndexKey,
     IK: MultiIndexKey,
 {
     indexer: fn(&PK, &T) -> IK,
+    #[allow(clippy::type_complexity)]
     index_set: Set<'a, (IK::MIPrefix, IK::MISuffix, PK::MIPrefix, PK::MISuffix)>,
-    primary_map: Map<'a, PK, T, E>,
+    primary_map: Map<'a, PK, T, C>,
 }
 
-impl<'a, PK, IK, T, E: Codec<T>> MultiIndex<'a, PK, IK, T, E>
+impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
     PK: MultiIndexKey,
     IK: MultiIndexKey,
@@ -35,7 +36,7 @@ where
     }
 }
 
-impl<'a, PK, IK, T, E: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, E>
+impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
     PK: MultiIndexKey,
     IK: MultiIndexKey,
@@ -68,13 +69,13 @@ where
     }
 }
 
-impl<'a, PK, IK, T, E: Codec<T>> MultiIndex<'a, PK, IK, T, E>
+impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
     PK: MultiIndexKey,
     IK: MultiIndexKey,
 {
     /// Iterate records under a specific index value.
-    pub fn of(&self, idx: IK) -> IndexPrefix<(IK::MIPrefix, IK::MISuffix), PK, T, E> {
+    pub fn of(&self, idx: IK) -> IndexPrefix<(IK::MIPrefix, IK::MISuffix), PK, T, C> {
         // Create a tuple to have the correct len before keys
         let t = (idx.index_prefix(), idx.index_suffix());
         IndexPrefix {
@@ -85,7 +86,7 @@ where
     }
 
     /// Iterate records under a specific index prefix value.
-    pub fn of_prefix(&self, idx: IK::MIPrefix) -> IndexPrefix<IK::MIPrefix, PK, T, E> {
+    pub fn of_prefix(&self, idx: IK::MIPrefix) -> IndexPrefix<IK::MIPrefix, PK, T, C> {
         // IndexPrefix<T> What should be T?
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
@@ -100,7 +101,7 @@ where
         // Should be better to have idx; (IK::IndexPrefix, IK::IndexSuffix, PK::IndexPrefix)
         idx: IK,
         suffix: PK::MIPrefix,
-    ) -> IndexPrefix<IK::MISuffix, PK, T, E> {
+    ) -> IndexPrefix<IK::MISuffix, PK, T, C> {
         // IndexPrefix<T> What should be T?
         // Create a tuple to have the correct len before keys
         let t = (idx.index_prefix(), idx.index_suffix(), suffix);
@@ -114,17 +115,17 @@ where
 
 // ---------------------------------- prefix -----------------------------------
 
-pub struct IndexPrefix<'a, RIK, PK, T, E: Codec<T>> {
+pub struct IndexPrefix<'a, RIK, PK, T, C: Codec<T>> {
     prefix: Prefix<RIK, Empty, Borsh>,
-    primary_map: &'a Map<'a, PK, T, E>,
+    primary_map: &'a Map<'a, PK, T, C>,
     idx_ns: usize,
 }
 
-impl<'a, RIK, PK, T, E> IndexPrefix<'a, RIK, PK, T, E>
+impl<'a, RIK, PK, T, C> IndexPrefix<'a, RIK, PK, T, C>
 where
     RIK: MultiIndexKey,
     PK: MultiIndexKey,
-    E: Codec<T>,
+    C: Codec<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
     pub fn range_raw<'b>(
@@ -174,7 +175,7 @@ where
                 let v_raw = self
                     .primary_map
                     .load_raw(storage, PK::adjust_from_index(&pk_raw))?;
-                let v = E::decode(&v_raw)?;
+                let v = C::decode(&v_raw)?;
                 Ok((pk, v))
             });
 
@@ -203,7 +204,6 @@ where
         self.prefix.keys(storage, min, max, order)
     }
 
-
     fn trim_key(&self, key: &[u8]) -> Vec<u8> {
         let mut key = &key[self.idx_ns + 2..];
 
@@ -217,13 +217,14 @@ where
         }
 
         key.to_vec()
+    }
 
     /// Iterate the raw values under the given index value.
     pub fn values_raw<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<PK>>,
-        max: Option<Bound<PK>>,
+        min: Option<Bound<RIK>>,
+        max: Option<Bound<RIK>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b>
     where
@@ -241,8 +242,8 @@ where
     pub fn values<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<PK>>,
-        max: Option<Bound<PK>>,
+        min: Option<Bound<RIK>>,
+        max: Option<Bound<RIK>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b>
     where
@@ -257,6 +258,5 @@ where
             });
 
         Box::new(iter)
-
     }
 }
