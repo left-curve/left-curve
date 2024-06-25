@@ -193,21 +193,6 @@ where
         self.prefix.keys(storage, min, max, order)
     }
 
-    fn trim_key(&self, key: &[u8]) -> Vec<u8> {
-        let mut key = &key[self.idx_ns + 2..];
-
-        // We trim the IK::Suffix and PK::Prefix.
-        for _ in 0..IK::KEY_ELEMS {
-            let (len, rest) = key.split_at(2);
-
-            let a = u16::from_be_bytes([len[0], len[1]]);
-
-            key = &rest[a as usize..];
-        }
-
-        key.to_vec()
-    }
-
     /// Iterate the raw values under the given index value.
     pub fn values_raw<'b>(
         &self,
@@ -247,5 +232,18 @@ where
             });
 
         Box::new(iter)
+    }
+
+    fn trim_key(&self, key: &[u8]) -> Vec<u8> {
+        let mut key = &key[self.idx_ns + 2..];
+
+        // We trim the IK::Suffix and PK::Prefix.
+        for _ in 0..IK::KEY_ELEMS {
+            let (len, rest) = key.split_at(2);
+            let a = u16::from_be_bytes([len[0], len[1]]);
+            key = &rest[a as usize..];
+        }
+
+        key.to_vec()
     }
 }
