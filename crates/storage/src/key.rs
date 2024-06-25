@@ -3,9 +3,6 @@ use {
     std::{borrow::Cow, mem},
 };
 
-/// A raw storage key is a byte slice, either owned or borrowed.
-pub type RawKey<'a> = Cow<'a, [u8]>;
-
 /// Describes a key used in mapping data structure.
 ///
 /// The key needs to be serialized to or deserialized from raw bytes. However,
@@ -35,7 +32,7 @@ pub trait Key {
     /// almost always a reference type or a copy-able type.
     type Output: 'static;
 
-    fn raw_keys(&self) -> Vec<RawKey>;
+    fn raw_keys(&self) -> Vec<Cow<[u8]>>;
 
     fn serialize(&self) -> Vec<u8> {
         let mut raw_keys = self.raw_keys();
@@ -57,7 +54,7 @@ impl Key for () {
 
     const KEYS: u16 = 0;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![]
     }
 
@@ -78,8 +75,8 @@ impl Key for &[u8] {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self)]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -92,8 +89,8 @@ impl Key for Vec<u8> {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self)]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -106,8 +103,8 @@ impl Key for &str {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self.as_bytes())]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_bytes())]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -120,8 +117,8 @@ impl<'a> Key for &'a Addr {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self.as_ref())]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_ref())]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -134,8 +131,8 @@ impl<'a> Key for &'a Hash {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self.as_ref())]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_ref())]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -148,8 +145,8 @@ impl Key for String {
     type Prefix = ();
     type Suffix = ();
 
-    fn raw_keys(&self) -> Vec<RawKey> {
-        vec![RawKey::Borrowed(self.as_bytes())]
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_bytes())]
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -210,7 +207,7 @@ where
 
     const KEYS: u16 = A::KEYS + B::KEYS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         self.0.raw_keys().merge(self.1.raw_keys())
     }
 
@@ -232,7 +229,7 @@ where
 
     const KEYS: u16 = A::KEYS + B::KEYS + C::KEYS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         self.0
             .raw_keys()
             .merge(self.1.raw_keys())
@@ -255,8 +252,8 @@ macro_rules! impl_integer_map_key {
             type Suffix = ();
             type Output = $t;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
-                vec![RawKey::Owned(self.to_be_bytes().to_vec())]
+            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+                vec![Cow::Owned(self.to_be_bytes().to_vec())]
             }
 
             fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
