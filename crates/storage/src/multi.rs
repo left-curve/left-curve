@@ -14,7 +14,6 @@ where
     IK: Key,
 {
     indexer: fn(&PK, &T) -> IK,
-    #[allow(clippy::type_complexity)]
     index_set: Set<'a, (IK, PK)>,
     primary_map: Map<'a, PK, T, C>,
 }
