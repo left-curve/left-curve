@@ -139,7 +139,7 @@ where
                 // If the indexed map works correctly, the data should always exist,
                 // so we can safely unwrap the `Option` here.
                 let pk_raw = self.trim_key(&pk_raw);
-                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
                 (pk_raw.to_vec(), v_raw)
             });
 
@@ -162,8 +162,8 @@ where
             .keys_raw_no_trimmer(storage, min, max, order)
             .map(|pk_raw| {
                 let pk_raw = self.trim_key(&pk_raw);
-                let pk = PK::deserialize(&pk_raw)?;
-                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
+                let pk = PK::deserialize(pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((pk, v))
             });
