@@ -115,7 +115,6 @@ impl Key for () {
     }
 }
 
-// TODO: create a Binary type and replace this with &Binary
 impl Key for &[u8] {
     type Output = Vec<u8>;
     type Prefix = ();
@@ -200,29 +199,6 @@ impl Key for String {
     }
 }
 
-fn split_first_key(key_elems: u16, value: &[u8]) -> StdResult<(Vec<u8>, &[u8])> {
-    let mut index = 0;
-    let mut first_key = Vec::new();
-
-    // Iterate over the sub keys
-    for i in 0..key_elems {
-        let len_slice = &value[index..index + 2];
-        index += 2;
-        let is_last_key = i == key_elems - 1;
-
-        if !is_last_key {
-            first_key.extend_from_slice(len_slice);
-        }
-
-        let subkey_len = u16::from_be_bytes(len_slice.try_into()?) as usize;
-        first_key.extend_from_slice(&value[index..index + subkey_len]);
-        index += subkey_len;
-    }
-
-    let remainder = &value[index..];
-    Ok((first_key, remainder))
-}
-
 // Our implementation of serializing tuple keys is different from CosmWasm's,
 // because theirs doesn't work for nested tuples:
 // <https://github.com/CosmWasm/cw-storage-plus/issues/81>
@@ -288,6 +264,29 @@ where
 
         Ok((A::deserialize(&a)?, B::deserialize(&b)?, C::deserialize(c)?))
     }
+}
+
+fn split_first_key(key_elems: u16, value: &[u8]) -> StdResult<(Vec<u8>, &[u8])> {
+    let mut index = 0;
+    let mut first_key = Vec::new();
+
+    // Iterate over the sub keys
+    for i in 0..key_elems {
+        let len_slice = &value[index..index + 2];
+        index += 2;
+        let is_last_key = i == key_elems - 1;
+
+        if !is_last_key {
+            first_key.extend_from_slice(len_slice);
+        }
+
+        let subkey_len = u16::from_be_bytes(len_slice.try_into()?) as usize;
+        first_key.extend_from_slice(&value[index..index + subkey_len]);
+        index += subkey_len;
+    }
+
+    let remainder = &value[index..];
+    Ok((first_key, remainder))
 }
 
 macro_rules! impl_integer_key {
