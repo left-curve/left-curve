@@ -199,25 +199,6 @@ impl Key for String {
     }
 }
 
-// Our implementation of serializing tuple keys is different from CosmWasm's,
-// because theirs doesn't work for nested tuples:
-// <https://github.com/CosmWasm/cw-storage-plus/issues/81>
-//
-// For example, consider the following key: `((A, B), (C, D))`. With CosmWasm's
-// implementation, it will be serialized as:
-//
-// len(A) | A | len(B) | B | len(C) | C | D
-//
-// When deserializing, the contract doesn't know where (A, B) ends and where
-// (C, D) starts, which results in errors.
-//
-// With our implementation, this is deserialized as:
-//
-// len(A+B) | len(A) | A | B | len(C) | C | D
-//
-// There is no ambiguity, and deserialization works.
-//
-// See the `nested_tuple_key` test at the bottom of this file for a demo.
 impl<A, B> Key for (A, B)
 where
     A: Key,
