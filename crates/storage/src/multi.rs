@@ -140,7 +140,7 @@ where
                 // so we can safely unwrap the `Option` here.
                 let pk_raw = self.trim_key(&pk_raw);
                 let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                (pk_raw, v_raw)
+                (pk_raw.to_vec(), v_raw)
             });
 
         Box::new(iter)
@@ -234,7 +234,7 @@ where
         Box::new(iter)
     }
 
-    fn trim_key(&self, key: &[u8]) -> Vec<u8> {
+    fn trim_key<'b>(&self, key: &'b [u8]) -> &'b [u8] {
         let mut key = &key[self.idx_ns + 2..];
 
         // We trim the IK::Suffix and PK::Prefix.
@@ -244,6 +244,6 @@ where
             key = &rest[a as usize..];
         }
 
-        key.to_vec()
+        key
     }
 }
