@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
+    crate::{split_first_key, Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -60,6 +60,117 @@ where
             idx_ns: self.index_set.namespace.len(),
             phantom: PhantomData,
         }
+    }
+
+    pub fn range_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>, Vec<u8>)> + 'b> {
+        let iter = self
+            .index_set
+            .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                // Load the data corresponding to the primary key from the
+                // primary map.
+                //
+                // If the indexed map works correctly, the data should always exist,
+                // so we can safely unwrap the `Option` here.
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                (ik_raw, pk_raw.to_vec(), v_raw)
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn range<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output, T)>> + 'b> {
+        let iter = self
+            .index_set
+            .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                let ik = IK::deserialize(&ik_raw)?;
+                let pk = PK::deserialize(pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok((ik, pk, v))
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn keys_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'b> {
+        let iter = self
+            .index_set
+            .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                (ik_raw, pk_raw.to_vec())
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn keys<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output)>> + 'b> {
+        self.index_set.range(storage, min, max, order)
+    }
+
+    pub fn values_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        let iter = self
+            .index_set
+            .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                self.primary_map.may_load_raw(storage, pk_raw).unwrap()
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn values<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<(IK, PK)>>,
+        max: Option<Bound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        let iter = self
+            .index_set
+            .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                C::decode(&v_raw)
+            });
+
+        Box::new(iter)
     }
 }
 
@@ -126,11 +237,6 @@ where
             .prefix
             .keys_raw_no_trimmer(storage, min, max, order)
             .map(|pk_raw| {
-                // Load the data corresponding to the primary key from the
-                // primary map.
-                //
-                // If the indexed map works correctly, the data should always exist,
-                // so we can safely unwrap the `Option` here.
                 let pk_raw = self.trim_key(&pk_raw);
                 let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
                 (pk_raw.to_vec(), v_raw)
