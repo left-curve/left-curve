@@ -307,7 +307,25 @@ mod tests {
     fn multi_index_singleton_works() {
         let storage = setup_test();
 
-        // Iterating all records under a specific index value.
+        // Iterate all index values and records.
+        {
+            let val = FOOS
+                .idx
+                .name
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ("bar".to_string(), (0, 1), Foo::new("bar", "s_bar", 101)),
+                ("bar".to_string(), (0, 2), Foo::new("bar", "s_bar", 102)),
+                ("bar".to_string(), (1, 1), Foo::new("bar", "s_bar", 103)),
+                ("bar".to_string(), (1, 2), Foo::new("bar", "s_fooes", 104)),
+                ("foo".to_string(), (1, 3), Foo::new("foo", "s_foo", 105)),
+            ]);
+        }
+
+        // Given a specific index value, iterate records corresponding to it.
         //
         // In this test case, we find all foos whose name is "bar".
         {
