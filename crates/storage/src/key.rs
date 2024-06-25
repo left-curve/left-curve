@@ -41,10 +41,6 @@ pub trait Key {
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
-
-    fn joined_extra_key(&self, key: &[u8]) -> Vec<u8> {
-        nested_namespaces_with_key(None, &self.raw_keys(), Some(&key))
-    }
 }
 
 impl Key for () {
