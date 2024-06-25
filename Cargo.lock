@@ -1697,9 +1697,13 @@ dependencies = [
 name = "grug-vm-wasm"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "data-encoding",
  "grug-app",
+ "grug-bank",
  "grug-crypto",
+ "grug-db-memory",
+ "grug-testing",
  "grug-types",
  "serde",
  "thiserror",

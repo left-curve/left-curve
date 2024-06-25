@@ -145,13 +145,13 @@ impl Api for MockApi {
         grug_crypto::ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
     }
 
-    fn ed25519_batch_verify(
+    fn ed25519_verify_batch(
         &self,
         msgs_hash: &[&[u8]],
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()> {
-        grug_crypto::ed25519_batch_verify(msgs_hash, sigs, pks)
+        grug_crypto::ed25519_verify_batch(msgs_hash, sigs, pks)
             .map_err(|_| StdError::VerificationFailed)
     }
 

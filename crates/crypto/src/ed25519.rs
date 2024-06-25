@@ -24,7 +24,7 @@ pub fn ed25519_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()
 /// key.
 ///
 /// NOTE: This function takes the hash of the messages, not the prehash.
-pub fn ed25519_batch_verify(
+pub fn ed25519_verify_batch(
     msgs_hash: &[&[u8]],
     sigs: &[&[u8]],
     pks: &[&[u8]],
@@ -90,7 +90,7 @@ mod tests {
         let (msg3, sig3, vk3) = ed25519_sign("Rhaki");
 
         // valid signatures
-        assert!(ed25519_batch_verify(
+        assert!(ed25519_verify_batch(
             &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
             &[&sig1, &sig2, &sig3],
             &[&vk1, &vk2, &vk3]
@@ -98,7 +98,7 @@ mod tests {
         .is_ok());
 
         // wrong sign
-        assert!(ed25519_batch_verify(
+        assert!(ed25519_verify_batch(
             &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
             &[&sig2, &sig1, &sig3],
             &[&vk1, &vk2, &vk3]
@@ -106,7 +106,7 @@ mod tests {
         .is_err());
 
         // wrong len
-        assert!(ed25519_batch_verify(
+        assert!(ed25519_verify_batch(
             &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
             &[&sig1, &sig2, &sig3],
             &[&vk1, &vk2]

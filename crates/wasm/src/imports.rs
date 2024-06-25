@@ -399,7 +399,7 @@ impl Api for ExternalApi {
         }
     }
 
-    fn ed25519_batch_verify(
+    fn ed25519_verify_batch(
         &self,
         msgs_hash: &[&[u8]],
         sigs: &[&[u8]],

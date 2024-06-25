@@ -1,7 +1,7 @@
 use {
     crate::{
         blake2b_512, blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
-        db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
+        db_remove_range, db_scan, db_write, debug, ed25519_verify, ed25519_verify_batch, keccak256,
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
@@ -52,7 +52,7 @@ impl Vm for WasmVm {
                 "secp256r1_verify"         => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
                 "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_pubkey_recover),
                 "ed25519_verify"           => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify),
-                "ed25519_batch_verify"     => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_batch_verify),
+                "ed25519_verify_batch"     => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify_batch),
                 "sha2_256"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_256),
                 "sha2_512"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512),
                 "sha2_512_truncated"       => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512_truncated),

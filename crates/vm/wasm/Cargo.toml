@@ -20,3 +20,8 @@ tracing       = { workspace = true }
 wasmer        = { workspace = true, features = ["singlepass"] }
 
 [dev-dependencies]
+grug-db-memory = { path = "../../db/memory" }
+grug-testing   = { path = "../../testing" }
+anyhow         = { workspace = true }
+grug-bank      = { path = "../../../contracts/bank" }
+
