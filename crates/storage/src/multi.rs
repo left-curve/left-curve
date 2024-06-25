@@ -61,7 +61,6 @@ where
 {
     /// Iterate records under a specific index value.
     pub fn of(&self, idx: IK) -> IndexPrefix<IK, PK, PK, T, C> {
-        // Create a tuple to have the correct len before keys
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
             primary_map: &self.primary_map,
@@ -72,7 +71,6 @@ where
 
     /// Iterate records under a specific index prefix value.
     pub fn of_prefix(&self, idx: IK::Prefix) -> IndexPrefix<IK, PK, (IK::Suffix, PK), T, C> {
-        // IndexPrefix<T> What should be T?
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
             primary_map: &self.primary_map,
@@ -84,12 +82,9 @@ where
     /// Iterate records under a specific index value and pk suffix.
     pub fn of_suffix(
         &self,
-        // Should be better to have idx; (IK::IndexPrefix, IK::IndexSuffix, PK::IndexPrefix)
         idx: IK,
         suffix: PK::Prefix,
     ) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
-        // IndexPrefix<T> What should be T?
-        // Create a tuple to have the correct len before keys
         IndexPrefix {
             prefix: Prefix::new(
                 self.index_set.namespace,
