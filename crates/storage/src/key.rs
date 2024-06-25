@@ -314,7 +314,7 @@ mod tests {
         let serialized = (a, b, c).serialize();
         let deserialized = TripleTuple::deserialize(&serialized).unwrap();
 
-        assert_eq!(deserialized, (a.to_string(), b.to_string(), c.to_string()),);
+        assert_eq!(deserialized, (a.to_string(), b.to_string(), c.to_string()));
     }
 
     #[test]
