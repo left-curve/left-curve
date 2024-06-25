@@ -3,7 +3,8 @@ use {
     std::{borrow::Cow, mem},
 };
 
-/// Describes a key used in mapping data structure.
+/// Describes a key used in mapping data structures, i.e. [`Map`](crate::Map)
+/// and [`IndexedMap`](crate::IndexedMap).
 ///
 /// The key needs to be serialized to or deserialized from raw bytes. However,
 /// we don't want to use `serde` here because it's slow, not compact, and
@@ -12,34 +13,84 @@ use {
 /// Additionally, compound keys can be split into `Prefix` and `Suffix`, which
 /// are useful in iterations.
 pub trait Key {
-    /// The number of keys in this compound key. For single keys, this is 1.
+    /// The number of elements in a tuple key.
+    ///
+    /// E.g.,
+    /// - for `(A, B)`, this is 2;
+    /// - for `(A, B, C)`, this is 3;
+    /// so on.
+    ///
+    /// This value is necessary for deserializing _nested_ tuple keys.
+    ///
+    /// For example, consider the following nested tuple key: `((A, B), (C, D))`.
+    /// This key is serialized into the following bytes:
+    ///
+    /// ```plain
+    /// len(A) | A | len(B) | B | len(C) | C | D
+    /// ```
+    ///
+    /// Without knowing the number of key elements, we don't know how to
+    /// deserialize this: whether it's `((A, B), (C, D))`, or `((A, B, C), (D))`,
+    /// or else?
+    ///
+    /// Only if we know each element in the tuple themselves each has two
+    /// elements, can we deserialize this correctly.
+    ///
+    /// See the following PR for details: (CosmWasm/cw-storage-plus:#34)[https://github.com/CosmWasm/cw-storage-plus/pull/34].
     const KEYS: u16 = 1;
 
-    /// For compound keys, the first element; e.g. for `(A, B)`, `A` is the
-    /// prefix. For single keys, use `()`.
+    /// For tuple keys, the first element.
+    ///
+    /// E.g. for `(A, B)`, this is `A`.
+    ///
+    /// Use `()` for singleton keys.
+    ///
+    /// This is used for iterations. E.g. given a value of `A`, we can iterate
+    /// all values of `B` in the map.
     type Prefix: Key;
 
-    /// For compound keys, the elements minus the first one; e.g. for `(A, B)`,
-    /// `B` is the suffix. For single keys, use ().
+    /// For tuple keys, the elements _excluding_ the `Prefix`.
+    ///
+    /// E.g. for `(A, B)`, this is `B`.
+    ///
+    /// Use `()` for singleton keys.
     type Suffix: Key;
 
-    /// The type the deserialize into, which may be different from the key
-    /// itself.
+    /// The type that raw keys deserialize into, which may be different from the
+    /// key itself.
     ///
-    /// E.g. use `&str` as the key but deserializes into `String`.
+    /// E.g. when `&str` is used as the key, it deserializes into `String`.
     ///
-    /// Note: The output must be an owned type. in comparison, the key itself is
-    /// almost always a reference type or a copy-able type.
+    /// Must be an _owned_ type, as denoted by the `'static` lifetime requirement.
+    /// In comparison, the key itself is almost always a reference type.
     type Output: 'static;
 
+    /// Convert the key into one or more _raw keys_. Each raw key is a byte slice,
+    /// either owned or a reference, represented as a `Cow<[u8]>`.
     fn raw_keys(&self) -> Vec<Cow<[u8]>>;
 
+    /// Serialize the raw keys into bytes.
+    ///
+    /// Each raw key, other than the last one, is prefixed by its length. This
+    /// is such that when deserializing, we can tell where a raw key ends and
+    /// where the next one starts.
+    ///
+    /// For example, if the raw keys are `vec![A, B, C, D]`, they are serialized
+    /// into:
+    ///
+    /// ```plain
+    /// len(A) | A | len(B) | B | len(C) | C | D
+    /// ```
+    ///
+    /// where `len()` denotes the length, as a 16-bit big endian number;
+    /// `|` denotes byte concatenation.
     fn serialize(&self) -> Vec<u8> {
         let mut raw_keys = self.raw_keys();
         let last_raw_key = raw_keys.pop();
         nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
     }
 
+    /// Deserialize the raw bytes into the output.
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
 }
 
