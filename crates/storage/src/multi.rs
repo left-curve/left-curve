@@ -35,29 +35,7 @@ where
             primary_map: Map::new(pk_namespace),
         }
     }
-}
 
-impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
-where
-    PK: Key,
-    IK: Key,
-{
-    fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
-        let idx = (self.indexer)(&pk, data);
-        self.index_set.insert(storage, (idx, pk))
-    }
-
-    fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
-        let idx = (self.indexer)(&pk, old_data);
-        self.index_set.remove(storage, (idx, pk))
-    }
-}
-
-impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
-where
-    PK: Key,
-    IK: Key,
-{
     /// Iterate records under a specific index value.
     ///
     /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
@@ -82,6 +60,22 @@ where
             idx_ns: self.index_set.namespace.len(),
             phantom: PhantomData,
         }
+    }
+}
+
+impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
+where
+    PK: Key,
+    IK: Key,
+{
+    fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
+        let idx = (self.indexer)(&pk, data);
+        self.index_set.insert(storage, (idx, pk))
+    }
+
+    fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
+        let idx = (self.indexer)(&pk, old_data);
+        self.index_set.remove(storage, (idx, pk))
     }
 }
 
