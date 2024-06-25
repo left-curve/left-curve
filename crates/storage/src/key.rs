@@ -37,7 +37,7 @@ pub trait Key {
     /// elements, can we deserialize this correctly.
     ///
     /// See the following PR for details: (CosmWasm/cw-storage-plus:#34)[https://github.com/CosmWasm/cw-storage-plus/pull/34].
-    const KEYS: u16 = 1;
+    const KEY_ELEMS: u16 = 1;
 
     /// For tuple keys, the first element.
     ///
@@ -99,7 +99,7 @@ impl Key for () {
     type Prefix = ();
     type Suffix = ();
 
-    const KEYS: u16 = 0;
+    const KEY_ELEMS: u16 = 0;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![]
@@ -252,14 +252,14 @@ where
     type Prefix = A;
     type Suffix = B;
 
-    const KEYS: u16 = A::KEYS + B::KEYS;
+    const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         self.0.raw_keys().merge(self.1.raw_keys())
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a, b) = split_first_key(A::KEYS, bytes)?;
+        let (a, b) = split_first_key(A::KEY_ELEMS, bytes)?;
         Ok((A::deserialize(&a)?, B::deserialize(b)?))
     }
 }
@@ -274,7 +274,7 @@ where
     type Prefix = A;
     type Suffix = (B, C);
 
-    const KEYS: u16 = A::KEYS + B::KEYS + C::KEYS;
+    const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         self.0
@@ -284,8 +284,8 @@ where
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a, bc) = split_first_key(A::KEYS, bytes)?;
-        let (b, c) = split_first_key(B::KEYS, bc)?;
+        let (a, bc) = split_first_key(A::KEY_ELEMS, bytes)?;
+        let (b, c) = split_first_key(B::KEY_ELEMS, bc)?;
 
         Ok((A::deserialize(&a)?, B::deserialize(&b)?, C::deserialize(c)?))
     }
