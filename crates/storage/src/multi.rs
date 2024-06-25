@@ -80,11 +80,7 @@ where
     }
 
     /// Iterate records under a specific index value and pk suffix.
-    pub fn of_suffix(
-        &self,
-        idx: IK,
-        suffix: PK::Prefix,
-    ) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
+    pub fn of_suffix(&self, idx: IK, suffix: PK::Prefix) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
         IndexPrefix {
             prefix: Prefix::new(
                 self.index_set.namespace,
