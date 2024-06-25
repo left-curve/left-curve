@@ -62,6 +62,7 @@ where
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn range_raw<'b>(
         &'b self,
         storage: &'b dyn Storage,
@@ -86,6 +87,7 @@ where
         Box::new(iter)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn range<'b>(
         &'b self,
         storage: &'b dyn Storage,
@@ -126,6 +128,7 @@ where
         Box::new(iter)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn keys<'b>(
         &'b self,
         storage: &'b dyn Storage,
