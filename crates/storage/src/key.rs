@@ -1,55 +1,7 @@
 use {
-    grug_types::{nested_namespaces_with_key, split_one_key, Addr, Hash, StdError, StdResult},
+    grug_types::{nested_namespaces_with_key, Addr, Hash, StdError, StdResult, VecExt},
     std::{borrow::Cow, mem},
 };
-
-macro_rules! impl_multi_index_key {
-    ($to:ty, $suffix:ty) => {
-        impl MultiIndexKey for $to {
-            type MIPrefix = ();
-            type MISuffix = $suffix;
-
-            fn index_prefix(&self) -> Self::MIPrefix {
-                ()
-            }
-
-            fn index_suffix(&self) -> Self::MISuffix {
-                self
-            }
-        }
-
-        impl MultiIndexInnerKey for $to {}
-    };
-    ($to:ty, $suffix:ty, $fn:ident) => {
-        impl MultiIndexKey for $to {
-            type MIPrefix = ();
-            type MISuffix = $suffix;
-
-            fn index_prefix(&self) -> Self::MIPrefix {}
-
-            fn index_suffix(&self) -> Self::MISuffix {
-                self.$fn()
-            }
-        }
-
-        impl MultiIndexInnerKey for $to {}
-    };
-
-    (&'a $to:ty) => {
-        impl<'a> MultiIndexKey for &'a $to {
-            type MIPrefix = ();
-            type MISuffix = &'a $to;
-
-            fn index_prefix(&self) -> Self::MIPrefix {}
-
-            fn index_suffix(&self) -> Self::MISuffix {
-                self
-            }
-        }
-
-        impl<'a> MultiIndexInnerKey for &'a $to {}
-    };
-}
 
 /// A raw storage key is a byte slice, either owned or borrowed.
 pub type RawKey<'a> = Cow<'a, [u8]>;
@@ -63,6 +15,9 @@ pub type RawKey<'a> = Cow<'a, [u8]>;
 /// Additionally, compound keys can be split into `Prefix` and `Suffix`, which
 /// are useful in iterations.
 pub trait Key {
+    /// The number of keys in this compound key. For single keys, this is 1.
+    const KEYS: u16 = 1;
+
     /// For compound keys, the first element; e.g. for `(A, B)`, `A` is the
     /// prefix. For single keys, use `()`.
     type Prefix: Key;
@@ -95,56 +50,12 @@ pub trait Key {
     }
 }
 
-/// Describes a key used by MultiIndex.
-pub trait MultiIndexKey: Key {
-    /// Prefix used on multi index.
-    /// For single keys, use `()`.
-    /// For compound keys, use the first half elements; e.g. for `(A, B)`, `A` is the
-    type MIPrefix: Key;
-
-    /// Suffix used on multi index.
-    /// For single keys, use Self.
-    /// For compound keys, use the second half elements; e.g. for `(A, B)`, `B` is the
-    type MISuffix: Key;
-
-    fn index_prefix(&self) -> Self::MIPrefix;
-
-    fn index_suffix(&self) -> Self::MISuffix;
-
-    /// Deserialization fn used on MultiIndex.
-    /// When IndexMap serialize the key, it serialize the Index::Prefix and Index::Suffix.
-    /// On Non tuple keys, the Index::Prefix has to be equal () and Index::Suffix is the key.
-    /// We need to trim the 2 bytes that is the len of the Index::Prefix (0).
-    ///
-    /// On tuples, this function has to be overriden and just return `Self::deserialize(bytes)`
-    fn deserialize_from_index(bytes: &[u8]) -> StdResult<Self::Output> {
-        Self::deserialize(&bytes[2..])
-    }
-
-    /// Adjustment fn used on MultiIndex for load the value from primary key.
-    /// When IndexMap serialize the key, it serialize the Index::Prefix and Index::Suffix.
-    /// On Non tuple keys, the Index::Prefix has to be equal () and Index::Suffix is the key.
-    /// We need to trim the 2 bytes that is the len of the Index::Prefix (0).
-    ///
-    /// On tuples, this function has to be overriden and just return `bytes`
-    fn adjust_from_index(bytes: &[u8]) -> &[u8] {
-        &bytes[2..]
-    }
-}
-
-/// Rappresent a valid `MIPrefix` / `MISuffix` for a `MultiIndex`.
-///
-/// On impl `MultiIndexKey` for `(A, B)`, both `A` and `B` have to implement `MultiIndexInnerKey`.
-///
-/// `MultiIndexInnerKey` is implemented only on `Keys` that return a single `RawKey`` when deserialized, avoiding to have nested tuples.
-///
-/// This ensure at compilation time that a `MultiIndexKey` is valid for a `MultiIndex`.
-pub trait MultiIndexInnerKey: Key {}
-
 impl Key for () {
     type Output = ();
     type Prefix = ();
     type Suffix = ();
+
+    const KEYS: u16 = 0;
 
     fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
@@ -161,8 +72,6 @@ impl Key for () {
     }
 }
 
-impl_multi_index_key!((), (), clone);
-
 // TODO: create a Binary type and replace this with &Binary
 impl Key for &[u8] {
     type Output = Vec<u8>;
@@ -178,8 +87,6 @@ impl Key for &[u8] {
     }
 }
 
-impl_multi_index_key!(&[u8], Vec<u8>, to_vec);
-
 impl Key for Vec<u8> {
     type Output = Vec<u8>;
     type Prefix = ();
@@ -193,8 +100,6 @@ impl Key for Vec<u8> {
         Ok(bytes.to_vec())
     }
 }
-
-impl_multi_index_key!(Vec<u8>, Vec<u8>, clone);
 
 impl Key for &str {
     type Output = String;
@@ -210,8 +115,6 @@ impl Key for &str {
     }
 }
 
-impl_multi_index_key!(&str, String, to_string);
-
 impl<'a> Key for &'a Addr {
     type Output = Addr;
     type Prefix = ();
@@ -225,8 +128,6 @@ impl<'a> Key for &'a Addr {
         bytes.try_into()
     }
 }
-
-impl_multi_index_key!(&'a Addr);
 
 impl<'a> Key for &'a Hash {
     type Output = Hash;
@@ -242,8 +143,6 @@ impl<'a> Key for &'a Hash {
     }
 }
 
-impl_multi_index_key!(&'a Hash);
-
 impl Key for String {
     type Output = String;
     type Prefix = ();
@@ -258,7 +157,28 @@ impl Key for String {
     }
 }
 
-impl_multi_index_key!(String, String, clone);
+fn split_first_key(key_elems: u16, value: &[u8]) -> StdResult<(Vec<u8>, &[u8])> {
+    let mut index = 0;
+    let mut first_key = Vec::new();
+
+    // Iterate over the sub keys
+    for i in 0..key_elems {
+        let len_slice = &value[index..index + 2];
+        index += 2;
+        let is_last_key = i == key_elems - 1;
+
+        if !is_last_key {
+            first_key.extend_from_slice(len_slice);
+        }
+
+        let subkey_len = u16::from_be_bytes(len_slice.try_into()?) as usize;
+        first_key.extend_from_slice(&value[index..index + subkey_len]);
+        index += subkey_len;
+    }
+
+    let remainder = &value[index..];
+    Ok((first_key, remainder))
+}
 
 // Our implementation of serializing tuple keys is different from CosmWasm's,
 // because theirs doesn't work for nested tuples:
@@ -288,42 +208,15 @@ where
     type Prefix = A;
     type Suffix = B;
 
+    const KEYS: u16 = A::KEYS + B::KEYS;
+
     fn raw_keys(&self) -> Vec<RawKey> {
-        let a = self.0.serialize();
-        let b = self.1.serialize();
-        vec![RawKey::Owned(a), RawKey::Owned(b)]
+        self.0.raw_keys().merge(self.1.raw_keys())
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a_bytes, b_bytes) = split_one_key(bytes);
-        let a = A::deserialize(a_bytes)?;
-        let b = B::deserialize(b_bytes)?;
-        Ok((a, b))
-    }
-}
-
-impl<A, B> MultiIndexKey for (A, B)
-where
-    A: MultiIndexInnerKey + Clone,
-    B: MultiIndexInnerKey + Clone,
-{
-    type MIPrefix = A;
-    type MISuffix = B;
-
-    fn index_prefix(&self) -> Self::MIPrefix {
-        self.0.clone()
-    }
-
-    fn index_suffix(&self) -> Self::MISuffix {
-        self.1.clone()
-    }
-
-    fn deserialize_from_index(bytes: &[u8]) -> StdResult<Self::Output> {
-        Self::deserialize(bytes)
-    }
-
-    fn adjust_from_index(bytes: &[u8]) -> &[u8] {
-        bytes
+        let (a, b) = split_first_key(A::KEYS, bytes)?;
+        Ok((A::deserialize(&a)?, B::deserialize(b)?))
     }
 }
 
@@ -337,59 +230,20 @@ where
     type Prefix = A;
     type Suffix = (B, C);
 
+    const KEYS: u16 = A::KEYS + B::KEYS + C::KEYS;
+
     fn raw_keys(&self) -> Vec<RawKey> {
-        let a = self.0.serialize();
-        let b = self.1.serialize();
-        let c = self.2.serialize();
-        vec![RawKey::Owned(a), RawKey::Owned(b), RawKey::Owned(c)]
+        self.0
+            .raw_keys()
+            .merge(self.1.raw_keys())
+            .merge(self.2.raw_keys())
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a_bytes, bc_bytes) = split_one_key(bytes);
-        let (b_bytes, c_bytes) = split_one_key(bc_bytes);
-        let a = A::deserialize(a_bytes)?;
-        let b = B::deserialize(b_bytes)?;
-        let c = C::deserialize(c_bytes)?;
-        Ok((a, b, c))
-    }
-}
+        let (a, bc) = split_first_key(A::KEYS, bytes)?;
+        let (b, c) = split_first_key(B::KEYS, bc)?;
 
-impl<A, B, C, D> Key for (A, B, C, D)
-where
-    A: Key,
-    B: Key,
-    C: Key,
-    D: Key,
-{
-    type Output = (A::Output, B::Output, C::Output, D::Output);
-    type Prefix = (A, B);
-    type Suffix = (C, D);
-
-    fn raw_keys(&self) -> Vec<RawKey> {
-        let a = self.0.serialize();
-        let b = self.1.serialize();
-        let c = self.2.serialize();
-        let d = self.3.serialize();
-
-        vec![
-            RawKey::Owned(a),
-            RawKey::Owned(b),
-            RawKey::Owned(c),
-            RawKey::Owned(d),
-        ]
-    }
-
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a_bytes, bc_bytes) = split_one_key(bytes);
-        let (b_bytes, cd_bytes) = split_one_key(bc_bytes);
-        let (c_bytes, d_bytes) = split_one_key(cd_bytes);
-
-        let a = A::deserialize(a_bytes)?;
-        let b = B::deserialize(b_bytes)?;
-        let c = C::deserialize(c_bytes)?;
-        let d = D::deserialize(d_bytes)?;
-
-        Ok((a, b, c, d))
+        Ok((A::deserialize(&a)?, B::deserialize(&b)?, C::deserialize(c)?))
     }
 }
 
@@ -419,7 +273,6 @@ macro_rules! impl_integer_map_key {
 
         }
 
-        impl_multi_index_key!($t, $t, clone);
     )*
     }
 }
@@ -429,7 +282,6 @@ impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-#[rustfmt::skip]
 mod tests {
     use super::*;
 
@@ -441,23 +293,22 @@ mod tests {
         let serialized = (a, b, c).serialize();
         let deserialized = TripleTuple::deserialize(&serialized).unwrap();
 
-        assert_eq!(
-            deserialized,
-            (a.to_string(), b.to_string(), c.to_string()),
-        );
+        assert_eq!(deserialized, (a.to_string(), b.to_string(), c.to_string()),);
     }
 
     #[test]
     fn nested_tuple_key() {
         type NestedTuple<'a> = ((&'a str, &'a str), (&'a str, &'a str));
-
         let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
         let serialized = ((a, b), (c, d)).serialize();
         let deserialized = NestedTuple::deserialize(&serialized).unwrap();
 
         assert_eq!(
             deserialized,
-            ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
+            (
+                (a.to_string(), b.to_string()),
+                (c.to_string(), d.to_string())
+            )
         );
     }
 }

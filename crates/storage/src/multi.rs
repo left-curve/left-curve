@@ -1,6 +1,7 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Key, Map, MultiIndexKey, Prefix, Set},
-    grug_types::{Empty, Order, Record, StdResult, Storage},
+    crate::{Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
+    grug_types::{Empty, Order, Record, StdResult, Storage, VecExt},
+    std::marker::PhantomData,
 };
 
 // -------------------------------- multi index --------------------------------
@@ -9,19 +10,19 @@ use {
 /// index value.
 pub struct MultiIndex<'a, PK, IK, T, C: Codec<T> = Borsh>
 where
-    PK: MultiIndexKey,
-    IK: MultiIndexKey,
+    PK: Key,
+    IK: Key,
 {
     indexer: fn(&PK, &T) -> IK,
     #[allow(clippy::type_complexity)]
-    index_set: Set<'a, (IK::MIPrefix, IK::MISuffix, PK::MIPrefix, PK::MISuffix)>,
+    index_set: Set<'a, (IK, PK)>,
     primary_map: Map<'a, PK, T, C>,
 }
 
 impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
-    PK: MultiIndexKey,
-    IK: MultiIndexKey,
+    PK: Key,
+    IK: Key,
 {
     pub const fn new(
         indexer: fn(&PK, &T) -> IK,
@@ -38,60 +39,45 @@ where
 
 impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
-    PK: MultiIndexKey,
-    IK: MultiIndexKey,
+    PK: Key,
+    IK: Key,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(&pk, data);
         // idx.
-        self.index_set.insert(
-            storage,
-            (
-                idx.index_prefix(),
-                idx.index_suffix(),
-                pk.index_prefix(),
-                pk.index_suffix(),
-            ),
-        )
+        self.index_set.insert(storage, (idx, pk))
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
         let idx = (self.indexer)(&pk, old_data);
-        self.index_set.remove(
-            storage,
-            (
-                idx.index_prefix(),
-                idx.index_suffix(),
-                pk.index_prefix(),
-                pk.index_suffix(),
-            ),
-        )
+        self.index_set.remove(storage, (idx, pk))
     }
 }
 
 impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
-    PK: MultiIndexKey,
-    IK: MultiIndexKey,
+    PK: Key,
+    IK: Key,
 {
     /// Iterate records under a specific index value.
-    pub fn of(&self, idx: IK) -> IndexPrefix<(IK::MIPrefix, IK::MISuffix), PK, T, C> {
+    pub fn of(&self, idx: IK) -> IndexPrefix<IK, PK, PK, T, C> {
         // Create a tuple to have the correct len before keys
-        let t = (idx.index_prefix(), idx.index_suffix());
         IndexPrefix {
-            prefix: Prefix::new(self.index_set.namespace, &t.raw_keys()),
+            prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
             primary_map: &self.primary_map,
             idx_ns: self.index_set.namespace.len(),
+            phantom: PhantomData,
         }
     }
 
     /// Iterate records under a specific index prefix value.
-    pub fn of_prefix(&self, idx: IK::MIPrefix) -> IndexPrefix<IK::MIPrefix, PK, T, C> {
+    pub fn of_prefix(&self, idx: IK::Prefix) -> IndexPrefix<IK, PK, (IK::Suffix, PK), T, C> {
         // IndexPrefix<T> What should be T?
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
             primary_map: &self.primary_map,
             idx_ns: self.index_set.namespace.len(),
+            phantom: PhantomData,
         }
     }
 
@@ -100,39 +86,44 @@ where
         &self,
         // Should be better to have idx; (IK::IndexPrefix, IK::IndexSuffix, PK::IndexPrefix)
         idx: IK,
-        suffix: PK::MIPrefix,
-    ) -> IndexPrefix<IK::MISuffix, PK, T, C> {
+        suffix: PK::Prefix,
+    ) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
         // IndexPrefix<T> What should be T?
         // Create a tuple to have the correct len before keys
-        let t = (idx.index_prefix(), idx.index_suffix(), suffix);
         IndexPrefix {
-            prefix: Prefix::new(self.index_set.namespace, &t.raw_keys()),
+            prefix: Prefix::new(
+                self.index_set.namespace,
+                &idx.raw_keys().merge(suffix.raw_keys()),
+            ),
             primary_map: &self.primary_map,
             idx_ns: self.index_set.namespace.len(),
+            phantom: PhantomData,
         }
     }
 }
 
 // ---------------------------------- prefix -----------------------------------
 
-pub struct IndexPrefix<'a, RIK, PK, T, C: Codec<T>> {
-    prefix: Prefix<RIK, Empty, Borsh>,
+pub struct IndexPrefix<'a, IK, PK, B, T, C: Codec<T>> {
+    prefix: Prefix<B, Empty, Borsh>,
     primary_map: &'a Map<'a, PK, T, C>,
     idx_ns: usize,
+    phantom: PhantomData<IK>,
 }
 
-impl<'a, RIK, PK, T, C> IndexPrefix<'a, RIK, PK, T, C>
+impl<'a, IK, PK, B, T, C> IndexPrefix<'a, IK, PK, B, T, C>
 where
-    RIK: MultiIndexKey,
-    PK: MultiIndexKey,
+    IK: Key,
+    PK: Key,
+    B: Key,
     C: Codec<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
     pub fn range_raw<'b>(
         &'b self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'b>
     where
@@ -159,8 +150,8 @@ where
     pub fn range<'b>(
         &'b self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(PK::Output, T)>> + 'b>
     where
@@ -171,10 +162,8 @@ where
             .keys_raw_no_trimmer(storage, min, max, order)
             .map(|pk_raw| {
                 let pk_raw = self.trim_key(&pk_raw);
-                let pk = PK::deserialize_from_index(&pk_raw)?;
-                let v_raw = self
-                    .primary_map
-                    .load_raw(storage, PK::adjust_from_index(&pk_raw))?;
+                let pk = PK::deserialize(&pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((pk, v))
             });
@@ -186,8 +175,8 @@ where
     pub fn keys_raw<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
         self.prefix.keys_raw(storage, min, max, order)
@@ -197,10 +186,10 @@ where
     pub fn keys<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<RIK::Output>> + 'b> {
+    ) -> Box<dyn Iterator<Item = StdResult<B::Output>> + 'b> {
         self.prefix.keys(storage, min, max, order)
     }
 
@@ -208,7 +197,7 @@ where
         let mut key = &key[self.idx_ns + 2..];
 
         // We trim the IK::Suffix and PK::Prefix.
-        for _ in 0..2 {
+        for _ in 0..IK::KEYS {
             let (len, rest) = key.split_at(2);
 
             let a = u16::from_be_bytes([len[0], len[1]]);
@@ -223,8 +212,8 @@ where
     pub fn values_raw<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b>
     where
@@ -242,8 +231,8 @@ where
     pub fn values<'b>(
         &self,
         storage: &'b dyn Storage,
-        min: Option<Bound<RIK>>,
-        max: Option<Bound<RIK>>,
+        min: Option<Bound<B>>,
+        max: Option<Bound<B>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b>
     where

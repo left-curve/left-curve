@@ -204,7 +204,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
+        crate::{Bound, Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::{MockStorage, Order, StdResult},
     };
@@ -383,71 +383,151 @@ mod tests {
 
     #[test]
     fn multi_index_tuple_tuple_works() {
+        let storage = &mut MockStorage::new();
+        TUPLE_FOOS
+            .save(storage, (0, 1), &Foo::new("foo", "s_bar", 101))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (0, 2), &Foo::new("foo", "s_bar", 102))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (1, 1), &Foo::new("foo", "s_bar", 103))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (1, 2), &Foo::new("foo", "s_fooes", 104))
+            .unwrap();
+
+        // OF PREFIX
         {
-            let storage = &mut MockStorage::new();
-            TUPLE_FOOS
-                .save(storage, (0, 1), &Foo::new("foo", "s_bar", 101))
-                .unwrap();
-            TUPLE_FOOS
-                .save(storage, (0, 2), &Foo::new("foo", "s_bar", 102))
-                .unwrap();
-            TUPLE_FOOS
-                .save(storage, (1, 1), &Foo::new("foo", "s_bar", 103))
-                .unwrap();
-            TUPLE_FOOS
-                .save(storage, (1, 2), &Foo::new("foo", "s_fooes", 104))
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of_prefix("foo".to_string())
+                .range(storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            // OF PREFIX
-            {
-                let val = TUPLE_FOOS
-                    .idx
-                    .name_surname
-                    .of_prefix("foo".to_string())
-                    .range(storage, None, None, Order::Ascending)
-                    .collect::<StdResult<Vec<_>>>()
-                    .unwrap();
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("foo", "s_bar", 101)),
+                ((0, 2), Foo::new("foo", "s_bar", 102)),
+                ((1, 1), Foo::new("foo", "s_bar", 103)),
+                ((1, 2), Foo::new("foo", "s_fooes", 104)),
+            ]);
+        }
 
-                assert_eq!(val, vec![
-                    ((0, 1), Foo::new("foo", "s_bar", 101)),
-                    ((0, 2), Foo::new("foo", "s_bar", 102)),
-                    ((1, 1), Foo::new("foo", "s_bar", 103)),
-                    ((1, 2), Foo::new("foo", "s_fooes", 104)),
-                ]);
-            }
+        // OF
+        {
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of(("foo".to_string(), "s_bar".to_string()))
+                .range(storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-            // OF
-            {
-                let val = TUPLE_FOOS
-                    .idx
-                    .name_surname
-                    .of(("foo".to_string(), "s_bar".to_string()))
-                    .range(storage, None, None, Order::Ascending)
-                    .collect::<StdResult<Vec<_>>>()
-                    .unwrap();
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("foo", "s_bar", 101)),
+                ((0, 2), Foo::new("foo", "s_bar", 102)),
+                ((1, 1), Foo::new("foo", "s_bar", 103)),
+            ]);
+        }
 
-                assert_eq!(val, vec![
-                    ((0, 1), Foo::new("foo", "s_bar", 101)),
-                    ((0, 2), Foo::new("foo", "s_bar", 102)),
-                    ((1, 1), Foo::new("foo", "s_bar", 103)),
-                ]);
-            }
+        // OF SUFFIX
+        {
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of_suffix(("foo".to_string(), "s_bar".to_string()), 0)
+                .range(storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-            // OF SUFFIX
-            {
-                let val = TUPLE_FOOS
-                    .idx
-                    .name_surname
-                    .of_suffix(("foo".to_string(), "s_bar".to_string()), 0)
-                    .range(storage, None, None, Order::Ascending)
-                    .collect::<StdResult<Vec<_>>>()
-                    .unwrap();
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("foo", "s_bar", 101)),
+                ((0, 2), Foo::new("foo", "s_bar", 102)),
+            ]);
+        }
+    }
 
-                assert_eq!(val, vec![
-                    ((0, 1), Foo::new("foo", "s_bar", 101)),
-                    ((0, 2), Foo::new("foo", "s_bar", 102)),
-                ]);
-            }
+    #[test]
+    fn multi_index_pagination() {
+        let storage = &mut MockStorage::new();
+        TUPLE_FOOS
+            .save(storage, (0, 1), &Foo::new("foo", "s_bar", 101))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (0, 2), &Foo::new("foo", "s_bar", 102))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (1, 1), &Foo::new("foo", "s_bar", 103))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (1, 2), &Foo::new("foo", "s_fooes", 104))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (1, 2), &Foo::new("foo", "s_bar", 105))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (2, 2), &Foo::new("foo", "s_bar", 106))
+            .unwrap();
+        TUPLE_FOOS
+            .save(storage, (2, 3), &Foo::new("foo", "s_bas", 107))
+            .unwrap();
+
+        // BOND OF PREFIX
+        {
+            let min = Some(Bound::Exclusive(("s_bar".to_string(), (0, 2))));
+
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of_prefix("foo".to_string())
+                .range(storage, min, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((1, 1), Foo::new("foo", "s_bar", 103)),
+                ((1, 2), Foo::new("foo", "s_bar", 105)),
+                ((2, 2), Foo::new("foo", "s_bar", 106)),
+                ((2, 3), Foo::new("foo", "s_bas", 107)),
+            ]);
+        }
+        // BOND OF
+        {
+            let min = Some(Bound::Exclusive((0, 2)));
+
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of(("foo".to_string(), "s_bar".to_string()))
+                .range(storage, min, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((1, 1), Foo::new("foo", "s_bar", 103)),
+                ((1, 2), Foo::new("foo", "s_bar", 105)),
+                ((2, 2), Foo::new("foo", "s_bar", 106)),
+            ]);
+        }
+
+        // BOND OF SUFFIX
+        {
+            let min = Some(Bound::Inclusive(1));
+
+            let val = TUPLE_FOOS
+                .idx
+                .name_surname
+                .of_suffix(("foo".to_string(), "s_bar".to_string()), 1)
+                .range(storage, min, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((1, 1), Foo::new("foo", "s_bar", 103)),
+                ((1, 2), Foo::new("foo", "s_bar", 105)),
+            ]);
         }
     }
 }
