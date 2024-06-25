@@ -238,7 +238,11 @@ where
     // This means you can give a value of `A` and iterate all values of `B` and `C`.
     //
     // If you'd like to give a value of `(A, B)` and iterate all values of `C`,
-    // consider using a nested tuple key `((A, B), C)` instead.
+    // use this syntax:
+    //
+    // ```pseudocode
+    // MAP.prefix(A).append(B).range(...);
+    // ```
     type Prefix = A;
     type Suffix = (B, C);
 
