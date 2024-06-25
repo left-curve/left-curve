@@ -14,6 +14,7 @@ where
     IK: Key,
 {
     indexer: fn(&PK, &T) -> IK,
+    // The index set uses Borsh regardless of which codec the primary map uses.
     index_set: Set<'a, (IK, PK)>,
     primary_map: Map<'a, PK, T, C>,
 }
@@ -103,6 +104,7 @@ where
 // ---------------------------------- prefix -----------------------------------
 
 pub struct IndexPrefix<'a, IK, PK, B, T, C: Codec<T>> {
+    // The index set uses Borsh regardless of which codec the primary map uses.
     prefix: Prefix<B, Empty, Borsh>,
     primary_map: &'a Map<'a, PK, T, C>,
     idx_ns: usize,
