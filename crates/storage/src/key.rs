@@ -16,6 +16,7 @@ pub trait Key {
     /// The number of elements in a tuple key.
     ///
     /// E.g.,
+    /// - for singleton keys, this is 1 (the default value).
     /// - for `(A, B)`, this is 2;
     /// - for `(A, B, C)`, this is 3;
     /// so on.
@@ -98,8 +99,6 @@ impl Key for () {
     type Output = ();
     type Prefix = ();
     type Suffix = ();
-
-    const KEY_ELEMS: u16 = 0;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![]
