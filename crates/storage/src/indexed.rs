@@ -440,7 +440,7 @@ mod tests {
                 .idx
                 .name_surname
                 .prefix(("bar".to_string(), "s_bar".to_string()))
-                .prefix(0)
+                .append(0)
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -459,7 +459,7 @@ mod tests {
                 .idx
                 .name_surname
                 .prefix(("bar".to_string(), "s_bar".to_string()))
-                .prefix(0)
+                .append(0)
                 .range(&storage, Some(Bound::Exclusive(1)), None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();

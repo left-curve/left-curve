@@ -100,7 +100,7 @@ where
     B: Key,
     C: Codec<T>,
 {
-    pub fn prefix(self, prefix: B::Prefix) -> IndexPrefix<'a, IK, PK, B::Suffix, T, C> {
+    pub fn append(self, prefix: B::Prefix) -> IndexPrefix<'a, IK, PK, B::Suffix, T, C> {
         IndexPrefix {
             prefix: self.prefix.append(prefix),
             primary_map: self.primary_map,
