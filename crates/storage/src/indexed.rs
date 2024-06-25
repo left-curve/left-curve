@@ -434,7 +434,7 @@ mod tests {
         // Given (A, B, C), iterate D, without bounds.
         //
         // In this test case, we find all foos whose name is "bar" and surname
-        // is "s_bar" and the first number is the primary key is 0.
+        // is "s_bar" and the first number in the primary key is 0.
         {
             let val = FOOS
                 .idx
