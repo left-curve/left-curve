@@ -244,10 +244,9 @@ where
     }
 }
 
-macro_rules! impl_integer_map_key {
+macro_rules! impl_integer_key {
     ($($t:ty),+ $(,)?) => {
         $(impl Key for $t {
-
             type Prefix = ();
             type Suffix = ();
             type Output = $t;
@@ -267,14 +266,11 @@ macro_rules! impl_integer_map_key {
 
                 Ok(Self::from_be_bytes(bytes))
             }
-
-        }
-
-    )*
+        })*
     }
 }
 
-impl_integer_map_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+impl_integer_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
 // ----------------------------------- tests -----------------------------------
 
