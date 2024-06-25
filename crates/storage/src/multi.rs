@@ -202,7 +202,7 @@ where
 
             let a = u16::from_be_bytes([len[0], len[1]]);
 
-            key = &rest[a as usize..]
+            key = &rest[a as usize..];
         }
 
         key.to_vec()
