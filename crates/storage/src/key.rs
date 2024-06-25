@@ -233,6 +233,12 @@ where
     C: Key,
 {
     type Output = (A::Output, B::Output, C::Output);
+    // Here we make `A` as the prefix and `(B, C)` as the suffix.
+    //
+    // This means you can give a value of `A` and iterate all values of `B` and `C`.
+    //
+    // If you'd like to give a value of `(A, B)` and iterate all values of `C`,
+    // consider using a nested tuple key `((A, B), C)` instead.
     type Prefix = A;
     type Suffix = (B, C);
 
