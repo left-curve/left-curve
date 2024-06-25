@@ -318,18 +318,54 @@ mod tests {
     }
 
     #[test]
+    #[rustfmt::skip]
     fn nested_tuple_key() {
+        // Two layers of nesting
         type NestedTuple<'a> = ((&'a str, &'a str), (&'a str, &'a str));
-        let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
-        let serialized = ((a, b), (c, d)).serialize();
-        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
 
+        let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
+
+        let serialized = ((a, b), (c, d)).serialize();
+        assert_eq!(serialized, [
+            0, 5,                                   // len("larry")
+            108, 97, 114, 114, 121,                 // "larry"
+            0, 8,                                   // len("engineer")
+            101, 110, 103, 105, 110, 101, 101, 114, // "engineer"
+            0, 4,                                   // len("jake")
+            106, 97, 107, 101,                      // "jake"
+            115, 104, 101, 112, 104, 101, 114, 100, // "shepherd"
+        ]);
+
+        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
         assert_eq!(
             deserialized,
-            (
-                (a.to_string(), b.to_string()),
-                (c.to_string(), d.to_string())
-            )
+            ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
+        );
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn multi_nested_tuple_key() {
+        // Three layers of nesting
+        type NestedTuple<'a> = ((u64, (&'a str, &'a str)), &'a str);
+
+        let ((a, (b, c)), d) = ((88888u64, ("larry", "engineer")), "jake");
+
+        let serialized = ((a, (b, c)), d).serialize();
+        assert_eq!(serialized, [
+            0, 8,                                   // len(u64)
+            0, 0, 0, 0, 0, 1, 91, 56,               // 88888 = 1 * 256^2 + 91 * 256^1 + 56 * 256^0
+            0, 5,                                   // len("larry")
+            108, 97, 114, 114, 121,                 // "larry"
+            0, 8,                                   // len("engineer")
+            101, 110, 103, 105, 110, 101, 101, 114, // "engineer"
+            106, 97, 107, 101,                      // "jake"
+        ]);
+
+        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+        assert_eq!(
+            deserialized,
+            ((a, (b.to_string(), c.to_string())), d.to_string())
         );
     }
 }
