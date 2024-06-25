@@ -58,6 +58,9 @@ where
     IK: Key,
 {
     /// Iterate records under a specific index value.
+    ///
+    /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
+    /// allows you to give a value of `(A, B)` and iterate all `(C, D)` values.
     pub fn of(&self, idx: IK) -> IndexPrefix<IK, PK, PK, T, C> {
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
@@ -68,6 +71,9 @@ where
     }
 
     /// Iterate records under a specific index prefix value.
+    ///
+    /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
+    /// allows you to give a value of `A` and iterate all `(B, C, D)` values.
     pub fn of_prefix(&self, idx: IK::Prefix) -> IndexPrefix<IK, PK, (IK::Suffix, PK), T, C> {
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
@@ -78,6 +84,9 @@ where
     }
 
     /// Iterate records under a specific index value and pk suffix.
+    ///
+    /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
+    /// allows you to give a value of `(A, B, C)` and iterate all `D` values.
     pub fn of_suffix(&self, idx: IK, suffix: PK::Prefix) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
         let mut prefixes = idx.raw_keys();
         prefixes.extend(suffix.raw_keys());
