@@ -1,6 +1,6 @@
 use {
     crate::{Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
-    grug_types::{Empty, Order, Record, StdResult, Storage, VecExt},
+    grug_types::{Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,
 };
 
@@ -81,11 +81,11 @@ where
 
     /// Iterate records under a specific index value and pk suffix.
     pub fn of_suffix(&self, idx: IK, suffix: PK::Prefix) -> IndexPrefix<IK, PK, PK::Prefix, T, C> {
+        let mut prefixes = idx.raw_keys();
+        prefixes.extend(suffix.raw_keys());
+
         IndexPrefix {
-            prefix: Prefix::new(
-                self.index_set.namespace,
-                &idx.raw_keys().merge(suffix.raw_keys()),
-            ),
+            prefix: Prefix::new(self.index_set.namespace, &prefixes),
             primary_map: &self.primary_map,
             idx_ns: self.index_set.namespace.len(),
             phantom: PhantomData,

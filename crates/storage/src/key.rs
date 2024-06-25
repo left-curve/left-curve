@@ -1,5 +1,5 @@
 use {
-    grug_types::{nested_namespaces_with_key, Addr, Hash, StdError, StdResult, VecExt},
+    grug_types::{nested_namespaces_with_key, Addr, Hash, StdError, StdResult},
     std::{borrow::Cow, mem},
 };
 
@@ -211,7 +211,9 @@ where
     const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        self.0.raw_keys().merge(self.1.raw_keys())
+        let mut keys = self.0.raw_keys();
+        keys.extend(self.1.raw_keys());
+        keys
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -233,10 +235,10 @@ where
     const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        self.0
-            .raw_keys()
-            .merge(self.1.raw_keys())
-            .merge(self.2.raw_keys())
+        let mut keys = self.0.raw_keys();
+        keys.extend(self.1.raw_keys());
+        keys.extend(self.2.raw_keys());
+        keys
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {

@@ -277,21 +277,6 @@ pub const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-// ---------------------------------- generic ----------------------------------
-
-pub trait VecExt {
-    /// Merge two vectors, consuming self.
-    fn merge(self, other: Self) -> Self;
-}
-
-impl<T> VecExt for Vec<T> {
-    fn merge(self, other: Self) -> Self {
-        let mut result = self;
-        result.extend(other);
-        result
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
