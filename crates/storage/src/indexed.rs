@@ -314,7 +314,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .name
-                .of("bar".to_string())
+                .prefix("bar".to_string())
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -351,7 +351,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of(("bar".to_string(), "s_bar".to_string()))
+                .prefix(("bar".to_string(), "s_bar".to_string()))
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -370,7 +370,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of(("bar".to_string(), "s_bar".to_string()))
+                .prefix(("bar".to_string(), "s_bar".to_string()))
                 .range(
                     &storage,
                     Some(Bound::Inclusive((0, 2))),
@@ -393,7 +393,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of_prefix("bar".to_string())
+                .sub_prefix("bar".to_string())
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -414,7 +414,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of_prefix("bar".to_string())
+                .sub_prefix("bar".to_string())
                 .range(
                     &storage,
                     Some(Bound::Exclusive(("s_bar".to_string(), (0, 1)))),
@@ -439,7 +439,8 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of_suffix(("bar".to_string(), "s_bar".to_string()), 0)
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .prefix(0)
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -457,7 +458,8 @@ mod tests {
             let val = FOOS
                 .idx
                 .name_surname
-                .of_suffix(("bar".to_string(), "s_bar".to_string()), 0)
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .prefix(0)
                 .range(&storage, Some(Bound::Exclusive(1)), None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();

@@ -1,8 +1,8 @@
 use {
     crate::{Borsh, Bound, Codec, Key, RawBound},
     grug_types::{
-        concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
-        Record, StdResult, Storage,
+        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
+        trim, Order, Record, StdResult, Storage,
     },
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -37,6 +37,20 @@ where
     K: Key,
     C: Codec<T>,
 {
+    pub fn append(mut self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
+        for key_elem in prefix.raw_keys() {
+            self.prefix.extend(encode_length(&key_elem));
+            self.prefix.extend(key_elem.as_ref());
+        }
+
+        Prefix {
+            prefix: self.prefix,
+            suffix: PhantomData,
+            data: self.data,
+            codec: self.codec,
+        }
+    }
+
     pub fn range_raw<'a>(
         &self,
         storage: &'a dyn Storage,
