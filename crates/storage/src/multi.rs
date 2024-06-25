@@ -43,7 +43,6 @@ where
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(&pk, data);
-        // idx.
         self.index_set.insert(storage, (idx, pk))
     }
 
