@@ -217,8 +217,12 @@ where
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a, b) = split_first_key(A::KEY_ELEMS, bytes)?;
-        Ok((A::deserialize(&a)?, B::deserialize(b)?))
+        let (a_raw, b_raw) = split_first_key(A::KEY_ELEMS, bytes);
+
+        let a = A::deserialize(&a_raw)?;
+        let b = B::deserialize(b_raw)?;
+
+        Ok((a, b))
     }
 }
 
@@ -242,34 +246,68 @@ where
     }
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a, bc) = split_first_key(A::KEY_ELEMS, bytes)?;
-        let (b, c) = split_first_key(B::KEY_ELEMS, bc)?;
+        let (a_raw, bc_raw) = split_first_key(A::KEY_ELEMS, bytes);
+        let (b_raw, c_raw) = split_first_key(B::KEY_ELEMS, bc_raw);
 
-        Ok((A::deserialize(&a)?, B::deserialize(&b)?, C::deserialize(c)?))
+        let a = A::deserialize(&a_raw)?;
+        let b = B::deserialize(&b_raw)?;
+        let c = C::deserialize(c_raw)?;
+
+        Ok((a, b, c))
     }
 }
 
-fn split_first_key(key_elems: u16, value: &[u8]) -> StdResult<(Vec<u8>, &[u8])> {
+/// Given the raw bytes of a tuple key consisting of at least one subkey, each
+/// subkey having one or more key elements, split off the first subkey.
+///
+/// E.g. consider the tuple key `((A, B, C), (D, E))`:
+///
+/// - `(A, B, C)` is the first subkey; it has `KEY_ELEMS` of 3.
+/// - `(D, E)` is the second subkey; it has `KEY_ELEMS` of 2.
+///
+/// This tuple key is serialized as:
+///
+/// ```plain
+/// len(A) | A | len(B) | B | len(C) | C | len(D) | D | E
+/// ```
+///
+/// We want to split off the first subkey as:
+///
+/// ```plain
+/// len(A) | A | len(B) | B | C
+/// ```
+///
+/// Note that the last element `C` does not have its length prefix, while the
+/// other elements retain their length prefixes.
+///
+/// The remaining byte slice:
+///
+/// ```plain
+/// len(D) | D | E
+/// ```
+///
+/// is also returned.
+fn split_first_key(key_elems: u16, value: &[u8]) -> (Vec<u8>, &[u8]) {
     let mut index = 0;
     let mut first_key = Vec::new();
 
-    // Iterate over the sub keys
     for i in 0..key_elems {
         let len_slice = &value[index..index + 2];
         index += 2;
-        let is_last_key = i == key_elems - 1;
 
-        if !is_last_key {
+        // Elements other than the last one retain their length prefixes.
+        if i < key_elems - 1 {
             first_key.extend_from_slice(len_slice);
         }
 
-        let subkey_len = u16::from_be_bytes(len_slice.try_into()?) as usize;
-        first_key.extend_from_slice(&value[index..index + subkey_len]);
-        index += subkey_len;
+        let elem_len = u16::from_be_bytes(len_slice.try_into().unwrap()) as usize;
+        first_key.extend_from_slice(&value[index..index + elem_len]);
+        index += elem_len;
     }
 
     let remainder = &value[index..];
-    Ok((first_key, remainder))
+
+    (first_key, remainder)
 }
 
 macro_rules! impl_integer_key {
