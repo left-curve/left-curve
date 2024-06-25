@@ -100,8 +100,11 @@ where
         Box::new(iter)
     }
 
-    /// Iterate the raw primary keys under the given index value, without trimming the prefix (the whole key is returned).
-    pub fn keys_raw_no_trimmer<'a>(
+    /// Iterate the raw primary keys under the given index value, without
+    /// trimming the prefix (the whole key is returned).
+    ///
+    /// This is used internally for the indexed map.
+    pub(crate) fn keys_raw_no_trimmer<'a>(
         &self,
         storage: &'a dyn Storage,
         min: Option<Bound<K>>,
@@ -109,16 +112,7 @@ where
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let (min, max) = range_bounds(&self.prefix, min, max);
-        let prefix = self.prefix.clone();
-        // TODO: this is really inefficient because the host needs to load both
-        // the key and value into Wasm memory. we should create a `scan_keys`
-        // import that only loads the keys.
-        let iter = storage
-            .scan(Some(&min), Some(&max), order)
-            .map(move |(k, _)| {
-                debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
-                k
-            });
+        let iter = storage.scan_keys(Some(&min), Some(&max), order);
 
         Box::new(iter)
     }
