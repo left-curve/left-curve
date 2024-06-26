@@ -1708,6 +1708,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tracing",
+ "tracing-test",
  "wasmer",
 ]
 

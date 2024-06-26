@@ -13,6 +13,7 @@ use {
         collections::{BTreeMap, BTreeSet},
         fs, io, vec,
     },
+    tracing_test::traced_test,
 };
 
 const ARTIFACTS_DIR: &str = "../../../artifacts";
@@ -86,6 +87,7 @@ impl TestSuite {
     }
 }
 
+#[traced_test]
 #[test]
 fn wasm_vm_works() -> anyhow::Result<()> {
     let mut suite = TestSuite::new();

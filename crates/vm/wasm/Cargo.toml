@@ -24,3 +24,4 @@ anyhow         = { workspace = true }
 grug-bank      = { path = "../../../contracts/bank", features = ["library"] }
 grug-db-memory = { path = "../../db/memory" }
 grug-testing   = { path = "../../testing" }
+tracing-test   = { workspace = true }
