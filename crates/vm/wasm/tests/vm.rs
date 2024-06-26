@@ -20,8 +20,6 @@ use {
     tracing_test::traced_test,
 };
 
-const ARTIFACTS_DIR: &str = "../../../artifacts";
-
 const MOCK_CHAIN_ID: &str = "grug-1";
 const MOCK_DENOM: &str = "ugrug";
 const MOCK_BANK_SALT: &[u8] = b"bank";
@@ -29,7 +27,8 @@ const MOCK_SENDER_SALT: &[u8] = b"sender";
 const MOCK_RECEIVER_SALT: &[u8] = b"receiver";
 
 fn read_wasm_file(filename: &str) -> io::Result<Vec<u8>> {
-    fs::read(format!("{ARTIFACTS_DIR}/{filename}"))
+    let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
+    fs::read(path)
 }
 
 struct TestSuite {
