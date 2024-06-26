@@ -1,8 +1,8 @@
 use {
     crate::{Borsh, Bound, Codec, Key, RawBound},
     grug_types::{
-        concat, extend_one_byte, increment_last_byte, nested_namespaces_with_key, trim, Order,
-        Record, StdResult, Storage,
+        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
+        trim, Order, Record, StdResult, Storage,
     },
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -37,6 +37,20 @@ where
     K: Key,
     C: Codec<T>,
 {
+    pub fn append(mut self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
+        for key_elem in prefix.raw_keys() {
+            self.prefix.extend(encode_length(&key_elem));
+            self.prefix.extend(key_elem.as_ref());
+        }
+
+        Prefix {
+            prefix: self.prefix,
+            suffix: PhantomData,
+            data: self.data,
+            codec: self.codec,
+        }
+    }
+
     pub fn range_raw<'a>(
         &self,
         storage: &'a dyn Storage,
@@ -96,6 +110,23 @@ where
                 debug_assert_eq!(&k[0..prefix.len()], prefix, "prefix mispatch");
                 trim(&prefix, &k)
             });
+
+        Box::new(iter)
+    }
+
+    /// Iterate the raw primary keys under the given index value, without
+    /// trimming the prefix (the whole key is returned).
+    ///
+    /// This is used internally for the indexed map.
+    pub(crate) fn keys_raw_no_trimmer<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let (min, max) = range_bounds(&self.prefix, min, max);
+        let iter = storage.scan_keys(Some(&min), Some(&max), order);
 
         Box::new(iter)
     }

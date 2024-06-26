@@ -11,7 +11,7 @@ use {
 /// We explicitly use Borsh here, because there's no benefit using any other
 /// encoding scheme.
 pub struct Set<'a, T> {
-    namespace: &'a [u8],
+    pub(crate) namespace: &'a [u8],
     item: PhantomData<T>,
 }
 

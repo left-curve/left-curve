@@ -204,13 +204,18 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
+        crate::{Bound, Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::{MockStorage, Order, StdResult},
     };
 
-    const FOOS: IndexedMap<u64, Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
+    const FOOS: IndexedMap<(u64, u64), Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
         name: MultiIndex::new(|_, data| data.name.clone(), "foo", "foo__name"),
+        name_surname: MultiIndex::new(
+            |_, data| (data.name.clone(), data.surname.clone()),
+            "foo",
+            "foo__name_surname",
+        ),
         id: UniqueIndex::new(|data| data.id, "foo__id"),
     });
 
@@ -232,13 +237,15 @@ mod tests {
     }
 
     struct FooIndexes<'a> {
-        pub name: MultiIndex<'a, u64, String, Foo>,
+        pub name: MultiIndex<'a, (u64, u64), String, Foo>,
+        pub name_surname: MultiIndex<'a, (u64, u64), (String, String), Foo>,
         pub id: UniqueIndex<'a, u32, Foo>,
     }
 
-    impl<'a> IndexList<u64, Foo> for FooIndexes<'a> {
-        fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<u64, Foo>> + '_> {
-            let v: Vec<&dyn Index<u64, Foo>> = vec![&self.name, &self.id];
+    impl<'a> IndexList<(u64, u64), Foo> for FooIndexes<'a> {
+        fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<(u64, u64), Foo>> + '_> {
+            let v: Vec<&dyn Index<(u64, u64), Foo>> =
+                vec![&self.name, &self.id, &self.name_surname];
             Box::new(v.into_iter())
         }
     }
@@ -247,10 +254,11 @@ mod tests {
         let mut storage = MockStorage::new();
 
         for (key, name, surname, id) in [
-            (1, "bar", "s_bar", 101),
-            (2, "bar", "s_bar", 102),
-            (3, "bar", "s_foo", 103),
-            (4, "foo", "s_foo", 104),
+            ((0, 1), "bar", "s_bar", 101),
+            ((0, 2), "bar", "s_bar", 102),
+            ((1, 1), "bar", "s_bar", 103),
+            ((1, 2), "bar", "s_fooes", 104),
+            ((1, 3), "foo", "s_foo", 105),
         ] {
             FOOS.save(&mut storage, key, &Foo::new(name, surname, id))
                 .unwrap();
@@ -263,19 +271,19 @@ mod tests {
     fn unique_index_works() {
         let mut storage = setup_test();
 
-        // Load a single data by the index
+        // Load a single data by the index.
         {
-            let val = FOOS.idx.id.load(&storage, 103).unwrap();
-            assert_eq!(val, Foo::new("bar", "s_foo", 103));
+            let val = FOOS.idx.id.load(&storage, 104).unwrap();
+            assert_eq!(val, Foo::new("bar", "s_fooes", 104));
         }
 
-        // Try to save a data with duplicate index; should fail
+        // Try to save a data with duplicate index; should fail.
         {
-            FOOS.save(&mut storage, 5, &Foo::new("bar", "s_foo", 103))
+            FOOS.save(&mut storage, (5, 5), &Foo::new("bar", "s_fooes", 104))
                 .unwrap_err();
         }
 
-        // Iterate index values and data
+        // Iterate index values and data.
         {
             let val = FOOS
                 .idx
@@ -287,31 +295,194 @@ mod tests {
             assert_eq!(val, vec![
                 (101, Foo::new("bar", "s_bar", 101)),
                 (102, Foo::new("bar", "s_bar", 102)),
-                (103, Foo::new("bar", "s_foo", 103)),
-                (104, Foo::new("foo", "s_foo", 104))
+                (103, Foo::new("bar", "s_bar", 103)),
+                (104, Foo::new("bar", "s_fooes", 104)),
+                (105, Foo::new("foo", "s_foo", 105))
             ]);
         }
     }
 
+    /// Multi index, where the index key is a singleton.
     #[test]
-    fn multi_index_works() {
+    fn multi_index_singleton_works() {
         let storage = setup_test();
 
-        // Iterating all records under a specific index value.
+        // Iterate all index values and records.
         {
             let val = FOOS
                 .idx
                 .name
-                .of("bar".to_string())
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
             assert_eq!(val, vec![
-                (1, Foo::new("bar", "s_bar", 101)),
-                (2, Foo::new("bar", "s_bar", 102)),
-                (3, Foo::new("bar", "s_foo", 103)),
+                ("bar".to_string(), (0, 1), Foo::new("bar", "s_bar", 101)),
+                ("bar".to_string(), (0, 2), Foo::new("bar", "s_bar", 102)),
+                ("bar".to_string(), (1, 1), Foo::new("bar", "s_bar", 103)),
+                ("bar".to_string(), (1, 2), Foo::new("bar", "s_fooes", 104)),
+                ("foo".to_string(), (1, 3), Foo::new("foo", "s_foo", 105)),
             ]);
+        }
+
+        // Given a specific index value, iterate records corresponding to it.
+        //
+        // In this test case, we find all foos whose name is "bar".
+        {
+            let val = FOOS
+                .idx
+                .name
+                .prefix("bar".to_string())
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("bar", "s_bar", 101)),
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+                ((1, 2), Foo::new("bar", "s_fooes", 104)),
+            ]);
+        }
+    }
+
+    /// Multi index, where the index key is a tuple.
+    ///
+    /// In this case,
+    ///
+    /// - index key is `name_surname` of `(String, String)` type;
+    /// - primary key is of `(u64, u64)` type;
+    /// - data is of `Foo` type.
+    ///
+    /// The index set is therefore a `Set<((String, String), (u64, u64))>`.
+    ///
+    /// Let's denote the index key as `(A, B)` and the primary key as `(C, D)`.
+    #[test]
+    fn multi_index_tuple_works() {
+        let storage = setup_test();
+
+        // Given (A, B), iterate (C, D), without bounds.
+        //
+        // In this test case, we find all foos whose name is "bar" and last name
+        // is "s_bar".
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("bar", "s_bar", 101)),
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+            ]);
+        }
+
+        // Given (A, B), iterate (C, D), with bounds.
+        //
+        // Same as the previous test case, but the with bounds for (C, D).
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .range(
+                    &storage,
+                    Some(Bound::Inclusive((0, 2))),
+                    None,
+                    Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D), without bounds.
+        //
+        // In this test case, we find all foos whose name is "bar".
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("bar", "s_bar", 101)),
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+                ((1, 2), Foo::new("bar", "s_fooes", 104)),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D), with bounds.
+        //
+        // Same as the previous test case, but (B, C, D) must be greater than
+        // ("bar", 0, 1).
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .range(
+                    &storage,
+                    Some(Bound::Exclusive(("s_bar".to_string(), (0, 1)))),
+                    None,
+                    Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+                ((1, 2), Foo::new("bar", "s_fooes", 104)),
+            ]);
+        }
+
+        // Given (A, B, C), iterate D, without bounds.
+        //
+        // In this test case, we find all foos whose name is "bar" and surname
+        // is "s_bar" and the first number in the primary key is 0.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .append(0)
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![
+                ((0, 1), Foo::new("bar", "s_bar", 101)),
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+            ]);
+        }
+
+        // Given (A, B, C), iterate D, with bounds.
+        //
+        // Same with the previous test case, but D must be greater than 1.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .prefix(("bar".to_string(), "s_bar".to_string()))
+                .append(0)
+                .range(&storage, Some(Bound::Exclusive(1)), None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, vec![((0, 2), Foo::new("bar", "s_bar", 102)),]);
         }
     }
 }

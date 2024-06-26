@@ -54,7 +54,7 @@ pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
     let len = bytes.as_ref().len();
     if len > 0xffff {
         panic!(
-            "Can't encode length becayse byte slice is too long: {} > {}",
+            "Can't encode length because byte slice is too long: {} > {}",
             len,
             u16::MAX
         );
