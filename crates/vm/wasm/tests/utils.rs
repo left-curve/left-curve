@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
-
-use grug_types::StdResult;
-
 use {
     anyhow::anyhow,
-    grug_types::{Addr, Coin, Coins},
+    grug_types::{Addr, Coin, Coins, StdResult},
+    std::collections::BTreeMap,
 };
 
 const PATH_ARTIFACTS: &str = "../../../artifacts";
