@@ -21,7 +21,11 @@ wasmer        = { workspace = true, features = ["singlepass"] }
 
 [dev-dependencies]
 anyhow         = { workspace = true }
+grug-account   = { path = "../../../contracts/account", features = ["library"] }
 grug-bank      = { path = "../../../contracts/bank", features = ["library"] }
+grug-crypto    = { path = "../../crypto" }
 grug-db-memory = { path = "../../db/memory" }
 grug-testing   = { path = "../../testing" }
+k256           = { workspace = true }
+rand           = { workspace = true }
 tracing-test   = { workspace = true }
