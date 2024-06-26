@@ -6,7 +6,7 @@ use {
     std::time::{SystemTime, UNIX_EPOCH},
 };
 
-pub fn current_time() -> Timestamp {
+fn current_time() -> Timestamp {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("failed to get current system time")
