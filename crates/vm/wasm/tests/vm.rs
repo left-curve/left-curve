@@ -4,9 +4,9 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        to_json_value, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash, Message,
-        NumberConst, Permission, Permissions, QueryRequest, QueryResponse, Timestamp, Tx, Uint64,
-        GENESIS_SENDER,
+        to_borsh_vec, to_json_value, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState,
+        Hash, Message, NumberConst, Permission, Permissions, QueryRequest, QueryResponse,
+        Timestamp, Tx, Uint64, GENESIS_SENDER,
     },
     grug_vm_wasm::WasmVm,
     std::{
@@ -93,7 +93,7 @@ fn wasm_vm_works() -> anyhow::Result<()> {
     let mut suite = TestSuite::new();
 
     // Load bank contract byte code, and predict its address.
-    let bank_code = read_wasm_file("grug_bank-aarch64.wasm")?;
+    let bank_code = to_borsh_vec(&read_wasm_file("grug_bank-aarch64.wasm")?)?;
     let bank_code_hash = Hash::from_slice(sha2_256(&bank_code));
     let bank = Addr::compute(&GENESIS_SENDER, &bank_code_hash, MOCK_SALT);
 
