@@ -27,4 +27,3 @@ grug-db-memory = { path = "../../db/memory" }
 grug-testing   = { path = "../../testing" }
 k256           = { workspace = true }
 rand           = { workspace = true }
-tracing-test   = { workspace = true }

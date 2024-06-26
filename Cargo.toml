@@ -77,7 +77,6 @@ thiserror          = "1"
 tokio              = "1"
 tracing            = "0.1"
 tracing-subscriber = "0.3"
-tracing-test       = "0.2"
 wasmer             = "4"
 
 # Our fork of rust-rocksdb is based on the `v0.11.0` release. It adds borsh

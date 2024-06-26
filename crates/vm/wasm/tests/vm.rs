@@ -17,7 +17,6 @@ use {
         collections::{BTreeMap, BTreeSet},
         fs, io, vec,
     },
-    tracing_test::traced_test,
 };
 
 const MOCK_CHAIN_ID: &str = "grug-1";
@@ -122,7 +121,6 @@ impl TestSuite {
     }
 }
 
-#[traced_test]
 #[test]
 fn wasm_vm_works() -> anyhow::Result<()> {
     let mut suite = TestSuite::new();
