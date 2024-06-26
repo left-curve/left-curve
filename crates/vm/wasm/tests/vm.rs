@@ -1,13 +1,12 @@
 use {
+    anyhow::ensure,
     grug_app::{App, AppResult},
-    grug_bank::InstantiateMsg,
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
-    grug_testing::current_time,
     grug_types::{
-        to_borsh_vec, to_json_value, Addr, Binary, BlockInfo, Coin, Coins, Config, Event,
-        GenesisState, Hash, Message, NumberConst, Permission, Permissions, QueryRequest,
-        QueryResponse, Tx, Uint64, GENESIS_SENDER,
+        to_json_value, Addr, Binary, BlockInfo, Coin, Coins, Config, GenesisState, Hash, Message,
+        NumberConst, Permission, Permissions, QueryRequest, QueryResponse, Timestamp, Tx, Uint64,
+        GENESIS_SENDER,
     },
     grug_vm_wasm::WasmVm,
     std::{
@@ -16,8 +15,13 @@ use {
     },
 };
 
-const CHAIN_ID: &str = "grug-1";
 const ARTIFACTS_DIR: &str = "../../../artifacts";
+
+const MOCK_CHAIN_ID: &str = "grug-1";
+const MOCK_SALT: &[u8] = b"bank";
+const MOCK_DENOM: &str = "ugrug";
+const MOCK_SENDER: Addr = Addr::mock(2);
+const MOCK_RECEIVER: Addr = Addr::mock(3);
 
 fn read_wasm_file(filename: &str) -> io::Result<Vec<u8>> {
     fs::read(&format!("{ARTIFACTS_DIR}/{filename}"))
@@ -25,72 +29,78 @@ fn read_wasm_file(filename: &str) -> io::Result<Vec<u8>> {
 
 struct TestSuite {
     app: App<MemDb, WasmVm>,
-    last_finalized_block: BlockInfo,
+    block: BlockInfo,
 }
 
 impl TestSuite {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             app: App::new(MemDb::new()),
-            last_finalized_block: BlockInfo {
-                height: Uint64::default(),
-                timestamp: current_time(),
+            block: BlockInfo {
+                height: Uint64::ZERO,
+                timestamp: Timestamp::from_nanos(0),
                 hash: Hash::ZERO,
             },
         }
     }
 
-    pub fn init_chain(&mut self, genesis_state: GenesisState) -> AppResult<Hash> {
-        self.app.do_init_chain(
-            CHAIN_ID.to_string(),
-            self.last_finalized_block.clone(),
-            genesis_state,
-        )
-    }
-
-    pub fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
+    fn init_chain(&mut self, genesis_state: GenesisState) -> AppResult<Hash> {
         self.app
-            .do_query_app(req, self.last_finalized_block.height.into(), false)
+            .do_init_chain(MOCK_CHAIN_ID.to_string(), self.block.clone(), genesis_state)
     }
 
-    #[allow(clippy::type_complexity)]
-    pub fn _execute(
-        &mut self,
-        sender: &Addr,
-        msgs: Vec<Message>,
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+    fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
+        self.app.do_query_app(req, self.block.height.into(), false)
+    }
+
+    fn execute(&mut self, sender: &Addr, msgs: Vec<Message>) -> AppResult<()> {
         let tx = Tx {
             sender: sender.clone(),
             msgs,
             credential: Binary::empty(),
         };
 
-        self.last_finalized_block.height += Uint64::ONE;
+        // Increment block height and block time
+        self.block.height += Uint64::ONE;
+        self.block.timestamp = self.block.timestamp.plus_nanos(1);
 
+        // Finalize block + commit
         self.app
-            .do_finalize_block(self.last_finalized_block.clone(), vec![(Hash::ZERO, tx)])
+            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx)])?;
+        self.app.do_commit()
+    }
+
+    fn assert_balance(&self, address: Addr, denom: &str, expect: u128) -> anyhow::Result<()> {
+        let actual = self
+            .query(QueryRequest::Balance {
+                address,
+                denom: denom.to_string(),
+            })?
+            .as_balance()
+            .amount
+            .number();
+
+        ensure!(actual == expect);
+
+        Ok(())
     }
 }
 
 #[test]
-fn test() -> anyhow::Result<()> {
+fn wasm_vm_works() -> anyhow::Result<()> {
     let mut suite = TestSuite::new();
 
-    let sender = Addr::mock(2);
-
-    let initial_balances = BTreeMap::from([(
-        sender.clone(),
-        Coins::try_from(vec![Coin::new("ugrug", 100_u128)]).unwrap(),
-    )]);
-
-    let bank_code = to_borsh_vec(&read_wasm_file("grug_bank-aarch64.wasm").unwrap()).unwrap();
+    // Load bank contract byte code, and predict its address.
+    let bank_code = read_wasm_file("grug_bank-aarch64.wasm")?;
     let bank_code_hash = Hash::from_slice(sha2_256(&bank_code));
-    let bank = Addr::compute(&GENESIS_SENDER, &bank_code_hash, &b"bank".to_vec().into());
+    let bank = Addr::compute(&GENESIS_SENDER, &bank_code_hash, MOCK_SALT);
 
-    let genesis_state = GenesisState {
+    // Genesis the chain. This deploys the bank contract and gives the "sender"
+    // account 100 ugrug.
+    suite.init_chain(GenesisState {
         config: Config {
             owner: None,
-            bank,
+            bank: bank.clone(),
             begin_blockers: vec![],
             end_blockers: vec![],
             permissions: Permissions {
@@ -108,39 +118,31 @@ fn test() -> anyhow::Result<()> {
             },
             Message::Instantiate {
                 code_hash: bank_code_hash,
-                msg: to_json_value(&InstantiateMsg { initial_balances }).unwrap(),
-                salt: b"bank".to_vec().into(),
+                msg: to_json_value(&grug_bank::InstantiateMsg {
+                    initial_balances: BTreeMap::from([(
+                        MOCK_SENDER,
+                        Coins::new_one(MOCK_DENOM, 100_u128),
+                    )]),
+                })?,
+                salt: MOCK_SALT.to_vec().into(),
                 funds: Coins::new_empty(),
                 admin: None,
             },
         ],
-    };
-
-    suite.init_chain(genesis_state)?;
-
-    let res = suite.query(QueryRequest::Balance {
-        address: sender.clone(),
-        denom: "ugrug".to_string(),
     })?;
 
-    // THIS IS NOT PASSING
-    assert_eq!(res, QueryResponse::Balance(Coin::new("ugrug", 100_u128)));
+    // Check that sender has been given 100 ugrug.
+    suite.assert_balance(MOCK_SENDER, MOCK_DENOM, 100)?;
 
-    // Send to mock_addr 3
-    // let receiver = Addr::mock(3);
+    // Sender sends 25 ugrug to the receiver.
+    suite.execute(&MOCK_SENDER, vec![Message::Transfer {
+        to: MOCK_RECEIVER.clone(),
+        coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
+    }])?;
 
-    // suite.execute(&sender, vec![Message::Transfer {
-    //     to: receiver.clone(),
-    //     coins: vec![Coin::new("ugrug", 50_u128)].try_into().unwrap(),
-    // }])
-    // .unwrap();
-
-    // let res = suite.query(QueryRequest::Balance {
-    //     address: receiver.clone(),
-    //     denom: "ugurg".to_string(),
-    // });
-
-    // assert_eq!(res, QueryResponse::Balance(Coin::new("ugrug", 50_u128)));
+    // Check balances again.
+    suite.assert_balance(MOCK_SENDER, MOCK_DENOM, 75)?;
+    suite.assert_balance(MOCK_RECEIVER.clone(), MOCK_DENOM, 25)?;
 
     Ok(())
 }
