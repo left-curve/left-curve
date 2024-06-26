@@ -1,5 +1,5 @@
 use {
-    crate::{forward_ref_partial_eq, Binary, Hash, StdError},
+    crate::{forward_ref_partial_eq, Hash, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     sha2::{Digest, Sha256},
@@ -48,7 +48,7 @@ impl Addr {
     /// sha256(deployer_addr | code_hash | salt)
     ///
     /// where | means byte concatenation.
-    pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &Binary) -> Self {
+    pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &[u8]) -> Self {
         let mut hasher = Sha256::new();
         hasher.update(deployer);
         hasher.update(code_hash);
