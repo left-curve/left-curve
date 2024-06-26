@@ -138,13 +138,13 @@ fn wasm_vm_works() -> anyhow::Result<()> {
         .to_bytes();
 
     // Load account contract byte code, and predict account addresses
-    let account_code = to_borsh_vec(&read_wasm_file("grug_account-aarch64.wasm")?)?;
+    let account_code = to_borsh_vec(&read_wasm_file("grug_account.wasm")?)?;
     let account_code_hash = Hash::from_slice(sha2_256(&account_code));
     let sender = Addr::compute(&GENESIS_SENDER, &account_code_hash, MOCK_SENDER_SALT);
     let receiver = Addr::compute(&GENESIS_SENDER, &account_code_hash, MOCK_RECEIVER_SALT);
 
     // Load bank contract byte code, and predict its address.
-    let bank_code = to_borsh_vec(&read_wasm_file("grug_bank-aarch64.wasm")?)?;
+    let bank_code = to_borsh_vec(&read_wasm_file("grug_bank.wasm")?)?;
     let bank_code_hash = Hash::from_slice(sha2_256(&bank_code));
     let bank = Addr::compute(&GENESIS_SENDER, &bank_code_hash, MOCK_BANK_SALT);
 
@@ -186,7 +186,7 @@ fn wasm_vm_works() -> anyhow::Result<()> {
                 msg: to_json_value(&grug_account::InstantiateMsg {
                     public_key: PublicKey::Secp256k1(receiver_pk.to_vec().into()),
                 })?,
-                salt: MOCK_SENDER_SALT.to_vec().into(),
+                salt: MOCK_RECEIVER_SALT.to_vec().into(),
                 funds: Coins::new_empty(),
                 admin: Some(receiver.clone()),
             },

@@ -197,7 +197,14 @@ where
         funds: None,
         simulate: None,
     };
-    let data = call_in_1_out_1::<VM, _, Json>("query", storage, &account.code_hash, &ctx, &msg)?;
+    let data = call_in_1_out_1::<VM, _, GenericResult<Json>>(
+        "query",
+        storage,
+        &account.code_hash,
+        &ctx,
+        &msg,
+    )?
+    .into_std_result()?;
 
     Ok(WasmSmartResponse {
         contract: ctx.contract,
