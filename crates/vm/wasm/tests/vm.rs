@@ -29,7 +29,7 @@ const MOCK_SENDER_SALT: &[u8] = b"sender";
 const MOCK_RECEIVER_SALT: &[u8] = b"receiver";
 
 fn read_wasm_file(filename: &str) -> io::Result<Vec<u8>> {
-    fs::read(&format!("{ARTIFACTS_DIR}/{filename}"))
+    fs::read(format!("{ARTIFACTS_DIR}/{filename}"))
 }
 
 struct TestSuite {
@@ -75,22 +75,22 @@ impl TestSuite {
     }
 
     fn query_account_sequence(&self, address: Addr) -> anyhow::Result<u32> {
-        self.query_wasm_smart::<_, StateResponse>(address, &grug_account::QueryMsg::State {})
-            .and_then(|res| Ok(res.sequence))
+        self.query_wasm_smart(address, &grug_account::QueryMsg::State {})
+            .map(|res: StateResponse| res.sequence)
     }
 
     fn send_messages(
         &mut self,
-        sender: &Addr,
+        sender: Addr,
         sk: &SigningKey,
         msgs: Vec<Message>,
     ) -> anyhow::Result<()> {
         // Sign the transaction
         let sequence = self.query_account_sequence(sender.clone())?;
-        let sign_bytes = make_sign_bytes(sha2_256, &msgs, sender, MOCK_CHAIN_ID, sequence)?;
+        let sign_bytes = make_sign_bytes(sha2_256, &msgs, &sender, MOCK_CHAIN_ID, sequence)?;
         let signature: Signature = sk.sign_digest(Identity256::from(sign_bytes));
         let tx = Tx {
-            sender: sender.clone(),
+            sender,
             msgs,
             credential: signature.to_vec().into(),
         };
@@ -209,7 +209,7 @@ fn wasm_vm_works() -> anyhow::Result<()> {
     suite.assert_balance(sender.clone(), MOCK_DENOM, 100)?;
 
     // Sender sends 25 ugrug to the receiver.
-    suite.send_messages(&sender, &sender_sk, vec![Message::Transfer {
+    suite.send_messages(sender.clone(), &sender_sk, vec![Message::Transfer {
         to: receiver.clone(),
         coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
     }])?;
