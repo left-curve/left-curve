@@ -113,7 +113,7 @@ fn test() {
 
     let res = app.query(QueryRequest::Balance {
         address: sender.clone(),
-        denom: "ugurg".to_string(),
+        denom: "ugrug".to_string(),
     });
 
     // THIS IS NOT PASSING
