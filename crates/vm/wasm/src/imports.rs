@@ -239,7 +239,7 @@ pub fn ed25519_verify(
     }
 }
 
-pub fn ed25519_verify_batch(
+pub fn ed25519_batch_verify(
     mut fe: FunctionEnvMut<Environment>,
     msgs_hash_ptr: u32,
     sigs_ptr: u32,
@@ -255,7 +255,7 @@ pub fn ed25519_verify_batch(
     let sigs = decode_sections(&sigs);
     let pks = decode_sections(&pks);
 
-    match grug_crypto::ed25519_verify_batch(&msgs_hash, &sigs, &pks) {
+    match grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks) {
         Ok(()) => Ok(0),
         Err(_) => Ok(1),
     }

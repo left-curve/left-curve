@@ -213,7 +213,7 @@ pub trait Api {
     /// Verify a batch of ED25519 signatures with the given hashed message and public
     /// key.
     /// NOTE: This function takes the hash of the messages, not the prehash.
-    fn ed25519_verify_batch(
+    fn ed25519_batch_verify(
         &self,
         msgs_hash: &[&[u8]],
         sigs: &[&[u8]],
