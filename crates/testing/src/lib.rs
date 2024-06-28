@@ -47,7 +47,7 @@ impl MockApp {
     }
 
     pub fn query(&self, req: QueryRequest) -> QueryResponse {
-        self.inner.do_query_app(req, 0, false).unwrap()
+        self.inner.do_query_app(None, req, 0, false).unwrap()
     }
 }
 

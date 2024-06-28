@@ -6,17 +6,45 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{PrefixStore, QueryProvider, Vm},
+    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Vm},
     grug_types::{to_borsh_vec, Context},
+    std::sync::Arc,
     wasmer::{
-        imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
+        imports, CompilerConfig, Function, FunctionEnv, Instance as WasmerInstance, Module,
+        Singlepass, Store,
+    },
+    wasmer_middlewares::{
+        metering::{get_remaining_points, set_remaining_points, MeteringPoints},
+        Metering,
     },
 };
+
+/// Gas cost per operation
+///
+/// TODO: Mocked to 1 now, need to be discussed
+const GAS_PER_OPERATION: u64 = 1;
 
 pub struct WasmVm {
     _wasm_instance: Box<WasmerInstance>,
     wasm_store: Store,
     fe: FunctionEnv<Environment>,
+    gas_tracker: SharedGasTracker,
+}
+
+impl WasmVm {
+    fn get_consumed_gas(&mut self) -> VmResult<()> {
+        match get_remaining_points(&mut self.wasm_store, &self._wasm_instance) {
+            MeteringPoints::Remaining(remaining) => {
+                // Reset gas consumed
+                set_remaining_points(&mut self.wasm_store, &self._wasm_instance, u64::MAX);
+                self.gas_tracker.write().deduct(u64::MAX - remaining)?;
+                Ok(())
+            },
+            MeteringPoints::Exhausted => {
+                panic!("Out of gas, this should have been caught earlier!")
+            },
+        }
+    }
 }
 
 impl Vm for WasmVm {
@@ -27,17 +55,26 @@ impl Vm for WasmVm {
         storage: PrefixStore,
         querier: QueryProvider<Self>,
         program: Vec<u8>,
+        gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error> {
         // create Wasm store
         // for now we use the singlepass compiler
-        let mut wasm_store = Store::new(Singlepass::default());
+        let mut compiler = Singlepass::new();
+        let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
+        compiler.canonicalize_nans(true);
+        compiler.push_middleware(metering);
+
+        let mut wasm_store = Store::new(compiler);
 
         // compile Wasm byte code into module
         let module = Module::new(&wasm_store, program)?;
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
-        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(storage, querier));
+        let fe = FunctionEnv::new(
+            &mut wasm_store,
+            Environment::new(storage, querier, gas_tracker.clone()),
+        );
         let import_obj = imports! {
             "env" => {
                 "db_read"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
@@ -81,6 +118,7 @@ impl Vm for WasmVm {
             _wasm_instance: wasm_instance,
             wasm_store,
             fe,
+            gas_tracker,
         })
     }
 
@@ -94,7 +132,11 @@ impl Vm for WasmVm {
             .try_into()
             .map_err(VmError::ReturnType)?;
 
-        read_then_wipe(env, &mut wasm_store, res_ptr)
+        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
+
+        self.get_consumed_gas()?;
+
+        Ok(data)
     }
 
     fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
@@ -111,7 +153,11 @@ impl Vm for WasmVm {
             .try_into()
             .map_err(VmError::ReturnType)?;
 
-        read_then_wipe(env, &mut wasm_store, res_ptr)
+        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
+
+        self.get_consumed_gas()?;
+
+        Ok(data)
     }
 
     fn call_in_2_out_1<P1, P2>(
@@ -139,7 +185,10 @@ impl Vm for WasmVm {
             ])?
             .try_into()
             .map_err(VmError::ReturnType)?;
+        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
 
-        read_then_wipe(env, &mut wasm_store, res_ptr)
+        self.get_consumed_gas()?;
+
+        Ok(data)
     }
 }

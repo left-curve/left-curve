@@ -1710,7 +1710,9 @@ dependencies = [
  "serde",
  "thiserror",
  "tracing",
+ "tracing-subscriber",
  "wasmer",
+ "wasmer-middlewares",
 ]
 
 [[package]]
@@ -4423,6 +4425,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "wasmer-middlewares"
+version = "4.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b419c1a789d9c061d5509385f23b462867fdcb7e29a41d576f6b15385dd18bcd"
+dependencies = [
+ "wasmer",
+ "wasmer-types",
+ "wasmer-vm",
 ]
 
 [[package]]

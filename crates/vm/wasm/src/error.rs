@@ -27,6 +27,9 @@ pub enum VmError {
     #[error(transparent)]
     Crypto(#[from] CryptoError),
 
+    #[error(transparent)]
+    App(#[from] AppError),
+
     // The wasmer `CompileError` and `InstantiateError` are big (56 and 128 bytes,
     // respectively). We get a clippy warning if we wrap them directly here in
     // VmError (result_large_err). To avoid this, we cast them to strings instead.

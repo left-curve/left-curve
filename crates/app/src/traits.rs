@@ -1,5 +1,5 @@
 use {
-    crate::{PrefixStore, QueryProvider},
+    crate::{PrefixStore, QueryProvider, SharedGasTracker},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -102,6 +102,7 @@ pub trait Vm: Sized {
         storage: PrefixStore,
         querier: QueryProvider<Self>,
         program: Self::Program,
+        gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error>;
 
     // Note: A VM instance is intended to be "single-use", meaning an instance
@@ -136,4 +137,6 @@ pub trait Vm: Sized {
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;
+
+    fn set_gas(&mut self, _remaining: u64) {}
 }

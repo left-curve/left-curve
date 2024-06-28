@@ -1,6 +1,6 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    grug_app::{PrefixStore, QueryProvider, Vm},
+    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
@@ -26,6 +26,7 @@ impl Vm for RustVm {
         storage: PrefixStore,
         querier: QueryProvider<Self>,
         program: Self::Program,
+        _gas_tracker: SharedGasTracker,
     ) -> VmResult<Self> {
         Ok(Self {
             storage,

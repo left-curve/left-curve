@@ -5,7 +5,7 @@ use {
     grug_crypto::{sha2_256, Identity256},
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_borsh_vec, to_json_value, Addr, BlockInfo, Coin, Coins, Config,
+        from_json_value, to_borsh_vec, to_json_value, Addr, BlockInfo, Coin, Coins, Config, Event,
         GenesisState, Hash, Message, NumberConst, Permission, Permissions, QueryRequest,
         QueryResponse, Timestamp, Tx, Uint64, GENESIS_SENDER,
     },
@@ -53,7 +53,8 @@ impl TestSuite {
     }
 
     fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
-        self.app.do_query_app(req, self.block.height.into(), false)
+        self.app
+            .do_query_app(None, req, self.block.height.into(), false)
     }
 
     fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
@@ -79,18 +80,20 @@ impl TestSuite {
 
     fn send_messages(
         &mut self,
-        sender: Addr,
+        sender: &Addr,
         sk: &SigningKey,
+        gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Vec<AppResult<Vec<Event>>>> {
         // Sign the transaction
         let sequence = self.query_account_sequence(sender.clone())?;
-        let sign_bytes = make_sign_bytes(sha2_256, &msgs, &sender, MOCK_CHAIN_ID, sequence)?;
+        let sign_bytes = make_sign_bytes(sha2_256, &msgs, sender, MOCK_CHAIN_ID, sequence)?;
         let signature: Signature = sk.sign_digest(Identity256::from(sign_bytes));
         let tx = Tx {
-            sender,
+            sender: sender.clone(),
             msgs,
             credential: signature.to_vec().into(),
+            gas_limit,
         };
 
         // Increment block height and block time
@@ -98,17 +101,20 @@ impl TestSuite {
         self.block.timestamp = self.block.timestamp.plus_nanos(1);
 
         // Finalize block + commit
-        self.app
+        let (_, _, results) = self
+            .app
             .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx)])?;
+
         self.app.do_commit()?;
 
-        Ok(())
+        // Check if tx was successful
+        Ok(results)
     }
 
-    fn assert_balance(&self, address: Addr, denom: &str, expect: u128) -> anyhow::Result<()> {
+    fn assert_balance(&self, address: &Addr, denom: &str, expect: u128) -> anyhow::Result<()> {
         let actual = self
             .query(QueryRequest::Balance {
-                address,
+                address: address.clone(),
                 denom: denom.to_string(),
             })?
             .as_balance()
@@ -123,6 +129,12 @@ impl TestSuite {
 
 #[test]
 fn wasm_vm_works() -> anyhow::Result<()> {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::TRACE)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     let mut suite = TestSuite::new();
 
     // Generate private keys for the accounts
@@ -203,17 +215,36 @@ fn wasm_vm_works() -> anyhow::Result<()> {
     })?;
 
     // Check that sender has been given 100 ugrug.
-    suite.assert_balance(sender.clone(), MOCK_DENOM, 100)?;
+    suite.assert_balance(&sender, MOCK_DENOM, 100)?;
 
     // Sender sends 25 ugrug to the receiver.
-    suite.send_messages(sender.clone(), &sender_sk, vec![Message::Transfer {
+    suite.send_messages(&sender, &sender_sk, 300_000, vec![Message::Transfer {
         to: receiver.clone(),
         coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
     }])?;
 
     // Check balances again.
-    suite.assert_balance(sender, MOCK_DENOM, 75)?;
-    suite.assert_balance(receiver, MOCK_DENOM, 25)?;
+    suite.assert_balance(&sender, MOCK_DENOM, 75)?;
+    suite.assert_balance(&receiver, MOCK_DENOM, 25)?;
+
+    suite.send_messages(&sender, &sender_sk, 900_000, vec![
+        Message::Transfer {
+            to: receiver.clone(),
+            coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
+        },
+        Message::Transfer {
+            to: receiver.clone(),
+            coins: vec![Coin::new(MOCK_DENOM, 15_u128)].try_into().unwrap(),
+        },
+        Message::Transfer {
+            to: receiver.clone(),
+            coins: vec![Coin::new(MOCK_DENOM, 20_u128)].try_into().unwrap(),
+        },
+    ])?;
+
+    // Check balances again.
+    suite.assert_balance(&sender, MOCK_DENOM, 30)?;
+    suite.assert_balance(&receiver, MOCK_DENOM, 70)?;
 
     Ok(())
 }
