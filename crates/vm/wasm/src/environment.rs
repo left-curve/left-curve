@@ -1,6 +1,6 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
-    grug_app::{SharedGasTracker, PrefixStore, QueryProvider},
+    grug_app::{PrefixStore, QueryProvider, SharedGasTracker},
     std::{
         borrow::{Borrow, BorrowMut},
         collections::HashMap,

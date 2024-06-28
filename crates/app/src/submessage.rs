@@ -1,5 +1,7 @@
 use {
-    crate::{do_reply, process_msg, AppError, AppResult, CacheStore, SharedGasTracker, SharedStore, Vm},
+    crate::{
+        do_reply, process_msg, AppError, AppResult, CacheStore, SharedGasTracker, SharedStore, Vm,
+    },
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 

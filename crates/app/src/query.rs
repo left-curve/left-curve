@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, SharedGasTracker, PrefixStore, Vm, ACCOUNTS, CHAIN_ID,
-        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, PrefixStore, SharedGasTracker, Vm, ACCOUNTS,
+        CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
