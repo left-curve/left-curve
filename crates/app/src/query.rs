@@ -6,8 +6,8 @@ use {
     grug_storage::Bound,
     grug_types::{
         AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
-        Context, Hash, InfoResponse, Json, Order, StdResult, Storage, WasmRawResponse,
-        WasmSmartResponse,
+        Context, GenericResult, Hash, InfoResponse, Json, Order, StdResult, Storage,
+        WasmRawResponse, WasmSmartResponse,
     },
 };
 
@@ -102,7 +102,15 @@ where
         funds: None,
         simulate: None,
     };
-    call_in_1_out_1::<VM, _, _>("bank_query", storage, &account.code_hash, &ctx, msg)
+    call_in_1_out_1::<VM, _, GenericResult<BankQueryResponse>>(
+        "bank_query",
+        storage,
+        &account.code_hash,
+        &ctx,
+        msg,
+    )?
+    .into_std_result()
+    .map_err(AppError::Std)
 }
 
 pub fn query_code(storage: &dyn Storage, hash: Hash) -> AppResult<Binary> {
@@ -189,7 +197,14 @@ where
         funds: None,
         simulate: None,
     };
-    let data = call_in_1_out_1::<VM, _, Json>("query", storage, &account.code_hash, &ctx, &msg)?;
+    let data = call_in_1_out_1::<VM, _, GenericResult<Json>>(
+        "query",
+        storage,
+        &account.code_hash,
+        &ctx,
+        &msg,
+    )?
+    .into_std_result()?;
 
     Ok(WasmSmartResponse {
         contract: ctx.contract,

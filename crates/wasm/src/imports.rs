@@ -35,7 +35,7 @@ extern "C" {
         compressed: u8,
     ) -> usize;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-    fn ed25519_verify_batch(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
+    fn ed25519_batch_verify(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
 
     // Hashes
     fn sha2_256(data_ptr: usize) -> usize;
@@ -415,7 +415,7 @@ impl Api for ExternalApi {
         let pks_ptr = &*pks_region as *const Region;
 
         let return_value = unsafe {
-            ed25519_verify_batch(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
+            ed25519_batch_verify(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
         };
 
         if return_value == 0 {
