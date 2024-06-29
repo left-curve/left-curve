@@ -208,7 +208,6 @@ where
 
 // -------------------------------- instantiate --------------------------------
 
-#[allow(clippy::too_many_arguments)]
 pub fn do_instantiate<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
@@ -237,7 +236,6 @@ where
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn _do_instantiate<VM>(
     mut storage: Box<dyn Storage>,
     block: BlockInfo,

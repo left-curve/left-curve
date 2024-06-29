@@ -513,7 +513,6 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
-#[allow(clippy::type_complexity)]
 #[inline]
 fn partition_batch<T>(
     mut batch: Vec<(Hash, T)>,

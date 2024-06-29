@@ -119,7 +119,6 @@ where
         self.no_prefix().range_raw(storage, min, max, order)
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn range<'b>(
         &self,
         storage: &'b dyn Storage,
