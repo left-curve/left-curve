@@ -1,11 +1,10 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, PrefixStore, QueryProvider, SharedGasTracker, Vm,
-        CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        handle_submessages, AppError, AppResult, SharedCacheModules, SharedGasTracker, Vm,
+        CONTRACT_ADDRESS_KEY,
     },
     grug_types::{
-        from_borsh_slice, from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event,
-        GenericResult, Hash, Response, Storage,
+        from_json_slice, to_json_vec, Context, Event, GenericResult, Hash, Response, Storage,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -18,6 +17,7 @@ pub fn call_in_0_out_1<VM, R>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -25,7 +25,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(
+    let instance: VM = cache_module.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -46,6 +46,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     param: &P,
 ) -> AppResult<R>
 where
@@ -55,7 +56,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(
+    let instance: VM = cache_module.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -79,6 +80,7 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -90,7 +92,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(
+    let instance: VM = cache_module.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -117,6 +119,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -127,11 +130,12 @@ where
         storage.clone(),
         code_hash,
         ctx,
-        gas_tracker.clone()
+        gas_tracker.clone(),
+        cache_module.clone(),
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker,cache_module, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -143,6 +147,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -156,11 +161,12 @@ where
         code_hash,
         ctx,
         gas_tracker.clone(),
+        cache_module.clone(),
         param,
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_module, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -172,6 +178,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -187,41 +194,43 @@ where
         code_hash,
         ctx,
         gas_tracker.clone(),
+        cache_module.clone(),
         param1,
         param2,
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_module, response)
 }
 
-fn create_vm_instance<VM>(
-    storage: Box<dyn Storage>,
-    block: BlockInfo,
-    address: &Addr,
-    code_hash: &Hash,
-    gas_tracker: SharedGasTracker,
-) -> AppResult<VM>
-where
-    VM: Vm,
-    AppError: From<VM::Error>,
-{
-    // Load the program code from storage and deserialize
-    let code = CODES.load(&storage, code_hash)?;
-    let program = from_borsh_slice(code)?;
+// fn create_vm_instance<VM>(
+//     storage: Box<dyn Storage>,
+//     block: BlockInfo,
+//     address: &Addr,
+//     code_hash: &Hash,
+//     gas_tracker: SharedGasTracker,
+// ) -> AppResult<VM>
+// where
+//     VM: Vm,
+//     AppError: From<VM::Error>,
+// {
+//     // Load the program code from storage and deserialize
+//     let code = CODES.load(&storage, code_hash)?;
+//     let program = from_borsh_slice(code)?;
 
-    // Create the contract substore and querier
-    let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
-    let querier = QueryProvider::new(storage, block, gas_tracker.clone());
+//     // Create the contract substore and querier
+//     let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
+//     let querier = QueryProvider::new(storage, block, gas_tracker.clone());
 
-    Ok(VM::build_instance(substore, querier, program, gas_tracker)?)
-}
+//     Ok(VM::build_instance(substore, querier, program, gas_tracker)?)
+// }
 
 pub(crate) fn handle_response<VM>(
     name: &'static str,
     storage: Box<dyn Storage>,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     response: Response,
 ) -> AppResult<Vec<Event>>
 where
@@ -239,6 +248,7 @@ where
         storage,
         ctx.block.clone(),
         gas_tracker,
+        cache_module,
         ctx.contract.clone(),
         response.submsgs,
     )?);

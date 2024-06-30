@@ -51,16 +51,29 @@ impl WasmVm {
 
 impl Vm for WasmVm {
     type Error = VmError;
+    type Module = Module;
     type Program = Vec<u8>;
 
-    fn build_instance(
+    fn build_module(program: Self::Program) -> Result<Self::Module, Self::Error> {
+        let mut compiler = Singlepass::new();
+        let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
+        compiler.canonicalize_nans(true);
+        compiler.push_middleware(metering);
+
+        let wasm_store = Store::new(compiler);
+
+        // compile Wasm byte code into module
+        let module = Module::new(&wasm_store, program)?;
+
+        Ok(module)
+    }
+
+    fn build_instance_from_module(
         storage: PrefixStore,
         querier: QueryProvider<Self>,
-        program: Vec<u8>,
+        module: Self::Module,
         gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error> {
-        // create Wasm store
-        // for now we use the singlepass compiler
         let mut compiler = Singlepass::new();
         let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
         compiler.canonicalize_nans(true);
@@ -68,11 +81,6 @@ impl Vm for WasmVm {
 
         let mut wasm_store = Store::new(compiler);
 
-        // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, program)?;
-
-        // create function environment and register imports
-        // note: memory/store/instance in the env hasn't been set yet at this point
         let fe = FunctionEnv::new(
             &mut wasm_store,
             Environment::new(storage, querier, gas_tracker.clone()),

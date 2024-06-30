@@ -20,18 +20,23 @@ pub struct RustVm {
 
 impl Vm for RustVm {
     type Error = VmError;
+    type Module = ContractWrapper;
     type Program = ContractWrapper;
 
-    fn build_instance(
+    fn build_module(program: Self::Program) -> Result<Self::Module, Self::Error> {
+        Ok(program)
+    }
+
+    fn build_instance_from_module(
         storage: PrefixStore,
         querier: QueryProvider<Self>,
-        program: Self::Program,
-        _gas_tracker: SharedGasTracker,
-    ) -> VmResult<Self> {
+        module: Self::Module,
+        gas_tracker: SharedGasTracker,
+    ) -> Result<Self, Self::Error> {
         Ok(Self {
             storage,
             querier,
-            program,
+            program: module,
         })
     }
 

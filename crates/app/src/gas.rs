@@ -39,6 +39,22 @@ impl GasTracker {
     }
 }
 
+impl SharedGasTracker {
+    pub fn new_max() -> Self {
+        Shared::new(GasTracker {
+            limit: u64::MAX,
+            remaining: u64::MAX,
+        })
+    }
+
+    pub fn new_with_limit(limit: u64) -> Self {
+        Shared::new(GasTracker {
+            limit,
+            remaining: limit,
+        })
+    }
+}
+
 #[derive(Default)]
 pub struct GasResponse {
     pub gas_used: u64,

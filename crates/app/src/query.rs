@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, PrefixStore, SharedGasTracker, Vm, ACCOUNTS,
-        CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, PrefixStore, SharedCacheModules, SharedGasTracker,
+        Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
@@ -25,6 +25,7 @@ pub fn query_balance<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     address: Addr,
     denom: String,
 ) -> AppResult<Coin>
@@ -32,10 +33,13 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, &BankQuery::Balance {
-        address,
-        denom,
-    })
+    _query_bank::<VM>(
+        storage,
+        block,
+        gas_tracker,
+        cache_module,
+        &BankQuery::Balance { address, denom },
+    )
     .map(|res| res.as_balance())
 }
 
@@ -43,6 +47,8 @@ pub fn query_balances<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
+
     address: Addr,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -51,11 +57,17 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, &BankQuery::Balances {
-        address,
-        start_after,
-        limit,
-    })
+    _query_bank::<VM>(
+        storage,
+        block,
+        gas_tracker,
+        cache_module,
+        &BankQuery::Balances {
+            address,
+            start_after,
+            limit,
+        },
+    )
     .map(|res| res.as_balances())
 }
 
@@ -64,14 +76,14 @@ pub fn query_supply<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     denom: String,
-
 ) -> AppResult<Coin>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, &BankQuery::Supply { denom })
+    _query_bank::<VM>(storage, block, gas_tracker, cache_module, &BankQuery::Supply { denom })
         .map(|res| res.as_supply())
 }
 
@@ -79,7 +91,7 @@ pub fn query_supplies<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-
+    cache_module: SharedCacheModules<VM>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
@@ -87,10 +99,13 @@ where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, &BankQuery::Supplies {
-        start_after,
-        limit,
-    })
+    _query_bank::<VM>(
+        storage,
+        block,
+        gas_tracker,
+        cache_module,
+        &BankQuery::Supplies { start_after, limit },
+    )
     .map(|res| res.as_supplies())
 }
 
@@ -98,6 +113,7 @@ fn _query_bank<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
@@ -121,6 +137,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker.clone(),
+        cache_module,
         msg,
     )?
     .into_std_result()
@@ -195,6 +212,7 @@ pub fn query_wasm_smart<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
+    cache_module: SharedCacheModules<VM>,
     contract: Addr,
     msg: Json,
 ) -> AppResult<WasmSmartResponse>
@@ -217,7 +235,8 @@ where
         storage,
         &account.code_hash,
         &ctx,
-        gas_tracker.clone(),
+        gas_tracker,
+        cache_module,
         &msg,
     )?
     .into_std_result()?;

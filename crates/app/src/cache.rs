@@ -1,7 +1,9 @@
 use {
-    grug_types::{Batch, Op, Order, Record, Storage},
+    crate::{PrefixStore, QueryProvider, Shared, SharedGasTracker, Vm, CODES, CONTRACT_NAMESPACE},
+    grug_types::{from_borsh_slice, Addr, Batch, BlockInfo, Hash, Op, Order, Record, Storage},
     std::{
         cmp::Ordering,
+        collections::BTreeMap,
         iter::{self, Peekable},
         mem,
         ops::Bound,
@@ -196,6 +198,53 @@ where
     }
 }
 
+pub type SharedCacheModules<VM> = Shared<CacheModules<VM>>;
+
+pub struct CacheModules<VM: Vm> {
+    modules: BTreeMap<Hash, VM::Module>,
+}
+
+impl<VM> Default for CacheModules<VM>
+where
+    VM: Vm,
+{
+    fn default() -> Self {
+        Self {
+            modules: BTreeMap::new(),
+        }
+    }
+}
+
+impl<VM: Vm> Shared<CacheModules<VM>> {
+    pub fn build_instance(
+        &self,
+        storage: Box<dyn Storage>,
+        block: BlockInfo,
+        address: &Addr,
+        code_hash: &Hash,
+        gas_tracker: SharedGasTracker,
+    ) -> Result<VM, VM::Error> {
+        let module = match self.read_access().modules.get(code_hash) {
+            Some(module) => module.clone(),
+            None => {
+                let code = CODES.load(&storage, code_hash)?;
+                let program = from_borsh_slice(code)?;
+                let module = VM::build_module(program)?;
+
+                self.write_access()
+                    .modules
+                    .insert(code_hash.clone(), module.clone());
+                module
+            },
+        };
+
+        // Create the contract substore and querier
+        let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
+        let querier = QueryProvider::new(storage, block, gas_tracker.clone(), self.clone());
+
+        VM::build_instance_from_module(substore, querier, module, gas_tracker)
+    }
+}
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
