@@ -32,12 +32,14 @@ pub struct WasmVm {
 }
 
 impl WasmVm {
-    fn get_consumed_gas(&mut self) -> VmResult<()> {
+    fn consume_gas(&mut self) -> VmResult<()> {
         match get_remaining_points(&mut self.wasm_store, &self._wasm_instance) {
             MeteringPoints::Remaining(remaining) => {
                 // Reset gas consumed
                 set_remaining_points(&mut self.wasm_store, &self._wasm_instance, u64::MAX);
-                self.gas_tracker.write().deduct(u64::MAX - remaining)?;
+                self.gas_tracker
+                    .write_access()
+                    .deduct(u64::MAX - remaining)?;
                 Ok(())
             },
             MeteringPoints::Exhausted => {
@@ -134,7 +136,7 @@ impl Vm for WasmVm {
 
         let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
 
-        self.get_consumed_gas()?;
+        self.consume_gas()?;
 
         Ok(data)
     }
@@ -155,7 +157,7 @@ impl Vm for WasmVm {
 
         let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
 
-        self.get_consumed_gas()?;
+        self.consume_gas()?;
 
         Ok(data)
     }
@@ -187,7 +189,7 @@ impl Vm for WasmVm {
             .map_err(VmError::ReturnType)?;
         let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
 
-        self.get_consumed_gas()?;
+        self.consume_gas()?;
 
         Ok(data)
     }

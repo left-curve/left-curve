@@ -1,6 +1,7 @@
-use crate::SharedGasTracker;
 #[cfg(feature = "tracing")]
 use tracing::{debug, info};
+
+use crate::{GasTracker, SharedGasTracker};
 
 use {
     crate::{
@@ -8,7 +9,7 @@ use {
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
         query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, CacheStore, Db,
-        SharedStore, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
@@ -24,7 +25,7 @@ use {
 pub struct App<DB, VM> {
     db: DB,
     vm: PhantomData<VM>,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: Shared<GasTracker>,
 }
 
 impl<DB, VM> App<DB, VM> {
@@ -49,7 +50,8 @@ where
         Self {
             db: self.db.clone(),
             vm: PhantomData,
-            gas_tracker: self.gas_tracker.clone(),
+            // Reset the gas tracker for the new instance
+            gas_tracker: SharedGasTracker::default(),
         }
     }
 }
@@ -76,7 +78,7 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash> {
-        let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
+        let mut cached = Shared::new(CacheStore::new(self.db.state_storage(None), None));
 
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
@@ -102,7 +104,7 @@ where
 
             // TODO: How to handle gas on genesis?
 
-            self.gas_tracker.write().reset_to_max();
+            self.gas_tracker.write_access().reset_to_max();
 
             process_msg::<VM>(
                 Box::new(cached.clone()),
@@ -160,7 +162,7 @@ where
         block: BlockInfo,
         txs: Vec<(Hash, Tx)>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
-        let mut cached = SharedStore::new(CacheStore::new(self.db.state_storage(None), None));
+        let mut cached = Shared::new(CacheStore::new(self.db.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
 
@@ -187,7 +189,7 @@ where
             );
 
             // TODO: How to handle gas here?
-            self.gas_tracker.write().reset_to_max();
+            self.gas_tracker.write_access().reset_to_max();
 
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
@@ -223,7 +225,7 @@ where
             );
 
             // TODO: How to handle gas here?
-            self.gas_tracker.write().reset_to_max();
+            self.gas_tracker.write_access().reset_to_max();
 
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
@@ -334,7 +336,7 @@ where
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
         // TODO: This will have to be changed based on node config
-        self.gas_tracker.write().reset(gas.unwrap_or(u64::MAX));
+        self.gas_tracker.write_access().reset(gas.unwrap_or(u64::MAX));
 
         process_query::<VM>(Box::new(store), block, self.gas_tracker.clone(), req)
     }
@@ -384,9 +386,9 @@ where
     let mut events = vec![];
 
     // create cached store for this tx
-    let cached = SharedStore::new(CacheStore::new(storage, None));
+    let cached = Shared::new(CacheStore::new(storage, None));
 
-    gas_tracker.write().reset(tx.gas_limit);
+    gas_tracker.write_access().reset(tx.gas_limit);
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
@@ -408,7 +410,7 @@ where
     // uncommitted changes (the changes from the before_tx call earlier are
     // persisted)
     for (_idx, msg) in tx.msgs.iter().enumerate() {
-        let before_consumed = gas_tracker.read().used();
+        let before_consumed = gas_tracker.read_access().used();
 
         #[cfg(feature = "tracing")]
         {
@@ -424,7 +426,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            let consumed = gas_tracker.read().used() - before_consumed;
+            let consumed = gas_tracker.read_access().used() - before_consumed;
             debug!("Gas used :{consumed}");
         }
     }
@@ -444,8 +446,8 @@ where
 
     #[cfg(feature = "tracing")]
     debug!(
-        gas_limit = gas_tracker.read().limit,
-        used = gas_tracker.read().remaining,
+        gas_limit = gas_tracker.read_access().limit,
+        used = gas_tracker.read_access().remaining,
         "Gas info"
     );
 

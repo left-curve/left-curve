@@ -6,52 +6,53 @@ use {
     },
 };
 
-pub struct SharedStore<S> {
-    storage: Arc<RwLock<S>>,
+#[derive(Default)]
+pub struct Shared<S> {
+    inner: Arc<RwLock<S>>,
 }
 
-impl<S> SharedStore<S> {
+impl<S> Shared<S> {
     pub fn new(storage: S) -> Self {
         Self {
-            storage: Arc::new(RwLock::new(storage)),
+            inner: Arc::new(RwLock::new(storage)),
         }
     }
 
     pub fn share(&self) -> Self {
         Self {
-            storage: Arc::clone(&self.storage),
+            inner: Arc::clone(&self.inner),
         }
     }
 
     pub fn read_access(&self) -> RwLockReadGuard<S> {
-        self.storage
+        self.inner
             .read()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
     pub fn write_access(&self) -> RwLockWriteGuard<S> {
-        self.storage
+        self.inner
             .write()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    /// Disassemble the shared store and return the underlying store.
+    /// Disassemble the `Arc<RwLock<S>>` and return the underlying `S`.
     /// Fails if there are currently more than one strong reference to it.
     pub fn disassemble(self) -> S {
-        let lock = Arc::try_unwrap(self.storage).unwrap_or_else(|_| panic!(""));
+        let lock = Arc::try_unwrap(self.inner).unwrap_or_else(|_| panic!(""));
 
         lock.into_inner()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 }
 
-impl<S> Clone for SharedStore<S> {
+impl<S> Clone for Shared<S> {
     fn clone(&self) -> Self {
         self.share()
     }
 }
 
-impl<S: Storage> Storage for SharedStore<S> {
+impl<S: Storage> Storage for Shared<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
     }
@@ -210,7 +211,7 @@ mod tests {
 
     #[test]
     fn iterator_works() {
-        let mut storage = SharedStore::new(MockStorage::new());
+        let mut storage = Shared::new(MockStorage::new());
         for (k, v) in mock_records(1, 100, Order::Ascending) {
             storage.write(&k, &v);
         }

@@ -1,33 +1,6 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use crate::{AppError, AppResult, Shared};
 
-use crate::{AppError, AppResult};
-
-#[derive(Default)]
-pub struct SharedGasTracker {
-    inner: Arc<RwLock<GasTracker>>,
-}
-
-impl SharedGasTracker {
-    pub fn write(&self) -> RwLockWriteGuard<'_, GasTracker> {
-        self.inner
-            .write()
-            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
-    }
-
-    pub fn read(&self) -> RwLockReadGuard<'_, GasTracker> {
-        self.inner
-            .read()
-            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
-    }
-}
-
-impl Clone for SharedGasTracker {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
+pub type SharedGasTracker = Shared<GasTracker>;
 
 #[derive(Default)]
 pub struct GasTracker {

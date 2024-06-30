@@ -1,6 +1,6 @@
 use {
     crate::{
-        do_reply, process_msg, AppError, AppResult, CacheStore, SharedGasTracker, SharedStore, Vm,
+        do_reply, process_msg, AppError, AppResult, CacheStore, SharedGasTracker, Shared, Vm,
     },
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
@@ -46,7 +46,7 @@ where
 {
     let mut events = vec![];
     for submsg in submsgs {
-        let cached = SharedStore::new(CacheStore::new(storage.clone(), None));
+        let cached = Shared::new(CacheStore::new(storage.clone(), None));
         let result = process_msg::<VM>(
             Box::new(cached.share()),
             block.clone(),
