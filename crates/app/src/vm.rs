@@ -9,6 +9,8 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
+
+
 /// Create a VM instance, and call a function that takes no input parameter and
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(

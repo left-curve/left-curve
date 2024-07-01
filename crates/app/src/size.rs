@@ -37,3 +37,9 @@ impl Size {
         Size(n * 1024 * 1024 * 1024)
     }
 }
+
+impl From<Size> for usize {
+    fn from(value: Size) -> Self {
+        value.0
+    }
+}

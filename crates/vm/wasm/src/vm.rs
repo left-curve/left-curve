@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Vm},
+    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Size, Vm, VmCacheSize},
     grug_types::{to_borsh_vec, Context},
     std::sync::Arc,
     wasmer::{
@@ -28,6 +28,15 @@ const GAS_PER_OPERATION: u64 = 1;
 pub struct WasmCache {
     pub module: Module,
     pub engine: Engine,
+}
+
+impl VmCacheSize for WasmCache {
+    fn size(&self) -> usize {
+        // Based on Cosmwasm implementation:
+        // Some manual tests on Simon's machine showed that Engine is roughly 3-5 KB big,
+        // so give it a constant 10 KiB estimate.
+        Size::kibi(10).into()
+    }
 }
 
 pub struct WasmVm {
@@ -71,6 +80,11 @@ impl Vm for WasmVm {
         let now = std::time::Instant::now();
         let module = Module::new(&engine, program)?;
         tracing::debug!("Wasm compilation time: {:?}", now.elapsed());
+
+        let size = std::mem::size_of_val(&module);
+        tracing::debug!("Wasm module size: {}", size);
+        let size = std::mem::size_of_val(&engine);
+        tracing::debug!("Wasm engine size: {}", size);
 
         Ok(WasmCache { module, engine })
     }

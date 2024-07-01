@@ -96,7 +96,7 @@ pub trait Vm: Sized {
     /// in such a mapping: hash(program) => program.
     type Program: BorshSerialize + BorshDeserialize;
 
-    type Cache: Clone;
+    type Cache: VmCacheSize + Clone;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
@@ -145,4 +145,13 @@ pub trait Vm: Sized {
         P2: AsRef<[u8]>;
 
     fn set_gas(&mut self, _remaining: u64) {}
+}
+
+/// Rappresent the size of the `cache` of the `VM`.
+///
+/// In order to determinate the `size` of a `cache`,
+/// is not possible to use `std::mem::size_of_val`
+/// because it doesn't take into account the `size` of the `heap`.
+pub trait VmCacheSize {
+    fn size(&self) -> usize;
 }

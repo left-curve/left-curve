@@ -1,6 +1,7 @@
 use {
     crate::{
-        PrefixStore, QueryProvider, Shared, SharedGasTracker, Size, Vm, CODES, CONTRACT_NAMESPACE,
+        PrefixStore, QueryProvider, Shared, SharedGasTracker, Size, Vm, VmCacheSize, CODES,
+        CONTRACT_NAMESPACE,
     },
     clru::{CLruCache, CLruCacheConfig, WeightScale},
     grug_types::{from_borsh_slice, Addr, Batch, BlockInfo, Hash, Op, Order, Record, Storage},
@@ -234,7 +235,7 @@ where
 {
     #[inline]
     fn weight(&self, key: &Hash, value: &VM::Cache) -> usize {
-        std::mem::size_of_val(key) + std::mem::size_of_val(value)
+        std::mem::size_of_val(key) + value.size()
     }
 }
 
@@ -242,7 +243,6 @@ pub type SharedCacheVM<VM> = Shared<CacheVM<VM>>;
 
 pub struct CacheVM<VM: Vm> {
     cache: CLruCache<Hash, VM::Cache, RandomState, SizeScale<VM>>,
-    // cache: BTreeMap<Hash, VM::Cache>,
 }
 
 impl<VM> CacheVM<VM>
