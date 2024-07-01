@@ -1,7 +1,7 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, QuerierProvider, StorageProvider, Vm, CODES,
-        CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        handle_submessages, AppError, AppResult, Instance, QuerierProvider, StorageProvider, Vm,
+        CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
         from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash,
@@ -13,6 +13,7 @@ use {
 /// Create a VM instance, and call a function that takes no input parameter and
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
@@ -20,11 +21,11 @@ pub fn call_in_0_out_1<VM, R>(
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_0_out_1(name, ctx)?;
@@ -36,6 +37,7 @@ where
 /// Create a VM instance, and call a function that takes exactly one parameter
 /// and returns one output.
 pub fn call_in_1_out_1<VM, P, R>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
@@ -45,11 +47,11 @@ pub fn call_in_1_out_1<VM, P, R>(
 where
     P: Serialize,
     R: DeserializeOwned,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
 
     // Serialize the param as JSON
     let param_raw = to_json_vec(param)?;
@@ -64,6 +66,7 @@ where
 /// Create a VM instance, and call a function that takes exactly two parameters
 /// and returns one output.
 pub fn call_in_2_out_1<VM, P1, P2, R>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
@@ -75,11 +78,11 @@ where
     P1: Serialize,
     P2: Serialize,
     R: DeserializeOwned,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = create_vm_instance(storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
 
     // Serialize the params as JSON
     let param1_raw = to_json_vec(param1)?;
@@ -97,16 +100,18 @@ where
 /// events emitted.
 #[rustfmt::skip]
 pub fn call_in_0_out_1_handle_response<VM>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_0_out_1::<VM, GenericResult<Response>>(
+    let response = call_in_0_out_1::<_, GenericResult<Response>>(
+        vm.clone(),
         name,
         storage.clone(),
         code_hash,
@@ -114,13 +119,14 @@ where
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, response)
+    handle_response(vm, name, storage, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
 /// returns [`Response`], and handle the submessages. Return a vector of events
 /// emitted.
 pub fn call_in_1_out_1_handle_response<VM, P>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
@@ -129,10 +135,11 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
 ) -> AppResult<Vec<Event>>
 where
     P: Serialize,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_1_out_1::<VM, _, GenericResult<Response>>(
+    let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
+        vm.clone(),
         name,
         storage.clone(),
         code_hash,
@@ -141,13 +148,14 @@ where
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, response)
+    handle_response(vm, name, storage, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
 /// returns [`Response`], and handle the submessages. Return a vector of events
 /// emitted.
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
@@ -158,10 +166,11 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
 where
     P1: Serialize,
     P2: Serialize,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_2_out_1::<VM, _, _, GenericResult<Response>>(
+    let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
+        vm.clone(),
         name,
         storage.clone(),
         code_hash,
@@ -171,37 +180,39 @@ where
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, response)
+    handle_response(vm, name, storage, ctx, response)
 }
 
 fn create_vm_instance<VM>(
+    mut vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     address: &Addr,
     code_hash: &Hash,
-) -> AppResult<VM>
+) -> AppResult<VM::Instance>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     // Load the program code from storage and deserialize
     let code = CODES.load(&storage, code_hash)?;
 
     // Create the providers
-    let substore = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
-    let querier = QuerierProvider::new(storage, block);
+    let querier = QuerierProvider::new(vm.clone(), storage.clone(), block);
+    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
 
-    Ok(VM::build_instance(substore, querier, &code)?)
+    Ok(vm.build_instance(storage, querier, &code)?)
 }
 
 pub(crate) fn handle_response<VM>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     ctx: &Context,
     response: Response,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     // Create an event for this call
@@ -211,7 +222,8 @@ where
 
     // Handle submessages; append events emitted during submessage handling
     let mut events = vec![event];
-    events.extend(handle_submessages::<VM>(
+    events.extend(handle_submessages(
+        vm,
         storage,
         ctx.block.clone(),
         ctx.contract.clone(),

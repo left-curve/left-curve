@@ -13,10 +13,10 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
-        // create DB backend
         let db = DiskDb::open(data_dir)?;
+        let vm = WasmVm::new();
+        let app = App::new(db, vm);
 
-        // start the ABCI server
-        Ok(App::<DiskDb, WasmVm>::new(db).start_abci_server(self.read_buf_size, self.abci_addr)?)
+        Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
     }
 }

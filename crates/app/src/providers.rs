@@ -4,7 +4,6 @@ use {
         concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
     },
-    std::marker::PhantomData,
 };
 
 // ---------------------------------- storage ----------------------------------
@@ -108,28 +107,29 @@ fn prefixed_range_bounds(
 
 /// Provides querier functionalities to the VM.
 pub struct QuerierProvider<VM> {
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    vm: PhantomData<VM>,
 }
 
 impl<VM> QuerierProvider<VM> {
-    pub fn new(storage: Box<dyn Storage>, block: BlockInfo) -> Self {
-        Self {
-            storage,
-            block,
-            vm: PhantomData,
-        }
+    pub fn new(vm: VM, storage: Box<dyn Storage>, block: BlockInfo) -> Self {
+        Self { vm, storage, block }
     }
 }
 
 impl<VM> Querier for QuerierProvider<VM>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        process_query::<VM>(self.storage.clone(), self.block.clone(), req)
-            .map_err(|err| StdError::Generic(err.to_string()))
+        process_query(
+            self.vm.clone(),
+            self.storage.clone(),
+            self.block.clone(),
+            req,
+        )
+        .map_err(|err| StdError::Generic(err.to_string()))
     }
 }

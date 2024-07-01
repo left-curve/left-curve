@@ -1,6 +1,6 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    grug_app::{QuerierProvider, StorageProvider, Vm},
+    grug_app::{Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
@@ -12,26 +12,41 @@ macro_rules! get_contract {
     }
 }
 
-pub struct RustVm {
-    storage: StorageProvider,
-    querier: QuerierProvider<Self>,
-    wrapper: ContractWrapper,
+#[derive(Default, Clone)]
+pub struct RustVm;
+
+impl RustVm {
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Vm for RustVm {
     type Error = VmError;
+    type Instance = RustInstance;
 
     fn build_instance(
+        &mut self,
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
         code: &[u8],
-    ) -> VmResult<Self> {
-        Ok(Self {
+    ) -> VmResult<RustInstance> {
+        Ok(RustInstance {
             storage,
             querier,
             wrapper: ContractWrapper::from_bytes(code),
         })
     }
+}
+
+pub struct RustInstance {
+    storage: StorageProvider,
+    querier: QuerierProvider<RustVm>,
+    wrapper: ContractWrapper,
+}
+
+impl Instance for RustInstance {
+    type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract!(self.wrapper.index);

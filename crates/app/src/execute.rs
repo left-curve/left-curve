@@ -102,6 +102,7 @@ fn _do_upload(
 // --------------------------------- transfer ----------------------------------
 
 pub fn do_transfer<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     from: Addr,
@@ -110,10 +111,11 @@ pub fn do_transfer<VM>(
     receive: bool,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_transfer::<VM>(
+    match _do_transfer(
+        vm,
         storage,
         block,
         from.clone(),
@@ -140,6 +142,7 @@ where
 }
 
 fn _do_transfer<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     from: Addr,
@@ -152,7 +155,7 @@ fn _do_transfer<VM>(
     do_receive: bool,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -169,7 +172,8 @@ where
     };
     let msg = BankMsg { from, to, coins };
 
-    let mut events = call_in_1_out_1_handle_response::<VM, _>(
+    let mut events = call_in_1_out_1_handle_response(
+        vm.clone(),
         "bank_execute",
         storage.clone(),
         &account.code_hash,
@@ -178,19 +182,20 @@ where
     )?;
 
     if do_receive {
-        events.extend(_do_receive::<VM>(storage, ctx.block, msg)?);
+        events.extend(_do_receive(vm, storage, ctx.block, msg)?);
     }
 
     Ok(events)
 }
 
 fn _do_receive<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -203,12 +208,14 @@ where
         funds: Some(msg.coins),
         simulate: None,
     };
-    call_in_0_out_1_handle_response::<VM>("receive", storage, &account.code_hash, &ctx)
+
+    call_in_0_out_1_handle_response(vm, "receive", storage, &account.code_hash, &ctx)
 }
 
 // -------------------------------- instantiate --------------------------------
 
 pub fn do_instantiate<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     sender: Addr,
@@ -219,10 +226,12 @@ pub fn do_instantiate<VM>(
     admin: Option<Addr>,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_instantiate::<VM>(storage, block, sender, code_hash, msg, salt, funds, admin) {
+    match _do_instantiate(
+        vm, storage, block, sender, code_hash, msg, salt, funds, admin,
+    ) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
             info!(address = _address.to_string(), "Instantiated contract");
@@ -237,6 +246,7 @@ where
 }
 
 pub fn _do_instantiate<VM>(
+    vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     sender: Addr,
@@ -247,7 +257,7 @@ pub fn _do_instantiate<VM>(
     admin: Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -272,7 +282,8 @@ where
     // Make the fund transfer
     let mut events = vec![];
     if !funds.is_empty() {
-        events.extend(_do_transfer::<VM>(
+        events.extend(_do_transfer(
+            vm.clone(),
             storage.clone(),
             block.clone(),
             sender.clone(),
@@ -291,7 +302,8 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response::<VM, _>(
+    events.extend(call_in_1_out_1_handle_response(
+        vm,
         "instantiate",
         storage,
         &account.code_hash,
@@ -305,6 +317,7 @@ where
 // ---------------------------------- execute ----------------------------------
 
 pub fn do_execute<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -313,10 +326,10 @@ pub fn do_execute<VM>(
     funds: Coins,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_execute::<VM>(storage, block, contract.clone(), sender, msg, funds) {
+    match _do_execute(vm, storage, block, contract.clone(), sender, msg, funds) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Executed contract");
@@ -331,6 +344,7 @@ where
 }
 
 fn _do_execute<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -339,7 +353,7 @@ fn _do_execute<VM>(
     funds: Coins,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -348,7 +362,8 @@ where
     // Make the fund transfer
     let mut events = vec![];
     if !funds.is_empty() {
-        events.extend(_do_transfer::<VM>(
+        events.extend(_do_transfer(
+            vm.clone(),
             storage.clone(),
             block.clone(),
             sender.clone(),
@@ -367,7 +382,8 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response::<VM, _>(
+    events.extend(call_in_1_out_1_handle_response(
+        vm,
         "execute",
         storage,
         &account.code_hash,
@@ -381,6 +397,7 @@ where
 // ---------------------------------- migrate ----------------------------------
 
 pub fn do_migrate<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -389,10 +406,18 @@ pub fn do_migrate<VM>(
     msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_migrate::<VM>(storage, block, contract.clone(), sender, new_code_hash, msg) {
+    match _do_migrate(
+        vm,
+        storage,
+        block,
+        contract.clone(),
+        sender,
+        new_code_hash,
+        msg,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Migrated contract");
@@ -407,6 +432,7 @@ where
 }
 
 fn _do_migrate<VM>(
+    vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -415,7 +441,7 @@ fn _do_migrate<VM>(
     msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -445,12 +471,13 @@ where
         simulate: None,
     };
 
-    call_in_1_out_1_handle_response::<VM, _>("migrate", storage, &account.code_hash, &ctx, msg)
+    call_in_1_out_1_handle_response(vm, "migrate", storage, &account.code_hash, &ctx, msg)
 }
 
 // ----------------------------------- reply -----------------------------------
 
 pub fn do_reply<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -458,10 +485,10 @@ pub fn do_reply<VM>(
     result: &SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_reply::<VM>(storage, block, contract.clone(), msg, result) {
+    match _do_reply(vm, storage, block, contract.clone(), msg, result) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Performed callback");
@@ -476,6 +503,7 @@ where
 }
 
 fn _do_reply<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
@@ -483,7 +511,7 @@ fn _do_reply<VM>(
     result: &SubMsgResult,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -496,28 +524,23 @@ where
         funds: None,
         simulate: None,
     };
-    call_in_2_out_1_handle_response::<VM, _, _>(
-        "reply",
-        storage,
-        &account.code_hash,
-        &ctx,
-        msg,
-        result,
-    )
+
+    call_in_2_out_1_handle_response(vm, "reply", storage, &account.code_hash, &ctx, msg, result)
 }
 
 // ------------------------- before/after transaction --------------------------
 
 pub fn do_before_tx<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx::<VM>("before_tx", storage, block, tx) {
+    match _do_before_or_after_tx(vm, "before_tx", storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -539,15 +562,16 @@ where
 }
 
 pub fn do_after_tx<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx::<VM>("after_tx", storage, block, tx) {
+    match _do_before_or_after_tx(vm, "after_tx", storage, block, tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -569,13 +593,14 @@ where
 }
 
 fn _do_before_or_after_tx<VM>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -588,21 +613,23 @@ where
         funds: None,
         simulate: Some(false),
     };
-    call_in_1_out_1_handle_response::<VM, _>(name, storage, &account.code_hash, &ctx, tx)
+
+    call_in_1_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx, tx)
 }
 
 // ---------------------------- before/after block -----------------------------
 
 pub fn do_before_block<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_block::<VM>("before_block", storage, block, contract.clone()) {
+    match _do_before_or_after_block(vm, "before_block", storage, block, contract.clone()) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called before block hook");
@@ -617,15 +644,16 @@ where
 }
 
 pub fn do_after_block<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_block::<VM>("after_block", storage, block, contract.clone()) {
+    match _do_before_or_after_block(vm, "after_block", storage, block, contract.clone()) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called after block hook");
@@ -640,13 +668,14 @@ where
 }
 
 fn _do_before_or_after_block<VM>(
+    vm: VM,
     name: &'static str,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -659,5 +688,6 @@ where
         funds: None,
         simulate: None,
     };
-    call_in_0_out_1_handle_response::<VM>(name, storage, &account.code_hash, &ctx)
+
+    call_in_0_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx)
 }

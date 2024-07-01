@@ -18,7 +18,7 @@ use {
 impl<DB, VM> App<DB, VM>
 where
     DB: Db + Clone + Send + 'static,
-    VM: Vm + Send + 'static,
+    VM: Vm + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
@@ -32,7 +32,7 @@ where
 impl<DB, VM> Application for App<DB, VM>
 where
     DB: Db + Clone + Send + 'static,
-    VM: Vm + Send + 'static,
+    VM: Vm + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {

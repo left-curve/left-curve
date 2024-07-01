@@ -6,85 +6,104 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{QuerierProvider, StorageProvider, Vm},
+    grug_app::{Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context},
-    wasmer::{
-        imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
-    },
+    wasmer::{imports, Function, FunctionEnv, Module, Singlepass, Store},
 };
 
+// ------------------------------------ vm -------------------------------------
+
+#[derive(Default, Clone)]
 pub struct WasmVm {
-    _wasm_instance: Box<WasmerInstance>,
-    wasm_store: Store,
-    fe: FunctionEnv<Environment>,
+    // TODO: add module cache (note: the cache must be clone-able)
+}
+
+impl WasmVm {
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 impl Vm for WasmVm {
     type Error = VmError;
+    type Instance = WasmInstance;
 
     fn build_instance(
+        &mut self,
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
         code: &[u8],
-    ) -> Result<Self, Self::Error> {
+    ) -> VmResult<WasmInstance> {
         // create Wasm store
         // for now we use the singlepass compiler
-        let mut wasm_store = Store::new(Singlepass::default());
+        let mut store = Store::new(Singlepass::default());
 
         // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, code)?;
+        let module = Module::new(&store, code)?;
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
-        let fe = FunctionEnv::new(&mut wasm_store, Environment::new(storage, querier));
+        let fe = FunctionEnv::new(&mut store, Environment::new(storage, querier));
         let import_obj = imports! {
             "env" => {
-                "db_read"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_read),
-                "db_scan"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_scan),
-                "db_next"                  => Function::new_typed_with_env(&mut wasm_store, &fe, db_next),
-                "db_next_key"              => Function::new_typed_with_env(&mut wasm_store, &fe, db_next_key),
-                "db_next_value"            => Function::new_typed_with_env(&mut wasm_store, &fe, db_next_value),
-                "db_write"                 => Function::new_typed_with_env(&mut wasm_store, &fe, db_write),
-                "db_remove"                => Function::new_typed_with_env(&mut wasm_store, &fe, db_remove),
-                "db_remove_range"          => Function::new_typed_with_env(&mut wasm_store, &fe, db_remove_range),
-                "secp256k1_verify"         => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_verify),
-                "secp256r1_verify"         => Function::new_typed_with_env(&mut wasm_store, &fe, secp256r1_verify),
-                "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut wasm_store, &fe, secp256k1_pubkey_recover),
-                "ed25519_verify"           => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_verify),
-                "ed25519_batch_verify"     => Function::new_typed_with_env(&mut wasm_store, &fe, ed25519_batch_verify),
-                "sha2_256"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_256),
-                "sha2_512"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512),
-                "sha2_512_truncated"       => Function::new_typed_with_env(&mut wasm_store, &fe, sha2_512_truncated),
-                "sha3_256"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_256),
-                "sha3_512"                 => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512),
-                "sha3_512_truncated"       => Function::new_typed_with_env(&mut wasm_store, &fe, sha3_512_truncated),
-                "keccak256"                => Function::new_typed_with_env(&mut wasm_store, &fe, keccak256),
-                "blake2s_256"              => Function::new_typed_with_env(&mut wasm_store, &fe, blake2s_256),
-                "blake2b_512"              => Function::new_typed_with_env(&mut wasm_store, &fe, blake2b_512),
-                "blake3"                   => Function::new_typed_with_env(&mut wasm_store, &fe, blake3),
-                "debug"                    => Function::new_typed_with_env(&mut wasm_store, &fe, debug),
-                "query_chain"              => Function::new_typed_with_env(&mut wasm_store, &fe, query_chain),
+                "db_read"                  => Function::new_typed_with_env(&mut store, &fe, db_read),
+                "db_scan"                  => Function::new_typed_with_env(&mut store, &fe, db_scan),
+                "db_next"                  => Function::new_typed_with_env(&mut store, &fe, db_next),
+                "db_next_key"              => Function::new_typed_with_env(&mut store, &fe, db_next_key),
+                "db_next_value"            => Function::new_typed_with_env(&mut store, &fe, db_next_value),
+                "db_write"                 => Function::new_typed_with_env(&mut store, &fe, db_write),
+                "db_remove"                => Function::new_typed_with_env(&mut store, &fe, db_remove),
+                "db_remove_range"          => Function::new_typed_with_env(&mut store, &fe, db_remove_range),
+                "secp256k1_verify"         => Function::new_typed_with_env(&mut store, &fe, secp256k1_verify),
+                "secp256r1_verify"         => Function::new_typed_with_env(&mut store, &fe, secp256r1_verify),
+                "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut store, &fe, secp256k1_pubkey_recover),
+                "ed25519_verify"           => Function::new_typed_with_env(&mut store, &fe, ed25519_verify),
+                "ed25519_batch_verify"     => Function::new_typed_with_env(&mut store, &fe, ed25519_batch_verify),
+                "sha2_256"                 => Function::new_typed_with_env(&mut store, &fe, sha2_256),
+                "sha2_512"                 => Function::new_typed_with_env(&mut store, &fe, sha2_512),
+                "sha2_512_truncated"       => Function::new_typed_with_env(&mut store, &fe, sha2_512_truncated),
+                "sha3_256"                 => Function::new_typed_with_env(&mut store, &fe, sha3_256),
+                "sha3_512"                 => Function::new_typed_with_env(&mut store, &fe, sha3_512),
+                "sha3_512_truncated"       => Function::new_typed_with_env(&mut store, &fe, sha3_512_truncated),
+                "keccak256"                => Function::new_typed_with_env(&mut store, &fe, keccak256),
+                "blake2s_256"              => Function::new_typed_with_env(&mut store, &fe, blake2s_256),
+                "blake2b_512"              => Function::new_typed_with_env(&mut store, &fe, blake2b_512),
+                "blake3"                   => Function::new_typed_with_env(&mut store, &fe, blake3),
+                "debug"                    => Function::new_typed_with_env(&mut store, &fe, debug),
+                "query_chain"              => Function::new_typed_with_env(&mut store, &fe, query_chain),
             }
         };
 
         // create wasmer instance
-        let wasm_instance = WasmerInstance::new(&mut wasm_store, &module, &import_obj)?;
-        let wasm_instance = Box::new(wasm_instance);
+        let instance = wasmer::Instance::new(&mut store, &module, &import_obj)?;
+        let instance = Box::new(instance);
 
         // set memory/store/instance in the env
-        let env = fe.as_mut(&mut wasm_store);
-        env.set_memory(&wasm_instance)?;
-        env.set_wasm_instance(wasm_instance.as_ref())?;
+        let env = fe.as_mut(&mut store);
+        env.set_memory(&instance)?;
+        env.set_wasm_instance(instance.as_ref())?;
 
-        Ok(Self {
-            _wasm_instance: wasm_instance,
-            wasm_store,
+        Ok(WasmInstance {
+            _instance: instance,
+            store,
             fe,
         })
     }
+}
+
+// --------------------------------- instance ----------------------------------
+
+pub struct WasmInstance {
+    _instance: Box<wasmer::Instance>,
+    store: Store,
+    fe: FunctionEnv<Environment>,
+}
+
+impl Instance for WasmInstance {
+    type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
@@ -100,7 +119,7 @@ impl Vm for WasmVm {
     where
         P: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
@@ -124,7 +143,7 @@ impl Vm for WasmVm {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.wasm_store);
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut wasm_store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;

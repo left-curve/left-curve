@@ -9,6 +9,7 @@ use {
 /// Note: The `sender` in this function signature is the contract, i.e. the
 /// account that emitted the submessages, not the transaction's sender.
 pub fn handle_submessages<VM>(
+    vm: VM,
     // This function takes a boxed store instead of using a generic like others.
     //
     // This is because this function is recursive: every layer of recursion, it
@@ -38,13 +39,14 @@ pub fn handle_submessages<VM>(
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
     for submsg in submsgs {
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
-        let result = process_msg::<VM>(
+        let result = process_msg(
+            vm.clone(),
             Box::new(buffer.share()),
             block.clone(),
             sender.clone(),
@@ -56,7 +58,8 @@ where
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
                 events.extend(submsg_events.clone());
-                events.extend(do_reply::<VM>(
+                events.extend(do_reply(
+                    vm.clone(),
                     storage.clone(),
                     block.clone(),
                     sender.clone(),
@@ -67,7 +70,8 @@ where
             // error - callback requested
             // discard uncommitted state changes, give callback
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                events.extend(do_reply::<VM>(
+                events.extend(do_reply(
+                    vm.clone(),
                     storage.clone(),
                     block.clone(),
                     sender.clone(),

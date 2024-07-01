@@ -38,7 +38,7 @@ struct TestSuite {
 impl TestSuite {
     fn new() -> Self {
         Self {
-            app: App::new(MemDb::new()),
+            app: App::new(MemDb::new(), WasmVm::new()),
             block: BlockInfo {
                 height: Uint64::ZERO,
                 timestamp: Timestamp::from_nanos(0),
