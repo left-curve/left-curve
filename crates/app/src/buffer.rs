@@ -8,8 +8,6 @@ use {
     },
 };
 
-// ----------------------------------- store ------------------------------------
-
 /// A key-value storage with an in-memory write buffer.
 ///
 /// Adapted from cw-multi-test:
