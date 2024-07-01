@@ -9,30 +9,30 @@ use {
 /// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
 /// methods.
 pub struct Shared<S> {
-    storage: Arc<RwLock<S>>,
+    inner: Arc<RwLock<S>>,
 }
 
 impl<S> Shared<S> {
-    pub fn new(storage: S) -> Self {
+    pub fn new(inner: S) -> Self {
         Self {
-            storage: Arc::new(RwLock::new(storage)),
+            inner: Arc::new(RwLock::new(inner)),
         }
     }
 
     pub fn share(&self) -> Self {
         Self {
-            storage: Arc::clone(&self.storage),
+            inner: Arc::clone(&self.inner),
         }
     }
 
     pub fn read_access(&self) -> RwLockReadGuard<S> {
-        self.storage
+        self.inner
             .read()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
     pub fn write_access(&self) -> RwLockWriteGuard<S> {
-        self.storage
+        self.inner
             .write()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
@@ -41,7 +41,7 @@ impl<S> Shared<S> {
     ///
     /// Panics if reference count is greater than 1, or if the lock is poisoned.
     pub fn disassemble(self) -> S {
-        Arc::try_unwrap(self.storage)
+        Arc::try_unwrap(self.inner)
             .unwrap_or_else(|_| panic!("unwrapping Arc when ref count > 1"))
             .into_inner()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
