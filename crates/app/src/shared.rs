@@ -37,12 +37,13 @@ impl<S> Shared<S> {
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    /// Disassemble the shared store and return the underlying store.
-    /// Fails if there are currently more than one strong reference to it.
+    /// Disassemble the smart pointer and return the inner value.
+    ///
+    /// Panics if reference count is greater than 1, or if the lock is poisoned.
     pub fn disassemble(self) -> S {
-        let lock = Arc::try_unwrap(self.storage).unwrap_or_else(|_| panic!(""));
-
-        lock.into_inner()
+        Arc::try_unwrap(self.storage)
+            .unwrap_or_else(|_| panic!("unwrapping Arc when ref count > 1"))
+            .into_inner()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 }
@@ -53,8 +54,7 @@ impl<S> Clone for Shared<S> {
     }
 }
 
-// When the inner type is a `Storage`, the `Shared` smart pointer implements
-// the `Storage` trait as well.
+// When the inner type is `Storage`, the outer `Shared` also implements `Storage`.
 impl<S: Storage> Storage for Shared<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
