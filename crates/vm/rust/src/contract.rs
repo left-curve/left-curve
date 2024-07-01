@@ -1,6 +1,5 @@
 use {
     crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
-    borsh::{BorshDeserialize, BorshSerialize},
     elsa::sync::FrozenVec,
     grug_types::{
         from_json_value, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
@@ -16,7 +15,6 @@ pub(crate) static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>
 
 // ---------------------------------- wrapper ----------------------------------
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ContractWrapper {
     pub(crate) index: usize,
 }
@@ -54,6 +52,16 @@ impl ContractWrapper {
             query_fn,
         }));
         Self { index }
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.index.to_le_bytes().to_vec()
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self {
+            index: usize::from_le_bytes(bytes.try_into().unwrap()),
+        }
     }
 }
 

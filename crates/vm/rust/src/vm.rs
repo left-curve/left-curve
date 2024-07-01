@@ -20,17 +20,16 @@ pub struct RustVm {
 
 impl Vm for RustVm {
     type Error = VmError;
-    type Program = ContractWrapper;
 
     fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        program: Self::Program,
+        code: &[u8],
     ) -> VmResult<Self> {
         Ok(Self {
             storage,
             querier,
-            program,
+            program: ContractWrapper::from_bytes(code),
         })
     }
 

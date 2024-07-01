@@ -21,19 +21,18 @@ pub struct WasmVm {
 
 impl Vm for WasmVm {
     type Error = VmError;
-    type Program = Vec<u8>;
 
     fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        program: Vec<u8>,
+        code: &[u8],
     ) -> Result<Self, Self::Error> {
         // create Wasm store
         // for now we use the singlepass compiler
         let mut wasm_store = Store::new(Singlepass::default());
 
         // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, program)?;
+        let module = Module::new(&wasm_store, code)?;
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point

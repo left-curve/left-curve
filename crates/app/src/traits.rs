@@ -1,6 +1,5 @@
 use {
     crate::{QuerierProvider, StorageProvider},
-    borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -90,18 +89,12 @@ pub trait Db {
 pub trait Vm: Sized {
     type Error: From<StdError> + ToString;
 
-    /// The type of programs intended to be run in this VM.
-    ///
-    /// It must be serializable with Borsh, so that it can be saved in a KV store
-    /// in such a mapping: hash(program) => program.
-    type Program: BorshSerialize + BorshDeserialize;
-
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
     fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        program: Self::Program,
+        code: &[u8],
     ) -> Result<Self, Self::Error>;
 
     // Note: A VM instance is intended to be "single-use", meaning an instance

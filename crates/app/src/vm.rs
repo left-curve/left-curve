@@ -4,8 +4,8 @@ use {
         CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        from_borsh_slice, from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event,
-        GenericResult, Hash, Response, Storage,
+        from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash,
+        Response, Storage,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -186,13 +186,12 @@ where
 {
     // Load the program code from storage and deserialize
     let code = CODES.load(&storage, code_hash)?;
-    let program = from_borsh_slice(code)?;
 
-    // Create the contract substore and querier
+    // Create the providers
     let substore = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
     let querier = QuerierProvider::new(storage, block);
 
-    Ok(VM::build_instance(substore, querier, program)?)
+    Ok(VM::build_instance(substore, querier, &code)?)
 }
 
 pub(crate) fn handle_response<VM>(
