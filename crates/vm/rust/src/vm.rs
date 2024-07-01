@@ -12,7 +12,7 @@ macro_rules! get_contract {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct RustVm;
 
 impl RustVm {

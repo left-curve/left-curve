@@ -13,7 +13,7 @@ use {
 
 // ------------------------------------ vm -------------------------------------
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct WasmVm {
     // TODO: add module cache (note: the cache must be clone-able)
 }
