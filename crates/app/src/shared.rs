@@ -6,6 +6,8 @@ use {
     },
 };
 
+/// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
+/// methods.
 pub struct Shared<S> {
     storage: Arc<RwLock<S>>,
 }
@@ -51,6 +53,8 @@ impl<S> Clone for Shared<S> {
     }
 }
 
+// When the inner type is a `Storage`, the `Shared` smart pointer implements
+// the `Storage` trait as well.
 impl<S: Storage> Storage for Shared<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
