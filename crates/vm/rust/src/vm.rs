@@ -15,7 +15,7 @@ macro_rules! get_contract {
 pub struct RustVm {
     storage: StorageProvider,
     querier: QuerierProvider<Self>,
-    program: ContractWrapper,
+    wrapper: ContractWrapper,
 }
 
 impl Vm for RustVm {
@@ -29,12 +29,12 @@ impl Vm for RustVm {
         Ok(Self {
             storage,
             querier,
-            program: ContractWrapper::from_bytes(code),
+            wrapper: ContractWrapper::from_bytes(code),
         })
     }
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let contract = get_contract!(self.program.index);
+        let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "receive" => {
                 let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
@@ -54,7 +54,7 @@ impl Vm for RustVm {
     where
         P: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.program.index);
+        let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "instantiate" => {
                 let msg = from_json_slice(param)?;
@@ -105,7 +105,7 @@ impl Vm for RustVm {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.program.index);
+        let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "reply" => {
                 let msg = from_json_slice(param1)?;
