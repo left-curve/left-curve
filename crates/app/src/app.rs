@@ -26,22 +26,8 @@ where
     cache_vm: SharedCacheVM<VM>,
 }
 
-impl<DB, VM> App<DB, VM>
-where
-    VM: Vm,
-{
-    pub fn new(db: DB, cache_size: Size) -> Self {
-        Self {
-            db,
-            cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
-        }
-    }
-}
-
-// For some reason, using a derive macro `#[derive(Clone)]` on App doesn't work.
-// The compiler demands that VM implements Clone before it will implement Clone
-// for App; which doesn't make any sense because VM is just a PhantomData inside
-// App...????
+// Using `#[derive(Clone)]` on `App` doesn't work. It requires `VM` to implement
+// `Clone` before it will implement it for `App`, despite `VM` is just a generic...
 impl<DB, VM> Clone for App<DB, VM>
 where
     VM: Vm,
@@ -51,6 +37,18 @@ where
         Self {
             db: self.db.clone(),
             cache_vm: self.cache_vm.clone(),
+        }
+    }
+}
+
+impl<DB, VM> App<DB, VM>
+where
+    VM: Vm,
+{
+    pub fn new(db: DB, cache_size: Size) -> Self {
+        Self {
+            db,
+            cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
         }
     }
 }
