@@ -71,7 +71,7 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash> {
-        let mut cached = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
 
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
@@ -83,9 +83,9 @@ where
         }
 
         // save the config and genesis block. some genesis messages may need it
-        CHAIN_ID.save(&mut cached, &chain_id)?;
-        CONFIG.save(&mut cached, &genesis_state.config)?;
-        LAST_FINALIZED_BLOCK.save(&mut cached, &block)?;
+        CHAIN_ID.save(&mut buffer, &chain_id)?;
+        CONFIG.save(&mut buffer, &genesis_state.config)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
         // loop through genesis messages and execute each one.
         // it's expected that genesis messages should all successfully execute.
@@ -95,11 +95,11 @@ where
             #[cfg(feature = "tracing")]
             info!(idx = _idx, "Processing genesis message");
 
-            process_msg::<VM>(Box::new(cached.clone()), block.clone(), GENESIS_SENDER, msg)?;
+            process_msg::<VM>(Box::new(buffer.clone()), block.clone(), GENESIS_SENDER, msg)?;
         }
 
         // persist the state changes to disk
-        let (_, pending) = cached.disassemble().disassemble();
+        let (_, pending) = buffer.disassemble().disassemble();
         let (version, root_hash) = self.db.flush_and_commit(pending)?;
 
         // BaseStore version should be 0
@@ -143,12 +143,12 @@ where
         block: BlockInfo,
         txs: Vec<(Hash, Tx)>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
-        let mut cached = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
 
-        let cfg = CONFIG.load(&cached)?;
-        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&cached)?;
+        let cfg = CONFIG.load(&buffer)?;
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // make sure the new block height is exactly the last finalized height
         // plus one. this ensures that block height always matches the BaseStore
@@ -173,7 +173,7 @@ where
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
             events.extend(do_before_block::<VM>(
-                Box::new(cached.share()),
+                Box::new(buffer.share()),
                 block.clone(),
                 contract,
             )?);
@@ -184,7 +184,7 @@ where
             #[cfg(feature = "tracing")]
             debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
 
-            tx_results.push(process_tx::<_, VM>(cached.share(), block.clone(), tx));
+            tx_results.push(process_tx::<_, VM>(buffer.share(), block.clone(), tx));
         }
 
         // call end blockers
@@ -200,7 +200,7 @@ where
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
             events.extend(do_after_block::<VM>(
-                Box::new(cached.share()),
+                Box::new(buffer.share()),
                 block.clone(),
                 contract,
             )?);
@@ -211,11 +211,11 @@ where
         // note that we do this *after* the transactions have been executed, so
         // if a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
-        LAST_FINALIZED_BLOCK.save(&mut cached, &block)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
         // flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. it will be done in the ABCI `Commit` call.
-        let (_, batch) = cached.disassemble().disassemble();
+        let (_, batch) = buffer.disassemble().disassemble();
         let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
 
         // block height should match the DB version
@@ -337,13 +337,13 @@ where
 {
     let mut events = vec![];
 
-    // create cached store for this tx
-    let cached = Shared::new(Buffer::new(storage, None));
+    // create buffer storage for this tx
+    let buffer = Shared::new(Buffer::new(storage, None));
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
     events.extend(do_before_tx::<VM>(
-        Box::new(cached.share()),
+        Box::new(buffer.share()),
         block.clone(),
         &tx,
     )?);
@@ -351,7 +351,7 @@ where
     // update the account state. as long as authentication succeeds, regardless
     // of whether the message are successful, we update account state. if auth
     // fails, we don't update account state.
-    cached.write_access().commit();
+    buffer.write_access().commit();
 
     // now that the tx is authenticated, we loop through the messages and
     // execute them one by one.
@@ -363,7 +363,7 @@ where
         debug!(idx = _idx, "Processing message");
 
         events.extend(process_msg::<VM>(
-            Box::new(cached.share()),
+            Box::new(buffer.share()),
             block.clone(),
             tx.sender.clone(),
             msg.clone(),
@@ -373,10 +373,10 @@ where
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx::<VM>(Box::new(cached.share()), block, &tx)?);
+    events.extend(do_after_tx::<VM>(Box::new(buffer.share()), block, &tx)?);
 
     // all messages succeeded. commit the state changes
-    cached.write_access().commit();
+    buffer.write_access().commit();
 
     Ok(events)
 }

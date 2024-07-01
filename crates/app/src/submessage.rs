@@ -43,9 +43,9 @@ where
 {
     let mut events = vec![];
     for submsg in submsgs {
-        let cached = Shared::new(Buffer::new(storage.clone(), None));
+        let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg::<VM>(
-            Box::new(cached.share()),
+            Box::new(buffer.share()),
             block.clone(),
             sender.clone(),
             submsg.msg,
@@ -54,7 +54,7 @@ where
             // success - callback requested
             // flush state changes, log events, give callback
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
-                cached.disassemble().consume();
+                buffer.disassemble().consume();
                 events.extend(submsg_events.clone());
                 events.extend(do_reply::<VM>(
                     storage.clone(),
@@ -78,7 +78,7 @@ where
             // success - callback not requested
             // flush state changes, log events, move on to the next submsg
             (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
-                cached.disassemble().consume();
+                buffer.disassemble().consume();
                 events.extend(submsg_events);
             },
             // error - callback not requested

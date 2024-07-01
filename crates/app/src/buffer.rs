@@ -19,7 +19,7 @@ pub struct Buffer<S: Clone> {
 }
 
 impl<S: Clone> Buffer<S> {
-    /// Create a new cached store with an optional write batch.
+    /// Create a new buffer storage with an optional write batch.
     pub fn new(base: S, pending: Option<Batch>) -> Self {
         Self {
             base,
@@ -218,12 +218,12 @@ mod tests {
         base.write(&[6], &[6]);
         base.write(&[7], &[7]);
 
-        let mut cached = Buffer::new(base, None);
-        cached.remove(&[2]);
-        cached.write(&[3], &[3]);
-        cached.write(&[6], &[255]);
-        cached.remove(&[7]);
-        cached.write(&[8], &[8]);
+        let mut buffer = Buffer::new(base, None);
+        buffer.remove(&[2]);
+        buffer.write(&[3], &[3]);
+        buffer.write(&[6], &[255]);
+        buffer.remove(&[7]);
+        buffer.write(&[8], &[8]);
 
         let merged = vec![
             (vec![1], vec![1]),
@@ -234,7 +234,7 @@ mod tests {
             (vec![8], vec![8]),
         ];
 
-        (cached, merged)
+        (buffer, merged)
     }
 
     fn collect_records(storage: &dyn Storage, order: Order) -> Vec<Record> {
@@ -243,11 +243,11 @@ mod tests {
 
     #[test]
     fn iterator_works() {
-        let (cached, mut merged) = make_test_case();
-        assert_eq!(collect_records(&cached, Order::Ascending), merged);
+        let (buffer, mut merged) = make_test_case();
+        assert_eq!(collect_records(&buffer, Order::Ascending), merged);
 
         merged.reverse();
-        assert_eq!(collect_records(&cached, Order::Descending), merged);
+        assert_eq!(collect_records(&buffer, Order::Descending), merged);
     }
 
     // TODO: add fuzz test
