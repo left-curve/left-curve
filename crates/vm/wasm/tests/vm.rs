@@ -246,5 +246,16 @@ fn wasm_vm_works() -> anyhow::Result<()> {
     suite.assert_balance(&sender, MOCK_DENOM, 30)?;
     suite.assert_balance(&receiver, MOCK_DENOM, 70)?;
 
+    // Out of gas
+    suite.send_messages(&sender, &sender_sk, 100_000, vec![Message::Transfer {
+        to: receiver.clone(),
+        coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
+    }])?;
+
+    // Tx is went out of gas.
+    // Balances should remain the same
+    suite.assert_balance(&sender, MOCK_DENOM, 30)?;
+    suite.assert_balance(&receiver, MOCK_DENOM, 70)?;
+
     Ok(())
 }
