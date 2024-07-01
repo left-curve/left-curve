@@ -1,6 +1,6 @@
 use {
     crate::{
-        do_reply, process_msg, AppError, AppResult, CacheStore, Shared, SharedCacheModules,
+        do_reply, process_msg, AppError, AppResult, CacheStore, Shared, SharedCacheVM,
         SharedGasTracker, Vm,
     },
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
@@ -38,7 +38,7 @@ pub fn handle_submessages<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     sender: Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
@@ -53,7 +53,7 @@ where
             Box::new(cached.share()),
             block.clone(),
             gas_tracker.clone(),
-            cache_module.clone(),
+            cache_vm.clone(),
             sender.clone(),
             submsg.msg,
         );
@@ -67,7 +67,7 @@ where
                     storage.clone(),
                     block.clone(),
                     gas_tracker.clone(),
-                    cache_module.clone(),
+                    cache_vm.clone(),
                     sender.clone(),
                     &payload,
                     &GenericResult::Ok(submsg_events),
@@ -80,7 +80,7 @@ where
                     storage.clone(),
                     block.clone(),
                     gas_tracker.clone(),
-                    cache_module.clone(),
+                    cache_vm.clone(),
                     sender.clone(),
                     &payload,
                     &GenericResult::Err(err.to_string()),

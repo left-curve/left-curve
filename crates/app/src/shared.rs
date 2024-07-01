@@ -12,9 +12,9 @@ pub struct Shared<S> {
 }
 
 impl<S> Shared<S> {
-    pub fn new(storage: S) -> Self {
+    pub fn new(inner: S) -> Self {
         Self {
-            inner: Arc::new(RwLock::new(storage)),
+            inner: Arc::new(RwLock::new(inner)),
         }
     }
 

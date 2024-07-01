@@ -1,4 +1,10 @@
-use {clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_vm_wasm::WasmVm, std::path::PathBuf};
+use {
+    clap::Parser,
+    grug_app::{App, Size},
+    grug_db_disk::DiskDb,
+    grug_vm_wasm::WasmVm,
+    std::path::PathBuf,
+};
 
 #[derive(Parser)]
 pub struct StartCmd {
@@ -16,7 +22,12 @@ impl StartCmd {
         // create DB backend
         let db = DiskDb::open(data_dir)?;
 
+        // TODO: For the size of cache, we should read the value from config file?
+        // mock it for now.
+        let cache_size = Size::giga(1);
+
         // start the ABCI server
-        Ok(App::<DiskDb, WasmVm>::new(db).start_abci_server(self.read_buf_size, self.abci_addr)?)
+        Ok(App::<DiskDb, WasmVm>::new(db, cache_size)
+            .start_abci_server(self.read_buf_size, self.abci_addr)?)
     }
 }

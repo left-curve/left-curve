@@ -96,18 +96,18 @@ pub trait Vm: Sized {
     /// in such a mapping: hash(program) => program.
     type Program: BorshSerialize + BorshDeserialize;
 
-    type Module: Clone;
+    type Cache: Clone;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
-    fn build_module(program: Self::Program) -> Result<Self::Module, Self::Error>;
+    fn build_cache(program: Self::Program) -> Result<Self::Cache, Self::Error>;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
-    fn build_instance_from_module(
+    fn build_instance_from_cache(
         storage: PrefixStore,
         querier: QueryProvider<Self>,
-        module: Self::Module,
+        module: Self::Cache,
         gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error>;
 

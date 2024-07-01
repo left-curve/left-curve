@@ -1,5 +1,5 @@
 use {
-    grug_app::App,
+    grug_app::{App, Size},
     grug_db_memory::MemDb,
     grug_types::{BlockInfo, GenesisState, Hash, QueryRequest, QueryResponse, Timestamp, Uint64},
     grug_vm_rust::RustVm,
@@ -31,7 +31,7 @@ impl Default for MockApp {
 impl MockApp {
     pub fn new() -> Self {
         Self {
-            inner: App::new(MemDb::new()),
+            inner: App::new(MemDb::new(), Size::mega(100)),
         }
     }
 

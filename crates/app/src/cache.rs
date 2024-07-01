@@ -1,14 +1,21 @@
 use {
-    crate::{PrefixStore, QueryProvider, Shared, SharedGasTracker, Vm, CODES, CONTRACT_NAMESPACE},
+    crate::{
+        PrefixStore, QueryProvider, Shared, SharedGasTracker, Size, Vm, CODES, CONTRACT_NAMESPACE,
+    },
+    clru::{CLruCache, CLruCacheConfig, WeightScale},
     grug_types::{from_borsh_slice, Addr, Batch, BlockInfo, Hash, Op, Order, Record, Storage},
     std::{
         cmp::Ordering,
-        collections::BTreeMap,
+        hash::RandomState,
         iter::{self, Peekable},
+        marker::PhantomData,
         mem,
+        num::NonZeroUsize,
         ops::Bound,
     },
 };
+
+// ----------------------------------- store ------------------------------------
 
 /// Adapted from cw-multi-test:
 /// <https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253>
@@ -198,24 +205,68 @@ where
     }
 }
 
-pub type SharedCacheModules<VM> = Shared<CacheModules<VM>>;
+// ------------------------------------ vm -------------------------------------
 
-pub struct CacheModules<VM: Vm> {
-    modules: BTreeMap<Hash, VM::Module>,
+// Minimum module size.
+// Based on `examples/module_size.sh`, and the cosmwasm-plus contracts.
+// We use an estimated *minimum* module size in order to compute a number of pre-allocated entries
+// that are enough to handle a size-limited cache without requiring re-allocation / resizing.
+// This will incurr an extra memory cost for the unused entries, but it's negligible:
+// Assuming the cost per entry is 48 bytes, 10000 entries will have an extra cost of just ~500 kB.
+// Which is a very small percentage (~0.03%) of our typical cache memory budget (2 GB).
+const MINIMUM_MODULE_SIZE: Size = Size::kibi(250);
+
+struct SizeScale<VM> {
+    phantom: PhantomData<VM>,
 }
 
-impl<VM> Default for CacheModules<VM>
-where
-    VM: Vm,
-{
+impl<VM> Default for SizeScale<VM> {
     fn default() -> Self {
         Self {
-            modules: BTreeMap::new(),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<VM: Vm> Shared<CacheModules<VM>> {
+impl<VM> WeightScale<Hash, VM::Cache> for SizeScale<VM>
+where
+    VM: Vm,
+{
+    #[inline]
+    fn weight(&self, key: &Hash, value: &VM::Cache) -> usize {
+        std::mem::size_of_val(key) + std::mem::size_of_val(value)
+    }
+}
+
+pub type SharedCacheVM<VM> = Shared<CacheVM<VM>>;
+
+pub struct CacheVM<VM: Vm> {
+    cache: CLruCache<Hash, VM::Cache, RandomState, SizeScale<VM>>,
+    // cache: BTreeMap<Hash, VM::Cache>,
+}
+
+impl<VM> CacheVM<VM>
+where
+    VM: Vm,
+{
+    pub fn new(size: Size) -> Self
+    where
+        VM: Vm,
+    {
+        let preallocated_entries = size.0 / MINIMUM_MODULE_SIZE.0;
+
+        Self {
+            cache: CLruCache::with_config(
+                CLruCacheConfig::new(NonZeroUsize::new(size.0).unwrap())
+                    .with_memory(preallocated_entries)
+                    .with_scale(SizeScale::default()),
+            ),
+            // caches: BTreeMap::new(),
+        }
+    }
+}
+
+impl<VM: Vm> SharedCacheVM<VM> {
     pub fn build_instance(
         &self,
         storage: Box<dyn Storage>,
@@ -224,16 +275,20 @@ impl<VM: Vm> Shared<CacheModules<VM>> {
         code_hash: &Hash,
         gas_tracker: SharedGasTracker,
     ) -> Result<VM, VM::Error> {
-        let module = match self.read_access().modules.get(code_hash) {
-            Some(module) => module.clone(),
+        let maybe_cache = self.write_access().cache.get(code_hash).cloned();
+
+        let cache = match maybe_cache {
+            Some(cache) => cache,
             None => {
                 let code = CODES.load(&storage, code_hash)?;
                 let program = from_borsh_slice(code)?;
-                let module = VM::build_module(program)?;
+                let module = VM::build_cache(program)?;
 
-                self.write_access()
-                    .modules
-                    .insert(code_hash.clone(), module.clone());
+                // Can we ignore the result??
+                let _ = self
+                    .write_access()
+                    .cache
+                    .put_with_weight(code_hash.clone(), module.clone());
                 module
             },
         };
@@ -242,7 +297,7 @@ impl<VM: Vm> Shared<CacheModules<VM>> {
         let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
         let querier = QueryProvider::new(storage, block, gas_tracker.clone(), self.clone());
 
-        VM::build_instance_from_module(substore, querier, module, gas_tracker)
+        VM::build_instance_from_cache(substore, querier, cache, gas_tracker)
     }
 }
 // ----------------------------------- tests -----------------------------------

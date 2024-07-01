@@ -1,4 +1,6 @@
-use crate::{SharedCacheModules, SharedGasTracker};
+#![allow(clippy::too_many_arguments)]
+
+use crate::{SharedCacheVM, SharedGasTracker};
 #[cfg(feature = "tracing")]
 use tracing::{debug, info, warn};
 
@@ -107,7 +109,7 @@ pub fn do_transfer<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -121,7 +123,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         from.clone(),
         to.clone(),
         coins.clone(),
@@ -149,7 +151,7 @@ fn _do_transfer<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -183,7 +185,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker.clone(),
-        cache_module.clone(),
+        cache_vm.clone(),
         &msg,
     )?;
 
@@ -192,7 +194,7 @@ where
             storage,
             ctx.block,
             gas_tracker,
-            cache_module,
+            cache_vm,
             msg,
         )?);
     }
@@ -204,7 +206,7 @@ fn _do_receive<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
 where
@@ -227,18 +229,17 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
     )
 }
 
 // -------------------------------- instantiate --------------------------------
 
-#[allow(clippy::too_many_arguments)]
 pub fn do_instantiate<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -254,7 +255,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         sender,
         code_hash,
         msg,
@@ -275,12 +276,11 @@ where
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn _do_instantiate<VM>(
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -318,7 +318,7 @@ where
             storage.clone(),
             block.clone(),
             gas_tracker.clone(),
-            cache_module.clone(),
+            cache_vm.clone(),
             sender.clone(),
             address.clone(),
             funds.clone(),
@@ -341,7 +341,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
         msg,
     )?);
 
@@ -354,7 +354,7 @@ pub fn do_execute<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -368,7 +368,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         contract.clone(),
         sender,
         msg,
@@ -391,7 +391,7 @@ fn _do_execute<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -411,7 +411,7 @@ where
             storage.clone(),
             block.clone(),
             gas_tracker.clone(),
-            cache_module.clone(),
+            cache_vm.clone(),
             sender.clone(),
             contract.clone(),
             funds.clone(),
@@ -434,7 +434,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
         msg,
     )?);
 
@@ -447,7 +447,7 @@ pub fn do_migrate<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -461,7 +461,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         contract.clone(),
         sender,
         new_code_hash,
@@ -484,7 +484,7 @@ fn _do_migrate<VM>(
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -527,7 +527,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
         msg,
     )
 }
@@ -538,7 +538,7 @@ pub fn do_reply<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -551,7 +551,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         contract.clone(),
         msg,
         result,
@@ -573,7 +573,7 @@ fn _do_reply<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -598,7 +598,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
         msg,
         result,
     )
@@ -611,13 +611,13 @@ pub fn do_before_tx<VM>(
     block: BlockInfo,
     tx: &Tx,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx::<VM>("before_tx", storage, block, tx, gas_tracker, cache_module) {
+    match _do_before_or_after_tx::<VM>("before_tx", storage, block, tx, gas_tracker, cache_vm) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -643,13 +643,13 @@ pub fn do_after_tx<VM>(
     block: BlockInfo,
     tx: &Tx,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx::<VM>("after_tx", storage, block, tx, gas_tracker, cache_module) {
+    match _do_before_or_after_tx::<VM>("after_tx", storage, block, tx, gas_tracker, cache_vm) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -676,7 +676,7 @@ fn _do_before_or_after_tx<VM>(
     block: BlockInfo,
     tx: &Tx,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -698,7 +698,7 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
         tx,
     )
 }
@@ -709,7 +709,7 @@ pub fn do_before_block<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -721,7 +721,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         contract.clone(),
     ) {
         Ok(events) => {
@@ -741,7 +741,7 @@ pub fn do_after_block<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -753,7 +753,7 @@ where
         storage,
         block,
         gas_tracker,
-        cache_module,
+        cache_vm,
         contract.clone(),
     ) {
         Ok(events) => {
@@ -774,7 +774,7 @@ fn _do_before_or_after_block<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -797,6 +797,6 @@ where
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_module,
+        cache_vm,
     )
 }

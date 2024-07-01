@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, SharedCacheModules, SharedGasTracker, Vm},
+    crate::{process_query, AppError, SharedCacheVM, SharedGasTracker, Vm},
     grug_types::{BlockInfo, Querier, QueryRequest, QueryResponse, StdError, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -9,7 +9,7 @@ pub struct QueryProvider<VM: Vm> {
     block: BlockInfo,
     vm: PhantomData<VM>,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 }
 
 impl<VM> QueryProvider<VM>
@@ -20,14 +20,14 @@ where
         storage: Box<dyn Storage>,
         block: BlockInfo,
         gas_tracker: SharedGasTracker,
-        cache_module: SharedCacheModules<VM>,
+        cache_vm: SharedCacheVM<VM>,
     ) -> Self {
         Self {
             storage,
             block,
             vm: PhantomData,
             gas_tracker,
-            cache_module,
+            cache_vm,
         }
     }
 }
@@ -42,7 +42,7 @@ where
             self.storage.clone(),
             self.block.clone(),
             self.gas_tracker.clone(),
-            self.cache_module.clone(),
+            self.cache_vm.clone(),
             req,
         )
         .map_err(|err| StdError::Generic(err.to_string()))

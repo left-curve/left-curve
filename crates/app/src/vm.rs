@@ -1,6 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, SharedCacheModules, SharedGasTracker, Vm,
+        handle_submessages, AppError, AppResult, SharedCacheVM, SharedGasTracker, Vm,
         CONTRACT_ADDRESS_KEY,
     },
     grug_types::{
@@ -17,7 +17,7 @@ pub fn call_in_0_out_1<VM, R>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -25,7 +25,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = cache_module.build_instance(
+    let instance: VM = cache_vm.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -46,7 +46,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     param: &P,
 ) -> AppResult<R>
 where
@@ -56,7 +56,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = cache_module.build_instance(
+    let instance: VM = cache_vm.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -74,13 +74,14 @@ where
 
 /// Create a VM instance, and call a function that takes exactly two parameters
 /// and returns one output.
+#[allow(clippy::too_many_arguments)]
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -92,7 +93,7 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance: VM = cache_module.build_instance(
+    let instance: VM = cache_vm.build_instance(
         storage,
         ctx.block.clone(),
         &ctx.contract,
@@ -119,7 +120,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm,
@@ -131,11 +132,11 @@ where
         code_hash,
         ctx,
         gas_tracker.clone(),
-        cache_module.clone(),
+        cache_vm.clone(),
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker,cache_module, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker,cache_vm, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -147,7 +148,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -161,24 +162,25 @@ where
         code_hash,
         ctx,
         gas_tracker.clone(),
-        cache_module.clone(),
+        cache_vm.clone(),
         param,
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_module, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_vm, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
 /// returns [`Response`], and handle the submessages. Return a vector of events
 /// emitted.
+#[allow(clippy::too_many_arguments)]
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     name: &'static str,
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -194,13 +196,13 @@ where
         code_hash,
         ctx,
         gas_tracker.clone(),
-        cache_module.clone(),
+        cache_vm.clone(),
         param1,
         param2,
     )?
     .into_std_result()?;
 
-    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_module, response)
+    handle_response::<VM>(name, storage, ctx, gas_tracker, cache_vm, response)
 }
 
 // fn create_vm_instance<VM>(
@@ -230,7 +232,7 @@ pub(crate) fn handle_response<VM>(
     storage: Box<dyn Storage>,
     ctx: &Context,
     gas_tracker: SharedGasTracker,
-    cache_module: SharedCacheModules<VM>,
+    cache_vm: SharedCacheVM<VM>,
     response: Response,
 ) -> AppResult<Vec<Event>>
 where
@@ -248,7 +250,7 @@ where
         storage,
         ctx.block.clone(),
         gas_tracker,
-        cache_module,
+        cache_vm,
         ctx.contract.clone(),
         response.submsgs,
     )?);

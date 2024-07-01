@@ -16,6 +16,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 borsh            = { workspace = true, features = ["de_strict_order"] }
+clru             = { workspace = true }
 dyn-clone        = { workspace = true }
 grug-storage     = { path = "../storage" }
 grug-types       = { path = "../types" }

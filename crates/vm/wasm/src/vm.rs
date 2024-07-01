@@ -10,7 +10,7 @@ use {
     grug_types::{to_borsh_vec, Context},
     std::sync::Arc,
     wasmer::{
-        imports, CompilerConfig, Function, FunctionEnv, Instance as WasmerInstance, Module,
+        imports, CompilerConfig, Engine, Function, FunctionEnv, Instance as WasmerInstance, Module,
         Singlepass, Store,
     },
     wasmer_middlewares::{
@@ -23,6 +23,12 @@ use {
 ///
 /// TODO: Mocked to 1 now, need to be discussed
 const GAS_PER_OPERATION: u64 = 1;
+
+#[derive(Clone)]
+pub struct WasmCache {
+    pub module: Module,
+    pub engine: Engine,
+}
 
 pub struct WasmVm {
     _wasm_instance: Box<WasmerInstance>,
@@ -50,36 +56,32 @@ impl WasmVm {
 }
 
 impl Vm for WasmVm {
+    type Cache = WasmCache;
     type Error = VmError;
-    type Module = Module;
     type Program = Vec<u8>;
 
-    fn build_module(program: Self::Program) -> Result<Self::Module, Self::Error> {
+    fn build_cache(program: Self::Program) -> Result<Self::Cache, Self::Error> {
         let mut compiler = Singlepass::new();
         let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
         compiler.canonicalize_nans(true);
         compiler.push_middleware(metering);
-
-        let wasm_store = Store::new(compiler);
+        let engine: Engine = compiler.into();
 
         // compile Wasm byte code into module
-        let module = Module::new(&wasm_store, program)?;
+        let now = std::time::Instant::now();
+        let module = Module::new(&engine, program)?;
+        tracing::debug!("Wasm compilation time: {:?}", now.elapsed());
 
-        Ok(module)
+        Ok(WasmCache { module, engine })
     }
 
-    fn build_instance_from_module(
+    fn build_instance_from_cache(
         storage: PrefixStore,
         querier: QueryProvider<Self>,
-        module: Self::Module,
+        cache: Self::Cache,
         gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error> {
-        let mut compiler = Singlepass::new();
-        let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
-        compiler.canonicalize_nans(true);
-        compiler.push_middleware(metering);
-
-        let mut wasm_store = Store::new(compiler);
+        let mut wasm_store = Store::new(cache.engine);
 
         let fe = FunctionEnv::new(
             &mut wasm_store,
@@ -116,7 +118,7 @@ impl Vm for WasmVm {
         };
 
         // create wasmer instance
-        let wasm_instance = WasmerInstance::new(&mut wasm_store, &module, &import_obj)?;
+        let wasm_instance = WasmerInstance::new(&mut wasm_store, &cache.module, &import_obj)?;
         let wasm_instance = Box::new(wasm_instance);
 
         // set memory/store/instance in the env
