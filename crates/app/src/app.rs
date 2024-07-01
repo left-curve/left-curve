@@ -27,6 +27,19 @@ where
     query_gas_limit: Option<u64>,
 }
 
+impl<DB, VM> App<DB, VM>
+where
+    VM: Vm,
+{
+    pub fn new(db: DB, cache_size: Size, query_gas_limit: Option<u64>) -> Self {
+        Self {
+            db,
+            cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
+            query_gas_limit,
+        }
+    }
+}
+
 // Using `#[derive(Clone)]` on `App` doesn't work. It requires `VM` to implement
 // `Clone` before it will implement it for `App`, despite `VM` is just a generic...
 impl<DB, VM> Clone for App<DB, VM>
@@ -39,19 +52,6 @@ where
             db: self.db.clone(),
             cache_vm: self.cache_vm.clone(),
             query_gas_limit: self.query_gas_limit,
-        }
-    }
-}
-
-impl<DB, VM> App<DB, VM>
-where
-    VM: Vm,
-{
-    pub fn new(db: DB, cache_size: Size, query_gas_limit: Option<u64>) -> Self {
-        Self {
-            db,
-            cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
-            query_gas_limit,
         }
     }
 }
