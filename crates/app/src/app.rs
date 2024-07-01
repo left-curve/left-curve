@@ -27,9 +27,9 @@ where
     /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
     ///
     /// Prevents the situation where an attacker deploys a contract the contains
-    /// an extremely expensive query method (such as an infinite loop), then
-    /// makes a query limit at a node. Without a gas limit protection, this can
-    /// take down the node.
+    /// an extremely expensive query method (such as one containing an infinite
+    /// loop), then makes a query request at a node. Without a gas limit, this
+    /// can take down the node.
     ///
     /// Note that this is not relevant for queries made as part of a transaction,
     /// which is covered by the transaction's gas limit.
