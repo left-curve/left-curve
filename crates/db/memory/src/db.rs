@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, VersionedMap},
-    grug_app::{CacheStore, Db},
+    grug_app::{Buffer, Db},
     grug_jmt::{MerkleTree, Proof},
     grug_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     std::{
@@ -134,7 +134,7 @@ impl Db for MemDb {
                 None => (0, 0),
             };
 
-            let mut cache = CacheStore::new(self.state_commitment(), None);
+            let mut cache = Buffer::new(self.state_commitment(), None);
             let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
             let (_, changeset) = cache.disassemble();
 

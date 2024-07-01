@@ -8,15 +8,17 @@ use {
     },
 };
 
+/// A key-value storage with an in-memory write buffer.
+///
 /// Adapted from cw-multi-test:
 /// <https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253>
 #[derive(Clone)]
-pub struct CacheStore<S: Clone> {
+pub struct Buffer<S: Clone> {
     base: S,
     pub(crate) pending: Batch,
 }
 
-impl<S: Clone> CacheStore<S> {
+impl<S: Clone> Buffer<S> {
     /// Create a new cached store with an optional write batch.
     pub fn new(base: S, pending: Option<Batch>) -> Self {
         Self {
@@ -32,7 +34,7 @@ impl<S: Clone> CacheStore<S> {
     }
 }
 
-impl<S: Storage + Clone> CacheStore<S> {
+impl<S: Storage + Clone> Buffer<S> {
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
         let pending = mem::take(&mut self.pending);
@@ -47,7 +49,7 @@ impl<S: Storage + Clone> CacheStore<S> {
     }
 }
 
-impl<S: Storage + Clone> Storage for CacheStore<S> {
+impl<S: Storage + Clone> Storage for Buffer<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         match self.pending.get(key) {
             Some(Op::Insert(value)) => Some(value.clone()),
@@ -207,7 +209,7 @@ mod tests {
     // base    : 1 2 _ 4 5 6 7 _
     // pending :   D P _ _ P D 8  (P = put, D = delete)
     // merged  : 1 _ 3 4 5 6 _ 8
-    fn make_test_case() -> (CacheStore<MockStorage>, Vec<Record>) {
+    fn make_test_case() -> (Buffer<MockStorage>, Vec<Record>) {
         let mut base = MockStorage::new();
         base.write(&[1], &[1]);
         base.write(&[2], &[2]);
@@ -216,7 +218,7 @@ mod tests {
         base.write(&[6], &[6]);
         base.write(&[7], &[7]);
 
-        let mut cached = CacheStore::new(base, None);
+        let mut cached = Buffer::new(base, None);
         cached.remove(&[2]);
         cached.write(&[3], &[3]);
         cached.write(&[6], &[255]);

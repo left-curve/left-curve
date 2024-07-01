@@ -1,5 +1,5 @@
 use {
-    crate::{do_reply, process_msg, AppError, AppResult, CacheStore, SharedStore, Vm},
+    crate::{do_reply, process_msg, AppError, AppResult, Buffer, SharedStore, Vm},
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
@@ -12,14 +12,14 @@ pub fn handle_submessages<VM>(
     // This function takes a boxed store instead of using a generic like others.
     //
     // This is because this function is recursive: every layer of recursion, it
-    // wraps the store with `SharedStore<CacheStore<S>>`.
+    // wraps the store with `SharedStore<Buffer<S>>`.
     //
     // Although the recursion is guaranteed to be bounded at run time (thanks to
     // gas limit), the compiler can't understand this. The compiler thinks the
     // wrapping can possibly go on infinitely. It would throw this error:
     //
     // > error: reached the recursion limit while instantiating
-    // > `process_msg::<SharedStore<CacheStore<SharedStore<CacheStore<SharedStore<...>>>>>>`
+    // > `process_msg::<SharedStore<Buffer<SharedStore<Buffer<SharedStore<...>>>>>>`
     //
     // To prevent this, we use `Box<dyn Storage>` instead, which is an opaque
     // type, so that the compiler does not think about how many layers of
@@ -43,7 +43,7 @@ where
 {
     let mut events = vec![];
     for submsg in submsgs {
-        let cached = SharedStore::new(CacheStore::new(storage.clone(), None));
+        let cached = SharedStore::new(Buffer::new(storage.clone(), None));
         let result = process_msg::<VM>(
             Box::new(cached.share()),
             block.clone(),
