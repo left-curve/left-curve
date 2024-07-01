@@ -6,8 +6,8 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{QuerierProvider, SharedGasTracker, StorageProvider, Vm, VmCacheSize},
-    grug_types::{to_borsh_vec, Context, Size},
+    grug_app::{QuerierProvider, SharedGasTracker, Size, StorageProvider, Vm, VmCacheSize},
+    grug_types::{to_borsh_vec, Context},
     std::sync::Arc,
     wasmer::{
         imports, CompilerConfig, Engine, Function, FunctionEnv, Instance as WasmerInstance, Module,

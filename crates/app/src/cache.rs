@@ -1,10 +1,10 @@
 use {
     crate::{
-        QuerierProvider, Shared, SharedGasTracker, StorageProvider, Vm, VmCacheSize, CODES,
+        QuerierProvider, Shared, SharedGasTracker, Size, StorageProvider, Vm, VmCacheSize, CODES,
         CONTRACT_NAMESPACE,
     },
     clru::{CLruCache, CLruCacheConfig, WeightScale},
-    grug_types::{Addr, BlockInfo, Hash, Size, Storage},
+    grug_types::{Addr, BlockInfo, Hash, Storage},
     std::{hash::RandomState, marker::PhantomData, num::NonZeroUsize},
 };
 

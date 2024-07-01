@@ -1,12 +1,12 @@
 use {
     anyhow::ensure,
     grug_account::{make_sign_bytes, PublicKey, StateResponse},
-    grug_app::{App, AppResult},
+    grug_app::{App, AppResult, Size},
     grug_crypto::{sha2_256, Identity256},
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, BlockInfo, Coin, Coins, Config, Event, GenesisState,
-        Hash, Message, NumberConst, Permission, Permissions, QueryRequest, QueryResponse, Size,
+        Hash, Message, NumberConst, Permission, Permissions, QueryRequest, QueryResponse,
         Timestamp, Tx, Uint64, GENESIS_SENDER,
     },
     grug_vm_wasm::WasmVm,

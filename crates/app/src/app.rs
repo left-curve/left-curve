@@ -6,11 +6,11 @@ use {
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
         query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, CacheVM, Db,
-        Shared, SharedCacheVM, SharedGasTracker, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        Shared, SharedCacheVM, SharedGasTracker, Size, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
-        Permission, QueryRequest, QueryResponse, Size, StdResult, Storage, Tx, GENESIS_SENDER,
+        Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },
 };
 

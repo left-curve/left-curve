@@ -1,5 +1,8 @@
 use {
-    clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_types::Size, grug_vm_wasm::WasmVm,
+    clap::Parser,
+    grug_app::{App, Size},
+    grug_db_disk::DiskDb,
+    grug_vm_wasm::WasmVm,
     std::path::PathBuf,
 };
 
@@ -24,7 +27,7 @@ impl StartCmd {
         let db = DiskDb::open(data_dir)?;
 
         // Create the app
-        let app = App::<DiskDb, WasmVm>::new(db, Size::mega(1000));
+        let app = App::<DiskDb, WasmVm>::new(db, Size::mega(self.wasm_cache_size));
 
         // Start the ABCI server
         Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)

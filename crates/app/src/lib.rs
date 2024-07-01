@@ -10,6 +10,7 @@ mod gas;
 mod providers;
 mod query;
 mod shared;
+mod size;
 mod state;
 mod submessage;
 mod traits;
@@ -17,5 +18,5 @@ mod vm;
 
 pub use crate::{
     app::*, buffer::*, cache::*, error::*, events::*, execute::*, gas::*, providers::*, query::*,
-    shared::*, state::*, submessage::*, traits::*, vm::*,
+    shared::*, size::*, state::*, submessage::*, traits::*, vm::*,
 };
