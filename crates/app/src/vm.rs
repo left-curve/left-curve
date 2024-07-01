@@ -9,8 +9,6 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
-
-
 /// Create a VM instance, and call a function that takes no input parameter and
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
@@ -204,28 +202,6 @@ where
 
     handle_response::<VM>(name, storage, ctx, gas_tracker, cache_vm, response)
 }
-
-// fn create_vm_instance<VM>(
-//     storage: Box<dyn Storage>,
-//     block: BlockInfo,
-//     address: &Addr,
-//     code_hash: &Hash,
-//     gas_tracker: SharedGasTracker,
-// ) -> AppResult<VM>
-// where
-//     VM: Vm,
-//     AppError: From<VM::Error>,
-// {
-//     // Load the program code from storage and deserialize
-//     let code = CODES.load(&storage, code_hash)?;
-//     let program = from_borsh_slice(code)?;
-
-//     // Create the contract substore and querier
-//     let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
-//     let querier = QueryProvider::new(storage, block, gas_tracker.clone());
-
-//     Ok(VM::build_instance(substore, querier, program, gas_tracker)?)
-// }
 
 pub(crate) fn handle_response<VM>(
     name: &'static str,

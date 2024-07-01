@@ -300,6 +300,7 @@ impl<VM: Vm> SharedCacheVM<VM> {
         VM::build_instance_from_cache(substore, querier, cache, gas_tracker)
     }
 }
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
