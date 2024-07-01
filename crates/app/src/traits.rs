@@ -1,5 +1,5 @@
 use {
-    crate::{PrefixStore, QueryProvider},
+    crate::{QueryProvider, StorageProvider},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -99,7 +99,7 @@ pub trait Vm: Sized {
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
     fn build_instance(
-        storage: PrefixStore,
+        storage: StorageProvider,
         querier: QueryProvider<Self>,
         program: Self::Program,
     ) -> Result<Self, Self::Error>;

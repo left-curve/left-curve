@@ -1,6 +1,6 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
-    grug_app::{PrefixStore, QueryProvider},
+    grug_app::{QueryProvider, StorageProvider},
     std::{
         borrow::{Borrow, BorrowMut},
         collections::HashMap,
@@ -13,7 +13,7 @@ use {
 // TODO: add explaination on why wasm_instance field needs to be Options
 // it has to do with the procedure how we create the ContextData when building the instance
 pub struct ContextData {
-    pub storage: PrefixStore,
+    pub storage: StorageProvider,
     pub querier: QueryProvider<WasmVm>,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
@@ -35,7 +35,7 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(storage: PrefixStore, querier: QueryProvider<WasmVm>) -> Self {
+    pub fn new(storage: StorageProvider, querier: QueryProvider<WasmVm>) -> Self {
         Self {
             memory: None,
             data: Arc::new(RwLock::new(ContextData {

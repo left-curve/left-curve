@@ -1,6 +1,6 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    grug_app::{PrefixStore, QueryProvider, Vm},
+    grug_app::{QueryProvider, StorageProvider, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
@@ -13,7 +13,7 @@ macro_rules! get_contract {
 }
 
 pub struct RustVm {
-    storage: PrefixStore,
+    storage: StorageProvider,
     querier: QueryProvider<Self>,
     program: ContractWrapper,
 }
@@ -23,7 +23,7 @@ impl Vm for RustVm {
     type Program = ContractWrapper;
 
     fn build_instance(
-        storage: PrefixStore,
+        storage: StorageProvider,
         querier: QueryProvider<Self>,
         program: Self::Program,
     ) -> VmResult<Self> {

@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{PrefixStore, QueryProvider, Vm},
+    grug_app::{QueryProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context},
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -24,7 +24,7 @@ impl Vm for WasmVm {
     type Program = Vec<u8>;
 
     fn build_instance(
-        storage: PrefixStore,
+        storage: StorageProvider,
         querier: QueryProvider<Self>,
         program: Vec<u8>,
     ) -> Result<Self, Self::Error> {

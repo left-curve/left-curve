@@ -1,6 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, PrefixStore, QueryProvider, Vm, CODES,
+        handle_submessages, AppError, AppResult, QueryProvider, StorageProvider, Vm, CODES,
         CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
@@ -189,7 +189,7 @@ where
     let program = from_borsh_slice(code)?;
 
     // Create the contract substore and querier
-    let substore = PrefixStore::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
+    let substore = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
     let querier = QueryProvider::new(storage, block);
 
     Ok(VM::build_instance(substore, querier, program)?)

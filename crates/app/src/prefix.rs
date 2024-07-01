@@ -1,12 +1,12 @@
 use grug_types::{concat, increment_last_byte, Order, Record, Storage};
 
 #[derive(Clone)]
-pub struct PrefixStore {
+pub struct StorageProvider {
     storage: Box<dyn Storage>,
     namespace: Vec<u8>,
 }
 
-impl PrefixStore {
+impl StorageProvider {
     pub fn new(storage: Box<dyn Storage>, prefixes: &[&[u8]]) -> Self {
         let mut size = 0;
         for prefix in prefixes {
@@ -22,7 +22,7 @@ impl PrefixStore {
     }
 }
 
-impl Storage for PrefixStore {
+impl Storage for StorageProvider {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let prefixed_key = concat(&self.namespace, key);
         self.storage.read(&prefixed_key)
