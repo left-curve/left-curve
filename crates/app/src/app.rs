@@ -1,19 +1,16 @@
 #[cfg(feature = "tracing")]
 use tracing::{debug, info};
-
-use crate::{CacheVM, SharedCacheVM, SharedGasTracker, Size};
-
 use {
     crate::{
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, CacheStore, Db,
-        Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, CacheStore, CacheVM,
+        Db, Shared, SharedCacheVM, SharedGasTracker, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
-        Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
+        Permission, QueryRequest, QueryResponse, Size, StdResult, Storage, Tx, GENESIS_SENDER,
     },
 };
 

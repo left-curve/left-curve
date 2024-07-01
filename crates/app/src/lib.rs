@@ -10,7 +10,6 @@ mod prefix;
 mod querier;
 mod query;
 mod shared;
-mod size;
 mod state;
 mod submessage;
 mod traits;
@@ -18,5 +17,5 @@ mod vm;
 
 pub use crate::{
     app::*, cache::*, error::*, events::*, execute::*, gas::*, prefix::*, querier::*, query::*,
-    shared::*, size::*, state::*, submessage::*, traits::*, vm::*,
+    shared::*, state::*, submessage::*, traits::*, vm::*,
 };

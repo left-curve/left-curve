@@ -1,10 +1,12 @@
 use {
     crate::{
-        PrefixStore, QueryProvider, Shared, SharedGasTracker, Size, Vm, VmCacheSize, CODES,
+        PrefixStore, QueryProvider, Shared, SharedGasTracker, Vm, VmCacheSize, CODES,
         CONTRACT_NAMESPACE,
     },
     clru::{CLruCache, CLruCacheConfig, WeightScale},
-    grug_types::{from_borsh_slice, Addr, Batch, BlockInfo, Hash, Op, Order, Record, Storage},
+    grug_types::{
+        from_borsh_slice, Addr, Batch, BlockInfo, Hash, Op, Order, Record, Size, Storage,
+    },
     std::{
         cmp::Ordering,
         hash::RandomState,
@@ -253,15 +255,14 @@ where
     where
         VM: Vm,
     {
-        let preallocated_entries = size.0 / MINIMUM_MODULE_SIZE.0;
+        let preallocated_entries = size.bytes() / MINIMUM_MODULE_SIZE.bytes();
 
         Self {
             cache: CLruCache::with_config(
-                CLruCacheConfig::new(NonZeroUsize::new(size.0).unwrap())
+                CLruCacheConfig::new(NonZeroUsize::new(size.bytes()).unwrap())
                     .with_memory(preallocated_entries)
                     .with_scale(SizeScale::default()),
             ),
-            // caches: BTreeMap::new(),
         }
     }
 }

@@ -6,8 +6,8 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Size, Vm, VmCacheSize},
-    grug_types::{to_borsh_vec, Context},
+    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Vm, VmCacheSize},
+    grug_types::{to_borsh_vec, Context, Size},
     std::sync::Arc,
     wasmer::{
         imports, CompilerConfig, Engine, Function, FunctionEnv, Instance as WasmerInstance, Module,
@@ -35,7 +35,7 @@ impl VmCacheSize for WasmCache {
         // Based on Cosmwasm implementation:
         // Some manual tests on Simon's machine showed that Engine is roughly 3-5 KB big,
         // so give it a constant 10 KiB estimate.
-        Size::kibi(10).into()
+        Size::kibi(10).bytes()
     }
 }
 

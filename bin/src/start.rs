@@ -1,8 +1,5 @@
 use {
-    clap::Parser,
-    grug_app::{App, Size},
-    grug_db_disk::DiskDb,
-    grug_vm_wasm::WasmVm,
+    clap::Parser, grug_app::App, grug_db_disk::DiskDb, grug_types::Size, grug_vm_wasm::WasmVm,
     std::path::PathBuf,
 };
 

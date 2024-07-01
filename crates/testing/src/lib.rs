@@ -1,7 +1,9 @@
 use {
-    grug_app::{App, Size},
+    grug_app::App,
     grug_db_memory::MemDb,
-    grug_types::{BlockInfo, GenesisState, Hash, QueryRequest, QueryResponse, Timestamp, Uint64},
+    grug_types::{
+        BlockInfo, GenesisState, Hash, QueryRequest, QueryResponse, Size, Timestamp, Uint64,
+    },
     grug_vm_rust::RustVm,
     std::time::{SystemTime, UNIX_EPOCH},
 };
