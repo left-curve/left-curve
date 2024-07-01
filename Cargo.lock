@@ -1494,7 +1494,6 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "clru",
  "dyn-clone",
  "grug-storage",
@@ -1633,7 +1632,6 @@ dependencies = [
  "grug-crypto",
  "grug-jmt",
  "hex",
- "home",
  "k256",
  "pbkdf2",
  "rand",
@@ -1690,7 +1688,6 @@ dependencies = [
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "elsa",
  "grug-app",
  "grug-crypto",
