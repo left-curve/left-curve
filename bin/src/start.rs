@@ -9,22 +9,24 @@ pub struct StartCmd {
     #[arg(long, default_value = "127.0.0.1:26658")]
     abci_addr: String,
 
-    /// Buffer size for reading chunks of incoming data from client
+    /// Size of the read buffer for each incoming connection to the ABCI server, in bytes
     #[arg(long, default_value = "1048576")]
     read_buf_size: usize,
+
+    /// Size of the wasm module cache, in megabytes
+    #[arg(long, default_value = "1000")]
+    wasm_cache_size: usize,
 }
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
-        // create DB backend
+        // Create DB backend
         let db = DiskDb::open(data_dir)?;
 
-        // TODO: For the size of cache, we should read the value from config file?
-        // mock it for now.
-        let cache_size = Size::giga(1);
+        // Create the app
+        let app = App::<DiskDb, WasmVm>::new(db, Size::mega(1000));
 
-        // start the ABCI server
-        Ok(App::<DiskDb, WasmVm>::new(db, cache_size)
-            .start_abci_server(self.read_buf_size, self.abci_addr)?)
+        // Start the ABCI server
+        Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
     }
 }
