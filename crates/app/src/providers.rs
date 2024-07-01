@@ -9,6 +9,10 @@ use {
 
 // ---------------------------------- storage ----------------------------------
 
+/// Provides access to an account's storage to the VM.
+///
+/// Essentially, this is a prefixed key-value storage. In Grug, the prefix is
+/// the single byte `b"w"` (referring to Wasm) followed by the account address.
 #[derive(Clone)]
 pub struct StorageProvider {
     storage: Box<dyn Storage>,
@@ -102,6 +106,7 @@ fn prefixed_range_bounds(
 
 // ---------------------------------- querier ----------------------------------
 
+/// Provides querier functionalities to the VM.
 pub struct QuerierProvider<VM> {
     storage: Box<dyn Storage>,
     block: BlockInfo,
