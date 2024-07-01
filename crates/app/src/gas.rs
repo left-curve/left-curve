@@ -27,6 +27,13 @@ impl GasTracker {
 impl GasTracker {
     pub fn deduct(&mut self, used: u64) -> AppResult<()> {
         if self.remaining < used {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                "Out of gas: max: {}, consumed: {}",
+                self.limit,
+                self.limit + used - self.remaining
+            );
+
             Err(AppError::OutOfGas {
                 max: self.limit,
                 consumed: self.limit + used - self.remaining,
