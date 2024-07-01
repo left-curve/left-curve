@@ -74,7 +74,6 @@ where
 
 /// Create a VM instance, and call a function that takes exactly two parameters
 /// and returns one output.
-#[allow(clippy::too_many_arguments)]
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     name: &'static str,
     storage: Box<dyn Storage>,
@@ -173,7 +172,6 @@ where
 /// Create a VM instance, call a function that takes exactly two parameter and
 /// returns [`Response`], and handle the submessages. Return a vector of events
 /// emitted.
-#[allow(clippy::too_many_arguments)]
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     name: &'static str,
     storage: Box<dyn Storage>,
