@@ -24,6 +24,18 @@ where
 {
     db: DB,
     cache_vm: SharedCacheVM<VM>,
+    /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
+    ///
+    /// Prevents the situation where an attacker deploys a contract the contains
+    /// an extremely expensive query method (such as an infinite loop), then
+    /// makes a query limit at a node. Without a gas limit protection, this can
+    /// take down the node.
+    ///
+    /// Note that this is not relevant for queries made as part of a transaction,
+    /// which is covered by the transaction's gas limit.
+    ///
+    /// Related config in CosmWasm:
+    /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: Option<u64>,
 }
 
