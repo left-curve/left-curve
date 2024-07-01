@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{QueryProvider, StorageProvider, Vm},
+    grug_app::{QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context},
     wasmer::{
         imports, Function, FunctionEnv, Instance as WasmerInstance, Module, Singlepass, Store,
@@ -25,7 +25,7 @@ impl Vm for WasmVm {
 
     fn build_instance(
         storage: StorageProvider,
-        querier: QueryProvider<Self>,
+        querier: QuerierProvider<Self>,
         program: Vec<u8>,
     ) -> Result<Self, Self::Error> {
         // create Wasm store

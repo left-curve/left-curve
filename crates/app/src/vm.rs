@@ -1,6 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, QueryProvider, StorageProvider, Vm, CODES,
+        handle_submessages, AppError, AppResult, QuerierProvider, StorageProvider, Vm, CODES,
         CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
@@ -190,7 +190,7 @@ where
 
     // Create the contract substore and querier
     let substore = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
-    let querier = QueryProvider::new(storage, block);
+    let querier = QuerierProvider::new(storage, block);
 
     Ok(VM::build_instance(substore, querier, program)?)
 }

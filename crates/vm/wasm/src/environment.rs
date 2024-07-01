@@ -1,6 +1,6 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
-    grug_app::{QueryProvider, StorageProvider},
+    grug_app::{QuerierProvider, StorageProvider},
     std::{
         borrow::{Borrow, BorrowMut},
         collections::HashMap,
@@ -14,7 +14,7 @@ use {
 // it has to do with the procedure how we create the ContextData when building the instance
 pub struct ContextData {
     pub storage: StorageProvider,
-    pub querier: QueryProvider<WasmVm>,
+    pub querier: QuerierProvider<WasmVm>,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
     /// A non-owning link to the wasmer instance. Need this for doing function
@@ -35,7 +35,7 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(storage: StorageProvider, querier: QueryProvider<WasmVm>) -> Self {
+    pub fn new(storage: StorageProvider, querier: QuerierProvider<WasmVm>) -> Self {
         Self {
             memory: None,
             data: Arc::new(RwLock::new(ContextData {

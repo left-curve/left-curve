@@ -4,13 +4,13 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct QueryProvider<VM> {
+pub struct QuerierProvider<VM> {
     storage: Box<dyn Storage>,
     block: BlockInfo,
     vm: PhantomData<VM>,
 }
 
-impl<VM> QueryProvider<VM> {
+impl<VM> QuerierProvider<VM> {
     pub fn new(storage: Box<dyn Storage>, block: BlockInfo) -> Self {
         Self {
             storage,
@@ -20,7 +20,7 @@ impl<VM> QueryProvider<VM> {
     }
 }
 
-impl<VM> Querier for QueryProvider<VM>
+impl<VM> Querier for QuerierProvider<VM>
 where
     VM: Vm,
     AppError: From<VM::Error>,

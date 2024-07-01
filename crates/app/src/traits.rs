@@ -1,5 +1,5 @@
 use {
-    crate::{QueryProvider, StorageProvider},
+    crate::{QuerierProvider, StorageProvider},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -100,7 +100,7 @@ pub trait Vm: Sized {
     /// program.
     fn build_instance(
         storage: StorageProvider,
-        querier: QueryProvider<Self>,
+        querier: QuerierProvider<Self>,
         program: Self::Program,
     ) -> Result<Self, Self::Error>;
 
