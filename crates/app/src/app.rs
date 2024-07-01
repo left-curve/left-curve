@@ -12,47 +12,28 @@ use {
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
         Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },
-    std::marker::PhantomData,
 };
 
 /// The ABCI application.
 ///
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
+#[derive(Clone)]
 pub struct App<DB, VM> {
     db: DB,
-    vm: PhantomData<VM>,
+    vm: VM,
 }
 
 impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB) -> Self {
-        Self {
-            db,
-            vm: PhantomData,
-        }
-    }
-}
-
-// For some reason, using a derive macro `#[derive(Clone)]` on App doesn't work.
-// The compiler demands that VM implements Clone before it will implement Clone
-// for App; which doesn't make any sense because VM is just a PhantomData inside
-// App...????
-impl<DB, VM> Clone for App<DB, VM>
-where
-    DB: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.clone(),
-            vm: PhantomData,
-        }
+    pub fn new(db: DB, vm: VM) -> Self {
+        Self { db, vm }
     }
 }
 
 impl<DB, VM> App<DB, VM>
 where
     DB: Db,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn do_init_chain_raw(
@@ -95,7 +76,13 @@ where
             #[cfg(feature = "tracing")]
             info!(idx = _idx, "Processing genesis message");
 
-            process_msg::<VM>(Box::new(buffer.clone()), block.clone(), GENESIS_SENDER, msg)?;
+            process_msg(
+                self.vm.clone(),
+                Box::new(buffer.clone()),
+                block.clone(),
+                GENESIS_SENDER,
+                msg,
+            )?;
         }
 
         // persist the state changes to disk
@@ -135,6 +122,7 @@ where
                 Ok((tx_hash, tx))
             })
             .collect::<StdResult<Vec<_>>>()?;
+
         self.do_finalize_block(block, txs)
     }
 
@@ -172,7 +160,8 @@ where
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_before_block::<VM>(
+            events.extend(do_before_block(
+                self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
                 contract,
@@ -184,7 +173,12 @@ where
             #[cfg(feature = "tracing")]
             debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
 
-            tx_results.push(process_tx::<_, VM>(buffer.share(), block.clone(), tx));
+            tx_results.push(process_tx(
+                self.vm.clone(),
+                buffer.share(),
+                block.clone(),
+                tx,
+            ));
         }
 
         // call end blockers
@@ -199,7 +193,8 @@ where
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_after_block::<VM>(
+            events.extend(do_after_block(
+                self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
                 contract,
@@ -296,7 +291,7 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        process_query::<VM>(Box::new(store), block, req)
+        process_query(self.vm.clone(), Box::new(store), block, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -329,10 +324,10 @@ where
     }
 }
 
-fn process_tx<S, VM>(storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
@@ -342,7 +337,8 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(do_before_tx::<VM>(
+    events.extend(do_before_tx(
+        vm.clone(),
         Box::new(buffer.share()),
         block.clone(),
         &tx,
@@ -362,7 +358,8 @@ where
         #[cfg(feature = "tracing")]
         debug!(idx = _idx, "Processing message");
 
-        events.extend(process_msg::<VM>(
+        events.extend(process_msg(
+            vm.clone(),
             Box::new(buffer.share()),
             block.clone(),
             tx.sender.clone(),
@@ -373,7 +370,7 @@ where
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx::<VM>(Box::new(buffer.share()), block, &tx)?);
+    events.extend(do_after_tx(vm, Box::new(buffer.share()), block, &tx)?);
 
     // all messages succeeded. commit the state changes
     buffer.write_access().commit();
@@ -382,19 +379,20 @@ where
 }
 
 pub fn process_msg<VM>(
+    vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match msg {
         Message::SetConfig { new_cfg } => do_set_config(&mut storage, &sender, &new_cfg),
         Message::Transfer { to, coins } => {
-            do_transfer::<VM>(storage, block, sender.clone(), to, coins, true)
+            do_transfer(vm, storage, block, sender.clone(), to, coins, true)
         },
         Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
         Message::Instantiate {
@@ -403,45 +401,48 @@ where
             salt,
             funds,
             admin,
-        } => do_instantiate::<VM>(storage, block, sender, code_hash, &msg, salt, funds, admin),
+        } => do_instantiate(
+            vm, storage, block, sender, code_hash, &msg, salt, funds, admin,
+        ),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => do_execute::<VM>(storage, block, contract, sender, &msg, funds),
+        } => do_execute(vm, storage, block, contract, sender, &msg, funds),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate::<VM>(storage, block, contract, sender, new_code_hash, &msg),
+        } => do_migrate(vm, storage, block, contract, sender, new_code_hash, &msg),
     }
 }
 
 pub fn process_query<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match req {
         QueryRequest::Info {} => query_info(&storage).map(QueryResponse::Info),
         QueryRequest::Balance { address, denom } => {
-            query_balance::<VM>(storage, block, address, denom).map(QueryResponse::Balance)
+            query_balance(vm, storage, block, address, denom).map(QueryResponse::Balance)
         },
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances::<VM>(storage, block, address, start_after, limit)
+        } => query_balances(vm, storage, block, address, start_after, limit)
             .map(QueryResponse::Balances),
         QueryRequest::Supply { denom } => {
-            query_supply::<VM>(storage, block, denom).map(QueryResponse::Supply)
+            query_supply(vm, storage, block, denom).map(QueryResponse::Supply)
         },
         QueryRequest::Supplies { start_after, limit } => {
-            query_supplies::<VM>(storage, block, start_after, limit).map(QueryResponse::Supplies)
+            query_supplies(vm, storage, block, start_after, limit).map(QueryResponse::Supplies)
         },
         QueryRequest::Code { hash } => query_code(&storage, hash).map(QueryResponse::Code),
         QueryRequest::Codes { start_after, limit } => {
@@ -457,7 +458,7 @@ where
             query_wasm_raw(storage, contract, key).map(QueryResponse::WasmRaw)
         },
         QueryRequest::WasmSmart { contract, msg } => {
-            query_wasm_smart::<VM>(storage, block, contract, msg).map(QueryResponse::WasmSmart)
+            query_wasm_smart(vm, storage, block, contract, msg).map(QueryResponse::WasmSmart)
         },
     }
 }

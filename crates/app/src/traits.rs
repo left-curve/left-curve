@@ -1,6 +1,6 @@
 use {
     crate::{QuerierProvider, StorageProvider},
-    grug_types::{Batch, Context, Hash, StdError, Storage},
+    grug_types::{Batch, Context, Hash, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -87,20 +87,24 @@ pub trait Db {
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
-    type Error: From<StdError> + ToString;
+    type Error: ToString;
+    type Instance: Instance<Error = Self::Error>;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
+    ///
+    /// Need a mutable reference (`&mut self`) because the VM might uses some
+    /// sort of caching to speed up instance building.
     fn build_instance(
+        &mut self,
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
         code: &[u8],
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self::Instance, Self::Error>;
+}
 
-    // Note: A VM instance is intended to be "single-use", meaning an instance
-    // is created, one call to the program is performed, then the instance is
-    // dropped. For this reason, see each of the call_* methods below takes a
-    // `self` instead of a reference.
+pub trait Instance {
+    type Error: ToString;
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
