@@ -110,7 +110,7 @@ where
     // `prove` fields, and interpret `data` as a JSON-encoded QueryRequest.
     fn query(&self, req: RequestQuery) -> ResponseQuery {
         match req.path.as_str() {
-            "/app" => match self.do_query_app_raw(None, &req.data, req.height as u64, req.prove) {
+            "/app" => match self.do_query_app_raw(&req.data, req.height as u64, req.prove) {
                 Ok(res) => ResponseQuery {
                     code: 0,
                     value: res.to_vec().into(),

@@ -38,7 +38,7 @@ struct TestSuite {
 impl TestSuite {
     fn new() -> Self {
         Self {
-            app: App::new(MemDb::new(), Size::mega(100)),
+            app: App::new(MemDb::new(), Size::mega(100), None),
             block: BlockInfo {
                 height: Uint64::ZERO,
                 timestamp: Timestamp::from_nanos(0),
@@ -53,8 +53,7 @@ impl TestSuite {
     }
 
     fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
-        self.app
-            .do_query_app(None, req, self.block.height.into(), false)
+        self.app.do_query_app(req, self.block.height.into(), false)
     }
 
     fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(

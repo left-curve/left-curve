@@ -24,6 +24,7 @@ where
 {
     db: DB,
     cache_vm: SharedCacheVM<VM>,
+    query_gas_limit: Option<u64>,
 }
 
 // Using `#[derive(Clone)]` on `App` doesn't work. It requires `VM` to implement
@@ -37,6 +38,7 @@ where
         Self {
             db: self.db.clone(),
             cache_vm: self.cache_vm.clone(),
+            query_gas_limit: self.query_gas_limit,
         }
     }
 }
@@ -45,10 +47,11 @@ impl<DB, VM> App<DB, VM>
 where
     VM: Vm,
 {
-    pub fn new(db: DB, cache_size: Size) -> Self {
+    pub fn new(db: DB, cache_size: Size, query_gas_limit: Option<u64>) -> Self {
         Self {
             db,
             cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
+            query_gas_limit,
         }
     }
 }
@@ -293,21 +296,14 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app_raw(
-        &self,
-        gas: Option<u64>,
-        raw_req: &[u8],
-        height: u64,
-        prove: bool,
-    ) -> AppResult<Vec<u8>> {
+    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
         let req = from_json_slice(raw_req)?;
-        let res = self.do_query_app(gas, req, height, prove)?;
+        let res = self.do_query_app(req, height, prove)?;
         Ok(to_json_vec(&res)?)
     }
 
     pub fn do_query_app(
         &self,
-        gas: Option<u64>,
         req: QueryRequest,
         height: u64,
         prove: bool,
@@ -334,7 +330,7 @@ where
         process_query::<VM>(
             Box::new(store),
             block,
-            SharedGasTracker::new_with_limit(gas.unwrap_or(u64::MAX)),
+            SharedGasTracker::new_with_limit(self.query_gas_limit.unwrap_or(u64::MAX)),
             self.cache_vm.clone(),
             req,
         )

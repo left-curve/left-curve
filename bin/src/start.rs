@@ -19,15 +19,24 @@ pub struct StartCmd {
     /// Size of the wasm module cache, in megabytes
     #[arg(long, default_value = "1000")]
     wasm_cache_size: usize,
+
+    /// Gas limit when serving query requests [default: u64::MAX]
+    #[arg(long)]
+    query_gas_limit: Option<u64>,
 }
 
+#[rustfmt::skip]
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         // Create DB backend
         let db = DiskDb::open(data_dir)?;
 
         // Create the app
-        let app = App::<DiskDb, WasmVm>::new(db, Size::mega(self.wasm_cache_size));
+        let app = App::<DiskDb, WasmVm>::new(
+            db,
+            Size::mega(self.wasm_cache_size),
+            self.query_gas_limit,
+        );
 
         // Start the ABCI server
         Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
