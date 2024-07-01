@@ -411,9 +411,8 @@ where
         let before_consumed = gas_tracker.read_access().used();
 
         #[cfg(feature = "tracing")]
-        {
-            debug!(idx = _idx, "Processing message");
-        }
+        debug!(idx = _idx, "Processing message");
+
         events.extend(process_msg::<VM>(
             Box::new(buffer.share()),
             block.clone(),
