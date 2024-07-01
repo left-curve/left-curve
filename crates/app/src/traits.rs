@@ -1,6 +1,6 @@
 use {
     crate::{QuerierProvider, SharedGasTracker, StorageProvider},
-    grug_types::{Batch, Context, Hash, StdError, Storage},
+    grug_types::{Batch, Context, Hash, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -87,30 +87,25 @@ pub trait Db {
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
-    type Error: From<StdError> + ToString;
+    type Error: ToString;
+    type Instance: Instance<Error = Self::Error>;
 
-    type Module: VmCacheSize + Clone;
-
-    /// Build a VM module given the raw contract code.
+    /// Create an instance of the VM given a storage, a querier, and a guest
+    /// program.
     ///
-    /// This is relevant for the Wasmer runtime, which uses a JIT compiler to
-    /// convert Wasm byte code to native machine code (the latter is known as
-    /// the module).
-    fn build_module(code: &[u8]) -> Result<Self::Module, Self::Error>;
-
-    /// Create an instance of the VM given the storage and querier providers,
-    /// gas tracker, and an already-built module.
+    /// Need a mutable reference (`&mut self`) because the VM might uses some
+    /// sort of caching to speed up instance building.
     fn build_instance(
+        &mut self,
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
+        code: &[u8],
         gas_tracker: SharedGasTracker,
-        module: Self::Module,
-    ) -> Result<Self, Self::Error>;
+    ) -> Result<Self::Instance, Self::Error>;
+}
 
-    // Note: A VM instance is intended to be "single-use", meaning an instance
-    // is created, one call to the program is performed, then the instance is
-    // dropped. For this reason, see each of the call_* methods below takes a
-    // `self` instead of a reference.
+pub trait Instance {
+    type Error: ToString;
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
@@ -141,13 +136,4 @@ pub trait Vm: Sized {
         P2: AsRef<[u8]>;
 
     fn set_gas(&mut self, _remaining: u64) {}
-}
-
-/// Represent the size of the `cache` of the `VM`.
-///
-/// In order to determinate the `size` of a `cache`,
-/// is not possible to use `std::mem::size_of_val`
-/// because it doesn't take into account the `size` of the `heap`.
-pub trait VmCacheSize {
-    fn size(&self) -> usize;
 }

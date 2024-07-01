@@ -1494,7 +1494,6 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
- "clru",
  "dyn-clone",
  "grug-storage",
  "grug-types",
@@ -1701,6 +1700,7 @@ name = "grug-vm-wasm"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "clru",
  "data-encoding",
  "grug-account",
  "grug-app",

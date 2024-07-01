@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, SharedCacheVM, SharedGasTracker, StorageProvider, Vm,
-        ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, SharedGasTracker, StorageProvider, Vm, ACCOUNTS,
+        CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
@@ -22,18 +22,18 @@ pub fn query_info(storage: &dyn Storage) -> AppResult<InfoResponse> {
 }
 
 pub fn query_balance<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     address: Addr,
     denom: String,
 ) -> AppResult<Coin>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, cache_vm, &BankQuery::Balance {
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balance {
         address,
         denom,
     })
@@ -41,80 +41,71 @@ where
 }
 
 pub fn query_balances<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
-
     address: Addr,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(
-        storage,
-        block,
-        gas_tracker,
-        cache_vm,
-        &BankQuery::Balances {
-            address,
-            start_after,
-            limit,
-        },
-    )
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balances {
+        address,
+        start_after,
+        limit,
+    })
     .map(|res| res.as_balances())
 }
 
-#[rustfmt::skip]
 pub fn query_supply<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     denom: String,
 ) -> AppResult<Coin>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(storage, block, gas_tracker, cache_vm, &BankQuery::Supply { denom })
-        .map(|res| res.as_supply())
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supply {
+        denom,
+    })
+    .map(|res| res.as_supply())
 }
 
 pub fn query_supplies<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank::<VM>(
-        storage,
-        block,
-        gas_tracker,
-        cache_vm,
-        &BankQuery::Supplies { start_after, limit },
-    )
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supplies {
+        start_after,
+        limit,
+    })
     .map(|res| res.as_supplies())
 }
 
 fn _query_bank<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -128,13 +119,14 @@ where
         funds: None,
         simulate: None,
     };
-    call_in_1_out_1::<VM, _, GenericResult<BankQueryResponse>>(
+
+    call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
+        vm,
         "bank_query",
         storage,
         &account.code_hash,
         &ctx,
         gas_tracker.clone(),
-        cache_vm,
         msg,
     )?
     .into_std_result()
@@ -206,15 +198,15 @@ pub fn query_wasm_raw(
 }
 
 pub fn query_wasm_smart<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     contract: Addr,
     msg: Json,
 ) -> AppResult<WasmSmartResponse>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
@@ -227,13 +219,13 @@ where
         funds: None,
         simulate: None,
     };
-    let data = call_in_1_out_1::<VM, _, GenericResult<Json>>(
+    let data = call_in_1_out_1::<_, _, GenericResult<Json>>(
+        vm,
         "query",
         storage,
         &account.code_hash,
         &ctx,
         gas_tracker,
-        cache_vm,
         &msg,
     )?
     .into_std_result()?;

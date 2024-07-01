@@ -5,8 +5,8 @@ use {
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, CacheVM, Db,
-        Shared, SharedCacheVM, SharedGasTracker, Size, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, Shared,
+        SharedGasTracker, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
@@ -18,12 +18,10 @@ use {
 ///
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
-pub struct App<DB, VM>
-where
-    VM: Vm,
-{
+#[derive(Clone)]
+pub struct App<DB, VM> {
     db: DB,
-    cache_vm: SharedCacheVM<VM>,
+    vm: VM,
     /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
     ///
     /// Prevents the situation where an attacker deploys a contract the contains
@@ -43,27 +41,11 @@ impl<DB, VM> App<DB, VM>
 where
     VM: Vm,
 {
-    pub fn new(db: DB, cache_size: Size, query_gas_limit: Option<u64>) -> Self {
+    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
         Self {
             db,
-            cache_vm: SharedCacheVM::new(CacheVM::new(cache_size)),
+            vm,
             query_gas_limit,
-        }
-    }
-}
-
-// Using `#[derive(Clone)]` on `App` doesn't work. It requires `VM` to implement
-// `Clone` before it will implement it for `App`, despite `VM` is just a generic...
-impl<DB, VM> Clone for App<DB, VM>
-where
-    VM: Vm,
-    DB: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.clone(),
-            cache_vm: self.cache_vm.clone(),
-            query_gas_limit: self.query_gas_limit,
         }
     }
 }
@@ -71,7 +53,7 @@ where
 impl<DB, VM> App<DB, VM>
 where
     DB: Db,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn do_init_chain_raw(
@@ -117,11 +99,11 @@ where
             // TODO: How to handle gas on genesis?
             let gas_tracker = SharedGasTracker::new_max();
 
-            process_msg::<VM>(
+            process_msg(
+                self.vm.clone(),
                 Box::new(buffer.clone()),
                 block.clone(),
                 gas_tracker,
-                self.cache_vm.clone(),
                 GENESIS_SENDER,
                 msg,
             )?;
@@ -164,6 +146,7 @@ where
                 Ok((tx_hash, tx))
             })
             .collect::<StdResult<Vec<_>>>()?;
+
         self.do_finalize_block(block, txs)
     }
 
@@ -203,11 +186,11 @@ where
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_before_block::<VM>(
+            events.extend(do_before_block(
+                self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
                 SharedGasTracker::new_max(),
-                self.cache_vm.clone(),
                 contract,
             )?);
         }
@@ -217,10 +200,10 @@ where
             #[cfg(feature = "tracing")]
             debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
 
-            tx_results.push(process_tx::<_, VM>(
+            tx_results.push(process_tx(
+                self.vm.clone(),
                 buffer.share(),
                 block.clone(),
-                self.cache_vm.clone(),
                 tx,
             ));
         }
@@ -239,11 +222,11 @@ where
             // NOTE: error in end blocker is considered fatal error. an end
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
-            events.extend(do_after_block::<VM>(
+            events.extend(do_after_block(
+                self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
                 SharedGasTracker::new_max(),
-                self.cache_vm.clone(),
                 contract,
             )?);
         }
@@ -338,14 +321,11 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        // TODO: Set SharedGasTracker based on node config??
-        process_query::<VM>(
-            Box::new(store),
-            block,
-            SharedGasTracker::new_with_limit(self.query_gas_limit.unwrap_or(u64::MAX)),
-            self.cache_vm.clone(),
-            req,
-        )
+        // set up the gas tracker with query gas limit
+        let gas_limit = self.query_gas_limit.unwrap_or(u64::MAX);
+        let gas_tracker = SharedGasTracker::new_with_limit(gas_limit);
+
+        process_query(self.vm.clone(), Box::new(store), block, gas_tracker, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -378,15 +358,10 @@ where
     }
 }
 
-fn process_tx<S, VM>(
-    storage: S,
-    block: BlockInfo,
-    cache_vm: SharedCacheVM<VM>,
-    tx: Tx,
-) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
@@ -397,12 +372,12 @@ where
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
-    events.extend(do_before_tx::<VM>(
+    events.extend(do_before_tx(
+        vm.clone(),
         Box::new(buffer.share()),
         block.clone(),
-        &tx,
         gas_tracker.clone(),
-        cache_vm.clone(),
+        &tx,
     )?);
 
     // update the account state. as long as authentication succeeds, regardless
@@ -421,11 +396,11 @@ where
         #[cfg(feature = "tracing")]
         debug!(idx = _idx, "Processing message");
 
-        events.extend(process_msg::<VM>(
+        events.extend(process_msg(
+            vm.clone(),
             Box::new(buffer.share()),
             block.clone(),
             gas_tracker.clone(),
-            cache_vm.clone(),
             tx.sender.clone(),
             msg.clone(),
         )?);
@@ -433,19 +408,19 @@ where
         #[cfg(feature = "tracing")]
         {
             let consumed = gas_tracker.read_access().used() - before_consumed;
-            debug!("Gas used :{consumed}");
+            debug!("Gas used: {consumed}");
         }
     }
 
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx::<VM>(
+    events.extend(do_after_tx(
+        vm,
         Box::new(buffer.share()),
         block,
-        &tx,
         gas_tracker.clone(),
-        cache_vm.clone(),
+        &tx,
     )?);
 
     // all messages succeeded. commit the state changes
@@ -462,24 +437,24 @@ where
 }
 
 pub fn process_msg<VM>(
+    vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match msg {
         Message::SetConfig { new_cfg } => do_set_config(&mut storage, &sender, &new_cfg),
-        Message::Transfer { to, coins } => do_transfer::<VM>(
+        Message::Transfer { to, coins } => do_transfer(
+            vm,
             storage,
             block,
             gas_tracker,
-            cache_vm,
             sender.clone(),
             to,
             coins,
@@ -492,11 +467,11 @@ where
             salt,
             funds,
             admin,
-        } => do_instantiate::<VM>(
+        } => do_instantiate(
+            vm,
             storage,
             block,
             gas_tracker,
-            cache_vm,
             sender,
             code_hash,
             &msg,
@@ -508,11 +483,11 @@ where
             contract,
             msg,
             funds,
-        } => do_execute::<VM>(
+        } => do_execute(
+            vm,
             storage,
             block,
             gas_tracker,
-            cache_vm,
             contract,
             sender,
             &msg,
@@ -522,11 +497,11 @@ where
             contract,
             new_code_hash,
             msg,
-        } => do_migrate::<VM>(
+        } => do_migrate(
+            vm,
             storage,
             block,
             gas_tracker,
-            cache_vm,
             contract,
             sender,
             new_code_hash,
@@ -536,42 +511,33 @@ where
 }
 
 pub fn process_query<VM>(
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match req {
         QueryRequest::Info {} => query_info(&storage).map(QueryResponse::Info),
         QueryRequest::Balance { address, denom } => {
-            query_balance::<VM>(storage, block, gas_tracker, cache_vm, address, denom)
+            query_balance(vm, storage, block, gas_tracker, address, denom)
                 .map(QueryResponse::Balance)
         },
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances::<VM>(
-            storage,
-            block,
-            gas_tracker,
-            cache_vm,
-            address,
-            start_after,
-            limit,
-        )
-        .map(QueryResponse::Balances),
+        } => query_balances(vm, storage, block, gas_tracker, address, start_after, limit)
+            .map(QueryResponse::Balances),
         QueryRequest::Supply { denom } => {
-            query_supply::<VM>(storage, block, gas_tracker, cache_vm, denom)
-                .map(QueryResponse::Supply)
+            query_supply(vm, storage, block, gas_tracker, denom).map(QueryResponse::Supply)
         },
         QueryRequest::Supplies { start_after, limit } => {
-            query_supplies::<VM>(storage, block, gas_tracker, cache_vm, start_after, limit)
+            query_supplies(vm, storage, block, gas_tracker, start_after, limit)
                 .map(QueryResponse::Supplies)
         },
         QueryRequest::Code { hash } => query_code(&storage, hash).map(QueryResponse::Code),
@@ -588,7 +554,7 @@ where
             query_wasm_raw(storage, contract, key).map(QueryResponse::WasmRaw)
         },
         QueryRequest::WasmSmart { contract, msg } => {
-            query_wasm_smart::<VM>(storage, block, gas_tracker, cache_vm, contract, msg)
+            query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)
                 .map(QueryResponse::WasmSmart)
         },
     }

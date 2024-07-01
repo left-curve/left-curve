@@ -1,7 +1,7 @@
 use {
     anyhow::ensure,
     grug_account::{make_sign_bytes, PublicKey, StateResponse},
-    grug_app::{App, AppResult, Size},
+    grug_app::{App, AppResult},
     grug_crypto::{sha2_256, Identity256},
     grug_db_memory::MemDb,
     grug_types::{
@@ -38,7 +38,7 @@ struct TestSuite {
 impl TestSuite {
     fn new() -> Self {
         Self {
-            app: App::new(MemDb::new(), Size::mega(100), None),
+            app: App::new(MemDb::new(), WasmVm::new(100), None),
             block: BlockInfo {
                 height: Uint64::ZERO,
                 timestamp: Timestamp::from_nanos(0),

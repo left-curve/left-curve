@@ -15,7 +15,6 @@ abci    = ["tendermint-abci", "tendermint-proto"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-clru             = { workspace = true }
 dyn-clone        = { workspace = true }
 grug-storage     = { path = "../storage" }
 grug-types       = { path = "../types" }

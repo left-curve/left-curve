@@ -1,7 +1,6 @@
 use {
     crate::{Contract, ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
     elsa::sync::FrozenVec,
-    grug_app::VmCacheSize,
     grug_types::{
         from_json_value, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         return_into_generic_result, unwrap_into_generic_result, Api, Context, GenericResult,
@@ -19,13 +18,6 @@ pub(crate) static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>
 #[derive(Clone)]
 pub struct ContractWrapper {
     pub(crate) index: usize,
-}
-
-impl VmCacheSize for ContractWrapper {
-    fn size(&self) -> usize {
-        // For testing purposes, we can return 0.
-        0
-    }
 }
 
 impl ContractWrapper {

@@ -1,6 +1,6 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    grug_app::{QuerierProvider, SharedGasTracker, StorageProvider, Vm},
+    grug_app::{Instance, QuerierProvider, SharedGasTracker, StorageProvider, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, MockApi},
 };
 
@@ -12,32 +12,44 @@ macro_rules! get_contract {
     }
 }
 
-pub struct RustVm {
-    storage: StorageProvider,
-    querier: QuerierProvider<Self>,
-    wrapper: ContractWrapper,
+#[derive(Default, Clone)]
+pub struct RustVm;
+
+impl RustVm {
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Vm for RustVm {
     type Error = VmError;
-    type Module = ContractWrapper;
-
-    fn build_module(code: &[u8]) -> Result<Self::Module, Self::Error> {
-        Ok(ContractWrapper::from_bytes(code))
-    }
+    type Instance = RustInstance;
 
     fn build_instance(
+        &mut self,
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
+        code: &[u8],
         _gas_tracker: SharedGasTracker,
-        module: Self::Module,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
+    ) -> VmResult<RustInstance> {
+        Ok(RustInstance {
             storage,
             querier,
-            wrapper: module,
+            wrapper: ContractWrapper::from_bytes(code),
+            // TODO: add gas tracker
         })
     }
+}
+
+pub struct RustInstance {
+    storage: StorageProvider,
+    querier: QuerierProvider<RustVm>,
+    wrapper: ContractWrapper,
+    // TODO: add gas tracker
+}
+
+impl Instance for RustInstance {
+    type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract!(self.wrapper.index);

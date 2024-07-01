@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, SharedCacheVM, SharedGasTracker, Vm},
+    crate::{process_query, AppError, SharedGasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
@@ -106,43 +106,40 @@ fn prefixed_range_bounds(
 // ---------------------------------- querier ----------------------------------
 
 /// Provides querier functionalities to the VM.
-pub struct QuerierProvider<VM: Vm> {
+pub struct QuerierProvider<VM> {
+    vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: SharedGasTracker,
-    cache_vm: SharedCacheVM<VM>,
 }
 
-impl<VM> QuerierProvider<VM>
-where
-    VM: Vm,
-{
+impl<VM> QuerierProvider<VM> {
     pub fn new(
+        vm: VM,
         storage: Box<dyn Storage>,
         block: BlockInfo,
         gas_tracker: SharedGasTracker,
-        cache_vm: SharedCacheVM<VM>,
     ) -> Self {
         Self {
+            vm,
             storage,
             block,
             gas_tracker,
-            cache_vm,
         }
     }
 }
 
 impl<VM> Querier for QuerierProvider<VM>
 where
-    VM: Vm,
+    VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        process_query::<VM>(
+        process_query(
+            self.vm.clone(),
             self.storage.clone(),
             self.block.clone(),
             self.gas_tracker.clone(),
-            self.cache_vm.clone(),
             req,
         )
         .map_err(|err| StdError::Generic(err.to_string()))
