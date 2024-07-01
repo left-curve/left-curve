@@ -1,12 +1,24 @@
-use grug_types::{concat, increment_last_byte, Order, Record, Storage};
+use {
+    crate::{process_query, AppError, SharedCacheVM, SharedGasTracker, Vm},
+    grug_types::{
+        concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
+        Record, StdError, StdResult, Storage,
+    },
+};
 
+// ---------------------------------- storage ----------------------------------
+
+/// Provides access to an account's storage to the VM.
+///
+/// Essentially, this is a prefixed key-value storage. In Grug, the prefix is
+/// the single byte `b"w"` (referring to Wasm) followed by the account address.
 #[derive(Clone)]
-pub struct PrefixStore {
+pub struct StorageProvider {
     storage: Box<dyn Storage>,
     namespace: Vec<u8>,
 }
 
-impl PrefixStore {
+impl StorageProvider {
     pub fn new(storage: Box<dyn Storage>, prefixes: &[&[u8]]) -> Self {
         let mut size = 0;
         for prefix in prefixes {
@@ -22,7 +34,7 @@ impl PrefixStore {
     }
 }
 
-impl Storage for PrefixStore {
+impl Storage for StorageProvider {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let prefixed_key = concat(&self.namespace, key);
         self.storage.read(&prefixed_key)
@@ -89,4 +101,50 @@ fn prefixed_range_bounds(
         None => increment_last_byte(prefix.to_vec()),
     };
     (min, max)
+}
+
+// ---------------------------------- querier ----------------------------------
+
+/// Provides querier functionalities to the VM.
+pub struct QuerierProvider<VM: Vm> {
+    storage: Box<dyn Storage>,
+    block: BlockInfo,
+    gas_tracker: SharedGasTracker,
+    cache_vm: SharedCacheVM<VM>,
+}
+
+impl<VM> QuerierProvider<VM>
+where
+    VM: Vm,
+{
+    pub fn new(
+        storage: Box<dyn Storage>,
+        block: BlockInfo,
+        gas_tracker: SharedGasTracker,
+        cache_vm: SharedCacheVM<VM>,
+    ) -> Self {
+        Self {
+            storage,
+            block,
+            gas_tracker,
+            cache_vm,
+        }
+    }
+}
+
+impl<VM> Querier for QuerierProvider<VM>
+where
+    VM: Vm,
+    AppError: From<VM::Error>,
+{
+    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+        process_query::<VM>(
+            self.storage.clone(),
+            self.block.clone(),
+            self.gas_tracker.clone(),
+            self.cache_vm.clone(),
+            req,
+        )
+        .map_err(|err| StdError::Generic(err.to_string()))
+    }
 }

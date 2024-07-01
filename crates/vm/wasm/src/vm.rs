@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Environment, VmError, VmResult,
     },
-    grug_app::{PrefixStore, QueryProvider, SharedGasTracker, Vm, VmCacheSize},
+    grug_app::{QuerierProvider, SharedGasTracker, StorageProvider, Vm, VmCacheSize},
     grug_types::{to_borsh_vec, Context, Size},
     std::sync::Arc,
     wasmer::{
@@ -67,9 +67,8 @@ impl WasmVm {
 impl Vm for WasmVm {
     type Cache = WasmCache;
     type Error = VmError;
-    type Program = Vec<u8>;
 
-    fn build_cache(program: Self::Program) -> Result<Self::Cache, Self::Error> {
+    fn build_cache(code: &[u8]) -> Result<Self::Cache, Self::Error> {
         let mut compiler = Singlepass::new();
         let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
         compiler.canonicalize_nans(true);
@@ -78,7 +77,7 @@ impl Vm for WasmVm {
 
         // compile Wasm byte code into module
         let now = std::time::Instant::now();
-        let module = Module::new(&engine, program)?;
+        let module = Module::new(&engine, code)?;
         tracing::debug!("Wasm compilation time: {:?}", now.elapsed());
 
         let size = std::mem::size_of_val(&module);
@@ -90,8 +89,8 @@ impl Vm for WasmVm {
     }
 
     fn build_instance_from_cache(
-        storage: PrefixStore,
-        querier: QueryProvider<Self>,
+        storage: StorageProvider,
+        querier: QuerierProvider<Self>,
         cache: Self::Cache,
         gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error> {

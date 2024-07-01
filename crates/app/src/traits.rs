@@ -1,6 +1,5 @@
 use {
-    crate::{PrefixStore, QueryProvider, SharedGasTracker},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{QuerierProvider, SharedGasTracker, StorageProvider},
     grug_types::{Batch, Context, Hash, StdError, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -19,7 +18,7 @@ use {
 /// instance of the storage object (see the required `'static` lifetime). This
 /// is required by the Wasm runtime. Additionally, storage object should be
 /// _read only_. The host should write changes to an in-memory caching layer
-/// (e.g. using `grug_db::CacheStore`) and then use the `flush` and `commit`
+/// (e.g. using `grug_db::Buffer`) and then use the `flush` and `commit`
 /// methods to persist them.
 ///
 /// The two mutable methods `flush` and `commit` take an immutable reference
@@ -90,23 +89,17 @@ pub trait Db {
 pub trait Vm: Sized {
     type Error: From<StdError> + ToString;
 
-    /// The type of programs intended to be run in this VM.
-    ///
-    /// It must be serializable with Borsh, so that it can be saved in a KV store
-    /// in such a mapping: hash(program) => program.
-    type Program: BorshSerialize + BorshDeserialize;
-
     type Cache: VmCacheSize + Clone;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
-    fn build_cache(program: Self::Program) -> Result<Self::Cache, Self::Error>;
+    fn build_cache(code: &[u8]) -> Result<Self::Cache, Self::Error>;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
     fn build_instance_from_cache(
-        storage: PrefixStore,
-        querier: QueryProvider<Self>,
+        storage: StorageProvider,
+        querier: QuerierProvider<Self>,
         module: Self::Cache,
         gas_tracker: SharedGasTracker,
     ) -> Result<Self, Self::Error>;

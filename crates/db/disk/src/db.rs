@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{CacheStore, Db},
+    grug_app::{Buffer, Db},
     grug_jmt::{MerkleTree, Proof},
     grug_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
@@ -180,7 +180,7 @@ impl Db for DiskDb {
 
         // commit hashed KVs to state commitment
         // the DB writes here are kept in the in-memory PendingData
-        let mut cache = CacheStore::new(self.state_commitment(), None);
+        let mut cache = Buffer::new(self.state_commitment(), None);
         let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
         let (_, pending) = cache.disassemble();
 

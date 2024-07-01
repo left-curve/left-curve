@@ -6,6 +6,8 @@ use {
     },
 };
 
+/// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
+/// methods.
 #[derive(Default)]
 pub struct Shared<S> {
     inner: Arc<RwLock<S>>,
@@ -36,12 +38,13 @@ impl<S> Shared<S> {
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    /// Disassemble the `Arc<RwLock<S>>` and return the underlying `S`.
-    /// Fails if there are currently more than one strong reference to it.
+    /// Disassemble the smart pointer and return the inner value.
+    ///
+    /// Panics if reference count is greater than 1, or if the lock is poisoned.
     pub fn disassemble(self) -> S {
-        let lock = Arc::try_unwrap(self.inner).unwrap_or_else(|_| panic!(""));
-
-        lock.into_inner()
+        Arc::try_unwrap(self.inner)
+            .unwrap_or_else(|_| panic!("unwrapping Arc when ref count > 1"))
+            .into_inner()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 }
@@ -52,6 +55,7 @@ impl<S> Clone for Shared<S> {
     }
 }
 
+// When the inner type is `Storage`, the outer `Shared` also implements `Storage`.
 impl<S: Storage> Storage for Shared<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)

@@ -1,6 +1,6 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, PrefixStore, SharedCacheVM, SharedGasTracker, Vm,
+        call_in_1_out_1, AppError, AppResult, SharedCacheVM, SharedGasTracker, StorageProvider, Vm,
         ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
@@ -196,7 +196,7 @@ pub fn query_wasm_raw(
     contract: Addr,
     key: Binary,
 ) -> AppResult<WasmRawResponse> {
-    let substore = PrefixStore::new(storage, &[CONTRACT_NAMESPACE, &contract]);
+    let substore = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
     let value = substore.read(&key);
     Ok(WasmRawResponse {
         contract,

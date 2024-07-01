@@ -1,13 +1,13 @@
 #[cfg(feature = "abci")]
 mod abci;
 mod app;
+mod buffer;
 mod cache;
 mod error;
 mod events;
 mod execute;
 mod gas;
-mod prefix;
-mod querier;
+mod providers;
 mod query;
 mod shared;
 mod state;
@@ -16,6 +16,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, cache::*, error::*, events::*, execute::*, gas::*, prefix::*, querier::*, query::*,
+    app::*, buffer::*, cache::*, error::*, events::*, execute::*, gas::*, providers::*, query::*,
     shared::*, state::*, submessage::*, traits::*, vm::*,
 };

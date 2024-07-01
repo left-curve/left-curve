@@ -60,8 +60,8 @@ mod tests {
     use {
         super::*,
         grug_types::{
-            hash, to_borsh_vec, to_json_value, Addr, Coins, Config, Empty, Message, MutableCtx,
-            Permission, Permissions, Response, StdResult,
+            hash, to_json_value, Addr, Coins, Config, Empty, Message, MutableCtx, Permission,
+            Permissions, Response, StdResult,
         },
         grug_vm_rust::{ContractWrapper, ExecuteFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn},
         std::collections::BTreeSet,
@@ -82,7 +82,7 @@ mod tests {
             None::<ReplyFn>,
             None::<QueryFn>,
         );
-        let bank_code = to_borsh_vec(&bank_contract).unwrap();
+        let bank_code = bank_contract.into_bytes();
         let bank_code_hash = hash(&bank_code);
         let genesis_state = GenesisState {
             config: Config {
