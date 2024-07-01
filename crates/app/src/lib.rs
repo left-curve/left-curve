@@ -5,8 +5,7 @@ mod buffer;
 mod error;
 mod events;
 mod execute;
-mod prefix;
-mod querier;
+mod providers;
 mod query;
 mod shared;
 mod state;
@@ -15,6 +14,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, error::*, events::*, execute::*, prefix::*, querier::*, query::*, shared::*,
+    app::*, buffer::*, error::*, events::*, execute::*, providers::*, query::*, shared::*,
     state::*, submessage::*, traits::*, vm::*,
 };

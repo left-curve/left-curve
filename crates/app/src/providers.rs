@@ -1,4 +1,13 @@
-use grug_types::{concat, increment_last_byte, Order, Record, Storage};
+use {
+    crate::{process_query, AppError, Vm},
+    grug_types::{
+        concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
+        Record, StdError, StdResult, Storage,
+    },
+    std::marker::PhantomData,
+};
+
+// ---------------------------------- storage ----------------------------------
 
 #[derive(Clone)]
 pub struct StorageProvider {
@@ -89,4 +98,33 @@ fn prefixed_range_bounds(
         None => increment_last_byte(prefix.to_vec()),
     };
     (min, max)
+}
+
+// ---------------------------------- querier ----------------------------------
+
+pub struct QuerierProvider<VM> {
+    storage: Box<dyn Storage>,
+    block: BlockInfo,
+    vm: PhantomData<VM>,
+}
+
+impl<VM> QuerierProvider<VM> {
+    pub fn new(storage: Box<dyn Storage>, block: BlockInfo) -> Self {
+        Self {
+            storage,
+            block,
+            vm: PhantomData,
+        }
+    }
+}
+
+impl<VM> Querier for QuerierProvider<VM>
+where
+    VM: Vm,
+    AppError: From<VM::Error>,
+{
+    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+        process_query::<VM>(self.storage.clone(), self.block.clone(), req)
+            .map_err(|err| StdError::Generic(err.to_string()))
+    }
 }
