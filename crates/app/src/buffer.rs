@@ -15,7 +15,7 @@ use {
 #[derive(Clone)]
 pub struct Buffer<S: Clone> {
     base: S,
-    pub(crate) pending: Batch,
+    pending: Batch,
 }
 
 impl<S: Clone> Buffer<S> {
