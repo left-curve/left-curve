@@ -141,7 +141,6 @@ where
         Ok(root_hash.unwrap())
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn do_finalize_block_raw(
         &self,
         block: BlockInfo,
@@ -158,7 +157,6 @@ where
         self.do_finalize_block(block, txs)
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn do_finalize_block(
         &self,
         block: BlockInfo,
@@ -351,7 +349,6 @@ where
     /// Returns two values:
     /// - the value corresponding to the given key; `None` if the key doesn't exist;
     /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
-    #[allow(clippy::type_complexity)]
     pub fn do_query_store(
         &self,
         key: &[u8],

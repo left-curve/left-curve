@@ -27,16 +27,10 @@ pub enum ExecuteMsg {
 #[grug_derive(serde)]
 pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.
-    /// Returns: `Vec<HoldersResponseItem>`.
+    /// Returns: `BTreeMap<Addr, Uint128>`.
     Holders {
         denom: String,
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-}
-
-#[grug_derive(serde)]
-pub struct HoldersResponseItem {
-    pub address: Addr,
-    pub amount: Uint128,
 }

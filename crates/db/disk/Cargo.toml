@@ -14,8 +14,8 @@ grug-app   = { path = "../../app" }
 grug-jmt   = { path = "../../jellyfish-merkle" }
 grug-types = { path = "../../types" }
 rocksdb    = { workspace = true }
-tempfile   = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]
 hex-literal = { workspace = true }
+tempfile    = { workspace = true }

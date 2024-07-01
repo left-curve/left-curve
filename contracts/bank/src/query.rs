@@ -1,28 +1,10 @@
 use {
-    crate::{HoldersResponseItem, BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
+    crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug::{Addr, Bound, Coin, Coins, NumberConst, Order, StdResult, Storage, Uint128},
+    std::collections::BTreeMap,
 };
 
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
-
-pub fn query_holders(
-    storage: &dyn Storage,
-    denom: String,
-    start_after: Option<Addr>,
-    limit: Option<u32>,
-) -> StdResult<Vec<HoldersResponseItem>> {
-    let start = start_after.as_ref().map(Bound::exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-    BALANCES_BY_DENOM
-        .prefix(&denom)
-        .range(storage, start, None, Order::Ascending)
-        .take(limit as usize)
-        .map(|item| {
-            let (address, amount) = item?;
-            Ok(HoldersResponseItem { address, amount })
-        })
-        .collect()
-}
 
 pub fn query_balance(storage: &dyn Storage, address: Addr, denom: String) -> StdResult<Coin> {
     let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (&address, &denom))?;
@@ -70,4 +52,19 @@ pub fn query_supplies(
         .range(storage, start, None, Order::Ascending)
         .take(limit);
     Coins::from_iter_unchecked(&mut iter)
+}
+
+pub fn query_holders(
+    storage: &dyn Storage,
+    denom: String,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Addr, Uint128>> {
+    let start = start_after.as_ref().map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+    BALANCES_BY_DENOM
+        .prefix(&denom)
+        .range(storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .collect()
 }

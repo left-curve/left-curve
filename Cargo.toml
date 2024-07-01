@@ -23,7 +23,7 @@ members  = [
 
 [workspace.package]
 version       = "0.0.0"
-authors       = ["Larry Lyu <gm@larry.engineer>"]
+authors       = ["Left Curve Software Ltd. (https://leftcurve.software/)"]
 edition       = "2021"
 rust-version  = "1.73"
 documentation = "https://leftcurve.software/grug"

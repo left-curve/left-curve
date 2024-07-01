@@ -76,7 +76,6 @@ where
         Box::new(iter)
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn range<'a>(
         &self,
         storage: &'a dyn Storage,
