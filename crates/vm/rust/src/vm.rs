@@ -19,18 +19,18 @@ pub struct RustVm {
 }
 
 impl Vm for RustVm {
-    type Cache = ContractWrapper;
     type Error = VmError;
+    type Module = ContractWrapper;
 
-    fn build_cache(code: &[u8]) -> Result<Self::Cache, Self::Error> {
+    fn build_module(code: &[u8]) -> Result<Self::Module, Self::Error> {
         Ok(ContractWrapper::from_bytes(code))
     }
 
-    fn build_instance_from_cache(
+    fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        module: Self::Cache,
         _gas_tracker: SharedGasTracker,
+        module: Self::Module,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             storage,

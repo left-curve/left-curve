@@ -89,19 +89,22 @@ pub trait Db {
 pub trait Vm: Sized {
     type Error: From<StdError> + ToString;
 
-    type Cache: VmCacheSize + Clone;
+    type Module: VmCacheSize + Clone;
 
-    /// Create an instance of the VM given a storage, a querier, and a guest
-    /// program.
-    fn build_cache(code: &[u8]) -> Result<Self::Cache, Self::Error>;
+    /// Build a VM module given the raw contract code.
+    ///
+    /// This is relevant for the Wasmer runtime, which uses a JIT compiler to
+    /// convert Wasm byte code to native machine code (the latter is known as
+    /// the module).
+    fn build_module(code: &[u8]) -> Result<Self::Module, Self::Error>;
 
-    /// Create an instance of the VM given a storage, a querier, and a guest
-    /// program.
-    fn build_instance_from_cache(
+    /// Create an instance of the VM given the storage and querier providers,
+    /// gas tracker, and an already-built module.
+    fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        module: Self::Cache,
         gas_tracker: SharedGasTracker,
+        module: Self::Module,
     ) -> Result<Self, Self::Error>;
 
     // Note: A VM instance is intended to be "single-use", meaning an instance
@@ -140,7 +143,7 @@ pub trait Vm: Sized {
     fn set_gas(&mut self, _remaining: u64) {}
 }
 
-/// Rappresent the size of the `cache` of the `VM`.
+/// Represent the size of the `cache` of the `VM`.
 ///
 /// In order to determinate the `size` of a `cache`,
 /// is not possible to use `std::mem::size_of_val`

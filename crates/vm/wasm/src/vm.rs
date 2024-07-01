@@ -25,12 +25,12 @@ use {
 const GAS_PER_OPERATION: u64 = 1;
 
 #[derive(Clone)]
-pub struct WasmCache {
+pub struct WasmModule {
     pub module: Module,
     pub engine: Engine,
 }
 
-impl VmCacheSize for WasmCache {
+impl VmCacheSize for WasmModule {
     fn size(&self) -> usize {
         // Based on Cosmwasm implementation:
         // Some manual tests on Simon's machine showed that Engine is roughly 3-5 KB big,
@@ -65,10 +65,10 @@ impl WasmVm {
 }
 
 impl Vm for WasmVm {
-    type Cache = WasmCache;
     type Error = VmError;
+    type Module = WasmModule;
 
-    fn build_cache(code: &[u8]) -> Result<Self::Cache, Self::Error> {
+    fn build_module(code: &[u8]) -> Result<Self::Module, Self::Error> {
         let mut compiler = Singlepass::new();
         let metering = Arc::new(Metering::new(u64::MAX, |_| GAS_PER_OPERATION));
         compiler.canonicalize_nans(true);
@@ -85,16 +85,16 @@ impl Vm for WasmVm {
         let size = std::mem::size_of_val(&engine);
         tracing::debug!("Wasm engine size: {}", size);
 
-        Ok(WasmCache { module, engine })
+        Ok(WasmModule { module, engine })
     }
 
-    fn build_instance_from_cache(
+    fn build_instance(
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
-        cache: Self::Cache,
         gas_tracker: SharedGasTracker,
+        module: Self::Module,
     ) -> Result<Self, Self::Error> {
-        let mut wasm_store = Store::new(cache.engine);
+        let mut wasm_store = Store::new(module.engine);
 
         let fe = FunctionEnv::new(
             &mut wasm_store,
@@ -131,7 +131,7 @@ impl Vm for WasmVm {
         };
 
         // create wasmer instance
-        let wasm_instance = WasmerInstance::new(&mut wasm_store, &cache.module, &import_obj)?;
+        let wasm_instance = WasmerInstance::new(&mut wasm_store, &module.module, &import_obj)?;
         let wasm_instance = Box::new(wasm_instance);
 
         // set memory/store/instance in the env

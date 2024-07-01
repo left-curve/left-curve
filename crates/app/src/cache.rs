@@ -29,12 +29,12 @@ impl<VM> Default for SizeScale<VM> {
     }
 }
 
-impl<VM> WeightScale<Hash, VM::Cache> for SizeScale<VM>
+impl<VM> WeightScale<Hash, VM::Module> for SizeScale<VM>
 where
     VM: Vm,
 {
     #[inline]
-    fn weight(&self, key: &Hash, value: &VM::Cache) -> usize {
+    fn weight(&self, key: &Hash, value: &VM::Module) -> usize {
         std::mem::size_of_val(key) + value.size()
     }
 }
@@ -42,7 +42,7 @@ where
 pub type SharedCacheVM<VM> = Shared<CacheVM<VM>>;
 
 pub struct CacheVM<VM: Vm> {
-    cache: CLruCache<Hash, VM::Cache, RandomState, SizeScale<VM>>,
+    cache: CLruCache<Hash, VM::Module, RandomState, SizeScale<VM>>,
 }
 
 impl<VM> CacheVM<VM>
@@ -76,17 +76,18 @@ impl<VM: Vm> SharedCacheVM<VM> {
     ) -> Result<VM, VM::Error> {
         let maybe_cache = self.write_access().cache.get(code_hash).cloned();
 
-        let cache = match maybe_cache {
+        let module = match maybe_cache {
             Some(cache) => cache,
             None => {
                 let code = CODES.load(&storage, code_hash)?;
-                let module = VM::build_cache(&code)?;
+                let module = VM::build_module(&code)?;
 
                 // Can we ignore the result??
                 let _ = self
                     .write_access()
                     .cache
                     .put_with_weight(code_hash.clone(), module.clone());
+
                 module
             },
         };
@@ -95,6 +96,6 @@ impl<VM: Vm> SharedCacheVM<VM> {
         let substore = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, address]);
         let querier = QuerierProvider::new(storage, block, gas_tracker.clone(), self.clone());
 
-        VM::build_instance_from_cache(substore, querier, cache, gas_tracker)
+        VM::build_instance(substore, querier, gas_tracker, module)
     }
 }
