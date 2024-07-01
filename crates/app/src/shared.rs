@@ -6,11 +6,11 @@ use {
     },
 };
 
-pub struct SharedStore<S> {
+pub struct Shared<S> {
     storage: Arc<RwLock<S>>,
 }
 
-impl<S> SharedStore<S> {
+impl<S> Shared<S> {
     pub fn new(storage: S) -> Self {
         Self {
             storage: Arc::new(RwLock::new(storage)),
@@ -45,13 +45,13 @@ impl<S> SharedStore<S> {
     }
 }
 
-impl<S> Clone for SharedStore<S> {
+impl<S> Clone for Shared<S> {
     fn clone(&self) -> Self {
         self.share()
     }
 }
 
-impl<S: Storage> Storage for SharedStore<S> {
+impl<S: Storage> Storage for Shared<S> {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
     }
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn iterator_works() {
-        let mut storage = SharedStore::new(MockStorage::new());
+        let mut storage = Shared::new(MockStorage::new());
         for (k, v) in mock_records(1, 100, Order::Ascending) {
             storage.write(&k, &v);
         }

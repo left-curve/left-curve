@@ -5,8 +5,8 @@ use {
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
-        SharedStore, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, Shared,
+        Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
@@ -71,7 +71,7 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash> {
-        let mut cached = SharedStore::new(Buffer::new(self.db.state_storage(None), None));
+        let mut cached = Shared::new(Buffer::new(self.db.state_storage(None), None));
 
         // make sure the block height during InitChain is zero. this is necessary
         // to ensure that block height always matches the BaseStore version.
@@ -143,7 +143,7 @@ where
         block: BlockInfo,
         txs: Vec<(Hash, Tx)>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
-        let mut cached = SharedStore::new(Buffer::new(self.db.state_storage(None), None));
+        let mut cached = Shared::new(Buffer::new(self.db.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
 
@@ -338,7 +338,7 @@ where
     let mut events = vec![];
 
     // create cached store for this tx
-    let cached = SharedStore::new(Buffer::new(storage, None));
+    let cached = Shared::new(Buffer::new(storage, None));
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
