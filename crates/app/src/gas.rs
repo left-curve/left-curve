@@ -77,7 +77,3 @@ where
         }
     }
 }
-#[derive(Default)]
-pub struct GasResponse {
-    pub gas_used: u64,
-}
