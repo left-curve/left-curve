@@ -109,22 +109,22 @@ fn prefixed_range_bounds(
 pub struct QuerierProvider<VM> {
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
 }
 
 impl<VM> QuerierProvider<VM> {
     pub fn new(
         vm: VM,
         storage: Box<dyn Storage>,
-        block: BlockInfo,
         gas_tracker: GasTracker,
+        block: BlockInfo,
     ) -> Self {
         Self {
             vm,
             storage,
-            block,
             gas_tracker,
+            block,
         }
     }
 }

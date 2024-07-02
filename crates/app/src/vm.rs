@@ -228,7 +228,7 @@ where
     let code = CODES.load(&storage, code_hash)?;
 
     // Create the providers
-    let querier = QuerierProvider::new(vm.clone(), storage.clone(), block, gas_tracker.clone());
+    let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
 
     Ok(vm.build_instance(storage, querier, &code, gas_tracker)?)
