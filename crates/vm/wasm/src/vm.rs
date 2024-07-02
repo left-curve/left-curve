@@ -54,8 +54,10 @@ impl Vm for WasmVm {
             let metering = Metering::new(u64::MAX, |_| GAS_PER_OPERATION);
             compiler.canonicalize_nans(true);
             compiler.push_middleware(Arc::new(metering));
+
             let engine = Engine::from(compiler);
             let module = Module::new(&engine, code)?;
+
             Ok((module, engine))
         })?;
 
