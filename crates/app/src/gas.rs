@@ -1,8 +1,18 @@
 use {
-    crate::{AppError, AppResult, Shared},
+    crate::Shared,
     std::{fmt, fmt::Display},
     tracing::{debug, warn},
 };
+
+// We create an error type specifically for the gas tracker, such that there's
+// an linear dependency relation between error types:
+// > `OutOfGasError` --> `VmError` --> `AppError`
+#[derive(Debug, thiserror::Error)]
+#[error("out of gas! limit: {limit}, used: {used}")]
+pub struct OutOfGasError {
+    limit: u64,
+    used: u64,
+}
 
 struct GasTrackerInner {
     // `None` means there is no gas limit. This is the case during genesis, and
@@ -58,7 +68,7 @@ impl GasTracker {
     /// Consume the given amount of gas. Error if the limit is exceeded.
     ///
     /// Panics if lock is poisoned.
-    pub fn consume(&self, consumed: u64) -> AppResult<()> {
+    pub fn consume(&self, consumed: u64) -> Result<(), OutOfGasError> {
         self.inner.write_with(|mut inner| {
             let used = inner.used + consumed;
 
@@ -68,7 +78,7 @@ impl GasTracker {
                     #[cfg(feature = "tracing")]
                     warn!(limit = inner.limit, used, "Out of gas");
 
-                    return Err(AppError::OutOfGas { limit, used });
+                    return Err(OutOfGasError { limit, used });
                 }
             }
 

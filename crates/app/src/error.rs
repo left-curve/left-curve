@@ -43,9 +43,6 @@ pub enum AppError {
 
     #[error("code hash is not allowed as IBC client: `{code_hash}`")]
     NotAllowedClient { code_hash: Hash },
-
-    #[error("out of gas: limit: {limit}, used: {used}")]
-    OutOfGas { limit: u64, used: u64 },
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;
