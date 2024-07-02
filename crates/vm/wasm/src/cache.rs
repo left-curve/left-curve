@@ -7,12 +7,18 @@ use {
     wasmer::{Engine, Module},
 };
 
+/// An in-memory cache for wasm modules, so that they don't need to be re-built
+/// every time the same contract is called.
 #[derive(Clone)]
 pub struct Cache {
+    // Must cache the module together with the engine that was used to built it.
+    // There may be runtime errors if calling a wasm function using a different
+    // engine from that was used to build the module.
     inner: Shared<CLruCache<Hash, (Module, Engine)>>,
 }
 
 impl Cache {
+    /// Create an empty cache with the given capacity.
     pub fn new(capacity: NonZeroUsize) -> Self {
         Self {
             inner: Shared::new(CLruCache::new(capacity)),
