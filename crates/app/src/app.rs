@@ -80,6 +80,8 @@ where
             });
         }
 
+        // Create gas tracker for genesis.
+        // During genesis, there is no gas limit.
         let gas_tracker = GasTracker::new_limitless();
 
         // save the config and genesis block. some genesis messages may need it
@@ -111,21 +113,20 @@ where
 
         // BaseStore version should be 0
         debug_assert_eq!(version, 0);
+
         // the root hash should not be None. it's only None when the merkle tree
         // is empty, but we have written some data to it (like the chain ID and
         // the config) so it shouldn't be empty.
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        {
-            info!(
-                chain_id,
-                timestamp = block.timestamp.seconds(),
-                app_hash = root_hash.as_ref().unwrap().to_string(),
-                "Completed genesis"
-            );
-            debug!("{}", gas_tracker);
-        }
+        info!(
+            chain_id,
+            timestamp = block.timestamp.seconds(),
+            app_hash = root_hash.as_ref().unwrap().to_string(),
+            gas_used = gas_tracker.used(),
+            "Completed genesis"
+        );
 
         // return an empty apphash as placeholder, since we haven't implemented
         // state merklization yet
