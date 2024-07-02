@@ -83,6 +83,8 @@ where
             });
         }
 
+        let gas_tracker = SharedGasTracker::new_limitless();
+
         // save the config and genesis block. some genesis messages may need it
         CHAIN_ID.save(&mut buffer, &chain_id)?;
         CONFIG.save(&mut buffer, &genesis_state.config)?;
@@ -96,14 +98,11 @@ where
             #[cfg(feature = "tracing")]
             info!(idx = _idx, "Processing genesis message");
 
-            // TODO: How to handle gas on genesis?
-            let gas_tracker = SharedGasTracker::new_max();
-
             process_msg(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 block.clone(),
-                gas_tracker,
+                gas_tracker.clone(),
                 GENESIS_SENDER,
                 msg,
             )?;
@@ -121,12 +120,15 @@ where
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        info!(
-            chain_id,
-            timestamp = block.timestamp.seconds(),
-            app_hash = root_hash.as_ref().unwrap().to_string(),
-            "Completed genesis"
-        );
+        {
+            info!(
+                chain_id,
+                timestamp = block.timestamp.seconds(),
+                app_hash = root_hash.as_ref().unwrap().to_string(),
+                "Completed genesis"
+            );
+            debug!("{}", gas_tracker);
+        }
 
         // return an empty apphash as placeholder, since we haven't implemented
         // state merklization yet
@@ -181,8 +183,6 @@ where
                 "Calling begin blocker"
             );
 
-            // TODO: How to handle gas here?
-
             // NOTE: error in begin blocker is considered fatal error. a begin
             // blocker erroring causes the chain to halt.
             // TODO: we need to think whether this is the desired behavior
@@ -190,7 +190,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
-                SharedGasTracker::new_max(),
+                SharedGasTracker::new_limitless(),
                 contract,
             )?);
         }
@@ -226,7 +226,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
-                SharedGasTracker::new_max(),
+                SharedGasTracker::new_limitless(),
                 contract,
             )?);
         }
@@ -323,7 +323,7 @@ where
 
         // set up the gas tracker with query gas limit
         let gas_limit = self.query_gas_limit.unwrap_or(u64::MAX);
-        let gas_tracker = SharedGasTracker::new_with_limit(gas_limit);
+        let gas_tracker = SharedGasTracker::new_limited(gas_limit);
 
         process_query(self.vm.clone(), Box::new(store), block, gas_tracker, req)
     }
@@ -368,7 +368,7 @@ where
 
     // create buffer storage and gas tracker for this tx
     let buffer = Shared::new(Buffer::new(storage, None));
-    let gas_tracker = SharedGasTracker::new_with_limit(tx.gas_limit);
+    let gas_tracker = SharedGasTracker::new_limited(tx.gas_limit);
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
@@ -427,11 +427,7 @@ where
     buffer.write_access().commit();
 
     #[cfg(feature = "tracing")]
-    debug!(
-        gas_limit = gas_tracker.read_access().limit,
-        used = gas_tracker.read_access().remaining,
-        "Gas info"
-    );
+    debug!("{}", gas_tracker);
 
     Ok(events)
 }

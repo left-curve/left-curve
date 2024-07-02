@@ -1,61 +1,69 @@
+use std::fmt::Display;
+
 use crate::{AppError, AppResult, Shared};
 
 pub type SharedGasTracker = Shared<GasTracker>;
 
-#[derive(Default)]
-pub struct GasTracker {
-    pub limit: u64,
-    pub remaining: u64,
+pub enum GasTracker {
+    Limitless { used: u64 },
+    Limited { limit: u64, remaining: u64 },
 }
 
 impl GasTracker {
     pub fn used(&self) -> u64 {
-        self.limit - self.remaining
+        match self {
+            GasTracker::Limitless { used } => *used,
+            GasTracker::Limited { limit, remaining } => limit - remaining,
+        }
     }
 
-    pub fn reset(&mut self, limit: u64) {
-        self.remaining = limit;
-        self.limit = limit;
-    }
+    pub fn deduct(&mut self, consumed: u64) -> AppResult<()> {
+        match self {
+            GasTracker::Limitless { used } => {
+                *used += consumed;
+                Ok(())
+            },
+            GasTracker::Limited { limit, remaining } => {
+                if *remaining < consumed {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        "Out of gas: max: {}, consumed: {}",
+                        limit,
+                        *limit + consumed - *remaining
+                    );
 
-    pub fn reset_to_max(&mut self) {
-        self.remaining = u64::MAX;
-        self.limit = u64::MAX;
+                    Err(AppError::OutOfGas {
+                        max: *limit,
+                        consumed: *limit + consumed - *remaining,
+                    })
+                } else {
+                    *remaining -= consumed;
+
+                    Ok(())
+                }
+            },
+        }
     }
 }
 
-impl GasTracker {
-    pub fn deduct(&mut self, used: u64) -> AppResult<()> {
-        if self.remaining < used {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                "Out of gas: max: {}, consumed: {}",
-                self.limit,
-                self.limit + used - self.remaining
-            );
-
-            Err(AppError::OutOfGas {
-                max: self.limit,
-                consumed: self.limit + used - self.remaining,
-            })
-        } else {
-            self.remaining -= used;
-
-            Ok(())
+impl Display for GasTracker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GasTracker::Limitless { used } => write!(f, "Gas info: limitless, used: {}", used),
+            GasTracker::Limited { limit, remaining } => {
+                write!(f, "Gas info: limit: {}, used: {}", limit, limit - remaining)
+            },
         }
     }
 }
 
 impl SharedGasTracker {
-    pub fn new_max() -> Self {
-        Shared::new(GasTracker {
-            limit: u64::MAX,
-            remaining: u64::MAX,
-        })
+    pub fn new_limitless() -> Self {
+        Shared::new(GasTracker::Limitless { used: 0 })
     }
 
-    pub fn new_with_limit(limit: u64) -> Self {
-        Shared::new(GasTracker {
+    pub fn new_limited(limit: u64) -> Self {
+        Shared::new(GasTracker::Limited {
             limit,
             remaining: limit,
         })

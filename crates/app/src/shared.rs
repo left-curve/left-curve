@@ -1,6 +1,7 @@
 use {
     grug_types::{increment_last_byte, Batch, Order, Record, Storage},
     std::{
+        fmt::Display,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
     },
@@ -193,6 +194,15 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
         // be None, in which case the entire iteration has reached end)
         self.collect_next_batch();
         self.batch.next()
+    }
+}
+
+impl<S> Display for Shared<S>
+where
+    S: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.read_access())
     }
 }
 
