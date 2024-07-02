@@ -32,10 +32,13 @@ impl Cache {
     where
         B: FnOnce() -> VmResult<(Module, Engine)>,
     {
+        // Cache hit - simply clone the module and return
         if let Some(module) = self.inner.write_access().get(code_hash) {
             return Ok(module.clone());
         }
 
+        // Cache miss - build the module using the given builder method; insert
+        // both the module and engine to the cache.
         let (module, engine) = builder()?;
         self.inner
             .write_access()
