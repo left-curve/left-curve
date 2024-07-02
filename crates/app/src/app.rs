@@ -321,11 +321,13 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        // set up the gas tracker with query gas limit
-        let gas_limit = self.query_gas_limit.unwrap_or(u64::MAX);
-        let gas_tracker = SharedGasTracker::new_limited(gas_limit);
-
-        process_query(self.vm.clone(), Box::new(store), block, gas_tracker, req)
+        process_query(
+            self.vm.clone(),
+            Box::new(store),
+            block,
+            self.query_gas_limit.into(),
+            req,
+        )
     }
 
     /// Performs a raw query of the app's underlying key-value store.

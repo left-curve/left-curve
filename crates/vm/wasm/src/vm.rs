@@ -134,7 +134,7 @@ impl WasmInstance {
                 set_remaining_points(&mut self.store, &self.instance, u64::MAX);
                 self.gas_tracker
                     .write_access()
-                    .deduct(u64::MAX - remaining)?;
+                    .consume(u64::MAX - remaining)?;
                 Ok(())
             },
             MeteringPoints::Exhausted => {
