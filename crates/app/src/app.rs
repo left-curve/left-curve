@@ -241,6 +241,7 @@ where
 
         // block height should match the DB version
         debug_assert_eq!(block.height.number(), version);
+
         // the merkle tree should never be empty because at least we always have
         // things like the config, last finalized block, ...
         debug_assert!(root_hash.is_some());
