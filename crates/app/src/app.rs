@@ -37,10 +37,7 @@ pub struct App<DB, VM> {
     query_gas_limit: Option<u64>,
 }
 
-impl<DB, VM> App<DB, VM>
-where
-    VM: Vm,
-{
+impl<DB, VM> App<DB, VM> {
     pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
         Self {
             db,
