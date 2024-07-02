@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use tracing::warn;
+
 use crate::{AppError, AppResult, Shared};
 
 pub type SharedGasTracker = Shared<GasTracker>;
@@ -27,7 +29,7 @@ impl GasTracker {
                 let total_consumed = *used + consumed;
                 if total_consumed > *limit {
                     #[cfg(feature = "tracing")]
-                    tracing::warn!("Out of gas: max: {}, consumed: {}", limit, total_consumed);
+                    warn!("Out of gas: max: {}, consumed: {}", limit, total_consumed);
 
                     Err(AppError::OutOfGas {
                         max: *limit,
@@ -47,11 +49,8 @@ impl Display for GasTracker {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GasTracker::Limitless { used } => write!(f, "Gas info: limitless, used: {}", used),
-            GasTracker::Limited {
-                limit,
-                used: remaining,
-            } => {
-                write!(f, "Gas info: limit: {}, used: {}", limit, limit - remaining)
+            GasTracker::Limited { limit, used } => {
+                write!(f, "Gas info: limit: {limit}, used: {used}")
             },
         }
     }
