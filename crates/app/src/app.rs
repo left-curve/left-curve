@@ -24,10 +24,10 @@ pub struct App<DB, VM> {
     vm: VM,
     /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
     ///
-    /// Prevents the situation where an attacker deploys a contract the contains
-    /// an extremely expensive query method (such as one containing an infinite
-    /// loop), then makes a query request at a node. Without a gas limit, this
-    /// can take down the node.
+    /// Prevents the situation where an attacker deploys a contract that
+    /// contains an extremely expensive query method (such as one containing an
+    /// infinite loop), then makes a query request at a node. Without a gas
+    /// limit, this can take down the node.
     ///
     /// Note that this is not relevant for queries made as part of a transaction,
     /// which is covered by the transaction's gas limit.
