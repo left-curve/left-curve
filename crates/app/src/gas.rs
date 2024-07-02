@@ -18,6 +18,16 @@ pub struct GasTracker {
 }
 
 impl GasTracker {
+    /// Create a new gas tracker, with or without a gas limit.
+    pub fn new(maybe_limit: Option<u64>) -> Self {
+        Self {
+            inner: Shared::new(GasTrackerInner {
+                limit: maybe_limit,
+                used: 0,
+            }),
+        }
+    }
+
     /// Create a new gas tracker without a gas limit.
     pub fn new_limitless() -> Self {
         Self {
@@ -81,17 +91,5 @@ impl Display for GasTracker {
                 inner.limit, inner.used
             )
         })
-    }
-}
-
-impl<T> From<Option<T>> for GasTracker
-where
-    T: Into<u64>,
-{
-    fn from(value: Option<T>) -> Self {
-        match value {
-            Some(value) => GasTracker::new_limited(value.into()),
-            None => GasTracker::new_limitless(),
-        }
     }
 }

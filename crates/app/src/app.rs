@@ -322,7 +322,7 @@ where
             self.vm.clone(),
             Box::new(store),
             block,
-            self.query_gas_limit.into(),
+            GasTracker::new(self.query_gas_limit),
             req,
         )
     }
