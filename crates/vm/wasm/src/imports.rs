@@ -89,6 +89,8 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
 pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u32) -> VmResult<()> {
     let (env, wasm_store) = fe.data_and_store_mut();
 
+    env.assert_storage_not_readonly()?;
+
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
     let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
@@ -100,6 +102,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
     let (env, wasm_store) = fe.data_and_store_mut();
+
+    env.assert_storage_not_readonly()?;
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
@@ -115,6 +119,8 @@ pub fn db_remove_range(
     max_ptr: u32,
 ) -> VmResult<()> {
     let (env, wasm_store) = fe.data_and_store_mut();
+
+    env.assert_storage_not_readonly()?;
 
     let min = if min_ptr != 0 {
         Some(read_from_memory(env, &wasm_store, min_ptr)?)

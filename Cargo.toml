@@ -5,6 +5,7 @@ members  = [
   "contracts/account",
   "contracts/bank",
   "contracts/ibc/clients/tendermint",
+  "contracts/tests/*",
   "crates/app",
   "crates/crypto",
   "crates/db/disk",

@@ -127,6 +127,7 @@ where
         "bank_query",
         &account.code_hash,
         &ctx,
+        true,
         msg,
     )?
     .into_std_result()
@@ -226,6 +227,7 @@ where
         "query",
         &account.code_hash,
         &ctx,
+        true,
         &msg,
     )?
     .into_std_result()?;

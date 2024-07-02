@@ -33,6 +33,7 @@ impl Vm for RustVm {
         // Note: `RustVm` doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
+        _storage_readonly: bool,
     ) -> VmResult<RustInstance> {
         Ok(RustInstance {
             storage,

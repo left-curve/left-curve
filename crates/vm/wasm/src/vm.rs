@@ -47,6 +47,7 @@ impl Vm for WasmVm {
         querier: QuerierProvider<Self>,
         code: &[u8],
         gas_tracker: GasTracker,
+        storage_readonly: bool,
     ) -> VmResult<WasmInstance> {
         let code_hash = hash(code);
         let (module, engine) = self.cache.get_or_build_with(&code_hash, || {
@@ -69,7 +70,7 @@ impl Vm for WasmVm {
         // note: memory/store/instance in the env hasn't been set yet at this point
         let fe = FunctionEnv::new(
             &mut store,
-            Environment::new(storage, querier, gas_tracker.clone()),
+            Environment::new(storage, querier, gas_tracker.clone(), storage_readonly),
         );
         let import_obj = imports! {
             "env" => {

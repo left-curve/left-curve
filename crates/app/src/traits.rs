@@ -101,6 +101,7 @@ pub trait Vm: Sized {
         querier: QuerierProvider<Self>,
         code: &[u8],
         gas_tracker: GasTracker,
+        storage_readonly: bool,
     ) -> Result<Self::Instance, Self::Error>;
 }
 

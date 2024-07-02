@@ -33,6 +33,7 @@ unsafe impl Sync for ContextData {}
 pub struct Environment {
     memory: Option<Memory>,
     data: Arc<RwLock<ContextData>>,
+    storage_readonly: bool,
 }
 
 impl Environment {
@@ -40,6 +41,7 @@ impl Environment {
         storage: StorageProvider,
         querier: QuerierProvider<WasmVm>,
         gas_tracker: GasTracker,
+        storage_readonly: bool,
     ) -> Self {
         Self {
             memory: None,
@@ -51,6 +53,7 @@ impl Environment {
                 next_iterator_id: 0,
                 wasmer_instance: None,
             })),
+            storage_readonly,
         }
     }
 
@@ -59,6 +62,13 @@ impl Environment {
             .as_ref()
             .ok_or(VmError::MemoryNotSet)
             .map(|mem| mem.view(wasm_store))
+    }
+
+    pub fn assert_storage_not_readonly(&self) -> VmResult<()> {
+        if self.storage_readonly {
+            return Err(VmError::ReadOnly);
+        }
+        Ok(())
     }
 
     pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
