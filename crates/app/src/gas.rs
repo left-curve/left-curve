@@ -1,8 +1,8 @@
-use std::fmt::Display;
-
-use tracing::warn;
-
-use crate::{AppError, AppResult, Shared};
+use {
+    crate::{AppError, AppResult, Shared},
+    std::{fmt, fmt::Display},
+    tracing::warn,
+};
 
 pub type SharedGasTracker = Shared<GasTracker>;
 
@@ -46,7 +46,7 @@ impl GasTracker {
 }
 
 impl Display for GasTracker {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GasTracker::Limitless { used } => write!(f, "Gas info: limitless, used: {}", used),
             GasTracker::Limited { limit, used } => {
