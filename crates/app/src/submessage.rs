@@ -49,8 +49,8 @@ where
         let result = process_msg(
             vm.clone(),
             Box::new(buffer.share()),
-            block.clone(),
             gas_tracker.clone(),
+            block.clone(),
             sender.clone(),
             submsg.msg,
         );
@@ -63,8 +63,8 @@ where
                 events.extend(do_reply(
                     vm.clone(),
                     storage.clone(),
-                    block.clone(),
                     gas_tracker.clone(),
+                    block.clone(),
                     sender.clone(),
                     &payload,
                     &GenericResult::Ok(submsg_events),
@@ -76,8 +76,8 @@ where
                 events.extend(do_reply(
                     vm.clone(),
                     storage.clone(),
-                    block.clone(),
                     gas_tracker.clone(),
+                    block.clone(),
                     sender.clone(),
                     &payload,
                     &GenericResult::Err(err.to_string()),

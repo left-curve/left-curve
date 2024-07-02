@@ -104,8 +104,8 @@ fn _do_upload(
 pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -118,8 +118,8 @@ where
     match _do_transfer(
         vm,
         storage,
-        block,
         gas_tracker,
+        block,
         from.clone(),
         to.clone(),
         coins.clone(),
@@ -146,8 +146,8 @@ where
 fn _do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -177,16 +177,16 @@ where
 
     let mut events = call_in_1_out_1_handle_response(
         vm.clone(),
-        "bank_execute",
         storage.clone(),
+        gas_tracker.clone(),
+        "bank_execute",
         &account.code_hash,
         &ctx,
-        gas_tracker.clone(),
         &msg,
     )?;
 
     if do_receive {
-        events.extend(_do_receive(vm, storage, ctx.block, gas_tracker, msg)?);
+        events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
     }
 
     Ok(events)
@@ -195,8 +195,8 @@ where
 fn _do_receive<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
 where
@@ -216,11 +216,11 @@ where
 
     call_in_0_out_1_handle_response(
         vm,
-        "receive",
         storage,
+        gas_tracker,
+        "receive",
         &account.code_hash,
         &ctx,
-        gas_tracker,
     )
 }
 
@@ -229,8 +229,8 @@ where
 pub fn do_instantiate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -245,8 +245,8 @@ where
     match _do_instantiate(
         vm,
         storage,
-        block,
         gas_tracker,
+        block,
         sender,
         code_hash,
         msg,
@@ -270,8 +270,8 @@ where
 pub fn _do_instantiate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -308,8 +308,8 @@ where
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
-            block.clone(),
             gas_tracker.clone(),
+            block.clone(),
             sender.clone(),
             address.clone(),
             funds.clone(),
@@ -328,11 +328,11 @@ where
     };
     events.extend(call_in_1_out_1_handle_response(
         vm,
-        "instantiate",
         storage,
+        gas_tracker,
+        "instantiate",
         &account.code_hash,
         &ctx,
-        gas_tracker,
         msg,
     )?);
 
@@ -344,8 +344,8 @@ where
 pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -358,8 +358,8 @@ where
     match _do_execute(
         vm,
         storage,
-        block,
         gas_tracker,
+        block,
         contract.clone(),
         sender,
         msg,
@@ -381,8 +381,8 @@ where
 fn _do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -401,8 +401,8 @@ where
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
-            block.clone(),
             gas_tracker.clone(),
+            block.clone(),
             sender.clone(),
             contract.clone(),
             funds.clone(),
@@ -421,11 +421,11 @@ where
     };
     events.extend(call_in_1_out_1_handle_response(
         vm,
-        "execute",
         storage,
+        gas_tracker,
+        "execute",
         &account.code_hash,
         &ctx,
-        gas_tracker,
         msg,
     )?);
 
@@ -437,8 +437,8 @@ where
 pub fn do_migrate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -451,8 +451,8 @@ where
     match _do_migrate(
         vm,
         storage,
-        block,
         gas_tracker,
+        block,
         contract.clone(),
         sender,
         new_code_hash,
@@ -474,8 +474,8 @@ where
 fn _do_migrate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -514,11 +514,11 @@ where
 
     call_in_1_out_1_handle_response(
         vm,
-        "migrate",
         storage,
+        gas_tracker,
+        "migrate",
         &account.code_hash,
         &ctx,
-        gas_tracker,
         msg,
     )
 }
@@ -528,8 +528,8 @@ where
 pub fn do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -541,8 +541,8 @@ where
     match _do_reply(
         vm,
         storage,
-        block,
         gas_tracker,
+        block,
         contract.clone(),
         msg,
         result,
@@ -563,8 +563,8 @@ where
 fn _do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -586,11 +586,11 @@ where
 
     call_in_2_out_1_handle_response(
         vm,
-        "reply",
         storage,
+        gas_tracker,
+        "reply",
         &account.code_hash,
         &ctx,
-        gas_tracker,
         msg,
         result,
     )
@@ -601,15 +601,15 @@ where
 pub fn do_before_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, "before_tx", storage, block, gas_tracker, tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -633,15 +633,15 @@ where
 pub fn do_after_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, "after_tx", storage, block, gas_tracker, tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -664,10 +664,10 @@ where
 
 fn _do_before_or_after_tx<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
+    name: &'static str,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
@@ -685,7 +685,7 @@ where
         simulate: Some(false),
     };
 
-    call_in_1_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx, gas_tracker, tx)
+    call_in_1_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx, tx)
 }
 
 // ---------------------------- before/after block -----------------------------
@@ -693,8 +693,8 @@ where
 pub fn do_before_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -703,10 +703,10 @@ where
 {
     match _do_before_or_after_block(
         vm,
-        "before_block",
         storage,
-        block,
         gas_tracker,
+        block,
+        "before_block",
         contract.clone(),
     ) {
         Ok(events) => {
@@ -725,8 +725,8 @@ where
 pub fn do_after_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -735,10 +735,10 @@ where
 {
     match _do_before_or_after_block(
         vm,
-        "after_block",
         storage,
-        block,
         gas_tracker,
+        block,
+        "after_block",
         contract.clone(),
     ) {
         Ok(events) => {
@@ -756,10 +756,10 @@ where
 
 fn _do_before_or_after_block<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
+    name: &'static str,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -777,5 +777,5 @@ where
         simulate: None,
     };
 
-    call_in_0_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx, gas_tracker)
+    call_in_0_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx)
 }

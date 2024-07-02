@@ -14,11 +14,11 @@ use {
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -29,10 +29,10 @@ where
     let instance = create_vm_instance(
         vm,
         storage,
+        gas_tracker,
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
-        gas_tracker,
     )?;
 
     // Call the function; deserialize the output as JSON
@@ -46,11 +46,11 @@ where
 /// and returns one output.
 pub fn call_in_1_out_1<VM, P, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
     param: &P,
 ) -> AppResult<R>
 where
@@ -63,10 +63,10 @@ where
     let instance = create_vm_instance(
         vm,
         storage,
+        gas_tracker,
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
-        gas_tracker,
     )?;
 
     // Serialize the param as JSON
@@ -83,11 +83,11 @@ where
 /// and returns one output.
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -102,10 +102,10 @@ where
     let instance = create_vm_instance(
         vm,
         storage,
+        gas_tracker,
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
-        gas_tracker,
     )?;
 
     // Serialize the params as JSON
@@ -124,11 +124,11 @@ where
 /// events emitted.
 pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -136,15 +136,15 @@ where
 {
     let response = call_in_0_out_1::<_, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
-        gas_tracker.clone(),
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, gas_tracker, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -152,11 +152,11 @@ where
 /// emitted.
 pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -166,16 +166,16 @@ where
 {
     let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
-        gas_tracker.clone(),
         param,
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, gas_tracker, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -183,11 +183,11 @@ where
 /// emitted.
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: GasTracker,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -199,26 +199,26 @@ where
 {
     let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
-        gas_tracker.clone(),
         param1,
         param2,
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, gas_tracker, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 fn create_vm_instance<VM>(
     mut vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     address: &Addr,
     code_hash: &Hash,
-    gas_tracker: GasTracker,
 ) -> AppResult<VM::Instance>
 where
     VM: Vm + Clone,
@@ -236,10 +236,10 @@ where
 
 pub(crate) fn handle_response<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
-    ctx: &Context,
     gas_tracker: GasTracker,
+    name: &'static str,
+    ctx: &Context,
     response: Response,
 ) -> AppResult<Vec<Event>>
 where

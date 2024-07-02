@@ -100,8 +100,8 @@ where
             process_msg(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
-                block.clone(),
                 gas_tracker.clone(),
+                block.clone(),
                 GENESIS_SENDER,
                 msg,
             )?;
@@ -186,8 +186,8 @@ where
             events.extend(do_before_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
-                block.clone(),
                 GasTracker::new_limitless(),
+                block.clone(),
                 contract,
             )?);
         }
@@ -221,8 +221,8 @@ where
             events.extend(do_after_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
-                block.clone(),
                 GasTracker::new_limitless(),
+                block.clone(),
                 contract,
             )?);
         }
@@ -321,8 +321,8 @@ where
         process_query(
             self.vm.clone(),
             Box::new(store),
-            block,
             GasTracker::new(self.query_gas_limit),
+            block,
             req,
         )
     }
@@ -374,8 +374,8 @@ where
     events.extend(do_before_tx(
         vm.clone(),
         Box::new(buffer.share()),
-        block.clone(),
         gas_tracker.clone(),
+        block.clone(),
         &tx,
     )?);
 
@@ -396,8 +396,8 @@ where
         events.extend(process_msg(
             vm.clone(),
             Box::new(buffer.share()),
-            block.clone(),
             gas_tracker.clone(),
+            block.clone(),
             tx.sender.clone(),
             msg.clone(),
         )?);
@@ -409,8 +409,8 @@ where
     events.extend(do_after_tx(
         vm,
         Box::new(buffer.share()),
-        block,
         gas_tracker.clone(),
+        block,
         &tx,
     )?);
 
@@ -423,8 +423,8 @@ where
 pub fn process_msg<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
@@ -437,8 +437,8 @@ where
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,
-            block,
             gas_tracker,
+            block,
             sender.clone(),
             to,
             coins,
@@ -454,8 +454,8 @@ where
         } => do_instantiate(
             vm,
             storage,
-            block,
             gas_tracker,
+            block,
             sender,
             code_hash,
             &msg,
@@ -470,8 +470,8 @@ where
         } => do_execute(
             vm,
             storage,
-            block,
             gas_tracker,
+            block,
             contract,
             sender,
             &msg,
@@ -484,8 +484,8 @@ where
         } => do_migrate(
             vm,
             storage,
-            block,
             gas_tracker,
+            block,
             contract,
             sender,
             new_code_hash,
@@ -497,8 +497,8 @@ where
 pub fn process_query<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
-    block: BlockInfo,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where

@@ -122,11 +122,11 @@ where
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
         vm,
-        "bank_query",
         storage,
+        gas_tracker,
+        "bank_query",
         &account.code_hash,
         &ctx,
-        gas_tracker.clone(),
         msg,
     )?
     .into_std_result()
@@ -221,11 +221,11 @@ where
     };
     let data = call_in_1_out_1::<_, _, GenericResult<Json>>(
         vm,
-        "query",
         storage,
+        gas_tracker,
+        "query",
         &account.code_hash,
         &ctx,
-        gas_tracker,
         &msg,
     )?
     .into_std_result()?;
