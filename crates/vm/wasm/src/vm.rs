@@ -129,6 +129,8 @@ pub struct WasmInstance {
 }
 
 impl WasmInstance {
+    /// Read the amount of consumed amount of gas from the Wasmer "metering"
+    /// middleware, and record this data in the `GasTracker`.
     fn consume_gas(&mut self) -> VmResult<()> {
         match get_remaining_points(&mut self.store, &self.instance) {
             MeteringPoints::Remaining(remaining) => {
