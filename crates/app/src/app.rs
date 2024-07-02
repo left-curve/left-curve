@@ -128,8 +128,6 @@ where
             "Completed genesis"
         );
 
-        // return an empty apphash as placeholder, since we haven't implemented
-        // state merklization yet
         Ok(root_hash.unwrap())
     }
 
