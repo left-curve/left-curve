@@ -11,6 +11,7 @@ struct GasTrackerInner {
     used: u64,
 }
 
+/// Tracks gas consumption; throws error if gas limit is exceeded.
 #[derive(Clone)]
 pub struct GasTracker {
     inner: Shared<GasTrackerInner>,
