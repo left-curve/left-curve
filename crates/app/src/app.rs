@@ -179,9 +179,11 @@ where
                 "Calling begin blocker"
             );
 
-            // NOTE: error in begin blocker is considered fatal error. a begin
-            // blocker erroring causes the chain to halt.
-            // TODO: we need to think whether this is the desired behavior
+            // Notes:
+            // 1. Error in begin blocker is considered fatal error. A begin
+            //    blocker erroring causes the chain to halt.
+            //    TODO: think whether this is the desired behavior
+            // 2. Begin blockers are exempted from gas.
             events.extend(do_before_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
