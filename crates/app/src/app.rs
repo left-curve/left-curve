@@ -5,8 +5,8 @@ use {
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, Shared,
-        SharedGasTracker, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
+        GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
@@ -80,7 +80,7 @@ where
             });
         }
 
-        let gas_tracker = SharedGasTracker::new_limitless();
+        let gas_tracker = GasTracker::new_limitless();
 
         // save the config and genesis block. some genesis messages may need it
         CHAIN_ID.save(&mut buffer, &chain_id)?;
@@ -187,7 +187,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
-                SharedGasTracker::new_limitless(),
+                GasTracker::new_limitless(),
                 contract,
             )?);
         }
@@ -223,7 +223,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.share()),
                 block.clone(),
-                SharedGasTracker::new_limitless(),
+                GasTracker::new_limitless(),
                 contract,
             )?);
         }
@@ -367,7 +367,7 @@ where
 
     // create buffer storage and gas tracker for this tx
     let buffer = Shared::new(Buffer::new(storage, None));
-    let gas_tracker = SharedGasTracker::new_limited(tx.gas_limit);
+    let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
@@ -427,7 +427,7 @@ pub fn process_msg<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
@@ -501,7 +501,7 @@ pub fn process_query<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
 where

@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, SharedGasTracker, StorageProvider, Vm, ACCOUNTS,
-        CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, GasTracker, StorageProvider, Vm, ACCOUNTS, CHAIN_ID,
+        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
@@ -25,7 +25,7 @@ pub fn query_balance<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     address: Addr,
     denom: String,
 ) -> AppResult<Coin>
@@ -44,7 +44,7 @@ pub fn query_balances<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     address: Addr,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -65,7 +65,7 @@ pub fn query_supply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     denom: String,
 ) -> AppResult<Coin>
 where
@@ -82,7 +82,7 @@ pub fn query_supplies<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
@@ -101,7 +101,7 @@ fn _query_bank<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
@@ -201,7 +201,7 @@ pub fn query_wasm_smart<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     msg: Json,
 ) -> AppResult<WasmSmartResponse>

@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, SharedGasTracker, Vm},
+    crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
@@ -110,7 +110,7 @@ pub struct QuerierProvider<VM> {
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
 }
 
 impl<VM> QuerierProvider<VM> {
@@ -118,7 +118,7 @@ impl<VM> QuerierProvider<VM> {
         vm: VM,
         storage: Box<dyn Storage>,
         block: BlockInfo,
-        gas_tracker: SharedGasTracker,
+        gas_tracker: GasTracker,
     ) -> Self {
         Self {
             vm,

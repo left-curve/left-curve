@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Cache, Environment, VmError, VmResult,
     },
-    grug_app::{Instance, QuerierProvider, SharedGasTracker, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{hash, to_borsh_vec, Context},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
@@ -46,7 +46,7 @@ impl Vm for WasmVm {
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
         code: &[u8],
-        gas_tracker: SharedGasTracker,
+        gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
         let code_hash = hash(code);
         let (module, engine) = self.cache.get_or_build_with(&code_hash, || {
@@ -123,7 +123,7 @@ pub struct WasmInstance {
     instance: Box<wasmer::Instance>,
     store: Store,
     fe: FunctionEnv<Environment>,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
 }
 
 impl WasmInstance {

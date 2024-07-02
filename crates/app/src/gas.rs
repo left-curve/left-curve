@@ -12,11 +12,11 @@ struct GasTrackerInner {
 }
 
 #[derive(Clone)]
-pub struct SharedGasTracker {
+pub struct GasTracker {
     inner: Shared<GasTrackerInner>,
 }
 
-impl SharedGasTracker {
+impl GasTracker {
     /// Create a new gas tracker without a gas limit.
     pub fn new_limitless() -> Self {
         Self {
@@ -71,7 +71,7 @@ impl SharedGasTracker {
     }
 }
 
-impl Display for SharedGasTracker {
+impl Display for GasTracker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.read_with(|inner| {
             write!(
@@ -83,14 +83,14 @@ impl Display for SharedGasTracker {
     }
 }
 
-impl<T> From<Option<T>> for SharedGasTracker
+impl<T> From<Option<T>> for GasTracker
 where
     T: Into<u64>,
 {
     fn from(value: Option<T>) -> Self {
         match value {
-            Some(value) => SharedGasTracker::new_limited(value.into()),
-            None => SharedGasTracker::new_limitless(),
+            Some(value) => GasTracker::new_limited(value.into()),
+            None => GasTracker::new_limitless(),
         }
     }
 }

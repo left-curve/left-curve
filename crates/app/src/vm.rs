@@ -1,6 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, Instance, QuerierProvider, SharedGasTracker,
+        handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
         StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
@@ -18,7 +18,7 @@ pub fn call_in_0_out_1<VM, R>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -50,7 +50,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     param: &P,
 ) -> AppResult<R>
 where
@@ -87,7 +87,7 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -128,7 +128,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -156,7 +156,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -187,7 +187,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     storage: Box<dyn Storage>,
     code_hash: &Hash,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -218,7 +218,7 @@ fn create_vm_instance<VM>(
     block: BlockInfo,
     address: &Addr,
     code_hash: &Hash,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
 ) -> AppResult<VM::Instance>
 where
     VM: Vm + Clone,
@@ -239,7 +239,7 @@ pub(crate) fn handle_response<VM>(
     name: &'static str,
     storage: Box<dyn Storage>,
     ctx: &Context,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     response: Response,
 ) -> AppResult<Vec<Event>>
 where

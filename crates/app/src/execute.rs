@@ -3,7 +3,7 @@ use tracing::{debug, info, warn};
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, SharedGasTracker, Vm,
+        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, GasTracker, Vm,
         ACCOUNTS, CHAIN_ID, CODES, CONFIG,
     },
     grug_types::{
@@ -105,7 +105,7 @@ pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -147,7 +147,7 @@ fn _do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     from: Addr,
     to: Addr,
     coins: Coins,
@@ -196,7 +196,7 @@ fn _do_receive<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
 where
@@ -230,7 +230,7 @@ pub fn do_instantiate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -271,7 +271,7 @@ pub fn _do_instantiate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     sender: Addr,
     code_hash: Hash,
     msg: &Json,
@@ -345,7 +345,7 @@ pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -382,7 +382,7 @@ fn _do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     sender: Addr,
     msg: &Json,
@@ -438,7 +438,7 @@ pub fn do_migrate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -475,7 +475,7 @@ fn _do_migrate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     sender: Addr,
     new_code_hash: Hash,
@@ -529,7 +529,7 @@ pub fn do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -564,7 +564,7 @@ fn _do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
@@ -602,7 +602,7 @@ pub fn do_before_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
@@ -634,7 +634,7 @@ pub fn do_after_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
@@ -667,7 +667,7 @@ fn _do_before_or_after_tx<VM>(
     name: &'static str,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
@@ -694,7 +694,7 @@ pub fn do_before_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -726,7 +726,7 @@ pub fn do_after_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -759,7 +759,7 @@ fn _do_before_or_after_block<VM>(
     name: &'static str,
     storage: Box<dyn Storage>,
     block: BlockInfo,
-    gas_tracker: SharedGasTracker,
+    gas_tracker: GasTracker,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
