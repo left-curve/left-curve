@@ -130,17 +130,19 @@ impl WasmInstance {
     fn consume_gas(&mut self) -> VmResult<()> {
         match get_remaining_points(&mut self.store, &self.instance) {
             MeteringPoints::Remaining(remaining) => {
+                // Record the consumed gas amount with gas tracker
+                let consumed = u64::MAX - remaining;
+                self.gas_tracker.consume(consumed)?;
+
                 // Reset gas consumed
                 set_remaining_points(&mut self.store, &self.instance, u64::MAX);
-                self.gas_tracker
-                    .write_access()
-                    .consume(u64::MAX - remaining)?;
-                Ok(())
             },
             MeteringPoints::Exhausted => {
-                panic!("Out of gas, this should have been caught earlier!")
+                unreachable!("Out of gas, this should have been caught earlier!");
             },
         }
+
+        Ok(())
     }
 }
 

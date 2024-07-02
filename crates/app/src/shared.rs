@@ -39,6 +39,20 @@ impl<S> Shared<S> {
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
+    pub fn read_with<F, R, E>(&self, action: F) -> Result<R, E>
+    where
+        F: FnOnce(RwLockReadGuard<S>) -> Result<R, E>,
+    {
+        action(self.read_access())
+    }
+
+    pub fn write_with<F, R, E>(&self, action: F) -> Result<R, E>
+    where
+        F: FnOnce(RwLockWriteGuard<S>) -> Result<R, E>,
+    {
+        action(self.write_access())
+    }
+
     /// Disassemble the smart pointer and return the inner value.
     ///
     /// Panics if reference count is greater than 1, or if the lock is poisoned.

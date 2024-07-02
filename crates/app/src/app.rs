@@ -390,8 +390,6 @@ where
     // uncommitted changes (the changes from the before_tx call earlier are
     // persisted)
     for (_idx, msg) in tx.msgs.iter().enumerate() {
-        let before_consumed = gas_tracker.read_access().used();
-
         #[cfg(feature = "tracing")]
         debug!(idx = _idx, "Processing message");
 
@@ -403,12 +401,6 @@ where
             tx.sender.clone(),
             msg.clone(),
         )?);
-
-        #[cfg(feature = "tracing")]
-        {
-            let consumed = gas_tracker.read_access().used() - before_consumed;
-            debug!("Gas used: {consumed}");
-        }
     }
 
     // call the sender account's `after_tx` method.
