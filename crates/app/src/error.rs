@@ -1,6 +1,5 @@
 use {
     grug_types::{Addr, Hash, StdError},
-    std::cell::BorrowMutError,
     thiserror::Error,
 };
 
@@ -8,9 +7,6 @@ use {
 pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
-
-    #[error(transparent)]
-    BorrowMutErr(#[from] BorrowMutError),
 
     #[error("VM error: {0}")]
     Vm(String),
