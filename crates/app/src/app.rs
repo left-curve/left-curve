@@ -214,11 +214,11 @@ where
                 "Calling end blocker"
             );
 
-            // TODO: How to handle gas here?
-
-            // NOTE: error in end blocker is considered fatal error. an end
-            // blocker erroring causes the chain to halt.
-            // TODO: we need to think whether this is the desired behavior
+            // Notes:
+            // 1. Error in end blocker is considered fatal error. An end blocker
+            //    erroring causes the chain to halt.
+            //    TODO: think whether this is the desired behavior
+            // 2. End blockers are exempted from gas.
             events.extend(do_after_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
