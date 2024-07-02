@@ -417,9 +417,6 @@ where
     // all messages succeeded. commit the state changes
     buffer.write_access().commit();
 
-    #[cfg(feature = "tracing")]
-    debug!("{}", gas_tracker);
-
     Ok(events)
 }
 
