@@ -30,13 +30,14 @@ impl Vm for RustVm {
         storage: StorageProvider,
         querier: QuerierProvider<Self>,
         code: &[u8],
+        // Note: `RustVm` doesn't support gas tracking, so we make no use of the
+        // provided `GasTracker`.
         _gas_tracker: GasTracker,
     ) -> VmResult<RustInstance> {
         Ok(RustInstance {
             storage,
             querier,
             wrapper: ContractWrapper::from_bytes(code),
-            // TODO: add gas tracker
         })
     }
 }
@@ -45,7 +46,6 @@ pub struct RustInstance {
     storage: StorageProvider,
     querier: QuerierProvider<RustVm>,
     wrapper: ContractWrapper,
-    // TODO: add gas tracker
 }
 
 impl Instance for RustInstance {
