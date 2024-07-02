@@ -134,6 +134,4 @@ pub trait Instance {
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;
-
-    fn set_gas(&mut self, _remaining: u64) {}
 }
