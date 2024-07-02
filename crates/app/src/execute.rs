@@ -3,8 +3,8 @@ use tracing::{debug, info, warn};
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, Vm, ACCOUNTS,
-        CHAIN_ID, CODES, CONFIG,
+        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, GasTracker, Vm,
+        ACCOUNTS, CHAIN_ID, CODES, CONFIG,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
@@ -104,6 +104,7 @@ fn _do_upload(
 pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -117,6 +118,7 @@ where
     match _do_transfer(
         vm,
         storage,
+        gas_tracker,
         block,
         from.clone(),
         to.clone(),
@@ -144,6 +146,7 @@ where
 fn _do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -174,15 +177,16 @@ where
 
     let mut events = call_in_1_out_1_handle_response(
         vm.clone(),
-        "bank_execute",
         storage.clone(),
+        gas_tracker.clone(),
+        "bank_execute",
         &account.code_hash,
         &ctx,
         &msg,
     )?;
 
     if do_receive {
-        events.extend(_do_receive(vm, storage, ctx.block, msg)?);
+        events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
     }
 
     Ok(events)
@@ -191,6 +195,7 @@ where
 fn _do_receive<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
@@ -209,7 +214,14 @@ where
         simulate: None,
     };
 
-    call_in_0_out_1_handle_response(vm, "receive", storage, &account.code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        "receive",
+        &account.code_hash,
+        &ctx,
+    )
 }
 
 // -------------------------------- instantiate --------------------------------
@@ -217,6 +229,7 @@ where
 pub fn do_instantiate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash,
@@ -230,7 +243,16 @@ where
     AppError: From<VM::Error>,
 {
     match _do_instantiate(
-        vm, storage, block, sender, code_hash, msg, salt, funds, admin,
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        sender,
+        code_hash,
+        msg,
+        salt,
+        funds,
+        admin,
     ) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
@@ -248,6 +270,7 @@ where
 pub fn _do_instantiate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash,
@@ -285,6 +308,7 @@ where
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
+            gas_tracker.clone(),
             block.clone(),
             sender.clone(),
             address.clone(),
@@ -304,8 +328,9 @@ where
     };
     events.extend(call_in_1_out_1_handle_response(
         vm,
-        "instantiate",
         storage,
+        gas_tracker,
+        "instantiate",
         &account.code_hash,
         &ctx,
         msg,
@@ -319,6 +344,7 @@ where
 pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -329,7 +355,16 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_execute(vm, storage, block, contract.clone(), sender, msg, funds) {
+    match _do_execute(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        contract.clone(),
+        sender,
+        msg,
+        funds,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Executed contract");
@@ -346,6 +381,7 @@ where
 fn _do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -365,6 +401,7 @@ where
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
+            gas_tracker.clone(),
             block.clone(),
             sender.clone(),
             contract.clone(),
@@ -384,8 +421,9 @@ where
     };
     events.extend(call_in_1_out_1_handle_response(
         vm,
-        "execute",
         storage,
+        gas_tracker,
+        "execute",
         &account.code_hash,
         &ctx,
         msg,
@@ -399,6 +437,7 @@ where
 pub fn do_migrate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -412,6 +451,7 @@ where
     match _do_migrate(
         vm,
         storage,
+        gas_tracker,
         block,
         contract.clone(),
         sender,
@@ -434,6 +474,7 @@ where
 fn _do_migrate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -471,7 +512,15 @@ where
         simulate: None,
     };
 
-    call_in_1_out_1_handle_response(vm, "migrate", storage, &account.code_hash, &ctx, msg)
+    call_in_1_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        "migrate",
+        &account.code_hash,
+        &ctx,
+        msg,
+    )
 }
 
 // ----------------------------------- reply -----------------------------------
@@ -479,6 +528,7 @@ where
 pub fn do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -488,7 +538,15 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_reply(vm, storage, block, contract.clone(), msg, result) {
+    match _do_reply(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        contract.clone(),
+        msg,
+        result,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Performed callback");
@@ -505,6 +563,7 @@ where
 fn _do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -525,7 +584,16 @@ where
         simulate: None,
     };
 
-    call_in_2_out_1_handle_response(vm, "reply", storage, &account.code_hash, &ctx, msg, result)
+    call_in_2_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        "reply",
+        &account.code_hash,
+        &ctx,
+        msg,
+        result,
+    )
 }
 
 // ------------------------- before/after transaction --------------------------
@@ -533,6 +601,7 @@ where
 pub fn do_before_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
@@ -540,7 +609,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, "before_tx", storage, block, tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -564,6 +633,7 @@ where
 pub fn do_after_tx<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
@@ -571,7 +641,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, "after_tx", storage, block, tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
@@ -594,9 +664,10 @@ where
 
 fn _do_before_or_after_tx<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
+    name: &'static str,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
 where
@@ -614,7 +685,7 @@ where
         simulate: Some(false),
     };
 
-    call_in_1_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx, tx)
+    call_in_1_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx, tx)
 }
 
 // ---------------------------- before/after block -----------------------------
@@ -622,6 +693,7 @@ where
 pub fn do_before_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
@@ -629,7 +701,14 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_block(vm, "before_block", storage, block, contract.clone()) {
+    match _do_before_or_after_block(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        "before_block",
+        contract.clone(),
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called before block hook");
@@ -646,6 +725,7 @@ where
 pub fn do_after_block<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
@@ -653,7 +733,14 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_block(vm, "after_block", storage, block, contract.clone()) {
+    match _do_before_or_after_block(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        "after_block",
+        contract.clone(),
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             info!(contract = contract.to_string(), "Called after block hook");
@@ -669,9 +756,10 @@ where
 
 fn _do_before_or_after_block<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
+    name: &'static str,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -689,5 +777,5 @@ where
         simulate: None,
     };
 
-    call_in_0_out_1_handle_response(vm, name, storage, &account.code_hash, &ctx)
+    call_in_0_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx)
 }

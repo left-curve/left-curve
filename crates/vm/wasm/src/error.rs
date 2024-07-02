@@ -1,5 +1,5 @@
 use {
-    grug_app::AppError,
+    grug_app::{AppError, OutOfGasError},
     grug_crypto::CryptoError,
     grug_types::StdError,
     std::string::FromUtf8Error,
@@ -11,6 +11,9 @@ use {
 pub enum VmError {
     #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    OutOfGas(#[from] OutOfGasError),
 
     #[error(transparent)]
     FromUtf8(#[from] FromUtf8Error),

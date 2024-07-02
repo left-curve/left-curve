@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, Vm},
+    crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
@@ -109,12 +109,23 @@ fn prefixed_range_bounds(
 pub struct QuerierProvider<VM> {
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
 }
 
 impl<VM> QuerierProvider<VM> {
-    pub fn new(vm: VM, storage: Box<dyn Storage>, block: BlockInfo) -> Self {
-        Self { vm, storage, block }
+    pub fn new(
+        vm: VM,
+        storage: Box<dyn Storage>,
+        gas_tracker: GasTracker,
+        block: BlockInfo,
+    ) -> Self {
+        Self {
+            vm,
+            storage,
+            gas_tracker,
+            block,
+        }
     }
 }
 
@@ -127,6 +138,7 @@ where
         process_query(
             self.vm.clone(),
             self.storage.clone(),
+            self.gas_tracker.clone(),
             self.block.clone(),
             req,
         )

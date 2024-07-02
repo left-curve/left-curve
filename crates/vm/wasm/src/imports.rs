@@ -285,6 +285,7 @@ impl_hash_method!(blake2s_256);
 impl_hash_method!(blake2b_512);
 impl_hash_method!(blake3);
 
+#[inline]
 fn next_record(ctx: &mut ContextData, iterator_id: i32) -> VmResult<Option<Record>> {
     ctx.iterators
         .get_mut(&iterator_id)

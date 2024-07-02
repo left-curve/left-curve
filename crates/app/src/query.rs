@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, StorageProvider, Vm, ACCOUNTS, CHAIN_ID, CODES,
-        CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, GasTracker, StorageProvider, Vm, ACCOUNTS, CHAIN_ID,
+        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
@@ -25,6 +25,7 @@ pub fn query_balance<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     address: Addr,
     denom: String,
 ) -> AppResult<Coin>
@@ -32,14 +33,18 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(vm, storage, block, &BankQuery::Balance { address, denom })
-        .map(|res| res.as_balance())
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balance {
+        address,
+        denom,
+    })
+    .map(|res| res.as_balance())
 }
 
 pub fn query_balances<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     address: Addr,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -48,7 +53,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(vm, storage, block, &BankQuery::Balances {
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balances {
         address,
         start_after,
         limit,
@@ -60,19 +65,24 @@ pub fn query_supply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     denom: String,
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(vm, storage, block, &BankQuery::Supply { denom }).map(|res| res.as_supply())
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supply {
+        denom,
+    })
+    .map(|res| res.as_supply())
 }
 
 pub fn query_supplies<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
@@ -80,7 +90,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(vm, storage, block, &BankQuery::Supplies {
+    _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supplies {
         start_after,
         limit,
     })
@@ -91,6 +101,7 @@ fn _query_bank<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
@@ -111,8 +122,9 @@ where
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
         vm,
-        "bank_query",
         storage,
+        gas_tracker,
+        "bank_query",
         &account.code_hash,
         &ctx,
         msg,
@@ -189,6 +201,7 @@ pub fn query_wasm_smart<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     block: BlockInfo,
+    gas_tracker: GasTracker,
     contract: Addr,
     msg: Json,
 ) -> AppResult<WasmSmartResponse>
@@ -208,8 +221,9 @@ where
     };
     let data = call_in_1_out_1::<_, _, GenericResult<Json>>(
         vm,
-        "query",
         storage,
+        gas_tracker,
+        "query",
         &account.code_hash,
         &ctx,
         &msg,

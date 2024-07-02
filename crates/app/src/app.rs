@@ -5,8 +5,8 @@ use {
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
         do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, Shared,
-        Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
+        GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
         from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
@@ -22,11 +22,28 @@ use {
 pub struct App<DB, VM> {
     db: DB,
     vm: VM,
+    /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
+    ///
+    /// Prevents the situation where an attacker deploys a contract that
+    /// contains an extremely expensive query method (such as one containing an
+    /// infinite loop), then makes a query request at a node. Without a gas
+    /// limit, this can take down the node.
+    ///
+    /// Note that this is not relevant for queries made as part of a transaction,
+    /// which is covered by the transaction's gas limit.
+    ///
+    /// Related config in CosmWasm:
+    /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
+    query_gas_limit: Option<u64>,
 }
 
 impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM) -> Self {
-        Self { db, vm }
+    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
+        Self {
+            db,
+            vm,
+            query_gas_limit,
+        }
     }
 }
 
@@ -63,6 +80,10 @@ where
             });
         }
 
+        // Create gas tracker for genesis.
+        // During genesis, there is no gas limit.
+        let gas_tracker = GasTracker::new_limitless();
+
         // save the config and genesis block. some genesis messages may need it
         CHAIN_ID.save(&mut buffer, &chain_id)?;
         CONFIG.save(&mut buffer, &genesis_state.config)?;
@@ -79,6 +100,7 @@ where
             process_msg(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
+                gas_tracker.clone(),
                 block.clone(),
                 GENESIS_SENDER,
                 msg,
@@ -91,6 +113,7 @@ where
 
         // BaseStore version should be 0
         debug_assert_eq!(version, 0);
+
         // the root hash should not be None. it's only None when the merkle tree
         // is empty, but we have written some data to it (like the chain ID and
         // the config) so it shouldn't be empty.
@@ -101,11 +124,10 @@ where
             chain_id,
             timestamp = block.timestamp.seconds(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
+            gas_used = gas_tracker.used(),
             "Completed genesis"
         );
 
-        // return an empty apphash as placeholder, since we haven't implemented
-        // state merklization yet
         Ok(root_hash.unwrap())
     }
 
@@ -157,12 +179,14 @@ where
                 "Calling begin blocker"
             );
 
-            // NOTE: error in begin blocker is considered fatal error. a begin
-            // blocker erroring causes the chain to halt.
-            // TODO: we need to think whether this is the desired behavior
+            // Notes:
+            // 1. Error in begin blocker is considered fatal error. A begin
+            //    blocker erroring causes the chain to halt.
+            // 2. Begin blockers are exempted from gas.
             events.extend(do_before_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
+                GasTracker::new_limitless(),
                 block.clone(),
                 contract,
             )?);
@@ -190,12 +214,14 @@ where
                 "Calling end blocker"
             );
 
-            // NOTE: error in end blocker is considered fatal error. an end
-            // blocker erroring causes the chain to halt.
-            // TODO: we need to think whether this is the desired behavior
+            // Notes:
+            // 1. Error in end blocker is considered fatal error. An end blocker
+            //    erroring causes the chain to halt.
+            // 2. End blockers are exempted from gas.
             events.extend(do_after_block(
                 self.vm.clone(),
                 Box::new(buffer.share()),
+                GasTracker::new_limitless(),
                 block.clone(),
                 contract,
             )?);
@@ -215,6 +241,7 @@ where
 
         // block height should match the DB version
         debug_assert_eq!(block.height.number(), version);
+
         // the merkle tree should never be empty because at least we always have
         // things like the config, last finalized block, ...
         debug_assert!(root_hash.is_some());
@@ -291,7 +318,13 @@ where
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        process_query(self.vm.clone(), Box::new(store), block, req)
+        process_query(
+            self.vm.clone(),
+            Box::new(store),
+            GasTracker::new(self.query_gas_limit),
+            block,
+            req,
+        )
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -332,14 +365,16 @@ where
 {
     let mut events = vec![];
 
-    // create buffer storage for this tx
+    // create buffer storage and gas tracker for this tx
     let buffer = Shared::new(Buffer::new(storage, None));
+    let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // call the sender account's `before_tx` method.
     // if this fails, abort, discard uncommitted state changes.
     events.extend(do_before_tx(
         vm.clone(),
         Box::new(buffer.share()),
+        gas_tracker.clone(),
         block.clone(),
         &tx,
     )?);
@@ -361,6 +396,7 @@ where
         events.extend(process_msg(
             vm.clone(),
             Box::new(buffer.share()),
+            gas_tracker.clone(),
             block.clone(),
             tx.sender.clone(),
             msg.clone(),
@@ -370,7 +406,13 @@ where
     // call the sender account's `after_tx` method.
     // if this fails, abort, discard uncommitted state changes from messages.
     // state changes from `before_tx` are always kept.
-    events.extend(do_after_tx(vm, Box::new(buffer.share()), block, &tx)?);
+    events.extend(do_after_tx(
+        vm,
+        Box::new(buffer.share()),
+        gas_tracker.clone(),
+        block,
+        &tx,
+    )?);
 
     // all messages succeeded. commit the state changes
     buffer.write_access().commit();
@@ -381,6 +423,7 @@ where
 pub fn process_msg<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     sender: Addr,
     msg: Message,
@@ -391,9 +434,16 @@ where
 {
     match msg {
         Message::SetConfig { new_cfg } => do_set_config(&mut storage, &sender, &new_cfg),
-        Message::Transfer { to, coins } => {
-            do_transfer(vm, storage, block, sender.clone(), to, coins, true)
-        },
+        Message::Transfer { to, coins } => do_transfer(
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            sender.clone(),
+            to,
+            coins,
+            true,
+        ),
         Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
         Message::Instantiate {
             code_hash,
@@ -402,24 +452,52 @@ where
             funds,
             admin,
         } => do_instantiate(
-            vm, storage, block, sender, code_hash, &msg, salt, funds, admin,
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            sender,
+            code_hash,
+            &msg,
+            salt,
+            funds,
+            admin,
         ),
         Message::Execute {
             contract,
             msg,
             funds,
-        } => do_execute(vm, storage, block, contract, sender, &msg, funds),
+        } => do_execute(
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            contract,
+            sender,
+            &msg,
+            funds,
+        ),
         Message::Migrate {
             contract,
             new_code_hash,
             msg,
-        } => do_migrate(vm, storage, block, contract, sender, new_code_hash, &msg),
+        } => do_migrate(
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            contract,
+            sender,
+            new_code_hash,
+            &msg,
+        ),
     }
 }
 
 pub fn process_query<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     req: QueryRequest,
 ) -> AppResult<QueryResponse>
@@ -430,19 +508,21 @@ where
     match req {
         QueryRequest::Info {} => query_info(&storage).map(QueryResponse::Info),
         QueryRequest::Balance { address, denom } => {
-            query_balance(vm, storage, block, address, denom).map(QueryResponse::Balance)
+            query_balance(vm, storage, block, gas_tracker, address, denom)
+                .map(QueryResponse::Balance)
         },
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances(vm, storage, block, address, start_after, limit)
+        } => query_balances(vm, storage, block, gas_tracker, address, start_after, limit)
             .map(QueryResponse::Balances),
         QueryRequest::Supply { denom } => {
-            query_supply(vm, storage, block, denom).map(QueryResponse::Supply)
+            query_supply(vm, storage, block, gas_tracker, denom).map(QueryResponse::Supply)
         },
         QueryRequest::Supplies { start_after, limit } => {
-            query_supplies(vm, storage, block, start_after, limit).map(QueryResponse::Supplies)
+            query_supplies(vm, storage, block, gas_tracker, start_after, limit)
+                .map(QueryResponse::Supplies)
         },
         QueryRequest::Code { hash } => query_code(&storage, hash).map(QueryResponse::Code),
         QueryRequest::Codes { start_after, limit } => {
@@ -458,7 +538,8 @@ where
             query_wasm_raw(storage, contract, key).map(QueryResponse::WasmRaw)
         },
         QueryRequest::WasmSmart { contract, msg } => {
-            query_wasm_smart(vm, storage, block, contract, msg).map(QueryResponse::WasmSmart)
+            query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)
+                .map(QueryResponse::WasmSmart)
         },
     }
 }

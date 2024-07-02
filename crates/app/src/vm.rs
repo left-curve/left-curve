@@ -1,7 +1,7 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, Instance, QuerierProvider, StorageProvider, Vm,
-        CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
+        StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
         from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash,
@@ -14,8 +14,9 @@ use {
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
 ) -> AppResult<R>
@@ -25,7 +26,14 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(
+        vm,
+        storage,
+        gas_tracker,
+        ctx.block.clone(),
+        &ctx.contract,
+        code_hash,
+    )?;
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_0_out_1(name, ctx)?;
@@ -38,8 +46,9 @@ where
 /// and returns one output.
 pub fn call_in_1_out_1<VM, P, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
     param: &P,
@@ -51,7 +60,14 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(
+        vm,
+        storage,
+        gas_tracker,
+        ctx.block.clone(),
+        &ctx.contract,
+        code_hash,
+    )?;
 
     // Serialize the param as JSON
     let param_raw = to_json_vec(param)?;
@@ -67,8 +83,9 @@ where
 /// and returns one output.
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
     param1: &P1,
@@ -82,7 +99,14 @@ where
     AppError: From<VM::Error>,
 {
     // Create the VM instance
-    let instance = create_vm_instance(vm, storage, ctx.block.clone(), &ctx.contract, code_hash)?;
+    let instance = create_vm_instance(
+        vm,
+        storage,
+        gas_tracker,
+        ctx.block.clone(),
+        &ctx.contract,
+        code_hash,
+    )?;
 
     // Serialize the params as JSON
     let param1_raw = to_json_vec(param1)?;
@@ -98,11 +122,11 @@ where
 /// Create a VM instance, call a function that takes exactly no input parameter
 /// and returns [`Response`], and handle the submessages. Return a vector of
 /// events emitted.
-#[rustfmt::skip]
 pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
 ) -> AppResult<Vec<Event>>
@@ -112,14 +136,15 @@ where
 {
     let response = call_in_0_out_1::<_, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -127,8 +152,9 @@ where
 /// emitted.
 pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
     param: &P,
@@ -140,15 +166,16 @@ where
 {
     let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
         param,
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -156,8 +183,9 @@ where
 /// emitted.
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
     param1: &P1,
@@ -171,8 +199,9 @@ where
 {
     let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
         vm.clone(),
-        name,
         storage.clone(),
+        gas_tracker.clone(),
+        name,
         code_hash,
         ctx,
         param1,
@@ -180,12 +209,13 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(vm, name, storage, ctx, response)
+    handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 fn create_vm_instance<VM>(
     mut vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     address: &Addr,
     code_hash: &Hash,
@@ -198,16 +228,17 @@ where
     let code = CODES.load(&storage, code_hash)?;
 
     // Create the providers
-    let querier = QuerierProvider::new(vm.clone(), storage.clone(), block);
+    let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
 
-    Ok(vm.build_instance(storage, querier, &code)?)
+    Ok(vm.build_instance(storage, querier, &code, gas_tracker)?)
 }
 
 pub(crate) fn handle_response<VM>(
     vm: VM,
-    name: &'static str,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    name: &'static str,
     ctx: &Context,
     response: Response,
 ) -> AppResult<Vec<Event>>
@@ -226,6 +257,7 @@ where
         vm,
         storage,
         ctx.block.clone(),
+        gas_tracker,
         ctx.contract.clone(),
         response.submsgs,
     )?);

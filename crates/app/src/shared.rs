@@ -1,6 +1,7 @@
 use {
     grug_types::{increment_last_byte, Batch, Order, Record, Storage},
     std::{
+        fmt::Display,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
     },
@@ -8,6 +9,7 @@ use {
 
 /// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
 /// methods.
+#[derive(Default)]
 pub struct Shared<S> {
     inner: Arc<RwLock<S>>,
 }
@@ -35,6 +37,20 @@ impl<S> Shared<S> {
         self.inner
             .write()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
+    }
+
+    pub fn read_with<F, R, E>(&self, action: F) -> Result<R, E>
+    where
+        F: FnOnce(RwLockReadGuard<S>) -> Result<R, E>,
+    {
+        action(self.read_access())
+    }
+
+    pub fn write_with<F, R, E>(&self, action: F) -> Result<R, E>
+    where
+        F: FnOnce(RwLockWriteGuard<S>) -> Result<R, E>,
+    {
+        action(self.write_access())
     }
 
     /// Disassemble the smart pointer and return the inner value.
@@ -192,6 +208,15 @@ impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
         // be None, in which case the entire iteration has reached end)
         self.collect_next_batch();
         self.batch.next()
+    }
+}
+
+impl<S> Display for Shared<S>
+where
+    S: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.read_access())
     }
 }
 
