@@ -1,5 +1,5 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmResult},
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
@@ -42,19 +42,14 @@ pub fn db_scan(
     let order = order.try_into()?;
     let iterator = Iterator::new(min, max, order);
 
-    // Insert the iterator into the `ContextData`, incrementing the next ID.
-    let iterator_id = env.next_iterator_id;
-    env.iterators.insert(iterator_id, iterator);
-    env.next_iterator_id += 1;
-
-    Ok(iterator_id)
+    Ok(env.add_iterator(iterator))
 }
 
 pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some(record) = next_record(env, iterator_id)? else {
+    let Some(record) = env.advance_iterator(iterator_id)? else {
         return Ok(0);
     };
 
@@ -65,7 +60,7 @@ pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmR
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((key, _)) = next_record(env, iterator_id)? else {
+    let Some((key, _)) = env.advance_iterator(iterator_id)? else {
         return Ok(0);
     };
 
@@ -76,7 +71,7 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((_, value)) = next_record(env, iterator_id)? else {
+    let Some((_, value)) = env.advance_iterator(iterator_id)? else {
         return Ok(0);
     };
 
@@ -278,14 +273,6 @@ impl_hash_method!(keccak256);
 impl_hash_method!(blake2s_256);
 impl_hash_method!(blake2b_512);
 impl_hash_method!(blake3);
-
-#[inline]
-fn next_record(env: &mut Environment, iterator_id: i32) -> VmResult<Option<Record>> {
-    env.iterators
-        .get_mut(&iterator_id)
-        .ok_or(VmError::IteratorNotFound { iterator_id })
-        .map(|iter| iter.next(&env.storage))
-}
 
 /// Pack a KV pair into a single byte array in the following format:
 ///

@@ -1,6 +1,7 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
     grug_app::{GasTracker, QuerierProvider, StorageProvider},
+    grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
@@ -9,8 +10,8 @@ pub struct Environment {
     pub storage: StorageProvider,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
-    pub iterators: HashMap<i32, Iterator>,
-    pub next_iterator_id: i32,
+    iterators: HashMap<i32, Iterator>,
+    next_iterator_id: i32,
     wasmer_memory: Option<Memory>,
     /// A non-owning link to the wasmer instance. Need this for doing function
     /// calls (see Environment::call_function).
@@ -39,6 +40,28 @@ impl Environment {
             wasmer_memory: None,
             wasmer_instance: None,
         }
+    }
+
+    /// Add a new iterator to the environment, increment the next iterator ID.
+    ///
+    /// Return the ID of the iterator that was just added.
+    pub fn add_iterator(&mut self, iterator: Iterator) -> i32 {
+        let iterator_id = self.next_iterator_id;
+        self.iterators.insert(iterator_id, iterator);
+        self.next_iterator_id += 1;
+
+        iterator_id
+    }
+
+    /// Get the next record in the iterator specified by the ID.
+    ///
+    /// Error if the iterator is not found.
+    /// `None` if the iterator is found but has reached its end.
+    pub fn advance_iterator(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
+        self.iterators
+            .get_mut(&iterator_id)
+            .ok_or(VmError::IteratorNotFound { iterator_id })
+            .map(|iter| iter.next(&self.storage))
     }
 
     pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
