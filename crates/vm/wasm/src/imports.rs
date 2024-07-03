@@ -86,6 +86,28 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 
     env.storage.write(&key, &value);
 
+    // Delete all existing iterators. This is necessary if the storage is to be
+    // mutated.
+    //
+    // Let's consider what happens if we fail to do this.
+    //
+    // Assume the storage has the following keys: `a`, `b`, `c`. An existing
+    // iterator with ascending order is now at `b`. If we are to call `db_next`
+    // now, it would return the `c` record.
+    //
+    // Now, we perfrom `db_write` to insert a new record with key `bb`. Now the
+    // storage contains: `a`, `b`, `bb`, `c`.
+    //
+    // Now we call `db_next`. It will still return `b`. This is an incorrect
+    // result: should be `bb` instead!
+    //
+    // Think about this the other way: having an active iterator is like holding
+    // an immutable reference to the storage (though there isn't actually a ref
+    // since we're working over the FFI). Performing a `db_write` requires a
+    // mutable reference, which requires the immutable ref to be dropped first,
+    // which involves deleting the iterator.
+    env.clear_iterators();
+
     Ok(())
 }
 
@@ -95,6 +117,9 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let key = read_from_memory(env, &store, key_ptr)?;
 
     env.storage.remove(&key);
+
+    // Delete all existing iterators; same reasoning as in `db_write`.
+    env.clear_iterators();
 
     Ok(())
 }
@@ -118,6 +143,9 @@ pub fn db_remove_range(
     };
 
     env.storage.remove_range(min.as_deref(), max.as_deref());
+
+    // Delete all existing iterators; same reasoning as in `db_write`.
+    env.clear_iterators();
 
     Ok(())
 }
