@@ -9,6 +9,7 @@ use {
 /// Necessary stuff for performing Wasm import functions.
 pub struct Environment {
     pub storage: StorageProvider,
+    pub storage_readonly: bool,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
     iterators: HashMap<i32, Iterator>,
@@ -28,7 +29,6 @@ pub struct Environment {
     ///
     /// Optional for the same reason as `wasmer_memory`.
     wasmer_instance: Option<NonNull<Instance>>,
-    storage_readonly: bool,
 }
 
 // The Wasmer instance isn't `Send`. We manually mark it as is.
@@ -56,13 +56,6 @@ impl Environment {
             wasmer_instance: None,
             storage_readonly,
         }
-    }
-
-    pub fn assert_storage_not_readonly(&self) -> VmResult<()> {
-        if self.storage_readonly {
-            return Err(VmError::ReadOnly);
-        }
-        Ok(())
     }
 
     /// Add a new iterator to the `Environment`, increment the next iterator ID.

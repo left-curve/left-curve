@@ -1,5 +1,5 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmResult},
+    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
@@ -81,7 +81,14 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
 pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u32) -> VmResult<()> {
     let (env, store) = fe.data_and_store_mut();
 
-    env.assert_storage_not_readonly()?;
+    // Make sure the storage isn't set to be read only.
+    //
+    // This is the case for the `query`, `bank_query`, and `ibc_client_query`
+    // calls. During these calls, the contract isn't allowed to call the imports
+    // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
+    if env.storage_readonly {
+        return Err(VmError::ReadOnly);
+    }
 
     let key = read_from_memory(env, &store, key_ptr)?;
     let value = read_from_memory(env, &store, value_ptr)?;
@@ -116,7 +123,9 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
     let (env, store) = fe.data_and_store_mut();
 
-    env.assert_storage_not_readonly()?;
+    if env.storage_readonly {
+        return Err(VmError::ReadOnly);
+    }
 
     let key = read_from_memory(env, &store, key_ptr)?;
 
@@ -135,7 +144,9 @@ pub fn db_remove_range(
 ) -> VmResult<()> {
     let (env, store) = fe.data_and_store_mut();
 
-    env.assert_storage_not_readonly()?;
+    if env.storage_readonly {
+        return Err(VmError::ReadOnly);
+    }
 
     let min = if min_ptr != 0 {
         Some(read_from_memory(env, &store, min_ptr)?)
