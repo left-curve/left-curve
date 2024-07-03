@@ -210,6 +210,33 @@ impl TestSuite {
         Ok(AppExecuteResponse::new(vec![tx], results))
     }
 
+    fn deploy_contract<M>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        filename: &str,
+        salt: &[u8],
+        msg: &M,
+    ) -> anyhow::Result<Addr>
+    where
+        M: Serialize,
+    {
+        let code = read_wasm_file(filename)?;
+        let code_hash = Hash::from_slice(sha2_256(&code));
+        let address = Addr::compute(&signer.address, &code_hash, &salt);
+
+        self.send_messages(signer, gas_limit, vec![Message::Instantiate {
+            code_hash,
+            msg: to_json_value(&msg)?,
+            salt: salt.to_vec().into(),
+            funds: Coins::new_empty(),
+            admin: None,
+        }])?
+        .no_errors();
+
+        Ok(address)
+    }
+
     fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
         self.app.do_query_app(req, self.block.height.into(), false)
     }
@@ -349,29 +376,14 @@ fn immutable_state() -> anyhow::Result<()> {
     setup_tracing();
     let (mut suite, sender, _) = TestSuite::default_setup()?;
 
-    // Load the immutable state contract byte code
-    let tester_code = read_wasm_file("grug_tester_immutable_state.wasm")?;
-    let tester_code_hash = Hash::from_slice(sha2_256(&tester_code));
-    let salt = b"tester/immutable_state".to_vec();
-    let tester = Addr::compute(&sender.address, &tester_code_hash, &salt);
-
-    // Upload
-    suite
-        .send_messages(&sender, 80_000_000, vec![Message::Upload {
-            code: tester_code.into(),
-        }])?
-        .no_errors()?;
-
-    // Instantiate
-    suite
-        .send_messages(&sender, 1_000_000, vec![Message::Instantiate {
-            code_hash: tester_code_hash,
-            msg: to_json_value(&Empty {})?,
-            salt: salt.into(),
-            funds: Coins::default(),
-            admin: None,
-        }])?
-        .no_errors()?;
+    // Deploy the tester contract
+    let tester = suite.deploy_contract(
+        &sender,
+        80_000_000,
+        "grug_tester_immutable_state.wasm",
+        b"tester/immutable_state",
+        &Empty {},
+    )?;
 
     // Execute the contract.
     // During the execution the contract make a query to itself
