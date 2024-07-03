@@ -72,7 +72,7 @@ impl Vm for WasmVm {
         // note: memory/store/instance in the env hasn't been set yet at this point
         let fe = FunctionEnv::new(
             &mut store,
-            Environment::new(storage, querier, gas_tracker.clone(), storage_readonly),
+            Environment::new(storage, storage_readonly, querier, gas_tracker.clone()),
         );
         let import_obj = imports! {
             "env" => {

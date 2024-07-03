@@ -40,21 +40,21 @@ unsafe impl Send for Environment {}
 impl Environment {
     pub fn new(
         storage: StorageProvider,
+        storage_readonly: bool,
         querier: QuerierProvider<WasmVm>,
         gas_tracker: GasTracker,
-        storage_readonly: bool,
     ) -> Self {
         Self {
-            gas_tracker,
             storage,
+            storage_readonly,
             querier,
+            gas_tracker,
             iterators: HashMap::new(),
             next_iterator_id: 0,
             // Wasmer memory and instance are set to `None` because at this
             // point, the Wasmer instance hasn't been created yet.
             wasmer_memory: None,
             wasmer_instance: None,
-            storage_readonly,
         }
     }
 
