@@ -99,14 +99,11 @@ impl Environment {
         Ok(())
     }
 
-    pub fn get_wasmer_memory<'a>(
-        &self,
-        wasm_store: &'a impl AsStoreRef,
-    ) -> VmResult<MemoryView<'a>> {
+    pub fn get_wasmer_memory<'a>(&self, store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
         self.wasmer_memory
             .as_ref()
             .ok_or(VmError::WasmerMemoryNotSet)
-            .map(|mem| mem.view(wasm_store))
+            .map(|mem| mem.view(store))
     }
 
     pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
@@ -116,11 +113,11 @@ impl Environment {
 
     pub fn call_function1(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<Value> {
-        let ret = self.call_function(wasm_store, name, args)?;
+        let ret = self.call_function(store, name, args)?;
         if ret.len() != 1 {
             return Err(VmError::ReturnCount {
                 name: name.into(),
@@ -133,11 +130,11 @@ impl Environment {
 
     pub fn call_function0(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<()> {
-        let ret = self.call_function(wasm_store, name, args)?;
+        let ret = self.call_function(store, name, args)?;
         if ret.len() != 0 {
             return Err(VmError::ReturnCount {
                 name: name.into(),
@@ -150,14 +147,14 @@ impl Environment {
 
     fn call_function(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
         self.get_wasmer_instance()?
             .exports
             .get_function(name)?
-            .call(wasm_store, args)
+            .call(store, args)
             .map_err(Into::into)
     }
 }

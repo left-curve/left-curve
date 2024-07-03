@@ -6,10 +6,10 @@ use {
 
 pub fn read_from_memory(
     env: &mut Environment,
-    wasm_store: &impl AsStoreRef,
+    store: &impl AsStoreRef,
     region_ptr: u32,
 ) -> VmResult<Vec<u8>> {
-    let memory = env.get_wasmer_memory(&wasm_store)?;
+    let memory = env.get_wasmer_memory(&store)?;
 
     // read region
     let region = read_region(&memory, region_ptr)?;
@@ -23,25 +23,26 @@ pub fn read_from_memory(
 
 pub fn read_then_wipe(
     env: &mut Environment,
-    wasm_store: &mut impl AsStoreMut,
+    store: &mut impl AsStoreMut,
     region_ptr: u32,
 ) -> VmResult<Vec<u8>> {
-    let data = read_from_memory(env, wasm_store, region_ptr)?;
-    env.call_function0(wasm_store, "deallocate", &[region_ptr.into()])?;
+    let data = read_from_memory(env, store, region_ptr)?;
+    env.call_function0(store, "deallocate", &[region_ptr.into()])?;
+
     Ok(data)
 }
 
 pub fn write_to_memory(
     env: &mut Environment,
-    wasm_store: &mut impl AsStoreMut,
+    store: &mut impl AsStoreMut,
     data: &[u8],
 ) -> VmResult<u32> {
     // call the `allocate` export to reserve an area in Wasm memory
     let region_ptr: u32 = env
-        .call_function1(wasm_store, "allocate", &[(data.len() as u32).into()])?
+        .call_function1(store, "allocate", &[(data.len() as u32).into()])?
         .try_into()
         .map_err(VmError::ReturnType)?;
-    let memory = env.get_wasmer_memory(&wasm_store)?;
+    let memory = env.get_wasmer_memory(&store)?;
     let mut region = read_region(&memory, region_ptr)?;
     // don't forget to update region length
     region.length = data.len() as u32;
