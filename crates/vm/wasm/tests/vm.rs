@@ -22,6 +22,7 @@ use {
 };
 
 const MOCK_CHAIN_ID: &str = "grug-1";
+const MOCK_BLOCK_TIME_NANOS: u64 = 250_000_000; // 250 milliseconds
 const MOCK_DENOM: &str = "ugrug";
 const MOCK_BANK_SALT: &[u8] = b"bank";
 const MOCK_SENDER_SALT: &[u8] = b"sender";
@@ -186,7 +187,9 @@ impl TestSuite {
         Ok((Self { app, block }, sender, receiver))
     }
 
-    fn send_messages(
+    /// Finalize and commit a block that contains a single transaction
+    /// containing the given messages.
+    fn execute_messages(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
@@ -197,7 +200,7 @@ impl TestSuite {
 
         // Increment block height and block time
         self.block.height += Uint64::ONE;
-        self.block.timestamp = self.block.timestamp.plus_nanos(1);
+        self.block.timestamp = self.block.timestamp.plus_nanos(MOCK_BLOCK_TIME_NANOS);
 
         // Finalize block
         // Use a zero hash to mock the transaction hash.
@@ -220,6 +223,7 @@ impl TestSuite {
         Ok(ExecuteResponse { tx, tx_result })
     }
 
+    /// Deploy a contract.
     fn deploy_contract<M>(
         &mut self,
         signer: &TestAccount,
@@ -235,7 +239,7 @@ impl TestSuite {
         let code_hash = Hash::from_slice(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.send_messages(signer, gas_limit, vec![
+        self.execute_messages(signer, gas_limit, vec![
             Message::Upload { code: code.into() },
             Message::Instantiate {
                 code_hash,
@@ -325,7 +329,7 @@ fn bank_transfer() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages.
     suite
-        .send_messages(&sender, 900_000, vec![
+        .execute_messages(&sender, 900_000, vec![
             Message::Transfer {
                 to: receiver.address.clone(),
                 coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
@@ -359,7 +363,7 @@ fn out_of_gas() -> anyhow::Result<()> {
 
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around 130,000 gas.
-    suite.send_messages(&sender, 100_000, vec![Message::Transfer {
+    suite.execute_messages(&sender, 100_000, vec![Message::Transfer {
         to: receiver.address.clone(),
         coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
     }])?;
@@ -408,7 +412,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     let (_, err) = suite
-        .send_messages(&sender, 1_000_000, vec![Message::Execute {
+        .execute_messages(&sender, 1_000_000, vec![Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
