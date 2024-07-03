@@ -79,13 +79,24 @@ impl Environment {
     }
 
     pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
+        if self.wasmer_memory.is_some() {
+            return Err(VmError::WasmerMemoryAlreadySet);
+        }
+
         let memory = instance.exports.get_memory("memory")?;
         self.wasmer_memory = Some(memory.clone());
+
         Ok(())
     }
 
-    pub fn set_wasmer_instance(&mut self, instance: &Instance) {
+    pub fn set_wasmer_instance(&mut self, instance: &Instance) -> VmResult<()> {
+        if self.wasmer_instance.is_some() {
+            return Err(VmError::WasmerInstanceAlreadySet);
+        }
+
         self.wasmer_instance = Some(NonNull::from(instance));
+
+        Ok(())
     }
 
     pub fn get_wasmer_memory<'a>(
@@ -94,7 +105,7 @@ impl Environment {
     ) -> VmResult<MemoryView<'a>> {
         self.wasmer_memory
             .as_ref()
-            .ok_or(VmError::MemoryNotSet)
+            .ok_or(VmError::WasmerMemoryNotSet)
             .map(|mem| mem.view(wasm_store))
     }
 

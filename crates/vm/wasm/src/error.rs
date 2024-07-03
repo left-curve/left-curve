@@ -36,20 +36,17 @@ pub enum VmError {
     #[error("failed to instantiate Wasm module: {0}")]
     Instantiation(String),
 
-    #[error("failed to read lock ContextData")]
-    FailedReadLock,
+    #[error("Wasmer memory not set in Environment")]
+    WasmerMemoryNotSet,
 
-    #[error("failed to write lock ContextData")]
-    FailedWriteLock,
+    #[error("Wasmer memory already set in Environment")]
+    WasmerMemoryAlreadySet,
 
-    #[error("memory is not set in Environment")]
-    MemoryNotSet,
-
-    #[error("store is not set in ContextData")]
-    StoreNotSet,
-
-    #[error("wasmer instance is not set in ContextData")]
+    #[error("Wasmer instance not set in ContextData")]
     WasmerInstanceNotSet,
+
+    #[error("Wasmer instance already set in ContextData")]
+    WasmerInstanceAlreadySet,
 
     #[error("iterator with ID `{iterator_id}` not found")]
     IteratorNotFound { iterator_id: i32 },
