@@ -1652,7 +1652,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-t-immutable-state"
+name = "grug-tester-immutable-state"
 version = "0.0.0"
 dependencies = [
  "anyhow",
