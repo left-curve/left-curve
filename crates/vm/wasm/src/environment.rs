@@ -13,8 +13,8 @@ pub struct Environment {
     pub gas_tracker: GasTracker,
     iterators: HashMap<i32, Iterator>,
     next_iterator_id: i32,
-    /// Memory of the Wasmer instance. Necessary to read data from or write data
-    /// to the memory.
+    /// Memory of the Wasmer instance. Necessary for reading data from or
+    /// writing data to the memory.
     ///
     /// Optional because during the flow of creating the Wasmer instance, the
     /// `Environment` needs to be created before the instance, which the memory
