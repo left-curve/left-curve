@@ -30,12 +30,11 @@ pub struct Environment {
     wasmer_instance: Option<NonNull<Instance>>,
 }
 
-// Wasmer instance isn't Send/Sync. We manually mark it to be.
-// cosmwasm_vm does the same:
+// The Wasmer instance isn't `Send`. We manually mark it as is.
+// cosmwasm-vm does the same:
 // https://github.com/CosmWasm/cosmwasm/blob/v2.0.3/packages/vm/src/environment.rs#L120-L122
 // TODO: need to think about whether this is safe
 unsafe impl Send for Environment {}
-unsafe impl Sync for Environment {}
 
 impl Environment {
     pub fn new(
