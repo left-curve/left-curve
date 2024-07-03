@@ -9,7 +9,7 @@ use {
         GenesisState, Hash, Message, NumberConst, Permission, Permissions, QueryRequest, Timestamp,
         Tx, Uint128, Uint64, GENESIS_SENDER,
     },
-    grug_vm_wasm::WasmVm,
+    grug_vm_wasm::{VmError, WasmVm},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -324,10 +324,17 @@ impl<T> TestResult<T> {
     }
 
     /// Ensure the result is error, and contains the given message.
-    fn should_fail_with_error(self, msg: &str) -> anyhow::Result<()> {
+    ///
+    /// Here we stringify the error and check for the existence of the substring,
+    /// instead of utilizing the Rust type system.
+    ///
+    /// Have to go with this approach because errors emitted by the contract are
+    /// converted to strings (as `GenericResult`) when passed through the FFI,
+    /// at which time they lost their types.
+    fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
         match self.inner {
             Ok(_) => bail!("expecting error, got ok"),
-            Err(err) => ensure!(err.to_string().contains(msg)),
+            Err(err) => ensure!(err.to_string().contains(&msg.to_string())),
         }
         Ok(())
     }
@@ -406,8 +413,6 @@ fn out_of_gas() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    const STORAGE_READONLY_ERROR: &str = "db state changed detected on readonly instance";
-
     setup_tracing();
 
     let (mut suite, sender, _) = TestSuite::default_setup()?;
@@ -430,7 +435,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // ABCI request.
     suite
         .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
-        .should_fail_with_error(STORAGE_READONLY_ERROR)?;
+        .should_fail_with_error(VmError::ReadOnly)?;
 
     // Execute the tester contract.
     //
@@ -445,7 +450,7 @@ fn immutable_state() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
         }])?
-        .should_fail_with_error(STORAGE_READONLY_ERROR)?;
+        .should_fail_with_error(VmError::ReadOnly)?;
 
     Ok(())
 }
