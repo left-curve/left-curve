@@ -182,6 +182,7 @@ where
         "bank_execute",
         &account.code_hash,
         &ctx,
+        false,
         &msg,
     )?;
 
@@ -221,6 +222,7 @@ where
         "receive",
         &account.code_hash,
         &ctx,
+        false,
     )
 }
 
@@ -333,6 +335,7 @@ where
         "instantiate",
         &account.code_hash,
         &ctx,
+        false,
         msg,
     )?);
 
@@ -426,6 +429,7 @@ where
         "execute",
         &account.code_hash,
         &ctx,
+        false,
         msg,
     )?);
 
@@ -519,6 +523,7 @@ where
         "migrate",
         &account.code_hash,
         &ctx,
+        false,
         msg,
     )
 }
@@ -591,6 +596,7 @@ where
         "reply",
         &account.code_hash,
         &ctx,
+        false,
         msg,
         result,
     )
@@ -685,7 +691,16 @@ where
         simulate: Some(false),
     };
 
-    call_in_1_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx, tx)
+    call_in_1_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        name,
+        &account.code_hash,
+        &ctx,
+        false,
+        tx,
+    )
 }
 
 // ---------------------------- before/after block -----------------------------
@@ -777,5 +792,13 @@ where
         simulate: None,
     };
 
-    call_in_0_out_1_handle_response(vm, storage, gas_tracker, name, &account.code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        name,
+        &account.code_hash,
+        &ctx,
+        false,
+    )
 }

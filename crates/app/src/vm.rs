@@ -19,6 +19,7 @@ pub fn call_in_0_out_1<VM, R>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -33,6 +34,7 @@ where
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
+        storage_readonly,
     )?;
 
     // Call the function; deserialize the output as JSON
@@ -51,6 +53,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
     param: &P,
 ) -> AppResult<R>
 where
@@ -67,6 +70,7 @@ where
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
+        storage_readonly,
     )?;
 
     // Serialize the param as JSON
@@ -88,6 +92,7 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -106,6 +111,7 @@ where
         ctx.block.clone(),
         &ctx.contract,
         code_hash,
+        storage_readonly,
     )?;
 
     // Serialize the params as JSON
@@ -129,6 +135,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -141,6 +148,7 @@ where
         name,
         code_hash,
         ctx,
+        storage_readonly,
     )?
     .into_std_result()?;
 
@@ -157,6 +165,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -171,6 +180,7 @@ where
         name,
         code_hash,
         ctx,
+        storage_readonly,
         param,
     )?
     .into_std_result()?;
@@ -188,6 +198,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     name: &'static str,
     code_hash: &Hash,
     ctx: &Context,
+    storage_readonly: bool,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -204,6 +215,7 @@ where
         name,
         code_hash,
         ctx,
+        storage_readonly,
         param1,
         param2,
     )?
@@ -219,6 +231,7 @@ fn create_vm_instance<VM>(
     block: BlockInfo,
     address: &Addr,
     code_hash: &Hash,
+    storage_readonly: bool,
 ) -> AppResult<VM::Instance>
 where
     VM: Vm + Clone,
@@ -231,7 +244,14 @@ where
     let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
 
-    Ok(vm.build_instance(storage, querier, &code, gas_tracker)?)
+    Ok(vm.build_instance(
+        &code,
+        code_hash,
+        storage,
+        storage_readonly,
+        querier,
+        gas_tracker,
+    )?)
 }
 
 pub(crate) fn handle_response<VM>(

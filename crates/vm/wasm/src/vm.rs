@@ -7,7 +7,7 @@ use {
         write_to_memory, Cache, Environment, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{hash, to_borsh_vec, Context},
+    grug_types::{to_borsh_vec, Context, Hash},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{
@@ -43,13 +43,16 @@ impl Vm for WasmVm {
 
     fn build_instance(
         &mut self,
-        storage: StorageProvider,
-        querier: QuerierProvider<Self>,
         code: &[u8],
+        code_hash: &Hash,
+        storage: StorageProvider,
+        storage_readonly: bool,
+        querier: QuerierProvider<Self>,
         gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
-        let code_hash = hash(code);
-        let (module, engine) = self.cache.get_or_build_with(&code_hash, || {
+        // Attempt to fetch a pre-built Wasmer module from the cache.
+        // If not found, build it and insert it into the cache.
+        let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
             let metering = Metering::new(u64::MAX, |_| GAS_PER_OPERATION);
             compiler.canonicalize_nans(true);
@@ -69,7 +72,7 @@ impl Vm for WasmVm {
         // note: memory/store/instance in the env hasn't been set yet at this point
         let fe = FunctionEnv::new(
             &mut store,
-            Environment::new(storage, querier, gas_tracker.clone()),
+            Environment::new(storage, storage_readonly, querier, gas_tracker.clone()),
         );
         let import_obj = imports! {
             "env" => {

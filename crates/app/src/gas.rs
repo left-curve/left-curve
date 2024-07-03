@@ -1,7 +1,8 @@
+#[cfg(feature = "tracing")]
+use tracing::{debug, warn};
 use {
     crate::Shared,
     std::{fmt, fmt::Display},
-    tracing::{debug, warn},
 };
 
 // We create an error type specifically for the gas tracker, such that there's

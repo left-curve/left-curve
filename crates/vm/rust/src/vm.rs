@@ -1,7 +1,7 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{from_json_slice, to_json_vec, Context, MockApi},
+    grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
 macro_rules! get_contract {
@@ -27,10 +27,15 @@ impl Vm for RustVm {
 
     fn build_instance(
         &mut self,
-        storage: StorageProvider,
-        querier: QuerierProvider<Self>,
         code: &[u8],
-        // Note: `RustVm` doesn't support gas tracking, so we make no use of the
+        _code_hash: &Hash,
+        storage: StorageProvider,
+        // Rust VM doesn't need this "readonly" flag, because everything happens
+        // in Rust, the compiler can prevent storage writes in query methods
+        // (unlike Wasm VM where an FFI is involved).
+        _storage_readonly: bool,
+        querier: QuerierProvider<Self>,
+        // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
     ) -> VmResult<RustInstance> {
