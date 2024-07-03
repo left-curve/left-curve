@@ -358,15 +358,20 @@ fn bank_transfer() -> anyhow::Result<()> {
 
 #[test]
 fn out_of_gas() -> anyhow::Result<()> {
+    const OUT_OF_GAS_ERROR: &str = "out of gas";
+
     setup_tracing();
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around 130,000 gas.
-    suite.execute_messages(&sender, 100_000, vec![Message::Transfer {
-        to: receiver.address.clone(),
-        coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
-    }])?;
+    let (_, err) = suite
+        .execute_messages(&sender, 100_000, vec![Message::Transfer {
+            to: receiver.address.clone(),
+            coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
+        }])?
+        .expect_error()?;
+    ensure!(err.to_string().contains(OUT_OF_GAS_ERROR));
 
     // Tx is went out of gas.
     // Balances should remain the same
@@ -378,7 +383,7 @@ fn out_of_gas() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    const OUT_OF_GAS_ERROR: &str = "db state changed detected on readonly instance";
+    const STORAGE_READONLY_ERROR: &str = "db state changed detected on readonly instance";
 
     setup_tracing();
     let (mut suite, sender, _) = TestSuite::default_setup()?;
@@ -402,7 +407,7 @@ fn immutable_state() -> anyhow::Result<()> {
     let err = suite
         .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
         .unwrap_err();
-    assert!(err.to_string().contains(OUT_OF_GAS_ERROR));
+    ensure!(err.to_string().contains(STORAGE_READONLY_ERROR));
 
     // Execute the tester contract.
     //
@@ -418,7 +423,7 @@ fn immutable_state() -> anyhow::Result<()> {
             funds: Coins::default(),
         }])?
         .expect_error()?;
-    assert!(err.to_string().contains(OUT_OF_GAS_ERROR));
+    ensure!(err.to_string().contains(STORAGE_READONLY_ERROR));
 
     Ok(())
 }
