@@ -28,6 +28,7 @@ const MOCK_BANK_SALT: &[u8] = b"bank";
 const MOCK_SENDER_SALT: &[u8] = b"sender";
 const MOCK_RECEIVER_SALT: &[u8] = b"receiver";
 
+// The tracing subscriber can only be set once. We ensure this by using `Once`.
 static TRACING: Once = Once::new();
 
 fn setup_tracing() {
