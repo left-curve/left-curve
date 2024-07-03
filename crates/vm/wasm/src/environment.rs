@@ -77,6 +77,17 @@ impl Environment {
             .map(|iter| iter.next(&self.storage))
     }
 
+    /// Delete all existing iterators.
+    ///
+    /// This is called when an import that mutates the storage (namely,
+    /// `db_write`, `db_remove`, and `db_remove_range`) is called, because the
+    /// mutations may change the iteration.
+    ///
+    /// Note that we don't reset the `next_iterator_id` though.
+    pub fn clear_iterators(&mut self) {
+        self.iterators.clear();
+    }
+
     pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
         if self.wasmer_memory.is_some() {
             return Err(VmError::WasmerMemoryAlreadySet);
