@@ -27,13 +27,16 @@ impl Vm for RustVm {
 
     fn build_instance(
         &mut self,
-        storage: StorageProvider,
-        querier: QuerierProvider<Self>,
         code: &[u8],
-        // Note: `RustVm` doesn't support gas tracking, so we make no use of the
+        storage: StorageProvider,
+        // Rust VM doesn't need this "readonly" flag, because everything happens
+        // in Rust, the compiler can prevent storage writes in query methods
+        // (unlike Wasm VM where an FFI is involved).
+        _storage_readonly: bool,
+        querier: QuerierProvider<Self>,
+        // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
-        _storage_readonly: bool,
     ) -> VmResult<RustInstance> {
         Ok(RustInstance {
             storage,

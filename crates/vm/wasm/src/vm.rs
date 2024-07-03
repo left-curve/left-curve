@@ -43,11 +43,11 @@ impl Vm for WasmVm {
 
     fn build_instance(
         &mut self,
-        storage: StorageProvider,
-        querier: QuerierProvider<Self>,
         code: &[u8],
-        gas_tracker: GasTracker,
+        storage: StorageProvider,
         storage_readonly: bool,
+        querier: QuerierProvider<Self>,
+        gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
         let code_hash = hash(code);
         let (module, engine) = self.cache.get_or_build_with(&code_hash, || {

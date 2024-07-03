@@ -97,11 +97,11 @@ pub trait Vm: Sized {
     /// sort of caching to speed up instance building.
     fn build_instance(
         &mut self,
-        storage: StorageProvider,
-        querier: QuerierProvider<Self>,
         code: &[u8],
-        gas_tracker: GasTracker,
+        storage: StorageProvider,
         storage_readonly: bool,
+        querier: QuerierProvider<Self>,
+        gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error>;
 }
 
