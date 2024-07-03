@@ -15,9 +15,10 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{
         collections::{BTreeMap, BTreeSet},
-        fs, io, vec,
+        fs, io,
+        sync::Once,
+        vec,
     },
-    tracing::subscriber::SetGlobalDefaultError,
 };
 
 const MOCK_CHAIN_ID: &str = "grug-1";
@@ -26,22 +27,76 @@ const MOCK_BANK_SALT: &[u8] = b"bank";
 const MOCK_SENDER_SALT: &[u8] = b"sender";
 const MOCK_RECEIVER_SALT: &[u8] = b"receiver";
 
+static TRACING: Once = Once::new();
+
+fn setup_tracing() {
+    TRACING.call_once(|| {
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            .with_max_level(tracing::Level::TRACE)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("failed to set global tracing subscriber");
+    });
+}
+
 fn read_wasm_file(filename: &str) -> io::Result<Vec<u8>> {
     let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
     fs::read(path)
 }
 
-fn setup_tracing() -> Result<(), SetGlobalDefaultError> {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(tracing::Level::TRACE)
-        .finish();
-
-    tracing::subscriber::set_global_default(subscriber)
-}
-
 struct TestAccount {
     address: Addr,
     sk: SigningKey,
+    pk: Binary,
+}
+
+impl TestAccount {
+    fn new_random(code_hash: &Hash, salt: &[u8]) -> anyhow::Result<Self> {
+        let address = Addr::compute(&GENESIS_SENDER, code_hash, salt);
+        let sk = SigningKey::random(&mut OsRng);
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .to_vec()
+            .into();
+
+        Ok(Self { address, sk, pk })
+    }
+
+    fn sign_transaction(
+        &self,
+        suite: &TestSuite,
+        msgs: Vec<Message>,
+        gas_limit: u64,
+    ) -> anyhow::Result<Tx> {
+        // Query the account's sequence.
+        // This assumes the account is the default "grug-account" contract.
+        let sequence = suite
+            .query_wasm_smart::<_, StateResponse>(
+                self.address.clone(),
+                &grug_account::QueryMsg::State {},
+            )?
+            .sequence;
+
+        // Sign the transaction
+        let sign_bytes = Identity256::from(make_sign_bytes(
+            sha2_256,
+            &msgs,
+            &self.address,
+            MOCK_CHAIN_ID,
+            sequence,
+        )?);
+        let signature: Signature = self.sk.sign_digest(sign_bytes);
+
+        Ok(Tx {
+            sender: self.address.clone(),
+            msgs,
+            gas_limit,
+            credential: signature.to_vec().into(),
+        })
+    }
 }
 
 struct TestSuite {
@@ -60,27 +115,11 @@ impl TestSuite {
             hash: Hash::ZERO,
         };
 
-        // Generate private keys for the accounts
-        let sender_sk = SigningKey::random(&mut OsRng);
-        let sender_pk: Binary = sender_sk
-            .verifying_key()
-            .to_encoded_point(true)
-            .to_bytes()
-            .to_vec()
-            .into();
-        let receiver_sk = SigningKey::random(&mut OsRng);
-        let receiver_pk: Binary = receiver_sk
-            .verifying_key()
-            .to_encoded_point(true)
-            .to_bytes()
-            .to_vec()
-            .into();
-
-        // Load account contract byte code, and predict account addresses
+        // Load account contract byte code, and generate two test accounts.
         let account_code = read_wasm_file("grug_account.wasm")?;
         let account_code_hash = Hash::from_slice(sha2_256(&account_code));
-        let sender = Addr::compute(&GENESIS_SENDER, &account_code_hash, MOCK_SENDER_SALT);
-        let receiver = Addr::compute(&GENESIS_SENDER, &account_code_hash, MOCK_RECEIVER_SALT);
+        let sender = TestAccount::new_random(&account_code_hash, MOCK_SENDER_SALT)?;
+        let receiver = TestAccount::new_random(&account_code_hash, MOCK_RECEIVER_SALT)?;
 
         // Load bank contract byte code, and predict its address.
         let bank_code = read_wasm_file("grug_bank.wasm")?;
@@ -114,26 +153,26 @@ impl TestSuite {
                 Message::Instantiate {
                     code_hash: account_code_hash.clone(),
                     msg: to_json_value(&grug_account::InstantiateMsg {
-                        public_key: PublicKey::Secp256k1(sender_pk.to_vec().into()),
+                        public_key: PublicKey::Secp256k1(sender.pk.clone()),
                     })?,
                     salt: MOCK_SENDER_SALT.to_vec().into(),
                     funds: Coins::new_empty(),
-                    admin: Some(sender.clone()),
+                    admin: Some(sender.address.clone()),
                 },
                 Message::Instantiate {
                     code_hash: account_code_hash.clone(),
                     msg: to_json_value(&grug_account::InstantiateMsg {
-                        public_key: PublicKey::Secp256k1(receiver_pk.to_vec().into()),
+                        public_key: PublicKey::Secp256k1(receiver.pk.clone()),
                     })?,
                     salt: MOCK_RECEIVER_SALT.to_vec().into(),
                     funds: Coins::new_empty(),
-                    admin: Some(receiver.clone()),
+                    admin: Some(receiver.address.clone()),
                 },
                 Message::Instantiate {
                     code_hash: bank_code_hash,
                     msg: to_json_value(&grug_bank::InstantiateMsg {
                         initial_balances: BTreeMap::from([(
-                            sender.clone(),
+                            sender.address.clone(),
                             Coins::new_one(MOCK_DENOM, 100_u128),
                         )]),
                     })?,
@@ -144,17 +183,31 @@ impl TestSuite {
             ],
         })?;
 
-        let sender = TestAccount {
-            address: sender,
-            sk: sender_sk,
-        };
-
-        let receiver = TestAccount {
-            address: receiver,
-            sk: receiver_sk,
-        };
-
         Ok((Self { app, block }, sender, receiver))
+    }
+
+    fn send_messages(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        msgs: Vec<Message>,
+    ) -> anyhow::Result<AppExecuteResponse> {
+        // Sign the transaction
+        let tx = signer.sign_transaction(self, msgs, gas_limit)?;
+
+        // Increment block height and block time
+        self.block.height += Uint64::ONE;
+        self.block.timestamp = self.block.timestamp.plus_nanos(1);
+
+        // Finalize block + commit
+        let (_, _, results) = self
+            .app
+            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx.clone())])?;
+
+        self.app.do_commit()?;
+
+        // Check if tx was successful
+        Ok(AppExecuteResponse::new(vec![tx], results))
     }
 
     fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
@@ -177,48 +230,15 @@ impl TestSuite {
         Ok(from_json_value(res_raw)?)
     }
 
-    fn query_account_sequence(&self, address: Addr) -> anyhow::Result<u32> {
-        self.query_wasm_smart(address, &grug_account::QueryMsg::State {})
-            .map(|res: StateResponse| res.sequence)
-    }
-
-    fn send_messages(
-        &mut self,
-        signer: &TestAccount,
-        gas_limit: u64,
-        msgs: Vec<Message>,
-    ) -> anyhow::Result<AppExecuteResponse> {
-        // Sign the transaction
-        let sequence = self.query_account_sequence(signer.address.clone())?;
-        let sign_bytes =
-            make_sign_bytes(sha2_256, &msgs, &signer.address, MOCK_CHAIN_ID, sequence)?;
-        let signature: Signature = signer.sk.sign_digest(Identity256::from(sign_bytes));
-        let tx = Tx {
-            sender: signer.address.clone(),
-            msgs,
-            credential: signature.to_vec().into(),
-            gas_limit,
-        };
-
-        // Increment block height and block time
-        self.block.height += Uint64::ONE;
-        self.block.timestamp = self.block.timestamp.plus_nanos(1);
-
-        // Finalize block + commit
-        let (_, _, results) = self
-            .app
-            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx.clone())])?;
-
-        self.app.do_commit()?;
-
-        // Check if tx was successful
-        Ok(AppExecuteResponse::new(vec![tx], results))
-    }
-
-    fn assert_balance(&self, address: &Addr, denom: &str, expect: u128) -> anyhow::Result<()> {
+    fn assert_balance(
+        &self,
+        account: &TestAccount,
+        denom: &str,
+        expect: u128,
+    ) -> anyhow::Result<()> {
         let actual = self
             .query(QueryRequest::Balance {
-                address: address.clone(),
+                address: account.address.clone(),
                 denom: denom.to_string(),
             })?
             .as_balance()
@@ -268,26 +288,14 @@ impl AppExecuteResponse {
 }
 
 #[test]
-fn wasm_vm_works() -> anyhow::Result<()> {
-    setup_tracing()?;
-
+fn bank_transfer() -> anyhow::Result<()> {
+    setup_tracing();
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Check that sender has been given 100 ugrug.
-    suite.assert_balance(&sender.address, MOCK_DENOM, 100)?;
+    suite.assert_balance(&sender, MOCK_DENOM, 100)?;
 
-    // Sender sends 25 ugrug to the receiver.
-    suite
-        .send_messages(&sender, 300_000, vec![Message::Transfer {
-            to: receiver.address.clone(),
-            coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
-        }])?
-        .no_errors()?;
-
-    // Check balances again.
-    suite.assert_balance(&sender.address, MOCK_DENOM, 75)?;
-    suite.assert_balance(&receiver.address, MOCK_DENOM, 25)?;
-
+    // Sender sends 70 ugrug to the receiver across multiple messages.
     suite
         .send_messages(&sender, 900_000, vec![
             Message::Transfer {
@@ -302,14 +310,27 @@ fn wasm_vm_works() -> anyhow::Result<()> {
                 to: receiver.address.clone(),
                 coins: vec![Coin::new(MOCK_DENOM, 20_u128)].try_into().unwrap(),
             },
+            Message::Transfer {
+                to: receiver.address.clone(),
+                coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
+            },
         ])?
         .no_errors()?;
 
     // Check balances again.
-    suite.assert_balance(&sender.address, MOCK_DENOM, 30)?;
-    suite.assert_balance(&receiver.address, MOCK_DENOM, 70)?;
+    suite.assert_balance(&sender, MOCK_DENOM, 30)?;
+    suite.assert_balance(&receiver, MOCK_DENOM, 70)?;
 
-    // Out of gas
+    Ok(())
+}
+
+#[test]
+fn out_of_gas() -> anyhow::Result<()> {
+    setup_tracing();
+    let (mut suite, sender, receiver) = TestSuite::default_setup()?;
+
+    // Make a bank transfer with a small gas limit; should fail.
+    // Bank transfers should take around 130,000 gas.
     suite.send_messages(&sender, 100_000, vec![Message::Transfer {
         to: receiver.address.clone(),
         coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
@@ -317,16 +338,15 @@ fn wasm_vm_works() -> anyhow::Result<()> {
 
     // Tx is went out of gas.
     // Balances should remain the same
-    suite.assert_balance(&sender.address, MOCK_DENOM, 30)?;
-    suite.assert_balance(&receiver.address, MOCK_DENOM, 70)?;
+    suite.assert_balance(&sender, MOCK_DENOM, 100)?;
+    suite.assert_balance(&receiver, MOCK_DENOM, 0)?;
 
     Ok(())
 }
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    setup_tracing()?;
-
+    setup_tracing();
     let (mut suite, sender, _) = TestSuite::default_setup()?;
 
     // Load the immutable state contract byte code
