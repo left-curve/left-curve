@@ -13,6 +13,4 @@ categories    = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow = { workspace = true }
-grug   = { path = "../../../crates/std" }
-serde  = { workspace = true }
+grug = { path = "../../../crates/std" }
