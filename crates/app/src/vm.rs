@@ -244,7 +244,14 @@ where
     let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
 
-    Ok(vm.build_instance(&code, storage, storage_readonly, querier, gas_tracker)?)
+    Ok(vm.build_instance(
+        &code,
+        code_hash,
+        storage,
+        storage_readonly,
+        querier,
+        gas_tracker,
+    )?)
 }
 
 pub(crate) fn handle_response<VM>(
