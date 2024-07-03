@@ -225,14 +225,17 @@ impl TestSuite {
         let code_hash = Hash::from_slice(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.send_messages(signer, gas_limit, vec![Message::Instantiate {
-            code_hash,
-            msg: to_json_value(&msg)?,
-            salt: salt.to_vec().into(),
-            funds: Coins::new_empty(),
-            admin: None,
-        }])?
-        .no_errors();
+        self.send_messages(signer, gas_limit, vec![
+            Message::Upload { code: code.into() },
+            Message::Instantiate {
+                code_hash,
+                msg: to_json_value(&msg)?,
+                salt: salt.to_vec().into(),
+                funds: Coins::new_empty(),
+                admin: None,
+            },
+        ])?
+        .no_errors()?;
 
         Ok(address)
     }
@@ -373,6 +376,8 @@ fn out_of_gas() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
+    const OUT_OF_GAS_ERROR: &str = "db state changed detected on readonly instance";
+
     setup_tracing();
     let (mut suite, sender, _) = TestSuite::default_setup()?;
 
@@ -385,22 +390,36 @@ fn immutable_state() -> anyhow::Result<()> {
         &Empty {},
     )?;
 
-    // Execute the contract.
-    // During the execution the contract make a query to itself
-    // and the query try to write the storage.
-    let result = suite
+    // Query the tester contract.
+    //
+    // During the query, the contract attempts to write to the state by directly
+    // calling the `db_write` import.
+    //
+    // This tests how the VM handles state mutability while serving the `Query`
+    // ABCI request.
+    let err = suite
+        .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
+        .unwrap_err();
+    assert!(err.to_string().contains(OUT_OF_GAS_ERROR));
+
+    // Execute the tester contract.
+    //
+    // During the execution, the contract makes a query to itself and the query
+    // tries to write to the storage.
+    //
+    // This tests how the VM handles state mutability while serving the
+    // `FinalizeBlock` ABCI request.
+    let err = suite
         .send_messages(&sender, 1_000_000, vec![Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
         }])?
-        .errors();
-
-    let err = &result.first().unwrap().2;
-
-    assert!(err
-        .to_string()
-        .contains("db state changed detected on readonly instance"));
+        .errors()
+        .pop()
+        .unwrap()
+        .2;
+    assert!(err.to_string().contains(OUT_OF_GAS_ERROR));
 
     Ok(())
 }
