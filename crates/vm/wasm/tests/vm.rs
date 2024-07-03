@@ -1,5 +1,5 @@
 use {
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     grug_account::{make_sign_bytes, PublicKey, StateResponse},
     grug_app::{App, AppError, AppResult},
     grug_crypto::{sha2_256, Identity256},
@@ -191,7 +191,7 @@ impl TestSuite {
         signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<AppExecuteResponse> {
+    ) -> anyhow::Result<ExecuteResponse> {
         // Sign the transaction
         let tx = signer.sign_transaction(self, msgs, gas_limit)?;
 
@@ -199,15 +199,25 @@ impl TestSuite {
         self.block.height += Uint64::ONE;
         self.block.timestamp = self.block.timestamp.plus_nanos(1);
 
-        // Finalize block + commit
-        let (_, _, results) = self
+        // Finalize block
+        // Use a zero hash to mock the transaction hash.
+        let (_, _, mut tx_results) = self
             .app
             .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx.clone())])?;
 
+        // We only sent 1 transaction, so there should be exactly one tx result
+        ensure!(
+            tx_results.len() == 1,
+            "received {} tx results; something is wrong",
+            tx_results.len()
+        );
+        let tx_result = tx_results.pop().unwrap();
+
+        // Commit state changes
         self.app.do_commit()?;
 
         // Check if tx was successful
-        Ok(AppExecuteResponse::new(vec![tx], results))
+        Ok(ExecuteResponse { tx, tx_result })
     }
 
     fn deploy_contract<M>(
@@ -235,7 +245,7 @@ impl TestSuite {
                 admin: None,
             },
         ])?
-        .no_errors()?;
+        .expect_success()?;
 
         Ok(address)
     }
@@ -281,39 +291,27 @@ impl TestSuite {
     }
 }
 
-#[derive(Debug)]
-struct AppExecuteResponse {
-    txs: Vec<Tx>,
-    response: Vec<AppResult<Vec<Event>>>,
+struct ExecuteResponse {
+    tx: Tx,
+    tx_result: AppResult<Vec<Event>>,
 }
 
-impl AppExecuteResponse {
-    fn new(txs: Vec<Tx>, response: Vec<AppResult<Vec<Event>>>) -> Self {
-        if txs.len() != response.len() {
-            panic!("txs and response must have the same length");
+impl ExecuteResponse {
+    /// Assuming there is no error, return the transaction and the list of
+    /// events emitted.
+    fn expect_success(self) -> anyhow::Result<(Tx, Vec<Event>)> {
+        match self.tx_result {
+            Ok(events) => Ok((self.tx, events)),
+            Err(err) => bail!("expecting tx to succeed, but it errored: {err}"),
         }
-        Self { txs, response }
     }
 
-    fn no_errors(self) -> AppResult<Vec<(Tx, Vec<Event>)>> {
-        self.txs
-            .into_iter()
-            .zip(self.response)
-            .map(|(tx, res)| res.map(|res| (tx, res)))
-            .collect()
-    }
-
-    fn errors(self) -> Vec<(usize, Tx, AppError)> {
-        self.txs.into_iter().zip(self.response).enumerate().fold(
-            vec![],
-            |mut buff, (i, (tx, response))| match response {
-                Ok(_) => buff,
-                Err(err) => {
-                    buff.push((i, tx, err));
-                    buff
-                },
-            },
-        )
+    /// Assuming there is error, return the transaction and the error.
+    fn expect_error(self) -> anyhow::Result<(Tx, AppError)> {
+        match self.tx_result {
+            Err(err) => Ok((self.tx, err)),
+            Ok(_) => bail!("expecting tx to fail, but it succeeded"),
+        }
     }
 }
 
@@ -345,7 +343,7 @@ fn bank_transfer() -> anyhow::Result<()> {
                 coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
             },
         ])?
-        .no_errors()?;
+        .expect_success()?;
 
     // Check balances again.
     suite.assert_balance(&sender, MOCK_DENOM, 30)?;
@@ -409,16 +407,13 @@ fn immutable_state() -> anyhow::Result<()> {
     //
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
-    let err = suite
+    let (_, err) = suite
         .send_messages(&sender, 1_000_000, vec![Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
         }])?
-        .errors()
-        .pop()
-        .unwrap()
-        .2;
+        .expect_error()?;
     assert!(err.to_string().contains(OUT_OF_GAS_ERROR));
 
     Ok(())
