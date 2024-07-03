@@ -236,7 +236,7 @@ impl TestSuite {
     {
         let code = read_wasm_file(filename)?;
         let code_hash = Hash::from_slice(sha2_256(&code));
-        let address = Addr::compute(&signer.address, &code_hash, &salt);
+        let address = Addr::compute(&signer.address, &code_hash, salt);
 
         self.execute_messages(signer, gas_limit, vec![
             Message::Upload { code: code.into() },
