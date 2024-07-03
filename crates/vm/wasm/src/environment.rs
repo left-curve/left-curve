@@ -1,23 +1,17 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
     grug_app::{GasTracker, QuerierProvider, StorageProvider},
-    std::{
-        borrow::{Borrow, BorrowMut},
-        collections::HashMap,
-        ptr::NonNull,
-        sync::{Arc, RwLock},
-    },
+    std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
 
-// TODO: add explaination on why wasm_instance field needs to be Options
-// it has to do with the procedure how we create the ContextData when building the instance
-pub struct ContextData {
+pub struct Environment {
     pub storage: StorageProvider,
     pub querier: QuerierProvider<WasmVm>,
+    pub gas_tracker: GasTracker,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
-    pub gas_tracker: GasTracker,
+    memory: Option<Memory>,
     /// A non-owning link to the wasmer instance. Need this for doing function
     /// calls (see Environment::call_function).
     wasmer_instance: Option<NonNull<Instance>>,
@@ -27,13 +21,8 @@ pub struct ContextData {
 // cosmwasm_vm does the same:
 // https://github.com/CosmWasm/cosmwasm/blob/v2.0.3/packages/vm/src/environment.rs#L120-L122
 // TODO: need to think about whether this is safe
-unsafe impl Send for ContextData {}
-unsafe impl Sync for ContextData {}
-
-pub struct Environment {
-    memory: Option<Memory>,
-    data: Arc<RwLock<ContextData>>,
-}
+unsafe impl Send for Environment {}
+unsafe impl Sync for Environment {}
 
 impl Environment {
     pub fn new(
@@ -42,15 +31,13 @@ impl Environment {
         gas_tracker: GasTracker,
     ) -> Self {
         Self {
+            gas_tracker,
+            storage,
+            querier,
+            iterators: HashMap::new(),
+            next_iterator_id: 0,
             memory: None,
-            data: Arc::new(RwLock::new(ContextData {
-                gas_tracker,
-                storage,
-                querier,
-                iterators: HashMap::new(),
-                next_iterator_id: 0,
-                wasmer_instance: None,
-            })),
+            wasmer_instance: None,
         }
     }
 
@@ -61,34 +48,9 @@ impl Environment {
             .map(|mem| mem.view(wasm_store))
     }
 
-    pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&ContextData) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        let guard = self.data.read().map_err(|_| VmError::FailedReadLock)?;
-        callback(guard.borrow()).map_err(Into::into)
-    }
-
-    pub fn with_context_data_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&mut ContextData) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        let mut guard = self.data.write().map_err(|_| VmError::FailedWriteLock)?;
-        callback(guard.borrow_mut()).map_err(Into::into)
-    }
-
-    pub fn with_wasm_instance<C, T, E>(&self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&wasmer::Instance) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        self.with_context_data(|ctx| {
-            let instance_ptr = ctx.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
-            let instance_ref = unsafe { instance_ptr.as_ref() };
-            callback(instance_ref).map_err(Into::into)
-        })
+    pub fn wasm_instance(&self) -> VmResult<&Instance> {
+        let instance_ptr = self.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
+        unsafe { Ok(instance_ptr.as_ref()) }
     }
 
     pub fn set_memory(&mut self, wasm_instance: &Instance) -> VmResult<()> {
@@ -97,11 +59,8 @@ impl Environment {
         Ok(())
     }
 
-    pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) -> VmResult<()> {
-        self.with_context_data_mut(|ctx| -> VmResult<_> {
-            ctx.wasmer_instance = Some(NonNull::from(wasm_instance));
-            Ok(())
-        })
+    pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) {
+        self.wasmer_instance = Some(NonNull::from(wasm_instance));
     }
 
     pub fn call_function1(
@@ -144,15 +103,10 @@ impl Environment {
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        // Note: Calling with_wasm_instance creates a read lock on the
-        // ContextData. We must drop this lock before calling the function,
-        // otherwise we get a deadlock (calling require a write lock which has
-        // to wait for the previous read lock being dropped).
-        let func = self.with_wasm_instance(|wasm_instance| -> VmResult<_> {
-            let f = wasm_instance.exports.get_function(name)?;
-            Ok(f.clone())
-        })?;
-
-        func.call(wasm_store, args).map_err(Into::into)
+        self.wasm_instance()?
+            .exports
+            .get_function(name)?
+            .call(wasm_store, args)
+            .map_err(Into::into)
     }
 }

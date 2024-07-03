@@ -108,7 +108,7 @@ impl Vm for WasmVm {
         // set memory/store/instance in the env
         let env = fe.as_mut(&mut store);
         env.set_memory(&instance)?;
-        env.set_wasm_instance(instance.as_ref())?;
+        env.set_wasm_instance(instance.as_ref());
 
         Ok(WasmInstance {
             instance,

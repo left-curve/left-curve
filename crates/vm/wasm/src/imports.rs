@@ -1,7 +1,5 @@
 use {
-    crate::{
-        read_from_memory, write_to_memory, ContextData, Environment, Iterator, VmError, VmResult,
-    },
+    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
@@ -15,7 +13,7 @@ pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u3
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
     // If the record doesn't exist, return a zero pointer.
-    let Some(value) = env.with_context_data(|ctx| VmResult::Ok(ctx.storage.read(&key)))? else {
+    let Some(value) = env.storage.read(&key) else {
         return Ok(0);
     };
 
@@ -45,19 +43,18 @@ pub fn db_scan(
     let iterator = Iterator::new(min, max, order);
 
     // Insert the iterator into the `ContextData`, incrementing the next ID.
-    env.with_context_data_mut(|ctx| -> VmResult<_> {
-        let iterator_id = ctx.next_iterator_id;
-        ctx.iterators.insert(iterator_id, iterator);
-        ctx.next_iterator_id += 1;
-        Ok(iterator_id)
-    })
+    let iterator_id = env.next_iterator_id;
+    env.iterators.insert(iterator_id, iterator);
+    env.next_iterator_id += 1;
+
+    Ok(iterator_id)
 }
 
 pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some(record) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
+    let Some(record) = next_record(env, iterator_id)? else {
         return Ok(0);
     };
 
@@ -68,7 +65,7 @@ pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmR
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((key, _)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
+    let Some((key, _)) = next_record(env, iterator_id)? else {
         return Ok(0);
     };
 
@@ -79,7 +76,7 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
     let (env, mut wasm_store) = fe.data_and_store_mut();
 
     // If the iterator has reached its end, return a zero pointer.
-    let Some((_, value)) = env.with_context_data_mut(|ctx| next_record(ctx, iterator_id))? else {
+    let Some((_, value)) = next_record(env, iterator_id)? else {
         return Ok(0);
     };
 
@@ -92,10 +89,9 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
     let value = read_from_memory(env, &wasm_store, value_ptr)?;
 
-    env.with_context_data_mut(|ctx| -> VmResult<_> {
-        ctx.storage.write(&key, &value);
-        Ok(())
-    })
+    env.storage.write(&key, &value);
+
+    Ok(())
 }
 
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
@@ -103,10 +99,9 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
 
     let key = read_from_memory(env, &wasm_store, key_ptr)?;
 
-    env.with_context_data_mut(|ctx| -> VmResult<_> {
-        ctx.storage.remove(&key);
-        Ok(())
-    })
+    env.storage.remove(&key);
+
+    Ok(())
 }
 
 pub fn db_remove_range(
@@ -127,10 +122,9 @@ pub fn db_remove_range(
         None
     };
 
-    env.with_context_data_mut(|ctx| -> VmResult<_> {
-        ctx.storage.remove_range(min.as_deref(), max.as_deref());
-        Ok(())
-    })
+    env.storage.remove_range(min.as_deref(), max.as_deref());
+
+    Ok(())
 }
 
 pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -> VmResult<()> {
@@ -155,7 +149,7 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let req_bytes = read_from_memory(env, &wasm_store, req_ptr)?;
     let req: QueryRequest = from_json_slice(req_bytes)?;
 
-    let res = env.with_context_data(|ctx| ctx.querier.query_chain(req))?;
+    let res = env.querier.query_chain(req)?;
     let res_bytes = to_json_vec(&res)?;
 
     write_to_memory(env, &mut wasm_store, &res_bytes)
@@ -286,11 +280,11 @@ impl_hash_method!(blake2b_512);
 impl_hash_method!(blake3);
 
 #[inline]
-fn next_record(ctx: &mut ContextData, iterator_id: i32) -> VmResult<Option<Record>> {
-    ctx.iterators
+fn next_record(env: &mut Environment, iterator_id: i32) -> VmResult<Option<Record>> {
+    env.iterators
         .get_mut(&iterator_id)
         .ok_or(VmError::IteratorNotFound { iterator_id })
-        .map(|iter| iter.next(&ctx.storage))
+        .map(|iter| iter.next(&env.storage))
 }
 
 /// Pack a KV pair into a single byte array in the following format:
