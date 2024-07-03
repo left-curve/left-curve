@@ -107,8 +107,8 @@ impl Vm for WasmVm {
 
         // set memory/store/instance in the env
         let env = fe.as_mut(&mut store);
-        env.set_memory(&instance)?;
-        env.set_wasm_instance(instance.as_ref())?;
+        env.set_wasmer_memory(&instance)?;
+        env.set_wasmer_instance(instance.as_ref())?;
 
         Ok(WasmInstance {
             instance,
@@ -155,15 +155,15 @@ impl Instance for WasmInstance {
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut wasm_store) = fe_mut.data_and_store_mut();
+        let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
         let res_ptr: u32 = env
-            .call_function1(&mut wasm_store, name, &[ctx_ptr.into()])?
+            .call_function1(&mut store, name, &[ctx_ptr.into()])?
             .try_into()
             .map_err(VmError::ReturnType)?;
 
-        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
+        let data = read_then_wipe(env, &mut store, res_ptr)?;
 
         self.consume_gas()?;
 
@@ -175,16 +175,16 @@ impl Instance for WasmInstance {
         P: AsRef<[u8]>,
     {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut wasm_store) = fe_mut.data_and_store_mut();
+        let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
-        let param1_ptr = write_to_memory(env, &mut wasm_store, param.as_ref())?;
+        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
         let res_ptr: u32 = env
-            .call_function1(&mut wasm_store, name, &[ctx_ptr.into(), param1_ptr.into()])?
+            .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
             .try_into()
             .map_err(VmError::ReturnType)?;
 
-        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
+        let data = read_then_wipe(env, &mut store, res_ptr)?;
 
         self.consume_gas()?;
 
@@ -203,20 +203,20 @@ impl Instance for WasmInstance {
         P2: AsRef<[u8]>,
     {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut wasm_store) = fe_mut.data_and_store_mut();
+        let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut wasm_store, &to_borsh_vec(ctx)?)?;
-        let param1_ptr = write_to_memory(env, &mut wasm_store, param1.as_ref())?;
-        let param2_ptr = write_to_memory(env, &mut wasm_store, param2.as_ref())?;
+        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
+        let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
         let res_ptr: u32 = env
-            .call_function1(&mut wasm_store, name, &[
+            .call_function1(&mut store, name, &[
                 ctx_ptr.into(),
                 param1_ptr.into(),
                 param2_ptr.into(),
             ])?
             .try_into()
             .map_err(VmError::ReturnType)?;
-        let data = read_then_wipe(env, &mut wasm_store, res_ptr)?;
+        let data = read_then_wipe(env, &mut store, res_ptr)?;
 
         self.consume_gas()?;
 

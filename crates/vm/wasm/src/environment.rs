@@ -1,39 +1,40 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
     grug_app::{GasTracker, QuerierProvider, StorageProvider},
-    std::{
-        borrow::{Borrow, BorrowMut},
-        collections::HashMap,
-        ptr::NonNull,
-        sync::{Arc, RwLock},
-    },
+    grug_types::Record,
+    std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
 
-// TODO: add explaination on why wasm_instance field needs to be Options
-// it has to do with the procedure how we create the ContextData when building the instance
-pub struct ContextData {
+/// Necessary stuff for performing Wasm import functions.
+pub struct Environment {
     pub storage: StorageProvider,
     pub querier: QuerierProvider<WasmVm>,
-    pub iterators: HashMap<i32, Iterator>,
-    pub next_iterator_id: i32,
     pub gas_tracker: GasTracker,
-    /// A non-owning link to the wasmer instance. Need this for doing function
-    /// calls (see Environment::call_function).
+    iterators: HashMap<i32, Iterator>,
+    next_iterator_id: i32,
+    /// Memory of the Wasmer instance. Necessary for reading data from or
+    /// writing data to the memory.
+    ///
+    /// Optional because during the flow of creating the Wasmer instance, the
+    /// `Environment` needs to be created before the instance, which the memory
+    /// is a part of.
+    ///
+    /// Therefore, we set this to `None` first, then after the instance is
+    /// created, use the `set_wasmer_memory` method to set it.
+    wasmer_memory: Option<Memory>,
+    /// A non-owning link to the Wasmer instance. Necessary for doing function
+    /// calls (see `Environment::call_function`).
+    ///
+    /// Optional for the same reason as `wasmer_memory`.
     wasmer_instance: Option<NonNull<Instance>>,
 }
 
-// Wasmer instance isn't Send/Sync. We manually mark it to be.
-// cosmwasm_vm does the same:
+// The Wasmer instance isn't `Send`. We manually mark it as is.
+// cosmwasm-vm does the same:
 // https://github.com/CosmWasm/cosmwasm/blob/v2.0.3/packages/vm/src/environment.rs#L120-L122
 // TODO: need to think about whether this is safe
-unsafe impl Send for ContextData {}
-unsafe impl Sync for ContextData {}
-
-pub struct Environment {
-    memory: Option<Memory>,
-    data: Arc<RwLock<ContextData>>,
-}
+unsafe impl Send for Environment {}
 
 impl Environment {
     pub fn new(
@@ -42,75 +43,80 @@ impl Environment {
         gas_tracker: GasTracker,
     ) -> Self {
         Self {
-            memory: None,
-            data: Arc::new(RwLock::new(ContextData {
-                gas_tracker,
-                storage,
-                querier,
-                iterators: HashMap::new(),
-                next_iterator_id: 0,
-                wasmer_instance: None,
-            })),
+            gas_tracker,
+            storage,
+            querier,
+            iterators: HashMap::new(),
+            next_iterator_id: 0,
+            // Wasmer memory and instance are set to `None` because at this
+            // point, the Wasmer instance hasn't been created yet.
+            wasmer_memory: None,
+            wasmer_instance: None,
         }
     }
 
-    pub fn memory<'a>(&self, wasm_store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
-        self.memory
-            .as_ref()
-            .ok_or(VmError::MemoryNotSet)
-            .map(|mem| mem.view(wasm_store))
+    /// Add a new iterator to the `Environment`, increment the next iterator ID.
+    ///
+    /// Return the ID of the iterator that was just added.
+    pub fn add_iterator(&mut self, iterator: Iterator) -> i32 {
+        let iterator_id = self.next_iterator_id;
+        self.iterators.insert(iterator_id, iterator);
+        self.next_iterator_id += 1;
+
+        iterator_id
     }
 
-    pub fn with_context_data<C, T, E>(&self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&ContextData) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        let guard = self.data.read().map_err(|_| VmError::FailedReadLock)?;
-        callback(guard.borrow()).map_err(Into::into)
+    /// Get the next record in the iterator specified by the ID.
+    ///
+    /// Error if the iterator is not found.
+    /// `None` if the iterator is found but has reached its end.
+    pub fn advance_iterator(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
+        self.iterators
+            .get_mut(&iterator_id)
+            .ok_or(VmError::IteratorNotFound { iterator_id })
+            .map(|iter| iter.next(&self.storage))
     }
 
-    pub fn with_context_data_mut<C, T, E>(&mut self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&mut ContextData) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        let mut guard = self.data.write().map_err(|_| VmError::FailedWriteLock)?;
-        callback(guard.borrow_mut()).map_err(Into::into)
-    }
+    pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
+        if self.wasmer_memory.is_some() {
+            return Err(VmError::WasmerMemoryAlreadySet);
+        }
 
-    pub fn with_wasm_instance<C, T, E>(&self, callback: C) -> VmResult<T>
-    where
-        C: FnOnce(&wasmer::Instance) -> Result<T, E>,
-        E: Into<VmError>,
-    {
-        self.with_context_data(|ctx| {
-            let instance_ptr = ctx.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
-            let instance_ref = unsafe { instance_ptr.as_ref() };
-            callback(instance_ref).map_err(Into::into)
-        })
-    }
+        let memory = instance.exports.get_memory("memory")?;
+        self.wasmer_memory = Some(memory.clone());
 
-    pub fn set_memory(&mut self, wasm_instance: &Instance) -> VmResult<()> {
-        let memory = wasm_instance.exports.get_memory("memory")?;
-        self.memory = Some(memory.clone());
         Ok(())
     }
 
-    pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) -> VmResult<()> {
-        self.with_context_data_mut(|ctx| -> VmResult<_> {
-            ctx.wasmer_instance = Some(NonNull::from(wasm_instance));
-            Ok(())
-        })
+    pub fn set_wasmer_instance(&mut self, instance: &Instance) -> VmResult<()> {
+        if self.wasmer_instance.is_some() {
+            return Err(VmError::WasmerInstanceAlreadySet);
+        }
+
+        self.wasmer_instance = Some(NonNull::from(instance));
+
+        Ok(())
+    }
+
+    pub fn get_wasmer_memory<'a>(&self, store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
+        self.wasmer_memory
+            .as_ref()
+            .ok_or(VmError::WasmerMemoryNotSet)
+            .map(|mem| mem.view(store))
+    }
+
+    pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
+        let instance_ptr = self.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
+        unsafe { Ok(instance_ptr.as_ref()) }
     }
 
     pub fn call_function1(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<Value> {
-        let ret = self.call_function(wasm_store, name, args)?;
+        let ret = self.call_function(store, name, args)?;
         if ret.len() != 1 {
             return Err(VmError::ReturnCount {
                 name: name.into(),
@@ -123,11 +129,11 @@ impl Environment {
 
     pub fn call_function0(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<()> {
-        let ret = self.call_function(wasm_store, name, args)?;
+        let ret = self.call_function(store, name, args)?;
         if ret.len() != 0 {
             return Err(VmError::ReturnCount {
                 name: name.into(),
@@ -140,19 +146,14 @@ impl Environment {
 
     fn call_function(
         &self,
-        wasm_store: &mut impl AsStoreMut,
+        store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        // Note: Calling with_wasm_instance creates a read lock on the
-        // ContextData. We must drop this lock before calling the function,
-        // otherwise we get a deadlock (calling require a write lock which has
-        // to wait for the previous read lock being dropped).
-        let func = self.with_wasm_instance(|wasm_instance| -> VmResult<_> {
-            let f = wasm_instance.exports.get_function(name)?;
-            Ok(f.clone())
-        })?;
-
-        func.call(wasm_store, args).map_err(Into::into)
+        self.get_wasmer_instance()?
+            .exports
+            .get_function(name)?
+            .call(store, args)
+            .map_err(Into::into)
     }
 }
