@@ -6,15 +6,27 @@ use {
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
 };
 
+/// Necessary stuff for performing Wasm import functions.
 pub struct Environment {
     pub storage: StorageProvider,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
     iterators: HashMap<i32, Iterator>,
     next_iterator_id: i32,
+    /// Memory of the Wasmer instance. Necessary to read data from or write data
+    /// to the memory.
+    ///
+    /// Optional because during the flow of creating the Wasmer instance, the
+    /// `Environment` needs to be created before the instance, which the memory
+    /// is a part of.
+    ///
+    /// Therefore, we set this to `None` first, then after the instance is
+    /// created, use the `set_wasmer_memory` method to set it.
     wasmer_memory: Option<Memory>,
-    /// A non-owning link to the wasmer instance. Need this for doing function
-    /// calls (see Environment::call_function).
+    /// A non-owning link to the Wasmer instance. Necessary for doing function
+    /// calls (see `Environment::call_function`).
+    ///
+    /// Optional for the same reason as `wasmer_memory`.
     wasmer_instance: Option<NonNull<Instance>>,
 }
 
@@ -37,12 +49,14 @@ impl Environment {
             querier,
             iterators: HashMap::new(),
             next_iterator_id: 0,
+            // Wasmer memory and instance are set to `None` because at this
+            // point, the Wasmer instance hasn't been created yet.
             wasmer_memory: None,
             wasmer_instance: None,
         }
     }
 
-    /// Add a new iterator to the environment, increment the next iterator ID.
+    /// Add a new iterator to the `Environment`, increment the next iterator ID.
     ///
     /// Return the ID of the iterator that was just added.
     pub fn add_iterator(&mut self, iterator: Iterator) -> i32 {
