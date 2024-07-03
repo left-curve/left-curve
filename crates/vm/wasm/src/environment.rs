@@ -11,7 +11,7 @@ pub struct Environment {
     pub gas_tracker: GasTracker,
     pub iterators: HashMap<i32, Iterator>,
     pub next_iterator_id: i32,
-    memory: Option<Memory>,
+    wasmer_memory: Option<Memory>,
     /// A non-owning link to the wasmer instance. Need this for doing function
     /// calls (see Environment::call_function).
     wasmer_instance: Option<NonNull<Instance>>,
@@ -36,31 +36,34 @@ impl Environment {
             querier,
             iterators: HashMap::new(),
             next_iterator_id: 0,
-            memory: None,
+            wasmer_memory: None,
             wasmer_instance: None,
         }
     }
 
-    pub fn memory<'a>(&self, wasm_store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
-        self.memory
+    pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
+        let memory = instance.exports.get_memory("memory")?;
+        self.wasmer_memory = Some(memory.clone());
+        Ok(())
+    }
+
+    pub fn set_wasmer_instance(&mut self, instance: &Instance) {
+        self.wasmer_instance = Some(NonNull::from(instance));
+    }
+
+    pub fn get_wasmer_memory<'a>(
+        &self,
+        wasm_store: &'a impl AsStoreRef,
+    ) -> VmResult<MemoryView<'a>> {
+        self.wasmer_memory
             .as_ref()
             .ok_or(VmError::MemoryNotSet)
             .map(|mem| mem.view(wasm_store))
     }
 
-    pub fn wasm_instance(&self) -> VmResult<&Instance> {
+    pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
         let instance_ptr = self.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
         unsafe { Ok(instance_ptr.as_ref()) }
-    }
-
-    pub fn set_memory(&mut self, wasm_instance: &Instance) -> VmResult<()> {
-        let memory = wasm_instance.exports.get_memory("memory")?;
-        self.memory = Some(memory.clone());
-        Ok(())
-    }
-
-    pub fn set_wasm_instance(&mut self, wasm_instance: &Instance) {
-        self.wasmer_instance = Some(NonNull::from(wasm_instance));
     }
 
     pub fn call_function1(
@@ -103,7 +106,7 @@ impl Environment {
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        self.wasm_instance()?
+        self.get_wasmer_instance()?
             .exports
             .get_function(name)?
             .call(wasm_store, args)

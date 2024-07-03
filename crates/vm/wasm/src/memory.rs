@@ -9,7 +9,7 @@ pub fn read_from_memory(
     wasm_store: &impl AsStoreRef,
     region_ptr: u32,
 ) -> VmResult<Vec<u8>> {
-    let memory = env.memory(&wasm_store)?;
+    let memory = env.get_wasmer_memory(&wasm_store)?;
 
     // read region
     let region = read_region(&memory, region_ptr)?;
@@ -41,7 +41,7 @@ pub fn write_to_memory(
         .call_function1(wasm_store, "allocate", &[(data.len() as u32).into()])?
         .try_into()
         .map_err(VmError::ReturnType)?;
-    let memory = env.memory(&wasm_store)?;
+    let memory = env.get_wasmer_memory(&wasm_store)?;
     let mut region = read_region(&memory, region_ptr)?;
     // don't forget to update region length
     region.length = data.len() as u32;
