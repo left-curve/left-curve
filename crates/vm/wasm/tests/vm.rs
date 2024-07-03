@@ -1,13 +1,13 @@
 use {
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     grug_account::{make_sign_bytes, PublicKey, StateResponse},
-    grug_app::{App, AppError, AppResult},
+    grug_app::{App, AppResult},
     grug_crypto::{sha2_256, Identity256},
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, Coin, Coins, Config, Empty, Event,
-        GenesisState, Hash, Message, NumberConst, Permission, Permissions, QueryRequest,
-        QueryResponse, Timestamp, Tx, Uint64, GENESIS_SENDER,
+        GenesisState, Hash, Message, NumberConst, Permission, Permissions, QueryRequest, Timestamp,
+        Tx, Uint128, Uint64, GENESIS_SENDER,
     },
     grug_vm_wasm::WasmVm,
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
@@ -78,7 +78,8 @@ impl TestAccount {
             .query_wasm_smart::<_, StateResponse>(
                 self.address.clone(),
                 &grug_account::QueryMsg::State {},
-            )?
+            )
+            .should_succeed()?
             .sequence;
 
         // Sign the transaction
@@ -194,7 +195,7 @@ impl TestSuite {
         signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<ExecuteResponse> {
+    ) -> anyhow::Result<TestResult<Vec<Event>>> {
         // Sign the transaction
         let tx = signer.sign_transaction(self, msgs, gas_limit)?;
 
@@ -204,23 +205,21 @@ impl TestSuite {
 
         // Finalize block
         // Use a zero hash to mock the transaction hash.
-        let (_, _, mut tx_results) = self
+        let (_, _, mut results) = self
             .app
-            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx.clone())])?;
+            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx)])?;
 
         // We only sent 1 transaction, so there should be exactly one tx result
         ensure!(
-            tx_results.len() == 1,
+            results.len() == 1,
             "received {} tx results; something is wrong",
-            tx_results.len()
+            results.len()
         );
-        let tx_result = tx_results.pop().unwrap();
 
         // Commit state changes
         self.app.do_commit()?;
 
-        // Check if tx was successful
-        Ok(ExecuteResponse { tx, tx_result })
+        Ok(results.pop().unwrap().into())
     }
 
     /// Deploy a contract.
@@ -249,83 +248,101 @@ impl TestSuite {
                 admin: None,
             },
         ])?
-        .expect_success()?;
+        .should_succeed()?;
 
         Ok(address)
-    }
-
-    fn query(&self, req: QueryRequest) -> AppResult<QueryResponse> {
-        self.app.do_query_app(req, self.block.height.into(), false)
     }
 
     fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
         &self,
         contract: Addr,
         msg: &M,
-    ) -> anyhow::Result<R> {
-        let msg_raw = to_json_value(&msg)?;
-        let res_raw = self
-            .query(QueryRequest::WasmSmart {
-                contract,
-                msg: msg_raw,
-            })?
-            .as_wasm_smart()
-            .data;
-        Ok(from_json_value(res_raw)?)
+    ) -> TestResult<R> {
+        (|| -> AppResult<_> {
+            let msg_raw = to_json_value(msg)?;
+            let res_raw = self
+                .app
+                .do_query_app(
+                    QueryRequest::WasmSmart {
+                        contract,
+                        msg: msg_raw,
+                    },
+                    0, // zero means to use the latest height
+                    false,
+                )?
+                .as_wasm_smart()
+                .data;
+            Ok(from_json_value(res_raw)?)
+        })()
+        .into()
     }
 
-    fn assert_balance(
-        &self,
-        account: &TestAccount,
-        denom: &str,
-        expect: u128,
-    ) -> anyhow::Result<()> {
-        let actual = self
-            .query(QueryRequest::Balance {
-                address: account.address.clone(),
-                denom: denom.to_string(),
-            })?
-            .as_balance()
-            .amount
-            .number();
+    fn query_balance(&self, account: &TestAccount, denom: &str) -> TestResult<Uint128> {
+        self.app
+            .do_query_app(
+                QueryRequest::Balance {
+                    address: account.address.clone(),
+                    denom: denom.to_string(),
+                },
+                0, // zero means to use the latest height
+                false,
+            )
+            .map(|res| res.as_balance().amount)
+            .into()
+    }
+}
 
-        ensure!(actual == expect);
+/// A wrapper over the `AppResult`, providing two convenience methods to make
+/// our tests more readable.
+struct TestResult<T> {
+    inner: AppResult<T>,
+}
 
+impl<T> From<AppResult<T>> for TestResult<T> {
+    fn from(inner: AppResult<T>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<T> TestResult<T> {
+    /// Ensure the result is ok; return the value.
+    fn should_succeed(self) -> anyhow::Result<T> {
+        self.inner
+            .map_err(|err| anyhow!("expecting ok, got error: {err}"))
+    }
+
+    /// Ensure the result is ok, and matches the expect value.
+    fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
+    where
+        T: PartialEq<V>,
+    {
+        match self.inner {
+            Ok(value) => ensure!(value == expect),
+            Err(err) => bail!("expecting ok, got error: {err}"),
+        }
         Ok(())
     }
-}
 
-struct ExecuteResponse {
-    tx: Tx,
-    tx_result: AppResult<Vec<Event>>,
-}
-
-impl ExecuteResponse {
-    /// Assuming there is no error, return the transaction and the list of
-    /// events emitted.
-    fn expect_success(self) -> anyhow::Result<(Tx, Vec<Event>)> {
-        match self.tx_result {
-            Ok(events) => Ok((self.tx, events)),
-            Err(err) => bail!("expecting tx to succeed, but it errored: {err}"),
+    /// Ensure the result is error, and contains the given message.
+    fn should_fail_with_error(self, msg: &str) -> anyhow::Result<()> {
+        match self.inner {
+            Ok(_) => bail!("expecting error, got ok"),
+            Err(err) => ensure!(err.to_string().contains(msg)),
         }
-    }
-
-    /// Assuming there is error, return the transaction and the error.
-    fn expect_error(self) -> anyhow::Result<(Tx, AppError)> {
-        match self.tx_result {
-            Err(err) => Ok((self.tx, err)),
-            Ok(_) => bail!("expecting tx to fail, but it succeeded"),
-        }
+        Ok(())
     }
 }
 
 #[test]
 fn bank_transfer() -> anyhow::Result<()> {
     setup_tracing();
+
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Check that sender has been given 100 ugrug.
-    suite.assert_balance(&sender, MOCK_DENOM, 100)?;
+    suite
+        .query_balance(&sender, MOCK_DENOM)
+        .should_succeed_and_equal(Uint128::new(100))?;
 
     // Sender sends 70 ugrug to the receiver across multiple messages.
     suite
@@ -347,36 +364,42 @@ fn bank_transfer() -> anyhow::Result<()> {
                 coins: vec![Coin::new(MOCK_DENOM, 25_u128)].try_into().unwrap(),
             },
         ])?
-        .expect_success()?;
+        .should_succeed()?;
 
     // Check balances again.
-    suite.assert_balance(&sender, MOCK_DENOM, 30)?;
-    suite.assert_balance(&receiver, MOCK_DENOM, 70)?;
+    suite
+        .query_balance(&sender, MOCK_DENOM)
+        .should_succeed_and_equal(Uint128::new(30))?;
+    suite
+        .query_balance(&receiver, MOCK_DENOM)
+        .should_succeed_and_equal(Uint128::new(70))?;
 
     Ok(())
 }
 
 #[test]
 fn out_of_gas() -> anyhow::Result<()> {
-    const OUT_OF_GAS_ERROR: &str = "out of gas";
-
     setup_tracing();
+
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around 130,000 gas.
-    let (_, err) = suite
+    suite
         .execute_messages(&sender, 100_000, vec![Message::Transfer {
             to: receiver.address.clone(),
             coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
         }])?
-        .expect_error()?;
-    ensure!(err.to_string().contains(OUT_OF_GAS_ERROR));
+        .should_fail_with_error("out of gas")?;
 
     // Tx is went out of gas.
     // Balances should remain the same
-    suite.assert_balance(&sender, MOCK_DENOM, 100)?;
-    suite.assert_balance(&receiver, MOCK_DENOM, 0)?;
+    suite
+        .query_balance(&sender, MOCK_DENOM)
+        .should_succeed_and_equal(Uint128::new(100))?;
+    suite
+        .query_balance(&receiver, MOCK_DENOM)
+        .should_succeed_and_equal(Uint128::ZERO)?;
 
     Ok(())
 }
@@ -386,6 +409,7 @@ fn immutable_state() -> anyhow::Result<()> {
     const STORAGE_READONLY_ERROR: &str = "db state changed detected on readonly instance";
 
     setup_tracing();
+
     let (mut suite, sender, _) = TestSuite::default_setup()?;
 
     // Deploy the tester contract
@@ -404,10 +428,9 @@ fn immutable_state() -> anyhow::Result<()> {
     //
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
-    let err = suite
+    suite
         .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
-        .unwrap_err();
-    ensure!(err.to_string().contains(STORAGE_READONLY_ERROR));
+        .should_fail_with_error(STORAGE_READONLY_ERROR)?;
 
     // Execute the tester contract.
     //
@@ -416,14 +439,13 @@ fn immutable_state() -> anyhow::Result<()> {
     //
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
-    let (_, err) = suite
+    suite
         .execute_messages(&sender, 1_000_000, vec![Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
         }])?
-        .expect_error()?;
-    ensure!(err.to_string().contains(STORAGE_READONLY_ERROR));
+        .should_fail_with_error(STORAGE_READONLY_ERROR)?;
 
     Ok(())
 }
