@@ -12,8 +12,17 @@ pub enum VmError {
     #[error(transparent)]
     Std(#[from] StdError),
 
+    /// Gas ran out while calling an import function.
+    ///
+    /// Not to be confused with `GasDepletion`.
     #[error(transparent)]
     OutOfGas(#[from] OutOfGasError),
+
+    /// Gas ran out while executing the contract.
+    ///
+    /// Not to be confused with `OutOfGas`.
+    #[error("ran out of gas during contract execution")]
+    GasDepletion,
 
     #[error(transparent)]
     FromUtf8(#[from] FromUtf8Error),

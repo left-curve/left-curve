@@ -4,6 +4,7 @@ use {
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
+    wasmer_middlewares::metering::{get_remaining_points, MeteringPoints},
 };
 
 /// Necessary stuff for performing Wasm import functions.
@@ -164,10 +165,20 @@ impl Environment {
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        self.get_wasmer_instance()?
+        let instance = self.get_wasmer_instance()?;
+        instance
             .exports
             .get_function(name)?
             .call(store, args)
-            .map_err(Into::into)
+            .map_err(|runtime_err| {
+                // The call has failed. Now we need see why - did gas run out or
+                // other reasons?
+                match get_remaining_points(store, instance) {
+                    // Gas wasn't depleted. It was some other reasons
+                    MeteringPoints::Remaining(_) => VmError::Runtime(runtime_err),
+                    // Gas was depleted. Throw a gas-specific error.
+                    MeteringPoints::Exhausted => VmError::GasDepletion,
+                }
+            })
     }
 }
