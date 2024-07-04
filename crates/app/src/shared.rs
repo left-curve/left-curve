@@ -39,16 +39,16 @@ impl<S> Shared<S> {
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    pub fn read_with<F, R, E>(&self, action: F) -> Result<R, E>
+    pub fn read_with<F, T>(&self, action: F) -> T
     where
-        F: FnOnce(RwLockReadGuard<S>) -> Result<R, E>,
+        F: FnOnce(RwLockReadGuard<S>) -> T,
     {
         action(self.read_access())
     }
 
-    pub fn write_with<F, R, E>(&self, action: F) -> Result<R, E>
+    pub fn write_with<F, T>(&self, action: F) -> T
     where
-        F: FnOnce(RwLockWriteGuard<S>) -> Result<R, E>,
+        F: FnOnce(RwLockWriteGuard<S>) -> T,
     {
         action(self.write_access())
     }

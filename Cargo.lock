@@ -1647,6 +1647,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-tester-infinite-loop"
+version = "0.0.0"
+dependencies = [
+ "grug",
+]
+
+[[package]]
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [

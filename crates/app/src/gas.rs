@@ -9,7 +9,7 @@ use {
 // an linear dependency relation between error types:
 // > `OutOfGasError` --> `VmError` --> `AppError`
 #[derive(Debug, thiserror::Error)]
-#[error("out of gas! limit: {limit}, used: {used}")]
+#[error("not enough gas! limit: {limit}, used: {used}")]
 pub struct OutOfGasError {
     limit: u64,
     used: u64,
@@ -59,6 +59,13 @@ impl GasTracker {
         }
     }
 
+    /// Return the gas limit. `None` if there isn't a limit.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn limit(&self) -> Option<u64> {
+        self.inner.read_access().limit
+    }
+
     /// Return the amount of gas already used.
     ///
     /// Panics if lock is poisoned.
@@ -66,10 +73,20 @@ impl GasTracker {
         self.inner.read_access().used
     }
 
+    /// Return the amount of gas remaining. `None` if there isn't a limit.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn remaining(&self) -> Option<u64> {
+        self.inner.read_with(|inner| {
+            let limit = inner.limit?;
+            Some(limit - inner.used)
+        })
+    }
+
     /// Consume the given amount of gas. Error if the limit is exceeded.
     ///
     /// Panics if lock is poisoned.
-    pub fn consume(&self, consumed: u64) -> Result<(), OutOfGasError> {
+    pub fn consume(&self, consumed: u64, comment: &str) -> Result<(), OutOfGasError> {
         self.inner.write_with(|mut inner| {
             let used = inner.used + consumed;
 
@@ -84,7 +101,7 @@ impl GasTracker {
             }
 
             #[cfg(feature = "tracing")]
-            debug!(limit = inner.limit, used, "Gas consumed");
+            debug!(limit = inner.limit, used, comment, "Gas consumed");
 
             inner.used = used;
 

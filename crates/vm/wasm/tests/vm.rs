@@ -15,6 +15,7 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{
         collections::{BTreeMap, BTreeSet},
+        fmt::Debug,
         fs, io,
         sync::Once,
         vec,
@@ -312,18 +313,6 @@ impl<T> TestResult<T> {
             .map_err(|err| anyhow!("expecting ok, got error: {err}"))
     }
 
-    /// Ensure the result is ok, and matches the expect value.
-    fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
-    where
-        T: PartialEq<V>,
-    {
-        match self.inner {
-            Ok(value) => ensure!(value == expect),
-            Err(err) => bail!("expecting ok, got error: {err}"),
-        }
-        Ok(())
-    }
-
     /// Ensure the result is error, and contains the given message.
     ///
     /// Here we stringify the error and check for the existence of the substring,
@@ -334,15 +323,45 @@ impl<T> TestResult<T> {
     /// at which time they lost their types.
     fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
         match self.inner {
+            Err(err) => {
+                let expect = msg.to_string();
+                let actual = err.to_string();
+                ensure!(
+                    actual.contains(&expect),
+                    "wrong error! expect: {expect}, actual: {actual}"
+                );
+            },
             Ok(_) => bail!("expecting error, got ok"),
-            Err(err) => ensure!(err.to_string().contains(&msg.to_string())),
+        }
+        Ok(())
+    }
+}
+
+impl<T> TestResult<T>
+where
+    T: Debug,
+{
+    /// Ensure the result is ok, and matches the expect value.
+    fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
+    where
+        T: PartialEq<V>,
+        V: Debug,
+    {
+        match self.inner {
+            Ok(value) => {
+                ensure!(
+                    value == expect,
+                    "value does not match expected! expect: {expect:?}, actual: {value:?}"
+                );
+            },
+            Err(err) => bail!("expecting ok, got error: {err}"),
         }
         Ok(())
     }
 }
 
 #[test]
-fn bank_transfer() -> anyhow::Result<()> {
+fn bank_transfers() -> anyhow::Result<()> {
     setup_tracing();
 
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
@@ -354,7 +373,7 @@ fn bank_transfer() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages.
     suite
-        .execute_messages(&sender, 900_000, vec![
+        .execute_messages(&sender, 2_500_000, vec![
             Message::Transfer {
                 to: receiver.address.clone(),
                 coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
@@ -386,19 +405,19 @@ fn bank_transfer() -> anyhow::Result<()> {
 }
 
 #[test]
-fn out_of_gas() -> anyhow::Result<()> {
+fn gas_limit_too_low() -> anyhow::Result<()> {
     setup_tracing();
 
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Make a bank transfer with a small gas limit; should fail.
-    // Bank transfers should take around 130,000 gas.
+    // Bank transfers should take around ~500k gas.
     suite
         .execute_messages(&sender, 100_000, vec![Message::Transfer {
             to: receiver.address.clone(),
             coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
         }])?
-        .should_fail_with_error("out of gas")?;
+        .should_fail_with_error(VmError::GasDepletion)?;
 
     // Tx is went out of gas.
     // Balances should remain the same
@@ -413,6 +432,31 @@ fn out_of_gas() -> anyhow::Result<()> {
 }
 
 #[test]
+fn infinite_loop() -> anyhow::Result<()> {
+    setup_tracing();
+
+    let (mut suite, sender, _) = TestSuite::default_setup()?;
+
+    let tester = suite.deploy_contract(
+        &sender,
+        320_000_000,
+        "grug_tester_infinite_loop.wasm",
+        b"tester/infinite_loop",
+        &Empty {},
+    )?;
+
+    suite
+        .execute_messages(&sender, 1_000_000, vec![Message::Execute {
+            contract: tester,
+            msg: to_json_value(&Empty {})?,
+            funds: Coins::new_empty(),
+        }])?
+        .should_fail_with_error(VmError::GasDepletion)?;
+
+    Ok(())
+}
+
+#[test]
 fn immutable_state() -> anyhow::Result<()> {
     setup_tracing();
 
@@ -421,7 +465,10 @@ fn immutable_state() -> anyhow::Result<()> {
     // Deploy the tester contract
     let tester = suite.deploy_contract(
         &sender,
-        80_000_000,
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        350_000_000,
         "grug_tester_immutable_state.wasm",
         b"tester/immutable_state",
         &Empty {},

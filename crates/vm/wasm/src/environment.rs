@@ -4,6 +4,7 @@ use {
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
+    wasmer_middlewares::metering::{get_remaining_points, MeteringPoints},
 };
 
 /// Necessary stuff for performing Wasm import functions.
@@ -12,7 +13,16 @@ pub struct Environment {
     pub storage_readonly: bool,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
+    /// The amount of gas points remaining in the `Metering` middleware the last
+    /// time we updated the `gas_tracker`.
+    ///
+    /// Comparing this number with the current amount of remaining gas in the
+    /// meter, we can determine how much gas was consumed since the last update.
+    gas_checkpoint: u64,
+    /// Active iterators, indexed by IDs.
     iterators: HashMap<i32, Iterator>,
+    /// If a new iterator is to be added, it's ID will be this. Incremented each
+    /// time a new iterator is added.
     next_iterator_id: i32,
     /// Memory of the Wasmer instance. Necessary for reading data from or
     /// writing data to the memory.
@@ -43,12 +53,14 @@ impl Environment {
         storage_readonly: bool,
         querier: QuerierProvider<WasmVm>,
         gas_tracker: GasTracker,
+        gas_checkpoint: u64,
     ) -> Self {
         Self {
             storage,
             storage_readonly,
             querier,
             gas_tracker,
+            gas_checkpoint,
             iterators: HashMap::new(),
             next_iterator_id: 0,
             // Wasmer memory and instance are set to `None` because at this
@@ -125,7 +137,7 @@ impl Environment {
     }
 
     pub fn call_function1(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
@@ -142,7 +154,7 @@ impl Environment {
     }
 
     pub fn call_function0(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
@@ -159,15 +171,52 @@ impl Environment {
     }
 
     fn call_function(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
-        self.get_wasmer_instance()?
-            .exports
-            .get_function(name)?
-            .call(store, args)
-            .map_err(Into::into)
+        let instance = self.get_wasmer_instance()?;
+        let func = instance.exports.get_function(name)?;
+        // Make the function call. Then, regardless of whether the call succeeds
+        // or fails, check the remaining gas points.
+        match (
+            func.call(store, args),
+            get_remaining_points(store, instance),
+        ) {
+            // The call has succeeded, or has failed but for a reason other than
+            // running out of gas. In such cases, we update the gas tracker, and
+            // return the result as-is.
+            (result, MeteringPoints::Remaining(remaining)) => {
+                let consumed = self.gas_checkpoint - remaining;
+                self.gas_tracker.consume(consumed, name)?;
+                self.gas_checkpoint = remaining;
+
+                Ok(result?)
+            },
+            // The call has failed because of running out of gas.
+            //
+            // Firstly, we update the gas tracker, because this call may be
+            // triggered by a submessage with "reply on error", so the transaction
+            // handling may not be aborted yet.
+            //
+            // Secondly, we return a "gas depletion" error instead. Wasmer's
+            // default error would be "VM error: unreachable" in this case,
+            // which isn't very helpful.
+            (Err(_), MeteringPoints::Exhausted) => {
+                // Note that if an _unlimited_ gas call goes out of gas (meaning
+                // all `u64::MAX` gas units have been depleted) this would
+                // overflow. However this should never happen in practice (the
+                // call would run an exceedingly long time to start with).
+                self.gas_tracker.consume(self.gas_checkpoint, name)?;
+                self.gas_checkpoint = 0;
+
+                Err(VmError::GasDepletion)
+            },
+            // The call succeeded, but gas depleted: impossible senario.
+            (Ok(_), MeteringPoints::Exhausted) => {
+                unreachable!("No way! Gas is depleted but call is successful.");
+            },
+        }
     }
 }
