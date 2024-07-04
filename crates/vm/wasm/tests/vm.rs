@@ -15,6 +15,7 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{
         collections::{BTreeMap, BTreeSet},
+        fmt::Debug,
         fs, io,
         sync::Once,
         vec,
@@ -312,18 +313,6 @@ impl<T> TestResult<T> {
             .map_err(|err| anyhow!("expecting ok, got error: {err}"))
     }
 
-    /// Ensure the result is ok, and matches the expect value.
-    fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
-    where
-        T: PartialEq<V>,
-    {
-        match self.inner {
-            Ok(value) => ensure!(value == expect),
-            Err(err) => bail!("expecting ok, got error: {err}"),
-        }
-        Ok(())
-    }
-
     /// Ensure the result is error, and contains the given message.
     ///
     /// Here we stringify the error and check for the existence of the substring,
@@ -334,8 +323,38 @@ impl<T> TestResult<T> {
     /// at which time they lost their types.
     fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
         match self.inner {
+            Err(err) => {
+                let expect = msg.to_string();
+                let actual = err.to_string();
+                ensure!(
+                    actual.contains(&expect),
+                    "wrong error! expect: {expect}, actual: {actual}"
+                );
+            },
             Ok(_) => bail!("expecting error, got ok"),
-            Err(err) => ensure!(err.to_string().contains(&msg.to_string())),
+        }
+        Ok(())
+    }
+}
+
+impl<T> TestResult<T>
+where
+    T: Debug,
+{
+    /// Ensure the result is ok, and matches the expect value.
+    fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
+    where
+        T: PartialEq<V>,
+        V: Debug,
+    {
+        match self.inner {
+            Ok(value) => {
+                ensure!(
+                    value == expect,
+                    "value does not match expected! expect: {expect:?}, actual: {value:?}"
+                );
+            },
+            Err(err) => bail!("expecting ok, got error: {err}"),
         }
         Ok(())
     }

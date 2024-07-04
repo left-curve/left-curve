@@ -11,7 +11,7 @@ use {
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{
-        metering::{get_remaining_points, MeteringPoints},
+        metering::{get_remaining_points, set_remaining_points, MeteringPoints},
         Metering,
     },
 };
@@ -52,10 +52,9 @@ impl Vm for WasmVm {
     ) -> VmResult<WasmInstance> {
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
-        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
-            let metering = Metering::new(gas_remaining, |_| GAS_PER_OPERATION);
+            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
             compiler.canonicalize_nans(true);
             compiler.push_middleware(Arc::new(metering));
 
@@ -66,7 +65,6 @@ impl Vm for WasmVm {
         })?;
 
         // create Wasm store
-        // for now we use the singlepass compiler
         let mut store = Store::new(engine);
 
         // create function environment and register imports
@@ -108,6 +106,10 @@ impl Vm for WasmVm {
         // create wasmer instance
         let instance = wasmer::Instance::new(&mut store, &module, &import_obj)?;
         let instance = Box::new(instance);
+
+        // Set gas limit on the metering
+        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
+        set_remaining_points(&mut store, &instance, gas_remaining);
 
         // set memory/store/instance in the env
         let env = fe.as_mut(&mut store);
