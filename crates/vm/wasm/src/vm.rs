@@ -116,7 +116,14 @@ impl Vm for WasmVm {
         let instance = wasmer::Instance::new(&mut store, &module, &import_obj)?;
         let instance = Box::new(instance);
 
-        // Set gas limit on the metering
+        // Set gas limit on the metering.
+        //
+        // The limit is set as the amount of gas remaining in the current tx.
+        //
+        // E.g. If the tx gas limit is X, the very first call in the tx (which
+        // would be the `before_tx` call) will have the limit as X. Suppose this
+        // call consumed Y gas points, the next call will have its limit as (X-Y);
+        // so on.
         let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
         set_remaining_points(&mut store, &instance, gas_remaining);
 
