@@ -405,7 +405,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 }
 
 #[test]
-fn out_of_gas() -> anyhow::Result<()> {
+fn gas_limit_too_low() -> anyhow::Result<()> {
     setup_tracing();
 
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
@@ -417,7 +417,7 @@ fn out_of_gas() -> anyhow::Result<()> {
             to: receiver.address.clone(),
             coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),
         }])?
-        .should_fail_with_error("out of gas")?;
+        .should_fail_with_error(VmError::GasDepletion)?;
 
     // Tx is went out of gas.
     // Balances should remain the same
@@ -451,7 +451,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new_empty(),
         }])?
-        .should_fail_with_error("out of gas")?;
+        .should_fail_with_error(VmError::GasDepletion)?;
 
     Ok(())
 }

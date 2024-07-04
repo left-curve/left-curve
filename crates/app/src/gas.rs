@@ -9,7 +9,7 @@ use {
 // an linear dependency relation between error types:
 // > `OutOfGasError` --> `VmError` --> `AppError`
 #[derive(Debug, thiserror::Error)]
-#[error("out of gas! limit: {limit}, used: {used}")]
+#[error("not enough gas! limit: {limit}, used: {used}")]
 pub struct OutOfGasError {
     limit: u64,
     used: u64,
