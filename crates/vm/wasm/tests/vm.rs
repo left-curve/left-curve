@@ -465,7 +465,10 @@ fn immutable_state() -> anyhow::Result<()> {
     // Deploy the tester contract
     let tester = suite.deploy_contract(
         &sender,
-        80_000_000,
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        350_000_000,
         "grug_tester_immutable_state.wasm",
         b"tester/immutable_state",
         &Empty {},
