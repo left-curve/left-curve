@@ -1,5 +1,12 @@
 use {
-    grug_crypto::{secp256k1_pubkey_recover, secp256k1_verify, sha2_256, Identity256},
+    grug_crypto::{
+        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, Identity256,
+    },
+    k256::ecdsa::{SigningKey as K256SigningKey, VerifyingKey as K256VerifyingKey},
+    p256::ecdsa::{
+        signature::DigestSigner, Signature as P256Signature, SigningKey as P256SigningKey,
+        VerifyingKey as P256VerifyingKey,
+    },
     rand::{rngs::OsRng, RngCore},
     std::time::Duration,
     test_case::test_case,
@@ -7,16 +14,16 @@ use {
 
 // cargo test --release --package grug-crypto --test benchmark -- benchmark --show-output
 #[test_case(|msg: &[u8]| -> Duration {
-    let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
-    let vk = k256::ecdsa::VerifyingKey::from(&sk);
+    let sk = K256SigningKey::random(&mut OsRng);
+    let vk = K256VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
     let (sig, _) = sk.sign_digest_recoverable(msg.clone()).unwrap();
     let now = std::time::Instant::now();
     secp256k1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).unwrap();
-    now.elapsed()}
-    ; "benchmark_secp256k1_verify")]
+    now.elapsed()};
+"benchmark_secp256k1_verify")]
 #[test_case(|msg: &[u8]| -> Duration {
-    let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
+    let sk = K256SigningKey::random(&mut OsRng);
     let msg = Identity256::from(sha2_256(msg));
     let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
     let now = std::time::Instant::now();
@@ -27,8 +34,17 @@ use {
         true,
     )
     .unwrap();
-    now.elapsed()}
-    ; "benchmark_secp256k1_pubkey_recover")]
+    now.elapsed()};
+"benchmark_secp256k1_pubkey_recover")]
+#[test_case(|msg: &[u8]| -> Duration {
+    let sk = P256SigningKey::random(&mut OsRng);
+    let vk = P256VerifyingKey::from(&sk);
+    let msg = Identity256::from(sha2_256(msg));
+    let sig: P256Signature = sk.sign_digest(msg.clone());
+    let now = std::time::Instant::now();
+    secp256r1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).unwrap();
+    now.elapsed()};
+"benchmark_secp256r1_verify")]
 fn benchmark<FN: Fn(&[u8]) -> Duration>(clos: FN) {
     let mut tot_time = Duration::new(0, 0);
     let mut sum_log_time = 0.0;
