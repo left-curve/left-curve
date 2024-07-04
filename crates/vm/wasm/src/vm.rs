@@ -11,7 +11,7 @@ use {
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{
-        metering::{get_remaining_points, set_remaining_points, MeteringPoints},
+        metering::{get_remaining_points, MeteringPoints},
         Metering,
     },
 };
@@ -140,13 +140,9 @@ impl WasmInstance {
     fn consume_gas(&mut self) -> VmResult<()> {
         match get_remaining_points(&mut self.store, &self.instance) {
             MeteringPoints::Remaining(remaining) => {
-                // Record the consumed gas amount with gas tracker
                 let consumed = self.gas_remaining - remaining;
                 self.gas_tracker.consume(consumed)?;
                 self.gas_remaining = remaining;
-
-                // Reset gas consumed
-                set_remaining_points(&mut self.store, &self.instance, self.gas_remaining);
             },
             MeteringPoints::Exhausted => {
                 unreachable!("Out of gas, this should have been caught earlier!");
