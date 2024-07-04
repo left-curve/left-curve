@@ -52,9 +52,10 @@ impl Vm for WasmVm {
     ) -> VmResult<WasmInstance> {
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
+        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
-            let metering = Metering::new(u64::MAX, |_| GAS_PER_OPERATION);
+            let metering = Metering::new(gas_remaining, |_| GAS_PER_OPERATION);
             compiler.canonicalize_nans(true);
             compiler.push_middleware(Arc::new(metering));
 
@@ -118,6 +119,7 @@ impl Vm for WasmVm {
             store,
             fe,
             gas_tracker,
+            gas_remaining,
         })
     }
 }
@@ -129,6 +131,7 @@ pub struct WasmInstance {
     store: Store,
     fe: FunctionEnv<Environment>,
     gas_tracker: GasTracker,
+    gas_remaining: u64,
 }
 
 impl WasmInstance {
@@ -138,11 +141,12 @@ impl WasmInstance {
         match get_remaining_points(&mut self.store, &self.instance) {
             MeteringPoints::Remaining(remaining) => {
                 // Record the consumed gas amount with gas tracker
-                let consumed = u64::MAX - remaining;
+                let consumed = self.gas_remaining - remaining;
                 self.gas_tracker.consume(consumed)?;
+                self.gas_remaining = remaining;
 
                 // Reset gas consumed
-                set_remaining_points(&mut self.store, &self.instance, u64::MAX);
+                set_remaining_points(&mut self.store, &self.instance, self.gas_remaining);
             },
             MeteringPoints::Exhausted => {
                 unreachable!("Out of gas, this should have been caught earlier!");

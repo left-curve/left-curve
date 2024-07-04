@@ -59,11 +59,28 @@ impl GasTracker {
         }
     }
 
+    /// Return the gas limit. `None` if there isn't a limit.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn limit(&self) -> Option<u64> {
+        self.inner.read_access().limit
+    }
+
     /// Return the amount of gas already used.
     ///
     /// Panics if lock is poisoned.
     pub fn used(&self) -> u64 {
         self.inner.read_access().used
+    }
+
+    /// Return the amount of gas remaining. `None` if there isn't a limit.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn remaining(&self) -> Option<u64> {
+        self.inner.read_with(|inner| {
+            let limit = inner.limit?;
+            Some(limit - inner.used)
+        })
     }
 
     /// Consume the given amount of gas. Error if the limit is exceeded.

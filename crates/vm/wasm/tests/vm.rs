@@ -342,7 +342,7 @@ impl<T> TestResult<T> {
 }
 
 #[test]
-fn bank_transfer() -> anyhow::Result<()> {
+fn bank_transfers() -> anyhow::Result<()> {
     setup_tracing();
 
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
