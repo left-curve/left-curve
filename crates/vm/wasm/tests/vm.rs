@@ -411,7 +411,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     let (mut suite, sender, receiver) = TestSuite::default_setup()?;
 
     // Make a bank transfer with a small gas limit; should fail.
-    // Bank transfers should take around 130,000 gas.
+    // Bank transfers should take around ~500k gas.
     suite
         .execute_messages(&sender, 100_000, vec![Message::Transfer {
             to: receiver.address.clone(),

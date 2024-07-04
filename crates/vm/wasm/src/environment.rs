@@ -180,7 +180,9 @@ impl Environment {
             // running out of gas. In such cases, we update the gas tracker, and
             // return the result as-is.
             (result, MeteringPoints::Remaining(remaining)) => {
-                self.gas_tracker.consume(self.gas_remaining - remaining)?;
+                let consumed = self.gas_remaining - remaining;
+                self.gas_tracker.consume(consumed, name)?;
+
                 Ok(result?)
             },
             // The call has failed because of running out of gas.
@@ -193,7 +195,12 @@ impl Environment {
             // default error would be "VM error: unreachable" in this case,
             // which isn't very helpful.
             (Err(_), MeteringPoints::Exhausted) => {
-                self.gas_tracker.consume(self.gas_remaining)?;
+                // Note that if an _unlimited_ gas call goes out of gas (meaning
+                // all `u64::MAX` gas units have been depleted) this would
+                // underflow. However this should never happen in practice (the
+                // call would run an exceedingly long time to start with).
+                self.gas_tracker.consume(self.gas_remaining, name)?;
+
                 Err(VmError::GasDepletion)
             },
             // The call succeeded, but gas depleted: impossible senario.
