@@ -439,7 +439,7 @@ fn infinite_loop() -> anyhow::Result<()> {
 
     let tester = suite.deploy_contract(
         &sender,
-        80_000_000,
+        320_000_000,
         "grug_tester_infinite_loop.wasm",
         b"tester/infinite_loop",
         &Empty {},
