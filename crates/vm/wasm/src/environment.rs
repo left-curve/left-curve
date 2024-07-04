@@ -198,7 +198,7 @@ impl Environment {
             (Err(_), MeteringPoints::Exhausted) => {
                 // Note that if an _unlimited_ gas call goes out of gas (meaning
                 // all `u64::MAX` gas units have been depleted) this would
-                // underflow. However this should never happen in practice (the
+                // overflow. However this should never happen in practice (the
                 // call would run an exceedingly long time to start with).
                 self.gas_tracker.consume(self.gas_remaining, name)?;
                 self.gas_remaining = 0;
