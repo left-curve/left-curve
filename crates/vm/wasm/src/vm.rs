@@ -61,6 +61,9 @@ impl Vm for WasmVm {
             //
             // We will properly set this tx's gas limit later, once we have
             // created the `Instance`.
+            //
+            // Also, compiling the module doesn't cost gas, so setting the limit
+            // to zero won't raise out of gas errors.
             let metering = Metering::new(0, |_| GAS_PER_OPERATION);
             compiler.push_middleware(Arc::new(metering));
 
