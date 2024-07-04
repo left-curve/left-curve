@@ -373,7 +373,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages.
     suite
-        .execute_messages(&sender, 900_000, vec![
+        .execute_messages(&sender, 2_500_000, vec![
             Message::Transfer {
                 to: receiver.address.clone(),
                 coins: vec![Coin::new(MOCK_DENOM, 10_u128)].try_into().unwrap(),

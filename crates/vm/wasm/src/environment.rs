@@ -13,6 +13,7 @@ pub struct Environment {
     pub storage_readonly: bool,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
+    pub gas_remaining: u64,
     iterators: HashMap<i32, Iterator>,
     next_iterator_id: i32,
     /// Memory of the Wasmer instance. Necessary for reading data from or
@@ -44,12 +45,14 @@ impl Environment {
         storage_readonly: bool,
         querier: QuerierProvider<WasmVm>,
         gas_tracker: GasTracker,
+        gas_remaining: u64,
     ) -> Self {
         Self {
             storage,
             storage_readonly,
             querier,
             gas_tracker,
+            gas_remaining,
             iterators: HashMap::new(),
             next_iterator_id: 0,
             // Wasmer memory and instance are set to `None` because at this
@@ -166,19 +169,37 @@ impl Environment {
         args: &[Value],
     ) -> VmResult<Box<[Value]>> {
         let instance = self.get_wasmer_instance()?;
-        instance
-            .exports
-            .get_function(name)?
-            .call(store, args)
-            .map_err(|runtime_err| {
-                // The call has failed. Now we need see why - did gas run out or
-                // other reasons?
-                match get_remaining_points(store, instance) {
-                    // Gas wasn't depleted. It was some other reasons
-                    MeteringPoints::Remaining(_) => VmError::Runtime(runtime_err),
-                    // Gas was depleted. Throw a gas-specific error.
-                    MeteringPoints::Exhausted => VmError::GasDepletion,
-                }
-            })
+        let func = instance.exports.get_function(name)?;
+        // Make the function call. Then, regardless of whether the call succeeds
+        // or fails, check the remaining gas points.
+        match (
+            func.call(store, args),
+            get_remaining_points(store, instance),
+        ) {
+            // The call has succeeded, or has failed but for a reason other than
+            // running out of gas. In such cases, we update the gas tracker, and
+            // return the result as-is.
+            (result, MeteringPoints::Remaining(remaining)) => {
+                self.gas_tracker.consume(self.gas_remaining - remaining)?;
+                Ok(result?)
+            },
+            // The call has failed because of running out of gas.
+            //
+            // Firstly, we update the gas tracker, because this call may be
+            // triggered by a submessage with "reply on error", so the transaction
+            // handling may not be aborted yet.
+            //
+            // Secondly, we return a "gas depletion" error instead. Wasmer's
+            // default error would be "VM error: unreachable" in this case,
+            // which isn't very helpful.
+            (Err(_), MeteringPoints::Exhausted) => {
+                self.gas_tracker.consume(self.gas_remaining)?;
+                Err(VmError::GasDepletion)
+            },
+            // The call succeeded, but gas depleted: impossible senario.
+            (Ok(_), MeteringPoints::Exhausted) => {
+                unreachable!("No way! Gas is depleted but call is successful.");
+            },
+        }
     }
 }

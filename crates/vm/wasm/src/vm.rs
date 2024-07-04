@@ -10,10 +10,7 @@ use {
     grug_types::{to_borsh_vec, Context, Hash},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
-    wasmer_middlewares::{
-        metering::{get_remaining_points, set_remaining_points, MeteringPoints},
-        Metering,
-    },
+    wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
 
 /// Gas cost per operation
@@ -78,9 +75,16 @@ impl Vm for WasmVm {
 
         // create function environment and register imports
         // note: memory/store/instance in the env hasn't been set yet at this point
+        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
         let fe = FunctionEnv::new(
             &mut store,
-            Environment::new(storage, storage_readonly, querier, gas_tracker.clone()),
+            Environment::new(
+                storage,
+                storage_readonly,
+                querier,
+                gas_tracker.clone(),
+                gas_remaining,
+            ),
         );
         let import_obj = imports! {
             "env" => {
@@ -124,7 +128,6 @@ impl Vm for WasmVm {
         // would be the `before_tx` call) will have the limit as X. Suppose this
         // call consumed Y gas points, the next call will have its limit as (X-Y);
         // so on.
-        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
         set_remaining_points(&mut store, &instance, gas_remaining);
 
         // set memory/store/instance in the env
@@ -133,11 +136,9 @@ impl Vm for WasmVm {
         env.set_wasmer_instance(instance.as_ref())?;
 
         Ok(WasmInstance {
-            instance,
+            _instance: instance,
             store,
             fe,
-            gas_tracker,
-            gas_remaining,
         })
     }
 }
@@ -145,30 +146,9 @@ impl Vm for WasmVm {
 // --------------------------------- instance ----------------------------------
 
 pub struct WasmInstance {
-    instance: Box<wasmer::Instance>,
+    _instance: Box<wasmer::Instance>,
     store: Store,
     fe: FunctionEnv<Environment>,
-    gas_tracker: GasTracker,
-    gas_remaining: u64,
-}
-
-impl WasmInstance {
-    /// Read the amount of consumed amount of gas from the Wasmer "metering"
-    /// middleware, and record this data in the `GasTracker`.
-    fn consume_gas(&mut self) -> VmResult<()> {
-        match get_remaining_points(&mut self.store, &self.instance) {
-            MeteringPoints::Remaining(remaining) => {
-                let consumed = self.gas_remaining - remaining;
-                self.gas_tracker.consume(consumed)?;
-                self.gas_remaining = remaining;
-
-                Ok(())
-            },
-            MeteringPoints::Exhausted => {
-                unreachable!("Out of gas, this should have been caught earlier!");
-            },
-        }
-    }
 }
 
 impl Instance for WasmInstance {
@@ -185,8 +165,6 @@ impl Instance for WasmInstance {
             .map_err(VmError::ReturnType)?;
 
         let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        self.consume_gas()?;
 
         Ok(data)
     }
@@ -206,8 +184,6 @@ impl Instance for WasmInstance {
             .map_err(VmError::ReturnType)?;
 
         let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        self.consume_gas()?;
 
         Ok(data)
     }
@@ -238,8 +214,6 @@ impl Instance for WasmInstance {
             .try_into()
             .map_err(VmError::ReturnType)?;
         let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        self.consume_gas()?;
 
         Ok(data)
     }
