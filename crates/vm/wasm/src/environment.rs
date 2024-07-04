@@ -129,7 +129,7 @@ impl Environment {
     }
 
     pub fn call_function1(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
@@ -146,7 +146,7 @@ impl Environment {
     }
 
     pub fn call_function0(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
@@ -163,7 +163,7 @@ impl Environment {
     }
 
     fn call_function(
-        &self,
+        &mut self,
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
@@ -182,6 +182,7 @@ impl Environment {
             (result, MeteringPoints::Remaining(remaining)) => {
                 let consumed = self.gas_remaining - remaining;
                 self.gas_tracker.consume(consumed, name)?;
+                self.gas_remaining = remaining;
 
                 Ok(result?)
             },
@@ -200,6 +201,7 @@ impl Environment {
                 // underflow. However this should never happen in practice (the
                 // call would run an exceedingly long time to start with).
                 self.gas_tracker.consume(self.gas_remaining, name)?;
+                self.gas_remaining = 0;
 
                 Err(VmError::GasDepletion)
             },
