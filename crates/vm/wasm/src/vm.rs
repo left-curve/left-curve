@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Cache, Environment, VmError, VmResult,
     },
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, OutOfGasError, QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context, Hash},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
@@ -54,8 +54,17 @@ impl Vm for WasmVm {
         // If not found, build it and insert it into the cache.
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
             compiler.canonicalize_nans(true);
+
+            // Set up the gas metering middleware.
+            //
+            // Set `initial_points` as zero for now, because this engine will be
+            // cached and to be used by other transactions, so it doesn't make
+            // sense to put the current tx's gas limit here.
+            //
+            // We will properly set this tx's gas limit later, once we have
+            // created the `Instance`.
+            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
             compiler.push_middleware(Arc::new(metering));
 
             let engine = Engine::from(compiler);
@@ -145,13 +154,19 @@ impl WasmInstance {
                 let consumed = self.gas_remaining - remaining;
                 self.gas_tracker.consume(consumed)?;
                 self.gas_remaining = remaining;
+
+                Ok(())
             },
             MeteringPoints::Exhausted => {
-                unreachable!("Out of gas, this should have been caught earlier!");
+                self.gas_tracker.consume(self.gas_remaining)?;
+
+                Err(OutOfGasError {
+                    limit: self.gas_tracker.limit().unwrap(),
+                    used: self.gas_tracker.used(),
+                }
+                .into())
             },
         }
-
-        Ok(())
     }
 }
 
