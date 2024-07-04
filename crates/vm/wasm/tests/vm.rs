@@ -413,6 +413,31 @@ fn out_of_gas() -> anyhow::Result<()> {
 }
 
 #[test]
+fn infinite_loop() -> anyhow::Result<()> {
+    setup_tracing();
+
+    let (mut suite, sender, _) = TestSuite::default_setup()?;
+
+    let tester = suite.deploy_contract(
+        &sender,
+        80_000_000,
+        "grug_tester_infinite_loop.wasm",
+        b"tester/infinite_loop",
+        &Empty {},
+    )?;
+
+    suite
+        .execute_messages(&sender, 1_000_000, vec![Message::Execute {
+            contract: tester,
+            msg: to_json_value(&Empty {})?,
+            funds: Coins::new_empty(),
+        }])?
+        .should_fail_with_error("out of gas")?;
+
+    Ok(())
+}
+
+#[test]
 fn immutable_state() -> anyhow::Result<()> {
     setup_tracing();
 
