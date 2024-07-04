@@ -13,8 +13,16 @@ pub struct Environment {
     pub storage_readonly: bool,
     pub querier: QuerierProvider<WasmVm>,
     pub gas_tracker: GasTracker,
-    pub gas_remaining: u64,
+    /// The amount of gas points remaining in the `Metering` middleware the last
+    /// time we updated the `gas_tracker`.
+    ///
+    /// Comparing this number with the current amount of remaining gas in the
+    /// meter, we can determine how much gas was consumed since the last update.
+    gas_checkpoint: u64,
+    /// Active iterators, indexed by IDs.
     iterators: HashMap<i32, Iterator>,
+    /// If a new iterator is to be added, it's ID will be this. Incremented each
+    /// time a new iterator is added.
     next_iterator_id: i32,
     /// Memory of the Wasmer instance. Necessary for reading data from or
     /// writing data to the memory.
@@ -45,14 +53,14 @@ impl Environment {
         storage_readonly: bool,
         querier: QuerierProvider<WasmVm>,
         gas_tracker: GasTracker,
-        gas_remaining: u64,
+        gas_checkpoint: u64,
     ) -> Self {
         Self {
             storage,
             storage_readonly,
             querier,
             gas_tracker,
-            gas_remaining,
+            gas_checkpoint,
             iterators: HashMap::new(),
             next_iterator_id: 0,
             // Wasmer memory and instance are set to `None` because at this
@@ -180,9 +188,9 @@ impl Environment {
             // running out of gas. In such cases, we update the gas tracker, and
             // return the result as-is.
             (result, MeteringPoints::Remaining(remaining)) => {
-                let consumed = self.gas_remaining - remaining;
+                let consumed = self.gas_checkpoint - remaining;
                 self.gas_tracker.consume(consumed, name)?;
-                self.gas_remaining = remaining;
+                self.gas_checkpoint = remaining;
 
                 Ok(result?)
             },
@@ -200,8 +208,8 @@ impl Environment {
                 // all `u64::MAX` gas units have been depleted) this would
                 // overflow. However this should never happen in practice (the
                 // call would run an exceedingly long time to start with).
-                self.gas_tracker.consume(self.gas_remaining, name)?;
-                self.gas_remaining = 0;
+                self.gas_tracker.consume(self.gas_checkpoint, name)?;
+                self.gas_checkpoint = 0;
 
                 Err(VmError::GasDepletion)
             },

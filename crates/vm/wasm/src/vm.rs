@@ -73,12 +73,22 @@ impl Vm for WasmVm {
             Ok((module, engine))
         })?;
 
-        // create Wasm store
-        let mut store = Store::new(engine);
-
-        // create function environment and register imports
-        // note: memory/store/instance in the env hasn't been set yet at this point
+        // Compute the amount of gas left for this call. This will be used as
+        // the initial points in the Wasmer gas meter.
+        //
+        // E.g. If the tx gas limit is X, the very first call in the tx (which
+        // would be the `before_tx` call) will have the limit as X. Suppose this
+        // call consumed Y gas points, the next call will have its limit as (X-Y);
+        // so on.
         let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
+
+        // Create the Wasmer store, function environment, and register import
+        // functions.
+        //
+        // Note: The Wasmer instance hasn't been created at this point, so
+        // `wasmer_memory` and `wasmer_instance` in the `Environment` are left
+        // empty for now.
+        let mut store = Store::new(engine);
         let fe = FunctionEnv::new(
             &mut store,
             Environment::new(
@@ -123,14 +133,7 @@ impl Vm for WasmVm {
         let instance = wasmer::Instance::new(&mut store, &module, &import_obj)?;
         let instance = Box::new(instance);
 
-        // Set gas limit on the metering.
-        //
-        // The limit is set as the amount of gas remaining in the current tx.
-        //
-        // E.g. If the tx gas limit is X, the very first call in the tx (which
-        // would be the `before_tx` call) will have the limit as X. Suppose this
-        // call consumed Y gas points, the next call will have its limit as (X-Y);
-        // so on.
+        // Set gas limit on the metering
         set_remaining_points(&mut store, &instance, gas_remaining);
 
         // set memory/store/instance in the env
