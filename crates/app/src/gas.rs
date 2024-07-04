@@ -11,8 +11,8 @@ use {
 #[derive(Debug, thiserror::Error)]
 #[error("out of gas! limit: {limit}, used: {used}")]
 pub struct OutOfGasError {
-    pub limit: u64,
-    pub used: u64,
+    limit: u64,
+    used: u64,
 }
 
 struct GasTrackerInner {

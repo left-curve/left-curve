@@ -1,6 +1,5 @@
 use {
     grug_app::{AppError, OutOfGasError},
-    grug_crypto::CryptoError,
     grug_types::StdError,
     std::string::FromUtf8Error,
     thiserror::Error,
@@ -11,18 +10,6 @@ use {
 pub enum VmError {
     #[error(transparent)]
     Std(#[from] StdError),
-
-    /// Gas ran out while calling an import function.
-    ///
-    /// Not to be confused with `GasDepletion`.
-    #[error(transparent)]
-    OutOfGas(#[from] OutOfGasError),
-
-    /// Gas ran out while executing the contract.
-    ///
-    /// Not to be confused with `OutOfGas`.
-    #[error("ran out of gas during contract execution")]
-    GasDepletion,
 
     #[error(transparent)]
     FromUtf8(#[from] FromUtf8Error),
@@ -35,9 +22,6 @@ pub enum VmError {
 
     #[error(transparent)]
     Runtime(#[from] RuntimeError),
-
-    #[error(transparent)]
-    Crypto(#[from] CryptoError),
 
     // The wasmer `CompileError` and `InstantiateError` are big (56 and 128 bytes,
     // respectively). We get a clippy warning if we wrap them directly here in
@@ -76,6 +60,18 @@ pub enum VmError {
 
     #[error("unexpected return type: {0}")]
     ReturnType(&'static str),
+
+    /// Gas ran out while calling an import function.
+    ///
+    /// Not to be confused with `GasDepletion`.
+    #[error(transparent)]
+    OutOfGas(#[from] OutOfGasError),
+
+    /// Gas ran out while executing the contract.
+    ///
+    /// Not to be confused with `OutOfGas`.
+    #[error("ran out of gas during contract execution")]
+    GasDepletion,
 
     #[error("db state changed detected on readonly instance")]
     ReadOnly,
