@@ -4,7 +4,7 @@ use {
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
-    wasmer_middlewares::metering::{get_remaining_points, MeteringPoints},
+    wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints},
 };
 
 /// Necessary stuff for performing Wasm import functions.
@@ -216,6 +216,38 @@ impl Environment {
             // The call succeeded, but gas depleted: impossible senario.
             (Ok(_), MeteringPoints::Exhausted) => {
                 unreachable!("No way! Gas is depleted but call is successful.");
+            },
+        }
+    }
+
+    pub fn consume_external_gas(
+        &mut self,
+        store: &mut impl AsStoreMut,
+        external: u64,
+        name: &str,
+    ) -> VmResult<()> {
+        let instance = self.get_wasmer_instance()?;
+        match get_remaining_points(store, instance) {
+            MeteringPoints::Remaining(remaining) => {
+                // gas_checkpoint can't be less than remaining
+                // compute consumed equals to the gas consumed since the last update + external gas
+                let consumed = self.gas_checkpoint - remaining + external;
+                self.gas_tracker.consume(consumed, name)?;
+
+                // If there is a limit on gas_tracker, update the remaining points in the store
+                if let Some(remaining) = self.gas_tracker.remaining() {
+                    set_remaining_points(store, instance, remaining);
+                    self.gas_checkpoint = remaining;
+                }
+                Ok(())
+            },
+            // This situation is nearly impossible.
+            MeteringPoints::Exhausted => {
+                self.gas_tracker
+                    .consume(self.gas_checkpoint + external, "consume_gas")?;
+                // sefl.gas_tracker.consume should have thrown an error
+                self.gas_checkpoint = 0;
+                Err(VmError::GasDepletion)
             },
         }
     }

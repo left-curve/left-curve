@@ -101,7 +101,7 @@ impl GasTracker {
             }
 
             #[cfg(feature = "tracing")]
-            debug!(limit = inner.limit, used, comment, "Gas consumed");
+            debug!(limit = inner.limit, used, consumed, comment, "Gas consumed");
 
             inner.used = used;
 
