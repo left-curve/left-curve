@@ -10,6 +10,7 @@ pub struct InstantiateMsg {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
 pub enum ExecuteMsg {
     /// Mint a token of the specified amount to a user.
     Mint {
@@ -26,6 +27,7 @@ pub enum ExecuteMsg {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
 pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.
     /// Returns: `BTreeMap<Addr, Uint128>`.
