@@ -89,9 +89,16 @@ where
             !self.accounts.contains_key(name),
             "account with name {name} already exists"
         );
+
+        // Generate a random new account
         let account = TestAccount::new_random(&self.account_code_hash, name.as_bytes());
-        self.balances.insert(account.address.clone(), balances);
+
+        // Save account and balances
+        if !balances.is_empty() {
+            self.balances.insert(account.address.clone(), balances);
+        }
         self.accounts.insert(name, account);
+
         Ok(self)
     }
 
