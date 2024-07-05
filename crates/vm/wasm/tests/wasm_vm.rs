@@ -30,7 +30,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .execute_messages(&accounts["sender"], 2_500_000, vec![
+        .execute_messages_with_gas(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
                 coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
@@ -71,7 +71,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around ~500k gas.
     suite
-        .execute_message(&accounts["sender"], 100_000, Message::Transfer {
+        .execute_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
             coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
         })?
@@ -95,7 +95,7 @@ fn infinite_loop() -> anyhow::Result<()> {
         .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
         .build()?;
 
-    let (_, tester) = suite.store_and_instantiate(
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
         &accounts["sender"],
         320_000_000,
         read_wasm_file("grug_tester_infinite_loop.wasm")?,
@@ -104,7 +104,7 @@ fn infinite_loop() -> anyhow::Result<()> {
     )?;
 
     suite
-        .execute_message(&accounts["sender"], 1_000_000, Message::Execute {
+        .execute_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::new_empty(),
@@ -121,7 +121,7 @@ fn immutable_state() -> anyhow::Result<()> {
         .build()?;
 
     // Deploy the tester contract
-    let (_, tester) = suite.store_and_instantiate(
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
         &accounts["sender"],
         // Currently, deploying a contract consumes an exceedingly high amount
         // of gas because of the need to allocate hundreds ok kB of contract
@@ -151,7 +151,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .execute_message(&accounts["sender"], 1_000_000, Message::Execute {
+        .execute_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
