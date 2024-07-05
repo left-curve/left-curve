@@ -113,23 +113,25 @@ where
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M>(
+    pub fn instantiate<M, S>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code_hash: Hash,
-        salt: Binary,
+        salt: S,
         msg: &M,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
+        S: Into<Binary>,
     {
+        let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
         self.execute_message(signer, gas_limit, Message::Instantiate {
             code_hash,
             msg: to_json_value(&msg)?,
-            salt: salt.to_vec().into(),
+            salt,
             funds: Coins::new_empty(),
             admin: None,
         })?
@@ -140,17 +142,19 @@ where
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn store_and_instantiate<M>(
+    pub fn store_and_instantiate<M, S>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code: Binary,
-        salt: Binary,
+        salt: S,
         msg: &M,
     ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
+        S: Into<Binary>,
     {
+        let salt = salt.into();
         let code_hash = Hash::from_slice(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
@@ -159,7 +163,7 @@ where
             Message::Instantiate {
                 code_hash: code_hash.clone(),
                 msg: to_json_value(&msg)?,
-                salt: salt.to_vec().into(),
+                salt,
                 funds: Coins::new_empty(),
                 admin: None,
             },

@@ -99,7 +99,7 @@ fn infinite_loop() -> anyhow::Result<()> {
         &accounts["sender"],
         320_000_000,
         read_wasm_file("grug_tester_infinite_loop.wasm")?,
-        b"tester/infinite_loop".to_vec().into(),
+        "tester/infinite_loop",
         &Empty {},
     )?;
 
@@ -128,7 +128,7 @@ fn immutable_state() -> anyhow::Result<()> {
         // bytecode into Wasm memory and have the contract deserialize it...
         320_000_000,
         read_wasm_file("grug_tester_immutable_state.wasm")?,
-        b"tester/immutable_state".to_vec().into(),
+        "tester/immutable_state",
         &Empty {},
     )?;
 
