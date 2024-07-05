@@ -20,11 +20,21 @@ pub struct Coin {
 }
 
 impl Coin {
-    pub fn new(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
-        Self {
-            denom: denom.into(),
-            amount: amount.into(),
+    /// Create a new `Coin` from the given denom and amount. The amount must be
+    /// non-zero.
+    ///
+    /// Error if the amount is zero.
+    pub fn new(denom: impl ToString, amount: impl Into<Uint128>) -> StdResult<Self> {
+        let denom = denom.to_string();
+        let amount = amount.into();
+
+        if amount.is_zero() {
+            return Err(StdError::invalid_coins(format!(
+                "creating coin of zero amount (denom: `{denom}`)"
+            )));
         }
+
+        Ok(Self { denom, amount })
     }
 }
 
@@ -89,32 +99,17 @@ impl Coins {
         Self(BTreeMap::new())
     }
 
-    pub fn new_one(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
-        Self([(denom.into(), amount.into())].into())
-    }
+    pub fn new_one(denom: impl ToString, amount: impl Into<Uint128>) -> StdResult<Self> {
+        let denom = denom.to_string();
+        let amount = amount.into();
 
-    /// Cast an `Vec<Coin>` into a `Coins` object, without checking for
-    /// duplicate denoms or zero amounts.
-    /// This is potentially unsafe, intended for using in tests. Only use if you
-    /// know what you're doing.
-    #[doc(hidden)]
-    pub fn from_vec_unchecked(vec: Vec<Coin>) -> Self {
-        Self(
-            vec.into_iter()
-                .map(|coin| (coin.denom, coin.amount))
-                .collect(),
-        )
-    }
+        if amount.is_zero() {
+            return Err(StdError::invalid_coins(format!(
+                "creating coins with a single coin of zero amount (denom: `{denom}`)"
+            )));
+        }
 
-    /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
-    /// without checking for duplicate denoms or zero amounts.
-    /// This is solely intended for use in implementing the bank contract,
-    /// where we know for sure there's no such illegal cases.\
-    #[doc(hidden)]
-    pub fn from_iter_unchecked<E>(
-        iter: &mut dyn Iterator<Item = Result<(String, Uint128), E>>,
-    ) -> Result<Self, E> {
-        iter.collect::<Result<_, E>>().map(Self)
+        Ok(Self([(denom, amount)].into()))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -139,7 +134,7 @@ impl Coins {
     /// Do nothing if the `Coins` is empty; throw an error if not empty.
     pub fn assert_empty(&self) -> StdResult<()> {
         if !self.is_empty() {
-            return Err(StdError::payment(0, self.len()));
+            return Err(StdError::invalid_payment(0, self.len()));
         }
 
         Ok(())
@@ -149,11 +144,11 @@ impl Coins {
     /// otherwise throw error.
     pub fn one_coin(&self) -> StdResult<CoinRef> {
         let Some((denom, amount)) = self.0.first_key_value() else {
-            return Err(StdError::payment(1, 0));
+            return Err(StdError::invalid_payment(1, 0));
         };
 
         if self.0.len() > 1 {
-            return Err(StdError::payment(1, self.len()));
+            return Err(StdError::invalid_payment(1, self.len()));
         }
 
         Ok(CoinRef { denom, amount })
@@ -216,25 +211,25 @@ impl FromStr for Coins {
         let mut map = BTreeMap::new();
         for coin_str in s.split(',') {
             let Some((denom, amount_str)) = coin_str.split_once(':') else {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "invalid coin `{coin_str}`: must be in the format {{denom}}:{{amount}}"
                 )));
             };
 
             let Ok(amount) = Uint128::from_str(amount_str) else {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "invalid amount `{amount_str}`"
                 )));
             };
 
             if amount.is_zero() {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "denom `{denom}` as zero amount"
                 )));
             }
 
             if map.contains_key(denom) {
-                return Err(StdError::parse_coins(format!("duplicate denom: {denom}")));
+                return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
             }
 
             map.insert(denom.into(), amount);
@@ -253,13 +248,13 @@ impl TryFrom<Vec<Coin>> for Coins {
         let mut map = BTreeMap::new();
         for coin in vec {
             if coin.amount.is_zero() {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "denom `{}` as zero amount",
                     coin.denom
                 )));
             }
             if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::parse_coins("duplicate denom found"));
+                return Err(StdError::invalid_coins("duplicate denom found"));
             }
         }
         Ok(Self(map))
