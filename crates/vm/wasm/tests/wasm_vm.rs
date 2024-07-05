@@ -95,13 +95,11 @@ fn infinite_loop() -> anyhow::Result<()> {
         .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
         .build()?;
 
-    let tester_code = read_wasm_file("grug_tester_infinite_loop.wasm")?;
-    let tester_salt = b"tester/infinite_loop".to_vec().into();
-    let tester = suite.deploy_contract(
+    let (_, tester) = suite.store_and_instantiate(
         &accounts["sender"],
         320_000_000,
-        tester_code,
-        tester_salt,
+        read_wasm_file("grug_tester_infinite_loop.wasm")?,
+        b"tester/infinite_loop".to_vec().into(),
         &Empty {},
     )?;
 
@@ -123,16 +121,14 @@ fn immutable_state() -> anyhow::Result<()> {
         .build()?;
 
     // Deploy the tester contract
-    let tester_code = read_wasm_file("grug_tester_immutable_state.wasm")?;
-    let tester_salt = b"tester/immutable_state".to_vec().into();
-    let tester = suite.deploy_contract(
+    let (_, tester) = suite.store_and_instantiate(
         &accounts["sender"],
         // Currently, deploying a contract consumes an exceedingly high amount
         // of gas because of the need to allocate hundreds ok kB of contract
         // bytecode into Wasm memory and have the contract deserialize it...
         320_000_000,
-        tester_code,
-        tester_salt,
+        read_wasm_file("grug_tester_immutable_state.wasm")?,
+        b"tester/immutable_state".to_vec().into(),
         &Empty {},
     )?;
 

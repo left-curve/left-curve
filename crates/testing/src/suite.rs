@@ -97,14 +97,57 @@ where
         Ok(results.pop().unwrap().into())
     }
 
-    pub fn deploy_contract<M>(
+    /// Upload a code. Return the code's hash.
+    pub fn upload(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        code: Binary,
+    ) -> anyhow::Result<Hash> {
+        let code_hash = Hash::from_slice(sha2_256(&code));
+
+        self.execute_message(signer, gas_limit, Message::Upload { code })?
+            .should_succeed()?;
+
+        Ok(code_hash)
+    }
+
+    /// Instantiate a contract. Return the contract's address.
+    pub fn instantiate<M>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        code_hash: Hash,
+        salt: Binary,
+        msg: &M,
+    ) -> anyhow::Result<Addr>
+    where
+        M: Serialize,
+    {
+        let address = Addr::compute(&signer.address, &code_hash, &salt);
+
+        self.execute_message(signer, gas_limit, Message::Instantiate {
+            code_hash,
+            msg: to_json_value(&msg)?,
+            salt: salt.to_vec().into(),
+            funds: Coins::new_empty(),
+            admin: None,
+        })?
+        .should_succeed()?;
+
+        Ok(address)
+    }
+
+    /// Upload a code and instantiate a contract with it in one go. Return the
+    /// code hash as well as the contract's address.
+    pub fn store_and_instantiate<M>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code: Binary,
         salt: Binary,
         msg: &M,
-    ) -> anyhow::Result<Addr>
+    ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
     {
@@ -114,7 +157,7 @@ where
         self.execute_messages(signer, gas_limit, vec![
             Message::Upload { code },
             Message::Instantiate {
-                code_hash,
+                code_hash: code_hash.clone(),
                 msg: to_json_value(&msg)?,
                 salt: salt.to_vec().into(),
                 funds: Coins::new_empty(),
@@ -123,7 +166,7 @@ where
         ])?
         .should_succeed()?;
 
-        Ok(address)
+        Ok((code_hash, address))
     }
 
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
