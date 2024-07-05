@@ -109,7 +109,7 @@ pub trait Contract {
     fn bank_query(
         &self,
         ctx: Context,
-        storage: &mut dyn Storage,
+        storage: &dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankQuery,

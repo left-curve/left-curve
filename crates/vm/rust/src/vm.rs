@@ -63,6 +63,16 @@ impl Instance for RustInstance {
                 let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
                 to_json_vec(&res)?
             },
+            "before_block" => {
+                let res =
+                    contract.before_block(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
+                to_json_vec(&res)?
+            },
+            "after_block" => {
+                let res =
+                    contract.after_block(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
+                to_json_vec(&res)?
+            },
             _ => {
                 return Err(VmError::IncorrectNumberOfInputs {
                     name: name.into(),
@@ -105,6 +115,35 @@ impl Instance for RustInstance {
             "query" => {
                 let msg = from_json_slice(param)?;
                 let res = contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
+                to_json_vec(&res)?
+            },
+            "before_tx" => {
+                let tx = from_json_slice(param)?;
+                let res =
+                    contract.before_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
+                to_json_vec(&res)?
+            },
+            "after_tx" => {
+                let tx = from_json_slice(param)?;
+                let res =
+                    contract.after_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
+                to_json_vec(&res)?
+            },
+            "bank_execute" => {
+                let msg = from_json_slice(param)?;
+                let res = contract.bank_execute(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    msg,
+                );
+                to_json_vec(&res)?
+            },
+            "bank_query" => {
+                let msg = from_json_slice(param)?;
+                let res =
+                    contract.bank_query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
                 to_json_vec(&res)?
             },
             _ => {
