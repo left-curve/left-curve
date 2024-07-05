@@ -10,9 +10,18 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-grug-app       = { path = "../app" }
-grug-db-memory = { path = "../db/memory" }
-grug-types     = { path = "../types" }
-grug-vm-rust   = { path = "../vm/rust" }
+anyhow             = { workspace = true }
+grug-app           = { path = "../app", features = ["tracing"] }
+grug-account       = { path = "../../contracts/account", features = ["library"] }
+grug-bank          = { path = "../../contracts/bank", features = ["library"] }
+grug-crypto        = { path = "../crypto" }
+grug-db-memory     = { path = "../db/memory" }
+grug-types         = { path = "../types" }
+grug-vm-rust       = { path = "../vm/rust" }
+k256               = { workspace = true }
+rand               = { workspace = true }
+serde              = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dev-dependencies]

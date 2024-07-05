@@ -1475,7 +1475,11 @@ name = "grug-account"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "borsh",
+ "grug-storage",
+ "grug-types",
+ "grug-wasm",
+ "serde",
 ]
 
 [[package]]
@@ -1499,7 +1503,10 @@ name = "grug-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "grug-storage",
+ "grug-types",
+ "grug-wasm",
+ "serde",
 ]
 
 [[package]]
@@ -1657,10 +1664,19 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "grug-account",
  "grug-app",
+ "grug-bank",
+ "grug-crypto",
  "grug-db-memory",
  "grug-types",
  "grug-vm-rust",
+ "k256",
+ "rand",
+ "serde",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1689,9 +1705,11 @@ dependencies = [
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-testing",
  "grug-types",
  "serde",
  "thiserror",
@@ -1704,19 +1722,14 @@ dependencies = [
  "anyhow",
  "clru",
  "data-encoding",
- "grug-account",
  "grug-app",
- "grug-bank",
  "grug-crypto",
- "grug-db-memory",
  "grug-testing",
  "grug-types",
- "k256",
- "rand",
+ "grug-vm-wasm",
  "serde",
  "thiserror",
  "tracing",
- "tracing-subscriber",
  "wasmer",
  "wasmer-middlewares",
 ]

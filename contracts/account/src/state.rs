@@ -1,6 +1,6 @@
 use {
     crate::PublicKey,
-    grug::{Counter, Item},
+    grug_storage::{Counter, Item},
 };
 
 /// The account's public key.

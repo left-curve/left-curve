@@ -1,6 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
-    grug::{Addr, Bound, Coin, Coins, NumberConst, Order, StdResult, Storage, Uint128},
+    grug_storage::Bound,
+    grug_types::{Addr, Coin, Coins, NumberConst, Order, StdResult, Storage, Uint128},
     std::collections::BTreeMap,
 };
 
