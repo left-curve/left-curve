@@ -23,11 +23,17 @@ wasmer-middlewares = { workspace = true }
 
 [dev-dependencies]
 anyhow             = { workspace = true }
+criterion          = { workspace = true }
 grug-app           = { path = "../../app", features = ["tracing"]}
 grug-account       = { path = "../../../contracts/account", features = ["library"] }
 grug-bank          = { path = "../../../contracts/bank", features = ["library"] }
 grug-db-memory     = { path = "../../db/memory" }
 grug-testing       = { path = "../../testing" }
+grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker" }
 k256               = { workspace = true }
 rand               = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[[bench]]
+name = "main"
+harness = false

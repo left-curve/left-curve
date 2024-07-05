@@ -1723,6 +1723,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-tester-benchmarker"
+version = "0.0.0"
+dependencies = [
+ "grug",
+]
+
+[[package]]
 name = "grug-tester-immutable-state"
 version = "0.0.0"
 dependencies = [
@@ -1786,12 +1793,14 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clru",
+ "criterion",
  "data-encoding",
  "grug-account",
  "grug-app",
  "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-tester-benchmarker",
  "grug-testing",
  "grug-types",
  "k256",
