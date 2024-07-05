@@ -9,6 +9,9 @@ use {
     },
 };
 
+// ----------------------------------- coin ------------------------------------
+
+/// A coin or token, defined by a denomincation ("denom") and amount.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Coin {
@@ -37,6 +40,8 @@ impl fmt::Debug for Coin {
     }
 }
 
+// ----------------------------------- coins -----------------------------------
+
 /// A record in the `Coins` map.
 ///
 /// In `Coins`, we don't store coins an a vector of `Coin`s, but rather as
@@ -58,6 +63,7 @@ pub struct CoinRef<'a> {
     pub amount: &'a Uint128,
 }
 
+/// A sorted list of coins or tokens.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
