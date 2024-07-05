@@ -24,6 +24,9 @@ fn bank_transfers() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["sender"], DENOM)
         .should_succeed_and_equal(Uint128::new(100))?;
+    suite
+        .query_balance(&accounts["receiver"], DENOM)
+        .should_succeed_and_equal(Uint128::ZERO)?;
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
