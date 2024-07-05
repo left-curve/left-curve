@@ -45,9 +45,27 @@ impl DerefMut for Binary {
     }
 }
 
+impl<const N: usize> From<[u8; N]> for Binary {
+    fn from(array: [u8; N]) -> Self {
+        Self(array.to_vec())
+    }
+}
+
 impl From<Vec<u8>> for Binary {
-    fn from(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+    fn from(vec: Vec<u8>) -> Self {
+        Self(vec)
+    }
+}
+
+impl From<&str> for Binary {
+    fn from(s: &str) -> Self {
+        Self(s.as_bytes().to_vec())
+    }
+}
+
+impl From<String> for Binary {
+    fn from(string: String) -> Self {
+        Self(string.into_bytes())
     }
 }
 

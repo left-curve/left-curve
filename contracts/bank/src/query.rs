@@ -25,11 +25,13 @@ pub fn query_balances(
         .as_ref()
         .map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-    let mut iter = BALANCES_BY_ADDR
+
+    BALANCES_BY_ADDR
         .prefix(&address)
         .range(storage, start, None, Order::Ascending)
-        .take(limit);
-    Coins::from_iter_unchecked(&mut iter)
+        .take(limit)
+        .collect::<StdResult<BTreeMap<_, _>>>()?
+        .try_into()
 }
 
 pub fn query_supply(storage: &dyn Storage, denom: String) -> StdResult<Coin> {
@@ -49,10 +51,12 @@ pub fn query_supplies(
         .as_ref()
         .map(|denom| Bound::Exclusive(denom.as_str()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-    let mut iter = SUPPLIES
+
+    SUPPLIES
         .range(storage, start, None, Order::Ascending)
-        .take(limit);
-    Coins::from_iter_unchecked(&mut iter)
+        .take(limit)
+        .collect::<StdResult<BTreeMap<_, _>>>()?
+        .try_into()
 }
 
 pub fn query_holders(
@@ -63,6 +67,7 @@ pub fn query_holders(
 ) -> StdResult<BTreeMap<Addr, Uint128>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
     BALANCES_BY_DENOM
         .prefix(&denom)
         .range(storage, start, None, Order::Ascending)

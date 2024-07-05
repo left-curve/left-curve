@@ -29,11 +29,11 @@ pub enum StdError {
         reason: String,
     },
 
-    #[error("failed to parse into Coins: {reason}")]
-    ParseCoins { reason: String },
+    #[error("invalid coins: {reason}")]
+    InvalidCoins { reason: String },
 
     #[error("invalid payment: expecting {expect} coins, found {actual}")]
-    Payment { expect: usize, actual: usize },
+    InvalidPayment { expect: usize, actual: usize },
 
     #[error("cannot find denom `{denom}` in coins")]
     DenomNotFound { denom: String },
@@ -127,14 +127,14 @@ impl StdError {
         }
     }
 
-    pub fn parse_coins(reason: impl Into<String>) -> Self {
-        Self::ParseCoins {
+    pub fn invalid_coins(reason: impl Into<String>) -> Self {
+        Self::InvalidCoins {
             reason: reason.into(),
         }
     }
 
-    pub fn payment(expect: usize, actual: usize) -> Self {
-        Self::Payment { expect, actual }
+    pub fn invalid_payment(expect: usize, actual: usize) -> Self {
+        Self::InvalidPayment { expect, actual }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {

@@ -53,16 +53,18 @@ where
         })
     }
 
-    pub fn execute_message(
+    /// Execute a single message under the given gas limit.
+    pub fn execute_message_with_gas(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
-        self.execute_messages(signer, gas_limit, vec![msg])
+        self.execute_messages_with_gas(signer, gas_limit, vec![msg])
     }
 
-    pub fn execute_messages(
+    /// Execute one or more messages under the given gas limit.
+    pub fn execute_messages_with_gas(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
@@ -77,10 +79,7 @@ where
 
         // Make a new block
         self.block.height += Uint64::ONE;
-        self.block.timestamp = self
-            .block
-            .timestamp
-            .plus_nanos(self.block_time.as_nanos() as u64);
+        self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
 
         // Finalize the block
         let (_, _, mut results) = self
@@ -100,33 +99,81 @@ where
         Ok(results.pop().unwrap().into())
     }
 
-    pub fn deploy_contract<M>(
+    /// Upload a code under the given gas limit. Return the code's hash.
+    pub fn upload_with_gas(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code: Binary,
-        salt: Binary,
+    ) -> anyhow::Result<Hash> {
+        let code_hash = Hash::from_slice(sha2_256(&code));
+
+        self.execute_message_with_gas(signer, gas_limit, Message::Upload { code })?
+            .should_succeed()?;
+
+        Ok(code_hash)
+    }
+
+    /// Instantiate a contract under the given gas limit. Return the contract's
+    /// address.
+    pub fn instantiate_with_gas<M, S>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        code_hash: Hash,
+        salt: S,
         msg: &M,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
+        S: Into<Binary>,
     {
+        let salt = salt.into();
+        let address = Addr::compute(&signer.address, &code_hash, &salt);
+
+        self.execute_message_with_gas(signer, gas_limit, Message::Instantiate {
+            code_hash,
+            msg: to_json_value(&msg)?,
+            salt,
+            funds: Coins::new_empty(),
+            admin: None,
+        })?
+        .should_succeed()?;
+
+        Ok(address)
+    }
+
+    /// Upload a code and instantiate a contract with it in one go under the
+    /// given gas limit. Return the code hash as well as the contract's address.
+    pub fn upload_and_instantiate_with_gas<M, S>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        code: Binary,
+        salt: S,
+        msg: &M,
+    ) -> anyhow::Result<(Hash, Addr)>
+    where
+        M: Serialize,
+        S: Into<Binary>,
+    {
+        let salt = salt.into();
         let code_hash = Hash::from_slice(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.execute_messages(signer, gas_limit, vec![
+        self.execute_messages_with_gas(signer, gas_limit, vec![
             Message::Upload { code },
             Message::Instantiate {
-                code_hash,
+                code_hash: code_hash.clone(),
                 msg: to_json_value(&msg)?,
-                salt: salt.to_vec().into(),
+                salt,
                 funds: Coins::new_empty(),
                 admin: None,
             },
         ])?
         .should_succeed()?;
 
-        Ok(address)
+        Ok((code_hash, address))
     }
 
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
@@ -165,5 +212,63 @@ where
             )
             .map(|res| res.as_balance().amount)
             .into()
+    }
+}
+
+// Rust VM doesn't support gas, so we introduce these convenience methods that
+// don't take a `gas_limit` parameter.
+impl TestSuite<RustVm> {
+    /// Execute a single message.
+    pub fn execute_message(
+        &mut self,
+        signer: &TestAccount,
+        msg: Message,
+    ) -> anyhow::Result<TestResult<Vec<Event>>> {
+        self.execute_message_with_gas(signer, 0, msg)
+    }
+
+    /// Execute one or more messages.
+    pub fn execute_messages(
+        &mut self,
+        signer: &TestAccount,
+        msgs: Vec<Message>,
+    ) -> anyhow::Result<TestResult<Vec<Event>>> {
+        self.execute_messages_with_gas(signer, 0, msgs)
+    }
+
+    /// Upload a code. Return the code's hash.
+    pub fn upload(&mut self, signer: &TestAccount, code: Binary) -> anyhow::Result<Hash> {
+        self.upload_with_gas(signer, 0, code)
+    }
+
+    /// Instantiate a contract. Return the contract's address.
+    pub fn instantiate<M, S>(
+        &mut self,
+        signer: &TestAccount,
+        code_hash: Hash,
+        salt: S,
+        msg: &M,
+    ) -> anyhow::Result<Addr>
+    where
+        M: Serialize,
+        S: Into<Binary>,
+    {
+        self.instantiate_with_gas(signer, 0, code_hash, salt, msg)
+    }
+
+    /// Upload a code and instantiate a contract with it in one go. Return the
+    /// code hash as well as the contract's address.
+    pub fn upload_and_instantiate<M, S>(
+        &mut self,
+        signer: &TestAccount,
+        code: Binary,
+        salt: S,
+        msg: &M,
+    ) -> anyhow::Result<(Hash, Addr)>
+    where
+        M: Serialize,
+        S: Into<Binary>,
+    {
+        self.upload_and_instantiate_with_gas(signer, 0, code, salt, msg)
     }
 }

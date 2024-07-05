@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Message, NumberConst, Uint128},
+    grug_types::{Coins, Message, NonZero, NumberConst, Uint128},
 };
 
 const DENOM: &str = "ugrug";
@@ -8,7 +8,7 @@ const DENOM: &str = "ugrug";
 #[test]
 fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
         .add_account("receiver", Coins::new_empty())?
         .build()?;
 
@@ -22,22 +22,22 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .execute_messages(&accounts["sender"], 2_500_000, vec![
+        .execute_messages(&accounts["sender"], vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 10_u128),
+                coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 15_u128),
+                coins: Coins::new_one(DENOM, NonZero::new(15_u128)),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 20_u128),
+                coins: Coins::new_one(DENOM, NonZero::new(20_u128)),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 25_u128),
+                coins: Coins::new_one(DENOM, NonZero::new(25_u128)),
             },
         ])?
         .should_succeed()?;

@@ -164,7 +164,7 @@ fn from_tm_block(height: i64, time: Option<TmTimestamp>, hash: Option<Bytes>) ->
 }
 
 fn from_tm_timestamp(time: TmTimestamp) -> Timestamp {
-    Timestamp::from_seconds(time.seconds as u64).plus_nanos(time.nanos as u64)
+    Timestamp::from_seconds(time.seconds as u128).plus_nanos(time.nanos as u128)
 }
 
 fn from_tm_hash(bytes: Bytes) -> Hash {
