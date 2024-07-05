@@ -36,6 +36,8 @@ pub struct TestBuilder<VM: TestVm = RustVm> {
     balances: BTreeMap<Addr, Coins>,
 }
 
+// Clippy incorrectly thinks we can derive `Default` here, which we can't.
+#[allow(clippy::new_without_default)]
 impl TestBuilder<RustVm> {
     pub fn new() -> Self {
         Self::new_with_vm(RustVm::new())

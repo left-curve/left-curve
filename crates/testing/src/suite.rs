@@ -115,7 +115,7 @@ where
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
         self.execute_messages(signer, gas_limit, vec![
-            Message::Upload { code: code.into() },
+            Message::Upload { code },
             Message::Instantiate {
                 code_hash,
                 msg: to_json_value(&msg)?,
