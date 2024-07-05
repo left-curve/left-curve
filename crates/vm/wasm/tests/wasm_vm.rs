@@ -16,7 +16,7 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 #[test]
 fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, 100_u128)?)?
         .add_account("receiver", Coins::new_empty())?
         .build()?;
 
@@ -33,19 +33,19 @@ fn bank_transfers() -> anyhow::Result<()> {
         .execute_messages(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 10_u128),
+                coins: Coins::new_one(DENOM, 10_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 15_u128),
+                coins: Coins::new_one(DENOM, 15_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 20_u128),
+                coins: Coins::new_one(DENOM, 20_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 25_u128),
+                coins: Coins::new_one(DENOM, 25_u128)?,
             },
         ])?
         .should_succeed()?;
@@ -64,7 +64,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 #[test]
 fn gas_limit_too_low() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, 100_u128)?)?
         .add_account("receiver", Coins::new_empty())?
         .build()?;
 
@@ -73,7 +73,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     suite
         .execute_message(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
-            coins: Coins::new_one(DENOM, 10_u128),
+            coins: Coins::new_one(DENOM, 10_u128)?,
         })?
         .should_fail_with_error(VmError::GasDepletion)?;
 
@@ -92,7 +92,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
 #[test]
 fn infinite_loop() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, 100_u128)?)?
         .build()?;
 
     let tester_code = read_wasm_file("grug_tester_infinite_loop.wasm")?;
@@ -119,7 +119,7 @@ fn infinite_loop() -> anyhow::Result<()> {
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, 100_u128)?)?
         .build()?;
 
     // Deploy the tester contract

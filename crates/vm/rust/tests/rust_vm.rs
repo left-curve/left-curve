@@ -8,7 +8,7 @@ const DENOM: &str = "ugrug";
 #[test]
 fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account("sender", Coins::new_one(DENOM, 100_u128))?
+        .add_account("sender", Coins::new_one(DENOM, 100_u128)?)?
         .add_account("receiver", Coins::new_empty())?
         .build()?;
 
@@ -25,19 +25,19 @@ fn bank_transfers() -> anyhow::Result<()> {
         .execute_messages(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 10_u128),
+                coins: Coins::new_one(DENOM, 10_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 15_u128),
+                coins: Coins::new_one(DENOM, 15_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 20_u128),
+                coins: Coins::new_one(DENOM, 20_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: Coins::new_one(DENOM, 25_u128),
+                coins: Coins::new_one(DENOM, 25_u128)?,
             },
         ])?
         .should_succeed()?;
