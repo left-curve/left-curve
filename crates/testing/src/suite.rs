@@ -77,10 +77,7 @@ where
 
         // Make a new block
         self.block.height += Uint64::ONE;
-        self.block.timestamp = self
-            .block
-            .timestamp
-            .plus_nanos(self.block_time.as_nanos() as u64);
+        self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
 
         // Finalize the block
         let (_, _, mut results) = self
