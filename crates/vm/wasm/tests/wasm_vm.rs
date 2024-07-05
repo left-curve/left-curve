@@ -20,12 +20,12 @@ fn bank_transfers() -> anyhow::Result<()> {
         .add_account("receiver", Coins::new_empty())?
         .build()?;
 
-    // Check that sender has been given 100 ugrug.
+    // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM)
         .should_succeed_and_equal(Uint128::new(100))?;
 
-    // Sender sends 70 ugrug to the receiver across multiple messages.
+    // Sender sends 70 ugrug to the receiver across multiple messages
     suite
         .execute_messages(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
@@ -47,7 +47,7 @@ fn bank_transfers() -> anyhow::Result<()> {
         ])?
         .should_succeed()?;
 
-    // Check balances again.
+    // Check balances again
     suite
         .query_balance(&accounts["sender"], DENOM)
         .should_succeed_and_equal(Uint128::new(30))?;
