@@ -1664,10 +1664,19 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "grug-account",
  "grug-app",
+ "grug-bank",
+ "grug-crypto",
  "grug-db-memory",
  "grug-types",
  "grug-vm-rust",
+ "k256",
+ "rand",
+ "serde",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1718,6 +1727,7 @@ dependencies = [
  "grug-db-memory",
  "grug-testing",
  "grug-types",
+ "grug-vm-wasm",
  "k256",
  "rand",
  "serde",

@@ -5,6 +5,7 @@ mod imports;
 mod iterator;
 mod memory;
 mod region;
+mod testing;
 mod vm;
 
 pub use {

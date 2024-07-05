@@ -9,11 +9,17 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
+[features]
+# Implement `grug_testing::TestVm` trait for `WasmVm`, so that it can be used in
+# the test suite.
+testing = ["dep:grug-testing"]
+
 [dependencies]
 clru               = { workspace = true }
 data-encoding      = { workspace = true }
 grug-app           = { path = "../../app" }
 grug-crypto        = { path = "../../crypto" }
+grug-testing       = { path = "../../testing", optional = true }
 grug-types         = { path = "../../types" }
 serde              = { workspace = true }
 thiserror          = { workspace = true }
@@ -27,7 +33,7 @@ grug-app           = { path = "../../app", features = ["tracing"]}
 grug-account       = { path = "../../../contracts/account", features = ["library"] }
 grug-bank          = { path = "../../../contracts/bank", features = ["library"] }
 grug-db-memory     = { path = "../../db/memory" }
-grug-testing       = { path = "../../testing" }
+grug-vm-wasm       = { path = ".", features = ["testing"] }
 k256               = { workspace = true }
 rand               = { workspace = true }
 tracing-subscriber = { workspace = true }
