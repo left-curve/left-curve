@@ -193,6 +193,33 @@ impl Coins {
         Ok(())
     }
 
+    /// Convert an iterator over denoms and amounts to `Coins`.
+    ///
+    /// Used internally for implementing `TryFrom<[Coin; N]>`,
+    /// `TryFrom<Vec<Coin>>`, and `TryFrom<BTreeMap<String, Uint128>>`.
+    ///
+    /// Check whether the iterator contains duplicates or zero amounts.
+    fn try_from_iterator<I>(iter: I) -> StdResult<Self>
+    where
+        I: IntoIterator<Item = (String, Uint128)>,
+    {
+        let mut map = BTreeMap::new();
+        for (denom, amount) in iter {
+            if amount.is_zero() {
+                return Err(StdError::invalid_coins(format!(
+                    "denom `{}` as zero amount",
+                    denom
+                )));
+            }
+
+            if map.insert(denom, amount).is_some() {
+                return Err(StdError::invalid_coins("duplicate denom found"));
+            }
+        }
+
+        Ok(Self(map))
+    }
+
     // note that we provide iter and into_iter methods, but not iter_mut method,
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods
@@ -243,25 +270,27 @@ impl FromStr for Coins {
     }
 }
 
-// create a new Coins instance from a vector of coins. the vector must not
-// contain duplicate denoms or zero amounts.
+impl<const N: usize> TryFrom<[Coin; N]> for Coins {
+    type Error = StdError;
+
+    fn try_from(array: [Coin; N]) -> StdResult<Self> {
+        Self::try_from_iterator(array.into_iter().map(|coin| (coin.denom, coin.amount)))
+    }
+}
+
 impl TryFrom<Vec<Coin>> for Coins {
     type Error = StdError;
 
-    fn try_from(vec: Vec<Coin>) -> Result<Self, Self::Error> {
-        let mut map = BTreeMap::new();
-        for coin in vec {
-            if coin.amount.is_zero() {
-                return Err(StdError::invalid_coins(format!(
-                    "denom `{}` as zero amount",
-                    coin.denom
-                )));
-            }
-            if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::invalid_coins("duplicate denom found"));
-            }
-        }
-        Ok(Self(map))
+    fn try_from(vec: Vec<Coin>) -> StdResult<Self> {
+        Self::try_from_iterator(vec.into_iter().map(|coin| (coin.denom, coin.amount)))
+    }
+}
+
+impl TryFrom<BTreeMap<String, Uint128>> for Coins {
+    type Error = StdError;
+
+    fn try_from(map: BTreeMap<String, Uint128>) -> StdResult<Self> {
+        Self::try_from_iterator(map)
     }
 }
 
