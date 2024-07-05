@@ -68,10 +68,10 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around ~500k gas.
     suite
-        .execute_messages(&accounts["sender"], 100_000, vec![Message::Transfer {
+        .execute_message(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
             coins: vec![Coin::new(DENOM, 10_u128)].try_into().unwrap(),
-        }])?
+        })?
         .should_fail_with_error(VmError::GasDepletion)?;
 
     // Tx is went out of gas.
@@ -103,11 +103,11 @@ fn infinite_loop() -> anyhow::Result<()> {
     )?;
 
     suite
-        .execute_messages(&accounts["sender"], 1_000_000, vec![Message::Execute {
+        .execute_message(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::new_empty(),
-        }])?
+        })?
         .should_fail_with_error(VmError::GasDepletion)?;
 
     Ok(())
@@ -152,11 +152,11 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .execute_messages(&accounts["sender"], 1_000_000, vec![Message::Execute {
+        .execute_message(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),
-        }])?
+        })?
         .should_fail_with_error(VmError::ReadOnly)?;
 
     Ok(())
