@@ -20,10 +20,10 @@ library = []
 # Note: Contracts that are used in the testing suite (grug-testing) can't use
 # the `grug` meta-crate, to avoid circular dependency:
 # > grug-account --> grug-testing --> grug
-# Instead, they have to use Grug crates (types, storage, macros) individually.
+# Instead, they have to use Grug crates (types, storage, wasm) individually.
 [dependencies]
 anyhow       = { workspace = true }
-grug-macros  = { path = "../../crates/macros" }
 grug-storage = { path = "../../crates/storage" }
 grug-types   = { path = "../../crates/types" }
+grug-wasm    = { path = "../../crates/wasm" }
 serde        = { workspace = true, features = ["derive"] }

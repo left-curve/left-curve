@@ -1476,9 +1476,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
- "grug-macros",
  "grug-storage",
  "grug-types",
+ "grug-wasm",
  "serde",
 ]
 
@@ -1503,9 +1503,9 @@ name = "grug-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug-macros",
  "grug-storage",
  "grug-types",
+ "grug-wasm",
  "serde",
 ]
 
