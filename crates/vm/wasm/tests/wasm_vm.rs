@@ -52,7 +52,7 @@ fn bank_transfers() -> anyhow::Result<()> {
         .query_balance(&accounts["sender"], DENOM)
         .should_succeed_and_equal(Uint128::new(30))?;
     suite
-        .query_balance(&accounts["sender"], DENOM)
+        .query_balance(&accounts["receiver"], DENOM)
         .should_succeed_and_equal(Uint128::new(70))?;
 
     Ok(())
