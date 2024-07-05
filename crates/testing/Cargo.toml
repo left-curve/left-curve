@@ -11,7 +11,7 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow             = { workspace = true }
-grug-app           = { path = "../app" }
+grug-app           = { path = "../app", features = ["tracing"] }
 grug-account       = { path = "../../contracts/account", features = ["library"] }
 grug-bank          = { path = "../../contracts/bank", features = ["library"] }
 grug-crypto        = { path = "../crypto" }
