@@ -1705,9 +1705,11 @@ dependencies = [
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-testing",
  "grug-types",
  "serde",
  "thiserror",
