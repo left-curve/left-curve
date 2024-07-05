@@ -1,6 +1,6 @@
 use {
-    anyhow::{anyhow, bail, ensure},
-    grug_app::AppResult,
+    anyhow::{bail, ensure},
+    grug_app::{AppError, AppResult},
     std::fmt::Debug,
 };
 
@@ -16,41 +16,18 @@ impl<T> From<AppResult<T>> for TestResult<T> {
     }
 }
 
-impl<T> TestResult<T> {
-    /// Ensure the result is ok; return the value.
-    pub fn should_succeed(self) -> anyhow::Result<T> {
-        self.inner
-            .map_err(|err| anyhow!("expecting ok, got error: {err}"))
-    }
-
-    /// Ensure the result is error, and contains the given message.
-    ///
-    /// Here we stringify the error and check for the existence of the substring,
-    /// instead of utilizing the Rust type system.
-    ///
-    /// Have to go with this approach because errors emitted by the contract are
-    /// converted to strings (as `GenericResult`) when passed through the FFI,
-    /// at which time they lost their types.
-    pub fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
-        match self.inner {
-            Err(err) => {
-                let expect = msg.to_string();
-                let actual = err.to_string();
-                ensure!(
-                    actual.contains(&expect),
-                    "wrong error! expect: {expect}, actual: {actual}"
-                );
-            },
-            Ok(_) => bail!("expecting error, got ok"),
-        }
-        Ok(())
-    }
-}
-
 impl<T> TestResult<T>
 where
     T: Debug,
 {
+    /// Ensure the result is ok; return the value.
+    pub fn should_succeed(self) -> anyhow::Result<T> {
+        match self.inner {
+            Ok(value) => Ok(value),
+            Err(err) => bail!("expecting ok, got error: {err}"),
+        }
+    }
+
     /// Ensure the result is ok, and matches the expect value.
     pub fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
     where
@@ -61,10 +38,40 @@ where
             Ok(value) => {
                 ensure!(
                     value == expect,
-                    "value does not match expected! expect: {expect:?}, actual: {value:?}"
+                    "wrong value! expecting: {expect:?}, got: {value:?}"
                 );
             },
             Err(err) => bail!("expecting ok, got error: {err}"),
+        }
+        Ok(())
+    }
+
+    /// Ensure the result is error; return the error;
+    pub fn should_fail(self) -> anyhow::Result<AppError> {
+        match self.inner {
+            Err(err) => Ok(err),
+            Ok(value) => bail!("expecting error, got ok: {value:?}"),
+        }
+    }
+
+    /// Ensure the result is error, and contains the given message.
+    pub fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
+        match self.inner {
+            Err(err) => {
+                // Here we stringify the error and check for the existence of
+                // the substring, instead of utilizing the Rust type system.
+                //
+                // Have to go with this approach because errors emitted by the
+                // contract are converted to strings (as `GenericResult`) when
+                // passed through the FFI, at which time they lost their types.
+                let expect = msg.to_string();
+                let actual = err.to_string();
+                ensure!(
+                    actual.contains(&expect),
+                    "wrong error! expecting: {expect}, got: {actual}"
+                );
+            },
+            Ok(value) => bail!("expecting error, got ok: {value:?}"),
         }
         Ok(())
     }
