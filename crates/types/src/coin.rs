@@ -95,10 +95,12 @@ impl Coins {
     // and stringifies it to a set of empty square brackets instead.
     pub const EMPTY_COINS_STR: &'static str = "[]";
 
+    /// Create a new `Coins` without any coin.
     pub fn new_empty() -> Self {
         Self(BTreeMap::new())
     }
 
+    /// Create a new `Coins` with exactly one coin.
     pub fn new_one(denom: impl ToString, amount: impl Into<Uint128>) -> StdResult<Self> {
         let denom = denom.to_string();
         let amount = amount.into();
@@ -112,10 +114,12 @@ impl Coins {
         Ok(Self([(denom, amount)].into()))
     }
 
+    /// Return whether the `Coins` contains any coin at all.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Return the number of coins.
     pub fn len(&self) -> usize {
         self.0.len()
     }
