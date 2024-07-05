@@ -28,11 +28,19 @@ where
         }
     }
 
+    /// Ensure the result is error; return the error;
+    pub fn should_fail(self) -> anyhow::Result<AppError> {
+        match self.inner {
+            Err(err) => Ok(err),
+            Ok(value) => bail!("expecting error, got ok: {value:?}"),
+        }
+    }
+
     /// Ensure the result is ok, and matches the expect value.
-    pub fn should_succeed_and_equal<V>(self, expect: V) -> anyhow::Result<()>
+    pub fn should_succeed_and_equal<U>(self, expect: U) -> anyhow::Result<()>
     where
-        T: PartialEq<V>,
-        V: Debug,
+        T: PartialEq<U>,
+        U: Debug,
     {
         match self.inner {
             Ok(value) => {
@@ -43,19 +51,15 @@ where
             },
             Err(err) => bail!("expecting ok, got error: {err}"),
         }
+
         Ok(())
     }
 
-    /// Ensure the result is error; return the error;
-    pub fn should_fail(self) -> anyhow::Result<AppError> {
-        match self.inner {
-            Err(err) => Ok(err),
-            Ok(value) => bail!("expecting error, got ok: {value:?}"),
-        }
-    }
-
     /// Ensure the result is error, and contains the given message.
-    pub fn should_fail_with_error(self, msg: impl ToString) -> anyhow::Result<()> {
+    pub fn should_fail_with_error<M>(self, msg: M) -> anyhow::Result<()>
+    where
+        M: ToString,
+    {
         match self.inner {
             Err(err) => {
                 // Here we stringify the error and check for the existence of
@@ -73,6 +77,7 @@ where
             },
             Ok(value) => bail!("expecting error, got ok: {value:?}"),
         }
+
         Ok(())
     }
 }
