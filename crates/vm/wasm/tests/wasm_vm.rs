@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{to_json_value, Binary, Coin, Coins, Empty, Message, NumberConst, Uint128},
+    grug_types::{to_json_value, Binary, Coins, Empty, Message, NumberConst, Uint128},
     grug_vm_wasm::{VmError, WasmVm},
     std::{fs, io, vec},
 };
@@ -33,19 +33,19 @@ fn bank_transfers() -> anyhow::Result<()> {
         .execute_messages(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 10_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 10_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 15_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 15_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 20_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 20_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 25_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 25_u128),
             },
         ])?
         .should_succeed()?;
@@ -73,7 +73,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     suite
         .execute_message(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
-            coins: vec![Coin::new(DENOM, 10_u128)].try_into().unwrap(),
+            coins: Coins::new_one(DENOM, 10_u128),
         })?
         .should_fail_with_error(VmError::GasDepletion)?;
 

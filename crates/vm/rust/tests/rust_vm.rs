@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coin, Coins, Message, NumberConst, Uint128},
+    grug_types::{Coins, Message, NumberConst, Uint128},
 };
 
 const DENOM: &str = "ugrug";
@@ -25,19 +25,19 @@ fn bank_transfers() -> anyhow::Result<()> {
         .execute_messages(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 10_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 10_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 15_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 15_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 20_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 20_u128),
             },
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
-                coins: vec![Coin::new(DENOM, 25_u128)].try_into().unwrap(),
+                coins: Coins::new_one(DENOM, 25_u128),
             },
         ])?
         .should_succeed()?;
