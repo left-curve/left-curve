@@ -94,7 +94,7 @@ fn benchmark_ed25519_verify_batch() {
         let mut sigs: Vec<Vec<u8>> = vec![];
         let mut vks: Vec<Vec<u8>> = vec![];
 
-        for _ in i..1 + 1 {
+        for _ in 1..i + 1 {
             let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
             let vk = ed25519_dalek::VerifyingKey::from(&sk);
             let msg = sha2_256(&gen_msg(i));
@@ -121,9 +121,10 @@ fn benchmark_ed25519_verify_batch() {
     let mut tot_base = Duration::new(0, 0);
     let mut tot_per_item = Duration::new(0, 0);
     let mut linear_counter = 0;
+    let mul = 1;
     for i in 1..iter + 1 {
         // Why not
-        let i = i * 100;
+        let i = i * mul;
         let mut vec = vec![0; i as usize];
         OsRng.fill_bytes(&mut vec);
         let time = clos(i as usize);
@@ -132,7 +133,7 @@ fn benchmark_ed25519_verify_batch() {
 
         if let Some(pre_time) = &mut last_iter {
             let dif = match time.checked_sub(*pre_time) {
-                Some(dif) => dif / 100,
+                Some(dif) => dif / mul,
                 None => {
                     *pre_time = time;
                     continue;
