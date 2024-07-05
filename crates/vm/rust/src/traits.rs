@@ -62,6 +62,58 @@ pub trait Contract {
         querier: &dyn Querier,
         msg: Json,
     ) -> GenericResult<Json>;
+
+    fn before_tx(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+    ) -> GenericResult<Response>;
+
+    fn after_tx(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+    ) -> GenericResult<Response>;
+
+    fn before_block(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response>;
+
+    fn after_block(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response>;
+
+    fn bank_execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: BankMsg,
+    ) -> GenericResult<Response>;
+
+    fn bank_query(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: BankQuery,
+    ) -> GenericResult<BankQueryResponse>;
 }
 
 // Trait aliases are unstable:
@@ -88,6 +140,6 @@ pub type BeforeBlockFn<E = StdError> = Box<dyn Fn(SudoCtx) -> Result<Response, E
 
 pub type AfterBlockFn<E = StdError> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
 
-pub type BankTransferFn<E = StdError> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
+pub type BankExecuteFn<E = StdError> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 
 pub type BankQueryFn<E = StdError> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
