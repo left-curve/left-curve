@@ -1,8 +1,9 @@
 use {
     ed25519_dalek::Signer,
     grug_crypto::{
-        ed25519_batch_verify, ed25519_verify, secp256k1_pubkey_recover, secp256k1_verify,
-        secp256r1_verify, sha2_256, Identity256,
+        blake2b_512, blake2s_256, blake3, ed25519_batch_verify, ed25519_verify, keccak256,
+        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, sha2_512,
+        sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated, Identity256,
     },
     p256::ecdsa::signature::DigestSigner,
     rand::{rngs::OsRng, RngCore},
@@ -18,8 +19,8 @@ fn gen_msg(i: usize) -> Vec<u8> {
 
 // cargo test --release --package grug-crypto --test benchmark -- benchmark --show-output
 
-#[test_case(|msg: usize| -> Duration {
-    let msg = &gen_msg(msg);
+#[test_case(|i: usize| -> Duration {
+    let msg = &gen_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = k256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -28,8 +29,8 @@ fn gen_msg(i: usize) -> Vec<u8> {
     secp256k1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).unwrap();
     now.elapsed()};
 "benchmark_secp256k1_verify")]
-#[test_case(|msg: usize| -> Duration {
-    let msg = &gen_msg(msg);
+#[test_case(|i: usize| -> Duration {
+    let msg = &gen_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let msg = Identity256::from(sha2_256(msg));
     let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
@@ -43,8 +44,8 @@ fn gen_msg(i: usize) -> Vec<u8> {
     .unwrap();
     now.elapsed()};
 "benchmark_secp256k1_pubkey_recover")]
-#[test_case(|msg: usize| -> Duration {
-    let msg = &gen_msg(msg);
+#[test_case(|i: usize| -> Duration {
+    let msg = &gen_msg(i);
     let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = p256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -53,8 +54,8 @@ fn gen_msg(i: usize) -> Vec<u8> {
     secp256r1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).unwrap();
     now.elapsed()};
 "benchmark_secp256r1_verify")]
-#[test_case(|msg: usize| -> Duration {
-    let msg = &gen_msg(msg);
+#[test_case(|i: usize| -> Duration {
+    let msg = &gen_msg(i);
     let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
     let vk = ed25519_dalek::VerifyingKey::from(&sk);
     let msg = sha2_256(msg);
@@ -85,34 +86,82 @@ fn benchmark<FN: Fn(usize) -> Duration>(clos: FN) {
     );
 }
 
-// cargo test --release --package grug-crypto --test benchmark -- benchmark_ed25519_verify_batch --show-output
+// cargo test --release --package grug-crypto --test benchmark -- linear_benchmark --show-output
 
-#[test]
-fn benchmark_ed25519_verify_batch() {
-    let clos = |i: usize| {
-        let mut msgs: Vec<Vec<u8>> = vec![];
-        let mut sigs: Vec<Vec<u8>> = vec![];
-        let mut vks: Vec<Vec<u8>> = vec![];
+#[test_case(1, |i: usize| {
+    let mut msgs: Vec<Vec<u8>> = vec![];
+    let mut sigs: Vec<Vec<u8>> = vec![];
+    let mut vks: Vec<Vec<u8>> = vec![];
 
-        for _ in 1..i + 1 {
-            let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
-            let vk = ed25519_dalek::VerifyingKey::from(&sk);
-            let msg = sha2_256(&gen_msg(i));
-            let sig = sk.sign(&msg);
-            msgs.push(msg.to_vec());
-            sigs.push(sig.to_bytes().to_vec());
-            vks.push(vk.to_bytes().to_vec());
-        }
+    for _ in 1..i + 1 {
+        let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
+        let vk = ed25519_dalek::VerifyingKey::from(&sk);
+        let msg = sha2_256(&gen_msg(i));
+        let sig = sk.sign(&msg);
+        msgs.push(msg.to_vec());
+        sigs.push(sig.to_bytes().to_vec());
+        vks.push(vk.to_bytes().to_vec());
+    }
 
-        let msgs = msgs.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
-        let sigs = sigs.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
-        let vks = vks.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+    let msgs = msgs.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+    let sigs = sigs.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+    let vks = vks.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
 
-        let now = std::time::Instant::now();
-        ed25519_batch_verify(&msgs, &sigs, &vks).unwrap();
-        now.elapsed()
-    };
-
+    let now = std::time::Instant::now();
+    ed25519_batch_verify(&msgs, &sigs, &vks).unwrap();
+    now.elapsed()};
+"benchmark_ed25519_verify_batch")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha2_256(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha_256")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha2_512(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha_512")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha2_512_truncated(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha_512_truncated")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha3_256(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha3_256")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha3_512(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha3_512")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    sha3_512_truncated(&gen_msg(i));
+    now.elapsed()};
+"benchmark_sha3_512_truncated")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    keccak256(&gen_msg(i));
+    now.elapsed()};
+"benchmark_keccak256")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    blake2s_256(&gen_msg(i));
+    now.elapsed()};
+"benchmark_blake2s_256")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    blake2b_512(&gen_msg(i));
+    now.elapsed()};
+"benchmark_blake2b_512")]
+#[test_case(100, |i: usize| {
+    let now = std::time::Instant::now();
+    blake3(&gen_msg(i));
+    now.elapsed()};
+"benchmark_blake3")]
+fn linear_benchmark<FN: Fn(usize) -> Duration>(mul: u32, clos: FN) {
     let mut tot_time = Duration::new(0, 0);
     let mut sum_log_time = 0.0;
     let iter = 100u32;
@@ -121,7 +170,6 @@ fn benchmark_ed25519_verify_batch() {
     let mut tot_base = Duration::new(0, 0);
     let mut tot_per_item = Duration::new(0, 0);
     let mut linear_counter = 0;
-    let mul = 1;
     for i in 1..iter + 1 {
         // Why not
         let i = i * mul;
