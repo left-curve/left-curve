@@ -20,6 +20,8 @@ impl TestVm for RustVm {
             .with_execute(Box::new(grug_account::execute))
             .with_receive(Box::new(grug_account::receive))
             .with_query(Box::new(grug_account::query))
+            .with_before_tx(Box::new(grug_account::before_tx))
+            .with_after_tx(Box::new(grug_account::after_tx))
             .build()
             .into_bytes()
             .into()
