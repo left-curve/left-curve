@@ -1,7 +1,9 @@
 use {
     crate::{PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
-    grug::{to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx},
+    grug_types::{
+        to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx,
+    },
 };
 
 /// Generate the bytes that the sender of a transaction needs to sign.

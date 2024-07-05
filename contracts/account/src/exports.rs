@@ -2,10 +2,8 @@ use {
     crate::{
         authenticate_tx, initialize, query_state, update_key, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
-    grug::{
-        grug_export, to_json_value, AuthCtx, ImmutableCtx, Json, MutableCtx, Response, StdResult,
-        Tx,
-    },
+    grug_macros::grug_export,
+    grug_types::{to_json_value, AuthCtx, ImmutableCtx, Json, MutableCtx, Response, StdResult, Tx},
 };
 
 #[grug_export]

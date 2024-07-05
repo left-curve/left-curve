@@ -1475,7 +1475,11 @@ name = "grug-account"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "borsh",
+ "grug-macros",
+ "grug-storage",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]
@@ -1499,7 +1503,10 @@ name = "grug-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "grug-macros",
+ "grug-storage",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]

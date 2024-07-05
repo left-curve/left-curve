@@ -4,9 +4,10 @@ use {
         query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     anyhow::bail,
-    grug::{
-        grug_export, to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json,
-        MutableCtx, Response, StdResult, SudoCtx,
+    grug_macros::grug_export,
+    grug_types::{
+        to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, MutableCtx,
+        Response, StdResult, SudoCtx,
     },
 };
 
