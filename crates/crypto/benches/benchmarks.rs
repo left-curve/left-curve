@@ -236,8 +236,7 @@ criterion_group!(
     name = benches;
     config = Criterion::default();
     targets =
-              bench_sha2_256,
-              bench_sha2_512, bench_sha2_512_truncated,
+              bench_sha2_256, bench_sha2_512, bench_sha2_512_truncated,
               bench_sha3_256, bench_sha3_512, bench_sha3_512_truncated,
               bench_keccak256,
               bench_blake2s_256, bench_blake2b_512, bench_blake3,

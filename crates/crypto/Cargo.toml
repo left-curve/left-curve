@@ -23,14 +23,13 @@ thiserror     = { workspace = true }
 
 [dev-dependencies]
 criterion   = { workspace = true }
-paste       = { workspace = true }
 hex         = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
+paste       = { workspace = true }
 rand        = { workspace = true }
 serde       = { workspace = true, features = ["derive", "alloc"] }
 serde_json  = { workspace = true }
 sha2        = { workspace = true }
-test-case   = { workspace = true }
 
 [[bench]]
 name = "benchmarks"
