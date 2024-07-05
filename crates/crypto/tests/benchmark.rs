@@ -173,8 +173,6 @@ fn linear_benchmark<FN: Fn(usize) -> Duration>(mul: u32, clos: FN) {
     for i in 1..iter + 1 {
         // Why not
         let i = i * mul;
-        let mut vec = vec![0; i as usize];
-        OsRng.fill_bytes(&mut vec);
         let time = clos(i as usize);
         tot_time += time;
         sum_log_time += (time.as_nanos() as f64).ln();
