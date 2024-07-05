@@ -11,7 +11,7 @@ use {
     test_case::test_case,
 };
 
-fn gen_msg(i: usize) -> Vec<u8> {
+fn gen_random_msg(i: usize) -> Vec<u8> {
     let mut vec = vec![0; i];
     OsRng.fill_bytes(&mut vec);
     vec
@@ -20,7 +20,7 @@ fn gen_msg(i: usize) -> Vec<u8> {
 // cargo test --release --package grug-crypto --test benchmark -- mono --show-output
 
 #[test_case(100, 100, |i: usize| -> Duration {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = k256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -30,7 +30,7 @@ fn gen_msg(i: usize) -> Vec<u8> {
     now.elapsed()};
 "benchmark_secp256k1_verify")]
 #[test_case(100, 100, |i: usize| -> Duration {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let msg = Identity256::from(sha2_256(msg));
     let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
@@ -45,7 +45,7 @@ fn gen_msg(i: usize) -> Vec<u8> {
     now.elapsed()};
 "benchmark_secp256k1_pubkey_recover")]
 #[test_case(100, 100, |i: usize| -> Duration {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = p256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -55,7 +55,7 @@ fn gen_msg(i: usize) -> Vec<u8> {
     now.elapsed()};
 "benchmark_secp256r1_verify")]
 #[test_case(100, 100, |i: usize| -> Duration {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
     let vk = ed25519_dalek::VerifyingKey::from(&sk);
     let msg = sha2_256(msg);
@@ -94,7 +94,7 @@ fn mono<FN: Fn(usize) -> Duration>(mul: u32, iter: u32, clos: FN) {
     for _ in 1..i + 1 {
         let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
         let vk = ed25519_dalek::VerifyingKey::from(&sk);
-        let msg = sha2_256(&gen_msg(i));
+        let msg = sha2_256(&gen_random_msg(i));
         let sig = sk.sign(&msg);
         msgs.push(msg.to_vec());
         sigs.push(sig.to_bytes().to_vec());
@@ -111,52 +111,52 @@ fn mono<FN: Fn(usize) -> Duration>(mul: u32, iter: u32, clos: FN) {
 "benchmark_ed25519_verify_batch")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha2_256(&gen_msg(i));
+    sha2_256(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha_256")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha2_512(&gen_msg(i));
+    sha2_512(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha_512")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha2_512_truncated(&gen_msg(i));
+    sha2_512_truncated(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha_512_truncated")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha3_256(&gen_msg(i));
+    sha3_256(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha3_256")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha3_512(&gen_msg(i));
+    sha3_512(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha3_512")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    sha3_512_truncated(&gen_msg(i));
+    sha3_512_truncated(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_sha3_512_truncated")]
 #[test_case(100, 100, |i: usize| {
     let now = std::time::Instant::now();
-    keccak256(&gen_msg(i));
+    keccak256(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_keccak256")]
 #[test_case(100, 100,  |i: usize| {
     let now = std::time::Instant::now();
-    blake2s_256(&gen_msg(i));
+    blake2s_256(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_blake2s_256")]
 #[test_case(100, 100,  |i: usize| {
     let now = std::time::Instant::now();
-    blake2b_512(&gen_msg(i));
+    blake2b_512(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_blake2b_512")]
 #[test_case(100, 100,  |i: usize| {
     let now = std::time::Instant::now();
-    blake3(&gen_msg(i));
+    blake3(&gen_random_msg(i));
     now.elapsed()};
 "benchmark_blake3")]
 fn linear<FN: Fn(usize) -> Duration>(mul: u32, iter: u32, clos: FN) {

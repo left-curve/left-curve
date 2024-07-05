@@ -1,5 +1,8 @@
 use {
-    criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion},
+    criterion::{
+        black_box, criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion,
+        PlotConfiguration,
+    },
     ed25519_dalek::Signer,
     grug_crypto::{
         blake2b_512, blake2s_256, blake3, ed25519_batch_verify, ed25519_verify, keccak256,
@@ -9,25 +12,67 @@ use {
     p256::ecdsa::signature::DigestSigner,
     paste::paste,
     rand::{rngs::OsRng, RngCore},
+    std::time::Duration,
 };
 
-fn gen_msg(i: usize) -> Vec<u8> {
+struct Setting {
+    pub iter: usize,
+    pub mul_iter: usize,
+    pub warmup_time: Duration,
+    pub measurement_time: Duration,
+}
+
+impl Setting {
+    pub const fn new(
+        iter: usize,
+        mul_iter: usize,
+        warmup_time: Duration,
+        measurement_time: Duration,
+    ) -> Self {
+        Self {
+            iter,
+            mul_iter,
+            warmup_time,
+            measurement_time,
+        }
+    }
+}
+
+const HASH_SETTINGS: Setting = Setting::new(
+    30,
+    10_000,
+    Duration::from_millis(100),
+    Duration::from_millis(100),
+);
+
+const CRYPTO_SETTINGS: Setting = Setting::new(
+    10,
+    20,
+    Duration::from_millis(2_000),
+    Duration::from_millis(2_000),
+);
+
+fn gen_random_msg(i: usize) -> Vec<u8> {
     let mut vec = vec![0; i];
     OsRng.fill_bytes(&mut vec);
     vec
 }
 
 macro_rules! bench {
-    ($fn_name:ident, $i:expr, $mul:expr, $build_data:expr, $bench_data:expr) => {
+    ($fn_name:ident, $settings:expr, $build_data:expr, $execute_data:expr) => {
         paste! {
             fn [<bench_$fn_name>](c: &mut Criterion) {
+                let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Linear);
                 let mut group = c.benchmark_group(stringify!{$fn_name});
-                for size in 1..$i + 1 {
-                    let size = size * $mul;
+                group.plot_config(plot_config);
+                group.warm_up_time($settings.warmup_time);
+                group.measurement_time($settings.measurement_time);
+                for size in 1..$settings.iter + 1 {
+                    let size = size * $settings.mul_iter;
                     let data = $build_data(size);
                     group.throughput(criterion::Throughput::Elements(size as u64));
                     group.bench_with_input(BenchmarkId::from_parameter(size), &data, |b, data| {
-                        b.iter(|| $bench_data(black_box(&data)));
+                        b.iter(|| $execute_data(black_box(&data)));
                     });
                 }
                 group.finish();
@@ -36,19 +81,29 @@ macro_rules! bench {
     };
 }
 
-bench!(sha2_256, 5, 100, gen_msg, sha2_256);
-bench!(sha2_512, 5, 100, gen_msg, sha2_512);
-bench!(sha2_512_truncated, 5, 100, gen_msg, sha2_512_truncated);
-bench!(sha3_256, 5, 100, gen_msg, sha3_256);
-bench!(sha3_512, 5, 100, gen_msg, sha3_512);
-bench!(sha3_512_truncated, 5, 100, gen_msg, sha3_512_truncated);
-bench!(keccak256, 5, 100, gen_msg, keccak256);
-bench!(blake2s_256, 5, 100, gen_msg, blake2s_256);
-bench!(blake2b_512, 5, 100, gen_msg, blake2b_512);
-bench!(blake3, 5, 100, gen_msg, blake3);
+bench!(sha2_256, HASH_SETTINGS, gen_random_msg, sha2_256);
+bench!(sha2_512, HASH_SETTINGS, gen_random_msg, sha2_512);
+bench!(
+    sha2_512_truncated,
+    HASH_SETTINGS,
+    gen_random_msg,
+    sha2_512_truncated
+);
+bench!(sha3_256, HASH_SETTINGS, gen_random_msg, sha3_256);
+bench!(sha3_512, HASH_SETTINGS, gen_random_msg, sha3_512);
+bench!(
+    sha3_512_truncated,
+    HASH_SETTINGS,
+    gen_random_msg,
+    sha3_512_truncated
+);
+bench!(keccak256, HASH_SETTINGS, gen_random_msg, keccak256);
+bench!(blake2s_256, HASH_SETTINGS, gen_random_msg, blake2s_256);
+bench!(blake2b_512, HASH_SETTINGS, gen_random_msg, blake2b_512);
+bench!(blake3, HASH_SETTINGS, gen_random_msg, blake3);
 
 fn secp256k1_verify_build(i: usize) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = k256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -64,16 +119,8 @@ fn secp256k1_verify_execute((msg, sig, vk): &(Vec<u8>, Vec<u8>, Vec<u8>)) {
     secp256k1_verify(msg, sig, vk).unwrap();
 }
 
-bench!(
-    secp256k1_verify,
-    5,
-    100,
-    secp256k1_verify_build,
-    secp256k1_verify_execute
-);
-
 fn secp256k1_pubkey_recover_build(i: usize) -> (Vec<u8>, Vec<u8>, u8, bool) {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
     let msg = Identity256::from(sha2_256(msg));
     let (sig, recovery_id) = sk.sign_digest_recoverable(msg.clone()).unwrap();
@@ -92,16 +139,8 @@ fn secp256k1_pubkey_recover_execute(
     secp256k1_pubkey_recover(msg, sig, *recover_id, *compressed).unwrap();
 }
 
-bench!(
-    secp256k1_pubkey_recover,
-    5,
-    100,
-    secp256k1_pubkey_recover_build,
-    secp256k1_pubkey_recover_execute
-);
-
 fn secp256r1_verify_build(i: usize) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
     let vk = p256::ecdsa::VerifyingKey::from(&sk);
     let msg = Identity256::from(sha2_256(msg));
@@ -117,16 +156,8 @@ fn secp256r1_verify_execute((msg, sig, vk): &(Vec<u8>, Vec<u8>, Vec<u8>)) {
     secp256r1_verify(msg, sig, vk).unwrap();
 }
 
-bench!(
-    secp256r1_verify,
-    5,
-    100,
-    secp256r1_verify_build,
-    secp256r1_verify_execute
-);
-
 fn ed25519_verify_build(i: usize) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
-    let msg = &gen_msg(i);
+    let msg = &gen_random_msg(i);
     let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
     let vk = ed25519_dalek::VerifyingKey::from(&sk);
     let msg = sha2_256(msg);
@@ -142,14 +173,6 @@ fn ed25519_verify_execute((msg, sig, vk): &(Vec<u8>, Vec<u8>, Vec<u8>)) {
     ed25519_verify(msg, sig, vk).unwrap()
 }
 
-bench!(
-    ed25519_verify,
-    5,
-    100,
-    ed25519_verify_build,
-    ed25519_verify_execute
-);
-
 fn ed25519_verify_batch_build(i: usize) -> (Vec<Vec<u8>>, Vec<Vec<u8>>, Vec<Vec<u8>>) {
     let mut msgs: Vec<Vec<u8>> = vec![];
     let mut sigs: Vec<Vec<u8>> = vec![];
@@ -158,7 +181,7 @@ fn ed25519_verify_batch_build(i: usize) -> (Vec<Vec<u8>>, Vec<Vec<u8>>, Vec<Vec<
     for _ in 1..i + 1 {
         let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
         let vk = ed25519_dalek::VerifyingKey::from(&sk);
-        let msg = sha2_256(&gen_msg(i));
+        let msg = sha2_256(&gen_random_msg(i));
         let sig = sk.sign(&msg);
         msgs.push(msg.to_vec());
         sigs.push(sig.to_bytes().to_vec());
@@ -175,9 +198,36 @@ fn ed25519_verify_batch_execute((msgs, sigs, vks): &(Vec<Vec<u8>>, Vec<Vec<u8>>,
 }
 
 bench!(
+    secp256k1_verify,
+    CRYPTO_SETTINGS,
+    secp256k1_verify_build,
+    secp256k1_verify_execute
+);
+
+bench!(
+    secp256k1_pubkey_recover,
+    CRYPTO_SETTINGS,
+    secp256k1_pubkey_recover_build,
+    secp256k1_pubkey_recover_execute
+);
+
+bench!(
+    secp256r1_verify,
+    CRYPTO_SETTINGS,
+    secp256r1_verify_build,
+    secp256r1_verify_execute
+);
+
+bench!(
+    ed25519_verify,
+    CRYPTO_SETTINGS,
+    ed25519_verify_build,
+    ed25519_verify_execute
+);
+
+bench!(
     ed25519_verify_batch,
-    5,
-    100,
+    CRYPTO_SETTINGS,
     ed25519_verify_batch_build,
     ed25519_verify_batch_execute
 );
@@ -186,7 +236,8 @@ criterion_group!(
     name = benches;
     config = Criterion::default();
     targets =
-              bench_sha2_256, bench_sha2_512, bench_sha2_512_truncated,
+              bench_sha2_256,
+              bench_sha2_512, bench_sha2_512_truncated,
               bench_sha3_256, bench_sha3_512, bench_sha3_512_truncated,
               bench_keccak256,
               bench_blake2s_256, bench_blake2b_512, bench_blake3,
