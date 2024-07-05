@@ -1,5 +1,5 @@
 use {
-    crate::{Number, NumberConst, StdError, StdResult, Uint128},
+    crate::{NonZero, Number, NumberConst, StdError, StdResult, Uint128},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::{
@@ -20,21 +20,13 @@ pub struct Coin {
 }
 
 impl Coin {
-    /// Create a new `Coin` from the given denom and amount. The amount must be
+    /// Create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    ///
-    /// Error if the amount is zero.
-    pub fn new(denom: impl ToString, amount: impl Into<Uint128>) -> StdResult<Self> {
+    pub fn new(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
         let denom = denom.to_string();
-        let amount = amount.into();
+        let amount = amount.into_inner().into();
 
-        if amount.is_zero() {
-            return Err(StdError::invalid_coins(format!(
-                "creating coin of zero amount (denom: `{denom}`)"
-            )));
-        }
-
-        Ok(Self { denom, amount })
+        Self { denom, amount }
     }
 }
 
@@ -101,17 +93,11 @@ impl Coins {
     }
 
     /// Create a new `Coins` with exactly one coin.
-    pub fn new_one(denom: impl ToString, amount: impl Into<Uint128>) -> StdResult<Self> {
+    pub fn new_one(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
         let denom = denom.to_string();
-        let amount = amount.into();
+        let amount = amount.into_inner().into();
 
-        if amount.is_zero() {
-            return Err(StdError::invalid_coins(format!(
-                "creating coins with a single coin of zero amount (denom: `{denom}`)"
-            )));
-        }
-
-        Ok(Self([(denom, amount)].into()))
+        Self([(denom, amount)].into())
     }
 
     /// Return whether the `Coins` contains any coin at all.
