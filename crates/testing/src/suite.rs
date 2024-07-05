@@ -5,19 +5,26 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Event, Hash, Message,
-        NumberConst, QueryRequest, Uint128, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Event, GenesisState, Hash,
+        Message, NumberConst, QueryRequest, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::time::Duration,
+    std::{collections::HashMap, time::Duration},
 };
 
 pub struct TestSuite<VM: Vm = RustVm> {
-    pub(crate) app: App<MemDb, VM>,
-    pub(crate) chain_id: String,
-    pub(crate) block: BlockInfo,
-    pub(crate) block_time: Duration,
+    app: App<MemDb, VM>,
+    /// The chain ID can be queries from the `app`, but we internally track it in
+    /// the test suite, so we don't need to query it every time we need it.
+    chain_id: String,
+    /// Interally track the last finalized block.
+    block: BlockInfo,
+    /// Each time we make a new block, we set the new block's time as the
+    /// previous block's time plus this value.
+    block_time: Duration,
+    /// Internally track each account's sequence number.
+    sequences: HashMap<Addr, u32>,
 }
 
 impl<VM> TestSuite<VM>
@@ -25,9 +32,30 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    /// Only exposed to the crate. Use `TestBuilder` instead.
+    pub(crate) fn create(
+        vm: VM,
+        chain_id: String,
+        block_time: Duration,
+        genesis_block: BlockInfo,
+        genesis_state: GenesisState,
+    ) -> anyhow::Result<Self> {
+        let app = App::new(MemDb::new(), vm, None);
+
+        app.do_init_chain(chain_id.clone(), genesis_block.clone(), genesis_state)?;
+
+        Ok(Self {
+            app,
+            chain_id,
+            block: genesis_block,
+            block_time,
+            sequences: HashMap::new(),
+        })
+    }
+
     pub fn execute_message(
         &mut self,
-        signer: &mut TestAccount,
+        signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
@@ -36,12 +64,16 @@ where
 
     pub fn execute_messages(
         &mut self,
-        signer: &mut TestAccount,
+        signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
+        // Get the account's sequence
+        let sequence = self.sequences.entry(signer.address.clone()).or_insert(0);
         // Sign the transaction
-        let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id)?;
+        let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
+        // Increment the sequence
+        *sequence += 1;
 
         // Make a new block
         self.block.height += Uint64::ONE;
@@ -70,7 +102,7 @@ where
 
     pub fn deploy_contract<M>(
         &mut self,
-        signer: &mut TestAccount,
+        signer: &TestAccount,
         gas_limit: u64,
         code: Binary,
         salt: Binary,

@@ -2,8 +2,7 @@ use {
     crate::{setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::ensure,
     grug_account::PublicKey,
-    grug_app::{App, AppError},
-    grug_db_memory::MemDb,
+    grug_app::AppError,
     grug_types::{
         hash, to_json_value, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message,
         NumberConst, Permission, Permissions, Timestamp, Uint64, GENESIS_BLOCK_HASH,
@@ -113,7 +112,7 @@ where
             .duration_since(UNIX_EPOCH)?
             .as_nanos();
 
-        let block = BlockInfo {
+        let genesis_block = BlockInfo {
             height: Uint64::ZERO,
             // TODO: `Timestamp` should wrap a `Uint128` instead so we don't need to cast here
             timestamp: Timestamp::from_nanos(genesis_time as u64),
@@ -170,19 +169,8 @@ where
             allowed_clients: BTreeSet::new(),
         };
 
-        // Create the app, and perform genesis
-        let app = App::new(MemDb::new(), self.vm, None);
-        app.do_init_chain(chain_id.clone(), block.clone(), GenesisState {
-            config,
-            msgs,
-        })?;
-
-        let suite = TestSuite {
-            app,
-            chain_id,
-            block,
-            block_time,
-        };
+        let genesis_state = GenesisState { config, msgs };
+        let suite = TestSuite::create(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
         Ok((suite, self.accounts))
     }

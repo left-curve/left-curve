@@ -12,7 +12,6 @@ pub struct TestAccount {
     pub address: Addr,
     pub sk: SigningKey,
     pub pk: Binary,
-    pub sequence: u32,
 }
 
 impl TestAccount {
@@ -26,33 +25,25 @@ impl TestAccount {
             .to_vec()
             .into();
 
-        Self {
-            address,
-            sk,
-            pk,
-            sequence: 0,
-        }
+        Self { address, sk, pk }
     }
 
     pub fn sign_transaction(
-        &mut self,
+        &self,
         msgs: Vec<Message>,
         gas_limit: u64,
         chain_id: &str,
+        sequence: u32,
     ) -> anyhow::Result<Tx> {
-        // Sign the transaction
         let sign_bytes = Identity256::from(grug_account::make_sign_bytes(
             sha2_256,
             &msgs,
             &self.address,
             chain_id,
-            self.sequence,
+            sequence,
         )?);
-        let signature: Signature = self.sk.sign_digest(sign_bytes);
 
-        // Increment the internally-tracked sequence, for use when signing the
-        // next transaction.
-        self.sequence += 1;
+        let signature: Signature = self.sk.sign_digest(sign_bytes);
 
         Ok(Tx {
             sender: self.address.clone(),
