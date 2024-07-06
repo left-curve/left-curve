@@ -2,12 +2,27 @@
 
 Guidelines for contributing code to this repository.
 
-## Formatting
+## Formatter
 
-Please use _nightly_ toolchain to format your code before pushing. The easiest way to do this is using the following [just](https://github.com/casey/just) command:
+Use _nightly_ toolchain to format your code before pushing:
+
+```bash
+cargo +nightly fmt --all
+```
+
+An easier way to do this is using the following [just](https://github.com/casey/just) command:
 
 ```bash
 just fmt
+```
+
+Also, add the following config to your VS Code settings, and enable format:
+
+```json
+{
+  "editor.formatOnSave": true,
+  "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
+}
 ```
 
 We use [several rustfmt configurations](./rustfmt.toml) that are not yet available in the stable channel.
@@ -89,6 +104,8 @@ mod tests {
 
 ## Trait bounds
 
+### Tightness
+
 When implementing methods that involve generic types, the relevant trait bounds must be as tight as possible. This means if a trait is not required for this implementation, it must not be included in the bound.
 
 Trait bound should be _direct_. See the following example on what this means:
@@ -118,29 +135,51 @@ where
 
 Here the two ways of writing the trait bound (in red and green) for `DecimalVisitor` are completely equivalent, because
 
-```
-Uint<U>: NumberConst + Number + Display + FromStr + From<u128>
+```rust
+Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 ```
 
 implies
 
-```
-Decimal<U, S>: FromStr
+```rust
+Decimal<U, S>: FromStr,
 ```
 
 However, the visitor utilizes `Decimal`'s `from_str` method; it doesn't `Uint`'s number or display properties. Therefore, and green trait bound on `Decimal` is _direct_ and preferred, while the red one on `Uint` is _indirect_.
+
+### Formatting
+
+_Always_ use the `where` syntax:
+
+```rust
+// ❌ Not this:
+fn new_error(msg: impl ToString) -> Error { /* ... */ }
+
+// ❌ Not this:
+fn new_error<M: ToString>(msg: M) -> Error { /* ... */ }
+
+// ✅ This:
+fn new_error<M>(msg: M) -> Error
+where
+    M: ToString,
+{
+    // ...
+}
+```
+
+This is more verbose, but also more readable (in my opinion).
 
 ## Grouping imports
 
 Use a single `use` statement at the beginning of the file to import all necessary dependencies:
 
 ```rust
-// ❌ not this:
+// ❌ Not this:
 use crate::{Uint128, Uint256};
 use serde::{de, ser};
 use std::str::FromStr;
 
-// ✅ this:
+// ✅ This:
 use {
   crate::{Uint128, Uint256},
   serde::{de, ser},
@@ -178,10 +217,10 @@ It's helpful to add the following to VS Code config, so that it shows two rulers
 Prefer comments to be above a line, instead of trailing a line:
 
 ```rust
-// ❌ not this:
+// ❌ Not this:
 let digits = S as u32 - decimal_places; // No overflow because decimal_places < S
 
-// ✅ this:
+// ✅ This:
 // No overflow because decimal_places < S
 let digits = S as u32 - decimal_places;
 ```
