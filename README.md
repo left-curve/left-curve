@@ -52,7 +52,7 @@ We will ship two `Db` and two `Vm` implementations, for different use cases:
 
 The below diagram shows the dependency relations between the crates:
 
-![dependency-graph](./docs/dependency-graph.svg)
+![dependency-graph](./docs/images/dependency-graph.svg)
 
 ## How to use
 
