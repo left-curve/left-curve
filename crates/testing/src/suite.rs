@@ -108,7 +108,7 @@ where
     ) -> anyhow::Result<Hash> {
         let code_hash = Hash::from_slice(sha2_256(&code));
 
-        self.execute_message_with_gas(signer, gas_limit, Message::Upload { code })?
+        self.execute_message_with_gas(signer, gas_limit, Message::upload(code))?
             .should_succeed()?;
 
         Ok(code_hash)
@@ -131,13 +131,11 @@ where
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.execute_message_with_gas(signer, gas_limit, Message::Instantiate {
-            code_hash,
-            msg: to_json_value(&msg)?,
-            salt,
-            funds: Coins::new_empty(),
-            admin: None,
-        })?
+        self.execute_message_with_gas(
+            signer,
+            gas_limit,
+            Message::instantiate(code_hash, msg, salt, Coins::new_empty(), None)?,
+        )?
         .should_succeed()?;
 
         Ok(address)
@@ -162,14 +160,8 @@ where
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
         self.execute_messages_with_gas(signer, gas_limit, vec![
-            Message::Upload { code },
-            Message::Instantiate {
-                code_hash: code_hash.clone(),
-                msg: to_json_value(&msg)?,
-                salt,
-                funds: Coins::new_empty(),
-                admin: None,
-            },
+            Message::upload(code),
+            Message::instantiate(code_hash.clone(), msg, salt, Coins::new_empty(), None)?,
         ])?
         .should_succeed()?;
 

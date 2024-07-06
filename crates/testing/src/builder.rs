@@ -4,9 +4,8 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, to_json_value, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message,
-        NumberConst, Permission, Permissions, Timestamp, Uint64, GENESIS_BLOCK_HASH,
-        GENESIS_SENDER,
+        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, NumberConst,
+        Permission, Permissions, Timestamp, Uint64, GENESIS_BLOCK_HASH, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     std::{
@@ -130,34 +129,30 @@ where
 
         // Upload account and bank codes, instantiate bank contract.
         let mut msgs = vec![
-            Message::Upload {
-                code: self.account_code,
-            },
-            Message::Upload {
-                code: self.bank_code,
-            },
-            Message::Instantiate {
-                code_hash: self.bank_code_hash.clone(),
-                msg: to_json_value(&grug_bank::InstantiateMsg {
+            Message::upload(self.account_code),
+            Message::upload(self.bank_code),
+            Message::instantiate(
+                self.bank_code_hash.clone(),
+                &grug_bank::InstantiateMsg {
                     initial_balances: self.balances,
-                })?,
-                salt: DEFAULT_BANK_SALT.to_vec().into(),
-                funds: Coins::new_empty(),
-                admin: None,
-            },
+                },
+                DEFAULT_BANK_SALT,
+                Coins::new_empty(),
+                None,
+            )?,
         ];
 
         // Instantiate accounts
         for (name, account) in &self.accounts {
-            msgs.push(Message::Instantiate {
-                code_hash: self.account_code_hash.clone(),
-                msg: to_json_value(&grug_account::InstantiateMsg {
+            msgs.push(Message::instantiate(
+                self.account_code_hash.clone(),
+                &grug_account::InstantiateMsg {
                     public_key: PublicKey::Secp256k1(account.pk.clone()),
-                })?,
-                salt: name.as_bytes().to_vec().into(),
-                funds: Coins::new_empty(),
-                admin: Some(account.address.clone()),
-            })
+                },
+                name.to_string(),
+                Coins::new_empty(),
+                Some(account.address.clone()),
+            )?);
         }
 
         // Create the app config
