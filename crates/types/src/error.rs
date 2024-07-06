@@ -1,12 +1,18 @@
 use {
     data_encoding::BASE64,
     hex::FromHexError,
-    std::{any::type_name, array::TryFromSliceError},
+    std::{any::type_name, array::TryFromSliceError, convert::Infallible},
     thiserror::Error,
 };
 
 #[derive(Debug, Error)]
 pub enum StdError {
+    /// This variant exists such that we can use `Coins` as the generic `C` in
+    /// contructor methods `Message::{instantiate,execute}`, which has the trait
+    /// bound: `StdError: From<<C as TryInto<Coins>>::Error>`.
+    #[error(transparent)]
+    Infallible(#[from] Infallible),
+
     #[error(transparent)]
     FromHex(#[from] FromHexError),
 
