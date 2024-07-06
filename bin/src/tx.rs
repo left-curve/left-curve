@@ -159,7 +159,7 @@ impl TxCmd {
         // broadcast transaction
         let client = Client::connect(&self.node)?;
         let maybe_res = client
-            .send_tx_with_confirmation(vec![msg], &sign_opts, |tx| {
+            .send_message_with_confirmation(msg, &sign_opts, |tx| {
                 print_json_pretty(tx)?;
                 Ok(confirm("🤔 Broadcast transaction?".bold())?)
             })

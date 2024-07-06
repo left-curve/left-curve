@@ -3,8 +3,8 @@ use {
     anyhow::{bail, ensure},
     grug::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
-        Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse, Tx,
-        WasmRawResponse,
+        Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse,
+        StdError, Tx, WasmRawResponse,
     },
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
@@ -246,22 +246,51 @@ impl Client {
 
     // ------------------------------ tx methods -------------------------------
 
-    /// Create, sign, and broadcast a transaction without confirmation.
+    /// Create, sign, and broadcast a transaction with a single message, without
+    /// terminal prompt for confirmation.
     ///
-    /// If you need the user to provide a confirmation (e.g. via CLI) before
-    /// broadcasting, use `send_tx_with_confirmation`.
-    pub async fn send_tx(
+    /// If you need the prompt confirmation, use `send_message_with_confirmation`.
+    pub async fn send_message(
+        &self,
+        msg: Message,
+        sign_opts: &SigningOptions,
+    ) -> anyhow::Result<tx_sync::Response> {
+        self.send_messages(vec![msg], sign_opts).await
+    }
+
+    /// Create, sign, and broadcast a transaction with a single message, with
+    /// terminal prompt for confirmation.
+    ///
+    /// Returns `None` if the prompt is denied.
+    pub async fn send_message_with_confirmation(
+        &self,
+        msg: Message,
+        sign_opts: &SigningOptions,
+        confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
+    ) -> anyhow::Result<Option<tx_sync::Response>> {
+        self.send_messages_with_confirmation(vec![msg], sign_opts, confirm_fn)
+            .await
+    }
+
+    /// Create, sign, and broadcast a transaction with the given messages,
+    /// without terminal prompt for confirmation.
+    ///
+    /// If you need the prompt confirmation, use `send_messages_with_confirmation`.
+    pub async fn send_messages(
         &self,
         msgs: Vec<Message>,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        let maybe_res = self
-            .send_tx_with_confirmation(msgs, sign_opts, |_| Ok(true))
-            .await?;
-        Ok(maybe_res.unwrap())
+        self.send_messages_with_confirmation(msgs, sign_opts, |_| Ok(true))
+            .await
+            .map(Option::unwrap)
     }
 
-    pub async fn send_tx_with_confirmation(
+    /// Create, sign, and broadcast a transaction with the given messages, with
+    /// terminal prompt for confirmation.
+    ///
+    /// Returns `None` if the prompt is denied.
+    pub async fn send_messages_with_confirmation(
         &self,
         msgs: Vec<Message>,
         sign_opts: &SigningOptions,
@@ -305,118 +334,119 @@ impl Client {
         new_cfg: Config,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Configure { new_cfg }], sign_opts)
-            .await
+        let msg = Message::configure(new_cfg);
+        self.send_message(msg, sign_opts).await
     }
 
-    pub async fn transfer(
+    pub async fn transfer<C>(
         &self,
         to: Addr,
-        coins: Coins,
+        coins: C,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Transfer { to, coins }], sign_opts)
-            .await
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        let msg = Message::transfer(to, coins)?;
+        self.send_message(msg, sign_opts).await
     }
 
-    pub async fn upload(
+    pub async fn upload<B>(
         &self,
-        code: Binary,
+        code: B,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::Upload { code }], sign_opts)
-            .await
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        B: Into<Binary>,
+    {
+        let msg = Message::upload(code);
+        self.send_message(msg, sign_opts).await
     }
 
-    pub async fn instantiate<M: Serialize>(
+    pub async fn instantiate<M, S, C>(
         &self,
         code_hash: Hash,
         msg: &M,
-        salt: Binary,
-        funds: Coins,
+        salt: S,
+        funds: C,
         admin: AdminOption,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<(Addr, tx_sync::Response)> {
+    ) -> anyhow::Result<(Addr, tx_sync::Response)>
+    where
+        M: Serialize,
+        S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        let salt = salt.into();
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let msg = to_json_value(msg)?;
         let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
-        let res = self
-            .send_tx(
-                vec![Message::Instantiate {
-                    code_hash,
-                    msg,
-                    salt,
-                    funds,
-                    admin,
-                }],
-                sign_opts,
-            )
-            .await?;
+
+        let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
+        let res = self.send_message(msg, sign_opts).await?;
+
         Ok((address, res))
     }
 
-    pub async fn upload_and_instantiate<M: Serialize>(
+    pub async fn upload_and_instantiate<M, B, S, C>(
         &self,
-        code: Binary,
+        code: B,
         msg: &M,
-        salt: Binary,
-        funds: Coins,
+        salt: S,
+        funds: C,
         admin: AdminOption,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<(Addr, tx_sync::Response)> {
+    ) -> anyhow::Result<(Hash, Addr, tx_sync::Response)>
+    where
+        M: Serialize,
+        B: Into<Binary>,
+        S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        let code = code.into();
         let code_hash = hash(&code);
+        let salt = salt.into();
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let msg = to_json_value(msg)?;
         let admin = admin.decide(&address);
-        let upload_msg = Message::Upload { code };
-        let instantiate_msg = Message::Instantiate {
-            code_hash,
-            msg,
-            salt,
-            funds,
-            admin,
-        };
-        let res = self
-            .send_tx(vec![upload_msg, instantiate_msg], sign_opts)
-            .await?;
-        Ok((address, res))
+
+        let msgs = vec![
+            Message::upload(code),
+            Message::instantiate(code_hash.clone(), msg, salt, funds, admin)?,
+        ];
+        let res = self.send_messages(msgs, sign_opts).await?;
+
+        Ok((code_hash, address, res))
     }
 
-    pub async fn execute<M: Serialize>(
+    pub async fn execute<M, C>(
         &self,
         contract: Addr,
         msg: &M,
-        funds: Coins,
+        funds: C,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<tx_sync::Response> {
-        let msg = to_json_value(msg)?;
-        self.send_tx(
-            vec![Message::Execute {
-                contract,
-                msg,
-                funds,
-            }],
-            sign_opts,
-        )
-        .await
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        M: Serialize,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        let msg = Message::execute(contract, msg, funds)?;
+        self.send_message(msg, sign_opts).await
     }
 
-    pub async fn migrate<M: Serialize>(
+    pub async fn migrate<M>(
         &self,
         contract: Addr,
         new_code_hash: Hash,
         msg: &M,
         sign_opts: &SigningOptions,
-    ) -> anyhow::Result<tx_sync::Response> {
-        let msg = to_json_value(msg)?;
-        self.send_tx(
-            vec![Message::Migrate {
-                contract,
-                new_code_hash,
-                msg,
-            }],
-            sign_opts,
-        )
-        .await
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        M: Serialize,
+    {
+        let msg = Message::migrate(contract, new_code_hash, msg)?;
+        self.send_message(msg, sign_opts).await
     }
 }
