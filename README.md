@@ -18,13 +18,13 @@ Grug consists of the following Rust crates:
 | [crypto](./crates/crypto)                     | cryptography functionalities                                               |
 | [db/disk](./crates/db/disk)                   | an on-disk, persisted DB backend                                           |
 | [db/memory](./crates/db/memory)               | an in-memory, ephemeral DB backend; used for testing                       |
+| [ffi](./crates/ffi)                           | helpers for building or interacting with [FFI][ffi]                        |
 | [macros](./crates/macros)                     | procedural macros for reducing boilerplates in contract developments       |
 | [jellyfish-merkle](./crates/jellyfish-merkle) | [Jellyfish Merkle Tree][jmt] (JMT) implementation                          |
 | [storage](./crates/storage)                   | abstractions over key-value stores                                         |
 | [types](./crates/types)                       | types, traits, and some helper functions                                   |
 | [vm/rust](./crates/vm/rust)                   | a VM that runs native Rust codes; used for testing                         |
 | [vm/wasm](./crates/vm/wasm)                   | a VM that runs WebAssembly byte codes                                      |
-| [wasm](./crates/wasm)                         | helpers for building WebAssembly imports and exports                       |
 
 Additionally, there are [grug-testing](./crates/testing) which provides testing utilities, and [grug-std](./crates/std), a "meta-crate", which re-exports contents from the above crates, for the convenience of contract developers.
 
@@ -97,6 +97,7 @@ TBD
 [abci]:   https://github.com/tendermint/tendermint/tree/main/spec/abci
 [docker]: https://docs.docker.com/engine/install/
 [grug]:   https://leftcurve.software/grug.html
+[ffi]:    https://en.wikipedia.org/wiki/Foreign_function_interface
 [jmt]:    https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/
 [just]:   https://just.systems/man/en/
 [rustup]: https://rustup.rs/

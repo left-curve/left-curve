@@ -1460,11 +1460,11 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-ffi",
  "grug-macros",
  "grug-storage",
  "grug-testing",
  "grug-types",
- "grug-wasm",
  "serde",
  "serde_json",
  "serde_with",
@@ -1476,9 +1476,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
+ "grug-ffi",
  "grug-storage",
  "grug-types",
- "grug-wasm",
  "serde",
 ]
 
@@ -1503,9 +1503,9 @@ name = "grug-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "grug-ffi",
  "grug-storage",
  "grug-types",
- "grug-wasm",
  "serde",
 ]
 
@@ -1578,6 +1578,15 @@ dependencies = [
  "grug-jmt",
  "grug-types",
  "thiserror",
+]
+
+[[package]]
+name = "grug-ffi"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]
@@ -1732,15 +1741,6 @@ dependencies = [
  "tracing",
  "wasmer",
  "wasmer-middlewares",
-]
-
-[[package]]
-name = "grug-wasm"
-version = "0.0.0"
-dependencies = [
- "borsh",
- "grug-types",
- "serde",
 ]
 
 [[package]]

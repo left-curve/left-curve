@@ -16,32 +16,32 @@ use {
 mod __wasm_exports {
     #[no_mangle]
     extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_wasm::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
+        grug_ffi::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
     extern "C" fn receive(ctx_ptr: usize) -> usize {
-        grug_wasm::do_receive(&super::receive, ctx_ptr)
+        grug_ffi::do_receive(&super::receive, ctx_ptr)
     }
 
     #[no_mangle]
     extern "C" fn execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_wasm::do_execute(&super::execute, ctx_ptr, msg_ptr)
+        grug_ffi::do_execute(&super::execute, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
     extern "C" fn query(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_wasm::do_query(&super::query, ctx_ptr, msg_ptr)
+        grug_ffi::do_query(&super::query, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
     extern "C" fn bank_execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_wasm::do_bank_execute(&super::bank_execute, ctx_ptr, msg_ptr)
+        grug_ffi::do_bank_execute(&super::bank_execute, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
     extern "C" fn bank_query(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_wasm::do_bank_query(&super::bank_query, ctx_ptr, msg_ptr)
+        grug_ffi::do_bank_query(&super::bank_query, ctx_ptr, msg_ptr)
     }
 }
 

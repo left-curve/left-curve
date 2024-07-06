@@ -1,5 +1,5 @@
 [package]
-name          = "grug-wasm"
+name          = "grug-ffi"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
