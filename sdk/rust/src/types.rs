@@ -1,4 +1,4 @@
-use grug::Addr;
+use grug_types::Addr;
 
 pub enum AdminOption {
     SetToAddr(Addr),

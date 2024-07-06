@@ -1,8 +1,8 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
-    grug::{Addr, Binary, Message, Tx},
     grug_crypto::Identity256,
+    grug_types::{Addr, Binary, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
