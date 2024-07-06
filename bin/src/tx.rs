@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     grug_sdk::{Client, SigningKey, SigningOptions},
-    grug_types::{from_json_slice, Addr, Binary, Coins, Config, Hash, Message},
+    grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -99,7 +99,7 @@ impl TxCmd {
         // compose the message
         let msg = match self.subcmd {
             SubCmd::Configure { new_cfg } => {
-                let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
+                let new_cfg = from_json_slice(new_cfg.as_bytes())?;
                 Message::Configure { new_cfg }
             },
             SubCmd::Transfer { to, coins } => {
