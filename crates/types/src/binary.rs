@@ -57,15 +57,21 @@ impl From<Vec<u8>> for Binary {
     }
 }
 
-impl From<&str> for Binary {
-    fn from(s: &str) -> Self {
-        Self(s.as_bytes().to_vec())
+impl From<&[u8]> for Binary {
+    fn from(slice: &[u8]) -> Self {
+        Self(slice.to_vec())
     }
 }
 
 impl From<String> for Binary {
     fn from(string: String) -> Self {
         Self(string.into_bytes())
+    }
+}
+
+impl From<&str> for Binary {
+    fn from(s: &str) -> Self {
+        Self(s.as_bytes().to_vec())
     }
 }
 
