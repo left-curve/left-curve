@@ -39,7 +39,7 @@ pub struct TxCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// Update the chain-level configurations
-    SetConfig {
+    Configure {
         /// New configurations as a JSON string
         new_cfg: String,
     },
@@ -98,9 +98,9 @@ impl TxCmd {
 
         // compose the message
         let msg = match self.subcmd {
-            SubCmd::SetConfig { new_cfg } => {
+            SubCmd::Configure { new_cfg } => {
                 let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
-                Message::SetConfig { new_cfg }
+                Message::Configure { new_cfg }
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;

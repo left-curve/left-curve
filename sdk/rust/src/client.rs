@@ -300,12 +300,12 @@ impl Client {
         }
     }
 
-    pub async fn set_config(
+    pub async fn configure(
         &self,
         new_cfg: Config,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_tx(vec![Message::SetConfig { new_cfg }], sign_opts)
+        self.send_tx(vec![Message::Configure { new_cfg }], sign_opts)
             .await
     }
 

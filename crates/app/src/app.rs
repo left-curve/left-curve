@@ -2,8 +2,8 @@
 use tracing::{debug, info};
 use {
     crate::{
-        do_after_block, do_after_tx, do_before_block, do_before_tx, do_execute, do_instantiate,
-        do_migrate, do_set_config, do_transfer, do_upload, query_account, query_accounts,
+        do_after_block, do_after_tx, do_before_block, do_before_tx, do_configure, do_execute,
+        do_instantiate, do_migrate, do_transfer, do_upload, query_account, query_accounts,
         query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
         query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
         GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
@@ -433,7 +433,7 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::SetConfig { new_cfg } => do_set_config(&mut storage, &sender, &new_cfg),
+        Message::Configure { new_cfg } => do_configure(&mut storage, &sender, &new_cfg),
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,

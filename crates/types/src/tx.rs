@@ -20,7 +20,7 @@ pub enum Message {
     ///
     /// Only the `owner` is authorized to do this. If the owner is set to `None`,
     /// no one can update the config.
-    SetConfig { new_cfg: Config },
+    Configure { new_cfg: Config },
     /// Send coins to the given recipient address.
     Transfer { to: Addr, coins: Coins },
     /// Upload a Wasm binary code and store it in the chain's state.
