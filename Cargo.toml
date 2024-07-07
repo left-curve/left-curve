@@ -10,6 +10,7 @@ members  = [
   "crates/crypto",
   "crates/db/disk",
   "crates/db/memory",
+  "crates/ffi",
   "crates/jellyfish-merkle",
   "crates/macros",
   "crates/std",
@@ -18,7 +19,6 @@ members  = [
   "crates/types",
   "crates/vm/rust",
   "crates/vm/wasm",
-  "crates/wasm",
   "sdk/rust",
 ]
 

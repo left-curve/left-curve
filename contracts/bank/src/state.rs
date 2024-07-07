@@ -1,4 +1,7 @@
-use grug::{Addr, Map, Uint128};
+use {
+    grug_storage::Map,
+    grug_types::{Addr, Uint128},
+};
 
 /// Total supplies of tokens, indexed by denoms.
 pub const SUPPLIES: Map<&str, Uint128> = Map::new("s");

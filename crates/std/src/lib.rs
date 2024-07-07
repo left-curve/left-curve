@@ -2,7 +2,7 @@
 // rather just re-export contents from other crates. The objective is that
 // contract developers only needs to add one single dependency that has
 // everything they need.
-pub use {grug_macros::*, grug_storage::*, grug_types::*, grug_wasm::*};
+pub use {grug_ffi::*, grug_macros::*, grug_storage::*, grug_types::*};
 
 // The testing crate must be excluded if the target is Wasm, because it contains
 // Wasm-incompatible operators, e.g. in `MockApi` which uses RNGs.

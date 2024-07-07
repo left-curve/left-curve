@@ -1,6 +1,6 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
-    grug::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
+    grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
     std::collections::HashMap,
 };
 

@@ -6,7 +6,9 @@
 
 An execution environment for blockchains.
 
-## Crates
+👉 [Whitepaper][grug] 👈
+
+## Overview
 
 Grug consists of the following Rust crates:
 
@@ -15,16 +17,16 @@ Grug consists of the following Rust crates:
 | [app](./crates/app)                           | state machine transition logics and [Tendermint ABCI][abci] implementation |
 | [crypto](./crates/crypto)                     | cryptography functionalities                                               |
 | [db/disk](./crates/db/disk)                   | an on-disk, persisted DB backend                                           |
-| [db/memory](./crates/db/memory)               | an in-memory, temporary DB backend; used for testing                       |
-| [macros](./crates/macros)                     | macros for reducing boilerplates in contract developments                  |
+| [db/memory](./crates/db/memory)               | an in-memory, ephemeral DB backend; used for testing                       |
+| [ffi](./crates/ffi)                           | helpers for building or interacting with [FFI][ffi]                        |
+| [macros](./crates/macros)                     | procedural macros for reducing boilerplates in contract developments       |
 | [jellyfish-merkle](./crates/jellyfish-merkle) | [Jellyfish Merkle Tree][jmt] (JMT) implementation                          |
-| [storage](./crates/storage)                   | an ergonomic API for interacting with key-value stores                     |
-| [types](./crates/types)                       | types, traits, and helper functions                                        |
+| [storage](./crates/storage)                   | abstractions over key-value stores                                         |
+| [types](./crates/types)                       | types, traits, and some helper functions                                   |
 | [vm/rust](./crates/vm/rust)                   | a VM that runs native Rust codes; used for testing                         |
-| [vm/wasm](./crates/vm/wasm)                   | a VM that runs Wasm byte codes                                             |
-| [wasm](./crates/wasm)                         | an ergonomic API for building Wasm modules                                 |
+| [vm/wasm](./crates/vm/wasm)                   | a VM that runs WebAssembly byte codes                                      |
 
-Additionally, there are [grug-testing](./crates/testing) which provides testing utilities, and [grug-std](./crates/std), a "meta package", which re-exports contents from the above crates, for the convenience of contract developers.
+Additionally, there are [grug-testing](./crates/testing) which provides testing utilities, and [grug-std](./crates/std), a "meta-crate", which re-exports contents from the above crates, for the convenience of contract developers.
 
 ### Modularity
 
@@ -50,7 +52,7 @@ We will ship two `Db` and two `Vm` implementations, for different use cases:
 
 The below diagram shows the dependency relations between the crates:
 
-![dependency-graph](./docs/dependency-graph.svg)
+![dependency-graph](./docs/images/dependency-graph.svg)
 
 ## How to use
 
@@ -60,7 +62,7 @@ Prerequisites:
 - [Just][just]
 - [Docker][docker]
 
-Install the **grug** command line software:
+Install the `grug` command line software:
 
 ```shell
 just install
@@ -84,19 +86,6 @@ Compile and optimize smart contracts:
 just optimize
 ```
 
-## Tooling
-
-The developer tooling we use for this project is listed below. Finding the right tools is important for productivity but can take time. We hope you will find this useful:
-
-| tool            | Rust         | TypeScript         |
-| --------------- | ------------ | ------------------ |
-| package manager | cargo        | [pnpm][pnpm]       |
-| bundler         | cargo build  | [tsup][tsup]       |
-| tester          | cargo test   | [vitest][vitest]   |
-| linter          | cargo clippy | [biome][biome]     |
-| formatter       | cargo fmt    | [biome][biome]     |
-| documentation   | cargo doc    | [typedoc][typedoc] |
-
 ## Acknowledgement
 
 TODO
@@ -105,13 +94,10 @@ TODO
 
 TBD
 
-[abci]:    https://github.com/tendermint/tendermint/tree/main/spec/abci
-[biome]:   https://www.npmjs.com/package/@biomejs/biome
-[docker]:  https://docs.docker.com/engine/install/
-[jmt]:     https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/
-[just]:    https://just.systems/man/en/
-[pnpm]:    https://www.npmjs.com/package/pnpm
-[rustup]:  https://rustup.rs/
-[tsup]:    https://www.npmjs.com/package/tsup
-[typedoc]: https://www.npmjs.com/package/typedoc
-[vitest]:  https://www.npmjs.com/package/vitest
+[abci]:   https://github.com/tendermint/tendermint/tree/main/spec/abci
+[docker]: https://docs.docker.com/engine/install/
+[grug]:   https://leftcurve.software/grug.html
+[ffi]:    https://en.wikipedia.org/wiki/Foreign_function_interface
+[jmt]:    https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/
+[just]:   https://just.systems/man/en/
+[rustup]: https://rustup.rs/

@@ -14,12 +14,12 @@ use {
 
 // ---------------------------------- config -----------------------------------
 
-pub fn do_set_config(
+pub fn do_configure(
     storage: &mut dyn Storage,
     sender: &Addr,
     new_cfg: &Config,
 ) -> AppResult<Vec<Event>> {
-    match _do_set_config(storage, sender, new_cfg) {
+    match _do_configure(storage, sender, new_cfg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             info!("Config set");
@@ -33,7 +33,7 @@ pub fn do_set_config(
     }
 }
 
-fn _do_set_config(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<Event> {
+fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<Event> {
     // make sure the sender is authorized to set the config
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
@@ -49,7 +49,7 @@ fn _do_set_config(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) ->
     // save the new config
     CONFIG.save(storage, new_cfg)?;
 
-    Ok(Event::new("set_config").add_attribute("sender", sender))
+    Ok(Event::new("configure").add_attribute("sender", sender))
 }
 
 // ---------------------------------- upload -----------------------------------

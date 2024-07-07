@@ -86,7 +86,7 @@ impl GasTracker {
     /// Consume the given amount of gas. Error if the limit is exceeded.
     ///
     /// Panics if lock is poisoned.
-    pub fn consume(&self, consumed: u64, comment: &str) -> Result<(), OutOfGasError> {
+    pub fn consume(&self, consumed: u64, _comment: &str) -> Result<(), OutOfGasError> {
         self.inner.write_with(|mut inner| {
             let used = inner.used + consumed;
 
@@ -101,7 +101,12 @@ impl GasTracker {
             }
 
             #[cfg(feature = "tracing")]
-            debug!(limit = inner.limit, used, consumed, comment, "Gas consumed");
+            debug!(
+                limit = inner.limit,
+                consumed,
+                comment = _comment,
+                "Gas consumed"
+            );
 
             inner.used = used;
 

@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     grug_sdk::{Client, SigningKey, SigningOptions},
-    grug_types::{from_json_slice, Addr, Binary, Coins, Config, Hash, Message},
+    grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -39,7 +39,7 @@ pub struct TxCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// Update the chain-level configurations
-    SetConfig {
+    Configure {
         /// New configurations as a JSON string
         new_cfg: String,
     },
@@ -98,9 +98,9 @@ impl TxCmd {
 
         // compose the message
         let msg = match self.subcmd {
-            SubCmd::SetConfig { new_cfg } => {
-                let new_cfg: Config = from_json_slice(new_cfg.as_bytes())?;
-                Message::SetConfig { new_cfg }
+            SubCmd::Configure { new_cfg } => {
+                let new_cfg = from_json_slice(new_cfg.as_bytes())?;
+                Message::Configure { new_cfg }
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
@@ -159,7 +159,7 @@ impl TxCmd {
         // broadcast transaction
         let client = Client::connect(&self.node)?;
         let maybe_res = client
-            .send_tx_with_confirmation(vec![msg], &sign_opts, |tx| {
+            .send_message_with_confirmation(msg, &sign_opts, |tx| {
                 print_json_pretty(tx)?;
                 Ok(confirm("🤔 Broadcast transaction?".bold())?)
             })

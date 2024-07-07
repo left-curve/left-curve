@@ -1541,11 +1541,11 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-ffi",
  "grug-macros",
  "grug-storage",
  "grug-testing",
  "grug-types",
- "grug-wasm",
  "serde",
  "serde_json",
  "serde_with",
@@ -1556,7 +1556,11 @@ name = "grug-account"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "borsh",
+ "grug-ffi",
+ "grug-storage",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]
@@ -1580,7 +1584,10 @@ name = "grug-bank"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "grug",
+ "grug-ffi",
+ "grug-storage",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]
@@ -1657,6 +1664,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-ffi"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
 name = "grug-ibc-client-tendermint"
 version = "0.0.0"
 dependencies = [
@@ -1697,10 +1713,10 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "bip32",
- "grug",
  "grug-account",
  "grug-crypto",
  "grug-jmt",
+ "grug-types",
  "hex",
  "k256",
  "pbkdf2",
@@ -1747,10 +1763,19 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "grug-account",
  "grug-app",
+ "grug-bank",
+ "grug-crypto",
  "grug-db-memory",
  "grug-types",
  "grug-vm-rust",
+ "k256",
+ "rand",
+ "serde",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1779,9 +1804,11 @@ dependencies = [
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-testing",
  "grug-types",
  "serde",
  "thiserror",
@@ -1795,31 +1822,17 @@ dependencies = [
  "clru",
  "criterion",
  "data-encoding",
- "grug-account",
  "grug-app",
- "grug-bank",
  "grug-crypto",
- "grug-db-memory",
  "grug-tester-benchmarker",
  "grug-testing",
  "grug-types",
- "k256",
- "rand",
+ "grug-vm-wasm",
  "serde",
  "thiserror",
  "tracing",
- "tracing-subscriber",
  "wasmer",
  "wasmer-middlewares",
-]
-
-[[package]]
-name = "grug-wasm"
-version = "0.0.0"
-dependencies = [
- "borsh",
- "grug-types",
- "serde",
 ]
 
 [[package]]

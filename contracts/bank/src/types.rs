@@ -1,14 +1,16 @@
 use {
-    grug::{grug_derive, Addr, Coins, Uint128},
+    grug_types::{Addr, Coins, Uint128},
+    serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
 
-#[grug_derive(serde)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InstantiateMsg {
     pub initial_balances: BTreeMap<Addr, Coins>,
 }
 
-#[grug_derive(serde)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
 pub enum ExecuteMsg {
     /// Mint a token of the specified amount to a user.
     Mint {
@@ -24,7 +26,8 @@ pub enum ExecuteMsg {
     },
 }
 
-#[grug_derive(serde)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
 pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.
     /// Returns: `BTreeMap<Addr, Uint128>`.

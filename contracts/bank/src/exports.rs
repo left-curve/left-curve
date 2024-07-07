@@ -4,25 +4,57 @@ use {
         query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     anyhow::bail,
-    grug::{
-        grug_export, to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json,
-        MutableCtx, Response, StdResult, SudoCtx,
+    grug_types::{
+        to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, MutableCtx,
+        Response, StdResult, SudoCtx,
     },
 };
 
-#[grug_export]
+// Need to define these manually because we can't use the `grug_export` macro in
+// this workspace, due to a cyclic reference issue (see comments in `Cargo.toml`).
+#[cfg(all(target_arch = "wasm32", not(feature = "library")))]
+mod __wasm_exports {
+    #[no_mangle]
+    extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
+        grug_ffi::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
+    }
+
+    #[no_mangle]
+    extern "C" fn receive(ctx_ptr: usize) -> usize {
+        grug_ffi::do_receive(&super::receive, ctx_ptr)
+    }
+
+    #[no_mangle]
+    extern "C" fn execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
+        grug_ffi::do_execute(&super::execute, ctx_ptr, msg_ptr)
+    }
+
+    #[no_mangle]
+    extern "C" fn query(ctx_ptr: usize, msg_ptr: usize) -> usize {
+        grug_ffi::do_query(&super::query, ctx_ptr, msg_ptr)
+    }
+
+    #[no_mangle]
+    extern "C" fn bank_execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
+        grug_ffi::do_bank_execute(&super::bank_execute, ctx_ptr, msg_ptr)
+    }
+
+    #[no_mangle]
+    extern "C" fn bank_query(ctx_ptr: usize, msg_ptr: usize) -> usize {
+        grug_ffi::do_bank_query(&super::bank_query, ctx_ptr, msg_ptr)
+    }
+}
+
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     initialize(ctx.storage, msg.initial_balances)
 }
 
-#[grug_export]
 pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     // We do not expect anyone to send any fund to this contract.
     // Throw an error to revert the transfer.
     bail!("go away");
 }
 
-#[grug_export]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
@@ -34,7 +66,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     }
 }
 
-#[grug_export]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Holders {
@@ -45,12 +76,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     }
 }
 
-#[grug_export]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     transfer(ctx.storage, &msg.from, &msg.to, &msg.coins)
 }
 
-#[grug_export]
 #[rustfmt::skip]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {

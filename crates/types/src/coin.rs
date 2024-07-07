@@ -1,5 +1,5 @@
 use {
-    crate::{Number, NumberConst, StdError, StdResult, Uint128},
+    crate::{NonZero, Number, NumberConst, StdError, StdResult, Uint128},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::{
@@ -9,6 +9,9 @@ use {
     },
 };
 
+// ----------------------------------- coin ------------------------------------
+
+/// A coin or token, defined by a denomincation ("denom") and amount.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Coin {
@@ -17,11 +20,13 @@ pub struct Coin {
 }
 
 impl Coin {
-    pub fn new(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
-        Self {
-            denom: denom.into(),
-            amount: amount.into(),
-        }
+    /// Create a new `Coin` from the given denom and amount, which must be
+    /// non-zero.
+    pub fn new(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
+        let denom = denom.to_string();
+        let amount = amount.into_inner().into();
+
+        Self { denom, amount }
     }
 }
 
@@ -36,6 +41,8 @@ impl fmt::Debug for Coin {
         write!(f, "Coin({}:{})", self.denom, self.amount)
     }
 }
+
+// ----------------------------------- coins -----------------------------------
 
 /// A record in the `Coins` map.
 ///
@@ -58,6 +65,7 @@ pub struct CoinRef<'a> {
     pub amount: &'a Uint128,
 }
 
+/// A sorted list of coins or tokens.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
@@ -79,42 +87,25 @@ impl Coins {
     // and stringifies it to a set of empty square brackets instead.
     pub const EMPTY_COINS_STR: &'static str = "[]";
 
+    /// Create a new `Coins` without any coin.
     pub fn new_empty() -> Self {
         Self(BTreeMap::new())
     }
 
-    pub fn new_one(denom: impl Into<String>, amount: impl Into<Uint128>) -> Self {
-        Self([(denom.into(), amount.into())].into())
+    /// Create a new `Coins` with exactly one coin.
+    pub fn new_one(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
+        let denom = denom.to_string();
+        let amount = amount.into_inner().into();
+
+        Self([(denom, amount)].into())
     }
 
-    /// Cast an `Vec<Coin>` into a `Coins` object, without checking for
-    /// duplicate denoms or zero amounts.
-    /// This is potentially unsafe, intended for using in tests. Only use if you
-    /// know what you're doing.
-    #[doc(hidden)]
-    pub fn from_vec_unchecked(vec: Vec<Coin>) -> Self {
-        Self(
-            vec.into_iter()
-                .map(|coin| (coin.denom, coin.amount))
-                .collect(),
-        )
-    }
-
-    /// Collect an iterator over (denom, amount) tuples into a `Coins` object,
-    /// without checking for duplicate denoms or zero amounts.
-    /// This is solely intended for use in implementing the bank contract,
-    /// where we know for sure there's no such illegal cases.\
-    #[doc(hidden)]
-    pub fn from_iter_unchecked<E>(
-        iter: &mut dyn Iterator<Item = Result<(String, Uint128), E>>,
-    ) -> Result<Self, E> {
-        iter.collect::<Result<_, E>>().map(Self)
-    }
-
+    /// Return whether the `Coins` contains any coin at all.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Return the number of coins.
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -133,7 +124,7 @@ impl Coins {
     /// Do nothing if the `Coins` is empty; throw an error if not empty.
     pub fn assert_empty(&self) -> StdResult<()> {
         if !self.is_empty() {
-            return Err(StdError::payment(0, self.len()));
+            return Err(StdError::invalid_payment(0, self.len()));
         }
 
         Ok(())
@@ -143,11 +134,11 @@ impl Coins {
     /// otherwise throw error.
     pub fn one_coin(&self) -> StdResult<CoinRef> {
         let Some((denom, amount)) = self.0.first_key_value() else {
-            return Err(StdError::payment(1, 0));
+            return Err(StdError::invalid_payment(1, 0));
         };
 
         if self.0.len() > 1 {
-            return Err(StdError::payment(1, self.len()));
+            return Err(StdError::invalid_payment(1, self.len()));
         }
 
         Ok(CoinRef { denom, amount })
@@ -188,6 +179,33 @@ impl Coins {
         Ok(())
     }
 
+    /// Convert an iterator over denoms and amounts to `Coins`.
+    ///
+    /// Used internally for implementing `TryFrom<[Coin; N]>`,
+    /// `TryFrom<Vec<Coin>>`, and `TryFrom<BTreeMap<String, Uint128>>`.
+    ///
+    /// Check whether the iterator contains duplicates or zero amounts.
+    fn try_from_iterator<I>(iter: I) -> StdResult<Self>
+    where
+        I: IntoIterator<Item = (String, Uint128)>,
+    {
+        let mut map = BTreeMap::new();
+        for (denom, amount) in iter {
+            if amount.is_zero() {
+                return Err(StdError::invalid_coins(format!(
+                    "denom `{}` as zero amount",
+                    denom
+                )));
+            }
+
+            if map.insert(denom, amount).is_some() {
+                return Err(StdError::invalid_coins("duplicate denom found"));
+            }
+        }
+
+        Ok(Self(map))
+    }
+
     // note that we provide iter and into_iter methods, but not iter_mut method,
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods
@@ -210,25 +228,25 @@ impl FromStr for Coins {
         let mut map = BTreeMap::new();
         for coin_str in s.split(',') {
             let Some((denom, amount_str)) = coin_str.split_once(':') else {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "invalid coin `{coin_str}`: must be in the format {{denom}}:{{amount}}"
                 )));
             };
 
             let Ok(amount) = Uint128::from_str(amount_str) else {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "invalid amount `{amount_str}`"
                 )));
             };
 
             if amount.is_zero() {
-                return Err(StdError::parse_coins(format!(
+                return Err(StdError::invalid_coins(format!(
                     "denom `{denom}` as zero amount"
                 )));
             }
 
             if map.contains_key(denom) {
-                return Err(StdError::parse_coins(format!("duplicate denom: {denom}")));
+                return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
             }
 
             map.insert(denom.into(), amount);
@@ -238,25 +256,27 @@ impl FromStr for Coins {
     }
 }
 
-// create a new Coins instance from a vector of coins. the vector must not
-// contain duplicate denoms or zero amounts.
+impl<const N: usize> TryFrom<[Coin; N]> for Coins {
+    type Error = StdError;
+
+    fn try_from(array: [Coin; N]) -> StdResult<Self> {
+        Self::try_from_iterator(array.into_iter().map(|coin| (coin.denom, coin.amount)))
+    }
+}
+
 impl TryFrom<Vec<Coin>> for Coins {
     type Error = StdError;
 
-    fn try_from(vec: Vec<Coin>) -> Result<Self, Self::Error> {
-        let mut map = BTreeMap::new();
-        for coin in vec {
-            if coin.amount.is_zero() {
-                return Err(StdError::parse_coins(format!(
-                    "denom `{}` as zero amount",
-                    coin.denom
-                )));
-            }
-            if map.insert(coin.denom, coin.amount).is_some() {
-                return Err(StdError::parse_coins("duplicate denom found"));
-            }
-        }
-        Ok(Self(map))
+    fn try_from(vec: Vec<Coin>) -> StdResult<Self> {
+        Self::try_from_iterator(vec.into_iter().map(|coin| (coin.denom, coin.amount)))
+    }
+}
+
+impl TryFrom<BTreeMap<String, Uint128>> for Coins {
+    type Error = StdError;
+
+    fn try_from(map: BTreeMap<String, Uint128>) -> StdResult<Self> {
+        Self::try_from_iterator(map)
     }
 }
 
