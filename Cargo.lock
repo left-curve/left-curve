@@ -1742,7 +1742,11 @@ dependencies = [
 name = "grug-tester-benchmarker"
 version = "0.0.0"
 dependencies = [
+ "blake3",
+ "digest 0.10.7",
  "grug",
+ "k256",
+ "sha2 0.10.8",
 ]
 
 [[package]]
@@ -1828,6 +1832,8 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",
+ "k256",
+ "rand",
  "serde",
  "thiserror",
  "tracing",

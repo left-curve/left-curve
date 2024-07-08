@@ -1,4 +1,4 @@
-use grug::{grug_export, Empty, MutableCtx, Region, Response, StdResult};
+use grug::{grug_export, Empty, MutableCtx, Response, StdResult};
 
 #[grug_export]
 pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
@@ -13,11 +13,16 @@ pub fn execute(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
     Ok(Response::new())
 }
 
+#[cfg(target_arch = "wasm32")]
+use grug::Region;
+
+#[cfg(target_arch = "wasm32")]
 extern "C" {
     fn db_write(key_ptr: usize, value_ptr: usize);
 }
 
 #[no_mangle]
+#[cfg(target_arch = "wasm32")]
 extern "C" fn query(_ctx_ptr: usize, _msg_ptr: usize) -> usize {
     let key = b"larry";
     let key_region = Region::build(key);
