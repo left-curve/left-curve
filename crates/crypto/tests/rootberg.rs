@@ -83,11 +83,14 @@ macro_rules! rootberg_test {
                 assert_eq!(test.$key_type.len(), $len);
 
                 eprintln!("Test case ID: {}", test.tc_id);
-                let message_hash = $hash_fn(&test.msg);
 
+                let message_hash = $hash_fn(&test.msg);
                 let signature = combine_signature(&test.sig);
+
                 match $verify_fn(&message_hash, &signature, &test.$key_type) {
-                    Ok(_) => assert!(test.valid),
+                    Ok(_) => {
+                        assert!(test.valid);
+                    },
                     Err(e) => {
                         assert!(!test.valid, "expected valid signature, got {:?}", e);
                     },

@@ -1,8 +1,11 @@
 use {
     crate::{CryptoError, CryptoResult},
     digest::{
-        consts::U32, generic_array::GenericArray, FixedOutput, HashMarker, OutputSizeUser, Update,
+        consts::{U32, U64},
+        generic_array::GenericArray,
+        FixedOutput, HashMarker, Output, OutputSizeUser, Update,
     },
+    std::ops::Deref,
 };
 
 /// Try cast a slice to a fixed length array. Error if the size is incorrect.
@@ -38,60 +41,60 @@ pub fn truncate<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
 ///
 /// Adapted from:
 /// <https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs>
-#[derive(Default, Clone)]
-pub struct Identity256 {
-    bytes: GenericArray<u8, U32>,
-}
-
-impl Identity256 {
-    /// Convert from a byte slice of unknown length. Error if the length isn't
-    /// exactly 32 bytes.
-    /// To convert from a byte slice of fixed size of 32 bytes, use `from_bytes`.
-    pub fn from_slice(slice: &[u8]) -> CryptoResult<Self> {
-        if slice.len() != 32 {
-            return Err(CryptoError::IncorrectLength {
-                expect: 32,
-                actual: slice.len(),
-            });
+macro_rules! identity {
+    ($name:ident, $array_len:ty, $len:literal, $doc:literal) => {
+        #[derive(Default, Clone)]
+        #[doc = $doc]
+        pub struct $name {
+            bytes: GenericArray<u8, $array_len>,
         }
 
-        Ok(Self {
-            bytes: *GenericArray::from_slice(slice),
-        })
-    }
+        impl $name {
+            pub fn into_bytes(self) -> [u8; $len] {
+                self.bytes.into()
+            }
 
-    pub fn into_bytes(self) -> [u8; 32] {
-        self.bytes.into()
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-}
-
-impl From<[u8; 32]> for Identity256 {
-    fn from(bytes: [u8; 32]) -> Self {
-        Self {
-            bytes: *GenericArray::from_slice(&bytes),
+            pub fn as_bytes(&self) -> &[u8] {
+                &self.bytes
+            }
         }
-    }
+
+        impl From<[u8; $len]> for $name {
+            fn from(bytes: [u8; $len]) -> Self {
+                Self {
+                    bytes: *GenericArray::from_slice(&bytes),
+                }
+            }
+        }
+
+        impl Deref for $name {
+            type Target = [u8];
+
+            fn deref(&self) -> &Self::Target {
+                &self.bytes
+            }
+        }
+
+        impl Update for $name {
+            fn update(&mut self, data: &[u8]) {
+                assert_eq!(data.len(), $len);
+                self.bytes = *GenericArray::from_slice(data);
+            }
+        }
+
+        impl FixedOutput for $name {
+            fn finalize_into(self, out: &mut Output<Self>) {
+                *out = self.bytes;
+            }
+        }
+
+        impl OutputSizeUser for $name {
+            type OutputSize = $array_len;
+        }
+
+        impl HashMarker for $name {}
+    };
 }
 
-impl OutputSizeUser for Identity256 {
-    type OutputSize = U32;
-}
-
-impl Update for Identity256 {
-    fn update(&mut self, data: &[u8]) {
-        assert_eq!(data.len(), 32);
-        self.bytes = *GenericArray::from_slice(data);
-    }
-}
-
-impl FixedOutput for Identity256 {
-    fn finalize_into(self, out: &mut digest::Output<Self>) {
-        *out = self.bytes
-    }
-}
-
-impl HashMarker for Identity256 {}
+identity!(Identity256, U32, 32, "A digest of 32 byte length");
+identity!(Identity512, U64, 64, "A digest of 64 byte length");
