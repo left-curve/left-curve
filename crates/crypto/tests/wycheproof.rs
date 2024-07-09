@@ -5,7 +5,7 @@ use {
         secp256k1_verify, secp256r1_verify, sha2_256, sha2_512_truncated, sha3_256,
         sha3_512_truncated,
     },
-    serde::Deserialize,
+    serde::{de, Deserialize},
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
 
@@ -31,10 +31,10 @@ pub struct Key {
     pub compressed: String,
 }
 
-impl<'de> Deserialize<'de> for Key {
+impl<'de> de::Deserialize<'de> for Key {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: de::Deserializer<'de>,
     {
         #[derive(Deserialize)]
         struct TempKey {
@@ -43,19 +43,20 @@ impl<'de> Deserialize<'de> for Key {
 
         // Deserialize the uncompressed key
         let temp = TempKey::deserialize(deserializer)?;
-
         let uncompressed_byte = hex::decode(&temp.uncompressed).unwrap();
 
-        // Since this struct is both used from the sepc256k1 and sepc256r1 tests, try to verify the key in one of the two formats or return an error
+        // Since this struct is both used from the sepc256k1 and sepc256r1 tests,
+        // try to verify the key in one of the two formats or return an error.
         let compressed =
-            // sep256k1
+            // Secp256k1
             if let Ok(vk) = k256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
                 vk.to_encoded_point(true).to_bytes()
-            // sep256r1
-            } else if let Ok(vk) = p256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
+            }
+            // Secp256r1
+            else if let Ok(vk) = p256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
                 vk.to_encoded_point(true).to_bytes()
             } else {
-                Err(serde::de::Error::custom(format!("Key {} is not in sep256k1 or sep256r1 format", temp.uncompressed)))?
+                Err(de::Error::custom(format!("Key {} is not in sep256k1 or sep256r1 format", temp.uncompressed)))?
             };
 
         Ok(Key {
@@ -311,7 +312,7 @@ fn pad_to_32(input: &[u8]) -> [u8; 32] {
     out
 }
 
-// ----------------------------------- secp256k1 tests -----------------------------------
+// ------------------------------ secp256k1 tests ------------------------------
 
 const SECP256K1_SHA256: &str = "./testdata/wycheproof/ecdsa_secp256k1_sha256_test.json";
 const SECP256K1_SHA512: &str = "./testdata/wycheproof/ecdsa_secp256k1_sha512_test.json";
