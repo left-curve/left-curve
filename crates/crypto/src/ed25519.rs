@@ -1,8 +1,9 @@
 use {
-    crate::{to_sized, CryptoResult},
-    ed25519_dalek::{Signature, VerifyingKey},
+    crate::{to_sized, CryptoResult, Identity512},
+    ed25519_dalek::{DigestVerifier, Signature, VerifyingKey},
 };
 
+const ED25519_DIGEST_LEN: usize = 64;
 const ED25519_PUBKEY_LEN: usize = 32;
 const ED25519_SIGNATURE_LEN: usize = 64;
 
@@ -11,21 +12,25 @@ const ED25519_SIGNATURE_LEN: usize = 64;
 ///
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn ed25519_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
+    let msg_hash = to_sized::<ED25519_DIGEST_LEN>(msg_hash)?;
+    let msg_hash = Identity512::from(msg_hash);
+
     let sig = to_sized::<ED25519_SIGNATURE_LEN>(sig)?;
     let sig = Signature::from(sig);
 
     let vk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
     let vk = VerifyingKey::from_bytes(&vk)?;
 
-    vk.verify_strict(msg_hash, &sig).map_err(Into::into)
+    vk.verify_digest(msg_hash, &sig).map_err(Into::into)
 }
 
-/// Verify a batch of ED25519 signatures with the given hashed message and public
-/// key.
+/// Verify a batch of Ed25519 signatures with the given _prehash_ messages and
+/// and public keys.
 ///
-/// NOTE: This function takes the hash of the messages, not the prehash.
+/// NOTE: Unlike all other functions in this crate, this one takes the prehash
+/// message, not it's hash.
 pub fn ed25519_batch_verify(
-    msgs_hash: &[&[u8]],
+    prehash_msgs: &[&[u8]],
     sigs: &[&[u8]],
     pks: &[&[u8]],
 ) -> CryptoResult<()> {
@@ -45,9 +50,9 @@ pub fn ed25519_batch_verify(
         .into_iter()
         .unzip();
 
-    // No need to check the three slices (`msgs_hash`, `sigs`, `pks`) are of the
+    // No need to check the three slices (`msg_hashes`, `sigs`, `pks`) are of the
     // length; `ed25519_dalek::verify_batch` already does this.
-    ed25519_dalek::verify_batch(msgs_hash, &sigs, &vks).map_err(Into::into)
+    ed25519_dalek::verify_batch(prehash_msgs, &sigs, &vks).map_err(Into::into)
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -56,8 +61,8 @@ pub fn ed25519_batch_verify(
 mod tests {
     use {
         super::*,
-        crate::{sha2_256, Identity256},
-        ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey},
+        crate::sha2_512,
+        ed25519_dalek::{DigestSigner, Signer, SigningKey},
         rand::rngs::OsRng,
     };
 
@@ -65,33 +70,33 @@ mod tests {
     fn verify_ed25519() {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let prehash_msg = b"Jake";
-        let msg = sha2_256(prehash_msg);
-        let sig = sk.sign(&msg);
+        let msg = b"Jake";
+        let msg_hash = Identity512::from(sha2_512(msg));
+        let sig = sk.sign_digest(msg_hash.clone());
 
         // valid signature
-        assert!(ed25519_verify(&msg, &sig.to_bytes(), vk.as_bytes()).is_ok());
+        assert!(ed25519_verify(&msg_hash, &sig.to_bytes(), vk.as_bytes()).is_ok());
 
         // incorrect private key
         let false_sk = SigningKey::generate(&mut OsRng);
-        let false_sig: Signature = false_sk.sign(&msg);
-        assert!(ed25519_verify(&msg, &false_sig.to_bytes(), vk.as_bytes()).is_err());
+        let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
+        assert!(ed25519_verify(&msg_hash, &false_sig.to_bytes(), vk.as_bytes()).is_err());
 
         // incorrect message
-        let false_prehash_msg = b"Larry";
-        let false_msg = sha2_256(false_prehash_msg);
-        assert!(ed25519_verify(&false_msg, &sig.to_bytes(), vk.as_bytes()).is_err());
+        let false_msg = b"Larry";
+        let false_msg_hash = sha2_512(false_msg);
+        assert!(ed25519_verify(&false_msg_hash, &sig.to_bytes(), vk.as_bytes()).is_err());
     }
 
     #[test]
     fn verify_batch_ed25519() {
-        let (msg1, sig1, vk1) = ed25519_sign("Jake");
-        let (msg2, sig2, vk2) = ed25519_sign("Larry");
-        let (msg3, sig3, vk3) = ed25519_sign("Rhaki");
+        let (prehash_msg1, sig1, vk1) = ed25519_sign("Jake");
+        let (prehash_msg2, sig2, vk2) = ed25519_sign("Larry");
+        let (prehash_msg3, sig3, vk3) = ed25519_sign("Rhaki");
 
         // valid signatures
         assert!(ed25519_batch_verify(
-            &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
+            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
             &[&sig1, &sig2, &sig3],
             &[&vk1, &vk2, &vk3]
         )
@@ -99,7 +104,7 @@ mod tests {
 
         // wrong sign
         assert!(ed25519_batch_verify(
-            &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
+            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
             &[&sig2, &sig1, &sig3],
             &[&vk1, &vk2, &vk3]
         )
@@ -107,18 +112,17 @@ mod tests {
 
         // wrong len
         assert!(ed25519_batch_verify(
-            &[msg1.as_bytes(), msg2.as_bytes(), msg3.as_bytes()],
+            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
             &[&sig1, &sig2, &sig3],
             &[&vk1, &vk2]
         )
         .is_err());
     }
 
-    fn ed25519_sign(prehash_msg: &str) -> (Identity256, [u8; 64], [u8; 32]) {
+    fn ed25519_sign(msg: &str) -> (Vec<u8>, [u8; 64], [u8; 32]) {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg = Identity256::from(sha2_256(prehash_msg.as_bytes()));
         let sig = sk.sign(msg.as_bytes());
-        (msg, sig.to_bytes(), vk.to_bytes())
+        (msg.as_bytes().to_vec(), sig.to_bytes(), vk.to_bytes())
     }
 }

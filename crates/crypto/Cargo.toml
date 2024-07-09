@@ -13,7 +13,7 @@ categories    = { workspace = true }
 blake2        = { workspace = true }
 blake3        = { workspace = true }
 digest        = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["batch"] }
+ed25519-dalek = { workspace = true, features = ["batch", "digest"] }
 k256          = { workspace = true }
 p256          = { workspace = true }
 sha2          = { workspace = true }
