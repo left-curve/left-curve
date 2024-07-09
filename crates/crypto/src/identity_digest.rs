@@ -3,6 +3,7 @@ use {
     digest::{
         consts::U32, generic_array::GenericArray, FixedOutput, HashMarker, OutputSizeUser, Update,
     },
+    std::ops::Deref,
 };
 
 /// Try cast a slice to a fixed length array. Error if the size is incorrect.
@@ -74,6 +75,20 @@ impl From<[u8; 32]> for Identity256 {
         Self {
             bytes: *GenericArray::from_slice(&bytes),
         }
+    }
+}
+
+impl AsRef<[u8]> for Identity256 {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl Deref for Identity256 {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
     }
 }
 
