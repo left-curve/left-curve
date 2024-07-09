@@ -1,70 +1,13 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    crate::{
+        read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult, GAS_COSTS,
+    },
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
     tracing::info,
     wasmer::FunctionEnvMut,
 };
-
-const GAS_COSTS: GasCosts = GasCosts::new();
-
-pub struct GasCosts {
-    pub secp256k1_verify_cost: u64,
-    pub secp256r1_verify_cost: u64,
-    pub secp256k1_pubkey_recover: u64,
-    pub ed25519_verify_cost: u64,
-    pub ed25519_batch_verify_cost: LinearGasCost,
-    pub sha2_256: LinearGasCost,
-    pub sha2_512: LinearGasCost,
-    pub sha2_512_truncated: LinearGasCost,
-    pub sha3_256: LinearGasCost,
-    pub sha3_512: LinearGasCost,
-    pub sha3_512_truncated: LinearGasCost,
-    pub keccak256: LinearGasCost,
-    pub blake2s_256: LinearGasCost,
-    pub blake2b_512: LinearGasCost,
-    pub blake3: LinearGasCost,
-}
-
-impl GasCosts {
-    const fn new() -> Self {
-        Self {
-            secp256k1_verify_cost: 1,
-            secp256r1_verify_cost: 1,
-            secp256k1_pubkey_recover: 1,
-            ed25519_verify_cost: 1,
-            ed25519_batch_verify_cost: LinearGasCost::new(1, 1),
-            sha2_256: LinearGasCost::new(1, 1),
-            sha2_512: LinearGasCost::new(1, 1),
-            sha2_512_truncated: LinearGasCost::new(1, 1),
-            sha3_256: LinearGasCost::new(1, 1),
-            sha3_512: LinearGasCost::new(1, 1),
-            sha3_512_truncated: LinearGasCost::new(1, 1),
-            keccak256: LinearGasCost::new(1, 1),
-            blake2s_256: LinearGasCost::new(1, 1),
-            blake2b_512: LinearGasCost::new(1, 1),
-            blake3: LinearGasCost::new(1, 1),
-        }
-    }
-}
-
-pub struct LinearGasCost {
-    /// This is a flat part of the cost, charged once per batch.
-    base: u64,
-    /// This is the cost per item in the batch.
-    per_item: u64,
-}
-
-impl LinearGasCost {
-    pub const fn new(base: u64, per_item: u64) -> Self {
-        Self { base, per_item }
-    }
-
-    pub fn cost(&self, items: usize) -> u64 {
-        self.base + self.per_item * items as u64
-    }
-}
 
 pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
