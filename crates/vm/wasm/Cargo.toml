@@ -30,13 +30,11 @@ wasmer-middlewares = { workspace = true }
 [dev-dependencies]
 anyhow                  = { workspace = true }
 criterion               = { workspace = true }
-k256                    = { workspace = true }
 grug-app                = { path = "../../app", features = ["tracing"] }
 grug-crypto             = { path = "../../crypto" }
 grug-testing            = { path = "../../testing" }
 grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker" }
 grug-vm-wasm            = { path = ".", features = ["testing"] }
-rand                    = { workspace = true }
 
 [[bench]]
 name = "main"

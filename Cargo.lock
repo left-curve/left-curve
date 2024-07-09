@@ -1832,8 +1832,6 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",
- "k256",
- "rand",
  "serde",
  "thiserror",
  "tracing",
