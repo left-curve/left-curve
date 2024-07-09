@@ -220,6 +220,7 @@ impl Environment {
         }
     }
 
+    /// Record gas consumed by host functions.
     pub fn consume_external_gas(
         &mut self,
         store: &mut impl AsStoreMut,
@@ -241,13 +242,9 @@ impl Environment {
                 }
                 Ok(())
             },
-            // This situation is nearly impossible.
+            // The contract made a host function call, but gas depleted; impossible.
             MeteringPoints::Exhausted => {
-                self.gas_tracker
-                    .consume(self.gas_checkpoint + external, "consume_gas")?;
-                // sefl.gas_tracker.consume should have thrown an error
-                self.gas_checkpoint = 0;
-                Err(VmError::GasDepletion)
+                unreachable!("No way! Gas is depleted but contract made a host function call");
             },
         }
     }
