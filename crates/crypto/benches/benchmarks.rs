@@ -120,7 +120,7 @@ fn bench_hashers(c: &mut Criterion) {
 fn bench_verifiers(c: &mut Criterion) {
     const MSG_LEN: usize = 100;
 
-    let mut group = c.benchmark_group("hashers");
+    let mut group = c.benchmark_group("verifiers");
 
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
     group.warm_up_time(CRYPTO_SETTINGS.warmup_time);
