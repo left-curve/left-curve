@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use grug::Region;
 use grug::{grug_export, Empty, MutableCtx, Response, StdResult};
 
 #[grug_export]
@@ -12,9 +14,6 @@ pub fn execute(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
 
     Ok(Response::new())
 }
-
-#[cfg(target_arch = "wasm32")]
-use grug::Region;
 
 #[cfg(target_arch = "wasm32")]
 extern "C" {
