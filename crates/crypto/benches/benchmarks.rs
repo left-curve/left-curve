@@ -20,13 +20,13 @@ struct Settings {
 }
 
 const HASH_SETTINGS: Settings = Settings {
-    warmup_time: Duration::from_millis(100),
-    measurement_time: Duration::from_millis(100),
+    warmup_time: Duration::from_millis(500),
+    measurement_time: Duration::from_millis(500),
 };
 
 const CRYPTO_SETTINGS: Settings = Settings {
-    warmup_time: Duration::from_millis(2_000),
-    measurement_time: Duration::from_millis(2_000),
+    warmup_time: Duration::from_millis(2_500),
+    measurement_time: Duration::from_millis(2_500),
 };
 
 /// Lengths of messages for benchmarking hashers.
