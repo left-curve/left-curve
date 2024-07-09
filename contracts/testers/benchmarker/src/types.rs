@@ -1,34 +1,13 @@
-use grug::{grug_derive, Binary};
+use grug::grug_derive;
 
-#[grug_derive(serde, borsh)]
-pub enum ExecuteTest {
-    DoNothingVecu8 {
-        msg: Vec<u8>,
-    },
-    DoNothingBinary {
-        msg: Binary,
-    },
-    Math {
-        iterations: u64,
-    },
-
-    Crypto {
-        on_host: bool,
-        crypto_api: CryptoApi,
-    },
-}
-
-#[grug_derive(serde, borsh)]
-pub enum CryptoApi {
-    Sepc256k1verify {
-        msg_hash: Vec<u8>,
-        sig: Vec<u8>,
-        pk: Vec<u8>,
-    },
-    Sha2_256 {
-        msg: Vec<u8>,
-    },
-    Blake3 {
-        msg: Vec<u8>,
-    },
+#[grug_derive(serde)]
+pub enum QueryMsg {
+    /// Run a loop of the given number of iterations. Within each iteration, a
+    /// set of math operations (addition, subtraction, multiplication, division)
+    /// are performed.
+    ///
+    /// This is used for deducing the relation between Wasmer gas metering
+    /// points and CPU time (i.e. how many gas points roughly correspond to one
+    /// second of run time).
+    Loop { iterations: u64 },
 }
