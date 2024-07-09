@@ -18,4 +18,3 @@ digest = { version = "0.10" }
 grug   = { path = "../../../crates/std" }
 k256   = { version = "0.13", default-features = false, features = ["ecdsa"] }
 sha2   = { workspace = true }
-
