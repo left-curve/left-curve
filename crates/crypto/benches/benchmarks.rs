@@ -184,7 +184,7 @@ fn bench_verifiers(c: &mut Criterion) {
                     sig.to_bytes().to_vec(),
                     vk.to_sec1_bytes().to_vec(),
                     recovery_id.to_byte(),
-                    false,
+                    true,
                 )
             },
             |(msg_hash, sig, vk, recovery_id, compressed)| {
