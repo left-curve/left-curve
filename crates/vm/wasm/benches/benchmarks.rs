@@ -94,7 +94,7 @@ fn looping(c: &mut Criterion) {
                         sum += gas_tracker.used();
                         repeats += 1;
                     },
-                    BatchSize::PerIteration,
+                    BatchSize::SmallInput,
                 )
             },
         );
