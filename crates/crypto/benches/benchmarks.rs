@@ -222,7 +222,7 @@ fn bench_verifiers(c: &mut Criterion) {
     group.bench_function("ed25519_batch_verify", |b| {
         b.iter_batched(
             || {
-                let mut msg_hashes = vec![];
+                let mut prehash_msgs = vec![];
                 let mut sigs = vec![];
                 let mut vks = vec![];
 
@@ -230,24 +230,23 @@ fn bench_verifiers(c: &mut Criterion) {
                 // `ed25519_batch_verify` is in Tendermint light clients, while
                 // the average size of validator sets of Cosmos chains is ~100.
                 for _ in 0..100 {
-                    let msg = generate_random_msg(MSG_LEN);
-                    let msg_hash = Identity512::from(sha2_512(&msg));
+                    let prehash_msg = generate_random_msg(MSG_LEN);
                     let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
                     let vk = ed25519_dalek::VerifyingKey::from(&sk);
-                    let sig = sk.sign_digest(msg_hash.clone());
+                    let sig = sk.sign(&prehash_msg);
 
-                    msg_hashes.push(msg_hash.to_vec());
+                    prehash_msgs.push(prehash_msg);
                     sigs.push(sig.to_bytes().to_vec());
                     vks.push(vk.to_bytes().to_vec());
                 }
 
-                (msg_hashes, sigs, vks)
+                (prehash_msgs, sigs, vks)
             },
-            |(msg_hashes, sigs, vks)| {
-                let msg_hashes: Vec<_> = msg_hashes.iter().map(|m| m.as_slice()).collect();
+            |(prehash_msgs, sigs, vks)| {
+                let prehash_msgs: Vec<_> = prehash_msgs.iter().map(|m| m.as_slice()).collect();
                 let sigs: Vec<_> = sigs.iter().map(|s| s.as_slice()).collect();
                 let vks: Vec<_> = vks.iter().map(|k| k.as_slice()).collect();
-                assert!(ed25519_batch_verify(&msg_hashes, &sigs, &vks).is_ok());
+                assert!(ed25519_batch_verify(&prehash_msgs, &sigs, &vks).is_ok());
             },
             BatchSize::SmallInput,
         );
