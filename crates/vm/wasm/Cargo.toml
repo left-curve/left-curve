@@ -37,5 +37,5 @@ grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker" }
 grug-vm-wasm            = { path = ".", features = ["testing"] }
 
 [[bench]]
-name = "main"
+name = "benchmarks"
 harness = false
