@@ -3,12 +3,14 @@ use {
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
+const SECP256R1_DIGEST_LEN: usize = 32;
 const SECP256R1_PUBKEY_LENS: [usize; 2] = [33, 65]; // compressed, uncompressed
 const SECP256R1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
-    let msg = Identity256::from_slice(msg_hash)?;
+    let msg_hash = to_sized::<SECP256R1_DIGEST_LEN>(msg_hash)?;
+    let msg_hash = Identity256::from(msg_hash);
 
     let sig = to_sized::<SECP256R1_SIGNATURE_LEN>(sig)?;
     let mut sig = Signature::from_bytes(&sig.into())?;
@@ -28,7 +30,7 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     }
 
     VerifyingKey::from_sec1_bytes(pk)?
-        .verify_digest(msg, &sig)
+        .verify_digest(msg_hash, &sig)
         .map_err(Into::into)
 }
 
@@ -48,35 +50,26 @@ mod tests {
         // generate a valid signature
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let prehash_msg = b"Jake";
-        let msg = Identity256::from(sha2_256(prehash_msg));
-        let sig: Signature = sk.sign_digest(msg.clone());
+        let msg = b"Jake";
+        let msg_hash = Identity256::from(sha2_256(msg));
+        let sig: Signature = sk.sign_digest(msg_hash.clone());
 
         // valid signature
-        assert!(secp256r1_verify(msg.as_bytes(), &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
+        assert!(secp256r1_verify(&msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
 
         // incorrect private key
         let false_sk = SigningKey::random(&mut OsRng);
-        let false_sig: Signature = false_sk.sign_digest(msg.clone());
-        assert!(
-            secp256r1_verify(msg.as_bytes(), &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
-        );
+        let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
+        assert!(secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
 
         // incorrect public key
         let false_sk = SigningKey::random(&mut OsRng);
         let false_vk = VerifyingKey::from(&false_sk);
-        assert!(
-            secp256r1_verify(msg.as_bytes(), &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err()
-        );
+        assert!(secp256r1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err());
 
         // incorrect message
-        let false_prehash_msg = b"Larry";
-        let false_msg = sha2_256(false_prehash_msg);
-        assert!(secp256r1_verify(
-            &false_msg,
-            &sig.to_bytes(),
-            vk.to_encoded_point(true).as_bytes()
-        )
-        .is_err());
+        let false_msg = b"Larry";
+        let false_msg_hash = sha2_256(false_msg);
+        assert!(secp256r1_verify(&false_msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
     }
 }

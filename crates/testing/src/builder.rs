@@ -122,7 +122,6 @@ where
 
         let genesis_block = BlockInfo {
             height: Uint64::ZERO,
-            // TODO: `Timestamp` should wrap a `Uint128` instead so we don't need to cast here
             timestamp: Timestamp::from_nanos(genesis_time),
             hash: GENESIS_BLOCK_HASH,
         };
