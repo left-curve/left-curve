@@ -3,12 +3,14 @@ use {
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
+const SECP256R1_DIGEST_LEN: usize = 32;
 const SECP256R1_PUBKEY_LENS: [usize; 2] = [33, 65]; // compressed, uncompressed
 const SECP256R1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
-    let msg = Identity256::from_slice(msg_hash)?;
+    let msg_hash = to_sized::<SECP256R1_DIGEST_LEN>(msg_hash)?;
+    let msg_hash = Identity256::from(msg_hash);
 
     let sig = to_sized::<SECP256R1_SIGNATURE_LEN>(sig)?;
     let mut sig = Signature::from_bytes(&sig.into())?;
@@ -28,7 +30,7 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     }
 
     VerifyingKey::from_sec1_bytes(pk)?
-        .verify_digest(msg, &sig)
+        .verify_digest(msg_hash, &sig)
         .map_err(Into::into)
 }
 

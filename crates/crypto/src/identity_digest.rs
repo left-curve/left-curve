@@ -50,22 +50,6 @@ macro_rules! identity {
         }
 
         impl $name {
-            /// Convert from a byte slice of unknown length. Error if the length isn't
-            /// exactly 32 bytes.
-            /// To convert from a byte slice of fixed size of 32 bytes, use `from_bytes`.
-            pub fn from_slice(slice: &[u8]) -> CryptoResult<Self> {
-                if slice.len() != $len {
-                    return Err(CryptoError::IncorrectLength {
-                        expect: $len,
-                        actual: slice.len(),
-                    });
-                }
-
-                Ok(Self {
-                    bytes: *GenericArray::from_slice(slice),
-                })
-            }
-
             pub fn into_bytes(self) -> [u8; $len] {
                 self.bytes.into()
             }
