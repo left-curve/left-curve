@@ -36,7 +36,7 @@ fn looping(c: &mut Criterion) {
         let mut repeats = 0;
 
         c.bench_with_input(
-            BenchmarkId::new("loopping", iterations),
+            BenchmarkId::new("looping", iterations),
             &iterations,
             |b, iterations| {
                 // `Bencher::iter_with_setup` has been deprecated, in favor of
