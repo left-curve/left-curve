@@ -1,8 +1,8 @@
+#[cfg(not(feature = "library"))]
+use grug::grug_export;
 use {
     crate::{do_loop, QueryMsg},
-    grug::{
-        grug_export, to_json_value, Empty, ImmutableCtx, Json, MutableCtx, Response, StdResult,
-    },
+    grug::{to_json_value, Empty, ImmutableCtx, Json, MutableCtx, Response, StdResult},
 };
 
 #[cfg_attr(not(feature = "library"), grug_export)]
