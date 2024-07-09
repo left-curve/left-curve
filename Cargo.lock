@@ -1190,6 +1190,7 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2 0.10.8",
+ "signature",
  "subtle",
  "zeroize",
 ]
@@ -1630,7 +1631,6 @@ dependencies = [
  "hex-literal",
  "k256",
  "p256",
- "paste",
  "rand",
  "serde",
  "serde_json",

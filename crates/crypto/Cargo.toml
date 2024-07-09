@@ -13,7 +13,7 @@ categories    = { workspace = true }
 blake2        = { workspace = true }
 blake3        = { workspace = true }
 digest        = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["batch"] }
+ed25519-dalek = { workspace = true, features = ["batch", "digest"] }
 k256          = { workspace = true }
 p256          = { workspace = true }
 sha2          = { workspace = true }
@@ -25,7 +25,6 @@ thiserror     = { workspace = true }
 criterion   = { workspace = true }
 hex         = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
-paste       = { workspace = true }
 rand        = { workspace = true }
 serde       = { workspace = true, features = ["derive", "alloc"] }
 serde_json  = { workspace = true }
