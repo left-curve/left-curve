@@ -10,6 +10,5 @@ overflow_delimited_expr        = true  # unstable
 reorder_impl_items             = true  # unstable
 single_line_if_else_max_width  = 0     # unstable
 single_line_let_else_max_width = 0     # unstable
-skip_macro_invocations         = ["*"] # unstable
 use_field_init_shorthand       = true
 use_try_shorthand              = true
