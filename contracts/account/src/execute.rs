@@ -102,7 +102,7 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
                 None,
             )?;
 
-            let attributes = vec![Attribute::new("key", sequence.to_string())];
+            let attributes = vec![Attribute::new("sequence", sequence.to_string())];
 
             (hash, attributes)
         },
@@ -141,7 +141,9 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
                 },
             };
 
-            (sign_bytes, vec![])
+            let attributes = vec![Attribute::new("expiration", expiration.to_string())];
+
+            (sign_bytes, attributes)
         },
     };
 
