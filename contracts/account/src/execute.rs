@@ -315,7 +315,7 @@ mod tests {
         // increace block time
         ctx.block.timestamp = Timestamp::from_nanos(201);
 
-        // This should fail as the transaction still in the store
+        // This should fail as the transaction is alredy expired
         authenticate_tx(ctx.branch(), tx.clone()).unwrap_err_contains("Transaction expired");
 
         let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Timestamp::from_nanos(300)));
