@@ -69,13 +69,19 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
         .build()?;
 
     // Make a bank transfer with a small gas limit; should fail.
-    // Bank transfers should take around ~500k gas.
+    // Bank transfers should take around ~1M gas.
+    //
+    // We can't easily tell whether gas will run out during the Wasm execution
+    // (in which case, the error would be a `VmError::GasDepletion`) or during
+    // a host function call (in which case, a `VmError::OutOfGas`). We can only
+    // say that the error has to be one of the two. Therefore, we simply ensure
+    // the error message contains the word "gas".
     suite
         .execute_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
             coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
         })?
-        .should_fail_with_error(VmError::GasDepletion)?;
+        .should_fail_with_error("gas")?;
 
     // Tx is went out of gas.
     // Balances should remain the same

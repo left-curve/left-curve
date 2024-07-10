@@ -4,7 +4,7 @@ use {
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
-    wasmer_middlewares::metering::{get_remaining_points, MeteringPoints},
+    wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints},
 };
 
 /// Necessary stuff for performing Wasm import functions.
@@ -216,6 +216,35 @@ impl Environment {
             // The call succeeded, but gas depleted: impossible senario.
             (Ok(_), MeteringPoints::Exhausted) => {
                 unreachable!("No way! Gas is depleted but call is successful.");
+            },
+        }
+    }
+
+    /// Record gas consumed by host functions.
+    pub fn consume_external_gas(
+        &mut self,
+        store: &mut impl AsStoreMut,
+        external: u64,
+        comment: &str,
+    ) -> VmResult<()> {
+        let instance = self.get_wasmer_instance()?;
+        match get_remaining_points(store, instance) {
+            MeteringPoints::Remaining(remaining) => {
+                // gas_checkpoint can't be less than remaining
+                // compute consumed equals to the gas consumed since the last update + external gas
+                let consumed = self.gas_checkpoint - remaining + external;
+                self.gas_tracker.consume(consumed, comment)?;
+
+                // If there is a limit on gas_tracker, update the remaining points in the store
+                if let Some(remaining) = self.gas_tracker.remaining() {
+                    set_remaining_points(store, instance, remaining);
+                    self.gas_checkpoint = remaining;
+                }
+                Ok(())
+            },
+            // The contract made a host function call, but gas depleted; impossible.
+            MeteringPoints::Exhausted => {
+                unreachable!("No way! Gas is depleted but contract made a host function call");
             },
         }
     }

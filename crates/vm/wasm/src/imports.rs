@@ -1,5 +1,7 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    crate::{
+        read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult, GAS_COSTS,
+    },
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
     },
@@ -12,12 +14,21 @@ pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u3
 
     let key = read_from_memory(env, &store, key_ptr)?;
 
-    // If the record doesn't exist, return a zero pointer.
-    let Some(value) = env.storage.read(&key) else {
-        return Ok(0);
-    };
-
-    write_to_memory(env, &mut store, &value)
+    match env.storage.read(&key) {
+        Some(value) => {
+            env.consume_external_gas(
+                &mut store,
+                GAS_COSTS.db_read.cost(value.len()),
+                "db_read/found",
+            )?;
+            write_to_memory(env, &mut store, &value)
+        },
+        None => {
+            env.consume_external_gas(&mut store, GAS_COSTS.db_read.cost(0), "db_read/not_found")?;
+            // If the record doesn't exist, return a zero pointer.
+            Ok(0)
+        },
+    }
 }
 
 pub fn db_scan(
@@ -26,7 +37,7 @@ pub fn db_scan(
     max_ptr: u32,
     order: i32,
 ) -> VmResult<i32> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     // Parse iteration parameters provided by the module and create iterator.
     let min = if min_ptr != 0 {
@@ -42,44 +53,76 @@ pub fn db_scan(
     let order = order.try_into()?;
     let iterator = Iterator::new(min, max, order);
 
+    env.consume_external_gas(&mut store, GAS_COSTS.db_scan, "db_scan")?;
+
     Ok(env.add_iterator(iterator))
 }
 
 pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    // If the iterator has reached its end, return a zero pointer.
-    let Some(record) = env.advance_iterator(iterator_id)? else {
-        return Ok(0);
-    };
+    match env.advance_iterator(iterator_id)? {
+        Some((key, value)) => {
+            env.consume_external_gas(
+                &mut store,
+                GAS_COSTS.db_next + GAS_COSTS.db_read.cost(key.len() + value.len()),
+                "db_next/found",
+            )?;
 
-    write_to_memory(env, &mut store, &encode_record(record))
+            write_to_memory(env, &mut store, &encode_record((key, value)))
+        },
+        None => {
+            env.consume_external_gas(&mut store, GAS_COSTS.db_next, "db_next/not_found")?;
+
+            Ok(0)
+        },
+    }
 }
 
 pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    // If the iterator has reached its end, return a zero pointer.
-    let Some((key, _)) = env.advance_iterator(iterator_id)? else {
-        return Ok(0);
-    };
+    match env.advance_iterator(iterator_id)? {
+        Some((key, _)) => {
+            env.consume_external_gas(
+                &mut store,
+                GAS_COSTS.db_next + GAS_COSTS.db_read.cost(key.len()),
+                "db_next_key/found",
+            )?;
 
-    write_to_memory(env, &mut store, &key)
+            write_to_memory(env, &mut store, &key)
+        },
+        None => {
+            env.consume_external_gas(&mut store, GAS_COSTS.db_next, "db_next_key/not_found")?;
+
+            Ok(0)
+        },
+    }
 }
 
 pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    // If the iterator has reached its end, return a zero pointer.
-    let Some((_, value)) = env.advance_iterator(iterator_id)? else {
-        return Ok(0);
-    };
+    match env.advance_iterator(iterator_id)? {
+        Some((_, value)) => {
+            env.consume_external_gas(
+                &mut store,
+                GAS_COSTS.db_next + GAS_COSTS.db_read.cost(value.len()),
+                "db_next_value/found",
+            )?;
 
-    write_to_memory(env, &mut store, &value)
+            write_to_memory(env, &mut store, &value)
+        },
+        None => {
+            env.consume_external_gas(&mut store, GAS_COSTS.db_next, "db_next_value/not_found")?;
+
+            Ok(0)
+        },
+    }
 }
 
 pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u32) -> VmResult<()> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     // Make sure the storage isn't set to be read only.
     //
@@ -117,11 +160,15 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // which involves deleting the iterator.
     env.clear_iterators();
 
-    Ok(())
+    env.consume_external_gas(
+        &mut store,
+        GAS_COSTS.db_write.cost(key.len() + value.len()),
+        "db_write",
+    )
 }
 
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
         return Err(VmError::ReadOnly);
@@ -130,11 +177,8 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let key = read_from_memory(env, &store, key_ptr)?;
 
     env.storage.remove(&key);
-
-    // Delete all existing iterators; same reasoning as in `db_write`.
     env.clear_iterators();
-
-    Ok(())
+    env.consume_external_gas(&mut store, GAS_COSTS.db_remove, "storage_remove")
 }
 
 pub fn db_remove_range(
@@ -142,7 +186,7 @@ pub fn db_remove_range(
     min_ptr: u32,
     max_ptr: u32,
 ) -> VmResult<()> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
         return Err(VmError::ReadOnly);
@@ -160,11 +204,8 @@ pub fn db_remove_range(
     };
 
     env.storage.remove_range(min.as_deref(), max.as_deref());
-
-    // Delete all existing iterators; same reasoning as in `db_write`.
     env.clear_iterators();
-
-    Ok(())
+    env.consume_external_gas(&mut store, GAS_COSTS.db_remove, "storage_remove_range")
 }
 
 pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -> VmResult<()> {
@@ -201,11 +242,13 @@ pub fn secp256k1_verify(
     sig_ptr: u32,
     pk_ptr: u32,
 ) -> VmResult<i32> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
+
+    env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256k1_verify")?;
 
     match grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -219,11 +262,13 @@ pub fn secp256r1_verify(
     sig_ptr: u32,
     pk_ptr: u32,
 ) -> VmResult<i32> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
+
+    env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256r1_verify")?;
 
     match grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -249,6 +294,12 @@ pub fn secp256k1_pubkey_recover(
         _ => return Ok(0),
     };
 
+    env.consume_external_gas(
+        &mut store,
+        GAS_COSTS.secp256k1_pubkey_recover,
+        "secp256k1_pubkey_recover",
+    )?;
+
     match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
         Ok(pk) => write_to_memory(env, &mut store, &pk),
         Err(_) => Ok(0),
@@ -261,11 +312,13 @@ pub fn ed25519_verify(
     sig_ptr: u32,
     pk_ptr: u32,
 ) -> VmResult<i32> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
+
+    env.consume_external_gas(&mut store, GAS_COSTS.ed25519_verify, "ed25519_verify")?;
 
     match grug_crypto::ed25519_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -279,7 +332,7 @@ pub fn ed25519_batch_verify(
     sigs_ptr: u32,
     pks_ptr: u32,
 ) -> VmResult<i32> {
-    let (env, store) = fe.data_and_store_mut();
+    let (env, mut store) = fe.data_and_store_mut();
 
     let msgs_hash = read_from_memory(env, &store, msgs_hash_ptr)?;
     let sigs = read_from_memory(env, &store, sigs_ptr)?;
@@ -289,6 +342,12 @@ pub fn ed25519_batch_verify(
     let sigs = decode_sections(&sigs);
     let pks = decode_sections(&pks);
 
+    env.consume_external_gas(
+        &mut store,
+        GAS_COSTS.ed25519_batch_verify.cost(msgs_hash.len()),
+        "ed25519_batch_verify",
+    )?;
+
     match grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks) {
         Ok(()) => Ok(0),
         Err(_) => Ok(1),
@@ -296,28 +355,30 @@ pub fn ed25519_batch_verify(
 }
 
 macro_rules! impl_hash_method {
-    ($name:ident) => {
-        pub fn $name(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
+    ($hasher:ident, $name:literal) => {
+        pub fn $hasher(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
             let (env, mut store) = fe.data_and_store_mut();
 
             let data = read_from_memory(env, &store, data_ptr)?;
-            let hash = grug_crypto::$name(&data);
+            let hash = grug_crypto::$hasher(&data);
+
+            env.consume_external_gas(&mut store, GAS_COSTS.$hasher.cost(data.len()), $name)?;
 
             write_to_memory(env, &mut store, &hash)
         }
     };
 }
 
-impl_hash_method!(sha2_256);
-impl_hash_method!(sha2_512);
-impl_hash_method!(sha2_512_truncated);
-impl_hash_method!(sha3_256);
-impl_hash_method!(sha3_512);
-impl_hash_method!(sha3_512_truncated);
-impl_hash_method!(keccak256);
-impl_hash_method!(blake2s_256);
-impl_hash_method!(blake2b_512);
-impl_hash_method!(blake3);
+impl_hash_method!(sha2_256, "sha2_256");
+impl_hash_method!(sha2_512, "sha2_512");
+impl_hash_method!(sha2_512_truncated, "sha2_512_truncated");
+impl_hash_method!(sha3_256, "sha3_256");
+impl_hash_method!(sha3_512, "sha3_512");
+impl_hash_method!(sha3_512_truncated, "sha3_512_truncated");
+impl_hash_method!(keccak256, "keccak256");
+impl_hash_method!(blake2s_256, "blake2s_256");
+impl_hash_method!(blake2b_512, "blake2b_512");
+impl_hash_method!(blake3, "blake3");
 
 /// Pack a KV pair into a single byte array in the following format:
 ///

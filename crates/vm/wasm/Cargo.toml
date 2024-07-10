@@ -28,5 +28,14 @@ wasmer             = { workspace = true, features = ["singlepass"] }
 wasmer-middlewares = { workspace = true }
 
 [dev-dependencies]
-anyhow       = { workspace = true }
-grug-vm-wasm = { path = ".", features = ["testing"] }
+anyhow                  = { workspace = true }
+criterion               = { workspace = true }
+grug-app                = { path = "../../app", features = ["tracing"] }
+grug-crypto             = { path = "../../crypto" }
+grug-testing            = { path = "../../testing" }
+grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker" }
+grug-vm-wasm            = { path = ".", features = ["testing"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
