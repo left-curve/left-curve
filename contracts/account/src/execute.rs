@@ -83,7 +83,7 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
 
     let account_data: AccountData = from_json_key_value(tx.data, "account")?;
 
-    let (hash, attributes) = match account_data.order {
+    let (sign_bytes, attributes) = match account_data.order {
         TxOrder::Ordered => {
             let sequence = SEQUENCE.load(ctx.storage)?;
 
@@ -91,7 +91,7 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             SEQUENCE.increment(ctx.storage)?;
 
             // Prepare the hash that is expected to have been signed
-            let hash = make_sign_bytes(
+            let sign_bytes = make_sign_bytes(
                 // Note: We can't use a trait method as a function pointer. Need to use
                 // a closure instead.
                 |prehash| ctx.api.sha2_256(prehash),
@@ -104,9 +104,11 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
 
             let attributes = vec![Attribute::new("sequence", sequence.to_string())];
 
-            (hash, attributes)
+            (sign_bytes, attributes)
         },
         TxOrder::Unordered { expiration } => {
+            // Prepare the hash that is expected to have been signed
+            // using the expiration time instead of the sequence
             let sign_bytes = make_sign_bytes(
                 // Note: We can't use a trait method as a function pointer. Need to use
                 // a closure instead.
@@ -154,10 +156,12 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     if !ctx.simulate {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
-                ctx.api.secp256k1_verify(&hash, &tx.credential, bytes)?;
+                ctx.api
+                    .secp256k1_verify(&sign_bytes, &tx.credential, bytes)?;
             },
             PublicKey::Secp256r1(bytes) => {
-                ctx.api.secp256r1_verify(&hash, &tx.credential, bytes)?;
+                ctx.api
+                    .secp256r1_verify(&sign_bytes, &tx.credential, bytes)?;
             },
         }
     }
