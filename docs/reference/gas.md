@@ -26,6 +26,12 @@ For us, defining gas cost is easier, because we don't have a Cosmos SDK to deal 
 
 3. We skip this step as well.
 
+> In summary,
+>
+> - 1 Cosmos SDK gas = 100 CosmWasm gas
+> - 1 Wasmer point = 170 CosmWasm gas
+> - 1 Wasmer point = 1 Grug gas
+
 ## Benchmark results
 
 Benchmarks were performed on a MacBook Pro with the M2 Pro CPU.
