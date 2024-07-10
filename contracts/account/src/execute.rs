@@ -191,7 +191,7 @@ pub fn remove_expired_unordered_txs(
 }
 
 /// Validate the expiration of unordered tx
-/// and insert the tx into the set if not alredy present.
+/// and insert the it into the set if not alredy present.
 fn validate_and_insert<T>(
     storage: &mut dyn Storage,
     set: Set<(T, &Hash)>,
@@ -219,7 +219,7 @@ where
     Ok(())
 }
 
-/// Remove all expired items from a set.
+/// Remove all expired txs from a set.
 fn remove_from_set<T>(
     storage: &mut dyn Storage,
     set: Set<(T, &Hash)>,
