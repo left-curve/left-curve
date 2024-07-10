@@ -30,16 +30,16 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     //
     // For hashers, `per_item` means per byte.
     // The truncated versions have the same cost as the untruncated counterparts.
-    sha2_256: LinearGasCost::new(0, 27_265),
-    sha2_512: LinearGasCost::new(0, 16_814),
-    sha2_512_truncated: LinearGasCost::new(0, 16_814),
-    sha3_256: LinearGasCost::new(0, 15_326),
-    sha3_512: LinearGasCost::new(0, 28_910),
-    sha3_512_truncated: LinearGasCost::new(0, 28_910),
-    keccak256: LinearGasCost::new(0, 15_265),
-    blake2s_256: LinearGasCost::new(0, 15_244),
-    blake2b_512: LinearGasCost::new(0, 9_114),
-    blake3: LinearGasCost::new(0, 5_195),
+    sha2_256: LinearGasCost::new(0, 27),
+    sha2_512: LinearGasCost::new(0, 16),
+    sha2_512_truncated: LinearGasCost::new(0, 16),
+    sha3_256: LinearGasCost::new(0, 15),
+    sha3_512: LinearGasCost::new(0, 28),
+    sha3_512_truncated: LinearGasCost::new(0, 28),
+    keccak256: LinearGasCost::new(0, 15),
+    blake2s_256: LinearGasCost::new(0, 15),
+    blake2b_512: LinearGasCost::new(0, 9),
+    blake3: LinearGasCost::new(0, 5),
 };
 
 pub struct GasCosts {
