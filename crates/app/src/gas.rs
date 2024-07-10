@@ -94,7 +94,7 @@ impl GasTracker {
             if let Some(limit) = inner.limit {
                 if used > limit {
                     #[cfg(feature = "tracing")]
-                    warn!(limit = inner.limit, used, "Out of gas");
+                    warn!(limit = inner.limit, used, comment = _comment, "Out of gas");
 
                     return Err(OutOfGasError { limit, used });
                 }
