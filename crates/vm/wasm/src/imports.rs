@@ -209,11 +209,7 @@ pub fn secp256k1_verify(
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
 
-    env.consume_external_gas(
-        &mut store,
-        GAS_COSTS.secp256k1_verify_cost,
-        "secp256k1_verify_cost",
-    )?;
+    env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256k1_verify")?;
 
     match grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -233,11 +229,7 @@ pub fn secp256r1_verify(
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
 
-    env.consume_external_gas(
-        &mut store,
-        GAS_COSTS.secp256k1_verify_cost,
-        "secp256r1_verify_cost",
-    )?;
+    env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256r1_verify")?;
 
     match grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -287,11 +279,7 @@ pub fn ed25519_verify(
     let sig = read_from_memory(env, &store, sig_ptr)?;
     let pk = read_from_memory(env, &store, pk_ptr)?;
 
-    env.consume_external_gas(
-        &mut store,
-        GAS_COSTS.ed25519_verify_cost,
-        "secp256k1_pubkey_recover",
-    )?;
+    env.consume_external_gas(&mut store, GAS_COSTS.ed25519_verify, "ed25519_verify")?;
 
     match grug_crypto::ed25519_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
@@ -317,7 +305,7 @@ pub fn ed25519_batch_verify(
 
     env.consume_external_gas(
         &mut store,
-        GAS_COSTS.ed25519_batch_verify_cost.cost(msgs_hash.len()),
+        GAS_COSTS.ed25519_batch_verify.cost(msgs_hash.len()),
         "ed25519_batch_verify",
     )?;
 

@@ -21,11 +21,11 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     // Verifiers
     //
     // For batch verification, there's a flat setup cost, and a cost per signature.
-    secp256r1_verify_cost: 1_880_000,
-    secp256k1_verify_cost: 770_000,
+    secp256r1_verify: 1_880_000,
+    secp256k1_verify: 770_000,
     secp256k1_pubkey_recover: 1_580_000,
-    ed25519_verify_cost: 410_000,
-    ed25519_batch_verify_cost: LinearGasCost::new(1_340_000, 188_000),
+    ed25519_verify: 410_000,
+    ed25519_batch_verify: LinearGasCost::new(1_340_000, 188_000),
     // Hashers.
     //
     // For hashers, `per_item` means per byte.
@@ -50,11 +50,11 @@ pub struct GasCosts {
     pub storage_write: LinearGasCost,
     pub storage_remove: u64,
     // Signature verifiers
-    pub secp256r1_verify_cost: u64,
-    pub secp256k1_verify_cost: u64,
+    pub secp256r1_verify: u64,
+    pub secp256k1_verify: u64,
     pub secp256k1_pubkey_recover: u64,
-    pub ed25519_verify_cost: u64,
-    pub ed25519_batch_verify_cost: LinearGasCost,
+    pub ed25519_verify: u64,
+    pub ed25519_batch_verify: LinearGasCost,
     // Hashers
     pub sha2_256: LinearGasCost,
     pub sha2_512: LinearGasCost,
