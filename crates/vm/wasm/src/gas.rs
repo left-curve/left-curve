@@ -13,11 +13,11 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     // - 170 CosmWasm gas = 1 Wasmer point
     // - 1 Wasmer point = 1 Grug gas
     // This means: 1 Cosmos SDK gas = 0.588 Grug gas
-    storage_read: LinearGasCost::new(588, 2),
-    storage_scan: 588,
-    storage_next: 18,
-    storage_write: LinearGasCost::new(1176, 18),
-    storage_remove: 588,
+    db_read: LinearGasCost::new(588, 2),
+    db_scan: 588,
+    db_next: 18,
+    db_write: LinearGasCost::new(1176, 18),
+    db_remove: 588,
     // Verifiers
     //
     // For batch verification, there's a flat setup cost, and a cost per signature.
@@ -44,11 +44,11 @@ pub const GAS_COSTS: GasCosts = GasCosts {
 
 pub struct GasCosts {
     // Storage
-    pub storage_read: LinearGasCost,
-    pub storage_scan: u64,
-    pub storage_next: u64,
-    pub storage_write: LinearGasCost,
-    pub storage_remove: u64,
+    pub db_read: LinearGasCost,
+    pub db_scan: u64,
+    pub db_next: u64,
+    pub db_write: LinearGasCost,
+    pub db_remove: u64,
     // Signature verifiers
     pub secp256r1_verify: u64,
     pub secp256k1_verify: u64,

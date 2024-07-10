@@ -225,7 +225,7 @@ impl Environment {
         &mut self,
         store: &mut impl AsStoreMut,
         external: u64,
-        name: &str,
+        comment: &str,
     ) -> VmResult<()> {
         let instance = self.get_wasmer_instance()?;
         match get_remaining_points(store, instance) {
@@ -233,7 +233,7 @@ impl Environment {
                 // gas_checkpoint can't be less than remaining
                 // compute consumed equals to the gas consumed since the last update + external gas
                 let consumed = self.gas_checkpoint - remaining + external;
-                self.gas_tracker.consume(consumed, name)?;
+                self.gas_tracker.consume(consumed, comment)?;
 
                 // If there is a limit on gas_tracker, update the remaining points in the store
                 if let Some(remaining) = self.gas_tracker.remaining() {
