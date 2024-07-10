@@ -86,5 +86,3 @@ where
 {
     data.encode_to_vec()
 }
-
-

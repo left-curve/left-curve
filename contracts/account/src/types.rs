@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Binary, Timestamp},
+    grug_types::{Binary, Expiration},
     serde::{Deserialize, Serialize},
 };
 
@@ -49,5 +49,5 @@ pub struct AccountData {
 #[serde(rename = "snake_case")]
 pub enum TxOrder {
     Ordered,
-    Unordered { expiration: Timestamp },
+    Unordered { expiration: Expiration },
 }

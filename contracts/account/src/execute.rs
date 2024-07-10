@@ -1,11 +1,15 @@
 use {
-    crate::{AccountData, PublicKey, TxOrder, PUBLIC_KEY, SEQUENCE, UNORDERED_TXS},
-    anyhow::ensure,
-    grug_storage::Bound,
-    grug_types::{
-        from_json_key_value, to_json_vec, Addr, Attribute, AuthCtx, Hash, Message, MutableCtx,
-        Order, Response, StdError, StdResult, Storage, Timestamp, Tx,
+    crate::{
+        AccountData, PublicKey, TxOrder, PUBLIC_KEY, SEQUENCE, UNORDERED_TXS_HEIGHT,
+        UNORDERED_TXS_TIMESTAMP,
     },
+    anyhow::ensure,
+    grug_storage::{Bound, Key, Set},
+    grug_types::{
+        from_json_key_value, to_json_vec, Addr, Attribute, AuthCtx, BlockInfo, Expiration, Hash,
+        Message, MutableCtx, Order, Response, StdError, StdResult, Storage, Tx,
+    },
+    std::fmt::Display,
 };
 
 /// Generate the bytes that the sender of a transaction needs to sign.
@@ -33,7 +37,7 @@ pub fn make_sign_bytes<Hasher, const HASH_LEN: usize>(
     sender: &Addr,
     chain_id: &str,
     sequence: Option<u32>,
-    expiration_timestamp: Option<u128>,
+    expiration: Option<&Expiration>,
 ) -> StdResult<[u8; HASH_LEN]>
 where
     Hasher: Fn(&[u8]) -> [u8; HASH_LEN],
@@ -47,8 +51,8 @@ where
     if let Some(sequence) = sequence {
         prehash.extend(sequence.to_be_bytes());
     }
-    if let Some(expiration_timestamp) = expiration_timestamp {
-        prehash.extend(expiration_timestamp.to_be_bytes());
+    if let Some(expiration) = expiration {
+        prehash.extend(to_json_vec(expiration)?);
     }
 
     Ok(hasher(&prehash))
@@ -75,7 +79,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 }
 
 pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    let remove_attributes = remove_expired_unordered_txs(ctx.storage, ctx.block.timestamp)?;
+    let remove_attributes = remove_expired_unordered_txs(ctx.storage, &ctx.block)?;
 
     let account_data: AccountData = from_json_key_value(tx.data, "account")?;
 
@@ -103,13 +107,7 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             (hash, attributes)
         },
         TxOrder::Unordered { expiration } => {
-            if expiration < ctx.block.timestamp {
-                return Err(StdError::generic_err("Transaction expired"));
-            }
-
-            let expiration = expiration.nanos();
-            // Prepare the hash that is expected to have been signed
-            let hash = make_sign_bytes(
+            let sign_bytes = make_sign_bytes(
                 // Note: We can't use a trait method as a function pointer. Need to use
                 // a closure instead.
                 |prehash| ctx.api.sha2_256(prehash),
@@ -117,16 +115,33 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
                 &tx.sender,
                 &ctx.chain_id,
                 None,
-                Some(expiration),
+                Some(&expiration),
             )?;
 
-            if UNORDERED_TXS.has(ctx.storage, (expiration, &Hash::from_slice(hash))) {
-                return Err(StdError::generic_err("Transaction already exists"));
-            } else {
-                UNORDERED_TXS.insert(ctx.storage, (expiration, &Hash::from_slice(hash)))?;
-            }
+            let sign_hash = Hash::from_slice(sign_bytes);
 
-            (hash, vec![])
+            match expiration {
+                Expiration::AtHeight(expiration) => {
+                    validate_and_insert(
+                        ctx.storage,
+                        UNORDERED_TXS_HEIGHT,
+                        &sign_hash,
+                        expiration.into(),
+                        ctx.block.height.into(),
+                    )?;
+                },
+                Expiration::AtTime(expiration) => {
+                    validate_and_insert(
+                        ctx.storage,
+                        UNORDERED_TXS_TIMESTAMP,
+                        &sign_hash,
+                        expiration.nanos(),
+                        ctx.block.timestamp.nanos(),
+                    )?;
+                },
+            };
+
+            (sign_bytes, vec![])
         },
     };
 
@@ -151,26 +166,75 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         .add_attributes(attributes))
 }
 
+/// Validate the expiration of unordered tx
+/// and insert the tx into the set if not alredy present.
+fn validate_and_insert<T>(
+    storage: &mut dyn Storage,
+    set: Set<(T, &Hash)>,
+    sign_hash: &Hash,
+    expiration: T,
+    current: T,
+) -> StdResult<()>
+where
+    T: Key + PartialOrd + Clone + Display,
+{
+    if expiration < current {
+        return Err(StdError::generic_err(format!(
+            "unordered transaction expired: expired: {expiration} - current: {current} - sign_hash: {sign_hash}"
+        )));
+    }
+
+    if set.has(storage, (expiration.clone(), sign_hash)) {
+        return Err(StdError::generic_err(format!(
+            "transaction already exists: expired: {expiration} - sign_hash: {sign_hash}"
+        )));
+    } else {
+        set.insert(storage, (expiration, sign_hash))?;
+    }
+
+    Ok(())
+}
+
+/// Remove all expired unordered transactions from the store.
 fn remove_expired_unordered_txs(
     storage: &mut dyn Storage,
-    current_timestamp: Timestamp,
+    current_block: &BlockInfo,
 ) -> StdResult<Vec<Attribute>> {
-    let to_remove: Vec<(u128, Hash)> = UNORDERED_TXS
+    let mut attrs_timestamp = remove_from_set(
+        storage,
+        UNORDERED_TXS_TIMESTAMP,
+        current_block.timestamp.nanos(),
+    )?;
+    let attrs_height = remove_from_set(storage, UNORDERED_TXS_HEIGHT, current_block.height.into())?;
+    attrs_timestamp.extend(attrs_height);
+    Ok(attrs_timestamp)
+}
+
+/// Remove all expired items from a set.
+fn remove_from_set<T>(
+    storage: &mut dyn Storage,
+    set: Set<(T, &Hash)>,
+    current: T,
+) -> StdResult<Vec<Attribute>>
+where
+    T: Key<Output = T> + Display + Clone,
+{
+    let to_remove: Vec<(T, Hash)> = set
         .range(
             storage,
             None,
-            Some(Bound::exclusive((current_timestamp.nanos(), &Hash::ZERO))),
+            Some(Bound::exclusive((current, &Hash::ZERO))),
             Order::Ascending,
         )
         .collect::<StdResult<_>>()?;
 
     let attributes = to_remove
         .into_iter()
-        .map(|(timestamp, hash)| {
-            UNORDERED_TXS.remove(storage, (timestamp, &hash));
+        .map(|(expiration, hash)| {
+            set.remove(storage, (expiration.clone(), &hash));
             Attribute::new(
                 "unordered_expired",
-                format!("timestamp: {} - bytes: {}", timestamp, hash),
+                format!("expiration: {} - bytes: {}", expiration, hash),
             )
         })
         .collect();
@@ -183,12 +247,12 @@ mod tests {
     use {
         crate::{
             authenticate_tx, initialize, make_sign_bytes, AccountData, PublicKey, TxOrder,
-            DATA_ACCOUNT_KEY,
+            DATA_ACCOUNT_KEY, UNORDERED_TXS_HEIGHT, UNORDERED_TXS_TIMESTAMP,
         },
         grug_crypto::{sha2_256, Identity256},
         grug_types::{
-            Addr, AuthCtx, BlockInfo, DataBuilder, Hash, Message, MockApi, MockStorage, Querier,
-            QuerierWrapper, QueryRequest, QueryResponse, StdResult, Timestamp, Tx,
+            Addr, AuthCtx, BlockInfo, DataBuilder, Expiration, Hash, Message, MockApi, MockStorage,
+            Querier, QuerierWrapper, QueryRequest, QueryResponse, StdResult, Timestamp, Tx,
         },
         k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
         rand::rngs::OsRng,
@@ -231,15 +295,15 @@ mod tests {
         msgs: Vec<Message>,
         sender: &Addr,
         sequence: Option<u32>,
-        expiration_timestamp: Option<Timestamp>,
-    ) -> Tx {
+        expiration_timestamp: Option<Expiration>,
+    ) -> (Tx, Hash) {
         let msg_hash = make_sign_bytes(
             sha2_256,
             &msgs,
             sender,
             "grug-1",
             sequence,
-            expiration_timestamp.map(|val| val.nanos()),
+            expiration_timestamp.as_ref(),
         )
         .unwrap();
 
@@ -247,7 +311,7 @@ mod tests {
 
         let sig: Signature = sk.sign_digest(digest);
 
-        Tx {
+        let tx = Tx {
             sender: sender.clone(),
             msgs,
             data: DataBuilder::default()
@@ -262,7 +326,9 @@ mod tests {
                 .finalize(),
             credential: sig.to_bytes().to_vec().into(),
             gas_limit: 0,
-        }
+        };
+
+        (tx, Hash::from_slice(msg_hash))
     }
 
     #[test]
@@ -299,27 +365,84 @@ mod tests {
         // create an unordered tx
 
         // Invalid expiration timestamp
-        let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Timestamp::from_nanos(8)));
-        authenticate_tx(ctx.branch(), tx).unwrap_err_contains("Transaction expired");
+        let tx = build_tx_and_sign(
+            &sk,
+            vec![],
+            &sender,
+            None,
+            Some(Expiration::new_time(Timestamp::from_nanos(99))),
+        )
+        .0;
+        authenticate_tx(ctx.branch(), tx).unwrap_err_contains("unordered transaction expired");
 
         // Valid expiration timestamp
-        let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Timestamp::from_nanos(200)));
+        let (tx, msg_hash) = build_tx_and_sign(
+            &sk,
+            vec![],
+            &sender,
+            None,
+            Some(Expiration::new_time(Timestamp::from_nanos(200))),
+        );
         authenticate_tx(ctx.branch(), tx.clone()).unwrap();
 
         // increace block time
         ctx.block.timestamp = Timestamp::from_nanos(200);
 
         // This should fail as the transaction still in the store
-        authenticate_tx(ctx.branch(), tx.clone()).unwrap_err_contains("Transaction already exists");
+        authenticate_tx(ctx.branch(), tx.clone()).unwrap_err_contains("transaction already exists");
 
-        // increace block time
+        // Sanity check
+        assert!(UNORDERED_TXS_TIMESTAMP.has(ctx.storage, (200, &msg_hash)));
+
+        // increase block time
         ctx.block.timestamp = Timestamp::from_nanos(201);
 
         // This should fail as the transaction is alredy expired
-        authenticate_tx(ctx.branch(), tx.clone()).unwrap_err_contains("Transaction expired");
+        authenticate_tx(ctx.branch(), tx.clone())
+            .unwrap_err_contains("unordered transaction expired");
 
-        let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Timestamp::from_nanos(300)));
+        let (tx, _) = build_tx_and_sign(
+            &sk,
+            vec![],
+            &sender,
+            None,
+            Some(Expiration::new_time(Timestamp::from_nanos(300))),
+        );
 
         authenticate_tx(ctx.branch(), tx.clone()).unwrap();
+
+        // Check that the transaction is removed from the store
+        assert!(!UNORDERED_TXS_TIMESTAMP.has(ctx.storage, (200, &msg_hash)));
+
+        // ---- Expire by height ----
+
+        let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Expiration::new_height(9))).0;
+
+        authenticate_tx(ctx.branch(), tx.clone())
+            .unwrap_err_contains("unordered transaction expired");
+
+        let (tx, msg_hash) =
+            build_tx_and_sign(&sk, vec![], &sender, None, Some(Expiration::new_height(10)));
+
+        authenticate_tx(ctx.branch(), tx.clone()).unwrap();
+
+        authenticate_tx(ctx.branch(), tx.clone()).unwrap_err_contains("transaction already exists");
+
+        // increase block height
+
+        ctx.block.height = 11_u64.into();
+
+        // Sanity check
+        assert!(UNORDERED_TXS_HEIGHT.has(ctx.storage, (10, &msg_hash)));
+
+        authenticate_tx(ctx.branch(), tx.clone())
+            .unwrap_err_contains("unordered transaction expired");
+
+        let tx = build_tx_and_sign(&sk, vec![], &sender, None, Some(Expiration::new_height(20))).0;
+
+        authenticate_tx(ctx.branch(), tx.clone()).unwrap();
+
+        // Check that the transaction is removed from the store
+        assert!(!UNORDERED_TXS_HEIGHT.has(ctx.storage, (10, &msg_hash)));
     }
 }
