@@ -30,8 +30,8 @@ grug-types   = { path = "../../crates/types" }
 serde        = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-k256 = { workspace = true }
-rand = { workspace = true }
-grug-crypto   = { path = "../../crates/crypto" }
+grug-crypto = { path = "../../crates/crypto" }
+k256        = { workspace = true }
+rand        = { workspace = true }
 
 
