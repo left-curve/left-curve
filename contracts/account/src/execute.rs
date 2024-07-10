@@ -79,7 +79,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 }
 
 pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    let remove_attributes = remove_expired_unordered_txs(ctx.storage, &ctx.block)?;
+    let remove_attributes = remove_expired_unordered_txs(ctx.storage, &ctx.block, Some(u32::MAX))?;
 
     let account_data: AccountData = from_json_key_value(tx.data, "account")?;
 
@@ -166,6 +166,28 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         .add_attributes(attributes))
 }
 
+/// Remove all expired unordered transactions from the store.
+pub fn remove_expired_unordered_txs(
+    storage: &mut dyn Storage,
+    current_block: &BlockInfo,
+    limit: Option<u32>,
+) -> StdResult<Vec<Attribute>> {
+    let mut attrs_timestamp = remove_from_set(
+        storage,
+        UNORDERED_TXS_TIMESTAMP,
+        current_block.timestamp.nanos(),
+        limit,
+    )?;
+    let attrs_height = remove_from_set(
+        storage,
+        UNORDERED_TXS_HEIGHT,
+        current_block.height.into(),
+        limit,
+    )?;
+    attrs_timestamp.extend(attrs_height);
+    Ok(attrs_timestamp)
+}
+
 /// Validate the expiration of unordered tx
 /// and insert the tx into the set if not alredy present.
 fn validate_and_insert<T>(
@@ -195,30 +217,17 @@ where
     Ok(())
 }
 
-/// Remove all expired unordered transactions from the store.
-fn remove_expired_unordered_txs(
-    storage: &mut dyn Storage,
-    current_block: &BlockInfo,
-) -> StdResult<Vec<Attribute>> {
-    let mut attrs_timestamp = remove_from_set(
-        storage,
-        UNORDERED_TXS_TIMESTAMP,
-        current_block.timestamp.nanos(),
-    )?;
-    let attrs_height = remove_from_set(storage, UNORDERED_TXS_HEIGHT, current_block.height.into())?;
-    attrs_timestamp.extend(attrs_height);
-    Ok(attrs_timestamp)
-}
-
 /// Remove all expired items from a set.
 fn remove_from_set<T>(
     storage: &mut dyn Storage,
     set: Set<(T, &Hash)>,
     current: T,
+    limit: Option<u32>,
 ) -> StdResult<Vec<Attribute>>
 where
     T: Key<Output = T> + Display + Clone,
 {
+    const DEFAULT_LIMIT: u32 = 30;
     let to_remove: Vec<(T, Hash)> = set
         .range(
             storage,
@@ -226,6 +235,7 @@ where
             Some(Bound::exclusive((current, &Hash::ZERO))),
             Order::Ascending,
         )
+        .take(limit.unwrap_or(DEFAULT_LIMIT) as usize)
         .collect::<StdResult<_>>()?;
 
     let attributes = to_remove

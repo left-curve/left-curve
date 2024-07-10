@@ -23,7 +23,12 @@ pub struct InstantiateMsg {
 #[serde(rename = "snake_case")]
 pub enum ExecuteMsg {
     /// Change the public key associated with the account to a new one.
-    UpdateKey { new_public_key: PublicKey },
+    UpdateKey {
+        new_public_key: PublicKey,
+    },
+    RemovedExpiredUnorderedTxs {
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

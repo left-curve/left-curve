@@ -1,6 +1,7 @@
 use {
     crate::{
-        authenticate_tx, initialize, query_state, update_key, ExecuteMsg, InstantiateMsg, QueryMsg,
+        authenticate_tx, initialize, query_state, remove_expired_unordered_txs, update_key,
+        ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     grug_types::{to_json_value, AuthCtx, ImmutableCtx, Json, MutableCtx, Response, StdResult, Tx},
 };
@@ -61,6 +62,10 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateKey { new_public_key } => update_key(ctx, &new_public_key),
+        ExecuteMsg::RemovedExpiredUnorderedTxs { limit } => {
+            let atts = remove_expired_unordered_txs(ctx.storage, &ctx.block, limit)?;
+            Ok(Response::new().add_attributes(atts))
+        },
     }
 }
 
