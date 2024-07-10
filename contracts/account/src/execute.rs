@@ -263,8 +263,8 @@ mod tests {
         },
         grug_crypto::{sha2_256, Identity256},
         grug_types::{
-            Addr, AuthCtx, BlockInfo, DataBuilder, Expiration, Hash, Message, MockApi, MockStorage,
-            Querier, QuerierWrapper, QueryRequest, QueryResponse, StdResult, Timestamp, Tx,
+            Addr, AuthCtx, BlockInfo, DataBuilder, Expiration, FailingQuerier, Hash, Message,
+            MockApi, MockStorage, QuerierWrapper, Timestamp, Tx,
         },
         k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey},
         rand::rngs::OsRng,
@@ -287,18 +287,11 @@ mod tests {
                 Err(e) => e,
             };
 
-            if format!("{:#}", err).contains(&text) {
+            if err.to_string().contains(&text) {
                 err
             } else {
                 panic!("{text} not contained in {err:#}")
             }
-        }
-    }
-    struct MockQuerier;
-
-    impl Querier for MockQuerier {
-        fn query_chain(&self, _req: QueryRequest) -> StdResult<QueryResponse> {
-            unimplemented!()
         }
     }
 
@@ -355,7 +348,7 @@ mod tests {
         let mut ctx = AuthCtx {
             storage: storage.borrow_mut(),
             api: &MockApi,
-            querier: QuerierWrapper::new(&MockQuerier),
+            querier: QuerierWrapper::new(&FailingQuerier),
             chain_id: "grug-1".to_string(),
             block: BlockInfo {
                 height: 10_u64.into(),

@@ -90,6 +90,5 @@ impl<'a> AuthCtx<'a> {
             contract: self.contract.clone(),
             simulate: self.simulate,
         }
-
     }
 }

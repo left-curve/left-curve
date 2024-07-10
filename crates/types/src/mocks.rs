@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Api, Order, Record, StdError, StdResult, Storage},
+    crate::{Addr, Api, Order, Querier, Record, StdError, StdResult, Storage},
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
@@ -193,5 +193,17 @@ impl Api for MockApi {
 
     fn blake3(&self, data: &[u8]) -> [u8; 32] {
         grug_crypto::blake3(data)
+    }
+}
+
+// ---------------------------------- querier ----------------------------------
+
+/// Mock querier that always fails.
+/// This is useful for unit test purpose without using grug-testing crate.
+pub struct FailingQuerier;
+
+impl Querier for FailingQuerier {
+    fn query_chain(&self, _: crate::QueryRequest) -> StdResult<crate::QueryResponse> {
+        unimplemented!("FailingQuerier always fails")
     }
 }
