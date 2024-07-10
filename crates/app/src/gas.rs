@@ -9,10 +9,11 @@ use {
 // an linear dependency relation between error types:
 // > `OutOfGasError` --> `VmError` --> `AppError`
 #[derive(Debug, thiserror::Error)]
-#[error("not enough gas! limit: {limit}, used: {used}")]
+#[error("not enough gas! limit: {limit}, used: {used}, comment: {comment}")]
 pub struct OutOfGasError {
     limit: u64,
     used: u64,
+    comment: String,
 }
 
 struct GasTrackerInner {
@@ -96,7 +97,11 @@ impl GasTracker {
                     #[cfg(feature = "tracing")]
                     warn!(limit = inner.limit, used, comment = _comment, "Out of gas");
 
-                    return Err(OutOfGasError { limit, used });
+                    return Err(OutOfGasError {
+                        limit,
+                        used,
+                        comment: _comment.to_string(),
+                    });
                 }
             }
 
