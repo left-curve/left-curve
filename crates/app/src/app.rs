@@ -153,6 +153,7 @@ where
         block: BlockInfo,
         txs: Vec<(Hash, Tx)>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+        // TODO: https://github.com/left-curve/grug/issues/10
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
         let mut events = vec![];
         let mut tx_results = vec![];
