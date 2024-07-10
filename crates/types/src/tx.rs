@@ -8,6 +8,7 @@ use {
 pub struct Tx {
     pub sender: Addr,
     pub msgs: Vec<Message>,
+    pub data: Json,
     pub credential: Binary,
     pub gas_limit: u64,
 }
@@ -117,5 +118,21 @@ impl Message {
             new_code_hash,
             msg: to_json_value(msg)?,
         })
+    }
+}
+
+#[derive(Default)]
+pub struct DataBuilder {
+    json: serde_json::Map<String, Json>,
+}
+
+impl DataBuilder {
+    pub fn add_field<T: Serialize>(mut self, key: &str, value: T) -> StdResult<Self> {
+        self.json.insert(key.to_string(), to_json_value(&value)?);
+        Ok(self)
+    }
+
+    pub fn finalize(self) -> Json {
+        Json::Object(self.json)
     }
 }

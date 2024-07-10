@@ -1,6 +1,7 @@
 use {
+    grug_account::{AccountData, TxOrder, DATA_ACCOUNT_KEY},
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{Addr, Binary, Hash, Message, Tx, GENESIS_SENDER},
+    grug_types::{Addr, Binary, DataBuilder, Hash, Message, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
@@ -40,7 +41,8 @@ impl TestAccount {
             &msgs,
             &self.address,
             chain_id,
-            sequence,
+            Some(sequence),
+            None,
         )?);
 
         let signature: Signature = self.sk.sign_digest(sign_bytes);
@@ -48,6 +50,11 @@ impl TestAccount {
         Ok(Tx {
             sender: self.address.clone(),
             msgs,
+            data: DataBuilder::default()
+                .add_field(DATA_ACCOUNT_KEY, AccountData {
+                    order: TxOrder::Ordered,
+                })?
+                .finalize(),
             gas_limit,
             credential: signature.to_vec().into(),
         })

@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::Binary,
+    grug_types::{Binary, Timestamp},
     serde::{Deserialize, Serialize},
 };
 
@@ -38,4 +38,16 @@ pub enum QueryMsg {
 pub struct StateResponse {
     pub public_key: PublicKey,
     pub sequence: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct AccountData {
+    pub order: TxOrder,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename = "snake_case")]
+pub enum TxOrder {
+    Ordered,
+    Unordered { expiration: Timestamp },
 }

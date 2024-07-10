@@ -3,6 +3,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
+    serde_json::value::Index,
 };
 
 /// Deserialize a JSON value into Rust value of a given type `T`.
@@ -13,6 +14,17 @@ where
     serde_json::from_value(json).map_err(StdError::deserialize::<T>)
 }
 
+pub fn from_json_key_value<T, I>(json: Json, key: I) -> StdResult<T>
+where
+    T: DeserializeOwned,
+    I: Index,
+{
+    let value = json
+        .get(key)
+        .cloned()
+        .ok_or(StdError::generic_err("Key not found"))?;
+    from_json_value(value)
+}
 /// Serialize a Rust value into JSON value.
 pub fn to_json_value<T>(data: &T) -> StdResult<Json>
 where
@@ -74,3 +86,5 @@ where
 {
     data.encode_to_vec()
 }
+
+

@@ -370,4 +370,8 @@ impl<'a> QuerierWrapper<'a> {
             })
             .and_then(|res| from_json_value(res.as_wasm_smart().data))
     }
+
+    pub fn branch(&self) -> Self {
+        QuerierWrapper { inner: self.inner }
+    }
 }

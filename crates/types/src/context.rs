@@ -78,3 +78,18 @@ pub struct AuthCtx<'a> {
     pub contract: Addr,
     pub simulate: bool,
 }
+
+impl<'a> AuthCtx<'a> {
+    pub fn branch(&'_ mut self) -> AuthCtx<'_> {
+        AuthCtx {
+            storage:  self.storage,
+            api:      self.api,
+            querier:  self.querier.branch(),
+            chain_id: self.chain_id.clone(),
+            block:    self.block.clone(),
+            contract: self.contract.clone(),
+            simulate: self.simulate,
+        }
+
+    }
+}

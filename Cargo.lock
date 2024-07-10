@@ -1477,9 +1477,12 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
+ "grug-crypto",
  "grug-ffi",
  "grug-storage",
  "grug-types",
+ "k256",
+ "rand",
  "serde",
 ]
 

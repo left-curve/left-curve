@@ -39,6 +39,11 @@ impl Response {
         self.attributes.push(Attribute::new(key, value));
         self
     }
+
+    pub fn add_attributes(mut self, attributes: impl IntoIterator<Item = Attribute>) -> Self {
+        self.attributes.extend(attributes);
+        self
+    }
 }
 
 /// Indicates that after a submessage has been executed, whether the host should

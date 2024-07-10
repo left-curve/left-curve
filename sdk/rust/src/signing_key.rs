@@ -1,8 +1,9 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
+    grug_account::{AccountData, TxOrder, DATA_ACCOUNT_KEY},
     grug_crypto::Identity256,
-    grug_types::{Addr, Binary, Message, Tx},
+    grug_types::{Addr, Binary, DataBuilder, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -120,7 +121,8 @@ impl SigningKey {
             &msgs,
             &sender,
             chain_id,
-            sequence,
+            Some(sequence),
+            None,
         )?;
 
         // Sign the sign bytes
@@ -129,6 +131,11 @@ impl SigningKey {
         Ok(Tx {
             // TODO: Add gas limit
             gas_limit: 3_000_000,
+            data: DataBuilder::default()
+                .add_field(DATA_ACCOUNT_KEY, AccountData {
+                    order: TxOrder::Ordered,
+                })?
+                .finalize(),
             sender,
             msgs,
             credential: signature.into(),

@@ -28,3 +28,10 @@ grug-ffi     = { path = "../../crates/ffi" }
 grug-storage = { path = "../../crates/storage" }
 grug-types   = { path = "../../crates/types" }
 serde        = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+k256 = { workspace = true }
+rand = { workspace = true }
+grug-crypto   = { path = "../../crates/crypto" }
+
+
