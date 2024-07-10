@@ -121,15 +121,21 @@ impl Message {
     }
 }
 
+/// Builder for field `data` in [`Tx`].
 #[derive(Default)]
 pub struct DataBuilder {
     json: serde_json::Map<String, Json>,
 }
 
 impl DataBuilder {
-    pub fn add_field<T: Serialize>(mut self, key: &str, value: T) -> StdResult<Self> {
-        self.json.insert(key.to_string(), to_json_value(&value)?);
+    pub fn add_field<T: Serialize>(mut self, key: impl Into<String>, value: T) -> StdResult<Self> {
+        self.json.insert(key.into(), to_json_value(&value)?);
         Ok(self)
+    }
+
+    pub fn add_field_raw(mut self, key: impl Into<String>, value: Json) -> Self {
+        self.json.insert(key.into(), value);
+        self
     }
 
     pub fn finalize(self) -> Json {
