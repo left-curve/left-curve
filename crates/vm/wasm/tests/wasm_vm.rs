@@ -1,8 +1,10 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{to_json_value, Binary, Coins, Empty, Message, NonZero, NumberConst, Uint128},
+    grug_types::{
+        to_json_value, Addr, Binary, Coins, Empty, Message, NonZero, NumberConst, Uint128,
+    },
     grug_vm_wasm::{VmError, WasmVm},
-    std::{fs, io, vec},
+    std::{collections::BTreeMap, fs, io, vec},
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
@@ -57,6 +59,26 @@ fn bank_transfers() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["receiver"], DENOM)
         .should_succeed_and_equal(Uint128::new(70))?;
+
+    let info = suite.query_info().should_succeed()?;
+
+    let holders: BTreeMap<Addr, Uint128> = suite
+        .query_wasm_smart(info.config.bank, &grug_bank::QueryMsg::Holders {
+            denom: DENOM.to_string(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed()?;
+
+    assert_eq!(
+        holders,
+        vec![
+            (accounts["sender"].address.clone(), Uint128::new(30)),
+            (accounts["receiver"].address.clone(), Uint128::new(70))
+        ]
+        .into_iter()
+        .collect::<BTreeMap<Addr, Uint128>>()
+    );
 
     Ok(())
 }

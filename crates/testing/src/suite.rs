@@ -6,7 +6,7 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Event, GenesisState, Hash,
-        Message, NumberConst, QueryRequest, Uint128, Uint64,
+        InfoResponse, Message, NumberConst, QueryRequest, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -203,6 +203,13 @@ where
                 false,
             )
             .map(|res| res.as_balance().amount)
+            .into()
+    }
+
+    pub fn query_info(&self) -> TestResult<InfoResponse> {
+        self.app
+            .do_query_app(QueryRequest::Info {}, 0, false)
+            .map(|val| val.as_info())
             .into()
     }
 }

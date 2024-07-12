@@ -47,7 +47,11 @@ impl Storage for StorageProvider {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
-        self.storage.scan(Some(&min), Some(&max), order)
+        let iter = self
+            .storage
+            .scan(Some(&min), Some(&max), order)
+            .map(|val| (trim_wasm_prefix(&self.namespace, val.0), val.1));
+        Box::new(iter)
     }
 
     fn scan_keys<'a>(
@@ -57,7 +61,11 @@ impl Storage for StorageProvider {
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
-        self.storage.scan_keys(Some(&min), Some(&max), order)
+        let iter = self
+            .storage
+            .scan_keys(Some(&min), Some(&max), order)
+            .map(|val| trim_wasm_prefix(&self.namespace, val));
+        Box::new(iter)
     }
 
     fn scan_values<'a>(
@@ -103,6 +111,9 @@ fn prefixed_range_bounds(
     (min, max)
 }
 
+fn trim_wasm_prefix(namespace: &[u8], key: Vec<u8>) -> Vec<u8> {
+    key[namespace.len()..].to_vec()
+}
 // ---------------------------------- querier ----------------------------------
 
 /// Provides querier functionalities to the VM.

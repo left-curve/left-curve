@@ -2,6 +2,7 @@ mod cache;
 mod environment;
 mod error;
 mod gas;
+mod gatekeeper;
 mod imports;
 mod iterator;
 mod memory;
