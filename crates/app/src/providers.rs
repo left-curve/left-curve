@@ -50,7 +50,7 @@ impl Storage for StorageProvider {
         let iter = self
             .storage
             .scan(Some(&min), Some(&max), order)
-            .map(|val| (trim_wasm_prefix(&self.namespace, val.0), val.1));
+            .map(|(key, value)| (trim_wasm_prefix(&self.namespace, key), value));
         Box::new(iter)
     }
 
@@ -64,7 +64,7 @@ impl Storage for StorageProvider {
         let iter = self
             .storage
             .scan_keys(Some(&min), Some(&max), order)
-            .map(|val| trim_wasm_prefix(&self.namespace, val));
+            .map(|key| trim_wasm_prefix(&self.namespace, key));
         Box::new(iter)
     }
 
