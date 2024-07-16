@@ -37,7 +37,7 @@ pub trait Key {
     /// Only if we know each element in the tuple themselves each has two
     /// elements, can we deserialize this correctly.
     ///
-    /// See the following PR for details: (CosmWasm/cw-storage-plus:#34)[https://github.com/CosmWasm/cw-storage-plus/pull/34].
+    /// See the following PR for details: <https://github.com/CosmWasm/cw-storage-plus/pull/34>.
     const KEY_ELEMS: u16 = 1;
 
     /// For tuple keys, the first element.
