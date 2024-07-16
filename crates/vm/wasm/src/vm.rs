@@ -144,6 +144,7 @@ impl Vm for WasmVm {
                     if new_pinned.contains(&i) {
                         new_pinned.remove(&i);
                     } else {
+                        // Remove from cache if not pinned anymore
                         currently_pinned.remove(&i);
                     }
                 }

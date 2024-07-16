@@ -44,6 +44,9 @@ where
     AppError: From<VM::Error>,
 {
     pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> AppResult<Self> {
+        // Pinned hashes are tried to be updated during App creation.
+        // During genesis, the Config is not saved yet, so the pinned state is skipped.
+        // On the end of do_init_chain, the pinned state is updated.
         vm.update_pinned(&db.state_storage(None))?;
         Ok(Self {
             db,

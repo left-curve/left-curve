@@ -105,6 +105,7 @@ pub trait Vm: Sized {
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error>;
 
+    /// Update the pinned hashes in the cache
     fn update_pinned(&self, _storage: &dyn Storage) -> Result<(), Self::Error>;
 }
 
