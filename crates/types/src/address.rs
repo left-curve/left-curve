@@ -39,8 +39,8 @@ impl Addr {
     pub const PREFIX: &'static str = "0x";
 
     /// Create a new address from a 32-byte byte slice.
-    pub const fn from_slice(slice: [u8; Hash::LENGTH]) -> Self {
-        Self(Hash::from_slice(slice))
+    pub const fn from_array(slice: [u8; Hash::LENGTH]) -> Self {
+        Self(Hash::from_array(slice))
     }
 
     /// Compute a contract address as:

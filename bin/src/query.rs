@@ -7,7 +7,7 @@ use {
     grug_types::{Addr, Binary, Hash},
     serde::Serialize,
     serde_json::Value,
-    std::{fs::File, io::Write, path::PathBuf},
+    std::{fs::File, io::Write, path::PathBuf, str::FromStr},
 };
 
 #[derive(Parser)]
@@ -207,7 +207,8 @@ impl QueryCmd {
                 })
             },
             SubCmd::Tx { hash } => {
-                let res = client.tx(&hash).await?;
+                let hash = Hash::from_str(&hash)?;
+                let res = client.tx(hash).await?;
                 print_json_pretty(res)
             },
             SubCmd::Block { height } => {

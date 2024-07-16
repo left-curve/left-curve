@@ -121,7 +121,7 @@ impl From<Hash> for BitArray {
     fn from(hash: Hash) -> Self {
         Self {
             num_bits: Self::MAX_BIT_LENGTH,
-            bytes: hash.into_slice(),
+            bytes: hash.into_array(),
         }
     }
 }
