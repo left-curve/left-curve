@@ -10,6 +10,6 @@ pub struct StatusCmd {
 impl StatusCmd {
     pub async fn run(self) -> anyhow::Result<()> {
         let client = Client::connect(&self.node)?;
-        print_json_pretty(client.status().await?)
+        print_json_pretty(client.query_status().await?)
     }
 }

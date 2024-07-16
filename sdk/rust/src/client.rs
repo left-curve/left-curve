@@ -35,12 +35,12 @@ impl Client {
     // -------------------------- tendermint methods ---------------------------
 
     /// Query the Tendermint node, sync, and validator status.
-    pub async fn status(&self) -> anyhow::Result<status::Response> {
+    pub async fn query_status(&self) -> anyhow::Result<status::Response> {
         Ok(self.inner.status().await?)
     }
 
     /// Query a single transaction and its execution result by hash.
-    pub async fn tx(&self, hash: Hash) -> anyhow::Result<tx::Response> {
+    pub async fn query_tx(&self, hash: Hash) -> anyhow::Result<tx::Response> {
         Ok(self
             .inner
             .tx(TmHash::Sha256(hash.into_array()), false)
@@ -53,7 +53,7 @@ impl Client {
     ///
     /// Note that this doesn't include the block's execution results, such as
     /// events.
-    pub async fn block(&self, height: Option<u64>) -> anyhow::Result<block::Response> {
+    pub async fn query_block(&self, height: Option<u64>) -> anyhow::Result<block::Response> {
         match height {
             Some(height) => Ok(self.inner.block(Height::try_from(height)?).await?),
             None => Ok(self.inner.latest_block().await?),
@@ -63,7 +63,7 @@ impl Client {
     /// Query a block, as well as its execution results, by hash.
     ///
     /// If height is `None`, the latest block is fetched.
-    pub async fn block_result(
+    pub async fn query_block_result(
         &self,
         height: Option<u64>,
     ) -> anyhow::Result<block_results::Response> {
