@@ -37,13 +37,19 @@ pub struct App<DB, VM> {
     query_gas_limit: Option<u64>,
 }
 
-impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
-        Self {
+impl<DB, VM> App<DB, VM>
+where
+    DB: Db,
+    VM: Vm,
+    AppError: From<VM::Error>,
+{
+    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> AppResult<Self> {
+        vm.update_pinned(&db.state_storage(None))?;
+        Ok(Self {
             db,
             vm,
             query_gas_limit,
-        }
+        })
     }
 }
 
@@ -106,6 +112,11 @@ where
                 msg,
             )?;
         }
+
+        // Update the pinned in the VM with the new state.
+        // During App creation on genesis, the pinned state is skipped since the Config is not saved.
+        // It is safe to update the pinned state here since the Config and Code are saved.
+        self.vm.update_pinned(&buffer)?;
 
         // persist the state changes to disk
         let (_, pending) = buffer.disassemble().disassemble();
@@ -433,7 +444,7 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, &sender, &new_cfg),
+        Message::Configure { new_cfg } => do_configure(&mut storage, &sender, &new_cfg, vm),
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,

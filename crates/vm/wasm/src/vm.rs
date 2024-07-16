@@ -6,8 +6,8 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Cache, Environment, VmError, VmResult,
     },
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{to_borsh_vec, Context, Hash},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm, CODES, CONFIG},
+    grug_types::{to_borsh_vec, Context, Hash, Storage},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
@@ -52,25 +52,7 @@ impl Vm for WasmVm {
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
             compiler.canonicalize_nans(true);
-
-            // Set up the gas metering middleware.
-            //
-            // Set `initial_points` as zero for now, because this engine will be
-            // cached and to be used by other transactions, so it doesn't make
-            // sense to put the current tx's gas limit here.
-            //
-            // We will properly set this tx's gas limit later, once we have
-            // created the `Instance`.
-            //
-            // Also, compiling the module doesn't cost gas, so setting the limit
-            // to zero won't raise out of gas errors.
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
-            compiler.push_middleware(Arc::new(metering));
-
-            let engine = Engine::from(compiler);
-            let module = Module::new(&engine, code)?;
-
-            Ok((module, engine))
+            build_from_compiler(compiler, code)
         })?;
 
         // Compute the amount of gas left for this call. This will be used as
@@ -147,6 +129,66 @@ impl Vm for WasmVm {
             fe,
         })
     }
+
+    fn update_pinned(&self, storage: &dyn Storage) -> Result<(), Self::Error> {
+        let mut new_pinned = match CONFIG.load(storage) {
+            Ok(config) => config.pinned_hashes,
+            // Chain is not init yet
+            Err(_) => return Ok(()),
+        };
+
+        self.cache
+            .pinned
+            .write_with(|mut currently_pinned| -> Result<_, Self::Error> {
+                for i in currently_pinned.keys().cloned().collect::<Vec<_>>() {
+                    if new_pinned.contains(&i) {
+                        new_pinned.remove(&i);
+                    } else {
+                        currently_pinned.remove(&i);
+                    }
+                }
+
+                for i in new_pinned {
+                    // Remove from default cache
+                    self.cache.try_remove_from_modules(&i);
+
+                    let code = CODES.load(storage, &i)?;
+                    // Signlepass still here, need to be changed with LLVM
+                    let mut compiler = Singlepass::new();
+                    compiler.canonicalize_nans(true);
+                    let (module, engine) = build_from_compiler(compiler, &code)?;
+                    currently_pinned.insert(i, (module, engine));
+                }
+
+                Ok(())
+            })?;
+
+        Ok(())
+    }
+}
+
+pub fn build_from_compiler<C: CompilerConfig + Into<Engine>>(
+    mut compiler: C,
+    code: &[u8],
+) -> VmResult<(Module, Engine)> {
+    // Set up the gas metering middleware.
+    //
+    // Set `initial_points` as zero for now, because this engine will be
+    // cached and to be used by other transactions, so it doesn't make
+    // sense to put the current tx's gas limit here.
+    //
+    // We will properly set this tx's gas limit later, once we have
+    // created the `Instance`.
+    //
+    // Also, compiling the module doesn't cost gas, so setting the limit
+    // to zero won't raise out of gas errors.
+    let metering = Metering::new(0, |_| GAS_PER_OPERATION);
+    compiler.push_middleware(Arc::new(metering));
+    // TODO: Add a gatekeeper middleware once it's merged into main
+    // compiler.push_middleware(Arc::new(Gatekeeper::default()));
+    let engine = compiler.into();
+    let module = Module::new(&engine, code)?;
+    Ok((module, engine))
 }
 
 // --------------------------------- instance ----------------------------------

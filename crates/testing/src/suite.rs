@@ -40,7 +40,7 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> anyhow::Result<Self> {
-        let app = App::new(MemDb::new(), vm, None);
+        let app = App::new(MemDb::new(), vm, None)?;
 
         app.do_init_chain(chain_id.clone(), genesis_block.clone(), genesis_state)?;
 

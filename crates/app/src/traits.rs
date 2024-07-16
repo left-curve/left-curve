@@ -104,6 +104,8 @@ pub trait Vm: Sized {
         querier: QuerierProvider<Self>,
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error>;
+
+    fn update_pinned(&self, _storage: &dyn Storage) -> Result<(), Self::Error>;
 }
 
 pub trait Instance {

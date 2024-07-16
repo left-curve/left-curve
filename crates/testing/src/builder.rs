@@ -170,6 +170,7 @@ where
                 create_channel: Permission::Everybody,
             },
             allowed_clients: BTreeSet::new(),
+            pinned_hashes: BTreeSet::new(),
         };
 
         let genesis_state = GenesisState { config, msgs };

@@ -14,12 +14,16 @@ use {
 
 // ---------------------------------- config -----------------------------------
 
-pub fn do_configure(
+pub fn do_configure<VM: Vm>(
     storage: &mut dyn Storage,
     sender: &Addr,
     new_cfg: &Config,
-) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, sender, new_cfg) {
+    vm: VM,
+) -> AppResult<Vec<Event>>
+where
+    AppError: From<VM::Error>,
+{
+    match _do_configure(storage, sender, new_cfg, vm) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             info!("Config set");
@@ -33,7 +37,15 @@ pub fn do_configure(
     }
 }
 
-fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<Event> {
+fn _do_configure<VM: Vm>(
+    storage: &mut dyn Storage,
+    sender: &Addr,
+    new_cfg: &Config,
+    vm: VM,
+) -> AppResult<Event>
+where
+    AppError: From<VM::Error>,
+{
     // make sure the sender is authorized to set the config
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
@@ -48,6 +60,9 @@ fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> 
 
     // save the new config
     CONFIG.save(storage, new_cfg)?;
+
+    // Updat the vm pinned
+    vm.update_pinned(storage)?;
 
     Ok(Event::new("configure").add_attribute("sender", sender))
 }

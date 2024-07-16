@@ -45,6 +45,10 @@ impl Vm for RustVm {
             wrapper: ContractWrapper::from_bytes(code),
         })
     }
+
+    fn update_pinned(&self, _storage: &dyn grug_types::Storage) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 pub struct RustInstance {

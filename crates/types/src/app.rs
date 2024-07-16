@@ -58,6 +58,7 @@ pub struct Config {
     pub permissions: Permissions,
     /// Code hashes that are allowed as IBC light clients.
     pub allowed_clients: BTreeSet<Hash>,
+    pub pinned_hashes: BTreeSet<Hash>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
