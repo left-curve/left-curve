@@ -1,5 +1,3 @@
-#[cfg(feature = "tracing")]
-use tracing::{debug, info, warn};
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
@@ -22,12 +20,14 @@ pub fn do_configure(
     match _do_configure(storage, sender, new_cfg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
-            info!("Config set");
+            tracing::info!("Config updated");
+
             Ok(vec![event])
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to set config");
+            tracing::warn!(err = err.to_string(), "Failed to updated config");
+
             Err(err)
         },
     }
@@ -62,12 +62,14 @@ pub fn do_upload(
     match _do_upload(storage, uploader, code) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
-            info!(code_hash = _code_hash.to_string(), "Uploaded code");
+            tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
+
             Ok(vec![event])
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to upload code");
+            tracing::warn!(err = err.to_string(), "Failed to upload code");
+
             Err(err)
         },
     }
@@ -127,17 +129,19 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(
+            tracing::info!(
                 from = from.to_string(),
                 to = to.to_string(),
                 coins = coins.to_string(),
                 "Transferred coins"
             );
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to transfer coins");
+            tracing::warn!(err = err.to_string(), "Failed to transfer coins");
+
             Err(err)
         },
     }
@@ -258,12 +262,14 @@ where
     ) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
-            info!(address = _address.to_string(), "Instantiated contract");
+            tracing::info!(address = _address.to_string(), "Instantiated contract");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to instantiate contract");
+            tracing::warn!(err = err.to_string(), "Failed to instantiate contract");
+
             Err(err)
         },
     }
@@ -370,12 +376,14 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(contract = contract.to_string(), "Executed contract");
+            tracing::info!(contract = contract.to_string(), "Executed contract");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to execute contract");
+            tracing::warn!(err = err.to_string(), "Failed to execute contract");
+
             Err(err)
         },
     }
@@ -464,12 +472,14 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(contract = contract.to_string(), "Migrated contract");
+            tracing::info!(contract = contract.to_string(), "Migrated contract");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to execute contract");
+            tracing::warn!(err = err.to_string(), "Failed to migrate contract");
+
             Err(err)
         },
     }
@@ -554,12 +564,14 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(contract = contract.to_string(), "Performed callback");
+            tracing::info!(contract = contract.to_string(), "Performed reply");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to perform callback");
+            tracing::warn!(err = err.to_string(), "Failed to perform reply");
+
             Err(err)
         },
     }
@@ -619,18 +631,20 @@ where
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
-            debug!(
+            tracing::debug!(
                 sender = tx.sender.to_string(),
                 "Called before transaction hook"
             );
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(
+            tracing::warn!(
                 err = err.to_string(),
                 "Failed to call before transaction hook"
             );
+
             Err(err)
         },
     }
@@ -651,18 +665,20 @@ where
         Ok(events) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
-            debug!(
+            tracing::debug!(
                 sender = tx.sender.to_string(),
                 "Called after transaction hook"
             );
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(
+            tracing::warn!(
                 err = err.to_string(),
                 "Failed to call after transaction hook"
             );
+
             Err(err)
         },
     }
@@ -726,12 +742,14 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(contract = contract.to_string(), "Called before block hook");
+            tracing::info!(contract = contract.to_string(), "Called before block hook");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to call before block hook");
+            tracing::warn!(err = err.to_string(), "Failed to call before block hook");
+
             Err(err)
         },
     }
@@ -758,12 +776,14 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            info!(contract = contract.to_string(), "Called after block hook");
+            tracing::info!(contract = contract.to_string(), "Called after block hook");
+
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            warn!(err = err.to_string(), "Failed to call after block hook");
+            tracing::warn!(err = err.to_string(), "Failed to call after block hook");
+
             Err(err)
         },
     }

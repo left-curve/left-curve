@@ -1,5 +1,3 @@
-#[cfg(feature = "tracing")]
-use tracing::{debug, warn};
 use {
     crate::Shared,
     std::{fmt, fmt::Display},
@@ -95,7 +93,7 @@ impl GasTracker {
             if let Some(limit) = inner.limit {
                 if used > limit {
                     #[cfg(feature = "tracing")]
-                    warn!(limit = inner.limit, used, comment = _comment, "Out of gas");
+                    tracing::warn!(limit = inner.limit, used, comment = _comment, "Out of gas");
 
                     return Err(OutOfGasError {
                         limit,
@@ -106,7 +104,7 @@ impl GasTracker {
             }
 
             #[cfg(feature = "tracing")]
-            debug!(
+            tracing::debug!(
                 limit = inner.limit,
                 consumed,
                 comment = _comment,
