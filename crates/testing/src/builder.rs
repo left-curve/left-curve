@@ -1,5 +1,5 @@
 use {
-    crate::{setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
+    crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::ensure,
     grug_account::PublicKey,
     grug_app::AppError,
