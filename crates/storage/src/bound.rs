@@ -1,10 +1,14 @@
-use crate::Key;
+use crate::{Key, Prefixer};
+
+// --------------------------------- raw bound ---------------------------------
 
 /// Like Bound but only with the raw binary variants.
 pub enum RawBound {
     Inclusive(Vec<u8>),
     Exclusive(Vec<u8>),
 }
+
+// ----------------------------------- bound -----------------------------------
 
 /// Describe the limit for iteration.
 ///
@@ -17,16 +21,20 @@ pub enum RawBound {
 pub enum Bound<K> {
     Inclusive(K),
     Exclusive(K),
-    InclusiveRaw(Vec<u8>),
-    ExclusiveRaw(Vec<u8>),
 }
 
 impl<K> Bound<K> {
-    pub fn inclusive<T: Into<K>>(t: T) -> Self {
+    pub fn inclusive<T>(t: T) -> Self
+    where
+        T: Into<K>,
+    {
         Self::Inclusive(t.into())
     }
 
-    pub fn exclusive<T: Into<K>>(t: T) -> Self {
+    pub fn exclusive<T>(t: T) -> Self
+    where
+        T: Into<K>,
+    {
         Self::Exclusive(t.into())
     }
 }
@@ -37,10 +45,49 @@ where
 {
     fn from(bound: Bound<K>) -> Self {
         match bound {
-            Bound::Inclusive(key) => RawBound::Inclusive(key.serialize()),
-            Bound::Exclusive(key) => RawBound::Exclusive(key.serialize()),
-            Bound::InclusiveRaw(bytes) => RawBound::Inclusive(bytes),
-            Bound::ExclusiveRaw(bytes) => RawBound::Exclusive(bytes),
+            Bound::Inclusive(k) => RawBound::Inclusive(k.joined_key()),
+            Bound::Exclusive(k) => RawBound::Exclusive(k.joined_key()),
+        }
+    }
+}
+
+// ------------------------------- prefix bound --------------------------------
+
+pub enum PrefixBound<K>
+where
+    K: Key,
+{
+    Inclusive(K::Prefix),
+    Exclusive(K::Prefix),
+}
+
+impl<K> PrefixBound<K>
+where
+    K: Key,
+{
+    pub fn inclusive<P>(p: P) -> Self
+    where
+        P: Into<K::Prefix>,
+    {
+        Self::Inclusive(p.into())
+    }
+
+    pub fn exclusive<P>(p: P) -> Self
+    where
+        P: Into<K::Prefix>,
+    {
+        Self::Exclusive(p.into())
+    }
+}
+
+impl<K> From<PrefixBound<K>> for RawBound
+where
+    K: Key,
+{
+    fn from(bound: PrefixBound<K>) -> Self {
+        match bound {
+            PrefixBound::Inclusive(p) => RawBound::Inclusive(p.joined_prefix()),
+            PrefixBound::Exclusive(p) => RawBound::Exclusive(p.joined_prefix()),
         }
     }
 }
