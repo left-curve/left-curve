@@ -302,7 +302,7 @@ mod test {
 
     #[test]
     fn range_prefix() {
-        const MAP: Map<(u64, String), String> = Map::new("foo");
+        const MAP: Map<(u64, &str), String> = Map::new("foo");
 
         let mut storage = MockStorage::new();
 
@@ -314,7 +314,7 @@ mod test {
             (3, "name_5", "desc_5"),
             (4, "name_6", "desc_6"),
         ] {
-            MAP.save(&mut storage, (index, addr.to_string()), &desc.to_string())
+            MAP.save(&mut storage, (index, addr), &desc.to_string())
                 .unwrap();
         }
 
