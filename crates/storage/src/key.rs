@@ -161,6 +161,20 @@ impl Key for &str {
     }
 }
 
+impl Key for String {
+    type Output = String;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_bytes())]
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
+    }
+}
+
 impl<'a> Key for &'a Addr {
     type Output = Addr;
     type Prefix = ();
@@ -186,20 +200,6 @@ impl<'a> Key for &'a Hash {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
-    }
-}
-
-impl Key for String {
-    type Output = String;
-    type Prefix = ();
-    type Suffix = ();
-
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
-    }
-
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
 
