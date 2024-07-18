@@ -1,5 +1,8 @@
 use {
-    grug_types::{nested_namespaces_with_key, Addr, Hash, StdError, StdResult},
+    grug_types::{
+        nested_namespaces_with_key, Addr, Bytable, Hash, StdError, StdResult, Uint128, Uint256,
+        Uint512, Uint64,
+    },
     std::{borrow::Cow, mem},
 };
 
@@ -362,7 +365,9 @@ macro_rules! impl_integer_key {
     }
 }
 
-impl_integer_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+impl_integer_key!(
+    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512,
+);
 
 // --------------------------------- prefixer ----------------------------------
 
@@ -448,7 +453,9 @@ macro_rules! impl_integer_prefixer {
     }
 }
 
-impl_integer_prefixer!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+impl_integer_prefixer!(
+    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512,
+);
 
 // ----------------------------------- tests -----------------------------------
 
