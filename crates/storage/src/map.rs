@@ -368,10 +368,10 @@ mod test {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(res, vec![(
-                (1_u64, "name_1".to_string()),
-                "desc_1".to_string()
-            ),]);
+            #[rustfmt::skip]
+            assert_eq!(res, vec![
+                ((1_u64, "name_1".to_string()), "desc_1".to_string()),
+            ]);
         }
 
         // `prefix_range` with a min bound, Descending
