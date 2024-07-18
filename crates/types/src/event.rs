@@ -7,19 +7,29 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new(ty: impl ToString) -> Self {
+    pub fn new<T>(ty: T) -> Self
+    where
+        T: ToString,
+    {
         Self {
             r#type: ty.to_string(),
             attributes: vec![],
         }
     }
 
-    pub fn add_attribute(mut self, key: impl ToString, value: impl ToString) -> Self {
+    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: ToString,
+        V: ToString,
+    {
         self.attributes.push(Attribute::new(key, value));
         self
     }
 
-    pub fn add_attributes(mut self, attrs: impl IntoIterator<Item = Attribute>) -> Self {
+    pub fn add_attributes<A>(mut self, attrs: A) -> Self
+    where
+        A: IntoIterator<Item = Attribute>,
+    {
         self.attributes.extend(attrs);
         self
     }
@@ -32,7 +42,11 @@ pub struct Attribute {
 }
 
 impl Attribute {
-    pub fn new(key: impl ToString, value: impl ToString) -> Self {
+    pub fn new<K, V>(key: K, value: V) -> Self
+    where
+        K: ToString,
+        V: ToString,
+    {
         Self {
             key: key.to_string(),
             value: value.to_string(),

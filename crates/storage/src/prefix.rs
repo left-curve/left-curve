@@ -7,7 +7,10 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Prefix<K, T, C: Codec<T> = Borsh> {
+pub struct Prefix<K, T, C = Borsh>
+where
+    C: Codec<T>,
+{
     namespace: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,

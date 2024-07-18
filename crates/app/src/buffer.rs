@@ -13,12 +13,12 @@ use {
 /// Adapted from cw-multi-test:
 /// <https://github.com/CosmWasm/cw-multi-test/blob/v0.19.0/src/transactions.rs#L170-L253>
 #[derive(Clone)]
-pub struct Buffer<S: Clone> {
+pub struct Buffer<S> {
     base: S,
     pending: Batch,
 }
 
-impl<S: Clone> Buffer<S> {
+impl<S> Buffer<S> {
     /// Create a new buffer storage with an optional write batch.
     pub fn new(base: S, pending: Option<Batch>) -> Self {
         Self {
@@ -34,7 +34,10 @@ impl<S: Clone> Buffer<S> {
     }
 }
 
-impl<S: Storage + Clone> Buffer<S> {
+impl<S> Buffer<S>
+where
+    S: Storage,
+{
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
         let pending = mem::take(&mut self.pending);
@@ -49,7 +52,10 @@ impl<S: Storage + Clone> Buffer<S> {
     }
 }
 
-impl<S: Storage + Clone> Storage for Buffer<S> {
+impl<S> Storage for Buffer<S>
+where
+    S: Storage + Clone,
+{
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         match self.pending.get(key) {
             Some(Op::Insert(value)) => Some(value.clone()),

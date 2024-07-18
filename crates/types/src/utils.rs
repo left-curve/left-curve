@@ -52,7 +52,10 @@ pub fn nested_namespaces_with_key(
 /// Given a byte slice, return two bytes in big endian representing its length.
 /// Panic if the given byte slice is longer than the biggest length that can be
 /// represented by a two bytes (i.e. 65535).
-pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
+pub fn encode_length<B>(bytes: B) -> [u8; 2]
+where
+    B: AsRef<[u8]>,
+{
     let len = bytes.as_ref().len();
     if len > 0xffff {
         panic!(
@@ -122,7 +125,10 @@ pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
 
 /// Safely converts input of type T to u32.
 /// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
-pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
+pub fn to_u32<T>(input: T) -> StdResult<u32>
+where
+    T: TryInto<u32> + ToString + Copy,
+{
     input
         .try_into()
         .map_err(|_| StdError::overflow_conversion::<T, u32>(input))

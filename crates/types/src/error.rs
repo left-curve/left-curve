@@ -125,17 +125,24 @@ pub enum StdError {
 }
 
 impl StdError {
-    pub fn parse_number<A>(value: impl ToString, reason: impl ToString) -> Self {
+    pub fn parse_number<T, V, R>(value: V, reason: R) -> Self
+    where
+        V: ToString,
+        R: ToString,
+    {
         Self::ParseNumber {
-            ty: type_name::<A>(),
+            ty: type_name::<T>(),
             value: value.to_string(),
             reason: reason.to_string(),
         }
     }
 
-    pub fn invalid_coins(reason: impl Into<String>) -> Self {
+    pub fn invalid_coins<R>(reason: R) -> Self
+    where
+        R: ToString,
+    {
         Self::InvalidCoins {
-            reason: reason.into(),
+            reason: reason.to_string(),
         }
     }
 
@@ -150,7 +157,10 @@ impl StdError {
         }
     }
 
-    pub fn overflow_conversion<A: ToString, B>(source: A) -> Self {
+    pub fn overflow_conversion<A, B>(source: A) -> Self
+    where
+        A: ToString,
+    {
         Self::OverflowConversion {
             source_type: type_name::<A>(),
             target_type: type_name::<B>(),
@@ -158,7 +168,10 @@ impl StdError {
         }
     }
 
-    pub fn overflow_add<T: ToString>(a: T, b: T) -> Self {
+    pub fn overflow_add<T>(a: T, b: T) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowAdd {
             ty: type_name::<T>(),
             a: a.to_string(),
@@ -166,7 +179,10 @@ impl StdError {
         }
     }
 
-    pub fn overflow_sub<T: ToString>(a: T, b: T) -> Self {
+    pub fn overflow_sub<T>(a: T, b: T) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowSub {
             ty: type_name::<T>(),
             a: a.to_string(),
@@ -174,7 +190,10 @@ impl StdError {
         }
     }
 
-    pub fn overflow_mul<T: ToString>(a: T, b: T) -> Self {
+    pub fn overflow_mul<T>(a: T, b: T) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowMul {
             ty: type_name::<T>(),
             a: a.to_string(),
@@ -182,7 +201,10 @@ impl StdError {
         }
     }
 
-    pub fn overflow_pow<T: ToString>(a: T, b: u32) -> Self {
+    pub fn overflow_pow<T>(a: T, b: u32) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowPow {
             ty: type_name::<T>(),
             a: a.to_string(),
@@ -190,25 +212,37 @@ impl StdError {
         }
     }
 
-    pub fn overflow_shl<T: ToString>(a: T, b: u32) -> Self {
+    pub fn overflow_shl<T>(a: T, b: u32) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowShl {
             a: a.to_string(),
             b,
         }
     }
 
-    pub fn overflow_shr<T: ToString>(a: T, b: u32) -> Self {
+    pub fn overflow_shr<T>(a: T, b: u32) -> Self
+    where
+        T: ToString,
+    {
         Self::OverflowShr {
             a: a.to_string(),
             b,
         }
     }
 
-    pub fn division_by_zero(a: impl ToString) -> Self {
+    pub fn division_by_zero<T>(a: T) -> Self
+    where
+        T: ToString,
+    {
         Self::DivisionByZero { a: a.to_string() }
     }
 
-    pub fn remainder_by_zero(a: impl ToString) -> Self {
+    pub fn remainder_by_zero<T>(a: T) -> Self
+    where
+        T: ToString,
+    {
         Self::RemainderByZero { a: a.to_string() }
     }
 
@@ -216,7 +250,11 @@ impl StdError {
         Self::ZeroLog
     }
 
-    pub fn negative_mul<A: ToString, B: ToString>(a: A, b: B) -> Self {
+    pub fn negative_mul<A, B>(a: A, b: B) -> Self
+    where
+        A: ToString,
+        B: ToString,
+    {
         Self::NegativeMul {
             ty: type_name::<A>(),
             a: a.to_string(),
@@ -224,7 +262,11 @@ impl StdError {
         }
     }
 
-    pub fn negative_div<A: ToString, B: ToString>(a: A, b: B) -> Self {
+    pub fn negative_div<A, B>(a: A, b: B) -> Self
+    where
+        A: ToString,
+        B: ToString,
+    {
         Self::NegativeDiv {
             ty: type_name::<A>(),
             a: a.to_string(),
@@ -232,25 +274,37 @@ impl StdError {
         }
     }
 
-    pub fn negative_sqrt<T>(a: impl ToString) -> Self {
+    pub fn negative_sqrt<T>(a: T) -> Self
+    where
+        T: ToString,
+    {
         Self::NegativeSqrt { a: a.to_string() }
     }
 
-    pub fn serialize<T>(reason: impl ToString) -> Self {
+    pub fn serialize<T, R>(reason: R) -> Self
+    where
+        R: ToString,
+    {
         Self::Serialize {
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
     }
 
-    pub fn deserialize<T>(reason: impl ToString) -> Self {
+    pub fn deserialize<T, R>(reason: R) -> Self
+    where
+        R: ToString,
+    {
         Self::Deserialize {
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
     }
 
-    pub fn generic_err(reason: impl ToString) -> Self {
+    pub fn generic_err<R>(reason: R) -> Self
+    where
+        R: ToString,
+    {
         Self::Generic(reason.to_string())
     }
 }

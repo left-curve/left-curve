@@ -175,17 +175,15 @@ pub trait Decimal: Sized {
 /// This is different from applying a multiplication and a division sequentially,
 /// because the multiplication part can overflow.
 pub trait MultiplyRatio: Sized {
-    fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> StdResult<Self>;
+    fn checked_multiply_ratio_floor<A, B>(self, numerator: A, denominator: B) -> StdResult<Self>
+    where
+        A: Into<Self>,
+        B: Into<Self>;
 
-    fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> StdResult<Self>;
+    fn checked_multiply_ratio_ceil<A, B>(self, numerator: A, denominator: B) -> StdResult<Self>
+    where
+        A: Into<Self>,
+        B: Into<Self>;
 }
 
 /// Describes operations between a number and a decimal type.

@@ -88,7 +88,10 @@ pub(crate) struct PendingData {
 
 impl DiskDb {
     /// Create a DiskDb instance by opening a physical RocksDB instance.
-    pub fn open(data_dir: impl AsRef<Path>) -> DbResult<Self> {
+    pub fn open<P>(data_dir: P) -> DbResult<Self>
+    where
+        P: AsRef<Path>,
+    {
         // note: for default and state commitment CFs, don't enable timestamping;
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [

@@ -44,6 +44,7 @@ where
     AppError: From<VM::Error>,
 {
     let mut events = vec![];
+
     for submsg in submsgs {
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg(
@@ -54,6 +55,7 @@ where
             sender.clone(),
             submsg.msg,
         );
+
         match (submsg.reply_on, result) {
             // success - callback requested
             // flush state changes, log events, give callback
@@ -96,5 +98,6 @@ where
             },
         };
     }
+
     Ok(events)
 }

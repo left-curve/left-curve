@@ -4,7 +4,10 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Map<'a, K, T, C: Codec<T> = Borsh> {
+pub struct Map<'a, K, T, C = Borsh>
+where
+    C: Codec<T>,
+{
     namespace: &'a [u8],
     key: PhantomData<K>,
     data: PhantomData<T>,

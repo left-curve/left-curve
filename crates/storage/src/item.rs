@@ -4,7 +4,10 @@ use {
     std::marker::PhantomData,
 };
 
-pub struct Item<'a, T, C: Codec<T> = Borsh> {
+pub struct Item<'a, T, C = Borsh>
+where
+    C: Codec<T>,
+{
     storage_key: &'a [u8],
     data: PhantomData<T>,
     codec: PhantomData<C>,
@@ -30,25 +33,20 @@ where
         self.path().exists(storage)
     }
 
-    pub fn remove(&self, storage: &mut dyn Storage) {
-        self.path().remove(storage)
-    }
-}
-
-impl<'a, T, C> Item<'a, T, C>
-where
-    C: Codec<T>,
-{
-    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
-        self.path().save(storage, data)
-    }
-
     pub fn may_load(&self, storage: &dyn Storage) -> StdResult<Option<T>> {
         self.path().may_load(storage)
     }
 
     pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
         self.path().load(storage)
+    }
+
+    pub fn save(&self, storage: &mut dyn Storage, data: &T) -> StdResult<()> {
+        self.path().save(storage, data)
+    }
+
+    pub fn remove(&self, storage: &mut dyn Storage) {
+        self.path().remove(storage)
     }
 
     pub fn update<A, Err>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, Err>

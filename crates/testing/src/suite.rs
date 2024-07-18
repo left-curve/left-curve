@@ -13,7 +13,10 @@ use {
     std::{collections::HashMap, time::Duration},
 };
 
-pub struct TestSuite<VM: Vm = RustVm> {
+pub struct TestSuite<VM = RustVm>
+where
+    VM: Vm,
+{
     app: App<MemDb, VM>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.

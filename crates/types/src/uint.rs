@@ -297,7 +297,7 @@ where
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         U::from_str(s)
             .map(Self)
-            .map_err(|err| StdError::parse_number::<Self>(s, err))
+            .map_err(|err| StdError::parse_number::<Self, _, _>(s, err))
     }
 }
 

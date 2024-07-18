@@ -13,16 +13,20 @@ pub trait Index<K, T> {
     fn remove(&self, store: &mut dyn Storage, pk: K, old_data: &T);
 }
 
-pub struct IndexedMap<'a, K, T, I, C: Codec<T> = Borsh> {
+pub struct IndexedMap<'a, K, T, I, C = Borsh>
+where
+    C: Codec<T>,
+{
     primary: Map<'a, K, T, C>,
     /// This is meant to be read directly to get the proper types, like:
     /// `map.idx.owner.items(...)`.
     pub idx: I,
 }
 
-impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
+impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
     K: Key,
+    C: Codec<T>,
 {
     pub const fn new(pk_namespace: &'static str, indexes: I) -> Self {
         IndexedMap {
@@ -209,10 +213,11 @@ where
     }
 }
 
-impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
+impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
     K: Key + Clone,
     I: IndexList<K, T>,
+    C: Codec<T>,
 {
     pub fn save(&'a self, storage: &mut dyn Storage, key: K, data: &T) -> StdResult<()> {
         let old_data = self.may_load(storage, key.clone())?;
@@ -252,11 +257,12 @@ where
     }
 }
 
-impl<'a, K, T, I, C: Codec<T>> IndexedMap<'a, K, T, I, C>
+impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
     K: Key + Clone,
     T: Clone,
     I: IndexList<K, T>,
+    C: Codec<T>,
 {
     pub fn update<A, Err>(
         &'a self,

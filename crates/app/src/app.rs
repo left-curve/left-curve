@@ -129,11 +129,14 @@ where
         Ok(root_hash.unwrap())
     }
 
-    pub fn do_finalize_block_raw(
+    pub fn do_finalize_block_raw<T>(
         &self,
         block: BlockInfo,
-        raw_txs: Vec<impl AsRef<[u8]>>,
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+        raw_txs: Vec<T>,
+    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)>
+    where
+        T: AsRef<[u8]>,
+    {
         let txs = raw_txs
             .into_iter()
             .map(|raw_tx| {

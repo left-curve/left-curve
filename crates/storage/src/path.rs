@@ -4,7 +4,10 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct PathBuf<T, C: Codec<T> = Borsh> {
+pub struct PathBuf<T, C = Borsh>
+where
+    C: Codec<T>,
+{
     storage_key: Vec<u8>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
@@ -31,7 +34,7 @@ where
     }
 }
 
-pub struct Path<'a, T, C: Codec<T> = Borsh> {
+pub struct Path<'a, T, C = Borsh> {
     storage_key: &'a [u8],
     data: PhantomData<T>,
     codec: PhantomData<C>,
