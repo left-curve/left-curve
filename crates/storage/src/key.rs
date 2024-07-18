@@ -3,6 +3,8 @@ use {
     std::{borrow::Cow, mem},
 };
 
+// ----------------------------------- trait -----------------------------------
+
 /// Describes a key used in mapping data structures, i.e. [`Map`](crate::Map)
 /// and [`IndexedMap`](crate::IndexedMap).
 ///
@@ -94,6 +96,8 @@ pub trait Key {
     /// Deserialize the raw bytes into the output.
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
 }
+
+// ------------------------------ implementations ------------------------------
 
 impl Key for () {
     type Output = ();
