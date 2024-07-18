@@ -35,11 +35,11 @@ impl Hash {
 }
 
 impl Hash {
-    pub const fn from_slice(slice: [u8; Self::LENGTH]) -> Self {
+    pub const fn from_array(slice: [u8; Self::LENGTH]) -> Self {
         Self(slice)
     }
 
-    pub fn into_slice(self) -> [u8; Self::LENGTH] {
+    pub fn into_array(self) -> [u8; Self::LENGTH] {
         self.0
     }
 

@@ -24,7 +24,7 @@ pub enum QueryRequest {
     /// A token's total supply.
     /// Returns: `Coin`
     Supply { denom: String },
-    /// Enumerate all tokens' total supplies.
+    /// Enumerate all token's total supplies.
     /// Returns: `Coins`
     Supplies {
         start_after: Option<String>,
@@ -33,9 +33,11 @@ pub enum QueryRequest {
     /// A single Wasm byte code.
     /// Returns: `Binary`
     Code { hash: Hash },
-    /// Enumerate metadata of all codes.
+    /// Enumerate hashes of all codes.
+    ///
     /// Note: to limit the size of return data, we only return the hashes.
-    /// To download the actual Wasm byte code, use Query::Code.
+    /// To download the actual Wasm byte code, use `Query::Code`.
+    ///
     /// Returns: `Vec<Hash>`
     Codes {
         start_after: Option<Hash>,
