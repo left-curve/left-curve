@@ -202,6 +202,9 @@ where
 
 // ------------------------------ implementations ------------------------------
 
+impl_number_const!(u8, 0, u8::MAX, 0, 1, 10);
+impl_number_const!(u16, 0, u16::MAX, 0, 1, 10);
+impl_number_const!(u32, 0, u32::MAX, 0, 1, 10);
 impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
 impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
 impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
