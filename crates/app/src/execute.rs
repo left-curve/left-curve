@@ -1,4 +1,3 @@
-use crate::VmCallResponse;
 #[cfg(feature = "tracing")]
 use tracing::{debug, info, warn};
 
@@ -6,7 +5,7 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, has_permission, AppError, AppResult, GasTracker, Vm,
-        ACCOUNTS, CHAIN_ID, CODES, CONFIG,
+        VmCallResponse, ACCOUNTS, CHAIN_ID, CODES, CONFIG,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
