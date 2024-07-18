@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix},
+    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, PrefixBound, Prefixer},
     grug_types::{Order, Record, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -47,7 +47,7 @@ where
     }
 
     pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        Prefix::new(self.namespace, &prefix.raw_keys())
+        Prefix::new(self.namespace, &prefix.raw_prefixes())
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
@@ -55,6 +55,8 @@ where
             .next()
             .is_none()
     }
+
+    // ---------------------- methods for single entries -----------------------
 
     pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
         self.path_raw(key_raw).as_path().exists(storage)
@@ -108,6 +110,8 @@ where
     {
         self.path(key).as_path().update(storage, action)
     }
+
+    // -------------------- iteration methods (full bound) ---------------------
 
     pub fn range_raw<'b>(
         &self,
@@ -172,6 +176,77 @@ where
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
         self.no_prefix().clear(storage, min, max)
     }
+
+    // ------------------- iteration methods (prefix bound) --------------------
+
+    pub fn prefix_range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+        self.no_prefix().prefix_range_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().prefix_range(storage, min, max, order)
+    }
+
+    pub fn prefix_keys_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().prefix_keys_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_keys<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
+        self.no_prefix().prefix_keys(storage, min, max, order)
+    }
+
+    pub fn prefix_values_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().prefix_values_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_values<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        self.no_prefix().prefix_values(storage, min, max, order)
+    }
+
+    pub fn prefix_clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+    ) {
+        self.no_prefix().prefix_clear(storage, min, max)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -179,9 +254,9 @@ where
 #[cfg(test)]
 mod test {
     use {
-        crate::Map,
+        crate::{Map, PrefixBound},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::MockStorage,
+        grug_types::{MockStorage, StdResult},
     };
 
     const FOOS: Map<u64, Foo> = Map::new("foo");
@@ -223,5 +298,121 @@ mod test {
 
         let first = FOOS.load(&storage, 1).unwrap();
         assert_eq!(first, Foo::new("name_1", "surname_1"));
+    }
+
+    #[test]
+    fn range_prefix() {
+        const MAP: Map<(u64, &str), String> = Map::new("foo");
+
+        let mut storage = MockStorage::new();
+
+        for (index, addr, desc) in [
+            (1, "name_1", "desc_1"),
+            (2, "name_2", "desc_2"),
+            (2, "name_3", "desc_3"),
+            (3, "name_4", "desc_4"),
+            (3, "name_5", "desc_5"),
+            (4, "name_6", "desc_6"),
+        ] {
+            MAP.save(&mut storage, (index, addr), &desc.to_string())
+                .unwrap();
+        }
+
+        // `prefix_range` with a max bound, ascending
+        {
+            let res = MAP
+                .prefix_range(
+                    &storage,
+                    None,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((1_u64, "name_1".to_string()), "desc_1".to_string()),
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+            ]);
+        }
+
+        // `prefix_range` with a min bound, ascending
+        {
+            let res = MAP
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::exclusive(2_u64)),
+                    None,
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+                ((4_u64, "name_6".to_string()), "desc_6".to_string()),
+            ]);
+        }
+
+        // `prefix_range` with a max bound, Descending
+        {
+            let res = MAP
+                .prefix_range(
+                    &storage,
+                    None,
+                    Some(PrefixBound::exclusive(2_u64)),
+                    grug_types::Order::Descending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            #[rustfmt::skip]
+            assert_eq!(res, vec![
+                ((1_u64, "name_1".to_string()), "desc_1".to_string()),
+            ]);
+        }
+
+        // `prefix_range` with a min bound, Descending
+        {
+            let res = MAP
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    None,
+                    grug_types::Order::Descending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((4_u64, "name_6".to_string()), "desc_6".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+            ]);
+        }
+
+        // `prefix_range` with both min and max bounds, ascending
+        {
+            let res = MAP
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    Some(PrefixBound::exclusive(4_u64)),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+            ]);
+        }
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Key, PathBuf, Prefix},
+    crate::{Borsh, Bound, Key, PathBuf, Prefix, PrefixBound, Prefixer},
     grug_types::{Empty, Order, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -39,7 +39,7 @@ where
     }
 
     pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty> {
-        Prefix::new(self.namespace, &prefix.raw_keys())
+        Prefix::new(self.namespace, &prefix.raw_prefixes())
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
@@ -47,6 +47,8 @@ where
             .next()
             .is_none()
     }
+
+    // ---------------------- methods for single entries -----------------------
 
     pub fn has(&self, storage: &dyn Storage, item: T) -> bool {
         self.path(item).as_path().exists(storage)
@@ -59,6 +61,8 @@ where
     pub fn remove(&self, storage: &mut dyn Storage, item: T) {
         self.path(item).as_path().remove(storage)
     }
+
+    // -------------------- iteration methods (full bound) ---------------------
 
     pub fn range_raw<'b>(
         &self,
@@ -82,5 +86,36 @@ where
 
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<T>>, max: Option<Bound<T>>) {
         self.no_prefix().clear(storage, min, max)
+    }
+
+    // ------------------- iteration methods (prefix bound) --------------------
+
+    pub fn prefix_range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<T>>,
+        max: Option<PrefixBound<T>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().prefix_keys_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<T>>,
+        max: Option<PrefixBound<T>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T::Output>> + 'b> {
+        self.no_prefix().prefix_keys(storage, min, max, order)
+    }
+
+    pub fn prefix_clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<PrefixBound<T>>,
+        max: Option<PrefixBound<T>>,
+    ) {
+        self.no_prefix().prefix_clear(storage, min, max)
     }
 }

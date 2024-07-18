@@ -1,5 +1,5 @@
 use {
-    crate::{split_first_key, Borsh, Bound, Codec, Index, Key, Map, Prefix, Set},
+    crate::{split_first_key, Borsh, Bound, Codec, Index, Key, Map, Prefix, Prefixer, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -11,7 +11,7 @@ use {
 pub struct MultiIndex<'a, PK, IK, T, C: Codec<T> = Borsh>
 where
     PK: Key,
-    IK: Key,
+    IK: Key + Prefixer,
 {
     indexer: fn(&PK, &T) -> IK,
     // The index set uses Borsh regardless of which codec the primary map uses.
@@ -22,7 +22,7 @@ where
 impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key,
-    IK: Key,
+    IK: Key + Prefixer,
 {
     pub const fn new(
         indexer: fn(&PK, &T) -> IK,
@@ -55,7 +55,7 @@ where
     /// allows you to give a value of `A` and iterate all `(B, C, D)` values.
     pub fn sub_prefix(&self, idx: IK::Prefix) -> IndexPrefix<IK, PK, (IK::Suffix, PK), T, C> {
         IndexPrefix {
-            prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
+            prefix: Prefix::new(self.index_set.namespace, &idx.raw_prefixes()),
             primary_map: &self.primary_map,
             idx_ns: self.index_set.namespace.len(),
             phantom: PhantomData,
@@ -98,8 +98,8 @@ where
             .range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                let ik = IK::deserialize(&ik_raw)?;
-                let pk = PK::deserialize(pk_raw)?;
+                let ik = IK::from_slice(&ik_raw)?;
+                let pk = PK::from_slice(pk_raw)?;
                 let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((ik, pk, v))
@@ -177,7 +177,7 @@ where
 impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key,
-    IK: Key,
+    IK: Key + Prefixer,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(&pk, data);
@@ -261,7 +261,7 @@ where
             .keys_raw_no_trimmer(storage, min, max, order)
             .map(|pk_raw| {
                 let pk_raw = self.trim_key(&pk_raw);
-                let pk = PK::deserialize(pk_raw)?;
+                let pk = PK::from_slice(pk_raw)?;
                 let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
                 let v = C::decode(&v_raw)?;
                 Ok((pk, v))
