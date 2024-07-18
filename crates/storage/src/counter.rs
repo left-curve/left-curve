@@ -56,13 +56,18 @@ where
     T: Increment,
     C: Codec<T>,
 {
-    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
-        self.item.load(storage)
-    }
-
     /// Initialize the incrementor to the zero value.
+    ///
+    /// This is typically done during contract instantiation.
     pub fn initialize(&self, storage: &mut dyn Storage) -> StdResult<()> {
         self.item.save(storage, &T::ZERO)
+    }
+
+    /// Load the current counter value.
+    ///
+    /// Error if the counter has not been initialized.
+    pub fn load(&self, storage: &dyn Storage) -> StdResult<T> {
+        self.item.load(storage)
     }
 
     /// Increment the value stored by one unit; return the value _after_
