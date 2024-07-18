@@ -32,8 +32,6 @@ where
     K: Key,
     C: Codec<T>,
 {
-    // ---------------------- methods for single entries -----------------------
-
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
@@ -43,6 +41,22 @@ where
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
+
+    fn no_prefix(&self) -> Prefix<K, T, C> {
+        Prefix::new(self.namespace, &[])
+    }
+
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
+        Prefix::new(self.namespace, &prefix.raw_prefixes())
+    }
+
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.keys_raw(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
+    }
+
+    // ---------------------- methods for single entries -----------------------
 
     pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
         self.path_raw(key_raw).as_path().exists(storage)
@@ -98,16 +112,6 @@ where
     }
 
     // -------------------- iteration methods (full bound) ---------------------
-
-    fn no_prefix(&self) -> Prefix<K, T, C> {
-        Prefix::new(self.namespace, &[])
-    }
-
-    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.keys_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
-    }
 
     pub fn range_raw<'b>(
         &self,
@@ -174,10 +178,6 @@ where
     }
 
     // ------------------- iteration methods (prefix bound) --------------------
-
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        Prefix::new(self.namespace, &prefix.raw_prefixes())
-    }
 
     pub fn prefix_range_raw<'b>(
         &self,

@@ -31,6 +31,14 @@ where
         }
     }
 
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
+        self.primary.prefix(prefix)
+    }
+
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.primary.is_empty(storage)
+    }
+
     // ---------------------- methods for single entries -----------------------
 
     pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
@@ -46,10 +54,6 @@ where
     }
 
     // -------------------- iteration methods (full bound) ---------------------
-
-    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.primary.is_empty(storage)
-    }
 
     pub fn range_raw<'b>(
         &self,
@@ -122,10 +126,6 @@ where
     }
 
     // ------------------- iteration methods (prefix bound) --------------------
-
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        self.primary.prefix(prefix)
-    }
 
     pub fn prefix_range_raw<'b>(
         &self,

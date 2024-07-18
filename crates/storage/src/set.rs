@@ -28,13 +28,27 @@ impl<'a, T> Set<'a, T>
 where
     T: Key,
 {
-    // ---------------------- methods for single entries -----------------------
-
     fn path(&self, item: T) -> PathBuf<Empty> {
         let mut raw_keys = item.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::<Empty, Borsh>::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
+
+    fn no_prefix(&self) -> Prefix<T, Empty> {
+        Prefix::new(self.namespace, &[])
+    }
+
+    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty> {
+        Prefix::new(self.namespace, &prefix.raw_prefixes())
+    }
+
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.range_raw(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
+    }
+
+    // ---------------------- methods for single entries -----------------------
 
     pub fn has(&self, storage: &dyn Storage, item: T) -> bool {
         self.path(item).as_path().exists(storage)
@@ -49,16 +63,6 @@ where
     }
 
     // -------------------- iteration methods (full bound) ---------------------
-
-    fn no_prefix(&self) -> Prefix<T, Empty> {
-        Prefix::new(self.namespace, &[])
-    }
-
-    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.range_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
-    }
 
     pub fn range_raw<'b>(
         &self,
@@ -85,10 +89,6 @@ where
     }
 
     // ------------------- iteration methods (prefix bound) --------------------
-
-    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty> {
-        Prefix::new(self.namespace, &prefix.raw_prefixes())
-    }
 
     pub fn prefix_range_raw<'b>(
         &self,
