@@ -7,7 +7,7 @@ use {
         GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
     },
     grug_types::{
-        from_json_slice, hash, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
+        from_json_slice, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
         Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
     },
 };
@@ -132,18 +132,14 @@ where
     pub fn do_finalize_block_raw<T>(
         &self,
         block: BlockInfo,
-        raw_txs: Vec<T>,
+        raw_txs: &[T],
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)>
     where
         T: AsRef<[u8]>,
     {
         let txs = raw_txs
-            .into_iter()
-            .map(|raw_tx| {
-                let tx_hash = hash(raw_tx.as_ref());
-                let tx = from_json_slice(raw_tx.as_ref())?;
-                Ok((tx_hash, tx))
-            })
+            .iter()
+            .map(from_json_slice)
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
@@ -152,7 +148,7 @@ where
     pub fn do_finalize_block(
         &self,
         block: BlockInfo,
-        txs: Vec<(Hash, Tx)>,
+        txs: Vec<Tx>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
         let mut events = vec![];
@@ -194,9 +190,9 @@ where
         }
 
         // process transactions one-by-one
-        for (_idx, (_tx_hash, tx)) in txs.into_iter().enumerate() {
+        for (_idx, tx) in txs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
+            tracing::debug!(idx = _idx, "Processing transaction");
 
             tx_results.push(process_tx(
                 self.vm.clone(),

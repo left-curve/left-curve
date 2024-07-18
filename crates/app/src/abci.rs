@@ -67,7 +67,7 @@ where
     fn finalize_block(&self, req: RequestFinalizeBlock) -> ResponseFinalizeBlock {
         let block = from_tm_block(req.height, req.time, Some(req.hash));
 
-        match self.do_finalize_block_raw(block, req.txs) {
+        match self.do_finalize_block_raw(block, &req.txs) {
             Ok((app_hash, events, tx_results)) => ResponseFinalizeBlock {
                 events: events.into_iter().map(to_tm_event).collect(),
                 tx_results: tx_results.into_iter().map(to_tm_tx_result).collect(),

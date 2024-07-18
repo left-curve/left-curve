@@ -85,9 +85,7 @@ where
         self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
 
         // Finalize the block
-        let (_, _, mut results) = self
-            .app
-            .do_finalize_block(self.block.clone(), vec![(Hash::ZERO, tx)])?;
+        let (_, _, mut results) = self.app.do_finalize_block(self.block.clone(), vec![tx])?;
 
         // We only sent 1 transaction, so there should be exactly one tx result
         ensure!(
