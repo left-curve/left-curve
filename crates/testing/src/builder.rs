@@ -20,7 +20,10 @@ const DEFAULT_CHAIN_ID: &str = "dev-1";
 const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
 
-pub struct TestBuilder<VM: TestVm = RustVm> {
+pub struct TestBuilder<VM = RustVm>
+where
+    VM: TestVm,
+{
     vm: VM,
     tracing_level: Option<Level>,
     chain_id: Option<String>,
