@@ -318,7 +318,7 @@ mod test {
                 .unwrap();
         }
 
-        // prefix_range with max bound, Ascending
+        // `prefix_range` with a max bound, ascending
         {
             let res = MAP
                 .prefix_range(
@@ -337,7 +337,7 @@ mod test {
             ]);
         }
 
-        // prefix_range with min bound, Ascending
+        // `prefix_range` with a min bound, ascending
         {
             let res = MAP
                 .prefix_range(
@@ -356,7 +356,7 @@ mod test {
             ]);
         }
 
-        // prefix_range with max bound, Descending
+        // `prefix_range` with a max bound, Descending
         {
             let res = MAP
                 .prefix_range(
@@ -374,7 +374,7 @@ mod test {
             ),]);
         }
 
-        // prefix_range with min bound, Descending
+        // `prefix_range` with a min bound, Descending
         {
             let res = MAP
                 .prefix_range(
@@ -395,7 +395,7 @@ mod test {
             ]);
         }
 
-        // prefix_range with min + max bound, Ascending
+        // `prefix_range` with both min and max bounds, ascending
         {
             let res = MAP
                 .prefix_range(
