@@ -1,6 +1,3 @@
-#[cfg(feature = "tracing")]
-use tracing::warn;
-
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
@@ -656,7 +653,7 @@ where
         Ok(VmCallResponse::MissingEntryPoint(entry_point)) => {
             let err = AppError::MissingEntryPoint { entry_point };
             #[cfg(feature = "tracing")]
-            warn!(
+            tracing::warn!(
                 err = err.to_string(),
                 "Failed to call before transaction hook"
             );
