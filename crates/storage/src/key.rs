@@ -57,16 +57,13 @@ pub trait Key {
     /// E.g. for `(A, B)`, this is `B`.
     ///
     /// Use `()` for singleton keys.
-    type Suffix: Key;
+    type Suffix;
 
     /// The type that raw keys deserialize into, which may be different from the
     /// key itself.
     ///
     /// E.g. when `&str` is used as the key, it deserializes into `String`.
-    ///
-    /// Must be an _owned_ type, as denoted by the `'static` lifetime requirement.
-    /// In comparison, the key itself is almost always a reference type.
-    type Output: 'static;
+    type Output;
 
     /// Convert the key into one or more _raw keys_. Each raw key is a byte slice,
     /// either owned or a reference, represented as a `Cow<[u8]>`.
