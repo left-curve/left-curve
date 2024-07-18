@@ -394,5 +394,25 @@ mod test {
                 ((2_u64, "name_2".to_string()), "desc_2".to_string()),
             ]);
         }
+
+        // prefix_range with min + max bound, Ascending
+        {
+            let res = map
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    Some(PrefixBound::exclusive(4_u64)),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+            ]);
+        }
     }
 }
