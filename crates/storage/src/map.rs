@@ -82,7 +82,12 @@ where
         self.path(key).as_path().load(storage)
     }
 
-    pub fn save_raw(&self, storage: &mut dyn Storage, key_raw: &[u8], data_raw: &[u8]) {
+    /// Using this function is not recommended. If the key or data isn't
+    /// properly serialized, later when you read the data, it will fail to
+    /// deserialize and error.
+    ///
+    /// We prefix the function name with the word "unsafe" to highlight this.
+    pub fn unsafe_save_raw(&self, storage: &mut dyn Storage, key_raw: &[u8], data_raw: &[u8]) {
         self.path_raw(key_raw).as_path().save_raw(storage, data_raw)
     }
 
