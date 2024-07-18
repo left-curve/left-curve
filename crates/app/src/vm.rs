@@ -18,28 +18,6 @@ pub enum VmCallResponse<T> {
     Result(T),
 }
 
-/// A trait for types that can be cast to a `Result`.
-/// This is used to handle the case where [`VmCallResponse`] contains a result
-/// and the result is an error.
-///
-/// With [transpose][VmCallResponse::transpose], allow to convert
-///
-/// `VmCallResponse<Result<T, E>>` to `Result<VmCallResponse<T>, E>`.
-pub trait Transposable {
-    type T;
-    type E;
-    fn cast(self) -> Result<Self::T, Self::E>;
-}
-
-impl<T, E> Transposable for Result<T, E> {
-    type E = E;
-    type T = T;
-
-    fn cast(self) -> Result<T, E> {
-        self
-    }
-}
-
 impl<T> VmCallResponse<T> {
     pub fn map<T1>(self, f: impl FnOnce(T) -> T1) -> VmCallResponse<T1> {
         match self {
@@ -87,6 +65,28 @@ where
                 Err(e) => Err(e),
             },
         }
+    }
+}
+
+/// A trait for types that can be cast to a `Result`.
+/// This is used to handle the case where [`VmCallResponse`] contains a result
+/// and the result is an error.
+///
+/// With [transpose][VmCallResponse::transpose], allow to convert
+///
+/// `VmCallResponse<Result<T, E>>` to `Result<VmCallResponse<T>, E>`.
+pub trait Transposable {
+    type T;
+    type E;
+    fn cast(self) -> Result<Self::T, Self::E>;
+}
+
+impl<T, E> Transposable for Result<T, E> {
+    type E = E;
+    type T = T;
+
+    fn cast(self) -> Result<T, E> {
+        self
     }
 }
 
