@@ -657,6 +657,7 @@ where
                 err = err.to_string(),
                 "Failed to call before transaction hook"
             );
+
             Err(err)
         },
         Err(err) => {
