@@ -1,6 +1,7 @@
 use {
     crate::{Environment, Region, VmError, VmResult},
     data_encoding::BASE64,
+    grug_app::VmCallResponse,
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
 
@@ -37,11 +38,18 @@ pub fn write_to_memory(
     store: &mut impl AsStoreMut,
     data: &[u8],
 ) -> VmResult<u32> {
-    // call the `allocate` export to reserve an area in Wasm memory
-    let region_ptr: u32 = env
-        .call_function1(store, "allocate", &[(data.len() as u32).into()])?
-        .try_into()
-        .map_err(VmError::ReturnType)?;
+    let region_ptr = match env.call_function1(store, "allocate", &[(data.len() as u32).into()])? {
+        VmCallResponse::MissingEntryPoint(entry_point) => {
+            // The `allocate` function is required for the VM to work
+            // Is possible here to return an Error because the case this function is missing
+            // has not to be handled
+            return Err(VmError::Export(wasmer::ExportError::Missing(entry_point)));
+        },
+        VmCallResponse::Result(ptr) => ptr,
+    }
+    .try_into()
+    .map_err(VmError::ReturnType)?;
+
     let memory = env.get_wasmer_memory(&store)?;
     let mut region = read_region(&memory, region_ptr)?;
     // don't forget to update region length

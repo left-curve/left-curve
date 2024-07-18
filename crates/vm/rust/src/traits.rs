@@ -8,6 +8,12 @@ use grug_types::{
     Tx,
 };
 
+pub enum VerifyableEntryPoints {
+    AfterTx,
+    Receive
+
+}
+
 pub trait Contract {
     fn instantiate(
         &self,
@@ -114,6 +120,8 @@ pub trait Contract {
         querier: &dyn Querier,
         msg: BankQuery,
     ) -> GenericResult<BankQueryResponse>;
+
+    fn very_entry_point_exist(&self, entry_point: VerifyableEntryPoints) -> bool;
 }
 
 // Trait aliases are unstable:

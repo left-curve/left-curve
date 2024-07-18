@@ -1,5 +1,7 @@
+use crate::VmCallResponse;
 #[cfg(feature = "tracing")]
 use tracing::{debug, info, warn};
+
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
@@ -184,7 +186,8 @@ where
         &ctx,
         false,
         &msg,
-    )?;
+    )?
+    .ignore_missing_entry_point()?;
 
     if do_receive {
         events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
@@ -215,7 +218,7 @@ where
         simulate: None,
     };
 
-    call_in_0_out_1_handle_response(
+    match call_in_0_out_1_handle_response(
         vm,
         storage,
         gas_tracker,
@@ -223,7 +226,10 @@ where
         &account.code_hash,
         &ctx,
         false,
-    )
+    )? {
+        VmCallResponse::MissingEntryPoint(_) => Ok(vec![]),
+        VmCallResponse::Result(events) => Ok(events),
+    }
 }
 
 // -------------------------------- instantiate --------------------------------
@@ -328,16 +334,19 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        "instantiate",
-        &account.code_hash,
-        &ctx,
-        false,
-        msg,
-    )?);
+    events.extend(
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "instantiate",
+            &account.code_hash,
+            &ctx,
+            false,
+            msg,
+        )?
+        .ignore_missing_entry_point()?,
+    );
 
     Ok((events, ctx.contract))
 }
@@ -422,16 +431,19 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        "execute",
-        &account.code_hash,
-        &ctx,
-        false,
-        msg,
-    )?);
+    events.extend(
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "execute",
+            &account.code_hash,
+            &ctx,
+            false,
+            msg,
+        )?
+        .ignore_missing_entry_point()?,
+    );
 
     Ok(events)
 }
@@ -525,7 +537,8 @@ where
         &ctx,
         false,
         msg,
-    )
+    )?
+    .ignore_missing_entry_point()
 }
 
 // ----------------------------------- reply -----------------------------------
@@ -599,7 +612,8 @@ where
         false,
         msg,
         result,
-    )
+    )?
+    .ignore_missing_entry_point()
 }
 
 // ------------------------- before/after transaction --------------------------
@@ -616,7 +630,7 @@ where
     AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
-        Ok(events) => {
+        Ok(VmCallResponse::Result(events)) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
             debug!(
@@ -624,6 +638,15 @@ where
                 "Called before transaction hook"
             );
             Ok(events)
+        },
+        Ok(VmCallResponse::MissingEntryPoint(entry_point)) => {
+            let err = AppError::MissingEntryPoint { entry_point };
+            #[cfg(feature = "tracing")]
+            warn!(
+                err = err.to_string(),
+                "Failed to call before transaction hook"
+            );
+            Err(err)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -648,7 +671,7 @@ where
     AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
-        Ok(events) => {
+        Ok(VmCallResponse::Result(events)) => {
             // TODO: add txhash here?
             #[cfg(feature = "tracing")]
             debug!(
@@ -657,6 +680,7 @@ where
             );
             Ok(events)
         },
+        Ok(VmCallResponse::MissingEntryPoint(_)) => Ok(vec![]),
         Err(err) => {
             #[cfg(feature = "tracing")]
             warn!(
@@ -675,7 +699,7 @@ fn _do_before_or_after_tx<VM>(
     block: BlockInfo,
     name: &'static str,
     tx: &Tx,
-) -> AppResult<Vec<Event>>
+) -> AppResult<VmCallResponse<Vec<Event>>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -800,5 +824,6 @@ where
         &account.code_hash,
         &ctx,
         false,
-    )
+    )?
+    .ignore_missing_entry_point()
 }

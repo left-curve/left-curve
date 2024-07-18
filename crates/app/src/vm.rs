@@ -10,6 +10,86 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
+/// The response from a VM call, which can either be a result or a missing entry point.
+/// This is used to handle the case where the entry point is missing
+/// (e.g. `after_tx`, `receive`).
+pub enum VmCallResponse<T> {
+    MissingEntryPoint(String),
+    Result(T),
+}
+
+/// A trait for types that can be cast to a `Result`.
+/// This is used to handle the case where [`VmCallResponse`] contains a result
+/// and the result is an error.
+///
+/// With [transpose][VmCallResponse::transpose], allow to convert
+///
+/// `VmCallResponse<Result<T, E>>` to `Result<VmCallResponse<T>, E>`.
+pub trait Transposable {
+    type T;
+    type E;
+    fn cast(self) -> Result<Self::T, Self::E>;
+}
+
+impl<T, E> Transposable for Result<T, E> {
+    type E = E;
+    type T = T;
+
+    fn cast(self) -> Result<T, E> {
+        self
+    }
+}
+
+impl<T> VmCallResponse<T> {
+    pub fn map<T1>(self, f: impl FnOnce(T) -> T1) -> VmCallResponse<T1> {
+        match self {
+            VmCallResponse::Result(t) => VmCallResponse::Result(f(t)),
+
+            VmCallResponse::MissingEntryPoint(entry_point) => {
+                VmCallResponse::MissingEntryPoint(entry_point)
+            },
+        }
+    }
+
+    pub fn ok(ok: T) -> VmCallResponse<T> {
+        VmCallResponse::Result(ok)
+    }
+
+    pub fn missing(entry_point: impl Into<String>) -> VmCallResponse<T> {
+        VmCallResponse::MissingEntryPoint(entry_point.into())
+    }
+
+    /// Convert `VmCallResponse<T, E>` to `Result<T, E>`.
+    /// - if the `entry point` is missing, return an `Ok(T)`.
+    /// - if the `entry point` is not missing, return the `Err(AppError)`.
+    pub fn ignore_missing_entry_point(self) -> Result<T, AppError> {
+        match self {
+            VmCallResponse::MissingEntryPoint(entry_point) => {
+                Err(AppError::MissingEntryPoint { entry_point })
+            },
+            VmCallResponse::Result(result) => Ok(result),
+        }
+    }
+}
+
+impl<T> VmCallResponse<T>
+where
+    T: Transposable,
+{
+    /// Convert `VmCallResponse<Result<T, E>>` to `Result<VmCallResponse<T>, E>`.
+    pub fn transpose(self) -> Result<VmCallResponse<T::T>, T::E> {
+        match self {
+            VmCallResponse::MissingEntryPoint(entry_point) => {
+                Ok(VmCallResponse::MissingEntryPoint(entry_point))
+            },
+            VmCallResponse::Result(result) => match result.cast() {
+                Ok(t) => Ok(VmCallResponse::Result(t)),
+                Err(e) => Err(e),
+            },
+        }
+    }
+}
+
 /// Create a VM instance, and call a function that takes no input parameter and
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
@@ -20,7 +100,7 @@ pub fn call_in_0_out_1<VM, R>(
     code_hash: &Hash,
     ctx: &Context,
     storage_readonly: bool,
-) -> AppResult<R>
+) -> AppResult<VmCallResponse<R>>
 where
     R: DeserializeOwned,
     VM: Vm + Clone,
@@ -38,8 +118,10 @@ where
     )?;
 
     // Call the function; deserialize the output as JSON
-    let out_raw = instance.call_in_0_out_1(name, ctx)?;
-    let out = from_json_slice(out_raw)?;
+    let out = instance
+        .call_in_0_out_1(name, ctx)?
+        .map(from_json_slice)
+        .transpose()?;
 
     Ok(out)
 }
@@ -55,7 +137,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     ctx: &Context,
     storage_readonly: bool,
     param: &P,
-) -> AppResult<R>
+) -> AppResult<VmCallResponse<R>>
 where
     P: Serialize,
     R: DeserializeOwned,
@@ -77,8 +159,10 @@ where
     let param_raw = to_json_vec(param)?;
 
     // Call the function; deserialize the output as JSON
-    let out_raw = instance.call_in_1_out_1(name, ctx, &param_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = instance
+        .call_in_1_out_1(name, ctx, &param_raw)?
+        .map(from_json_slice)
+        .transpose()?;
 
     Ok(out)
 }
@@ -95,7 +179,7 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     storage_readonly: bool,
     param1: &P1,
     param2: &P2,
-) -> AppResult<R>
+) -> AppResult<VmCallResponse<R>>
 where
     P1: Serialize,
     P2: Serialize,
@@ -119,8 +203,10 @@ where
     let param2_raw = to_json_vec(param2)?;
 
     // Call the function; deserialize the output as JSON
-    let out_raw = instance.call_in_2_out_1(name, ctx, &param1_raw, &param2_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = instance
+        .call_in_2_out_1(name, ctx, &param1_raw, &param2_raw)?
+        .map(from_json_slice)
+        .transpose()?;
 
     Ok(out)
 }
@@ -136,7 +222,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     code_hash: &Hash,
     ctx: &Context,
     storage_readonly: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<VmCallResponse<Vec<Event>>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -149,10 +235,24 @@ where
         code_hash,
         ctx,
         storage_readonly,
-    )?
-    .into_std_result()?;
+    )?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    let handled_response = response
+        .map(|response| {
+            handle_response(
+                vm,
+                storage,
+                gas_tracker,
+                name,
+                ctx,
+                response.into_std_result()?,
+            )
+        })
+        .transpose()?;
+
+    Ok(handled_response)
+
+    // handle_response(vm, storage, gas_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -167,7 +267,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     ctx: &Context,
     storage_readonly: bool,
     param: &P,
-) -> AppResult<Vec<Event>>
+) -> AppResult<VmCallResponse<Vec<Event>>>
 where
     P: Serialize,
     VM: Vm + Clone,
@@ -182,10 +282,22 @@ where
         ctx,
         storage_readonly,
         param,
-    )?
-    .into_std_result()?;
+    )?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    let handled_response = response
+        .map(|response| {
+            handle_response(
+                vm,
+                storage,
+                gas_tracker,
+                name,
+                ctx,
+                response.into_std_result()?,
+            )
+        })
+        .transpose()?;
+
+    Ok(handled_response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -201,7 +313,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     storage_readonly: bool,
     param1: &P1,
     param2: &P2,
-) -> AppResult<Vec<Event>>
+) -> AppResult<VmCallResponse<Vec<Event>>>
 where
     P1: Serialize,
     P2: Serialize,
@@ -218,10 +330,22 @@ where
         storage_readonly,
         param1,
         param2,
-    )?
-    .into_std_result()?;
+    )?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    let handled_response = response
+        .map(|response| {
+            handle_response(
+                vm,
+                storage,
+                gas_tracker,
+                name,
+                ctx,
+                response.into_std_result()?,
+            )
+        })
+        .transpose()?;
+
+    Ok(handled_response)
 }
 
 fn create_vm_instance<VM>(

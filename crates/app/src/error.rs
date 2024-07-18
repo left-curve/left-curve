@@ -43,6 +43,9 @@ pub enum AppError {
 
     #[error("code hash is not allowed as IBC client: `{code_hash}`")]
     NotAllowedClient { code_hash: Hash },
+
+    #[error("entry point `{entry_point}` is missing")]
+    MissingEntryPoint { entry_point: String },
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

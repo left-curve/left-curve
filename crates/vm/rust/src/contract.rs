@@ -1,7 +1,7 @@
 use {
     crate::{
         AfterBlockFn, AfterTxFn, BankExecuteFn, BankQueryFn, BeforeBlockFn, BeforeTxFn, Contract,
-        ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
+        ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VerifyableEntryPoints,
     },
     elsa::sync::FrozenVec,
     grug_types::{
@@ -564,5 +564,12 @@ where
     ) -> GenericResult<BankQueryResponse> {
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
         return_into_generic_result!(self.bank_query_fn.as_ref().unwrap()(immutable_ctx, msg))
+    }
+
+    fn very_entry_point_exist(&self, name: VerifyableEntryPoints) -> bool {
+        match name {
+            VerifyableEntryPoints::AfterTx => self.after_tx_fn.is_some(),
+            VerifyableEntryPoints::Receive => self.receive_fn.is_some(),
+        }
     }
 }

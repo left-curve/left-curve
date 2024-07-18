@@ -120,7 +120,7 @@ where
         simulate: None,
     };
 
-    call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
+    let res = call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
         vm,
         storage,
         gas_tracker,
@@ -130,8 +130,10 @@ where
         true,
         msg,
     )?
-    .into_std_result()
-    .map_err(AppError::Std)
+    .ignore_missing_entry_point()?
+    .into_std_result()?;
+
+    Ok(res)
 }
 
 pub fn query_code(storage: &dyn Storage, hash: Hash) -> AppResult<Binary> {
@@ -230,6 +232,7 @@ where
         true,
         &msg,
     )?
+    .ignore_missing_entry_point()?
     .into_std_result()?;
 
     Ok(WasmSmartResponse {

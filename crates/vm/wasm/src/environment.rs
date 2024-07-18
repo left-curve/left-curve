@@ -1,6 +1,6 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
-    grug_app::{GasTracker, QuerierProvider, StorageProvider},
+    grug_app::{GasTracker, QuerierProvider, StorageProvider, VmCallResponse},
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
@@ -141,16 +141,24 @@ impl Environment {
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Value> {
+    ) -> VmResult<VmCallResponse<Value>> {
         let ret = self.call_function(store, name, args)?;
-        if ret.len() != 1 {
-            return Err(VmError::ReturnCount {
-                name: name.into(),
-                expect: 1,
-                actual: ret.len(),
-            });
-        }
-        Ok(ret[0].clone())
+
+        let ret = ret
+            .map(|ret| {
+                if ret.len() != 1 {
+                    Err(VmError::ReturnCount {
+                        name: name.into(),
+                        expect: 1,
+                        actual: ret.len(),
+                    })
+                } else {
+                    Ok(ret[0].clone())
+                }
+            })
+            .transpose()?;
+
+        Ok(ret)
     }
 
     pub fn call_function0(
@@ -158,16 +166,22 @@ impl Environment {
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
-    ) -> VmResult<()> {
+    ) -> VmResult<VmCallResponse<()>> {
         let ret = self.call_function(store, name, args)?;
-        if ret.len() != 0 {
-            return Err(VmError::ReturnCount {
-                name: name.into(),
-                expect: 0,
-                actual: ret.len(),
-            });
-        }
-        Ok(())
+        let ret = ret
+            .map(|ret| {
+                if ret.len() != 0 {
+                    Err(VmError::ReturnCount {
+                        name: name.into(),
+                        expect: 0,
+                        actual: ret.len(),
+                    })
+                } else {
+                    Ok(())
+                }
+            })
+            .transpose()?;
+        Ok(ret)
     }
 
     fn call_function(
@@ -175,8 +189,13 @@ impl Environment {
         store: &mut impl AsStoreMut,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Box<[Value]>> {
+    ) -> VmResult<VmCallResponse<Box<[Value]>>> {
         let instance = self.get_wasmer_instance()?;
+
+        if !instance.exports.contains(name) {
+            return Ok(VmCallResponse::missing(name));
+        }
+
         let func = instance.exports.get_function(name)?;
         // Make the function call. Then, regardless of whether the call succeeds
         // or fails, check the remaining gas points.
@@ -192,7 +211,7 @@ impl Environment {
                 self.gas_tracker.consume(consumed, name)?;
                 self.gas_checkpoint = remaining;
 
-                Ok(result?)
+                Ok(VmCallResponse::ok(result?))
             },
             // The call has failed because of running out of gas.
             //

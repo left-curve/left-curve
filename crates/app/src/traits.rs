@@ -1,5 +1,5 @@
 use {
-    crate::{GasTracker, QuerierProvider, StorageProvider},
+    crate::{GasTracker, QuerierProvider, StorageProvider, VmCallResponse},
     grug_types::{Batch, Context, Hash, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -111,7 +111,11 @@ pub trait Instance {
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
+    fn call_in_0_out_1(
+        self,
+        name: &str,
+        ctx: &Context,
+    ) -> Result<VmCallResponse<Vec<u8>>, Self::Error>;
 
     /// Call a function that takes exactly 1 input parameter (other than the
     /// context) and returns exactly 1 output.
@@ -120,7 +124,7 @@ pub trait Instance {
         name: &str,
         ctx: &Context,
         param: &P,
-    ) -> Result<Vec<u8>, Self::Error>
+    ) -> Result<VmCallResponse<Vec<u8>>, Self::Error>
     where
         P: AsRef<[u8]>;
 
@@ -132,7 +136,7 @@ pub trait Instance {
         ctx: &Context,
         param1: &P1,
         param2: &P2,
-    ) -> Result<Vec<u8>, Self::Error>
+    ) -> Result<VmCallResponse<Vec<u8>>, Self::Error>
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;

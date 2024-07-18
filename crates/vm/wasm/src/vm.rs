@@ -6,7 +6,7 @@ use {
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Cache, Environment, VmError, VmResult,
     },
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm, VmCallResponse},
     grug_types::{to_borsh_vec, Context, Hash},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
@@ -160,22 +160,29 @@ pub struct WasmInstance {
 impl Instance for WasmInstance {
     type Error = VmError;
 
-    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<VmCallResponse<Vec<u8>>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
         let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
-        let res_ptr: u32 = env
+        let data = env
             .call_function1(&mut store, name, &[ctx_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
-
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
+            .map(|val| -> VmResult<Vec<u8>> {
+                let ptr: u32 = val.try_into().map_err(VmError::ReturnType)?;
+                let data = read_then_wipe(env, &mut store, ptr)?;
+                Ok(data)
+            })
+            .transpose()?;
 
         Ok(data)
     }
 
-    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    fn call_in_1_out_1<P>(
+        mut self,
+        name: &str,
+        ctx: &Context,
+        param: &P,
+    ) -> VmResult<VmCallResponse<Vec<u8>>>
     where
         P: AsRef<[u8]>,
     {
@@ -184,12 +191,15 @@ impl Instance for WasmInstance {
 
         let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
         let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
 
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
+        let data = env
+            .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
+            .map(|val| -> VmResult<Vec<u8>> {
+                let ptr: u32 = val.try_into().map_err(VmError::ReturnType)?;
+                let data = read_then_wipe(env, &mut store, ptr)?;
+                Ok(data)
+            })
+            .transpose()?;
 
         Ok(data)
     }
@@ -200,7 +210,7 @@ impl Instance for WasmInstance {
         ctx: &Context,
         param1: &P1,
         param2: &P2,
-    ) -> VmResult<Vec<u8>>
+    ) -> VmResult<VmCallResponse<Vec<u8>>>
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
@@ -211,15 +221,19 @@ impl Instance for WasmInstance {
         let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
         let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
-        let res_ptr: u32 = env
+
+        let data = env
             .call_function1(&mut store, name, &[
                 ctx_ptr.into(),
                 param1_ptr.into(),
                 param2_ptr.into(),
             ])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
+            .map(|val| -> VmResult<Vec<u8>> {
+                let ptr: u32 = val.try_into().map_err(VmError::ReturnType)?;
+                let data = read_then_wipe(env, &mut store, ptr)?;
+                Ok(data)
+            })
+            .transpose()?;
 
         Ok(data)
     }

@@ -85,7 +85,11 @@ fn looping(c: &mut Criterion) {
                         let (instance, ctx, msg, ok, gas_tracker) = suite.unwrap();
 
                         // Call the `loop` query method
-                        let output = instance.call_in_1_out_1("query", &ctx, &msg).unwrap();
+                        let output = instance
+                            .call_in_1_out_1("query", &ctx, &msg)
+                            .unwrap()
+                            .ignore_missing_entry_point()
+                            .unwrap();
 
                         // Make sure the contract didn't error
                         assert_eq!(output, ok);

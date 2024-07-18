@@ -1,6 +1,6 @@
 use {
-    crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    crate::{ContractWrapper, VerifyableEntryPoints, VmError, VmResult, CONTRACTS},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm, VmCallResponse},
     grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
@@ -56,7 +56,7 @@ pub struct RustInstance {
 impl Instance for RustInstance {
     type Error = VmError;
 
-    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<VmCallResponse<Vec<u8>>> {
         let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "receive" => {
@@ -80,10 +80,15 @@ impl Instance for RustInstance {
                 })
             },
         };
-        Ok(out)
+        Ok(VmCallResponse::ok(out))
     }
 
-    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    fn call_in_1_out_1<P>(
+        mut self,
+        name: &str,
+        ctx: &Context,
+        param: &P,
+    ) -> VmResult<VmCallResponse<Vec<u8>>>
     where
         P: AsRef<[u8]>,
     {
@@ -124,6 +129,9 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             "after_tx" => {
+                if contract.very_entry_point_exist(VerifyableEntryPoints::AfterTx) {
+                    return Ok(VmCallResponse::missing("after_tx"));
+                }
                 let tx = from_json_slice(param)?;
                 let res =
                     contract.after_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
@@ -153,7 +161,7 @@ impl Instance for RustInstance {
                 })
             },
         };
-        Ok(out)
+        Ok(VmCallResponse::ok(out))
     }
 
     fn call_in_2_out_1<P1, P2>(
@@ -162,7 +170,7 @@ impl Instance for RustInstance {
         ctx: &Context,
         param1: &P1,
         param2: &P2,
-    ) -> VmResult<Vec<u8>>
+    ) -> VmResult<VmCallResponse<Vec<u8>>>
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
@@ -189,6 +197,6 @@ impl Instance for RustInstance {
                 })
             },
         };
-        Ok(out)
+        Ok(VmCallResponse::ok(out))
     }
 }
