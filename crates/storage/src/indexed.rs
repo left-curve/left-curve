@@ -41,12 +41,24 @@ where
 
     // ---------------------- methods for single entries -----------------------
 
+    pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
+        self.primary.has_raw(storage, key_raw)
+    }
+
     pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
         self.primary.has(storage, k)
     }
 
+    pub fn may_load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.primary.may_load_raw(storage, key_raw)
+    }
+
     pub fn may_load(&self, storage: &dyn Storage, key: K) -> StdResult<Option<T>> {
         self.primary.may_load(storage, key)
+    }
+
+    pub fn load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.primary.load_raw(storage, key_raw)
     }
 
     pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
