@@ -254,9 +254,9 @@ where
 #[cfg(test)]
 mod test {
     use {
-        crate::Map,
+        crate::{Map, PrefixBound},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::MockStorage,
+        grug_types::{MockStorage, StdResult},
     };
 
     const FOOS: Map<u64, Foo> = Map::new("foo");
@@ -298,5 +298,101 @@ mod test {
 
         let first = FOOS.load(&storage, 1).unwrap();
         assert_eq!(first, Foo::new("name_1", "surname_1"));
+    }
+
+    #[test]
+    fn range_prefix() {
+        let mut storage = MockStorage::new();
+
+        let map: Map<(u64, String), String> = Map::new("foo");
+
+        for (index, addr, desc) in [
+            (1, "name_1", "desc_1"),
+            (2, "name_2", "desc_2"),
+            (2, "name_3", "desc_3"),
+            (3, "name_4", "desc_4"),
+            (3, "name_5", "desc_5"),
+            (4, "name_6", "desc_6"),
+        ] {
+            map.save(&mut storage, (index, addr.to_string()), &desc.to_string())
+                .unwrap();
+        }
+
+        // prefix_range with max bound, Ascending
+        {
+            let res = map
+                .prefix_range(
+                    &storage,
+                    None,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((1_u64, "name_1".to_string()), "desc_1".to_string()),
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+            ]);
+        }
+
+        // prefix_range with min bound, Ascending
+        {
+            let res = map
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::exclusive(2_u64)),
+                    None,
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+                ((4_u64, "name_6".to_string()), "desc_6".to_string()),
+            ]);
+        }
+
+        // prefix_range with max bound, Descending
+        {
+            let res = map
+                .prefix_range(
+                    &storage,
+                    None,
+                    Some(PrefixBound::exclusive(2_u64)),
+                    grug_types::Order::Descending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![(
+                (1_u64, "name_1".to_string()),
+                "desc_1".to_string()
+            ),]);
+        }
+
+        // prefix_range with min bound, Descending
+        {
+            let res = map
+                .prefix_range(
+                    &storage,
+                    Some(PrefixBound::inclusive(2_u64)),
+                    None,
+                    grug_types::Order::Descending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, vec![
+                ((4_u64, "name_6".to_string()), "desc_6".to_string()),
+                ((3_u64, "name_5".to_string()), "desc_5".to_string()),
+                ((3_u64, "name_4".to_string()), "desc_4".to_string()),
+                ((2_u64, "name_3".to_string()), "desc_3".to_string()),
+                ((2_u64, "name_2".to_string()), "desc_2".to_string()),
+            ]);
+        }
     }
 }
