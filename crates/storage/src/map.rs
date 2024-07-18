@@ -302,9 +302,9 @@ mod test {
 
     #[test]
     fn range_prefix() {
-        let mut storage = MockStorage::new();
+        const MAP: Map<(u64, String), String> = Map::new("foo");
 
-        let map: Map<(u64, String), String> = Map::new("foo");
+        let mut storage = MockStorage::new();
 
         for (index, addr, desc) in [
             (1, "name_1", "desc_1"),
@@ -314,13 +314,13 @@ mod test {
             (3, "name_5", "desc_5"),
             (4, "name_6", "desc_6"),
         ] {
-            map.save(&mut storage, (index, addr.to_string()), &desc.to_string())
+            MAP.save(&mut storage, (index, addr.to_string()), &desc.to_string())
                 .unwrap();
         }
 
         // prefix_range with max bound, Ascending
         {
-            let res = map
+            let res = MAP
                 .prefix_range(
                     &storage,
                     None,
@@ -339,7 +339,7 @@ mod test {
 
         // prefix_range with min bound, Ascending
         {
-            let res = map
+            let res = MAP
                 .prefix_range(
                     &storage,
                     Some(PrefixBound::exclusive(2_u64)),
@@ -358,7 +358,7 @@ mod test {
 
         // prefix_range with max bound, Descending
         {
-            let res = map
+            let res = MAP
                 .prefix_range(
                     &storage,
                     None,
@@ -376,7 +376,7 @@ mod test {
 
         // prefix_range with min bound, Descending
         {
-            let res = map
+            let res = MAP
                 .prefix_range(
                     &storage,
                     Some(PrefixBound::inclusive(2_u64)),
@@ -397,7 +397,7 @@ mod test {
 
         // prefix_range with min + max bound, Ascending
         {
-            let res = map
+            let res = MAP
                 .prefix_range(
                     &storage,
                     Some(PrefixBound::inclusive(2_u64)),
