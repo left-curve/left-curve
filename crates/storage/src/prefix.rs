@@ -51,6 +51,8 @@ where
         }
     }
 
+    // -------------------- iteration methods (full bound) ---------------------
+
     pub fn range_raw<'a>(
         &self,
         storage: &'a dyn Storage,
@@ -175,6 +177,8 @@ where
         let (min, max) = range_bounds(&self.namespace, min, max);
         storage.remove_range(Some(&min), Some(&max))
     }
+
+    // ------------------- iteration methods (prefix bound) --------------------
 
     pub fn prefix_range_raw<'a>(
         &self,
