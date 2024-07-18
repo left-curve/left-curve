@@ -210,11 +210,17 @@ impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
 impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
 impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
 
+impl_bytable_std!(u8, 1);
+impl_bytable_std!(u16, 2);
+impl_bytable_std!(u32, 4);
 impl_bytable_std!(u64, 8);
 impl_bytable_std!(u128, 16);
 impl_bytable_bnum!(U256, 32);
 impl_bytable_bnum!(U512, 64);
 
+impl_integer_number!(u8);
+impl_integer_number!(u16);
+impl_integer_number!(u32);
 impl_integer_number!(u64);
 impl_integer_number!(u128);
 impl_integer_number!(U256);
