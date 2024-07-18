@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, Prefixer},
+    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, PrefixBound, Prefixer},
     grug_types::{Order, Record, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -32,6 +32,8 @@ where
     K: Key,
     C: Codec<T>,
 {
+    // ---------------------- methods for single entries -----------------------
+
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
@@ -40,20 +42,6 @@ where
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
-    }
-
-    fn no_prefix(&self) -> Prefix<K, T, C> {
-        Prefix::new(self.namespace, &[])
-    }
-
-    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        Prefix::new(self.namespace, &prefix.raw_prefixes())
-    }
-
-    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.keys_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
     }
 
     pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
@@ -107,6 +95,18 @@ where
         Err: From<StdError>,
     {
         self.path(key).as_path().update(storage, action)
+    }
+
+    // -------------------- iteration methods (full bound) ---------------------
+
+    fn no_prefix(&self) -> Prefix<K, T, C> {
+        Prefix::new(self.namespace, &[])
+    }
+
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.keys_raw(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
     }
 
     pub fn range_raw<'b>(
@@ -171,6 +171,81 @@ where
 
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
         self.no_prefix().clear(storage, min, max)
+    }
+
+    // ------------------- iteration methods (prefix bound) --------------------
+
+    pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
+        Prefix::new(self.namespace, &prefix.raw_prefixes())
+    }
+
+    pub fn prefix_range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+        self.no_prefix().prefix_range_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.no_prefix().prefix_range(storage, min, max, order)
+    }
+
+    pub fn prefix_keys_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().prefix_keys_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_keys<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
+        self.no_prefix().prefix_keys(storage, min, max, order)
+    }
+
+    pub fn prefix_values_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.no_prefix().prefix_values_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_values<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        self.no_prefix().prefix_values(storage, min, max, order)
+    }
+
+    pub fn prefix_clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+    ) {
+        self.no_prefix().prefix_clear(storage, min, max)
     }
 }
 
