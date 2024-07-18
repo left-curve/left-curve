@@ -1,5 +1,3 @@
-#[cfg(feature = "tracing")]
-use tracing::{debug, info};
 use {
     crate::{
         do_after_block, do_after_tx, do_before_block, do_before_tx, do_configure, do_execute,
@@ -95,7 +93,7 @@ where
         // the developer should examine the error, fix it, and retry.
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            info!(idx = _idx, "Processing genesis message");
+            tracing::info!(idx = _idx, "Processing genesis message");
 
             process_msg(
                 self.vm.clone(),
@@ -120,7 +118,7 @@ where
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        info!(
+        tracing::info!(
             chain_id,
             timestamp = block.timestamp.seconds(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
@@ -173,7 +171,7 @@ where
         // call begin blockers
         for (_idx, contract) in cfg.begin_blockers.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            debug!(
+            tracing::debug!(
                 idx = _idx,
                 contract = contract.to_string(),
                 "Calling begin blocker"
@@ -195,7 +193,7 @@ where
         // process transactions one-by-one
         for (_idx, (_tx_hash, tx)) in txs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
+            tracing::debug!(idx = _idx, tx_hash = ?_tx_hash, "Processing transaction");
 
             tx_results.push(process_tx(
                 self.vm.clone(),
@@ -208,7 +206,7 @@ where
         // call end blockers
         for (_idx, contract) in cfg.end_blockers.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            debug!(
+            tracing::debug!(
                 idx = _idx,
                 contract = contract.to_string(),
                 "Calling end blocker"
@@ -247,7 +245,7 @@ where
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        info!(
+        tracing::info!(
             height = block.height.number(),
             timestamp = block.timestamp.seconds(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
@@ -262,7 +260,7 @@ where
         self.db.commit()?;
 
         #[cfg(feature = "tracing")]
-        info!(height = self.db.latest_version(), "Committed state");
+        tracing::info!(height = self.db.latest_version(), "Committed state");
 
         Ok(())
     }
@@ -391,7 +389,7 @@ where
     // persisted)
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
-        debug!(idx = _idx, "Processing message");
+        tracing::debug!(idx = _idx, "Processing message");
 
         events.extend(process_msg(
             vm.clone(),

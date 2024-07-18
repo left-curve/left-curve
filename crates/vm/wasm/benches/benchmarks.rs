@@ -57,7 +57,7 @@ fn looping(c: &mut Criterion) {
 
                         let instance = vm.build_instance(
                             BENCHMARKER_CODE,
-                            &Hash::from_slice(sha2_256(BENCHMARKER_CODE)),
+                            &Hash::from_array(sha2_256(BENCHMARKER_CODE)),
                             storage,
                             true,
                             querier,

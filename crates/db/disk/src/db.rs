@@ -568,25 +568,25 @@ mod tests {
     mod v0 {
         use super::*;
 
-        pub const ROOT_HASH: Hash = Hash::from_slice(hex!(
+        pub const ROOT_HASH: Hash = Hash::from_array(hex!(
             "1712a8d4c9896a8cadb4e13592bd9e2713a16d0bf5572a8bf540eb568cb30b64"
         ));
-        pub const HASH_0: Hash = Hash::from_slice(hex!(
+        pub const HASH_0: Hash = Hash::from_array(hex!(
             "4d28a7511b5df59d1cdab1ace2314ba10f4637d0b51cac24ad0dbf199f7333ad"
         ));
-        pub const HASH_00: Hash = Hash::from_slice(hex!(
+        pub const HASH_00: Hash = Hash::from_array(hex!(
             "01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"
         ));
-        pub const HASH_01: Hash = Hash::from_slice(hex!(
+        pub const HASH_01: Hash = Hash::from_array(hex!(
             "248f2dfa7cd94e3856e5a6978e500e6d9528837cd0c64187b937455f8d865baf"
         ));
-        pub const HASH_010: Hash = Hash::from_slice(hex!(
+        pub const HASH_010: Hash = Hash::from_array(hex!(
             "8fb3cdb9c15244dc8b7f701bb08640389dcde92a3b85277348ca1ec839d2a575"
         ));
-        pub const HASH_011: Hash = Hash::from_slice(hex!(
+        pub const HASH_011: Hash = Hash::from_array(hex!(
             "3b640fe6cffebfa7c2ba388b66aa3a4978c2221799ef9316e059eed2e656511a"
         ));
-        pub const HASH_1: Hash = Hash::from_slice(hex!(
+        pub const HASH_1: Hash = Hash::from_array(hex!(
             "8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"
         ));
     }
@@ -635,25 +635,25 @@ mod tests {
     mod v1 {
         use super::*;
 
-        pub const ROOT_HASH: Hash = Hash::from_slice(hex!(
+        pub const ROOT_HASH: Hash = Hash::from_array(hex!(
             "05c5d1c5e433ed85c4b5c42d4da7adf6d204d3c1af37cac316f47b042c154eb4"
         ));
-        pub const HASH_0: Hash = Hash::from_slice(hex!(
+        pub const HASH_0: Hash = Hash::from_array(hex!(
             "7ce76869da6e1ff26f873924e6667e131761ef9075aebd6bba7c48663696f402"
         ));
-        pub const HASH_00: Hash = Hash::from_slice(hex!(
+        pub const HASH_00: Hash = Hash::from_array(hex!(
             "01d2b46c3dd0180a5e8236137b4ada8ae6c9ca7c8799ecf7932d1320c9dfbf3b"
         ));
-        pub const HASH_01: Hash = Hash::from_slice(hex!(
+        pub const HASH_01: Hash = Hash::from_array(hex!(
             "44cb87f51dbe89d482329a5cc71fadf6758d3c3f7a46b8e03efbc9354e4b5be7"
         ));
-        pub const HASH_1: Hash = Hash::from_slice(hex!(
+        pub const HASH_1: Hash = Hash::from_array(hex!(
             "9445f09716426120318220f103d9925c8a73155cf561ed4440b3d1fdc1f1153f"
         ));
-        pub const HASH_110: Hash = Hash::from_slice(hex!(
+        pub const HASH_110: Hash = Hash::from_array(hex!(
             "8358fe5d68c2d969c72b67ccffef68e2bf3b2edb200c0a7731e9bf131be11394"
         ));
-        pub const HASH_111: Hash = Hash::from_slice(hex!(
+        pub const HASH_111: Hash = Hash::from_array(hex!(
             "a2cb2e0c6a5b3717d5355d1e8d046f305f7bd9730cf94434b51063209664f9c6"
         ));
     }

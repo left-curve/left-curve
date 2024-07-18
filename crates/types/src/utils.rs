@@ -1,6 +1,8 @@
 //! This file contains helper functions for use in implementing database- or
 //! math- related functionalities. Generally they involve manipulating raw bytes.
 
+use std::borrow::Cow;
+
 use crate::{StdError, StdResult};
 
 // --------------------------------- database ----------------------------------
@@ -18,8 +20,8 @@ use crate::{StdError, StdResult};
 /// length into 2 bytes)
 pub fn nested_namespaces_with_key(
     maybe_namespace: Option<&[u8]>,
-    prefixes: &[impl AsRef<[u8]>],
-    maybe_key: Option<&impl AsRef<[u8]>>,
+    prefixes: &[Cow<[u8]>],
+    maybe_key: Option<&Cow<[u8]>>,
 ) -> Vec<u8> {
     let mut size = 0;
     if let Some(namespace) = maybe_namespace {

@@ -121,7 +121,7 @@ impl From<Hash> for BitArray {
     fn from(hash: Hash) -> Self {
         Self {
             num_bits: Self::MAX_BIT_LENGTH,
-            bytes: hash.into_slice(),
+            bytes: hash.into_array(),
         }
     }
 }
@@ -145,9 +145,9 @@ impl<'a> Key for &'a BitArray {
         ]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         let (a, b) = split_one_key(bytes);
-        let num_bits = u16::deserialize(a)? as usize;
+        let num_bits = u16::from_slice(a)? as usize;
         let mut bytes = [0u8; BitArray::MAX_BYTE_LENGTH];
         bytes[..b.len()].copy_from_slice(b);
         Ok(BitArray { num_bits, bytes })

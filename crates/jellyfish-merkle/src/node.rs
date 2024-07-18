@@ -65,7 +65,7 @@ pub fn hash_internal_node(left_hash: Option<&Hash>, right_hash: Option<&Hash>) -
     hasher.update(INTERNAL_NODE_HASH_PREFIX);
     hasher.update(left_hash.unwrap_or(&Hash::ZERO));
     hasher.update(right_hash.unwrap_or(&Hash::ZERO));
-    Hash::from_slice(hasher.finalize().into())
+    Hash::from_array(hasher.finalize().into())
 }
 
 pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
@@ -73,7 +73,7 @@ pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
     hasher.update(LEAF_NODE_HASH_PERFIX);
     hasher.update(key_hash);
     hasher.update(value_hash);
-    Hash::from_slice(hasher.finalize().into())
+    Hash::from_array(hasher.finalize().into())
 }
 
 // just a helper function to avoid repetitive verbose code...

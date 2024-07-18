@@ -17,6 +17,8 @@ const PBKDF2_ITERATIONS: u32 = 600_000;
 const PBKDF2_SALT_LEN: usize = 16;
 const PBKDF2_KEY_LEN: usize = 32;
 
+/// [`SigningKey`](crate::SigningKey) serialized into JSON format, to be stored
+/// on disk.
 #[derive(Serialize, Deserialize)]
 pub struct Keystore {
     pk: Binary,
@@ -25,7 +27,8 @@ pub struct Keystore {
     ciphertext: Binary,
 }
 
-/// A wrapper over k256 SigningKey, providing a handy API to work with.
+/// A wrapper over an Secp256k1 [`SigningKey`](k256::ecdsa::SigningKey),
+/// providing a handy API to work with.
 #[derive(Debug, Clone)]
 pub struct SigningKey {
     pub(crate) inner: k256::ecdsa::SigningKey,
@@ -102,12 +105,15 @@ impl SigningKey {
         Ok(keystore)
     }
 
+    /// Sign the given digest.
     pub fn sign_digest(&self, digest: &[u8; 32]) -> Vec<u8> {
         let digest = Identity256::from(*digest);
         let signature: Signature = self.inner.sign_digest(digest);
         signature.to_vec()
     }
 
+    /// Sign and compose a [`Tx`](grug_types::Tx) with the given messages and
+    /// parameters, assuming the sender account is a [`grug_account`](grug_account).
     pub fn create_and_sign_tx(
         &self,
         msgs: Vec<Message>,
@@ -142,10 +148,12 @@ impl SigningKey {
         })
     }
 
+    /// Return the private key as a byte array.
     pub fn private_key(&self) -> [u8; 32] {
         self.inner.to_bytes().into()
     }
 
+    /// Return the public key as a byte array.
     pub fn public_key(&self) -> [u8; 33] {
         self.inner.verifying_key().to_bytes()
     }

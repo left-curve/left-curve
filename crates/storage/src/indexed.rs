@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, Map, Prefix},
+    crate::{Borsh, Bound, Codec, Key, Map, Prefix, PrefixBound},
     grug_types::{Order, Record, StdError, StdResult, Storage},
 };
 
@@ -14,7 +14,6 @@ pub trait Index<K, T> {
 }
 
 pub struct IndexedMap<'a, K, T, I, C: Codec<T> = Borsh> {
-    pk_namespace: &'a [u8],
     primary: Map<'a, K, T, C>,
     /// This is meant to be read directly to get the proper types, like:
     /// `map.idx.owner.items(...)`.
@@ -27,38 +26,46 @@ where
 {
     pub const fn new(pk_namespace: &'static str, indexes: I) -> Self {
         IndexedMap {
-            pk_namespace: pk_namespace.as_bytes(),
             primary: Map::new(pk_namespace),
             idx: indexes,
         }
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, C> {
-        Prefix::new(self.pk_namespace, &[])
-    }
-
     pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        Prefix::new(self.pk_namespace, &prefix.raw_keys())
+        self.primary.prefix(prefix)
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.no_prefix()
-            .keys_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
+        self.primary.is_empty(storage)
+    }
+
+    // ---------------------- methods for single entries -----------------------
+
+    pub fn has_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> bool {
+        self.primary.has_raw(storage, key_raw)
     }
 
     pub fn has(&self, storage: &dyn Storage, k: K) -> bool {
         self.primary.has(storage, k)
     }
 
+    pub fn may_load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.primary.may_load_raw(storage, key_raw)
+    }
+
     pub fn may_load(&self, storage: &dyn Storage, key: K) -> StdResult<Option<T>> {
         self.primary.may_load(storage, key)
+    }
+
+    pub fn load_raw(&self, storage: &dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.primary.load_raw(storage, key_raw)
     }
 
     pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
         self.primary.load(storage, key)
     }
+
+    // -------------------- iteration methods (full bound) ---------------------
 
     pub fn range_raw<'b>(
         &self,
@@ -70,7 +77,7 @@ where
     where
         T: 'b,
     {
-        self.no_prefix().range_raw(store, min, max, order)
+        self.primary.range_raw(store, min, max, order)
     }
 
     pub fn range<'b>(
@@ -80,7 +87,7 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
-        self.no_prefix().range(storage, min, max, order)
+        self.primary.range(storage, min, max, order)
     }
 
     pub fn keys_raw<'b>(
@@ -93,7 +100,7 @@ where
     where
         T: 'b,
     {
-        self.no_prefix().keys_raw(store, min, max, order)
+        self.primary.keys_raw(store, min, max, order)
     }
 
     pub fn keys<'b>(
@@ -103,7 +110,7 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
-        self.no_prefix().keys(storage, min, max, order)
+        self.primary.keys(storage, min, max, order)
     }
 
     pub fn values_raw<'b>(
@@ -113,7 +120,7 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
-        self.no_prefix().values_raw(storage, min, max, order)
+        self.primary.values_raw(storage, min, max, order)
     }
 
     pub fn values<'b>(
@@ -123,11 +130,82 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
-        self.no_prefix().values(storage, min, max, order)
+        self.primary.values(storage, min, max, order)
     }
 
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
-        self.no_prefix().clear(storage, min, max)
+        self.primary.clear(storage, min, max)
+    }
+
+    // ------------------- iteration methods (prefix bound) --------------------
+
+    pub fn prefix_range_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+        self.primary.prefix_range_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.primary.prefix_range(storage, min, max, order)
+    }
+
+    pub fn prefix_keys_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.primary.prefix_keys_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_keys<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'b> {
+        self.primary.prefix_keys(storage, min, max, order)
+    }
+
+    pub fn prefix_values_raw<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        self.primary.prefix_values_raw(storage, min, max, order)
+    }
+
+    pub fn prefix_values<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        self.primary.prefix_values(storage, min, max, order)
+    }
+
+    pub fn prefix_clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+    ) {
+        self.primary.prefix_clear(storage, min, max)
     }
 }
 

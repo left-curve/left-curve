@@ -106,7 +106,7 @@ where
         gas_limit: u64,
         code: Binary,
     ) -> anyhow::Result<Hash> {
-        let code_hash = Hash::from_slice(sha2_256(&code));
+        let code_hash = Hash::from_array(sha2_256(&code));
 
         self.execute_message_with_gas(signer, gas_limit, Message::upload(code))?
             .should_succeed()?;
@@ -156,7 +156,7 @@ where
         S: Into<Binary>,
     {
         let salt = salt.into();
-        let code_hash = Hash::from_slice(sha2_256(&code));
+        let code_hash = Hash::from_array(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
         self.execute_messages_with_gas(signer, gas_limit, vec![

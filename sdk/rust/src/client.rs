@@ -1,5 +1,5 @@
 use {
-    crate::{AdminOption, SigningKey},
+    crate::{AdminOption, SigningOptions},
     anyhow::{bail, ensure},
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
@@ -10,25 +10,23 @@ use {
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
-    tendermint::block::Height,
+    tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{
         endpoint::{abci_query::AbciQuery, block, block_results, broadcast::tx_sync, status, tx},
-        Client as ClientTrait, HttpClient,
+        Client as TmClient, HttpClient,
     },
 };
 
-pub struct SigningOptions {
-    pub signing_key: SigningKey,
-    pub sender: Addr,
-    pub chain_id: Option<String>,
-    pub sequence: Option<u32>,
-}
-
+/// A client for interacting with a Grug chain via Tendermint RPC.
+///
+/// Internally, this is a wrapper over [`tendermint_rpc::HttpClient`](tendermint_rpc::HttpClient).
 pub struct Client {
     inner: HttpClient,
 }
 
 impl Client {
+    /// Creating a new [`Client`](crate::Client) by connecting to a Tendermint
+    /// RPC endpoint.
     pub fn connect(endpoint: &str) -> anyhow::Result<Self> {
         let inner = HttpClient::new(endpoint)?;
         Ok(Self { inner })
@@ -36,23 +34,36 @@ impl Client {
 
     // -------------------------- tendermint methods ---------------------------
 
-    pub async fn status(&self) -> anyhow::Result<status::Response> {
+    /// Query the Tendermint node, sync, and validator status.
+    pub async fn query_status(&self) -> anyhow::Result<status::Response> {
         Ok(self.inner.status().await?)
     }
 
-    pub async fn tx(&self, hash_str: &str) -> anyhow::Result<tx::Response> {
-        let hash_bytes = hex::decode(hash_str)?;
-        Ok(self.inner.tx(hash_bytes.try_into()?, false).await?)
+    /// Query a single transaction and its execution result by hash.
+    pub async fn query_tx(&self, hash: Hash) -> anyhow::Result<tx::Response> {
+        Ok(self
+            .inner
+            .tx(TmHash::Sha256(hash.into_array()), false)
+            .await?)
     }
 
-    pub async fn block(&self, height: Option<u64>) -> anyhow::Result<block::Response> {
+    /// Query a block by height.
+    ///
+    /// If height is `None`, the latest block is fetched.
+    ///
+    /// Note that this doesn't include the block's execution results, such as
+    /// events.
+    pub async fn query_block(&self, height: Option<u64>) -> anyhow::Result<block::Response> {
         match height {
             Some(height) => Ok(self.inner.block(Height::try_from(height)?).await?),
             None => Ok(self.inner.latest_block().await?),
         }
     }
 
-    pub async fn block_result(
+    /// Query a block, as well as its execution results, by hash.
+    ///
+    /// If height is `None`, the latest block is fetched.
+    pub async fn query_block_result(
         &self,
         height: Option<u64>,
     ) -> anyhow::Result<block_results::Response> {
@@ -64,6 +75,9 @@ impl Client {
 
     // ----------------------------- query methods -----------------------------
 
+    /// Query the Grug app through the ABCI `Query` method.
+    ///
+    /// Used internally. Use `query_store` or `query_app` instead.
     async fn query(
         &self,
         path: &str,
@@ -87,6 +101,15 @@ impl Client {
         Ok(res)
     }
 
+    /// Make a raw query at the Grug app's storage.
+    ///
+    /// ## Parameters
+    ///
+    /// - `key`: The raw storage key.
+    /// - `height`: The block height to perform the query. If unspecified, the
+    ///   latest height is used. Errors if the node has already pruned the height.
+    /// - `proof`: Whether to request a Merkle proof. If the key exists, an
+    ///   memership proof is returned; otherwise, a non-membership proof is returned.
     pub async fn query_store(
         &self,
         key: Vec<u8>,
@@ -94,11 +117,28 @@ impl Client {
         prove: bool,
     ) -> anyhow::Result<(Option<Vec<u8>>, Option<Proof>)> {
         let res = self.query("/store", key.clone(), height, prove).await?;
+
+        // The ABCI query always return the value as a `Vec<u8>`.
+        // If the key doesn't exist, the value would be an empty vector.
+        //
+        // NOTE: This means that the Grug app must make sure values can't be
+        // empty, otherwise in this query we can't tell whether it's that the
+        // key oesn't exist, or it exists but the value is empty.
+        //
+        // See discussion in CosmWasm:
+        // <https://github.com/CosmWasm/cosmwasm/blob/v2.1.0/packages/std/src/imports.rs#L142-L144>
+        //
+        // And my rant here:
+        // <https://x.com/larry0x/status/1813287621449183651>
         let value = if res.value.is_empty() {
             None
         } else {
             Some(res.value)
         };
+
+        // Do some basic sanity checks of the Merkle proof returned, and
+        // deserialize it.
+        // If the Grug app works properly, these should always succeed.
         let proof = if prove {
             ensure!(res.proof.is_some());
             let proof = res.proof.unwrap();
@@ -107,12 +147,18 @@ impl Client {
             ensure!(proof.ops[0].key == key);
             Some(from_json_slice(&proof.ops[0].data)?)
         } else {
+            ensure!(res.proof.is_none());
             None
         };
+
         Ok((value, proof))
     }
 
-    pub async fn query_app(
+    /// Query the Grug app.
+    ///
+    /// Used internally. Use the `query_{info,balance,wasm_smart,...}` methods
+    /// instead.
+    async fn query_app(
         &self,
         req: &QueryRequest,
         height: Option<u64>,
@@ -123,11 +169,14 @@ impl Client {
         Ok(from_json_slice(res.value)?)
     }
 
+    /// Query the chain-level information, including the chain ID, config, and
+    /// the latest finalized block.
     pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
         let res = self.query_app(&QueryRequest::Info {}, height).await?;
         Ok(res.as_info())
     }
 
+    /// Query an account's balance in a single denom.
     pub async fn query_balance(
         &self,
         address: Addr,
@@ -140,6 +189,7 @@ impl Client {
         Ok(res.as_balance())
     }
 
+    /// Enumerate an account's balances in all denoms
     pub async fn query_balances(
         &self,
         address: Addr,
@@ -160,6 +210,7 @@ impl Client {
         Ok(res.as_balances())
     }
 
+    /// Query a token's total supply.
     pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
         let res = self
             .query_app(&QueryRequest::Supply { denom }, height)
@@ -167,6 +218,7 @@ impl Client {
         Ok(res.as_supply())
     }
 
+    /// Enumerate all token's total supplies.
     pub async fn query_supplies(
         &self,
         start_after: Option<String>,
@@ -179,11 +231,13 @@ impl Client {
         Ok(res.as_supplies())
     }
 
+    /// Query a single Wasm byte code by hash.
     pub async fn query_code(&self, hash: Hash, height: Option<u64>) -> anyhow::Result<Binary> {
         let res = self.query_app(&QueryRequest::Code { hash }, height).await?;
         Ok(res.as_code())
     }
 
+    /// Enumerate hashes of all codes.
     pub async fn query_codes(
         &self,
         start_after: Option<Hash>,
@@ -196,6 +250,7 @@ impl Client {
         Ok(res.as_codes())
     }
 
+    /// Query the metadata of a single account.
     pub async fn query_account(
         &self,
         address: Addr,
@@ -207,6 +262,7 @@ impl Client {
         Ok(res.as_account())
     }
 
+    /// Enumerate metadata of all accounts.
     pub async fn query_accounts(
         &self,
         start_after: Option<Addr>,
@@ -219,6 +275,7 @@ impl Client {
         Ok(res.as_accounts())
     }
 
+    /// Query a raw key-value pair in a contract's internal state.
     pub async fn query_wasm_raw(
         &self,
         contract: Addr,
@@ -231,6 +288,7 @@ impl Client {
         Ok(res.as_wasm_raw())
     }
 
+    /// Call the contract's query entry point with the given message.
     pub async fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
         &self,
         contract: Addr,
@@ -244,7 +302,7 @@ impl Client {
         Ok(from_json_value(res.as_wasm_smart().data)?)
     }
 
-    // ------------------------------ tx methods -------------------------------
+    // -------------------------- transaction methods --------------------------
 
     /// Create, sign, and broadcast a transaction with a single message, without
     /// terminal prompt for confirmation.
@@ -281,7 +339,7 @@ impl Client {
         msgs: Vec<Message>,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_messages_with_confirmation(msgs, sign_opts, |_| Ok(true))
+        self.send_messages_with_confirmation(msgs, sign_opts, no_confirmation)
             .await
             .map(Option::unwrap)
     }
@@ -329,6 +387,7 @@ impl Client {
         }
     }
 
+    /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
     pub async fn configure(
         &self,
         new_cfg: Config,
@@ -338,6 +397,7 @@ impl Client {
         self.send_message(msg, sign_opts).await
     }
 
+    /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
     pub async fn transfer<C>(
         &self,
         to: Addr,
@@ -352,6 +412,7 @@ impl Client {
         self.send_message(msg, sign_opts).await
     }
 
+    /// Send a transaction with a single [`Message::Upload`](grug_types::Message::Upload).
     pub async fn upload<B>(
         &self,
         code: B,
@@ -364,13 +425,16 @@ impl Client {
         self.send_message(msg, sign_opts).await
     }
 
+    /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
+    ///
+    /// Return the deployed contract's address.
     pub async fn instantiate<M, S, C>(
         &self,
         code_hash: Hash,
         msg: &M,
         salt: S,
         funds: C,
-        admin: AdminOption,
+        admin_opt: AdminOption,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)>
     where
@@ -381,7 +445,7 @@ impl Client {
     {
         let salt = salt.into();
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let admin = admin.decide(&Addr::compute(&sign_opts.sender, &code_hash, &salt));
+        let admin = admin_opt.decide(&address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
         let res = self.send_message(msg, sign_opts).await?;
@@ -389,13 +453,17 @@ impl Client {
         Ok((address, res))
     }
 
+    /// Send a transaction that uploads a Wasm code, then instantiate a contract
+    /// with the code in one go.
+    ///
+    /// Return the code hash, and the deployed contract's address.
     pub async fn upload_and_instantiate<M, B, S, C>(
         &self,
         code: B,
         msg: &M,
         salt: S,
         funds: C,
-        admin: AdminOption,
+        admin_opt: AdminOption,
         sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Hash, Addr, tx_sync::Response)>
     where
@@ -409,7 +477,7 @@ impl Client {
         let code_hash = hash(&code);
         let salt = salt.into();
         let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
-        let admin = admin.decide(&address);
+        let admin = admin_opt.decide(&address);
 
         let msgs = vec![
             Message::upload(code),
@@ -420,6 +488,7 @@ impl Client {
         Ok((code_hash, address, res))
     }
 
+    /// Send a transaction with a single [`Message::Execute`](grug_types::Message::Execute).
     pub async fn execute<M, C>(
         &self,
         contract: Addr,
@@ -436,6 +505,7 @@ impl Client {
         self.send_message(msg, sign_opts).await
     }
 
+    /// Send a transaction with a single [`Message::Migrate`](grug_types::Message::Migrate).
     pub async fn migrate<M>(
         &self,
         contract: Addr,
@@ -449,4 +519,9 @@ impl Client {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
         self.send_message(msg, sign_opts).await
     }
+}
+
+/// Skip the CLI prompt confirmation, always consider it as if the user accepted.
+fn no_confirmation(_tx: &Tx) -> anyhow::Result<bool> {
+    Ok(true)
 }

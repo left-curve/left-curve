@@ -671,34 +671,34 @@ mod tests {
 
     const TREE: MerkleTree = MerkleTree::new_default();
 
-    const HASH_ROOT: Hash = Hash::from_slice(hex!(
+    const HASH_ROOT: Hash = Hash::from_array(hex!(
         "ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"
     ));
-    const HASH_0: Hash = Hash::from_slice(hex!(
+    const HASH_0: Hash = Hash::from_array(hex!(
         "b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"
     ));
-    const HASH_1: Hash = Hash::from_slice(hex!(
+    const HASH_1: Hash = Hash::from_array(hex!(
         "cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"
     ));
-    const HASH_01: Hash = Hash::from_slice(hex!(
+    const HASH_01: Hash = Hash::from_array(hex!(
         "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"
     ));
-    const HASH_010: Hash = Hash::from_slice(hex!(
+    const HASH_010: Hash = Hash::from_array(hex!(
         "c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"
     ));
-    const HASH_011: Hash = Hash::from_slice(hex!(
+    const HASH_011: Hash = Hash::from_array(hex!(
         "e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"
     ));
-    const HASH_0110: Hash = Hash::from_slice(hex!(
+    const HASH_0110: Hash = Hash::from_array(hex!(
         "fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"
     ));
-    const HASH_0111: Hash = Hash::from_slice(hex!(
+    const HASH_0111: Hash = Hash::from_array(hex!(
         "412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"
     ));
-    const HASH_M: Hash = Hash::from_slice(hex!(
+    const HASH_M: Hash = Hash::from_array(hex!(
         "62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"
     ));
-    const HASH_BAR: Hash = Hash::from_slice(hex!(
+    const HASH_BAR: Hash = Hash::from_array(hex!(
         "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
     ));
 
@@ -760,7 +760,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             new_root_hash,
-            Some(Hash::from_slice(hex!(
+            Some(Hash::from_array(hex!(
                 "b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf"
             )))
         );

@@ -1,5 +1,5 @@
 mod client;
-mod signing_key;
-mod types;
+mod key;
+mod options;
 
-pub use crate::{client::*, signing_key::*, types::*};
+pub use crate::{client::*, key::*, options::*};
