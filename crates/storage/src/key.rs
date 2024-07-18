@@ -175,7 +175,7 @@ impl Key for String {
     }
 }
 
-impl<'a> Key for &'a Addr {
+impl Key for Addr {
     type Output = Addr;
     type Prefix = ();
     type Suffix = ();
@@ -189,7 +189,7 @@ impl<'a> Key for &'a Addr {
     }
 }
 
-impl<'a> Key for &'a Hash {
+impl Key for Hash {
     type Output = Hash;
     type Prefix = ();
     type Suffix = ();
@@ -200,6 +200,23 @@ impl<'a> Key for &'a Hash {
 
     fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
+    }
+}
+
+impl<K> Key for &K
+where
+    K: Key,
+{
+    type Output = K::Output;
+    type Prefix = K::Prefix;
+    type Suffix = K::Suffix;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        (*self).raw_keys()
+    }
+
+    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+        K::deserialize(bytes)
     }
 }
 
