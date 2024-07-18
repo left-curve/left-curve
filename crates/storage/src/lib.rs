@@ -1,17 +1,17 @@
 mod bound;
 mod codec;
 mod counter;
-mod indexed;
+mod index_map;
+mod index_multi;
+mod index_unique;
 mod item;
 mod key;
 mod map;
-mod multi;
 mod path;
 mod prefix;
 mod set;
-mod unique;
 
 pub use {
-    bound::*, codec::*, counter::*, indexed::*, item::*, key::*, map::*, multi::*, path::*,
-    prefix::*, set::*, unique::*,
+    bound::*, codec::*, counter::*, index_map::*, index_multi::*, index_unique::*, item::*, key::*,
+    map::*, path::*, prefix::*, set::*,
 };
