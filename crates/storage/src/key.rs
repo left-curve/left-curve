@@ -371,7 +371,7 @@ pub trait Prefixer {
 
     fn joined_prefix(&self) -> Vec<u8> {
         let raw_prefixes = self.raw_prefixes();
-        nested_namespaces_with_key(None, &raw_prefixes, Option::<&Vec<u8>>::None)
+        nested_namespaces_with_key(None, &raw_prefixes, None)
     }
 }
 
