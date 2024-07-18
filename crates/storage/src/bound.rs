@@ -17,8 +17,6 @@ pub enum RawBound {
 pub enum Bound<K> {
     Inclusive(K),
     Exclusive(K),
-    InclusiveRaw(Vec<u8>),
-    ExclusiveRaw(Vec<u8>),
 }
 
 impl<K> Bound<K> {
@@ -39,8 +37,6 @@ where
         match bound {
             Bound::Inclusive(key) => RawBound::Inclusive(key.joined_key()),
             Bound::Exclusive(key) => RawBound::Exclusive(key.joined_key()),
-            Bound::InclusiveRaw(bytes) => RawBound::Inclusive(bytes),
-            Bound::ExclusiveRaw(bytes) => RawBound::Exclusive(bytes),
         }
     }
 }
