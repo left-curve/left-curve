@@ -358,11 +358,11 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_wasm_raw().value)
     }
 
-    pub fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
-        &self,
-        contract: Addr,
-        msg: &M,
-    ) -> StdResult<R> {
+    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> StdResult<R>
+    where
+        M: Serialize,
+        R: DeserializeOwned,
+    {
         self.inner
             .query_chain(QueryRequest::WasmSmart {
                 contract,

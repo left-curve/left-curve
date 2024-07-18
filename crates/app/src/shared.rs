@@ -71,7 +71,10 @@ impl<S> Clone for Shared<S> {
 }
 
 // When the inner type is `Storage`, the outer `Shared` also implements `Storage`.
-impl<S: Storage> Storage for Shared<S> {
+impl<S> Storage for Shared<S>
+where
+    S: Storage,
+{
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.read_access().read(key)
     }
@@ -173,7 +176,10 @@ impl<'a, S> SharedIter<'a, S> {
     }
 }
 
-impl<'a, S: Storage> SharedIter<'a, S> {
+impl<'a, S> SharedIter<'a, S>
+where
+    S: Storage,
+{
     fn collect_next_batch(&mut self) {
         let batch = self
             .storage
@@ -193,7 +199,10 @@ impl<'a, S: Storage> SharedIter<'a, S> {
     }
 }
 
-impl<'a, S: Storage> Iterator for SharedIter<'a, S> {
+impl<'a, S> Iterator for SharedIter<'a, S>
+where
+    S: Storage,
+{
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {

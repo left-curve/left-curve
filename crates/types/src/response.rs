@@ -19,7 +19,10 @@ impl Response {
         self
     }
 
-    pub fn add_messages(mut self, msgs: impl IntoIterator<Item = Message>) -> Self {
+    pub fn add_messages<M>(mut self, msgs: M) -> Self
+    where
+        M: IntoIterator<Item = Message>,
+    {
         self.submsgs
             .extend(msgs.into_iter().map(SubMessage::reply_never));
         self
@@ -30,12 +33,19 @@ impl Response {
         self
     }
 
-    pub fn add_submessages(mut self, submsgs: impl IntoIterator<Item = SubMessage>) -> Self {
+    pub fn add_submessages<M>(mut self, submsgs: M) -> Self
+    where
+        M: IntoIterator<Item = SubMessage>,
+    {
         self.submsgs.extend(submsgs);
         self
     }
 
-    pub fn add_attribute(mut self, key: impl ToString, value: impl ToString) -> Self {
+    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: ToString,
+        V: ToString,
+    {
         self.attributes.push(Attribute::new(key, value));
         self
     }
@@ -75,21 +85,30 @@ impl SubMessage {
         }
     }
 
-    pub fn reply_always<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
+    pub fn reply_always<P>(msg: Message, payload: &P) -> StdResult<Self>
+    where
+        P: Serialize,
+    {
         Ok(Self {
             msg,
             reply_on: ReplyOn::Always(to_json_value(payload)?),
         })
     }
 
-    pub fn reply_on_success<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
+    pub fn reply_on_success<P>(msg: Message, payload: &P) -> StdResult<Self>
+    where
+        P: Serialize,
+    {
         Ok(Self {
             msg,
             reply_on: ReplyOn::Success(to_json_value(payload)?),
         })
     }
 
-    pub fn reply_on_error<P: Serialize>(msg: Message, payload: &P) -> StdResult<Self> {
+    pub fn reply_on_error<P>(msg: Message, payload: &P) -> StdResult<Self>
+    where
+        P: Serialize,
+    {
         Ok(Self {
             msg,
             reply_on: ReplyOn::Error(to_json_value(payload)?),

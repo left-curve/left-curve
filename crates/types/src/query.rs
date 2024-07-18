@@ -90,14 +90,6 @@ pub struct WasmSmartResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ClientResponse {
-    pub client_id: String,
-    pub code_hash: Hash,
-    pub client_state: Binary,
-    pub consensus_state: Binary,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),

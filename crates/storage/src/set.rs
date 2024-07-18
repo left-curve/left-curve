@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Key, PathBuf, Prefix, PrefixBound, Prefixer},
+    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, PrefixBound, Prefixer},
     grug_types::{Empty, Order, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -10,23 +10,32 @@ use {
 ///
 /// We explicitly use Borsh here, because there's no benefit using any other
 /// encoding scheme.
-pub struct Set<'a, T> {
+pub struct Set<'a, T, C = Borsh>
+where
+    C: Codec<Empty>,
+{
     pub(crate) namespace: &'a [u8],
     item: PhantomData<T>,
+    codec: PhantomData<C>,
 }
 
-impl<'a, T> Set<'a, T> {
+impl<'a, T, C> Set<'a, T, C>
+where
+    C: Codec<Empty>,
+{
     pub const fn new(namespace: &'a str) -> Self {
         Self {
             namespace: namespace.as_bytes(),
             item: PhantomData,
+            codec: PhantomData,
         }
     }
 }
 
-impl<'a, T> Set<'a, T>
+impl<'a, T, C> Set<'a, T, C>
 where
     T: Key,
+    C: Codec<Empty>,
 {
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<Empty, Borsh> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
@@ -38,11 +47,11 @@ where
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<T, Empty> {
+    fn no_prefix(&self) -> Prefix<T, Empty, C> {
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty> {
+    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty, C> {
         Prefix::new(self.namespace, &prefix.raw_prefixes())
     }
 

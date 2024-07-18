@@ -175,17 +175,15 @@ pub trait Decimal: Sized {
 /// This is different from applying a multiplication and a division sequentially,
 /// because the multiplication part can overflow.
 pub trait MultiplyRatio: Sized {
-    fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> StdResult<Self>;
+    fn checked_multiply_ratio_floor<A, B>(self, numerator: A, denominator: B) -> StdResult<Self>
+    where
+        A: Into<Self>,
+        B: Into<Self>;
 
-    fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> StdResult<Self>;
+    fn checked_multiply_ratio_ceil<A, B>(self, numerator: A, denominator: B) -> StdResult<Self>
+    where
+        A: Into<Self>,
+        B: Into<Self>;
 }
 
 /// Describes operations between a number and a decimal type.
@@ -204,16 +202,25 @@ where
 
 // ------------------------------ implementations ------------------------------
 
+impl_number_const!(u8, 0, u8::MAX, 0, 1, 10);
+impl_number_const!(u16, 0, u16::MAX, 0, 1, 10);
+impl_number_const!(u32, 0, u32::MAX, 0, 1, 10);
 impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
 impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
 impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
 impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
 
+impl_bytable_std!(u8, 1);
+impl_bytable_std!(u16, 2);
+impl_bytable_std!(u32, 4);
 impl_bytable_std!(u64, 8);
 impl_bytable_std!(u128, 16);
 impl_bytable_bnum!(U256, 32);
 impl_bytable_bnum!(U512, 64);
 
+impl_integer_number!(u8);
+impl_integer_number!(u16);
+impl_integer_number!(u32);
 impl_integer_number!(u64);
 impl_integer_number!(u128);
 impl_integer_number!(U256);

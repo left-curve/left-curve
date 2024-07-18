@@ -5,4 +5,4 @@ mod suite;
 mod tracing;
 mod vm;
 
-pub use {account::*, builder::*, result::*, suite::*, tracing::*, vm::*};
+pub use {account::*, builder::*, result::*, suite::*, vm::*};

@@ -1,5 +1,5 @@
 use {
-    crate::{setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
+    crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::ensure,
     grug_account::PublicKey,
     grug_app::AppError,
@@ -15,12 +15,15 @@ use {
     tracing::Level,
 };
 
-pub const DEFAULT_TRACING_LEVEL: Level = Level::DEBUG;
-pub const DEFAULT_CHAIN_ID: &str = "dev-1";
-pub const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
-pub const DEFAULT_BANK_SALT: &[u8] = b"bank";
+const DEFAULT_TRACING_LEVEL: Level = Level::DEBUG;
+const DEFAULT_CHAIN_ID: &str = "dev-1";
+const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
+const DEFAULT_BANK_SALT: &[u8] = b"bank";
 
-pub struct TestBuilder<VM: TestVm = RustVm> {
+pub struct TestBuilder<VM = RustVm>
+where
+    VM: TestVm,
+{
     vm: VM,
     tracing_level: Option<Level>,
     chain_id: Option<String>,

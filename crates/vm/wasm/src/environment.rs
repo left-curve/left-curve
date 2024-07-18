@@ -124,7 +124,10 @@ impl Environment {
         Ok(())
     }
 
-    pub fn get_wasmer_memory<'a>(&self, store: &'a impl AsStoreRef) -> VmResult<MemoryView<'a>> {
+    pub fn get_wasmer_memory<'a, S>(&self, store: &'a S) -> VmResult<MemoryView<'a>>
+    where
+        S: AsStoreRef,
+    {
         self.wasmer_memory
             .as_ref()
             .ok_or(VmError::WasmerMemoryNotSet)
@@ -136,12 +139,15 @@ impl Environment {
         unsafe { Ok(instance_ptr.as_ref()) }
     }
 
-    pub fn call_function1(
+    pub fn call_function1<S>(
         &mut self,
-        store: &mut impl AsStoreMut,
+        store: &mut S,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Value> {
+    ) -> VmResult<Value>
+    where
+        S: AsStoreMut,
+    {
         let ret = self.call_function(store, name, args)?;
         if ret.len() != 1 {
             return Err(VmError::ReturnCount {
@@ -153,12 +159,10 @@ impl Environment {
         Ok(ret[0].clone())
     }
 
-    pub fn call_function0(
-        &mut self,
-        store: &mut impl AsStoreMut,
-        name: &str,
-        args: &[Value],
-    ) -> VmResult<()> {
+    pub fn call_function0<S>(&mut self, store: &mut S, name: &str, args: &[Value]) -> VmResult<()>
+    where
+        S: AsStoreMut,
+    {
         let ret = self.call_function(store, name, args)?;
         if ret.len() != 0 {
             return Err(VmError::ReturnCount {
@@ -170,12 +174,15 @@ impl Environment {
         Ok(())
     }
 
-    fn call_function(
+    fn call_function<S>(
         &mut self,
-        store: &mut impl AsStoreMut,
+        store: &mut S,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Box<[Value]>> {
+    ) -> VmResult<Box<[Value]>>
+    where
+        S: AsStoreMut,
+    {
         let instance = self.get_wasmer_instance()?;
         let func = instance.exports.get_function(name)?;
         // Make the function call. Then, regardless of whether the call succeeds
@@ -221,12 +228,15 @@ impl Environment {
     }
 
     /// Record gas consumed by host functions.
-    pub fn consume_external_gas(
+    pub fn consume_external_gas<S>(
         &mut self,
-        store: &mut impl AsStoreMut,
+        store: &mut S,
         external: u64,
         comment: &str,
-    ) -> VmResult<()> {
+    ) -> VmResult<()>
+    where
+        S: AsStoreMut,
+    {
         let instance = self.get_wasmer_instance()?;
         match get_remaining_points(store, instance) {
             MeteringPoints::Remaining(remaining) => {

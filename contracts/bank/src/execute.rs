@@ -4,10 +4,10 @@ use {
     std::collections::HashMap,
 };
 
-pub fn initialize(
-    storage: &mut dyn Storage,
-    initial_balances: impl IntoIterator<Item = (Addr, Coins)>,
-) -> StdResult<Response> {
+pub fn initialize<B>(storage: &mut dyn Storage, initial_balances: B) -> StdResult<Response>
+where
+    B: IntoIterator<Item = (Addr, Coins)>,
+{
     // Need to make sure there are no duplicate address in initial balances.
     // We don't need to dedup denoms however. If there's duplicate denoms, the
     // deserialization setup should have already thrown an error.

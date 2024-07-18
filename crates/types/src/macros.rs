@@ -1,6 +1,7 @@
 // -------------------------- generic error handling ---------------------------
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! return_into_generic_result {
     ($expr:expr) => {
         match $expr {
@@ -12,6 +13,7 @@ macro_rules! return_into_generic_result {
 
 // TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
 #[macro_export]
+#[doc(hidden)]
 macro_rules! unwrap_into_generic_result {
     ($expr:expr) => {
         match $expr {
@@ -26,6 +28,7 @@ macro_rules! unwrap_into_generic_result {
 // ---------------------------------- context ----------------------------------
 
 #[macro_export]
+#[doc(hidden)]
 #[rustfmt::skip]
 macro_rules! make_immutable_ctx {
     ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
@@ -47,6 +50,7 @@ macro_rules! make_immutable_ctx {
 }
 
 #[macro_export]
+#[doc(hidden)]
 #[rustfmt::skip]
 macro_rules! make_mutable_ctx {
     ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
@@ -68,6 +72,7 @@ macro_rules! make_mutable_ctx {
 }
 
 #[macro_export]
+#[doc(hidden)]
 #[rustfmt::skip]
 macro_rules! make_sudo_ctx {
     ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
@@ -89,6 +94,7 @@ macro_rules! make_sudo_ctx {
 }
 
 #[macro_export]
+#[doc(hidden)]
 #[rustfmt::skip]
 macro_rules! make_auth_ctx {
     ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
@@ -137,6 +143,7 @@ macro_rules! make_auth_ctx {
 ///     try_from_int = [Int128],
 /// );
 #[macro_export]
+#[doc(hidden)]
 macro_rules! generate_uint {
     (
         name = $name:ident,
@@ -243,6 +250,7 @@ macro_rules! generate_uint {
 ///     from_dec = [Dec128, Udec128],
 /// );
 #[macro_export]
+#[doc(hidden)]
 macro_rules! generate_decimal {
     (
         name = $name:ident,
@@ -324,6 +332,7 @@ macro_rules! generate_decimal {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! generate_signed {
     (
         name = $name:ident,
@@ -468,6 +477,7 @@ macro_rules! generate_signed {
 /// impl_number_const!(u64, u64::MAX, u64::MIN, 0, 1);
 /// ```
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_number_const {
     ($t:ty, $min:expr, $max:expr, $zero:expr, $one:expr, $ten:expr) => {
         impl NumberConst for $t {
@@ -492,6 +502,7 @@ macro_rules! impl_number_const {
 
 /// Implements [`Bytable`](super::Bytable) for std types (u64, u128, ...)
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_bytable_std {
     ($t:ty, $rot:literal) => {
         #[deny(unconditional_recursion)]
@@ -525,6 +536,7 @@ macro_rules! impl_bytable_std {
 
 /// Implements [`Bytable`](super::Bytable) for [`bnum`] types (U256, U512, ...)
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_bytable_bnum {
     ($t:ty, $rot:literal) => {
         impl Bytable<$rot> for $t {
@@ -594,6 +606,7 @@ macro_rules! impl_bytable_bnum {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_integer_number {
     ($t:ty) => {
         // This macro is only applied to unsigned number types (`u64`,
@@ -724,6 +737,7 @@ macro_rules! impl_integer_number {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_next {
     ($t:ty, $next:ty) => {
         impl NextNumber for $t {
@@ -733,6 +747,7 @@ macro_rules! impl_next {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_all_ops_and_assign {
     ($name:ident, $other:ty) => {
         impl_number!(impl Add, add for $name as $other where sub fn checked_add);
@@ -763,6 +778,7 @@ macro_rules! impl_all_ops_and_assign {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_number {
     // args type = Self
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
@@ -830,6 +846,7 @@ macro_rules! impl_number {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_integer {
     // args type = other
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident, $other:ty) => {
@@ -847,6 +864,7 @@ macro_rules! impl_integer {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_assign_number {
     // args type = Self
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
@@ -896,6 +914,7 @@ macro_rules! impl_assign_number {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_assign_integer {
     // args type = other
     (
@@ -926,6 +945,7 @@ macro_rules! impl_assign_integer {
 /// Copied from CosmWasm:
 /// <https://github.com/CosmWasm/cosmwasm/blob/v1.5.3/packages/std/src/forward_ref.rs>
 #[macro_export]
+#[doc(hidden)]
 macro_rules! forward_ref_partial_eq {
     ($t:ty, $u:ty) => {
         // &T == U
@@ -947,6 +967,7 @@ macro_rules! forward_ref_partial_eq {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! forward_ref_binop_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
         impl<$($gen),*> std::ops::$imp<$u> for &'_ $t where $t: std::ops::$imp<$u> + Copy {
@@ -979,6 +1000,7 @@ macro_rules! forward_ref_binop_typed {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! forward_ref_binop_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         impl<U, const S: u32> std::ops::$imp<$u> for &'_ $t
@@ -1020,6 +1042,7 @@ macro_rules! forward_ref_binop_decimal {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! forward_ref_op_assign_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
         impl <$($gen),*> std::ops::$imp<&$u> for $t
@@ -1035,6 +1058,7 @@ macro_rules! forward_ref_op_assign_typed {
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! forward_ref_op_assign_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         impl<U, const S: u32> std::ops::$imp<&$u> for $t

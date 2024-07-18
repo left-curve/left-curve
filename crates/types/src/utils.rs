@@ -18,6 +18,7 @@ use crate::{StdError, StdResult};
 ///
 /// Panics if any key's length exceeds u16::MAX (because we need to put the
 /// length into 2 bytes)
+#[doc(hidden)]
 pub fn nested_namespaces_with_key(
     maybe_namespace: Option<&[u8]>,
     prefixes: &[Cow<[u8]>],
@@ -52,7 +53,11 @@ pub fn nested_namespaces_with_key(
 /// Given a byte slice, return two bytes in big endian representing its length.
 /// Panic if the given byte slice is longer than the biggest length that can be
 /// represented by a two bytes (i.e. 65535).
-pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
+#[doc(hidden)]
+pub fn encode_length<B>(bytes: B) -> [u8; 2]
+where
+    B: AsRef<[u8]>,
+{
     let len = bytes.as_ref().len();
     if len > 0xffff {
         panic!(
@@ -71,6 +76,7 @@ pub fn encode_length(bytes: impl AsRef<[u8]>) -> [u8; 2] {
 // (so that the two prefixed length bytes are [255, 255]).
 // we can prevent this by introducing a max length for the namespace.
 // assert this max length at compile time when the user calls Map::new.
+#[doc(hidden)]
 pub fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     debug_assert!(
         bytes.iter().any(|x| *x != u8::MAX),
@@ -89,6 +95,7 @@ pub fn increment_last_byte(mut bytes: Vec<u8>) -> Vec<u8> {
 
 /// Given an extendable byte slice, append a zero byte to the end of it.
 /// This is useful for dealing with iterator bounds.
+#[doc(hidden)]
 pub fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes.push(0);
     bytes
@@ -96,6 +103,7 @@ pub fn extend_one_byte(mut bytes: Vec<u8>) -> Vec<u8> {
 
 /// Given two byte slices, make a new byte vector that is the two slices joined
 /// end to end.
+#[doc(hidden)]
 pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(namespace.len() + key.len());
     out.extend_from_slice(namespace);
@@ -110,6 +118,7 @@ pub fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
 /// prefixed with the namespace in debug mode. In release we skip this for
 /// performance. You must make sure only use this function we you're sure the
 /// slice actually is prefixed with the namespace.
+#[doc(hidden)]
 pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     debug_assert!(
         key.starts_with(namespace),
@@ -122,7 +131,11 @@ pub fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
 
 /// Safely converts input of type T to u32.
 /// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
-pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
+#[doc(hidden)]
+pub fn to_u32<T>(input: T) -> StdResult<u32>
+where
+    T: TryInto<u32> + ToString + Copy,
+{
     input
         .try_into()
         .map_err(|_| StdError::overflow_conversion::<T, u32>(input))
@@ -136,6 +149,7 @@ pub fn to_u32<T: TryInto<u32> + ToString + Copy>(input: T) -> StdResult<u32> {
 /// Strip the first key, returns two new byte slices:
 /// 1. k1
 /// 2. len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}
+#[doc(hidden)]
 pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // NOTE: this panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);
@@ -156,6 +170,7 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
 /// ```plain
 /// section1 || section1_len || section2 || section2_len || section3 || section3_len || …
 /// ```
+#[doc(hidden)]
 pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
     let mut out_len: usize = sections.iter().map(|section| section.len()).sum();
     out_len += 4 * sections.len();
@@ -175,6 +190,7 @@ pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
 /// Each encoded section is suffixed by a section length, encoded as big endian uint32.
 ///
 /// See also: `encode_section`.
+#[doc(hidden)]
 pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {
     let mut result: Vec<&[u8]> = vec![];
     let mut remaining_len = data.len();
@@ -195,6 +211,7 @@ pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {
 
 // ----------------------------------- math ------------------------------------
 
+#[doc(hidden)]
 pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
@@ -219,6 +236,7 @@ pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
+#[doc(hidden)]
 pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
@@ -243,6 +261,7 @@ pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
+#[doc(hidden)]
 pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
@@ -261,6 +280,7 @@ pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
+#[doc(hidden)]
 pub const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {

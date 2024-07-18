@@ -3,8 +3,8 @@ use {
     grug_types::{
         from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
         make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Context, GenericResult, IbcClientQuery, ImmutableCtx, Json, MutableCtx,
-        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx,
+        BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, QuerierWrapper,
+        Response, SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -437,38 +437,4 @@ where
     let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
-}
-
-// ----------------------------- ibc client query ------------------------------
-
-pub fn do_ibc_client_query<E>(
-    verify_fn: &dyn Fn(ImmutableCtx, IbcClientQuery) -> Result<(), E>,
-    ctx_ptr: usize,
-    msg_ptr: usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
-
-    let res = _do_ibc_client_query(verify_fn, &ctx_bytes, &msg_bytes);
-    let res_bytes = to_json_vec(&res).unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-fn _do_ibc_client_query<E>(
-    verify_fn: &dyn Fn(ImmutableCtx, IbcClientQuery) -> Result<(), E>,
-    ctx_bytes: &[u8],
-    msg_bytes: &[u8],
-) -> GenericResult<()>
-where
-    E: ToString,
-{
-    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
-    let immutable_ctx = make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
-    let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
-
-    verify_fn(immutable_ctx, msg).into()
 }

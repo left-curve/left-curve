@@ -13,7 +13,10 @@ use {
 ///
 /// - In the primary map: (pk_namespace, pk) => value
 /// - in the index map: (idx_namespace, ik) => value
-pub struct UniqueIndex<'a, IK, T, C: Codec<T> = Borsh> {
+pub struct UniqueIndex<'a, IK, T, C = Borsh>
+where
+    C: Codec<T>,
+{
     /// A function that takes a piece of data, and return the index key it
     /// should be indexed at.
     indexer: fn(&T) -> IK,

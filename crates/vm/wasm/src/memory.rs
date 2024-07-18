@@ -4,11 +4,10 @@ use {
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
 
-pub fn read_from_memory(
-    env: &mut Environment,
-    store: &impl AsStoreRef,
-    region_ptr: u32,
-) -> VmResult<Vec<u8>> {
+pub fn read_from_memory<S>(env: &mut Environment, store: &S, region_ptr: u32) -> VmResult<Vec<u8>>
+where
+    S: AsStoreRef,
+{
     let memory = env.get_wasmer_memory(&store)?;
 
     // read region
@@ -21,22 +20,20 @@ pub fn read_from_memory(
     Ok(buf)
 }
 
-pub fn read_then_wipe(
-    env: &mut Environment,
-    store: &mut impl AsStoreMut,
-    region_ptr: u32,
-) -> VmResult<Vec<u8>> {
+pub fn read_then_wipe<S>(env: &mut Environment, store: &mut S, region_ptr: u32) -> VmResult<Vec<u8>>
+where
+    S: AsStoreMut,
+{
     let data = read_from_memory(env, store, region_ptr)?;
     env.call_function0(store, "deallocate", &[region_ptr.into()])?;
 
     Ok(data)
 }
 
-pub fn write_to_memory(
-    env: &mut Environment,
-    store: &mut impl AsStoreMut,
-    data: &[u8],
-) -> VmResult<u32> {
+pub fn write_to_memory<S>(env: &mut Environment, store: &mut S, data: &[u8]) -> VmResult<u32>
+where
+    S: AsStoreMut,
+{
     // call the `allocate` export to reserve an area in Wasm memory
     let region_ptr: u32 = env
         .call_function1(store, "allocate", &[(data.len() as u32).into()])?

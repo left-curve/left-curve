@@ -1,10 +1,13 @@
 use {
-    crate::{Borsh, Codec},
+    crate::Codec,
     grug_types::{nested_namespaces_with_key, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct PathBuf<T, C: Codec<T> = Borsh> {
+pub struct PathBuf<T, C>
+where
+    C: Codec<T>,
+{
     storage_key: Vec<u8>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
@@ -31,7 +34,7 @@ where
     }
 }
 
-pub struct Path<'a, T, C: Codec<T> = Borsh> {
+pub struct Path<'a, T, C> {
     storage_key: &'a [u8],
     data: PhantomData<T>,
     codec: PhantomData<C>,

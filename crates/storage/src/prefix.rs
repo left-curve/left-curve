@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, PrefixBound, Prefixer, RawBound},
+    crate::{Bound, Codec, Key, PrefixBound, Prefixer, RawBound},
     grug_types::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         trim, Order, Record, StdResult, Storage,
@@ -7,7 +7,10 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Prefix<K, T, C: Codec<T> = Borsh> {
+pub struct Prefix<K, T, C>
+where
+    C: Codec<T>,
+{
     namespace: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,

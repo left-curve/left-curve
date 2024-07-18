@@ -22,7 +22,11 @@ pub struct Coin {
 impl Coin {
     /// Create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    pub fn new(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
+    pub fn new<D, A>(denom: D, amount: NonZero<A>) -> Self
+    where
+        D: ToString,
+        A: Into<Uint128>,
+    {
         let denom = denom.to_string();
         let amount = amount.into_inner().into();
 
@@ -93,7 +97,11 @@ impl Coins {
     }
 
     /// Create a new `Coins` with exactly one coin.
-    pub fn new_one(denom: impl ToString, amount: NonZero<impl Into<Uint128>>) -> Self {
+    pub fn new_one<D, A>(denom: D, amount: NonZero<A>) -> Self
+    where
+        D: ToString,
+        A: Into<Uint128>,
+    {
         let denom = denom.to_string();
         let amount = amount.into_inner().into();
 

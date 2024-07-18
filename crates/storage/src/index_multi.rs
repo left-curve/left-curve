@@ -8,10 +8,11 @@ use {
 
 /// An indexer that allows multiple records in the primary map to have the same
 /// index value.
-pub struct MultiIndex<'a, PK, IK, T, C: Codec<T> = Borsh>
+pub struct MultiIndex<'a, PK, IK, T, C = Borsh>
 where
     PK: Key,
     IK: Key + Prefixer,
+    C: Codec<T>,
 {
     indexer: fn(&PK, &T) -> IK,
     // The index set uses Borsh regardless of which codec the primary map uses.
@@ -19,10 +20,11 @@ where
     primary_map: Map<'a, PK, T, C>,
 }
 
-impl<'a, PK, IK, T, C: Codec<T>> MultiIndex<'a, PK, IK, T, C>
+impl<'a, PK, IK, T, C> MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key,
     IK: Key + Prefixer,
+    C: Codec<T>,
 {
     pub const fn new(
         indexer: fn(&PK, &T) -> IK,
@@ -174,10 +176,11 @@ where
     }
 }
 
-impl<'a, PK, IK, T, C: Codec<T>> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
+impl<'a, PK, IK, T, C> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
     PK: Key,
     IK: Key + Prefixer,
+    C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(&pk, data);
@@ -192,7 +195,10 @@ where
 
 // ---------------------------------- prefix -----------------------------------
 
-pub struct IndexPrefix<'a, IK, PK, B, T, C: Codec<T>> {
+pub struct IndexPrefix<'a, IK, PK, B, T, C>
+where
+    C: Codec<T>,
+{
     // The index set uses Borsh regardless of which codec the primary map uses.
     prefix: Prefix<B, Empty, Borsh>,
     primary_map: &'a Map<'a, PK, T, C>,

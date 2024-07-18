@@ -3,9 +3,8 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use grug_types::{
-    Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, Empty, GenericResult,
-    ImmutableCtx, Json, MutableCtx, Querier, Response, StdError, Storage, SubMsgResult, SudoCtx,
-    Tx,
+    Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
+    Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
 };
 
 pub trait Contract {
@@ -120,26 +119,26 @@ pub trait Contract {
 // https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
 // So we define boxed traits as a workaround.
 
-pub type InstantiateFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
+pub type InstantiateFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
 
-pub type ExecuteFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
+pub type ExecuteFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
 
-pub type MigrateFn<M = Empty, E = StdError> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
+pub type MigrateFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
 
-pub type ReceiveFn<E = StdError> = Box<dyn Fn(MutableCtx) -> Result<Response, E> + Send + Sync>;
+pub type ReceiveFn<E> = Box<dyn Fn(MutableCtx) -> Result<Response, E> + Send + Sync>;
 
-pub type ReplyFn<M = Empty, E = StdError> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E> + Send + Sync>;
+pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response, E> + Send + Sync>;
 
-pub type QueryFn<M = Empty, E = StdError> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
+pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type BeforeTxFn<E = StdError> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
-pub type AfterTxFn<E = StdError> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
-pub type BeforeBlockFn<E = StdError> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
+pub type BeforeBlockFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
 
-pub type AfterBlockFn<E = StdError> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
+pub type AfterBlockFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
 
-pub type BankExecuteFn<E = StdError> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
+pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 
-pub type BankQueryFn<E = StdError> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
+pub type BankQueryFn<E> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
