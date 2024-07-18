@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, Map, Prefix},
+    crate::{Borsh, Bound, Codec, Key, Map, Prefix, Prefixer},
     grug_types::{Order, Record, StdError, StdResult, Storage},
 };
 
@@ -38,7 +38,7 @@ where
     }
 
     pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        Prefix::new(self.pk_namespace, &prefix.raw_keys())
+        Prefix::new(self.pk_namespace, &prefix.raw_prefixes())
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {

@@ -3,7 +3,7 @@ use {
     std::{borrow::Cow, mem},
 };
 
-// ----------------------------------- trait -----------------------------------
+// ------------------------------------ key ------------------------------------
 
 /// Describes a key used in mapping data structures, i.e. [`Map`](crate::Map)
 /// and [`IndexedMap`](crate::IndexedMap).
@@ -50,7 +50,7 @@ pub trait Key {
     ///
     /// This is used for iterations. E.g. given a value of `A`, we can iterate
     /// all values of `B` in the map.
-    type Prefix: Key;
+    type Prefix: Prefixer;
 
     /// For tuple keys, the elements _excluding_ the `Prefix`.
     ///
@@ -84,17 +84,15 @@ pub trait Key {
     ///
     /// where `len()` denotes the length, as a 16-bit big endian number;
     /// `|` denotes byte concatenation.
-    fn serialize(&self) -> Vec<u8> {
+    fn joined_key(&self) -> Vec<u8> {
         let mut raw_keys = self.raw_keys();
         let last_raw_key = raw_keys.pop();
         nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
     }
 
     /// Deserialize the raw bytes into the output.
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output>;
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output>;
 }
-
-// ------------------------------ implementations ------------------------------
 
 impl Key for () {
     type Output = ();
@@ -105,7 +103,7 @@ impl Key for () {
         vec![]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
             return Err(StdError::deserialize::<Self::Output>(
                 "expecting empty bytes",
@@ -125,7 +123,7 @@ impl Key for &[u8] {
         vec![Cow::Borrowed(self)]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         Ok(bytes.to_vec())
     }
 }
@@ -139,7 +137,7 @@ impl Key for Vec<u8> {
         vec![Cow::Borrowed(self)]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         Ok(bytes.to_vec())
     }
 }
@@ -153,7 +151,7 @@ impl Key for &str {
         vec![Cow::Borrowed(self.as_bytes())]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
@@ -167,7 +165,7 @@ impl Key for String {
         vec![Cow::Borrowed(self.as_bytes())]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output>)
     }
 }
@@ -181,7 +179,7 @@ impl Key for Addr {
         vec![Cow::Borrowed(self.as_ref())]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
     }
 }
@@ -195,7 +193,7 @@ impl Key for Hash {
         vec![Cow::Borrowed(self.as_ref())]
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
     }
 }
@@ -212,14 +210,14 @@ where
         (*self).raw_keys()
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
-        K::deserialize(bytes)
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        K::from_slice(bytes)
     }
 }
 
 impl<A, B> Key for (A, B)
 where
-    A: Key,
+    A: Key + Prefixer,
     B: Key,
 {
     type Output = (A::Output, B::Output);
@@ -234,11 +232,11 @@ where
         keys
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         let (a_raw, b_raw) = split_first_key(A::KEY_ELEMS, bytes);
 
-        let a = A::deserialize(&a_raw)?;
-        let b = B::deserialize(b_raw)?;
+        let a = A::from_slice(&a_raw)?;
+        let b = B::from_slice(b_raw)?;
 
         Ok((a, b))
     }
@@ -246,7 +244,7 @@ where
 
 impl<A, B, C> Key for (A, B, C)
 where
-    A: Key,
+    A: Key + Prefixer,
     B: Key,
     C: Key,
 {
@@ -273,13 +271,13 @@ where
         keys
     }
 
-    fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         let (a_raw, bc_raw) = split_first_key(A::KEY_ELEMS, bytes);
         let (b_raw, c_raw) = split_first_key(B::KEY_ELEMS, bc_raw);
 
-        let a = A::deserialize(&a_raw)?;
-        let b = B::deserialize(&b_raw)?;
-        let c = C::deserialize(c_raw)?;
+        let a = A::from_slice(&a_raw)?;
+        let b = B::from_slice(&b_raw)?;
+        let c = C::from_slice(c_raw)?;
 
         Ok((a, b, c))
     }
@@ -349,7 +347,7 @@ macro_rules! impl_integer_key {
                 vec![Cow::Owned(self.to_be_bytes().to_vec())]
             }
 
-            fn deserialize(bytes: &[u8]) -> StdResult<Self::Output> {
+            fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
                     return Err(StdError::deserialize::<Self::Output>(format!(
                         "wrong number of bytes: expecting {}, got {}",
@@ -366,6 +364,92 @@ macro_rules! impl_integer_key {
 
 impl_integer_key!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
+// --------------------------------- prefixer ----------------------------------
+
+pub trait Prefixer {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>>;
+
+    fn joined_prefix(&self) -> Vec<u8> {
+        let raw_prefixes = self.raw_prefixes();
+        nested_namespaces_with_key(None, &raw_prefixes, Option::<&Vec<u8>>::None)
+    }
+}
+
+impl Prefixer for () {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![]
+    }
+}
+
+impl Prefixer for &[u8] {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
+    }
+}
+
+impl Prefixer for Vec<u8> {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
+    }
+}
+
+impl Prefixer for &str {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_bytes())]
+    }
+}
+
+impl Prefixer for String {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_bytes())]
+    }
+}
+
+impl Prefixer for Addr {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_ref())]
+    }
+}
+
+impl Prefixer for Hash {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self.as_ref())]
+    }
+}
+
+impl<P> Prefixer for &P
+where
+    P: Prefixer,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        (*self).raw_prefixes()
+    }
+}
+
+impl<A, B> Prefixer for (A, B)
+where
+    A: Prefixer,
+    B: Prefixer,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        let mut prefixes = self.0.raw_prefixes();
+        prefixes.extend(self.1.raw_prefixes());
+        prefixes
+    }
+}
+
+macro_rules! impl_integer_prefixer {
+    ($($t:ty),+ $(,)?) => {
+        $(impl Prefixer for $t {
+            fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+                vec![Cow::Owned(self.to_be_bytes().to_vec())]
+            }
+        })*
+    }
+}
+
+impl_integer_prefixer!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -377,8 +461,8 @@ mod tests {
         type TripleTuple<'a> = (&'a str, &'a str, &'a str);
 
         let (a, b, c) = ("larry", "jake", "pumpkin");
-        let serialized = (a, b, c).serialize();
-        let deserialized = TripleTuple::deserialize(&serialized).unwrap();
+        let serialized = (a, b, c).joined_key();
+        let deserialized = TripleTuple::from_slice(&serialized).unwrap();
 
         assert_eq!(deserialized, (a.to_string(), b.to_string(), c.to_string()));
     }
@@ -391,7 +475,7 @@ mod tests {
 
         let ((a, b), (c, d)) = (("larry", "engineer"), ("jake", "shepherd"));
 
-        let serialized = ((a, b), (c, d)).serialize();
+        let serialized = ((a, b), (c, d)).joined_key();
         assert_eq!(serialized, [
             0, 5,                                   // len("larry")
             108, 97, 114, 114, 121,                 // "larry"
@@ -402,7 +486,7 @@ mod tests {
             115, 104, 101, 112, 104, 101, 114, 100, // "shepherd"
         ]);
 
-        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+        let deserialized = NestedTuple::from_slice(&serialized).unwrap();
         assert_eq!(
             deserialized,
             ((a.to_string(), b.to_string()), (c.to_string(), d.to_string()))
@@ -417,7 +501,7 @@ mod tests {
 
         let ((a, (b, c)), d) = ((88888u64, ("larry", "engineer")), "jake");
 
-        let serialized = ((a, (b, c)), d).serialize();
+        let serialized = ((a, (b, c)), d).joined_key();
         assert_eq!(serialized, [
             0, 8,                                   // len(u64)
             0, 0, 0, 0, 0, 1, 91, 56,               // 88888 = 1 * 256^2 + 91 * 256^1 + 56 * 256^0
@@ -428,7 +512,7 @@ mod tests {
             106, 97, 107, 101,                      // "jake"
         ]);
 
-        let deserialized = NestedTuple::deserialize(&serialized).unwrap();
+        let deserialized = NestedTuple::from_slice(&serialized).unwrap();
         assert_eq!(
             deserialized,
             ((a, (b.to_string(), c.to_string())), d.to_string())

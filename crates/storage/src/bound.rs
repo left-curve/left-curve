@@ -37,8 +37,8 @@ where
 {
     fn from(bound: Bound<K>) -> Self {
         match bound {
-            Bound::Inclusive(key) => RawBound::Inclusive(key.serialize()),
-            Bound::Exclusive(key) => RawBound::Exclusive(key.serialize()),
+            Bound::Inclusive(key) => RawBound::Inclusive(key.joined_key()),
+            Bound::Exclusive(key) => RawBound::Exclusive(key.joined_key()),
             Bound::InclusiveRaw(bytes) => RawBound::Inclusive(bytes),
             Bound::ExclusiveRaw(bytes) => RawBound::Exclusive(bytes),
         }

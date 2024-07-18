@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, RawBound},
+    crate::{Borsh, Bound, Codec, Key, Prefixer, RawBound},
     grug_types::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         trim, Order, Record, StdResult, Storage,
@@ -38,7 +38,7 @@ where
     C: Codec<T>,
 {
     pub fn append(mut self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
-        for key_elem in prefix.raw_keys() {
+        for key_elem in prefix.raw_prefixes() {
             self.prefix.extend(encode_length(&key_elem));
             self.prefix.extend(key_elem.as_ref());
         }
@@ -86,7 +86,7 @@ where
         let iter = self
             .range_raw(storage, min, max, order)
             .map(|(key_raw, value_raw)| {
-                let key = K::deserialize(&key_raw)?;
+                let key = K::from_slice(&key_raw)?;
                 let value = C::decode(&value_raw)?;
                 Ok((key, value))
             });
@@ -139,7 +139,7 @@ where
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
         let iter = self
             .keys_raw(storage, min, max, order)
-            .map(|key_raw| K::deserialize(&key_raw));
+            .map(|key_raw| K::from_slice(&key_raw));
 
         Box::new(iter)
     }
