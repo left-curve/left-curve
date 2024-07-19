@@ -1674,14 +1674,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-ibc-client-tendermint"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug",
-]
-
-[[package]]
 name = "grug-jmt"
 version = "0.0.0"
 dependencies = [

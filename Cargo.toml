@@ -4,7 +4,6 @@ members  = [
   "bin",
   "contracts/account",
   "contracts/bank",
-  "contracts/ibc/clients/tendermint",
   "contracts/testers/*",
   "crates/app",
   "crates/crypto",
