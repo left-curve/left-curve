@@ -3,6 +3,9 @@ use wasmer::{
     MiddlewareReaderState, ModuleMiddleware,
 };
 
+/// The name used in errors
+const MIDDLEWARE_NAME: &str = "Gatekeeper";
+
 // ----------------------------- module middleware -----------------------------
 
 #[derive(Debug, Clone, Copy)]
@@ -104,9 +107,6 @@ impl FunctionGatekeeper {
         Self { config }
     }
 }
-
-/// The name used in errors
-const MIDDLEWARE_NAME: &str = "Gatekeeper";
 
 impl FunctionMiddleware for FunctionGatekeeper {
     fn feed<'a>(
