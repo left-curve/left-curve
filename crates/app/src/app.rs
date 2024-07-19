@@ -189,6 +189,13 @@ where
             )
             .collect::<StdResult<Vec<_>>>()?;
 
+        // Delete these cronjobs. They will be scheduled a new time.
+        NEXT_CRONJOBS.prefix_clear(
+            &mut buffer,
+            None,
+            Some(PrefixBound::Inclusive(block.timestamp)),
+        );
+
         // Perform the cronjobs.
         for (_idx, (_time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
@@ -217,13 +224,6 @@ where
                 cfg.cronjobs[&contract],
             )?;
         }
-
-        // Delete the cronjobs that have already been performed.
-        NEXT_CRONJOBS.prefix_clear(
-            &mut buffer,
-            None,
-            Some(PrefixBound::Inclusive(block.timestamp)),
-        );
 
         // process transactions one-by-one
         for (_idx, tx) in txs.into_iter().enumerate() {
