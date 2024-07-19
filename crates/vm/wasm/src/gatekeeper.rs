@@ -55,57 +55,45 @@ struct GatekeeperConfig {
 /// A middleware that ensures only deterministic operations are used (i.e. no floats).
 /// It also disallows the use of Wasm features that are not explicitly enabled.
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct Gatekeeper {
     config: GatekeeperConfig,
 }
 
-impl Gatekeeper {
-    /// Creates a new Gatekeeper with a custom config.
-    ///
-    /// A costum configuration is potentially dangerous (non-final Wasm proposals,
-    /// floats in SIMD operation).
-    ///
-    /// For this reason, only [`Gatekeeper::default()`] is public.
-    fn new(config: GatekeeperConfig) -> Self {
-        Self { config }
-    }
-}
-
+// A custom configuration is potentially dangerous (non-final Wasm proposals,
+// floats in SIMD operation).
+//
+// For this reason, this is the only way to create a new `Gatekeeper`.
 impl Default for Gatekeeper {
     fn default() -> Self {
-        Self::new(GatekeeperConfig {
-            // In practice, floats must be allowed, otherwise deserializing JSON
-            // will fail.
-            allow_floats: true,
-            allow_feature_bulk_memory_operations: false,
-            allow_feature_reference_types: false,
-            allow_feature_simd: false,
-            allow_feature_exception_handling: false,
-            allow_feature_threads: false,
-        })
+        Self {
+            config: GatekeeperConfig {
+                // In practice, floats must be allowed, otherwise deserializing
+                // JSON will fail.
+                allow_floats: true,
+                allow_feature_bulk_memory_operations: false,
+                allow_feature_reference_types: false,
+                allow_feature_simd: false,
+                allow_feature_exception_handling: false,
+                allow_feature_threads: false,
+            },
+        }
     }
 }
 
 impl ModuleMiddleware for Gatekeeper {
     /// Generates a `FunctionMiddleware` for a given function.
     fn generate_function_middleware(&self, _: LocalFunctionIndex) -> Box<dyn FunctionMiddleware> {
-        Box::new(FunctionGatekeeper::new(self.config))
+        Box::new(FunctionGatekeeper {
+            config: self.config,
+        })
     }
 }
 
 // ---------------------------- function middleware ----------------------------
 
 #[derive(Debug)]
-#[non_exhaustive]
 struct FunctionGatekeeper {
     config: GatekeeperConfig,
-}
-
-impl FunctionGatekeeper {
-    fn new(config: GatekeeperConfig) -> Self {
-        Self { config }
-    }
 }
 
 impl FunctionMiddleware for FunctionGatekeeper {
