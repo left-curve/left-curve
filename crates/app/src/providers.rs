@@ -51,6 +51,7 @@ impl Storage for StorageProvider {
             .storage
             .scan(Some(&min), Some(&max), order)
             .map(|(key, value)| (trim(&self.namespace, &key), value));
+
         Box::new(iter)
     }
 
@@ -65,6 +66,7 @@ impl Storage for StorageProvider {
             .storage
             .scan_keys(Some(&min), Some(&max), order)
             .map(|key| trim(&self.namespace, &key));
+
         Box::new(iter)
     }
 
