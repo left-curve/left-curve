@@ -272,6 +272,7 @@ mod tests {
 
     /// An edge case discovered by @Rhaki.
     /// Our previous implementation contains a bug that fails this case.
+    /// See: <https://github.com/left-curve/grug/pull/68>
     #[test]
     fn iterator_edge_case() {
         let mut storage = Shared::new(MockStorage::new());
