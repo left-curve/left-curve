@@ -12,6 +12,6 @@ mod testing;
 mod vm;
 
 pub use {
-    cache::*, environment::*, error::*, gas::*, imports::*, iterator::*, memory::*, region::*,
-    vm::*, gatekeeper::*,
+    cache::*, environment::*, error::*, gas::*, gatekeeper::*, imports::*, iterator::*, memory::*,
+    region::*, vm::*,
 };
