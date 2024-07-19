@@ -484,8 +484,10 @@ checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -1568,10 +1570,9 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
- "dyn-clone",
+ "chrono",
  "grug-storage",
  "grug-types",
- "hex",
  "prost",
  "serde",
  "tendermint-abci",
@@ -1764,11 +1765,13 @@ name = "grug-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "borsh",
  "grug-account",
  "grug-app",
  "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-storage",
  "grug-types",
  "grug-vm-rust",
  "k256",

@@ -243,10 +243,10 @@ where
     receive_fn(mutable_ctx).into()
 }
 
-// ------------------------------- before block --------------------------------
+// ----------------------------------- cron ------------------------------------
 
-pub fn do_before_block<E>(
-    before_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
+pub fn do_cron_execute<E>(
+    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_ptr: usize,
 ) -> usize
 where
@@ -254,14 +254,14 @@ where
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
-    let res = _do_before_block(before_block_fn, &ctx_bytes);
+    let res = _do_cron_execute(cron_execute_fn, &ctx_bytes);
     let res_bytes = to_json_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
 
-fn _do_before_block<E>(
-    before_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
+fn _do_cron_execute<E>(
+    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
     ctx_bytes: &[u8],
 ) -> GenericResult<Response>
 where
@@ -270,37 +270,7 @@ where
     let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
-    before_block_fn(sudo_ctx).into()
-}
-
-// -------------------------------- after block --------------------------------
-
-pub fn do_after_block<E>(
-    after_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
-    ctx_ptr: usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-
-    let res = _do_after_block(after_block_fn, &ctx_bytes);
-    let res_bytes = to_json_vec(&res).unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-fn _do_after_block<E>(
-    after_block_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
-    ctx_bytes: &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
-    let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-
-    after_block_fn(sudo_ctx).into()
+    cron_execute_fn(sudo_ctx).into()
 }
 
 // --------------------------------- before tx ---------------------------------

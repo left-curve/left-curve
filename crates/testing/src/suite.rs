@@ -5,13 +5,13 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Event,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Duration, Event,
         GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest, StdError, Tx,
         Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{collections::HashMap, time::Duration},
+    std::collections::HashMap,
 };
 
 pub struct TestSuite<VM = RustVm>
@@ -63,7 +63,7 @@ where
 
         // Advance block height and time
         self.block.height += Uint64::ONE;
-        self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
+        self.block.timestamp = self.block.timestamp + self.block_time;
 
         // Call ABCI `FinalizeBlock` method
         let (_, _, results) = self.app.do_finalize_block(self.block.clone(), txs)?;
@@ -267,6 +267,21 @@ where
                 false,
             )
             .map(|res| res.as_balance().amount)
+            .into()
+    }
+
+    pub fn query_balances(&self, account: &TestAccount) -> TestResult<Coins> {
+        self.app
+            .do_query_app(
+                QueryRequest::Balances {
+                    address: account.address.clone(),
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0, // zero means to use the latest height
+                false,
+            )
+            .map(|res| res.as_balances())
             .into()
     }
 

@@ -4,13 +4,14 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, Permission,
-        Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Hash, Message,
+        Permission, Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     std::{
         collections::{BTreeMap, BTreeSet},
-        time::{Duration, SystemTime, UNIX_EPOCH},
+        time::{SystemTime, UNIX_EPOCH},
     },
     tracing::Level,
 };
@@ -27,7 +28,7 @@ where
     vm: VM,
     tracing_level: Option<Level>,
     chain_id: Option<String>,
-    genesis_time: Option<SystemTime>,
+    genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
     owner: Option<Addr>,
     // TODO: let user customize the codes and instantiate messages of bank and account
@@ -85,7 +86,7 @@ where
         self
     }
 
-    pub fn set_genesis_time(mut self, genesis_time: SystemTime) -> Self {
+    pub fn set_genesis_time(mut self, genesis_time: Timestamp) -> Self {
         self.genesis_time = Some(genesis_time);
         self
     }
@@ -135,16 +136,20 @@ where
             .unwrap_or_else(|| DEFAULT_CHAIN_ID.to_string());
 
         // Use the current system time as genesis time, if unspecified.
-        let genesis_time = self
-            .genesis_time
-            .unwrap_or_else(SystemTime::now)
-            .duration_since(UNIX_EPOCH)?
-            .as_nanos();
+        // let genesis_time = self
+        //     .genesis_time
+        //     .unwrap_or_else(SystemTime::now)
+        //     .duration_since(UNIX_EPOCH)?
+        //     .as_nanos();
+        let genesis_time = match self.genesis_time {
+            Some(time) => time,
+            None => Timestamp::from_nanos(SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()),
+        };
 
         let genesis_block = BlockInfo {
             hash: GENESIS_BLOCK_HASH,
             height: GENESIS_BLOCK_HEIGHT,
-            timestamp: Timestamp::from_nanos(genesis_time),
+            timestamp: genesis_time,
         };
 
         // Upload account and bank codes, instantiate bank contract.
@@ -180,8 +185,7 @@ where
         let config = Config {
             owner: self.owner,
             bank,
-            begin_blockers: vec![],
-            end_blockers: vec![],
+            cronjobs: BTreeMap::new(),
             permissions: Permissions {
                 upload: Permission::Everybody,
                 instantiate: Permission::Everybody,

@@ -1,6 +1,6 @@
 use {
-    grug_storage::{Item, Map},
-    grug_types::{Account, Addr, BlockInfo, Config, Hash},
+    grug_storage::{Item, Map, Set},
+    grug_types::{Account, Addr, BlockInfo, Config, Hash, Timestamp},
 };
 
 /// A string that identifies the chain
@@ -11,6 +11,12 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 /// The most recently finalized block
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");
+
+/// Scheduled cronjobs.
+///
+/// This needs to be a `Set` instead of `Map<Timestamp, Addr>` because there can
+/// be multiple jobs with the same scheduled time.
+pub const NEXT_CRONJOBS: Set<(Timestamp, &Addr)> = Set::new("jobs");
 
 /// Wasm contract byte codes: code_hash => byte_code
 pub const CODES: Map<&Hash, Vec<u8>> = Map::new("code");

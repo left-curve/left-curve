@@ -63,14 +63,9 @@ impl Instance for RustInstance {
                 let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
                 to_json_vec(&res)?
             },
-            "before_block" => {
+            "cron_execute" => {
                 let res =
-                    contract.before_block(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
-                to_json_vec(&res)?
-            },
-            "after_block" => {
-                let res =
-                    contract.after_block(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
+                    contract.cron_execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
                 to_json_vec(&res)?
             },
             _ => {

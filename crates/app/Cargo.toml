@@ -12,13 +12,12 @@ categories    = { workspace = true }
 [features]
 default = []
 abci    = ["tendermint-abci", "tendermint-proto"]
-tracing = ["dep:tracing"]
+tracing = ["chrono", "dep:tracing"]
 
 [dependencies]
-dyn-clone        = { workspace = true }
+chrono           = { workspace = true, optional = true }
 grug-storage     = { path = "../storage" }
 grug-types       = { path = "../types" }
-hex              = { workspace = true }
 prost            = { workspace = true }
 serde            = { workspace = true }
 tendermint-abci  = { workspace = true, optional = true }

@@ -1,7 +1,7 @@
 use {
     crate::{
-        AfterBlockFn, AfterTxFn, BankExecuteFn, BankQueryFn, BeforeBlockFn, BeforeTxFn, Contract,
-        ExecuteFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
+        AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
     },
     elsa::sync::FrozenVec,
     grug_types::{
@@ -54,7 +54,6 @@ pub struct ContractBuilder<
     E9 = StdError,
     E10 = StdError,
     E11 = StdError,
-    E12 = StdError,
 > {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
@@ -64,10 +63,9 @@ pub struct ContractBuilder<
     query_fn: Option<QueryFn<M6, E6>>,
     before_tx_fn: Option<BeforeTxFn<E7>>,
     after_tx_fn: Option<AfterTxFn<E8>>,
-    before_block_fn: Option<BeforeBlockFn<E9>>,
-    after_block_fn: Option<AfterBlockFn<E10>>,
-    bank_execute_fn: Option<BankExecuteFn<E11>>,
-    bank_query_fn: Option<BankQueryFn<E12>>,
+    bank_execute_fn: Option<BankExecuteFn<E9>>,
+    bank_query_fn: Option<BankQueryFn<E10>>,
+    cron_execute_fn: Option<CronExecuteFn<E11>>,
 }
 
 impl<M1, E1> ContractBuilder<M1, E1>
@@ -85,16 +83,15 @@ where
             query_fn: None,
             before_tx_fn: None,
             after_tx_fn: None,
-            before_block_fn: None,
-            after_block_fn: None,
             bank_execute_fn: None,
             bank_query_fn: None,
+            cron_execute_fn: None,
         }
     }
 }
 
-impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
-    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11>
+    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11>
 where
     M1: DeserializeOwned + 'static,
     M2: DeserializeOwned + 'static,
@@ -112,12 +109,11 @@ where
     E9: ToString + 'static,
     E10: ToString + 'static,
     E11: ToString + 'static,
-    E12: ToString + 'static,
 {
     pub fn with_execute<M2A, E2A>(
         self,
         execute_fn: ExecuteFn<M2A, E2A>,
-    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11>
     where
         M2A: DeserializeOwned + 'static,
         E2A: ToString + 'static,
@@ -131,17 +127,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_migrate<M3A, E3A>(
         self,
         migrate_fn: MigrateFn<M3A, E3A>,
-    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11>
     where
         M3A: DeserializeOwned + 'static,
         E3A: ToString + 'static,
@@ -155,17 +150,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_receive<E4A>(
         self,
         receive_fn: ReceiveFn<E4A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11>
     where
         E4A: ToString + 'static,
     {
@@ -178,17 +172,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_reply<M5A, E5A>(
         self,
         reply_fn: ReplyFn<M5A, E5A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11>
     where
         M5A: DeserializeOwned + 'static,
         E5A: ToString + 'static,
@@ -202,17 +195,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_query<M6A, E6A>(
         self,
         query_fn: QueryFn<M6A, E6A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11>
     where
         M6A: DeserializeOwned + 'static,
         E6A: ToString + 'static,
@@ -226,18 +218,16 @@ where
             query_fn: Some(query_fn),
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_before_tx<E7A>(
         self,
         before_tx_fn: BeforeTxFn<E7A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11, E12>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -247,18 +237,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: Some(before_tx_fn),
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
     pub fn with_after_tx<E8A>(
         self,
         after_tx_fn: AfterTxFn<E8A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11, E12>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -268,18 +256,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: Some(after_tx_fn),
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
-    pub fn with_before_block<E9A>(
+    pub fn with_bank_execute<E9A>(
         self,
-        before_block_fn: BeforeBlockFn<E9A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E10, E11, E12>
-    {
+        bank_execute_fn: BankExecuteFn<E9A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E10, E11> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -289,60 +275,16 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: Some(before_block_fn),
-            after_block_fn: self.after_block_fn,
-            bank_execute_fn: self.bank_execute_fn,
-            bank_query_fn: self.bank_query_fn,
-        }
-    }
-
-    pub fn with_after_block<E10A>(
-        self,
-        after_block_fn: AfterBlockFn<E10A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10A, E11, E12>
-    {
-        ContractBuilder {
-            instantiate_fn: self.instantiate_fn,
-            execute_fn: self.execute_fn,
-            migrate_fn: self.migrate_fn,
-            receive_fn: self.receive_fn,
-            reply_fn: self.reply_fn,
-            query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: Some(after_block_fn),
-            bank_execute_fn: self.bank_execute_fn,
-            bank_query_fn: self.bank_query_fn,
-        }
-    }
-
-    pub fn with_bank_execute<E11A>(
-        self,
-        bank_execute_fn: BankExecuteFn<E11A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11A, E12>
-    {
-        ContractBuilder {
-            instantiate_fn: self.instantiate_fn,
-            execute_fn: self.execute_fn,
-            migrate_fn: self.migrate_fn,
-            receive_fn: self.receive_fn,
-            reply_fn: self.reply_fn,
-            query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: Some(bank_execute_fn),
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }
     }
 
-    pub fn with_bank_query<E12A>(
+    pub fn with_bank_query<E10A>(
         self,
-        bank_query_fn: BankQueryFn<E12A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12A>
-    {
+        bank_query_fn: BankQueryFn<E10A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10A, E11> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -352,16 +294,35 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: Some(bank_query_fn),
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_cron_execute<E11A>(
+        self,
+        cron_execute_fn: CronExecuteFn<E11A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11A> {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            before_tx_fn: self.before_tx_fn,
+            after_tx_fn: self.after_tx_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: Some(cron_execute_fn),
         }
     }
 
     pub fn build(self) -> ContractWrapper {
         let contracts = CONTRACTS.get_or_init(Default::default);
         let index = contracts.len();
+
         contracts.push(Box::new(ContractImpl {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -371,18 +332,18 @@ where
             query_fn: self.query_fn,
             before_tx_fn: self.before_tx_fn,
             after_tx_fn: self.after_tx_fn,
-            before_block_fn: self.before_block_fn,
-            after_block_fn: self.after_block_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
+            cron_execute_fn: self.cron_execute_fn,
         }));
+
         ContractWrapper { index }
     }
 }
 
 // ----------------------------------- impl ------------------------------------
 
-pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> {
+pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
     migrate_fn: Option<MigrateFn<M3, E3>>,
@@ -391,14 +352,13 @@ pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, 
     query_fn: Option<QueryFn<M6, E6>>,
     before_tx_fn: Option<BeforeTxFn<E7>>,
     after_tx_fn: Option<AfterTxFn<E8>>,
-    before_block_fn: Option<BeforeBlockFn<E9>>,
-    after_block_fn: Option<AfterBlockFn<E10>>,
-    bank_execute_fn: Option<BankExecuteFn<E11>>,
-    bank_query_fn: Option<BankQueryFn<E12>>,
+    bank_execute_fn: Option<BankExecuteFn<E9>>,
+    bank_query_fn: Option<BankQueryFn<E10>>,
+    cron_execute_fn: Option<CronExecuteFn<E11>>,
 }
 
-impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> Contract
-    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> Contract
+    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11>
 where
     M1: DeserializeOwned,
     M2: DeserializeOwned,
@@ -416,7 +376,6 @@ where
     E9: ToString,
     E10: ToString,
     E11: ToString,
-    E12: ToString,
 {
     fn instantiate(
         &self,
@@ -520,28 +479,6 @@ where
         return_into_generic_result!(self.after_tx_fn.as_ref().unwrap()(auth_ctx, tx))
     }
 
-    fn before_block(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-    ) -> GenericResult<Response> {
-        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.before_block_fn.as_ref().unwrap()(sudo_ctx))
-    }
-
-    fn after_block(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-    ) -> GenericResult<Response> {
-        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.after_block_fn.as_ref().unwrap()(sudo_ctx))
-    }
-
     fn bank_execute(
         &self,
         ctx: Context,
@@ -564,5 +501,16 @@ where
     ) -> GenericResult<BankQueryResponse> {
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
         return_into_generic_result!(self.bank_query_fn.as_ref().unwrap()(immutable_ctx, msg))
+    }
+
+    fn cron_execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response> {
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
+        return_into_generic_result!(self.cron_execute_fn.as_ref().unwrap()(sudo_ctx))
     }
 }

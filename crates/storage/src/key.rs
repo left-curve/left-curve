@@ -1,7 +1,7 @@
 use {
     grug_types::{
-        nested_namespaces_with_key, Addr, Bytable, Hash, StdError, StdResult, Uint128, Uint256,
-        Uint512, Uint64,
+        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, StdError, StdResult, Uint128,
+        Uint256, Uint512, Uint64,
     },
     std::{borrow::Cow, mem},
 };
@@ -198,6 +198,21 @@ impl Key for Hash {
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         bytes.try_into()
+    }
+}
+
+impl Key for Duration {
+    type Output = Duration;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let nanos = u128::from_be_bytes(bytes.try_into()?);
+        Ok(Duration::from_nanos(nanos))
     }
 }
 
@@ -419,6 +434,12 @@ impl Prefixer for Addr {
 impl Prefixer for Hash {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_ref())]
+    }
+}
+
+impl Prefixer for Duration {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
     }
 }
 

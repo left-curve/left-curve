@@ -1,8 +1,8 @@
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, GasTracker, Vm,
-        ACCOUNTS, CHAIN_ID, CODES, CONFIG,
+        call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
+        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
@@ -14,10 +14,11 @@ use {
 
 pub fn do_configure(
     storage: &mut dyn Storage,
+    block: BlockInfo,
     sender: &Addr,
-    new_cfg: &Config,
+    new_cfg: Config,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, sender, new_cfg) {
+    match _do_configure(storage, block, sender, new_cfg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -33,7 +34,12 @@ pub fn do_configure(
     }
 }
 
-fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<Event> {
+fn _do_configure(
+    storage: &mut dyn Storage,
+    block: BlockInfo,
+    sender: &Addr,
+    new_cfg: Config,
+) -> AppResult<Event> {
     // make sure the sender is authorized to set the config
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
@@ -47,7 +53,17 @@ fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> 
     }
 
     // save the new config
-    CONFIG.save(storage, new_cfg)?;
+    CONFIG.save(storage, &new_cfg)?;
+
+    // If the list of cronjobs has been changed, we have to delete the existing
+    // scheduled ones and reschedule.
+    if cfg.cronjobs != new_cfg.cronjobs {
+        NEXT_CRONJOBS.clear(storage, None, None);
+
+        for (contract, interval) in new_cfg.cronjobs {
+            schedule_cronjob(storage, &contract, block.timestamp, interval)?;
+        }
+    }
 
     Ok(Event::new("configure").add_attribute("sender", sender))
 }
@@ -719,82 +735,46 @@ where
     )
 }
 
-// ---------------------------- before/after block -----------------------------
+// ----------------------------------- cron ------------------------------------
 
-pub fn do_before_block<VM>(
+// Note that this function never fails, unlike every other function in this file.
+// If a cronjob fails, we simply ignore it and move on.
+pub fn do_cron_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
-) -> AppResult<Vec<Event>>
+) -> Option<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_block(
-        vm,
-        storage,
-        gas_tracker,
-        block,
-        "before_block",
-        contract.clone(),
-    ) {
+    match _do_cron_execute(vm, storage, gas_tracker, block, contract.clone()) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            tracing::info!(contract = contract.to_string(), "Called before block hook");
+            tracing::info!(contract = contract.to_string(), "Performed cronjob");
 
-            Ok(events)
+            Some(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(err = err.to_string(), "Failed to call before block hook");
+            tracing::warn!(
+                contract = contract.to_string(),
+                err = err.to_string(),
+                "Failed to perform cronjob"
+            );
 
-            Err(err)
+            None
         },
     }
 }
 
-pub fn do_after_block<VM>(
+fn _do_cron_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
-    contract: Addr,
-) -> AppResult<Vec<Event>>
-where
-    VM: Vm + Clone,
-    AppError: From<VM::Error>,
-{
-    match _do_before_or_after_block(
-        vm,
-        storage,
-        gas_tracker,
-        block,
-        "after_block",
-        contract.clone(),
-    ) {
-        Ok(events) => {
-            #[cfg(feature = "tracing")]
-            tracing::info!(contract = contract.to_string(), "Called after block hook");
-
-            Ok(events)
-        },
-        Err(err) => {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(err = err.to_string(), "Failed to call after block hook");
-
-            Err(err)
-        },
-    }
-}
-
-fn _do_before_or_after_block<VM>(
-    vm: VM,
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
-    block: BlockInfo,
-    name: &'static str,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
 where
@@ -816,7 +796,7 @@ where
         vm,
         storage,
         gas_tracker,
-        name,
+        "cron_execute",
         &account.code_hash,
         &ctx,
         false,

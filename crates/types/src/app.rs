@@ -1,10 +1,10 @@
 use {
-    crate::{Addr, Hash, Message, NumberConst, Timestamp, Uint64},
+    crate::{Addr, Duration, Hash, Message, NumberConst, Timestamp, Uint64},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
-    std::collections::BTreeSet,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// The mock up sender address used for executing genesis messages.
@@ -63,14 +63,8 @@ pub struct Config {
     /// using an approach similar to Solana's Metaplex standard:
     /// <https://twitter.com/octalmage/status/1695165358955487426>
     pub bank: Addr,
-    /// A list of contracts that will be called at the beginning of each block,
-    /// before any transaction, in order. Each of them must implement the `before_block`
-    /// entry point.
-    pub begin_blockers: Vec<Addr>,
-    /// A list of contracts that will be called at the end of each block, after
-    /// all transactions have been processed, in order. Each of them must
-    /// implement the `after_block` entry point.
-    pub end_blockers: Vec<Addr>,
+    /// A list of contracts that are to be called at regular time intervals.
+    pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.
     pub permissions: Permissions,
     /// Code hashes that are allowed as IBC light clients.

@@ -19,7 +19,7 @@ mod response;
 mod result;
 mod serde;
 mod signed;
-mod timestamp;
+mod time;
 mod tx;
 mod udec;
 mod uint;
@@ -28,7 +28,7 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
     event::*, hash::*, imports::*, math::*, query::*, response::*, result::*, serde::*, signed::*,
-    timestamp::*, tx::*, udec::*, uint::*, utils::*,
+    time::*, tx::*, udec::*, uint::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256
