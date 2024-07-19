@@ -1,14 +1,16 @@
 use {
     crate::{
-        do_after_block, do_after_tx, do_before_block, do_before_tx, do_configure, do_execute,
-        do_instantiate, do_migrate, do_transfer, do_upload, query_account, query_accounts,
-        query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
-        GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK,
+        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
+        do_migrate, do_transfer, do_upload, query_account, query_accounts, query_balance,
+        query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
+        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
+    grug_storage::PrefixBound,
     grug_types::{
-        from_json_slice, to_json_vec, Addr, BlockInfo, Event, GenesisState, Hash, Message,
-        Permission, QueryRequest, QueryResponse, StdResult, Storage, Tx, GENESIS_SENDER,
+        from_json_slice, to_json_vec, Addr, BlockInfo, Duration, Event, GenesisState, Hash,
+        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        GENESIS_SENDER,
     },
 };
 
@@ -87,6 +89,11 @@ where
         CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
+        // Schedule cronjobs
+        for (contract, interval) in genesis_state.config.cronjobs {
+            schedule_cronjob(&mut buffer, &contract, block.timestamp, interval)?;
+        }
+
         // loop through genesis messages and execute each one.
         // it's expected that genesis messages should all successfully execute.
         // if anyone fails, it's fatal error and we abort the genesis.
@@ -120,7 +127,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             chain_id,
-            timestamp = block.timestamp.seconds(),
+            timestamp = block.timestamp.into_nanos(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             gas_used = gas_tracker.used(),
             "Completed genesis"
@@ -151,7 +158,11 @@ where
         txs: Vec<Tx>,
     ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
-        let mut events = vec![];
+
+        // Events emitted by cronjobs
+        let mut cron_events = vec![];
+
+        // Results of executing transactions
         let mut tx_results = vec![];
 
         let cfg = CONFIG.load(&buffer)?;
@@ -167,27 +178,52 @@ where
             });
         }
 
-        // call begin blockers
-        for (_idx, contract) in cfg.begin_blockers.into_iter().enumerate() {
+        // Find all cronjobs that should be performed. That is, ones that the
+        // scheduled time is earlier or equal to the current block time.
+        let jobs = NEXT_CRONJOBS
+            .prefix_range(
+                &buffer,
+                None,
+                Some(PrefixBound::Inclusive(block.timestamp)),
+                Order::Ascending,
+            )
+            .collect::<StdResult<Vec<_>>>()?;
+
+        // Perform the cronjobs.
+        for (_idx, (_time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 idx = _idx,
+                time = _time.into_nanos(),
                 contract = contract.to_string(),
-                "Calling begin blocker"
+                "Attempting to perform cronjob"
             );
 
-            // Notes:
-            // 1. Error in begin blocker is considered fatal error. A begin
-            //    blocker erroring causes the chain to halt.
-            // 2. Begin blockers are exempted from gas.
-            events.extend(do_before_block(
+            if let Some(events) = do_cron_execute(
                 self.vm.clone(),
-                Box::new(buffer.share()),
+                Box::new(buffer.clone()),
                 GasTracker::new_limitless(),
                 block.clone(),
-                contract,
-            )?);
+                contract.clone(),
+            ) {
+                cron_events.extend(events);
+            }
+
+            // Schedule the next time this cronjob is to be performed.
+            schedule_cronjob(
+                &mut buffer,
+                &contract,
+                block.timestamp,
+                cfg.cronjobs[&contract],
+            )?;
         }
+
+        // Delete the cronjobs that have already been performed.
+        NEXT_CRONJOBS.prefix_clear(
+            &mut buffer,
+            None,
+            Some(PrefixBound::Inclusive(block.timestamp)),
+        );
 
         // process transactions one-by-one
         for (_idx, tx) in txs.into_iter().enumerate() {
@@ -200,28 +236,6 @@ where
                 block.clone(),
                 tx,
             ));
-        }
-
-        // call end blockers
-        for (_idx, contract) in cfg.end_blockers.into_iter().enumerate() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                idx = _idx,
-                contract = contract.to_string(),
-                "Calling end blocker"
-            );
-
-            // Notes:
-            // 1. Error in end blocker is considered fatal error. An end blocker
-            //    erroring causes the chain to halt.
-            // 2. End blockers are exempted from gas.
-            events.extend(do_after_block(
-                self.vm.clone(),
-                Box::new(buffer.share()),
-                GasTracker::new_limitless(),
-                block.clone(),
-                contract,
-            )?);
         }
 
         // save the last committed block
@@ -246,12 +260,12 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             height = block.height.number(),
-            timestamp = block.timestamp.seconds(),
+            timestamp = block.timestamp.into_nanos(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
 
-        Ok((root_hash.unwrap(), events, tx_results))
+        Ok((root_hash.unwrap(), cron_events, tx_results))
     }
 
     // TODO: we need to think about what to do if the flush fails here?
@@ -430,7 +444,7 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, &sender, &new_cfg),
+        Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,
@@ -559,4 +573,22 @@ pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, send
         Permission::Everybody => true,
         Permission::Somebodies(accounts) => accounts.contains(sender),
     }
+}
+
+pub(crate) fn schedule_cronjob(
+    storage: &mut dyn Storage,
+    contract: &Addr,
+    current_time: Timestamp,
+    interval: Duration,
+) -> StdResult<()> {
+    let next_time = current_time + interval;
+
+    #[cfg(feature = "tracing")]
+    tracing::info!(
+        time = next_time.into_nanos(),
+        contract = contract.to_string(),
+        "Scheduled cronjob"
+    );
+
+    NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }

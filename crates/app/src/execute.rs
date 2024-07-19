@@ -1,8 +1,8 @@
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, AppError, AppResult, GasTracker, Vm,
-        ACCOUNTS, CHAIN_ID, CODES, CONFIG,
+        call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
+        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
@@ -14,10 +14,11 @@ use {
 
 pub fn do_configure(
     storage: &mut dyn Storage,
+    block: BlockInfo,
     sender: &Addr,
-    new_cfg: &Config,
+    new_cfg: Config,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, sender, new_cfg) {
+    match _do_configure(storage, block, sender, new_cfg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -33,7 +34,12 @@ pub fn do_configure(
     }
 }
 
-fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> AppResult<Event> {
+fn _do_configure(
+    storage: &mut dyn Storage,
+    block: BlockInfo,
+    sender: &Addr,
+    new_cfg: Config,
+) -> AppResult<Event> {
     // make sure the sender is authorized to set the config
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
@@ -47,7 +53,17 @@ fn _do_configure(storage: &mut dyn Storage, sender: &Addr, new_cfg: &Config) -> 
     }
 
     // save the new config
-    CONFIG.save(storage, new_cfg)?;
+    CONFIG.save(storage, &new_cfg)?;
+
+    // If the list of cronjobs has been changed, we have to delete the existing
+    // scheduled ones and reschedule.
+    if cfg.cronjobs != new_cfg.cronjobs {
+        NEXT_CRONJOBS.clear(storage, None, None);
+
+        for (contract, interval) in new_cfg.cronjobs {
+            schedule_cronjob(storage, &contract, block.timestamp, interval)?;
+        }
+    }
 
     Ok(Event::new("configure").add_attribute("sender", sender))
 }
