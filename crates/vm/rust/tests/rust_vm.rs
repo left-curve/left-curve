@@ -22,7 +22,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .execute_messages(&accounts["sender"], vec![
+        .send_messages(&accounts["sender"], vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
                 coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
