@@ -757,11 +757,11 @@ where
 
             Some(events)
         },
-        Err(err) => {
+        Err(_err) => {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 contract = contract.to_string(),
-                err = err.to_string(),
+                err = _err.to_string(),
                 "Failed to perform cronjob"
             );
 
