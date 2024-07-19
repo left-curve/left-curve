@@ -1,10 +1,10 @@
 use {
     crate::{
         blake2b_512, blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
-        db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify,
-        gatekeeper::Gatekeeper, keccak256, query_chain, read_then_wipe, secp256k1_pubkey_recover,
-        secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha2_512_truncated, sha3_256,
-        sha3_512, sha3_512_truncated, write_to_memory, Cache, Environment, VmError, VmResult,
+        db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
+        query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
+        sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
+        write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context, Hash},

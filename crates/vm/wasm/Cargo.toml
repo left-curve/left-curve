@@ -31,10 +31,10 @@ wasmer-middlewares = { workspace = true }
 anyhow                  = { workspace = true }
 criterion               = { workspace = true }
 grug-app                = { path = "../../app", features = ["tracing"] }
-grug-bank               = { path = "../../../contracts/bank" }
+grug-bank               = { path = "../../../contracts/bank", features = ["library"] }
 grug-crypto             = { path = "../../crypto" }
 grug-testing            = { path = "../../testing" }
-grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker" }
+grug-tester-benchmarker = { path = "../../../contracts/testers/benchmarker", features = ["library"] }
 grug-vm-wasm            = { path = ".", features = ["testing"] }
 
 [[bench]]
