@@ -72,12 +72,10 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     assert_eq!(
         holders,
-        vec![
+        BTreeMap::<Addr, Uint128>::from([
             (accounts["sender"].address.clone(), Uint128::new(30)),
             (accounts["receiver"].address.clone(), Uint128::new(70))
-        ]
-        .into_iter()
-        .collect::<BTreeMap<Addr, Uint128>>()
+        ])
     );
 
     Ok(())
