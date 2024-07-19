@@ -7,27 +7,43 @@ use wasmer::{
 struct GatekeeperConfig {
     /// True iff float operations are allowed.
     ///
-    /// Note: there are float operations in the SIMD block as well and we do not yet handle
-    /// any combination of `allow_floats` and `allow_feature_simd` properly.
+    /// Note:
+    /// There are float operations in the SIMD block as well and we do not yet
+    /// handle any combination of `allow_floats` and `allow_feature_simd` properly.
     allow_floats: bool,
-    // Standardized features
     /// True iff operations of the "Bulk memory operations" feature are allowed.
-    /// See <https://webassembly.org/roadmap/> and <https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md>.
+    ///
+    /// See:
+    /// - <https://webassembly.org/roadmap/>
+    /// - <https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md>
     allow_feature_bulk_memory_operations: bool,
     /// True iff operations of the "Reference types" feature are allowed.
-    /// See <https://webassembly.org/roadmap/> and <https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md>.
+    ///
+    /// See:
+    /// - <https://webassembly.org/roadmap/>
+    /// - <https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md>
     allow_feature_reference_types: bool,
     /// True iff operations of the "Fixed-width SIMD" feature are allowed.
-    /// See <https://webassembly.org/roadmap/> and <https://github.com/WebAssembly/simd/blob/master/proposals/simd/SIMD.md>.
+    ///
+    /// See:
+    /// - <https://webassembly.org/roadmap/>
+    /// - <https://github.com/WebAssembly/simd/blob/master/proposals/simd/SIMD.md>
     allow_feature_simd: bool,
-    // In-progress proposals
     /// True iff operations of the "Exception handling" feature are allowed.
+    ///
     /// Note, this feature is not yet standardized!
-    /// See <https://webassembly.org/roadmap/> and <https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>.
+    ///
+    /// See:
+    /// - <https://webassembly.org/roadmap/>
+    /// - <https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md>
     allow_feature_exception_handling: bool,
     /// True iff operations of the "Threads and atomics" feature are allowed.
+    ///
     /// Note, this feature is not yet standardized!
-    /// See <https://webassembly.org/roadmap/> and <https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md>.
+    ///
+    /// See:
+    /// - <https://webassembly.org/roadmap/>
+    /// - <https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md>
     allow_feature_threads: bool,
 }
 
@@ -42,7 +58,9 @@ pub struct Gatekeeper {
 impl Gatekeeper {
     /// Creates a new Gatekeeper with a custom config.
     ///
-    /// A costum configuration is potentially dangerous (non-final Wasm proposals, floats in SIMD operation).
+    /// A costum configuration is potentially dangerous (non-final Wasm proposals,
+    /// floats in SIMD operation).
+    ///
     /// For this reason, only [`Gatekeeper::default()`] is public.
     fn new(config: GatekeeperConfig) -> Self {
         Self { config }
