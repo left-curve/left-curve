@@ -107,7 +107,11 @@ where
         Ok(self)
     }
 
-    pub fn add_account(mut self, name: &'static str, balances: Coins) -> anyhow::Result<Self> {
+    pub fn add_account<C>(mut self, name: &'static str, balances: C) -> anyhow::Result<Self>
+    where
+        C: TryInto<Coins>,
+        anyhow::Error: From<C::Error>,
+    {
         ensure!(
             !self.accounts.contains_key(name),
             "account with name {name} already exists"
@@ -117,6 +121,7 @@ where
         let account = TestAccount::new_random(&self.account_code_hash, name.as_bytes());
 
         // Save account and balances
+        let balances = balances.try_into()?;
         if !balances.is_empty() {
             self.balances.insert(account.address.clone(), balances);
         }

@@ -48,14 +48,11 @@ struct Balances {
 #[test]
 fn cronjob_works() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account(
-            "larry",
-            Coins::try_from([
-                Coin::new("uatom", NonZero::new(Uint128::new(100))),
-                Coin::new("uosmo", NonZero::new(Uint128::new(100))),
-                Coin::new("umars", NonZero::new(Uint128::new(100))),
-            ])?,
-        )?
+        .add_account("larry", [
+            Coin::new("uatom", NonZero::new(Uint128::new(100))),
+            Coin::new("uosmo", NonZero::new(Uint128::new(100))),
+            Coin::new("umars", NonZero::new(Uint128::new(100))),
+        ])?
         .add_account("jake", Coins::new_empty())?
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
