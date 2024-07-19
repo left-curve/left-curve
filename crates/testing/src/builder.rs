@@ -88,6 +88,11 @@ where
         self
     }
 
+    pub fn set_block_time(mut self, block_time: Duration) -> Self {
+        self.block_time = Some(block_time);
+        self
+    }
+
     pub fn add_account(mut self, name: &'static str, balances: Coins) -> anyhow::Result<Self> {
         ensure!(
             !self.accounts.contains_key(name),
