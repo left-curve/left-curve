@@ -226,6 +226,28 @@ where
         Ok(())
     }
 
+    /// Migrate a contract to a new code hash, under the given gas limit.
+    pub fn migrate_with_gas<M>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        contract: Addr,
+        new_code_hash: Hash,
+        msg: &M,
+    ) -> anyhow::Result<()>
+    where
+        M: Serialize,
+    {
+        self.execute_message_with_gas(
+            signer,
+            gas_limit,
+            Message::migrate(contract, new_code_hash, msg)?,
+        )?
+        .should_succeed()?;
+
+        Ok(())
+    }
+
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
     where
         M: Serialize,
@@ -347,5 +369,19 @@ impl TestSuite<RustVm> {
         StdError: From<C::Error>,
     {
         self.execute_with_gas(signer, 0, contract, msg, funds)
+    }
+
+    /// Migrate a contract to a new code hash.
+    pub fn migrate<M>(
+        &mut self,
+        signer: &TestAccount,
+        contract: Addr,
+        new_code_hash: Hash,
+        msg: &M,
+    ) -> anyhow::Result<()>
+    where
+        M: Serialize,
+    {
+        self.migrate_with_gas(signer, 0, contract, new_code_hash, msg)
     }
 }
