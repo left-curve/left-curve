@@ -21,12 +21,6 @@ impl<S> Shared<S> {
         }
     }
 
-    pub fn share(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
-    }
-
     pub fn read_access(&self) -> RwLockReadGuard<S> {
         self.inner
             .read()
@@ -66,7 +60,9 @@ impl<S> Shared<S> {
 
 impl<S> Clone for Shared<S> {
     fn clone(&self) -> Self {
-        self.share()
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
     }
 }
 

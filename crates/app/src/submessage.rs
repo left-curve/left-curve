@@ -49,7 +49,7 @@ where
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg(
             vm.clone(),
-            Box::new(buffer.share()),
+            Box::new(buffer.clone()),
             gas_tracker.clone(),
             block.clone(),
             sender.clone(),

@@ -232,7 +232,7 @@ where
 
             tx_results.push(process_tx(
                 self.vm.clone(),
-                buffer.share(),
+                buffer.clone(),
                 block.clone(),
                 tx,
             ));
@@ -384,7 +384,7 @@ where
     // if this fails, abort, discard uncommitted state changes.
     events.extend(do_before_tx(
         vm.clone(),
-        Box::new(buffer.share()),
+        Box::new(buffer.clone()),
         gas_tracker.clone(),
         block.clone(),
         &tx,
@@ -406,7 +406,7 @@ where
 
         events.extend(process_msg(
             vm.clone(),
-            Box::new(buffer.share()),
+            Box::new(buffer.clone()),
             gas_tracker.clone(),
             block.clone(),
             tx.sender.clone(),
@@ -419,7 +419,7 @@ where
     // state changes from `before_tx` are always kept.
     events.extend(do_after_tx(
         vm,
-        Box::new(buffer.share()),
+        Box::new(buffer.clone()),
         gas_tracker.clone(),
         block,
         &tx,
