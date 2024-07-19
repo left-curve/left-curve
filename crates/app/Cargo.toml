@@ -16,10 +16,8 @@ tracing = ["chrono", "dep:tracing"]
 
 [dependencies]
 chrono           = { workspace = true, optional = true }
-dyn-clone        = { workspace = true }
 grug-storage     = { path = "../storage" }
 grug-types       = { path = "../types" }
-hex              = { workspace = true }
 prost            = { workspace = true }
 serde            = { workspace = true }
 tendermint-abci  = { workspace = true, optional = true }

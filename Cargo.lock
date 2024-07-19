@@ -1571,10 +1571,8 @@ name = "grug-app"
 version = "0.0.0"
 dependencies = [
  "chrono",
- "dyn-clone",
  "grug-storage",
  "grug-types",
- "hex",
  "prost",
  "serde",
  "tendermint-abci",
