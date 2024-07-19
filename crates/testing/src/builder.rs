@@ -10,7 +10,7 @@ use {
     },
     grug_vm_rust::RustVm,
     std::{
-        collections::{BTreeMap, BTreeSet},
+        collections::BTreeMap,
         time::{SystemTime, UNIX_EPOCH},
     },
     tracing::Level,
@@ -193,7 +193,6 @@ where
                 create_connection: Permission::Everybody,
                 create_channel: Permission::Everybody,
             },
-            allowed_clients: BTreeSet::new(),
         };
 
         let genesis_state = GenesisState { config, msgs };

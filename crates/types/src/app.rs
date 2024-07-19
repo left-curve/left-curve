@@ -67,8 +67,6 @@ pub struct Config {
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.
     pub permissions: Permissions,
-    /// Code hashes that are allowed as IBC light clients.
-    pub allowed_clients: BTreeSet<Hash>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
