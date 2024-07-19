@@ -3,6 +3,8 @@ use wasmer::{
     MiddlewareReaderState, ModuleMiddleware,
 };
 
+// ----------------------------- module middleware -----------------------------
+
 #[derive(Debug, Clone, Copy)]
 struct GatekeeperConfig {
     /// True iff float operations are allowed.
@@ -88,6 +90,8 @@ impl ModuleMiddleware for Gatekeeper {
         Box::new(FunctionGatekeeper::new(self.config))
     }
 }
+
+// ---------------------------- function middleware ----------------------------
 
 #[derive(Debug)]
 #[non_exhaustive]
