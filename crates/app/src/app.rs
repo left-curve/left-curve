@@ -127,7 +127,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             chain_id,
-            timestamp = block.timestamp.into_nanos(),
+            time = into_utc_string(block.timestamp),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             gas_used = gas_tracker.used(),
             "Completed genesis"
@@ -201,7 +201,7 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 idx = _idx,
-                time = _time.into_nanos(),
+                time = into_utc_string(_time),
                 contract = contract.to_string(),
                 "Attempting to perform cronjob"
             );
@@ -260,7 +260,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             height = block.height.number(),
-            timestamp = block.timestamp.into_nanos(),
+            time = into_utc_string(block.timestamp),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
@@ -585,10 +585,18 @@ pub(crate) fn schedule_cronjob(
 
     #[cfg(feature = "tracing")]
     tracing::info!(
-        time = next_time.into_nanos(),
+        time = into_utc_string(next_time),
         contract = contract.to_string(),
         "Scheduled cronjob"
     );
 
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
+}
+
+#[cfg(feature = "tracing")]
+pub fn into_utc_string(timestamp: Timestamp) -> String {
+    // This panics if the timestamp (as nanoseconds) overflows `i64` range.
+    // But that'd be 500 years or so from now...
+    chrono::DateTime::from_timestamp_nanos(timestamp.into_nanos() as i64)
+        .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
 }
