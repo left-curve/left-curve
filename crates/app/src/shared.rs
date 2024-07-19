@@ -1,5 +1,5 @@
 use {
-    grug_types::{increment_last_byte, Batch, Order, Record, Storage},
+    grug_types::{extend_one_byte, Batch, Order, Record, Storage},
     std::{
         fmt::Display,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
@@ -186,7 +186,7 @@ where
         // now we need to update the bounds
         if let Some((key, _)) = batch.iter().last() {
             match self.order {
-                Order::Ascending => self.min = Some(increment_last_byte(key.clone())),
+                Order::Ascending => self.min = Some(extend_one_byte(key.clone())),
                 Order::Descending => self.max = Some(key.clone()),
             }
         }
@@ -245,6 +245,7 @@ mod tests {
     #[test]
     fn iterator_works() {
         let mut storage = Shared::new(MockStorage::new());
+
         for (k, v) in mock_records(1, 100, Order::Ascending) {
             storage.write(&k, &v);
         }
@@ -267,5 +268,33 @@ mod tests {
             .scan(None, None, Order::Descending)
             .collect::<Vec<_>>();
         assert_eq!(records, mock_records(1, 100, Order::Descending));
+    }
+
+    /// An edge case discovered by @Rhaki.
+    /// Our previous implementation contains a bug that fails this case.
+    /// See: <https://github.com/left-curve/grug/pull/68>
+    #[test]
+    fn iterator_edge_case() {
+        let mut storage = Shared::new(MockStorage::new());
+
+        // Prepare test data.
+        // The data is the number 1 to 100, as strings, sorted as strings.
+        // (Meaning, it goes like: 1, 10, 11, 12, ... 19, 2, 20, 21, ...)
+        let mut data = (1..=100).map(|x| x.to_string()).collect::<Vec<_>>();
+        data.sort();
+
+        // Write the data to storage.
+        // We only care about the keys here, ignore the values.
+        for x in &data {
+            storage.write(x.as_bytes(), &[]);
+        }
+
+        // Read data from storage. Should match the original.
+        let data2 = storage
+            .scan_keys(None, None, Order::Ascending)
+            .map(|bytes| String::from_utf8(bytes).unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(data, data2);
     }
 }

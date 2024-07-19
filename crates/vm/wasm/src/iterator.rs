@@ -1,5 +1,5 @@
 use {
-    grug_types::{increment_last_byte, Order, Record, Storage},
+    grug_types::{extend_one_byte, Order, Record, Storage},
     std::vec,
 };
 
@@ -34,7 +34,7 @@ impl Iterator {
 
         if let Some((key, _)) = batch.iter().last() {
             match self.order {
-                Order::Ascending => self.min = Some(increment_last_byte(key.clone())),
+                Order::Ascending => self.min = Some(extend_one_byte(key.clone())),
                 Order::Descending => self.max = Some(key.clone()),
             }
         }
