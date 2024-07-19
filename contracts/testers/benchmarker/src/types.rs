@@ -1,6 +1,4 @@
-use grug::grug_derive;
-
-#[grug_derive(serde)]
+#[grug::derive(serde)]
 pub enum QueryMsg {
     /// Run a loop of the given number of iterations. Within each iteration, a
     /// set of math operations (addition, subtraction, multiplication, division)

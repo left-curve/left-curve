@@ -5,10 +5,10 @@
 //! The bank contract MUST implement the following two entry points:
 //!
 //! ```ignore
-//! #[grug_export]
+//! #[grug::export]
 //! fn transfer<E>(ctx: TransferCtx, msg: TransferMsg) -> Result<Response, E>;
 //!
-//! #[grug_export]
+//! #[grug::export]
 //! fn query_bank<E>(ctx: QueryCtx, msg: BankQuery) -> Result<BankQueryResponse, E>;
 //! ```
 //!
@@ -17,7 +17,7 @@
 //! via this entry point.
 //!
 //! ```ignore
-//! #[grug_export]
+//! #[grug::export]
 //! fn receive<E>(ctx: ReceiveCtx) -> Result<Response, E>;
 //! ```
 //!

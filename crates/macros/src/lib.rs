@@ -10,7 +10,7 @@ use {
 };
 
 #[proc_macro_attribute]
-pub fn grug_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn derive(attr: TokenStream, input: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(attr as AttributeArgs);
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -87,7 +87,7 @@ pub fn grug_derive(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn grug_export(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
+pub fn export(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
     let cloned = item.clone();
     let function = parse_macro_input!(cloned as ItemFn);
     let name = function.sig.ident.to_string();

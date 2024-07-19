@@ -1,11 +1,11 @@
-use grug::{grug_export, Empty, MutableCtx, Number, NumberConst, Response, StdResult, Uint128};
+use grug::{Empty, MutableCtx, Number, NumberConst, Response, StdResult, Uint128};
 
-#[grug_export]
+#[grug::export]
 pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[grug_export]
+#[grug::export]
 pub fn execute(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
     let mut number = Uint128::new(0);
     loop {

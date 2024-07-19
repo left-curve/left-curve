@@ -1,13 +1,13 @@
 #[cfg(target_arch = "wasm32")]
 use grug::Region;
-use grug::{grug_export, Empty, MutableCtx, Response, StdResult};
+use grug::{Empty, MutableCtx, Response, StdResult};
 
-#[grug_export]
+#[grug::export]
 pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[grug_export]
+#[grug::export]
 pub fn execute(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
     // Call the contract's own `query` function.
     ctx.querier.query_wasm_smart(ctx.contract, &Empty {})?;
