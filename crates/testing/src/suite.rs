@@ -6,7 +6,7 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Event,
-        GenesisState, Hash, Message, NumberConst, QueryRequest, Tx, Uint128, Uint64,
+        GenesisState, Hash, Message, NumberConst, QueryRequest, StdError, Tx, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -148,17 +148,20 @@ where
 
     /// Instantiate a contract under the given gas limit. Return the contract's
     /// address.
-    pub fn instantiate_with_gas<M, S>(
+    pub fn instantiate_with_gas<M, S, C>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code_hash: Hash,
         salt: S,
         msg: &M,
+        funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
     {
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
@@ -166,7 +169,7 @@ where
         self.execute_message_with_gas(
             signer,
             gas_limit,
-            Message::instantiate(code_hash, msg, salt, Coins::new_empty(), None)?,
+            Message::instantiate(code_hash, msg, salt, funds, None)?,
         )?
         .should_succeed()?;
 
@@ -175,17 +178,20 @@ where
 
     /// Upload a code and instantiate a contract with it in one go under the
     /// given gas limit. Return the code hash as well as the contract's address.
-    pub fn upload_and_instantiate_with_gas<M, S>(
+    pub fn upload_and_instantiate_with_gas<M, S, C>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         code: Binary,
         salt: S,
         msg: &M,
+        funds: C,
     ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
         S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
     {
         let salt = salt.into();
         let code_hash = Hash::from_array(sha2_256(&code));
@@ -193,7 +199,7 @@ where
 
         self.execute_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
-            Message::instantiate(code_hash.clone(), msg, salt, Coins::new_empty(), None)?,
+            Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
         ])?
         .should_succeed()?;
 
@@ -271,33 +277,39 @@ impl TestSuite<RustVm> {
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M, S>(
+    pub fn instantiate<M, S, C>(
         &mut self,
         signer: &TestAccount,
         code_hash: Hash,
         salt: S,
         msg: &M,
+        funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
     {
-        self.instantiate_with_gas(signer, 0, code_hash, salt, msg)
+        self.instantiate_with_gas(signer, 0, code_hash, salt, msg, funds)
     }
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn upload_and_instantiate<M, S>(
+    pub fn upload_and_instantiate<M, S, C>(
         &mut self,
         signer: &TestAccount,
         code: Binary,
         salt: S,
         msg: &M,
+        funds: C,
     ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
         S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
     {
-        self.upload_and_instantiate_with_gas(signer, 0, code, salt, msg)
+        self.upload_and_instantiate_with_gas(signer, 0, code, salt, msg, funds)
     }
 }
