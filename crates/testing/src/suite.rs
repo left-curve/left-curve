@@ -5,8 +5,8 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Event, GenesisState, Hash,
-        Message, NumberConst, QueryRequest, Tx, Uint128, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Event,
+        GenesisState, Hash, Message, NumberConst, QueryRequest, Tx, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -116,6 +116,19 @@ where
         let mut results = self.make_block(vec![tx])?;
 
         Ok(results.pop().unwrap())
+    }
+
+    /// Update the chain's config under the given gas limit.
+    pub fn configure_with_gas(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        new_cfg: Config,
+    ) -> anyhow::Result<()> {
+        self.execute_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
+            .should_succeed()?;
+
+        Ok(())
     }
 
     /// Upload a code under the given gas limit. Return the code's hash.
@@ -245,6 +258,11 @@ impl TestSuite<RustVm> {
         msgs: Vec<Message>,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
         self.execute_messages_with_gas(signer, 0, msgs)
+    }
+
+    /// Update the chain's config.
+    pub fn configure(&mut self, signer: &TestAccount, new_cfg: Config) -> anyhow::Result<()> {
+        self.configure_with_gas(signer, 0, new_cfg)
     }
 
     /// Upload a code. Return the code's hash.
