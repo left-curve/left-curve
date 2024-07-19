@@ -16,7 +16,7 @@ jobs:
           toolchain: stable
 
       - name: Run tests
-        run: cargo test --all-targets
+        run: cargo test
         env:
           RUST_BACKTRACE: 1
 
