@@ -1,7 +1,7 @@
 use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
+        concat, increment_last_byte, trim, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
     },
 };
@@ -50,7 +50,7 @@ impl Storage for StorageProvider {
         let iter = self
             .storage
             .scan(Some(&min), Some(&max), order)
-            .map(|(key, value)| (trim_wasm_prefix(&self.namespace, key), value));
+            .map(|(key, value)| (trim(&self.namespace, &key), value));
         Box::new(iter)
     }
 
@@ -64,7 +64,7 @@ impl Storage for StorageProvider {
         let iter = self
             .storage
             .scan_keys(Some(&min), Some(&max), order)
-            .map(|key| trim_wasm_prefix(&self.namespace, key));
+            .map(|key| trim(&self.namespace, &key));
         Box::new(iter)
     }
 
@@ -111,9 +111,6 @@ fn prefixed_range_bounds(
     (min, max)
 }
 
-fn trim_wasm_prefix(namespace: &[u8], key: Vec<u8>) -> Vec<u8> {
-    key[namespace.len()..].to_vec()
-}
 // ---------------------------------- querier ----------------------------------
 
 /// Provides querier functionalities to the VM.
