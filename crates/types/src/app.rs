@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Hash, Message, Timestamp, Uint64},
+    crate::{Addr, Hash, Message, NumberConst, Timestamp, Uint64},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -7,17 +7,34 @@ use {
     std::collections::BTreeSet,
 };
 
-/// Genesis messages don't have senders, so we use this mock up hash as the
-/// sender address. It is the SHA-256 hash of the UTF-8 string `sender`.
+/// The mock up sender address used for executing genesis messages.
+///
+/// Genesis messages aren't sent by a transaction, so don't actually have sender.
+/// We use this as a mock up.
+///
+/// This is the SHA-256 hash of the UTF-8 string `"sender"`.
 pub const GENESIS_SENDER: Addr = Addr(Hash(hex!(
     "0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a"
 )));
 
-/// During genesis there isn't a block hash, so we use this mock up hash as the
-/// block hash. It is the SHA-256 hash of the UTF-8 string `hash`.
+/// The mock up block hash used for executing genesis messages.
+///
+/// Genesis isn't part of a block, so there isn't actually a block hash. We use
+/// this as a mock up.
+///
+/// This is the SHA-256 hash of the UTF-8 string `"hash"`.
 pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!(
     "d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"
 ));
+
+/// The mock up block height used for executing genesis messages.
+///
+/// Genesis isn't part of a block, so there isn't actually a block hash. We use
+/// this as a mock up.
+///
+/// This has to be zero, such as subsequent block heights are the same as the
+/// database and Merkle tree version.
+pub const GENESIS_BLOCK_HEIGHT: Uint64 = Uint64::ZERO;
 
 /// The chain's genesis state. To be included in the `app_state` field of
 /// CometBFT's `genesis.json`.
