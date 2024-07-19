@@ -51,7 +51,6 @@ impl Vm for WasmVm {
         // If not found, build it and insert it into the cache.
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
             let mut compiler = Singlepass::new();
-            compiler.canonicalize_nans(true);
 
             // Set up the gas metering middleware.
             //
@@ -66,7 +65,14 @@ impl Vm for WasmVm {
             // to zero won't raise out of gas errors.
             let metering = Metering::new(0, |_| GAS_PER_OPERATION);
             compiler.push_middleware(Arc::new(metering));
+
+            // Set up the `Gatekeeper`. This rejects certain Wasm operators that
+            // may cause non-determinism.
             compiler.push_middleware(Arc::new(Gatekeeper::default()));
+
+            // Ensure determinism related to floating point numbers.
+            compiler.canonicalize_nans(true);
+
             let engine = Engine::from(compiler);
             let module = Module::new(&engine, code)?;
 
