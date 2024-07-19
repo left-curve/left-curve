@@ -89,17 +89,17 @@ where
     }
 
     /// Execute a single message under the given gas limit.
-    pub fn execute_message_with_gas(
+    pub fn send_message_with_gas(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
-        self.execute_messages_with_gas(signer, gas_limit, vec![msg])
+        self.send_messages_with_gas(signer, gas_limit, vec![msg])
     }
 
     /// Execute one or more messages under the given gas limit.
-    pub fn execute_messages_with_gas(
+    pub fn send_messages_with_gas(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
@@ -125,7 +125,7 @@ where
         gas_limit: u64,
         new_cfg: Config,
     ) -> anyhow::Result<()> {
-        self.execute_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
+        self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
             .should_succeed()?;
 
         Ok(())
@@ -140,7 +140,7 @@ where
     ) -> anyhow::Result<Hash> {
         let code_hash = Hash::from_array(sha2_256(&code));
 
-        self.execute_message_with_gas(signer, gas_limit, Message::upload(code))?
+        self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
             .should_succeed()?;
 
         Ok(code_hash)
@@ -166,7 +166,7 @@ where
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.execute_message_with_gas(
+        self.send_message_with_gas(
             signer,
             gas_limit,
             Message::instantiate(code_hash, msg, salt, funds, None)?,
@@ -197,7 +197,7 @@ where
         let code_hash = Hash::from_array(sha2_256(&code));
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        self.execute_messages_with_gas(signer, gas_limit, vec![
+        self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
             Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
         ])?
@@ -220,7 +220,7 @@ where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.execute_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
+        self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
             .should_succeed()?;
 
         Ok(())
@@ -238,7 +238,7 @@ where
     where
         M: Serialize,
     {
-        self.execute_message_with_gas(
+        self.send_message_with_gas(
             signer,
             gas_limit,
             Message::migrate(contract, new_code_hash, msg)?,
@@ -291,21 +291,21 @@ where
 // don't take a `gas_limit` parameter.
 impl TestSuite<RustVm> {
     /// Execute a single message.
-    pub fn execute_message(
+    pub fn send_message(
         &mut self,
         signer: &TestAccount,
         msg: Message,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
-        self.execute_message_with_gas(signer, 0, msg)
+        self.send_message_with_gas(signer, 0, msg)
     }
 
     /// Execute one or more messages.
-    pub fn execute_messages(
+    pub fn send_messages(
         &mut self,
         signer: &TestAccount,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TestResult<Vec<Event>>> {
-        self.execute_messages_with_gas(signer, 0, msgs)
+        self.send_messages_with_gas(signer, 0, msgs)
     }
 
     /// Update the chain's config.
