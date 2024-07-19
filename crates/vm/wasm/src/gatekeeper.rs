@@ -52,6 +52,8 @@ impl Gatekeeper {
 impl Default for Gatekeeper {
     fn default() -> Self {
         Self::new(GatekeeperConfig {
+            // In practice, floats must be allowed, otherwise deserializing JSON
+            // will fail.
             allow_floats: true,
             allow_feature_bulk_memory_operations: false,
             allow_feature_reference_types: false,
