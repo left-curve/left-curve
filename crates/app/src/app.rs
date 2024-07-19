@@ -541,7 +541,7 @@ where
     }
 }
 
-pub fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
     // the genesis sender can always store code and instantiate contracts
     if sender == GENESIS_SENDER {
         return true;
