@@ -156,9 +156,12 @@ impl Coins {
     /// exist, a new record is created.
     pub fn increase_amount(&mut self, denom: &str, by: Uint128) -> StdResult<()> {
         let Some(amount) = self.0.get_mut(denom) else {
-            // if the denom doesn't exist, we just create a new record, and we
-            // are done.
-            self.0.insert(denom.into(), by);
+            // If the denom doesn't exist, and we are increasing by a non-zero
+            // amount: just create a new record, and we are done.
+            if !by.is_zero() {
+                self.0.insert(denom.into(), by);
+            }
+
             return Ok(());
         };
 
