@@ -54,14 +54,11 @@ fn after_tx(ctx: AuthCtx, tx: Tx) -> Result<Response, Error>;
 
 ## Cronjobs
 
-Each chain can optionally have one _begin blocker_ contract and an _end blocker_ contract. The following entry points of these two contract are called once at the beginning and end of each block. This is useful if there are actions that need to be performed at regular intervals, such as for a perpetual futures protocol, updating the funding rate parameters.
+The chain's owner can appoint a number of contracts to be automatically invoked at regular time intervals. Each such contract must implement the following entry point:
 
 ```rust
 #[grug_export]
-fn before_block(ctx: SudoCtx) -> Result<Response, Error>;
-
-#[grug_export]
-fn after_block(ctx: SudoCtx) -> Result<Response, Error>;
+fn cron_execute(ctx: SudoCtx) -> Result<Response, Error>;
 ```
 
 ## Bank
