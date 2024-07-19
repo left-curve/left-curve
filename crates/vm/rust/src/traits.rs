@@ -80,22 +80,6 @@ pub trait Contract {
         tx: Tx,
     ) -> GenericResult<Response>;
 
-    fn before_block(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-    ) -> GenericResult<Response>;
-
-    fn after_block(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-    ) -> GenericResult<Response>;
-
     fn bank_execute(
         &self,
         ctx: Context,
@@ -113,6 +97,14 @@ pub trait Contract {
         querier: &dyn Querier,
         msg: BankQuery,
     ) -> GenericResult<BankQueryResponse>;
+
+    fn cron_execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> GenericResult<Response>;
 }
 
 // Trait aliases are unstable:
@@ -135,10 +127,8 @@ pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send +
 
 pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
-pub type BeforeBlockFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
-
-pub type AfterBlockFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
-
 pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 
 pub type BankQueryFn<E> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
+
+pub type CronExecuteFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;
