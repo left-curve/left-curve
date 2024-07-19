@@ -206,6 +206,26 @@ where
         Ok((code_hash, address))
     }
 
+    /// Execute a contrat under the given gas limit.
+    pub fn execute_with_gas<M, C>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        contract: Addr,
+        msg: &M,
+        funds: C,
+    ) -> anyhow::Result<()>
+    where
+        M: Serialize,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        self.execute_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
+            .should_succeed()?;
+
+        Ok(())
+    }
+
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
     where
         M: Serialize,
@@ -311,5 +331,21 @@ impl TestSuite<RustVm> {
         StdError: From<C::Error>,
     {
         self.upload_and_instantiate_with_gas(signer, 0, code, salt, msg, funds)
+    }
+
+    /// Execute a contrat.
+    pub fn execute<M, C>(
+        &mut self,
+        signer: &TestAccount,
+        contract: Addr,
+        msg: &M,
+        funds: C,
+    ) -> anyhow::Result<()>
+    where
+        M: Serialize,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        self.execute_with_gas(signer, 0, contract, msg, funds)
     }
 }
