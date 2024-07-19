@@ -64,9 +64,7 @@ fn cronjob_works() -> anyhow::Result<()> {
 
     let tester_code = ContractBuilder::new(Box::new(tester::instantiate))
         .with_cron_execute(Box::new(tester::cron_execute))
-        .build()
-        .into_bytes()
-        .into();
+        .build();
 
     // Block time: 1
     //

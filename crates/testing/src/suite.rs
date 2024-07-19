@@ -133,12 +133,16 @@ where
     }
 
     /// Upload a code under the given gas limit. Return the code's hash.
-    pub fn upload_with_gas(
+    pub fn upload_with_gas<B>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
-        code: Binary,
-    ) -> anyhow::Result<Hash> {
+        code: B,
+    ) -> anyhow::Result<Hash>
+    where
+        B: Into<Binary>,
+    {
+        let code = code.into();
         let code_hash = Hash::from_array(sha2_256(&code));
 
         self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
@@ -179,23 +183,25 @@ where
 
     /// Upload a code and instantiate a contract with it in one go under the
     /// given gas limit. Return the code hash as well as the contract's address.
-    pub fn upload_and_instantiate_with_gas<M, S, C>(
+    pub fn upload_and_instantiate_with_gas<M, B, S, C>(
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
-        code: Binary,
+        code: B,
         salt: S,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
+        B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        let salt = salt.into();
+        let code = code.into();
         let code_hash = Hash::from_array(sha2_256(&code));
+        let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
         self.send_messages_with_gas(signer, gas_limit, vec![
@@ -337,7 +343,10 @@ impl TestSuite<RustVm> {
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload(&mut self, signer: &TestAccount, code: Binary) -> anyhow::Result<Hash> {
+    pub fn upload<B>(&mut self, signer: &TestAccount, code: B) -> anyhow::Result<Hash>
+    where
+        B: Into<Binary>,
+    {
         self.upload_with_gas(signer, 0, code)
     }
 
@@ -361,16 +370,17 @@ impl TestSuite<RustVm> {
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn upload_and_instantiate<M, S, C>(
+    pub fn upload_and_instantiate<M, B, S, C>(
         &mut self,
         signer: &TestAccount,
-        code: Binary,
+        code: B,
         salt: S,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<(Hash, Addr)>
     where
         M: Serialize,
+        B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,

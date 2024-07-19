@@ -93,8 +93,8 @@ impl SigningKey {
 
         // write keystore to file
         let keystore = Keystore {
-            pk: self.public_key().to_vec().into(),
-            salt: salt.to_vec().into(),
+            pk: self.public_key().into(),
+            salt: salt.into(),
             nonce: nonce.to_vec().into(),
             ciphertext: ciphertext.into(),
         };

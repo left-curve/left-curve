@@ -7,8 +7,8 @@ use {
     grug_types::{
         from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         return_into_generic_result, unwrap_into_generic_result, Api, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Context, Empty, GenericResult, ImmutableCtx, Json, MutableCtx, Querier,
-        QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx,
+        BankQueryResponse, Binary, Context, Empty, GenericResult, ImmutableCtx, Json, MutableCtx,
+        Querier, QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -23,15 +23,20 @@ pub struct ContractWrapper {
     pub(crate) index: usize,
 }
 
-impl ContractWrapper {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.index.to_le_bytes().to_vec()
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+impl<T> From<T> for ContractWrapper
+where
+    T: AsRef<[u8]>,
+{
+    fn from(bytes: T) -> Self {
         Self {
-            index: usize::from_le_bytes(bytes.try_into().unwrap()),
+            index: usize::from_le_bytes(bytes.as_ref().try_into().unwrap()),
         }
+    }
+}
+
+impl From<ContractWrapper> for Binary {
+    fn from(wrapper: ContractWrapper) -> Self {
+        wrapper.index.to_le_bytes().into()
     }
 }
 

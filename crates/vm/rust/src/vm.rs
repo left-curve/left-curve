@@ -42,7 +42,7 @@ impl Vm for RustVm {
         Ok(RustInstance {
             storage,
             querier,
-            wrapper: ContractWrapper::from_bytes(code),
+            wrapper: ContractWrapper::from(code),
         })
     }
 }

@@ -23,7 +23,6 @@ impl TestVm for RustVm {
             .with_before_tx(Box::new(grug_account::before_tx))
             .with_after_tx(Box::new(grug_account::after_tx))
             .build()
-            .into_bytes()
             .into()
     }
 
@@ -34,7 +33,6 @@ impl TestVm for RustVm {
             .with_bank_execute(Box::new(grug_bank::bank_execute))
             .with_bank_query(Box::new(grug_bank::bank_query))
             .build()
-            .into_bytes()
             .into()
     }
 }
