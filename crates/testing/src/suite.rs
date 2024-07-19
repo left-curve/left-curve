@@ -6,7 +6,7 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Event, GenesisState, Hash,
-        Message, NumberConst, QueryRequest, Uint128, Uint64,
+        Message, NumberConst, QueryRequest, Tx, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -56,6 +56,38 @@ where
         })
     }
 
+    /// Make a new block with the given transactions.
+    pub fn make_block(&mut self, txs: Vec<Tx>) -> anyhow::Result<Vec<TestResult<Vec<Event>>>> {
+        let num_txs = txs.len();
+
+        // Advance block height and time
+        self.block.height += Uint64::ONE;
+        self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
+
+        // Call ABCI `FinalizeBlock` method
+        let (_, _, results) = self.app.do_finalize_block(self.block.clone(), txs)?;
+
+        // Sanity check: the number of tx results returned by the app should
+        // equal the number of txs.
+        ensure!(
+            num_txs == results.len(),
+            "sent {} txs but received {} tx results; something is wrong",
+            num_txs,
+            results.len()
+        );
+
+        // Call ABCI `Commit` method
+        self.app.do_commit()?;
+
+        Ok(results.into_iter().map(TestResult::from).collect())
+    }
+
+    /// Make a new block without any transaction.
+    pub fn make_empty_block(&mut self) -> anyhow::Result<()> {
+        self.make_block(vec![])?;
+        Ok(())
+    }
+
     /// Execute a single message under the given gas limit.
     pub fn execute_message_with_gas(
         &mut self,
@@ -80,24 +112,10 @@ where
         // Increment the sequence
         *sequence += 1;
 
-        // Make a new block
-        self.block.height += Uint64::ONE;
-        self.block.timestamp = self.block.timestamp.plus_nanos(self.block_time.as_nanos());
+        // Make a new block with only this transaction
+        let mut results = self.make_block(vec![tx])?;
 
-        // Finalize the block
-        let (_, _, mut results) = self.app.do_finalize_block(self.block.clone(), vec![tx])?;
-
-        // We only sent 1 transaction, so there should be exactly one tx result
-        ensure!(
-            results.len() == 1,
-            "received {} tx results; something is wrong",
-            results.len()
-        );
-
-        // Commit state changes
-        self.app.do_commit()?;
-
-        Ok(results.pop().unwrap().into())
+        Ok(results.pop().unwrap())
     }
 
     /// Upload a code under the given gas limit. Return the code's hash.
