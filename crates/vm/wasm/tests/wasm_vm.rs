@@ -30,7 +30,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .execute_messages_with_gas(&accounts["sender"], 2_500_000, vec![
+        .send_messages_with_gas(&accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to: accounts["receiver"].address.clone(),
                 coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
@@ -77,7 +77,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     // say that the error has to be one of the two. Therefore, we simply ensure
     // the error message contains the word "gas".
     suite
-        .execute_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
+        .send_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
             to: accounts["receiver"].address.clone(),
             coins: Coins::new_one(DENOM, NonZero::new(10_u128)),
         })?
@@ -107,10 +107,11 @@ fn infinite_loop() -> anyhow::Result<()> {
         read_wasm_file("grug_tester_infinite_loop.wasm")?,
         "tester/infinite_loop",
         &Empty {},
+        Coins::new_empty(),
     )?;
 
     suite
-        .execute_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
+        .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::new_empty(),
@@ -136,6 +137,7 @@ fn immutable_state() -> anyhow::Result<()> {
         read_wasm_file("grug_tester_immutable_state.wasm")?,
         "tester/immutable_state",
         &Empty {},
+        Coins::new_empty(),
     )?;
 
     // Query the tester contract.
@@ -157,7 +159,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .execute_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
+        .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
             funds: Coins::default(),

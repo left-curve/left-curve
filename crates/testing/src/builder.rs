@@ -1,11 +1,11 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, NumberConst,
-        Permission, Permissions, Timestamp, Uint64, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, Permission,
+        Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     std::{
@@ -29,6 +29,7 @@ where
     chain_id: Option<String>,
     genesis_time: Option<SystemTime>,
     block_time: Option<Duration>,
+    owner: Option<Addr>,
     // TODO: let user customize the codes and instantiate messages of bank and account
     account_code: Binary,
     account_code_hash: Hash,
@@ -64,6 +65,7 @@ where
             chain_id: None,
             genesis_time: None,
             block_time: None,
+            owner: None,
             account_code,
             account_code_hash,
             accounts: TestAccounts::new(),
@@ -86,6 +88,22 @@ where
     pub fn set_genesis_time(mut self, genesis_time: SystemTime) -> Self {
         self.genesis_time = Some(genesis_time);
         self
+    }
+
+    pub fn set_block_time(mut self, block_time: Duration) -> Self {
+        self.block_time = Some(block_time);
+        self
+    }
+
+    pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
+        let owner = self
+            .accounts
+            .get(name)
+            .ok_or_else(|| anyhow!("failed to set owner: can't find account with name `{name}`"))?;
+
+        self.owner = Some(owner.address.clone());
+
+        Ok(self)
     }
 
     pub fn add_account(mut self, name: &'static str, balances: Coins) -> anyhow::Result<Self> {
@@ -124,9 +142,9 @@ where
             .as_nanos();
 
         let genesis_block = BlockInfo {
-            height: Uint64::ZERO,
-            timestamp: Timestamp::from_nanos(genesis_time),
             hash: GENESIS_BLOCK_HASH,
+            height: GENESIS_BLOCK_HEIGHT,
+            timestamp: Timestamp::from_nanos(genesis_time),
         };
 
         // Upload account and bank codes, instantiate bank contract.
@@ -160,8 +178,7 @@ where
         // Create the app config
         let bank = Addr::compute(&GENESIS_SENDER, &self.bank_code_hash, DEFAULT_BANK_SALT);
         let config = Config {
-            // TODO: allow user to set owner
-            owner: None,
+            owner: self.owner,
             bank,
             begin_blockers: vec![],
             end_blockers: vec![],
