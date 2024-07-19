@@ -62,21 +62,20 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     let info = suite.query_info().should_succeed()?;
 
-    let holders: BTreeMap<Addr, Uint128> = suite
-        .query_wasm_smart(info.config.bank, &grug_bank::QueryMsg::Holders {
-            denom: DENOM.to_string(),
-            start_after: None,
-            limit: None,
-        })
-        .should_succeed()?;
-
-    assert_eq!(
-        holders,
-        BTreeMap::<Addr, Uint128>::from([
+    // List all holders of the denom
+    suite
+        .query_wasm_smart::<_, BTreeMap<Addr, Uint128>>(
+            info.config.bank,
+            &grug_bank::QueryMsg::Holders {
+                denom: DENOM.to_string(),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed_and_equal(BTreeMap::from([
             (accounts["sender"].address.clone(), Uint128::new(30)),
-            (accounts["receiver"].address.clone(), Uint128::new(70))
-        ])
-    );
+            (accounts["receiver"].address.clone(), Uint128::new(70)),
+        ]))?;
 
     Ok(())
 }
