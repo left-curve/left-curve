@@ -10,7 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-bnum          = { workspace = true, features = ["borsh"]}
+bnum          = { workspace = true, features = ["borsh"] }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
 data-encoding = { workspace = true }
 hex           = { workspace = true }

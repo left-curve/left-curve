@@ -1764,11 +1764,13 @@ name = "grug-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "borsh",
  "grug-account",
  "grug-app",
  "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-storage",
  "grug-types",
  "grug-vm-rust",
  "k256",

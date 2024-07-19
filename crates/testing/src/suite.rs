@@ -270,6 +270,21 @@ where
             .into()
     }
 
+    pub fn query_balances(&self, account: &TestAccount) -> TestResult<Coins> {
+        self.app
+            .do_query_app(
+                QueryRequest::Balances {
+                    address: account.address.clone(),
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0, // zero means to use the latest height
+                false,
+            )
+            .map(|res| res.as_balances())
+            .into()
+    }
+
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
     where
         M: Serialize,
