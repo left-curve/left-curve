@@ -2,6 +2,7 @@ mod cache;
 mod environment;
 mod error;
 mod gas;
+mod gatekeeper;
 mod imports;
 mod iterator;
 mod memory;
@@ -11,6 +12,6 @@ mod testing;
 mod vm;
 
 pub use {
-    cache::*, environment::*, error::*, gas::*, imports::*, iterator::*, memory::*, region::*,
-    vm::*,
+    cache::*, environment::*, error::*, gas::*, gatekeeper::*, imports::*, iterator::*, memory::*,
+    region::*, vm::*,
 };

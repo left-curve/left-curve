@@ -1823,6 +1823,7 @@ dependencies = [
  "criterion",
  "data-encoding",
  "grug-app",
+ "grug-bank",
  "grug-crypto",
  "grug-tester-benchmarker",
  "grug-testing",

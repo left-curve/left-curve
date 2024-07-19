@@ -1,7 +1,7 @@
 use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
+        concat, increment_last_byte, trim, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
     },
 };
@@ -47,7 +47,12 @@ impl Storage for StorageProvider {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
-        self.storage.scan(Some(&min), Some(&max), order)
+        let iter = self
+            .storage
+            .scan(Some(&min), Some(&max), order)
+            .map(|(key, value)| (trim(&self.namespace, &key), value));
+
+        Box::new(iter)
     }
 
     fn scan_keys<'a>(
@@ -57,7 +62,12 @@ impl Storage for StorageProvider {
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let (min, max) = prefixed_range_bounds(&self.namespace, min, max);
-        self.storage.scan_keys(Some(&min), Some(&max), order)
+        let iter = self
+            .storage
+            .scan_keys(Some(&min), Some(&max), order)
+            .map(|key| trim(&self.namespace, &key));
+
+        Box::new(iter)
     }
 
     fn scan_values<'a>(

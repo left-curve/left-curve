@@ -6,7 +6,8 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Event,
-        GenesisState, Hash, Message, NumberConst, QueryRequest, StdError, Tx, Uint128, Uint64,
+        GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest, StdError, Tx,
+        Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -248,6 +249,27 @@ where
         Ok(())
     }
 
+    pub fn query_info(&self) -> TestResult<InfoResponse> {
+        self.app
+            .do_query_app(QueryRequest::Info {}, 0, false)
+            .map(|val| val.as_info())
+            .into()
+    }
+
+    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> TestResult<Uint128> {
+        self.app
+            .do_query_app(
+                QueryRequest::Balance {
+                    address: account.address.clone(),
+                    denom: denom.to_string(),
+                },
+                0, // zero means to use the latest height
+                false,
+            )
+            .map(|res| res.as_balance().amount)
+            .into()
+    }
+
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
     where
         M: Serialize,
@@ -270,20 +292,6 @@ where
             Ok(from_json_value(res_raw)?)
         })()
         .into()
-    }
-
-    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> TestResult<Uint128> {
-        self.app
-            .do_query_app(
-                QueryRequest::Balance {
-                    address: account.address.clone(),
-                    denom: denom.to_string(),
-                },
-                0, // zero means to use the latest height
-                false,
-            )
-            .map(|res| res.as_balance().amount)
-            .into()
     }
 }
 
