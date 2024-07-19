@@ -4,8 +4,8 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, NumberConst,
-        Permission, Permissions, Timestamp, Uint64, GENESIS_BLOCK_HASH, GENESIS_SENDER,
+        hash, Addr, Binary, BlockInfo, Coins, Config, GenesisState, Hash, Message, Permission,
+        Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     std::{
@@ -124,9 +124,9 @@ where
             .as_nanos();
 
         let genesis_block = BlockInfo {
-            height: Uint64::ZERO,
-            timestamp: Timestamp::from_nanos(genesis_time),
             hash: GENESIS_BLOCK_HASH,
+            height: GENESIS_BLOCK_HEIGHT,
+            timestamp: Timestamp::from_nanos(genesis_time),
         };
 
         // Upload account and bank codes, instantiate bank contract.
