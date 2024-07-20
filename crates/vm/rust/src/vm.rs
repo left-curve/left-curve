@@ -1,5 +1,5 @@
 use {
-    crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
+    crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
@@ -22,14 +22,6 @@ pub const KNOWN_FUNCTIONS: [&str; 11] = [
     "cron_execute",
     // TODO: add taxman and IBC entry points
 ];
-
-macro_rules! get_contract {
-    ($index:expr) => {
-        CONTRACTS.get().and_then(|contracts| contracts.get($index)).unwrap_or_else(|| {
-            panic!("can't find contract with index {}", $index); // TODO: throw an VmError instead of panicking?
-        })
-    }
-}
 
 #[derive(Default, Clone)]
 pub struct RustVm;
@@ -76,7 +68,7 @@ impl Instance for RustInstance {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let contract = get_contract!(self.wrapper.index);
+        let contract = get_contract_impl(self.wrapper)?;
         match name {
             "receive" => {
                 let res =
@@ -111,7 +103,7 @@ impl Instance for RustInstance {
     where
         P: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.wrapper.index);
+        let contract = get_contract_impl(self.wrapper)?;
         match name {
             "instantiate" => {
                 let res = contract.instantiate(
@@ -218,7 +210,7 @@ impl Instance for RustInstance {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.wrapper.index);
+        let contract = get_contract_impl(self.wrapper)?;
         match name {
             "reply" => {
                 let submsg_res = from_json_slice(param2)?;

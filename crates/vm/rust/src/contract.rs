@@ -14,13 +14,22 @@ use {
     std::sync::OnceLock,
 };
 
-pub(crate) static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
+static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
+
+pub fn get_contract_impl(
+    wrapper: ContractWrapper,
+) -> VmResult<&'static (dyn Contract + Send + Sync)> {
+    CONTRACTS
+        .get_or_init(Default::default)
+        .get(wrapper.index)
+        .ok_or_else(|| VmError::contract_not_found(wrapper.index))
+}
 
 // ---------------------------------- wrapper ----------------------------------
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ContractWrapper {
-    pub(crate) index: usize,
+    index: usize,
 }
 
 impl<T> From<T> for ContractWrapper
