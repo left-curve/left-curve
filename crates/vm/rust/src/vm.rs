@@ -93,7 +93,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
-                return Err(VmError::IncorrectNumberOfInputs { name, num: 0 });
+                return Err(VmError::incorrect_number_of_inputs(name, 0));
             },
             _ => {
                 return Err(VmError::unknown_function(name));
@@ -198,7 +198,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
-                return Err(VmError::IncorrectNumberOfInputs { name, num: 1 });
+                return Err(VmError::incorrect_number_of_inputs(name, 1));
             },
             _ => {
                 return Err(VmError::unknown_function(name));
@@ -233,7 +233,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
-                return Err(VmError::IncorrectNumberOfInputs { name, num: 2 });
+                return Err(VmError::incorrect_number_of_inputs(name, 2));
             },
             _ => {
                 return Err(VmError::unknown_function(name));

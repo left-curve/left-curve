@@ -16,6 +16,10 @@ pub enum VmError {
 }
 
 impl VmError {
+    pub const fn incorrect_number_of_inputs(name: &'static str, num: usize) -> Self {
+        Self::IncorrectNumberOfInputs { name, num }
+    }
+
     pub const fn function_not_found(name: &'static str) -> Self {
         Self::FunctionNotFound { name }
     }
