@@ -41,7 +41,6 @@ pub fn handle_submessages<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    //
 {
     let mut events = vec![];
 

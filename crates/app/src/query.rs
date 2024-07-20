@@ -31,7 +31,6 @@ pub fn query_balance<VM>(
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
-    //
 {
     _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balance {
         address,
