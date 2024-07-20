@@ -166,7 +166,7 @@ impl Coins {
             // If the denom doesn't exist, and we are increasing by a non-zero
             // amount: just create a new record, and we are done.
             if !by.is_zero() {
-                self.0.insert(denom.into(), by);
+                self.0.insert(denom, by);
             }
 
             return Ok(());
@@ -189,9 +189,7 @@ impl Coins {
         let by = by.into();
 
         let Some(amount) = self.0.get_mut(&denom) else {
-            return Err(StdError::DenomNotFound {
-                denom: denom.into(),
-            });
+            return Err(StdError::DenomNotFound { denom });
         };
 
         *amount = amount.checked_sub(by)?;
