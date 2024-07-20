@@ -2,7 +2,6 @@ use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::{anyhow, ensure},
     grug_account::PublicKey,
-    grug_app::AppError,
     grug_types::{
         hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Hash, Message,
         Permission, Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
@@ -51,7 +50,6 @@ impl TestBuilder<RustVm> {
 impl<VM> TestBuilder<VM>
 where
     VM: TestVm + Clone,
-    AppError: From<VM::Error>,
 {
     pub fn new_with_vm(vm: VM) -> Self {
         let account_code = VM::default_account_code();

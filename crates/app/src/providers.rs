@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, GasTracker, Vm},
+    crate::{process_query, GasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, trim, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
         Record, StdError, StdResult, Storage,
@@ -142,7 +142,7 @@ impl<VM> QuerierProvider<VM> {
 impl<VM> Querier for QuerierProvider<VM>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
         process_query(

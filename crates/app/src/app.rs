@@ -51,7 +51,7 @@ impl<DB, VM> App<DB, VM>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    AppError: From<DB::Error>,
 {
     pub fn do_init_chain_raw(
         &self,
@@ -372,7 +372,6 @@ fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx) -> AppResult<
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let mut events = vec![];
 
@@ -441,7 +440,6 @@ pub fn process_msg<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match msg {
         Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
@@ -514,7 +512,6 @@ pub fn process_query<VM>(
 ) -> AppResult<QueryResponse>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match req {
         QueryRequest::Info {} => query_info(&storage).map(QueryResponse::Info),

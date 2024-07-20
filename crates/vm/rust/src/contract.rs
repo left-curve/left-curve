@@ -1,7 +1,7 @@
 use {
     crate::{
         AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
-        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmResult,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, RustVmResult,
     },
     elsa::sync::FrozenVec,
     grug_app::VmError,
@@ -533,7 +533,7 @@ where
     }
 
     #[rustfmt::skip]
-    fn verify_entrypoiny(&self, name: &str) -> VmResult<()> {
+    fn verify_entrypoiny(&self, name: &str) -> RustVmResult<()> {
         match name {
             "instantiate" => Ok(()),
             "execute"      => verify_entrypoint!(execute, self),

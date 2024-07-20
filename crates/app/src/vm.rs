@@ -1,7 +1,7 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
-        StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        handle_submessages, AppResult, GasTracker, Instance, QuerierProvider, StorageProvider, Vm,
+        CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
         from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash,
@@ -24,7 +24,7 @@ pub fn call_in_0_out_1<VM, R>(
 where
     R: DeserializeOwned,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     // Create the VM instance
     let instance = create_vm_instance(
@@ -60,7 +60,7 @@ where
     P: Serialize,
     R: DeserializeOwned,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     // Create the VM instance
     let instance = create_vm_instance(
@@ -101,7 +101,7 @@ where
     P2: Serialize,
     R: DeserializeOwned,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     // Create the VM instance
     let instance = create_vm_instance(
@@ -139,7 +139,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     let response = call_in_0_out_1::<_, GenericResult<Response>>(
         vm.clone(),
@@ -171,7 +171,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
 where
     P: Serialize,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
         vm.clone(),
@@ -206,7 +206,7 @@ where
     P1: Serialize,
     P2: Serialize,
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
         vm.clone(),
@@ -235,7 +235,7 @@ fn create_vm_instance<VM>(
 ) -> AppResult<VM::Instance>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     // Load the program code from storage and deserialize
     let code = CODES.load(&storage, code_hash)?;
@@ -264,7 +264,7 @@ pub(crate) fn handle_response<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     // Create an event for this call
     let event = Event::new(name)

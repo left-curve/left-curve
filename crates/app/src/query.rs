@@ -31,7 +31,7 @@ pub fn query_balance<VM>(
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balance {
         address,
@@ -51,7 +51,6 @@ pub fn query_balances<VM>(
 ) -> AppResult<Coins>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     _query_bank(vm, storage, block, gas_tracker, &BankQuery::Balances {
         address,
@@ -70,7 +69,6 @@ pub fn query_supply<VM>(
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supply {
         denom,
@@ -88,7 +86,6 @@ pub fn query_supplies<VM>(
 ) -> AppResult<Coins>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     _query_bank(vm, storage, block, gas_tracker, &BankQuery::Supplies {
         start_after,
@@ -106,7 +103,6 @@ fn _query_bank<VM>(
 ) -> AppResult<BankQueryResponse>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
@@ -208,7 +204,6 @@ pub fn query_wasm_smart<VM>(
 ) -> AppResult<WasmSmartResponse>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;

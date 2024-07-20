@@ -49,8 +49,14 @@ pub type AppResult<T> = core::result::Result<T, AppError>;
 
 #[derive(Debug, Error)]
 pub enum VmError {
+    #[error(transparent)]
+    Std(#[from] StdError),
+
     #[error("missing export function: {0}")]
     MissingExportFunction(String),
+
     #[error("{0}")]
     GenericError(String),
 }
+
+pub type VmResult<T> = core::result::Result<T, VmError>;

@@ -4,9 +4,9 @@ use {
         db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory, Cache, Environment, Gatekeeper, VmResult, WasmVmError,
+        write_to_memory, Cache, Environment, Gatekeeper, WasmVmError, WasmVmResult,
     },
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm, VmResult},
     grug_types::{to_borsh_vec, Context, Hash},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
@@ -35,7 +35,6 @@ impl WasmVm {
 }
 
 impl Vm for WasmVm {
-    type Error = WasmVmError;
     type Instance = WasmInstance;
 
     fn build_instance(
@@ -49,35 +48,37 @@ impl Vm for WasmVm {
     ) -> VmResult<WasmInstance> {
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
-        let (module, engine) = self.cache.get_or_build_with(code_hash, || {
-            let mut compiler = Singlepass::new();
+        let (module, engine) = self
+            .cache
+            .get_or_build_with(code_hash, || -> WasmVmResult<_> {
+                let mut compiler = Singlepass::new();
 
-            // Set up the gas metering middleware.
-            //
-            // Set `initial_points` as zero for now, because this engine will be
-            // cached and to be used by other transactions, so it doesn't make
-            // sense to put the current tx's gas limit here.
-            //
-            // We will properly set this tx's gas limit later, once we have
-            // created the `Instance`.
-            //
-            // Also, compiling the module doesn't cost gas, so setting the limit
-            // to zero won't raise out of gas errors.
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
-            compiler.push_middleware(Arc::new(metering));
+                // Set up the gas metering middleware.
+                //
+                // Set `initial_points` as zero for now, because this engine will be
+                // cached and to be used by other transactions, so it doesn't make
+                // sense to put the current tx's gas limit here.
+                //
+                // We will properly set this tx's gas limit later, once we have
+                // created the `Instance`.
+                //
+                // Also, compiling the module doesn't cost gas, so setting the limit
+                // to zero won't raise out of gas errors.
+                let metering = Metering::new(0, |_| GAS_PER_OPERATION);
+                compiler.push_middleware(Arc::new(metering));
 
-            // Set up the `Gatekeeper`. This rejects certain Wasm operators that
-            // may cause non-determinism.
-            compiler.push_middleware(Arc::new(Gatekeeper::default()));
+                // Set up the `Gatekeeper`. This rejects certain Wasm operators that
+                // may cause non-determinism.
+                compiler.push_middleware(Arc::new(Gatekeeper::default()));
 
-            // Ensure determinism related to floating point numbers.
-            compiler.canonicalize_nans(true);
+                // Ensure determinism related to floating point numbers.
+                compiler.canonicalize_nans(true);
 
-            let engine = Engine::from(compiler);
-            let module = Module::new(&engine, code)?;
+                let engine = Engine::from(compiler);
+                let module = Module::new(&engine, code)?;
 
-            Ok((module, engine))
-        })?;
+                Ok((module, engine))
+            })?;
 
         // Compute the amount of gas left for this call. This will be used as
         // the initial points in the Wasmer gas meter.
@@ -136,7 +137,8 @@ impl Vm for WasmVm {
         };
 
         // create wasmer instance
-        let instance = wasmer::Instance::new(&mut store, &module, &import_obj)?;
+        let instance =
+            wasmer::Instance::new(&mut store, &module, &import_obj).map_err(WasmVmError::from)?;
         let instance = Box::new(instance);
 
         // Set gas limit on the metering
@@ -164,8 +166,6 @@ pub struct WasmInstance {
 }
 
 impl Instance for WasmInstance {
-    type Error = WasmVmError;
-
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();

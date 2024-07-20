@@ -2,12 +2,13 @@
 // https://stackoverflow.com/questions/59247458/is-there-a-stable-way-to-tell-rustfmt-to-skip-an-entire-file
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
-use grug_types::{
-    Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
-    Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+use {
+    grug_types::{
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
+        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx},
+    crate::RustVmResult
 };
 
-use crate::VmResult;
 
 pub trait Contract {
     fn instantiate(
@@ -108,7 +109,7 @@ pub trait Contract {
         querier: &dyn Querier,
     ) -> GenericResult<Response>;
 
-    fn verify_entrypoiny(&self, name:&str) -> VmResult<()>;
+    fn verify_entrypoiny(&self, name:&str) -> RustVmResult<()>;
 
 }
 

@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, GasTracker, QuerierProvider, StorageProvider},
+    crate::{GasTracker, QuerierProvider, StorageProvider, VmError},
     grug_types::{Batch, Context, Hash, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -87,8 +87,8 @@ pub trait Db {
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
-    type Error: Into<AppError>;
-    type Instance: Instance<Error = Self::Error>;
+    // type Error: Into<AppError>;
+    type Instance: Instance;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
@@ -103,24 +103,19 @@ pub trait Vm: Sized {
         storage_readonly: bool,
         querier: QuerierProvider<Self>,
         gas_tracker: GasTracker,
-    ) -> Result<Self::Instance, Self::Error>;
+    ) -> Result<Self::Instance, VmError>;
 }
 
 pub trait Instance {
-    type Error: Into<AppError>;
+    // type Error: Into<AppError>;
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
+    fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, VmError>;
 
     /// Call a function that takes exactly 1 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_1_out_1<P>(
-        self,
-        name: &str,
-        ctx: &Context,
-        param: &P,
-    ) -> Result<Vec<u8>, Self::Error>
+    fn call_in_1_out_1<P>(self, name: &str, ctx: &Context, param: &P) -> Result<Vec<u8>, VmError>
     where
         P: AsRef<[u8]>;
 
@@ -132,7 +127,7 @@ pub trait Instance {
         ctx: &Context,
         param1: &P1,
         param2: &P2,
-    ) -> Result<Vec<u8>, Self::Error>
+    ) -> Result<Vec<u8>, VmError>
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;

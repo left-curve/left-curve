@@ -1,7 +1,7 @@
 use {
     crate::{TestAccount, TestResult},
     anyhow::ensure,
-    grug_app::{App, AppError, AppResult, Vm},
+    grug_app::{App, AppResult, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
@@ -34,7 +34,6 @@ where
 impl<VM> TestSuite<VM>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     /// Only exposed to the crate. Use `TestBuilder` instead.
     pub(crate) fn create(

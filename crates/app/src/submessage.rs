@@ -1,5 +1,5 @@
 use {
-    crate::{do_reply, process_msg, AppError, AppResult, Buffer, GasTracker, Shared, Vm},
+    crate::{do_reply, process_msg, AppResult, Buffer, GasTracker, Shared, Vm},
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
@@ -41,7 +41,7 @@ pub fn handle_submessages<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
+    //
 {
     let mut events = vec![];
 

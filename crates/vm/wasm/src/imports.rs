@@ -1,6 +1,7 @@
 use {
     crate::{
-        read_from_memory, write_to_memory, Environment, Iterator, VmResult, WasmVmError, GAS_COSTS,
+        read_from_memory, write_to_memory, Environment, Iterator, WasmVmError, WasmVmResult,
+        GAS_COSTS,
     },
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
@@ -9,7 +10,7 @@ use {
     wasmer::FunctionEnvMut,
 };
 
-pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u32> {
+pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -36,7 +37,7 @@ pub fn db_scan(
     min_ptr: u32,
     max_ptr: u32,
     order: i32,
-) -> VmResult<i32> {
+) -> WasmVmResult<i32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     // Parse iteration parameters provided by the module and create iterator.
@@ -58,7 +59,7 @@ pub fn db_scan(
     Ok(env.add_iterator(iterator))
 }
 
-pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
+pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     match env.advance_iterator(iterator_id)? {
@@ -79,7 +80,7 @@ pub fn db_next(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResul
     }
 }
 
-pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
+pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     match env.advance_iterator(iterator_id)? {
@@ -100,7 +101,7 @@ pub fn db_next_key(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmR
     }
 }
 
-pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> VmResult<u32> {
+pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     match env.advance_iterator(iterator_id)? {
@@ -121,7 +122,11 @@ pub fn db_next_value(mut fe: FunctionEnvMut<Environment>, iterator_id: i32) -> V
     }
 }
 
-pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u32) -> VmResult<()> {
+pub fn db_write(
+    mut fe: FunctionEnvMut<Environment>,
+    key_ptr: u32,
+    value_ptr: u32,
+) -> WasmVmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
     // Make sure the storage isn't set to be read only.
@@ -167,7 +172,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     )
 }
 
-pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
+pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> WasmVmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
@@ -185,7 +190,7 @@ pub fn db_remove_range(
     mut fe: FunctionEnvMut<Environment>,
     min_ptr: u32,
     max_ptr: u32,
-) -> VmResult<()> {
+) -> WasmVmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
@@ -208,7 +213,7 @@ pub fn db_remove_range(
     env.consume_external_gas(&mut store, GAS_COSTS.db_remove, "storage_remove_range")
 }
 
-pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -> VmResult<()> {
+pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -> WasmVmResult<()> {
     let (env, store) = fe.data_and_store_mut();
 
     let addr_bytes = read_from_memory(env, &store, addr_ptr)?;
@@ -224,7 +229,7 @@ pub fn debug(mut fe: FunctionEnvMut<Environment>, addr_ptr: u32, msg_ptr: u32) -
     Ok(())
 }
 
-pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResult<u32> {
+pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
@@ -241,7 +246,7 @@ pub fn secp256k1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> WasmVmResult<i32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -261,7 +266,7 @@ pub fn secp256r1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> WasmVmResult<i32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -282,7 +287,7 @@ pub fn secp256k1_pubkey_recover(
     sig_ptr: u32,
     recovery_id: u8,
     compressed: u8,
-) -> VmResult<u32> {
+) -> WasmVmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -311,7 +316,7 @@ pub fn ed25519_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> WasmVmResult<i32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -331,7 +336,7 @@ pub fn ed25519_batch_verify(
     msgs_hash_ptr: u32,
     sigs_ptr: u32,
     pks_ptr: u32,
-) -> VmResult<i32> {
+) -> WasmVmResult<i32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msgs_hash = read_from_memory(env, &store, msgs_hash_ptr)?;
@@ -356,7 +361,7 @@ pub fn ed25519_batch_verify(
 
 macro_rules! impl_hash_method {
     ($hasher:ident, $name:literal) => {
-        pub fn $hasher(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
+        pub fn $hasher(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> WasmVmResult<u32> {
             let (env, mut store) = fe.data_and_store_mut();
 
             let data = read_from_memory(env, &store, data_ptr)?;

@@ -1,6 +1,6 @@
 use {
-    crate::{ContractWrapper, RustVmError, VmResult, CONTRACTS},
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    crate::{ContractWrapper, RustVmError, CONTRACTS},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm, VmResult},
     grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
@@ -22,7 +22,6 @@ impl RustVm {
 }
 
 impl Vm for RustVm {
-    type Error = RustVmError;
     type Instance = RustInstance;
 
     fn build_instance(
@@ -54,8 +53,6 @@ pub struct RustInstance {
 }
 
 impl Instance for RustInstance {
-    type Error = RustVmError;
-
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract!(self.wrapper.index);
         contract.verify_entrypoiny(name)?;
@@ -73,7 +70,8 @@ impl Instance for RustInstance {
                 return Err(RustVmError::IncorrectNumberOfInputs {
                     name: name.into(),
                     num: 0,
-                })
+                }
+                .into())
             },
         };
         Ok(out)
@@ -147,7 +145,8 @@ impl Instance for RustInstance {
                 return Err(RustVmError::IncorrectNumberOfInputs {
                     name: name.into(),
                     num: 1,
-                })
+                }
+                .into())
             },
         };
         Ok(out)
@@ -184,7 +183,8 @@ impl Instance for RustInstance {
                 return Err(RustVmError::IncorrectNumberOfInputs {
                     name: name.into(),
                     num: 2,
-                })
+                }
+                .into())
             },
         };
         Ok(out)

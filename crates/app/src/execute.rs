@@ -131,7 +131,6 @@ pub fn do_transfer<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_transfer(
         vm,
@@ -179,7 +178,6 @@ fn _do_transfer<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
@@ -222,7 +220,6 @@ fn _do_receive<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &msg.to)?;
@@ -262,7 +259,6 @@ pub fn do_instantiate<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_instantiate(
         vm,
@@ -305,7 +301,6 @@ pub fn _do_instantiate<VM>(
 ) -> AppResult<(Vec<Event>, Addr)>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
 
@@ -378,7 +373,6 @@ pub fn do_execute<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_execute(
         vm,
@@ -417,7 +411,6 @@ fn _do_execute<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
@@ -474,7 +467,6 @@ pub fn do_migrate<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_migrate(
         vm,
@@ -513,7 +505,6 @@ fn _do_migrate<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let mut account = ACCOUNTS.load(&storage, &contract)?;
@@ -567,7 +558,6 @@ pub fn do_reply<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_reply(
         vm,
@@ -604,7 +594,6 @@ fn _do_reply<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
@@ -641,7 +630,6 @@ pub fn do_before_tx<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
         Ok(events) => {
@@ -675,7 +663,6 @@ pub fn do_after_tx<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
         Ok(events) => {
@@ -716,7 +703,6 @@ fn _do_before_or_after_tx<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &tx.sender)?;
@@ -754,7 +740,6 @@ pub fn do_cron_execute<VM>(
 ) -> Option<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     match _do_cron_execute(vm, storage, gas_tracker, block, contract.clone()) {
         Ok(events) => {
@@ -785,7 +770,6 @@ fn _do_cron_execute<VM>(
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
-    AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;

@@ -1,10 +1,14 @@
 use {
-    crate::{Environment, Region, VmResult, WasmVmError},
+    crate::{Environment, Region, WasmVmError, WasmVmResult},
     data_encoding::BASE64,
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
 
-pub fn read_from_memory<S>(env: &mut Environment, store: &S, region_ptr: u32) -> VmResult<Vec<u8>>
+pub fn read_from_memory<S>(
+    env: &mut Environment,
+    store: &S,
+    region_ptr: u32,
+) -> WasmVmResult<Vec<u8>>
 where
     S: AsStoreRef,
 {
@@ -20,7 +24,11 @@ where
     Ok(buf)
 }
 
-pub fn read_then_wipe<S>(env: &mut Environment, store: &mut S, region_ptr: u32) -> VmResult<Vec<u8>>
+pub fn read_then_wipe<S>(
+    env: &mut Environment,
+    store: &mut S,
+    region_ptr: u32,
+) -> WasmVmResult<Vec<u8>>
 where
     S: AsStoreMut,
 {
@@ -30,7 +38,7 @@ where
     Ok(data)
 }
 
-pub fn write_to_memory<S>(env: &mut Environment, store: &mut S, data: &[u8]) -> VmResult<u32>
+pub fn write_to_memory<S>(env: &mut Environment, store: &mut S, data: &[u8]) -> WasmVmResult<u32>
 where
     S: AsStoreMut,
 {
@@ -61,13 +69,13 @@ where
     Ok(region_ptr)
 }
 
-fn read_region(memory: &MemoryView, offset: u32) -> VmResult<Region> {
+fn read_region(memory: &MemoryView, offset: u32) -> WasmVmResult<Region> {
     let wptr = <WasmPtr<Region>>::new(offset);
     wptr.deref(memory).read().map_err(Into::into)
     // TODO: do some sanity checks on the Region?
 }
 
-fn write_region(memory: &MemoryView, offset: u32, region: Region) -> VmResult<()> {
+fn write_region(memory: &MemoryView, offset: u32, region: Region) -> WasmVmResult<()> {
     let wptr = <WasmPtr<Region>>::new(offset);
     wptr.deref(memory).write(region).map_err(Into::into)
 }

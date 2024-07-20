@@ -1,5 +1,5 @@
 use {
-    crate::{Iterator, VmResult, WasmVm, WasmVmError},
+    crate::{Iterator, WasmVm, WasmVmError, WasmVmResult},
     grug_app::{GasTracker, QuerierProvider, StorageProvider, VmError},
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
@@ -85,7 +85,7 @@ impl Environment {
     ///
     /// Error if the iterator is not found.
     /// `None` if the iterator is found but has reached its end.
-    pub fn advance_iterator(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
+    pub fn advance_iterator(&mut self, iterator_id: i32) -> WasmVmResult<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
             .ok_or(WasmVmError::IteratorNotFound { iterator_id })
@@ -103,7 +103,7 @@ impl Environment {
         self.iterators.clear();
     }
 
-    pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
+    pub fn set_wasmer_memory(&mut self, instance: &Instance) -> WasmVmResult<()> {
         if self.wasmer_memory.is_some() {
             return Err(WasmVmError::WasmerMemoryAlreadySet);
         }
@@ -114,7 +114,7 @@ impl Environment {
         Ok(())
     }
 
-    pub fn set_wasmer_instance(&mut self, instance: &Instance) -> VmResult<()> {
+    pub fn set_wasmer_instance(&mut self, instance: &Instance) -> WasmVmResult<()> {
         if self.wasmer_instance.is_some() {
             return Err(WasmVmError::WasmerInstanceAlreadySet);
         }
@@ -124,7 +124,7 @@ impl Environment {
         Ok(())
     }
 
-    pub fn get_wasmer_memory<'a, S>(&self, store: &'a S) -> VmResult<MemoryView<'a>>
+    pub fn get_wasmer_memory<'a, S>(&self, store: &'a S) -> WasmVmResult<MemoryView<'a>>
     where
         S: AsStoreRef,
     {
@@ -134,7 +134,7 @@ impl Environment {
             .map(|mem| mem.view(store))
     }
 
-    pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
+    pub fn get_wasmer_instance(&self) -> WasmVmResult<&Instance> {
         let instance_ptr = self
             .wasmer_instance
             .ok_or(WasmVmError::WasmerInstanceNotSet)?;
@@ -146,7 +146,7 @@ impl Environment {
         store: &mut S,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Value>
+    ) -> WasmVmResult<Value>
     where
         S: AsStoreMut,
     {
@@ -161,7 +161,12 @@ impl Environment {
         Ok(ret[0].clone())
     }
 
-    pub fn call_function0<S>(&mut self, store: &mut S, name: &str, args: &[Value]) -> VmResult<()>
+    pub fn call_function0<S>(
+        &mut self,
+        store: &mut S,
+        name: &str,
+        args: &[Value],
+    ) -> WasmVmResult<()>
     where
         S: AsStoreMut,
     {
@@ -181,7 +186,7 @@ impl Environment {
         store: &mut S,
         name: &str,
         args: &[Value],
-    ) -> VmResult<Box<[Value]>>
+    ) -> WasmVmResult<Box<[Value]>>
     where
         S: AsStoreMut,
     {
@@ -242,7 +247,7 @@ impl Environment {
         store: &mut S,
         external: u64,
         comment: &str,
-    ) -> VmResult<()>
+    ) -> WasmVmResult<()>
     where
         S: AsStoreMut,
     {

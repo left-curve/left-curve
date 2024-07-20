@@ -1,5 +1,5 @@
 use {
-    grug_app::{AppError, OutOfGasError, VmError},
+    grug_app::{OutOfGasError, VmError},
     grug_types::StdError,
     std::string::FromUtf8Error,
     thiserror::Error,
@@ -99,13 +99,13 @@ impl From<WasmVmError> for RuntimeError {
     }
 }
 
-impl From<WasmVmError> for AppError {
+impl From<WasmVmError> for VmError {
     fn from(err: WasmVmError) -> Self {
         match err {
-            WasmVmError::Vm(vm_error) => AppError::VM(vm_error),
-            _ => AppError::VM(VmError::GenericError(err.to_string())),
+            WasmVmError::Vm(vm_error) => vm_error,
+            _ => VmError::GenericError(err.to_string()),
         }
     }
 }
 
-pub type VmResult<T> = core::result::Result<T, WasmVmError>;
+pub type WasmVmResult<T> = core::result::Result<T, WasmVmError>;

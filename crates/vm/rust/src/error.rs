@@ -1,8 +1,4 @@
-use {
-    grug_app::{AppError, VmError},
-    grug_types::StdError,
-    thiserror::Error,
-};
+use {grug_app::VmError, grug_types::StdError, thiserror::Error};
 
 #[derive(Debug, Error)]
 pub enum RustVmError {
@@ -16,13 +12,13 @@ pub enum RustVmError {
     VmError(#[from] VmError),
 }
 
-impl From<RustVmError> for AppError {
+impl From<RustVmError> for VmError {
     fn from(err: RustVmError) -> Self {
         match err {
-            RustVmError::VmError(vm_error) => AppError::VM(vm_error),
-            _ => AppError::VM(VmError::GenericError(err.to_string())),
+            RustVmError::VmError(vm_error) => vm_error,
+            _ => VmError::GenericError(err.to_string()),
         }
     }
 }
 
-pub type VmResult<T> = core::result::Result<T, RustVmError>;
+pub type RustVmResult<T> = core::result::Result<T, RustVmError>;
