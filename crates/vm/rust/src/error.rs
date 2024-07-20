@@ -7,6 +7,15 @@ pub enum VmError {
 
     #[error("attempting to call `{name}` with {num} inputs, but this function takes a different number of inputs")]
     IncorrectNumberOfInputs { name: &'static str, num: usize },
+
+    #[error("contract does not implement function `{name}`")]
+    FunctionNotFound { name: &'static str },
+}
+
+impl VmError {
+    pub const fn function_not_found(name: &'static str) -> Self {
+        Self::FunctionNotFound { name }
+    }
 }
 
 impl From<VmError> for AppError {
