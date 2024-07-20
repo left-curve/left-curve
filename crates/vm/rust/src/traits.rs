@@ -17,7 +17,7 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
     fn execute(
@@ -26,7 +26,7 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
     fn migrate(
@@ -35,7 +35,7 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
     fn receive(
@@ -52,7 +52,7 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
         submsg_res: SubMsgResult,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -62,7 +62,7 @@ pub trait Contract {
         storage: &dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Json>>;
 
     fn before_tx(

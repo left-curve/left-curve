@@ -95,42 +95,43 @@ impl Instance for RustInstance {
         let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "instantiate" => {
-                let msg = from_json_slice(param)?;
                 let res = contract.instantiate(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
+                    param.as_ref(),
                 )?;
                 to_json_vec(&res)?
             },
             "execute" => {
-                let msg = from_json_slice(param)?;
                 let res = contract.execute(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
+                    param.as_ref(),
                 )?;
                 to_json_vec(&res)?
             },
             "migrate" => {
-                let msg = from_json_slice(param)?;
                 let res = contract.migrate(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
+                    param.as_ref(),
                 )?;
                 to_json_vec(&res)?
             },
             "query" => {
-                let msg = from_json_slice(param)?;
-                let res =
-                    contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg)?;
+                let res = contract.query(
+                    ctx.clone(),
+                    &self.storage,
+                    &MockApi,
+                    &self.querier,
+                    param.as_ref(),
+                )?;
                 to_json_vec(&res)?
             },
             "before_tx" => {
@@ -201,14 +202,13 @@ impl Instance for RustInstance {
         let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "reply" => {
-                let msg = from_json_slice(param1)?;
                 let submsg_res = from_json_slice(param2)?;
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
+                    param1.as_ref(),
                     submsg_res,
                 )?;
                 to_json_vec(&res)?

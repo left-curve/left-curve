@@ -5,7 +5,7 @@ use {
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
+        from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
         AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
         ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage,
         SubMsgResult, SudoCtx, Tx,
@@ -388,10 +388,10 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_value(msg)?;
+        let msg = from_json_slice(msg)?;
         let res = (self.instantiate_fn)(mutable_ctx, msg);
 
         Ok(res.into())
@@ -403,10 +403,10 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_value(msg)?;
+        let msg = from_json_slice(msg)?;
         // TODO: gracefully handle the `Option` instead of unwrapping??
         let res = self.execute_fn.as_ref().unwrap()(mutable_ctx, msg);
 
@@ -419,10 +419,10 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_value(msg)?;
+        let msg = from_json_slice(msg)?;
         let res = self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg);
 
         Ok(res.into())
@@ -447,11 +447,11 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
         submsg_res: SubMsgResult,
     ) -> VmResult<GenericResult<Response>> {
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = from_json_value(msg)?;
+        let msg = from_json_slice(msg)?;
         let res = self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res);
 
         Ok(res.into())
@@ -463,10 +463,10 @@ where
         storage: &dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
     ) -> VmResult<GenericResult<Json>> {
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_value(msg)?;
+        let msg = from_json_slice(msg)?;
         let res = self.query_fn.as_ref().unwrap()(immutable_ctx, msg);
 
         Ok(res.into())
