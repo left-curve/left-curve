@@ -111,13 +111,13 @@ pub trait Instance {
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
-    fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
+    fn call_in_0_out_1(self, name: &'static str, ctx: &Context) -> Result<Vec<u8>, Self::Error>;
 
     /// Call a function that takes exactly 1 input parameter (other than the
     /// context) and returns exactly 1 output.
     fn call_in_1_out_1<P>(
         self,
-        name: &str,
+        name: &'static str,
         ctx: &Context,
         param: &P,
     ) -> Result<Vec<u8>, Self::Error>
@@ -128,7 +128,7 @@ pub trait Instance {
     /// context) and returns exactly 1 output.
     fn call_in_2_out_1<P1, P2>(
         self,
-        name: &str,
+        name: &'static str,
         ctx: &Context,
         param1: &P1,
         param2: &P2,

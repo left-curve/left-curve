@@ -11,7 +11,7 @@ use {
 pub struct OutOfGasError {
     limit: u64,
     used: u64,
-    comment: String,
+    comment: &'static str,
 }
 
 struct GasTrackerInner {
@@ -85,7 +85,7 @@ impl GasTracker {
     /// Consume the given amount of gas. Error if the limit is exceeded.
     ///
     /// Panics if lock is poisoned.
-    pub fn consume(&self, consumed: u64, comment: &str) -> Result<(), OutOfGasError> {
+    pub fn consume(&self, consumed: u64, comment: &'static str) -> Result<(), OutOfGasError> {
         self.inner.write_with(|mut inner| {
             let used = inner.used + consumed;
 
@@ -98,7 +98,7 @@ impl GasTracker {
                     return Err(OutOfGasError {
                         limit,
                         used,
-                        comment: comment.to_string(),
+                        comment,
                     });
                 }
             }

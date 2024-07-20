@@ -142,7 +142,7 @@ impl Environment {
     pub fn call_function1<S>(
         &mut self,
         store: &mut S,
-        name: &str,
+        name: &'static str,
         args: &[Value],
     ) -> VmResult<Value>
     where
@@ -159,7 +159,12 @@ impl Environment {
         Ok(ret[0].clone())
     }
 
-    pub fn call_function0<S>(&mut self, store: &mut S, name: &str, args: &[Value]) -> VmResult<()>
+    pub fn call_function0<S>(
+        &mut self,
+        store: &mut S,
+        name: &'static str,
+        args: &[Value],
+    ) -> VmResult<()>
     where
         S: AsStoreMut,
     {
@@ -177,7 +182,7 @@ impl Environment {
     fn call_function<S>(
         &mut self,
         store: &mut S,
-        name: &str,
+        name: &'static str,
         args: &[Value],
     ) -> VmResult<Box<[Value]>>
     where
@@ -232,7 +237,7 @@ impl Environment {
         &mut self,
         store: &mut S,
         external: u64,
-        comment: &str,
+        comment: &'static str,
     ) -> VmResult<()>
     where
         S: AsStoreMut,

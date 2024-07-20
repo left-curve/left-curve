@@ -56,7 +56,7 @@ pub struct RustInstance {
 impl Instance for RustInstance {
     type Error = VmError;
 
-    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+    fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "receive" => {
@@ -78,7 +78,12 @@ impl Instance for RustInstance {
         Ok(out)
     }
 
-    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    fn call_in_1_out_1<P>(
+        mut self,
+        name: &'static str,
+        ctx: &Context,
+        param: &P,
+    ) -> VmResult<Vec<u8>>
     where
         P: AsRef<[u8]>,
     {
@@ -153,7 +158,7 @@ impl Instance for RustInstance {
 
     fn call_in_2_out_1<P1, P2>(
         mut self,
-        name: &str,
+        name: &'static str,
         ctx: &Context,
         param1: &P1,
         param2: &P2,
