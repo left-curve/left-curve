@@ -74,10 +74,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 0,
-                })
+                return Err(VmError::IncorrectNumberOfInputs { name, num: 0 });
             },
         };
         Ok(out)
@@ -179,10 +176,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 1,
-                })
+                return Err(VmError::IncorrectNumberOfInputs { name, num: 1 });
             },
         };
         Ok(out)
@@ -214,10 +208,7 @@ impl Instance for RustInstance {
                 to_json_vec(&res)?
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 2,
-                })
+                return Err(VmError::IncorrectNumberOfInputs { name, num: 2 });
             },
         };
         Ok(out)
