@@ -19,7 +19,7 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
-        .add_account("receiver", Coins::new_empty())?
+        .add_account("receiver", Coins::new())?
         .build()?;
 
     // Check that sender has been given 100 ugrug
@@ -84,7 +84,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 fn gas_limit_too_low() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
-        .add_account("receiver", Coins::new_empty())?
+        .add_account("receiver", Coins::new())?
         .build()?;
 
     // Make a bank transfer with a small gas limit; should fail.
@@ -126,14 +126,14 @@ fn infinite_loop() -> anyhow::Result<()> {
         read_wasm_file("grug_tester_infinite_loop.wasm")?,
         "tester/infinite_loop",
         &Empty {},
-        Coins::new_empty(),
+        Coins::new(),
     )?;
 
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
-            funds: Coins::new_empty(),
+            funds: Coins::new(),
         })?
         .should_fail_with_error(VmError::GasDepletion)?;
 
@@ -156,7 +156,7 @@ fn immutable_state() -> anyhow::Result<()> {
         read_wasm_file("grug_tester_immutable_state.wasm")?,
         "tester/immutable_state",
         &Empty {},
-        Coins::new_empty(),
+        Coins::new(),
     )?;
 
     // Query the tester contract.

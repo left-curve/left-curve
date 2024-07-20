@@ -92,7 +92,7 @@ impl Coins {
     pub const EMPTY_COINS_STR: &'static str = "[]";
 
     /// Create a new `Coins` without any coin.
-    pub fn new_empty() -> Self {
+    pub fn new() -> Self {
         Self(BTreeMap::new())
     }
 
@@ -251,7 +251,7 @@ impl FromStr for Coins {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // handle special case: empty string
         if s == Self::EMPTY_COINS_STR {
-            return Ok(Coins::new_empty());
+            return Ok(Coins::new());
         }
 
         let mut map = BTreeMap::new();

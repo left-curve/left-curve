@@ -9,7 +9,7 @@ const DENOM: &str = "ugrug";
 fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("sender", Coins::new_one(DENOM, NonZero::new(100_u128)))?
-        .add_account("receiver", Coins::new_empty())?
+        .add_account("receiver", Coins::new())?
         .build()?;
 
     // Check that sender has been given 100 ugrug

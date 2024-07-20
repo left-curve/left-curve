@@ -164,7 +164,7 @@ where
                     initial_balances: self.balances,
                 },
                 DEFAULT_BANK_SALT,
-                Coins::new_empty(),
+                Coins::new(),
                 None,
             )?,
         ];
@@ -177,7 +177,7 @@ where
                     public_key: PublicKey::Secp256k1(account.pk.clone()),
                 },
                 name.to_string(),
-                Coins::new_empty(),
+                Coins::new(),
                 Some(account.address.clone()),
             )?);
         }

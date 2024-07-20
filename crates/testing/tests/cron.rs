@@ -53,7 +53,7 @@ fn cronjob_works() -> anyhow::Result<()> {
             ("uosmo", 100),
             ("umars", 100),
         ])?
-        .add_account("jake", Coins::new_empty())?
+        .add_account("jake", Coins::new())?
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
         .set_owner("larry")?
@@ -203,7 +203,7 @@ fn cronjob_works() -> anyhow::Result<()> {
         },
     ] {
         // The balances Jake is expected to have at time point
-        let mut expect = Coins::new_empty();
+        let mut expect = Coins::new();
         expect.increase_amount("uatom", balances.uatom)?;
         expect.increase_amount("uosmo", balances.uosmo)?;
         expect.increase_amount("umars", balances.umars)?;
