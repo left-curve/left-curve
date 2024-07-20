@@ -4,6 +4,25 @@ use {
     grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
+/// Names of export functions supported by Grug.
+///
+/// This doesn't include `allocate` and `deallocate`, which are only relevant
+/// for the `WasmVm`.
+pub const KNOWN_FUNCTIONS: [&str; 11] = [
+    "instantate",
+    "execute",
+    "migrate",
+    "receive",
+    "reply",
+    "query",
+    "before_tx",
+    "after_tx",
+    "bank_execute",
+    "bank_query",
+    "cron_execute",
+    // TODO: add taxman and IBC entry points
+];
+
 macro_rules! get_contract {
     ($index:expr) => {
         CONTRACTS.get().and_then(|contracts| contracts.get($index)).unwrap_or_else(|| {
@@ -73,8 +92,11 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)?
             },
-            _ => {
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::IncorrectNumberOfInputs { name, num: 0 });
+            },
+            _ => {
+                return Err(VmError::unknown_function(name));
             },
         };
         Ok(out)
@@ -175,8 +197,11 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)?
             },
-            _ => {
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::IncorrectNumberOfInputs { name, num: 1 });
+            },
+            _ => {
+                return Err(VmError::unknown_function(name));
             },
         };
         Ok(out)
@@ -207,8 +232,11 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)?
             },
-            _ => {
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::IncorrectNumberOfInputs { name, num: 2 });
+            },
+            _ => {
+                return Err(VmError::unknown_function(name));
             },
         };
         Ok(out)

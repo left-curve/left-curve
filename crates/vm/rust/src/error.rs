@@ -10,11 +10,18 @@ pub enum VmError {
 
     #[error("contract does not implement function `{name}`")]
     FunctionNotFound { name: &'static str },
+
+    #[error("unknown function: `{name}`")]
+    UnknownFunction { name: &'static str },
 }
 
 impl VmError {
     pub const fn function_not_found(name: &'static str) -> Self {
         Self::FunctionNotFound { name }
+    }
+
+    pub const fn unknown_function(name: &'static str) -> Self {
+        Self::UnknownFunction { name }
     }
 }
 
