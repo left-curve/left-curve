@@ -18,15 +18,14 @@ pub fn to_json_value<T>(data: &T) -> StdResult<Json>
 where
     T: Serialize,
 {
-    serde_json::to_value(data)
-        .map(Into::into)
-        .map_err(StdError::serialize::<T, _>)
+    serde_json::to_value(data).map_err(StdError::serialize::<T, _>)
 }
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
 /// JSON encoding scheme.
-pub fn from_json_slice<T>(bytes: impl AsRef<[u8]>) -> StdResult<T>
+pub fn from_json_slice<B, T>(bytes: B) -> StdResult<T>
 where
+    B: AsRef<[u8]>,
     T: DeserializeOwned,
 {
     serde_json::from_slice(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)
@@ -42,8 +41,9 @@ where
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
 /// [Borsh](https://crates.io/crates/borsh) encoding scheme.
-pub fn from_borsh_slice<T>(bytes: impl AsRef<[u8]>) -> StdResult<T>
+pub fn from_borsh_slice<B, T>(bytes: B) -> StdResult<T>
 where
+    B: AsRef<[u8]>,
     T: BorshDeserialize,
 {
     borsh::from_slice(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)
@@ -60,8 +60,9 @@ where
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
 /// Protobuf encoding scheme.
-pub fn from_proto_slice<T>(bytes: impl AsRef<[u8]>) -> StdResult<T>
+pub fn from_proto_slice<B, T>(bytes: B) -> StdResult<T>
 where
+    B: AsRef<[u8]>,
     T: Message + Default,
 {
     T::decode(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)

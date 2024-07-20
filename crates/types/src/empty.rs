@@ -28,6 +28,6 @@ mod tests {
     #[test]
     fn encoding_with_borsh() {
         assert!(to_borsh_vec(&Empty {}).unwrap().is_empty());
-        assert_eq!(from_borsh_slice::<Empty>(&[]).unwrap(), Empty {});
+        assert_eq!(from_borsh_slice::<_, Empty>(&[]).unwrap(), Empty {});
     }
 }
