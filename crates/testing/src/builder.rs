@@ -62,7 +62,7 @@ where
 
         Self {
             vm,
-            tracing_level: None,
+            tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
             block_time: None,
@@ -76,8 +76,9 @@ where
         }
     }
 
-    pub fn set_tracing_level(mut self, level: Level) -> Self {
-        self.tracing_level = Some(level);
+    // Setting this to `None` means no tracing.
+    pub fn set_tracing_level(mut self, level: Option<Level>) -> Self {
+        self.tracing_level = level;
         self
     }
 
@@ -131,8 +132,9 @@ where
     }
 
     pub fn build(self) -> anyhow::Result<(TestSuite<VM>, TestAccounts)> {
-        let tracing_level = self.tracing_level.unwrap_or(DEFAULT_TRACING_LEVEL);
-        setup_tracing_subscriber(tracing_level);
+        if let Some(tracing_level) = self.tracing_level {
+            setup_tracing_subscriber(tracing_level);
+        }
 
         let block_time = self.block_time.unwrap_or(DEFAULT_BLOCK_TIME);
 
@@ -141,11 +143,6 @@ where
             .unwrap_or_else(|| DEFAULT_CHAIN_ID.to_string());
 
         // Use the current system time as genesis time, if unspecified.
-        // let genesis_time = self
-        //     .genesis_time
-        //     .unwrap_or_else(SystemTime::now)
-        //     .duration_since(UNIX_EPOCH)?
-        //     .as_nanos();
         let genesis_time = match self.genesis_time {
             Some(time) => time,
             None => Timestamp::from_nanos(SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()),
