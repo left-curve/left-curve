@@ -196,12 +196,17 @@ impl Coins {
     /// `TryFrom<Vec<Coin>>`, and `TryFrom<BTreeMap<String, Uint128>>`.
     ///
     /// Check whether the iterator contains duplicates or zero amounts.
-    fn try_from_iterator<I>(iter: I) -> StdResult<Self>
+    fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
-        I: IntoIterator<Item = (String, Uint128)>,
+        D: Into<String>,
+        A: Into<Uint128>,
+        I: IntoIterator<Item = (D, A)>,
     {
         let mut map = BTreeMap::new();
         for (denom, amount) in iter {
+            let denom = denom.into();
+            let amount = amount.into();
+
             if amount.is_zero() {
                 return Err(StdError::invalid_coins(format!(
                     "denom `{}` as zero amount",
@@ -283,10 +288,26 @@ impl TryFrom<Vec<Coin>> for Coins {
     }
 }
 
-impl TryFrom<BTreeMap<String, Uint128>> for Coins {
+impl<D, A, const N: usize> TryFrom<[(D, A); N]> for Coins
+where
+    D: Into<String>,
+    A: Into<Uint128>,
+{
     type Error = StdError;
 
-    fn try_from(map: BTreeMap<String, Uint128>) -> StdResult<Self> {
+    fn try_from(array: [(D, A); N]) -> StdResult<Self> {
+        Self::try_from_iterator(array)
+    }
+}
+
+impl<D, A> TryFrom<BTreeMap<D, A>> for Coins
+where
+    D: Into<String>,
+    A: Into<Uint128>,
+{
+    type Error = StdError;
+
+    fn try_from(map: BTreeMap<D, A>) -> StdResult<Self> {
         Self::try_from_iterator(map)
     }
 }

@@ -49,9 +49,9 @@ struct Balances {
 fn cronjob_works() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("larry", [
-            Coin::new("uatom", NonZero::new(Uint128::new(100))),
-            Coin::new("uosmo", NonZero::new(Uint128::new(100))),
-            Coin::new("umars", NonZero::new(Uint128::new(100))),
+            ("uatom", 100_u128),
+            ("uosmo", 100),
+            ("umars", 100),
         ])?
         .add_account("jake", Coins::new_empty())?
         .set_genesis_time(Timestamp::from_nanos(0))
