@@ -344,7 +344,8 @@ mod tests {
             },
             // We expect the call to fail. Check that the error message is as
             // expected.
-            // Here we have to compare the error as strings, because we can't
+            //
+            // Here we have to compare the errors as strings, because we can't
             // derive `PartialEq` on `VmError`. This is because `VmError`
             // inherits `StdError`, which inherits `TryFromSliceError`, which
             // doesn't implement `PartialEq`.
