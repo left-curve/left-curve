@@ -1,16 +1,27 @@
 use {
-    crate::{ContractWrapper, VmError, VmResult, CONTRACTS},
+    crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
-macro_rules! get_contract {
-    ($index:expr) => {
-        CONTRACTS.get().and_then(|contracts| contracts.get($index)).unwrap_or_else(|| {
-            panic!("can't find contract with index {}", $index); // TODO: throw an VmError instead of panicking?
-        })
-    }
-}
+/// Names of export functions supported by Grug.
+///
+/// This doesn't include `allocate` and `deallocate`, which are only relevant
+/// for the `WasmVm`.
+pub const KNOWN_FUNCTIONS: [&str; 11] = [
+    "instantate",
+    "execute",
+    "migrate",
+    "receive",
+    "reply",
+    "query",
+    "before_tx",
+    "after_tx",
+    "bank_execute",
+    "bank_query",
+    "cron_execute",
+    // TODO: add taxman and IBC entry points
+];
 
 #[derive(Default, Clone)]
 pub struct RustVm;
@@ -56,73 +67,105 @@ pub struct RustInstance {
 impl Instance for RustInstance {
     type Error = VmError;
 
-    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+    fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
+        let contract = get_contract_impl(self.wrapper)?;
+        match name {
             "receive" => {
-                let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
-                to_json_vec(&res)?
+                let res =
+                    contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
+                to_json_vec(&res)
             },
             "cron_execute" => {
-                let res =
-                    contract.cron_execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
-                to_json_vec(&res)?
+                let res = contract.cron_execute(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                )?;
+                to_json_vec(&res)
+            },
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
+                return Err(VmError::incorrect_number_of_inputs(name, 0));
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 0,
-                })
+                return Err(VmError::unknown_function(name));
             },
-        };
-        Ok(out)
+        }
+        .map_err(Into::into)
     }
 
-    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    fn call_in_1_out_1<P>(
+        mut self,
+        name: &'static str,
+        ctx: &Context,
+        param: &P,
+    ) -> VmResult<Vec<u8>>
     where
         P: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+        let contract = get_contract_impl(self.wrapper)?;
+        match name {
             "instantiate" => {
-                let msg = from_json_slice(param)?;
                 let res = contract.instantiate(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
-                );
-                to_json_vec(&res)?
+                    param.as_ref(),
+                )?;
+                to_json_vec(&res)
             },
             "execute" => {
-                let msg = from_json_slice(param)?;
-                let res =
-                    contract.execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
-                to_json_vec(&res)?
+                let res = contract.execute(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    param.as_ref(),
+                )?;
+                to_json_vec(&res)
             },
             "migrate" => {
-                let msg = from_json_slice(param)?;
-                let res =
-                    contract.migrate(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
-                to_json_vec(&res)?
+                let res = contract.migrate(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    param.as_ref(),
+                )?;
+                to_json_vec(&res)
             },
             "query" => {
-                let msg = from_json_slice(param)?;
-                let res = contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
-                to_json_vec(&res)?
+                let res = contract.query(
+                    ctx.clone(),
+                    &self.storage,
+                    &MockApi,
+                    &self.querier,
+                    param.as_ref(),
+                )?;
+                to_json_vec(&res)
             },
             "before_tx" => {
                 let tx = from_json_slice(param)?;
-                let res =
-                    contract.before_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
-                to_json_vec(&res)?
+                let res = contract.before_tx(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                )?;
+                to_json_vec(&res)
             },
             "after_tx" => {
                 let tx = from_json_slice(param)?;
-                let res =
-                    contract.after_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
-                to_json_vec(&res)?
+                let res = contract.after_tx(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                )?;
+                to_json_vec(&res)
             },
             "bank_execute" => {
                 let msg = from_json_slice(param)?;
@@ -132,28 +175,33 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                     msg,
-                );
-                to_json_vec(&res)?
+                )?;
+                to_json_vec(&res)
             },
             "bank_query" => {
                 let msg = from_json_slice(param)?;
-                let res =
-                    contract.bank_query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
-                to_json_vec(&res)?
+                let res = contract.bank_query(
+                    ctx.clone(),
+                    &self.storage,
+                    &MockApi,
+                    &self.querier,
+                    msg,
+                )?;
+                to_json_vec(&res)
+            },
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
+                return Err(VmError::incorrect_number_of_inputs(name, 1));
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 1,
-                })
+                return Err(VmError::unknown_function(name));
             },
-        };
-        Ok(out)
+        }
+        .map_err(Into::into)
     }
 
     fn call_in_2_out_1<P1, P2>(
         mut self,
-        name: &str,
+        name: &'static str,
         ctx: &Context,
         param1: &P1,
         param2: &P2,
@@ -162,28 +210,150 @@ impl Instance for RustInstance {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+        let contract = get_contract_impl(self.wrapper)?;
+        match name {
             "reply" => {
-                let msg = from_json_slice(param1)?;
                 let submsg_res = from_json_slice(param2)?;
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
                     &self.querier,
-                    msg,
+                    param1.as_ref(),
                     submsg_res,
-                );
-                to_json_vec(&res)?
+                )?;
+                to_json_vec(&res)
+            },
+            _ if KNOWN_FUNCTIONS.contains(&name) => {
+                return Err(VmError::incorrect_number_of_inputs(name, 2));
             },
             _ => {
-                return Err(VmError::IncorrectNumberOfInputs {
-                    name: name.into(),
-                    num: 2,
-                })
+                return Err(VmError::unknown_function(name));
             },
+        }
+        .map_err(Into::into)
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{ContractBuilder, RustVm},
+        anyhow::ensure,
+        grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
+        grug_types::{
+            to_json_vec, Addr, Binary, BlockInfo, Coins, Context, Hash, MockStorage, NumberConst,
+            Storage, Timestamp, Uint64,
+        },
+        test_case::test_case,
+    };
+
+    mod tester {
+        use {
+            grug_types::{MutableCtx, Response, StdResult},
+            serde::{Deserialize, Serialize},
         };
-        Ok(out)
+
+        #[derive(Serialize, Deserialize)]
+        pub struct InstantiateMsg {
+            pub k: String,
+            pub v: String,
+        }
+
+        pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+            ctx.storage.write(msg.k.as_bytes(), msg.v.as_bytes());
+
+            Ok(Response::new())
+        }
+    }
+
+    #[test_case(
+        "instantiate",
+        None;
+        "known method that exists"
+    )]
+    #[test_case(
+        "execute",
+        Some("contract does not implement function `execute`");
+        "known method that doesn't exist"
+    )]
+    #[test_case(
+        "your_mom",
+        Some("unknown function: `your_mom`");
+        "unknown method"
+    )]
+    fn calling_functions(name: &'static str, maybe_error: Option<&str>) -> anyhow::Result<()> {
+        let code: Binary = ContractBuilder::new(Box::new(tester::instantiate))
+            .build()
+            .into();
+
+        let mut vm = RustVm::new();
+
+        let db = Shared::new(MockStorage::new());
+
+        let block = BlockInfo {
+            height: Uint64::ZERO,
+            timestamp: Timestamp::from_nanos(0),
+            hash: Hash::ZERO,
+        };
+
+        let gas_tracker = GasTracker::new_limitless();
+
+        let querier_provider = QuerierProvider::new(
+            vm.clone(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            block.clone(),
+        );
+
+        let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
+
+        let instance = vm.build_instance(
+            &code,
+            &Hash::ZERO,
+            storage_provider,
+            false,
+            querier_provider,
+            gas_tracker,
+        )?;
+
+        let ctx = Context {
+            chain_id: "dev-1".to_string(),
+            block,
+            contract: Addr::mock(1),
+            sender: Some(Addr::mock(2)),
+            funds: Some(Coins::new()),
+            simulate: None,
+        };
+
+        let msg = tester::InstantiateMsg {
+            k: "larry".to_string(),
+            v: "engineer".to_string(),
+        };
+
+        let result = instance.call_in_1_out_1(name, &ctx, &to_json_vec(&msg)?);
+
+        match maybe_error {
+            // We expect the call to succeed. Check that the data is correctly
+            // written to the DB.
+            None => {
+                let value = db.read_access().read(b"testerlarry");
+                ensure!(value == Some(b"engineer".to_vec()));
+            },
+            // We expect the call to fail. Check that the error message is as
+            // expected.
+            //
+            // Here we have to compare the errors as strings, because we can't
+            // derive `PartialEq` on `VmError`. This is because `VmError`
+            // inherits `StdError`, which inherits `TryFromSliceError`, which
+            // doesn't implement `PartialEq`.
+            Some(expect) => {
+                ensure!(result.is_err_and(|actual| actual.to_string() == expect));
+            },
+        }
+
+        Ok(())
     }
 }

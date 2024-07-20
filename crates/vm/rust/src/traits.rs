@@ -2,9 +2,12 @@
 // https://stackoverflow.com/questions/59247458/is-there-a-stable-way-to-tell-rustfmt-to-skip-an-entire-file
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
-use grug_types::{
-    Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
-    Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+use {
+    crate::VmResult,
+    grug_types::{
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
+        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+    },
 };
 
 pub trait Contract {
@@ -14,8 +17,8 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response>;
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>>;
 
     fn execute(
         &self,
@@ -23,8 +26,8 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response>;
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>>;
 
     fn migrate(
         &self,
@@ -32,8 +35,8 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response>;
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>>;
 
     fn receive(
         &self,
@@ -41,7 +44,7 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 
     fn reply(
         &self,
@@ -49,9 +52,9 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
         submsg_res: SubMsgResult,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 
     fn query(
         &self,
@@ -59,8 +62,8 @@ pub trait Contract {
         storage: &dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Json>;
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Json>>;
 
     fn before_tx(
         &self,
@@ -69,7 +72,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 
     fn after_tx(
         &self,
@@ -78,7 +81,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 
     fn bank_execute(
         &self,
@@ -87,7 +90,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankMsg,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 
     fn bank_query(
         &self,
@@ -96,7 +99,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankQuery,
-    ) -> GenericResult<BankQueryResponse>;
+    ) -> VmResult<GenericResult<BankQueryResponse>>;
 
     fn cron_execute(
         &self,
@@ -104,10 +107,10 @@ pub trait Contract {
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response>;
+    ) -> VmResult<GenericResult<Response>>;
 }
 
-// Trait aliases are unstable:
+// Trait alias is unstable:
 // https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
 // So we define boxed traits as a workaround.
 

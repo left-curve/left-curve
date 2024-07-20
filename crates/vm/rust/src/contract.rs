@@ -1,26 +1,35 @@
 use {
     crate::{
         AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
-        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmError, VmResult,
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
-        return_into_generic_result, unwrap_into_generic_result, Api, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Binary, Context, Empty, GenericResult, ImmutableCtx, Json, MutableCtx,
-        Querier, QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx,
+        from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
+        AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage,
+        SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
 };
 
-pub(crate) static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
+static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
+
+pub(crate) fn get_contract_impl(
+    wrapper: ContractWrapper,
+) -> VmResult<&'static (dyn Contract + Send + Sync)> {
+    CONTRACTS
+        .get_or_init(Default::default)
+        .get(wrapper.index)
+        .ok_or_else(|| VmError::contract_not_found(wrapper.index))
+}
 
 // ---------------------------------- wrapper ----------------------------------
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ContractWrapper {
-    pub(crate) index: usize,
+    index: usize,
 }
 
 impl<T> From<T> for ContractWrapper
@@ -348,7 +357,7 @@ where
 
 // ----------------------------------- impl ------------------------------------
 
-pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> {
+struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
     migrate_fn: Option<MigrateFn<M3, E3>>,
@@ -388,11 +397,13 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response> {
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!((self.instantiate_fn)(mutable_ctx, msg))
+        let msg = from_json_slice(msg)?;
+        let res = (self.instantiate_fn)(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn execute(
@@ -401,12 +412,17 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response> {
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(execute_fn) = &self.execute_fn else {
+            return Err(VmError::function_not_found("execute"));
+        };
+
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        // TODO: gracefully handle the `Option` instead of unwrapping??
-        return_into_generic_result!(self.execute_fn.as_ref().unwrap()(mutable_ctx, msg))
+        let msg = from_json_slice(msg)?;
+        let res = execute_fn(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn migrate(
@@ -415,11 +431,17 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Response> {
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(migrate_fn) = &self.migrate_fn else {
+            return Err(VmError::function_not_found("migrate"));
+        };
+
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg))
+        let msg = from_json_slice(msg)?;
+        let res = migrate_fn(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn receive(
@@ -428,9 +450,15 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(receive_fn) = &self.receive_fn else {
+            return Err(VmError::function_not_found("receive"));
+        };
+
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.receive_fn.as_ref().unwrap()(mutable_ctx))
+        let res = receive_fn(mutable_ctx);
+
+        Ok(res.into())
     }
 
     fn reply(
@@ -439,12 +467,18 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
+        msg: &[u8],
         submsg_res: SubMsgResult,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(reply_fn) = &self.reply_fn else {
+            return Err(VmError::function_not_found("reply"));
+        };
+
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res))
+        let msg = from_json_slice(msg)?;
+        let res = reply_fn(sudo_ctx, msg, submsg_res);
+
+        Ok(res.into())
     }
 
     fn query(
@@ -453,11 +487,17 @@ where
         storage: &dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-        msg: Json,
-    ) -> GenericResult<Json> {
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Json>> {
+        let Some(query_fn) = &self.query_fn else {
+            return Err(VmError::function_not_found("query"));
+        };
+
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.query_fn.as_ref().unwrap()(immutable_ctx, msg))
+        let msg = from_json_slice(msg)?;
+        let res = query_fn(immutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn before_tx(
@@ -467,9 +507,15 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(before_tx_fn) = &self.before_tx_fn else {
+            return Err(VmError::function_not_found("before_tx"));
+        };
+
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.before_tx_fn.as_ref().unwrap()(auth_ctx, tx))
+        let res = before_tx_fn(auth_ctx, tx);
+
+        Ok(res.into())
     }
 
     fn after_tx(
@@ -479,9 +525,15 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(after_tx_fn) = &self.after_tx_fn else {
+            return Err(VmError::function_not_found("after_tx"));
+        };
+
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.after_tx_fn.as_ref().unwrap()(auth_ctx, tx))
+        let res = after_tx_fn(auth_ctx, tx);
+
+        Ok(res.into())
     }
 
     fn bank_execute(
@@ -491,9 +543,15 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankMsg,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(bank_execute_fn) = &self.bank_execute_fn else {
+            return Err(VmError::function_not_found("bank_execute"));
+        };
+
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.bank_execute_fn.as_ref().unwrap()(sudo_ctx, msg))
+        let res = bank_execute_fn(sudo_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn bank_query(
@@ -503,9 +561,15 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankQuery,
-    ) -> GenericResult<BankQueryResponse> {
+    ) -> VmResult<GenericResult<BankQueryResponse>> {
+        let Some(bank_query_fn) = &self.bank_query_fn else {
+            return Err(VmError::function_not_found("bank_query"));
+        };
+
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.bank_query_fn.as_ref().unwrap()(immutable_ctx, msg))
+        let res = bank_query_fn(immutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn cron_execute(
@@ -514,8 +578,14 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(cron_execute_fn) = &self.cron_execute_fn else {
+            return Err(VmError::function_not_found("cron_execute"));
+        };
+
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.cron_execute_fn.as_ref().unwrap()(sudo_ctx))
+        let res = cron_execute_fn(sudo_ctx);
+
+        Ok(res.into())
     }
 }

@@ -166,7 +166,7 @@ pub struct WasmInstance {
 impl Instance for WasmInstance {
     type Error = VmError;
 
-    fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
+    fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
@@ -181,7 +181,12 @@ impl Instance for WasmInstance {
         Ok(data)
     }
 
-    fn call_in_1_out_1<P>(mut self, name: &str, ctx: &Context, param: &P) -> VmResult<Vec<u8>>
+    fn call_in_1_out_1<P>(
+        mut self,
+        name: &'static str,
+        ctx: &Context,
+        param: &P,
+    ) -> VmResult<Vec<u8>>
     where
         P: AsRef<[u8]>,
     {
@@ -202,7 +207,7 @@ impl Instance for WasmInstance {
 
     fn call_in_2_out_1<P1, P2>(
         mut self,
-        name: &str,
+        name: &'static str,
         ctx: &Context,
         param1: &P1,
         param2: &P2,
