@@ -77,11 +77,11 @@ impl Instance for RustInstance {
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+        match name {
             "receive" => {
                 let res =
                     contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "cron_execute" => {
                 let res = contract.cron_execute(
@@ -90,7 +90,7 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 0));
@@ -98,8 +98,8 @@ impl Instance for RustInstance {
             _ => {
                 return Err(VmError::unknown_function(name));
             },
-        };
-        Ok(out)
+        }
+        .map_err(Into::into)
     }
 
     fn call_in_1_out_1<P>(
@@ -112,7 +112,7 @@ impl Instance for RustInstance {
         P: AsRef<[u8]>,
     {
         let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+        match name {
             "instantiate" => {
                 let res = contract.instantiate(
                     ctx.clone(),
@@ -121,7 +121,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "execute" => {
                 let res = contract.execute(
@@ -131,7 +131,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "migrate" => {
                 let res = contract.migrate(
@@ -141,7 +141,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "query" => {
                 let res = contract.query(
@@ -151,7 +151,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "before_tx" => {
                 let tx = from_json_slice(param)?;
@@ -162,7 +162,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "after_tx" => {
                 let tx = from_json_slice(param)?;
@@ -173,7 +173,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "bank_execute" => {
                 let msg = from_json_slice(param)?;
@@ -184,7 +184,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             "bank_query" => {
                 let msg = from_json_slice(param)?;
@@ -195,7 +195,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 1));
@@ -203,8 +203,8 @@ impl Instance for RustInstance {
             _ => {
                 return Err(VmError::unknown_function(name));
             },
-        };
-        Ok(out)
+        }
+        .map_err(Into::into)
     }
 
     fn call_in_2_out_1<P1, P2>(
@@ -219,7 +219,7 @@ impl Instance for RustInstance {
         P2: AsRef<[u8]>,
     {
         let contract = get_contract!(self.wrapper.index);
-        let out = match name {
+        match name {
             "reply" => {
                 let submsg_res = from_json_slice(param2)?;
                 let res = contract.reply(
@@ -230,7 +230,7 @@ impl Instance for RustInstance {
                     param1.as_ref(),
                     submsg_res,
                 )?;
-                to_json_vec(&res)?
+                to_json_vec(&res)
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 2));
@@ -238,7 +238,7 @@ impl Instance for RustInstance {
             _ => {
                 return Err(VmError::unknown_function(name));
             },
-        };
-        Ok(out)
+        }
+        .map_err(Into::into)
     }
 }
