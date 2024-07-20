@@ -1,16 +1,5 @@
 // -------------------------- generic error handling ---------------------------
 
-#[macro_export]
-#[doc(hidden)]
-macro_rules! return_into_generic_result {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => GenericResult::Ok(val),
-            Err(err) => GenericResult::Err(err.to_string()),
-        }
-    };
-}
-
 // TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
 #[macro_export]
 #[doc(hidden)]

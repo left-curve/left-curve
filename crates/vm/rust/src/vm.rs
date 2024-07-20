@@ -60,12 +60,17 @@ impl Instance for RustInstance {
         let contract = get_contract!(self.wrapper.index);
         let out = match name {
             "receive" => {
-                let res = contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
+                let res =
+                    contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
                 to_json_vec(&res)?
             },
             "cron_execute" => {
-                let res =
-                    contract.cron_execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier);
+                let res = contract.cron_execute(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                )?;
                 to_json_vec(&res)?
             },
             _ => {
@@ -97,36 +102,57 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                     msg,
-                );
+                )?;
                 to_json_vec(&res)?
             },
             "execute" => {
                 let msg = from_json_slice(param)?;
-                let res =
-                    contract.execute(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
+                let res = contract.execute(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    msg,
+                )?;
                 to_json_vec(&res)?
             },
             "migrate" => {
                 let msg = from_json_slice(param)?;
-                let res =
-                    contract.migrate(ctx.clone(), &mut self.storage, &MockApi, &self.querier, msg);
+                let res = contract.migrate(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    msg,
+                )?;
                 to_json_vec(&res)?
             },
             "query" => {
                 let msg = from_json_slice(param)?;
-                let res = contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
+                let res =
+                    contract.query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg)?;
                 to_json_vec(&res)?
             },
             "before_tx" => {
                 let tx = from_json_slice(param)?;
-                let res =
-                    contract.before_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
+                let res = contract.before_tx(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                )?;
                 to_json_vec(&res)?
             },
             "after_tx" => {
                 let tx = from_json_slice(param)?;
-                let res =
-                    contract.after_tx(ctx.clone(), &mut self.storage, &MockApi, &self.querier, tx);
+                let res = contract.after_tx(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                )?;
                 to_json_vec(&res)?
             },
             "bank_execute" => {
@@ -137,13 +163,18 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                     msg,
-                );
+                )?;
                 to_json_vec(&res)?
             },
             "bank_query" => {
                 let msg = from_json_slice(param)?;
-                let res =
-                    contract.bank_query(ctx.clone(), &self.storage, &MockApi, &self.querier, msg);
+                let res = contract.bank_query(
+                    ctx.clone(),
+                    &self.storage,
+                    &MockApi,
+                    &self.querier,
+                    msg,
+                )?;
                 to_json_vec(&res)?
             },
             _ => {
@@ -179,7 +210,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                     submsg_res,
-                );
+                )?;
                 to_json_vec(&res)?
             },
             _ => {

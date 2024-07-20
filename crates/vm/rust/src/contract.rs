@@ -1,14 +1,14 @@
 use {
     crate::{
         AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
-        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmResult,
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
-        return_into_generic_result, unwrap_into_generic_result, Api, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Binary, Context, Empty, GenericResult, ImmutableCtx, Json, MutableCtx,
-        Querier, QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx,
+        from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
+        AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage,
+        SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -389,10 +389,12 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: Json,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!((self.instantiate_fn)(mutable_ctx, msg))
+        let msg = from_json_value(msg)?;
+        let res = (self.instantiate_fn)(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn execute(
@@ -402,11 +404,13 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: Json,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
+        let msg = from_json_value(msg)?;
         // TODO: gracefully handle the `Option` instead of unwrapping??
-        return_into_generic_result!(self.execute_fn.as_ref().unwrap()(mutable_ctx, msg))
+        let res = self.execute_fn.as_ref().unwrap()(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn migrate(
@@ -416,10 +420,12 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: Json,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg))
+        let msg = from_json_value(msg)?;
+        let res = self.migrate_fn.as_ref().unwrap()(mutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn receive(
@@ -428,9 +434,11 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.receive_fn.as_ref().unwrap()(mutable_ctx))
+        let res = self.receive_fn.as_ref().unwrap()(mutable_ctx);
+
+        Ok(res.into())
     }
 
     fn reply(
@@ -441,10 +449,12 @@ where
         querier: &dyn Querier,
         msg: Json,
         submsg_res: SubMsgResult,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res))
+        let msg = from_json_value(msg)?;
+        let res = self.reply_fn.as_ref().unwrap()(sudo_ctx, msg, submsg_res);
+
+        Ok(res.into())
     }
 
     fn query(
@@ -454,10 +464,12 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: Json,
-    ) -> GenericResult<Json> {
+    ) -> VmResult<GenericResult<Json>> {
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = unwrap_into_generic_result!(from_json_value(msg));
-        return_into_generic_result!(self.query_fn.as_ref().unwrap()(immutable_ctx, msg))
+        let msg = from_json_value(msg)?;
+        let res = self.query_fn.as_ref().unwrap()(immutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn before_tx(
@@ -467,9 +479,11 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.before_tx_fn.as_ref().unwrap()(auth_ctx, tx))
+        let res = self.before_tx_fn.as_ref().unwrap()(auth_ctx, tx);
+
+        Ok(res.into())
     }
 
     fn after_tx(
@@ -479,9 +493,11 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.after_tx_fn.as_ref().unwrap()(auth_ctx, tx))
+        let res = self.after_tx_fn.as_ref().unwrap()(auth_ctx, tx);
+
+        Ok(res.into())
     }
 
     fn bank_execute(
@@ -491,9 +507,11 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankMsg,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.bank_execute_fn.as_ref().unwrap()(sudo_ctx, msg))
+        let res = self.bank_execute_fn.as_ref().unwrap()(sudo_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn bank_query(
@@ -503,9 +521,11 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: BankQuery,
-    ) -> GenericResult<BankQueryResponse> {
+    ) -> VmResult<GenericResult<BankQueryResponse>> {
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.bank_query_fn.as_ref().unwrap()(immutable_ctx, msg))
+        let res = self.bank_query_fn.as_ref().unwrap()(immutable_ctx, msg);
+
+        Ok(res.into())
     }
 
     fn cron_execute(
@@ -514,8 +534,10 @@ where
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
-    ) -> GenericResult<Response> {
+    ) -> VmResult<GenericResult<Response>> {
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        return_into_generic_result!(self.cron_execute_fn.as_ref().unwrap()(sudo_ctx))
+        let res = self.cron_execute_fn.as_ref().unwrap()(sudo_ctx);
+
+        Ok(res.into())
     }
 }
