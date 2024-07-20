@@ -1,9 +1,10 @@
 use {
     crate::{
         AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
-        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmResult,
     },
     elsa::sync::FrozenVec,
+    grug_app::VmError,
     grug_types::{
         from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         return_into_generic_result, unwrap_into_generic_result, Api, AuthCtx, BankMsg, BankQuery,
@@ -38,6 +39,18 @@ impl From<ContractWrapper> for Binary {
     fn from(wrapper: ContractWrapper) -> Self {
         wrapper.index.to_le_bytes().into()
     }
+}
+
+macro_rules! verify_entrypoint {
+    ($name:ident, $contract:expr) => {
+        paste::paste! {
+            if $contract.[<$name _fn>].is_some() {
+                Ok(())
+            } else {
+                Err(VmError::MissingExportFunction(stringify!([<$name>]).to_string()).into())
+            }
+        }
+    };
 }
 
 // ---------------------------------- builder ----------------------------------
@@ -517,5 +530,23 @@ where
     ) -> GenericResult<Response> {
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         return_into_generic_result!(self.cron_execute_fn.as_ref().unwrap()(sudo_ctx))
+    }
+
+    #[rustfmt::skip]
+    fn verify_entrypoiny(&self, name: &str) -> VmResult<()> {
+        match name {
+            "instantiate" => Ok(()),
+            "execute"      => verify_entrypoint!(execute, self),
+            "migrate"      => verify_entrypoint!(migrate, self),
+            "receive"      => verify_entrypoint!(receive, self),
+            "reply"        => verify_entrypoint!(reply, self),
+            "query"        => verify_entrypoint!(query, self),
+            "before_tx"    => verify_entrypoint!(before_tx, self),
+            "after_tx"     => verify_entrypoint!(after_tx, self),
+            "bank_execute" => verify_entrypoint!(bank_execute, self),
+            "bank_query"   => verify_entrypoint!(bank_query, self),
+            "cron_execute" => verify_entrypoint!(cron_execute, self),
+            _              => Err(VmError::MissingExportFunction(name.to_string()).into()),
+        }
     }
 }

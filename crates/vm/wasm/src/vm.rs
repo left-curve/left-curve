@@ -4,7 +4,7 @@ use {
         db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
+        write_to_memory, Cache, Environment, Gatekeeper, VmResult, WasmVmError,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context, Hash},
@@ -35,7 +35,7 @@ impl WasmVm {
 }
 
 impl Vm for WasmVm {
-    type Error = VmError;
+    type Error = WasmVmError;
     type Instance = WasmInstance;
 
     fn build_instance(
@@ -164,7 +164,7 @@ pub struct WasmInstance {
 }
 
 impl Instance for WasmInstance {
-    type Error = VmError;
+    type Error = WasmVmError;
 
     fn call_in_0_out_1(mut self, name: &str, ctx: &Context) -> VmResult<Vec<u8>> {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
@@ -174,7 +174,7 @@ impl Instance for WasmInstance {
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into()])?
             .try_into()
-            .map_err(VmError::ReturnType)?;
+            .map_err(WasmVmError::ReturnType)?;
 
         let data = read_then_wipe(env, &mut store, res_ptr)?;
 
@@ -193,7 +193,7 @@ impl Instance for WasmInstance {
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
             .try_into()
-            .map_err(VmError::ReturnType)?;
+            .map_err(WasmVmError::ReturnType)?;
 
         let data = read_then_wipe(env, &mut store, res_ptr)?;
 
@@ -224,7 +224,7 @@ impl Instance for WasmInstance {
                 param2_ptr.into(),
             ])?
             .try_into()
-            .map_err(VmError::ReturnType)?;
+            .map_err(WasmVmError::ReturnType)?;
         let data = read_then_wipe(env, &mut store, res_ptr)?;
 
         Ok(data)

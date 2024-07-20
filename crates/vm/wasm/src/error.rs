@@ -1,5 +1,5 @@
 use {
-    grug_app::{AppError, OutOfGasError},
+    grug_app::{AppError, OutOfGasError, VmError},
     grug_types::StdError,
     std::string::FromUtf8Error,
     thiserror::Error,
@@ -7,9 +7,12 @@ use {
 };
 
 #[derive(Debug, Error)]
-pub enum VmError {
+pub enum WasmVmError {
     #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    Vm(#[from] VmError),
 
     #[error(transparent)]
     FromUtf8(#[from] FromUtf8Error),
@@ -77,29 +80,32 @@ pub enum VmError {
     ReadOnly,
 }
 
-impl From<CompileError> for VmError {
+impl From<CompileError> for WasmVmError {
     fn from(err: CompileError) -> Self {
         Self::Instantiation(err.to_string())
     }
 }
 
-impl From<InstantiationError> for VmError {
+impl From<InstantiationError> for WasmVmError {
     fn from(err: InstantiationError) -> Self {
         Self::Instantiation(err.to_string())
     }
 }
 
 // required such that VmError can be used in import function signatures
-impl From<VmError> for RuntimeError {
-    fn from(err: VmError) -> Self {
+impl From<WasmVmError> for RuntimeError {
+    fn from(err: WasmVmError) -> Self {
         RuntimeError::new(err.to_string())
     }
 }
 
-impl From<VmError> for AppError {
-    fn from(err: VmError) -> Self {
-        AppError::Vm(err.to_string())
+impl From<WasmVmError> for AppError {
+    fn from(err: WasmVmError) -> Self {
+        match err {
+            WasmVmError::Vm(vm_error) => AppError::VM(vm_error),
+            _ => AppError::VM(VmError::GenericError(err.to_string())),
+        }
     }
 }
 
-pub type VmResult<T> = core::result::Result<T, VmError>;
+pub type VmResult<T> = core::result::Result<T, WasmVmError>;

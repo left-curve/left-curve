@@ -8,8 +8,8 @@ pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error("VM error: {0}")]
-    Vm(String),
+    #[error(transparent)]
+    VM(#[from] VmError),
 
     #[error("DB error: {0}")]
     Db(String),
@@ -46,3 +46,11 @@ pub enum AppError {
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;
+
+#[derive(Debug, Error)]
+pub enum VmError {
+    #[error("missing export function: {0}")]
+    MissingExportFunction(String),
+    #[error("{0}")]
+    GenericError(String),
+}

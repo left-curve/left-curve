@@ -1,5 +1,5 @@
 use {
-    crate::{Environment, Region, VmError, VmResult},
+    crate::{Environment, Region, VmResult, WasmVmError},
     data_encoding::BASE64,
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
@@ -38,14 +38,14 @@ where
     let region_ptr: u32 = env
         .call_function1(store, "allocate", &[(data.len() as u32).into()])?
         .try_into()
-        .map_err(VmError::ReturnType)?;
+        .map_err(WasmVmError::ReturnType)?;
     let memory = env.get_wasmer_memory(&store)?;
     let mut region = read_region(&memory, region_ptr)?;
     // don't forget to update region length
     region.length = data.len() as u32;
 
     if region.length > region.capacity {
-        return Err(VmError::RegionTooSmall {
+        return Err(WasmVmError::RegionTooSmall {
             offset: region.offset,
             capacity: region.capacity,
             data: BASE64.encode(data),

@@ -1,6 +1,6 @@
 use {
-    crate::{Iterator, VmError, VmResult, WasmVm},
-    grug_app::{GasTracker, QuerierProvider, StorageProvider},
+    crate::{Iterator, VmResult, WasmVm, WasmVmError},
+    grug_app::{GasTracker, QuerierProvider, StorageProvider, VmError},
     grug_types::Record,
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
@@ -88,7 +88,7 @@ impl Environment {
     pub fn advance_iterator(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or(VmError::IteratorNotFound { iterator_id })
+            .ok_or(WasmVmError::IteratorNotFound { iterator_id })
             .map(|iter| iter.next(&self.storage))
     }
 
@@ -105,7 +105,7 @@ impl Environment {
 
     pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
         if self.wasmer_memory.is_some() {
-            return Err(VmError::WasmerMemoryAlreadySet);
+            return Err(WasmVmError::WasmerMemoryAlreadySet);
         }
 
         let memory = instance.exports.get_memory("memory")?;
@@ -116,7 +116,7 @@ impl Environment {
 
     pub fn set_wasmer_instance(&mut self, instance: &Instance) -> VmResult<()> {
         if self.wasmer_instance.is_some() {
-            return Err(VmError::WasmerInstanceAlreadySet);
+            return Err(WasmVmError::WasmerInstanceAlreadySet);
         }
 
         self.wasmer_instance = Some(NonNull::from(instance));
@@ -130,12 +130,14 @@ impl Environment {
     {
         self.wasmer_memory
             .as_ref()
-            .ok_or(VmError::WasmerMemoryNotSet)
+            .ok_or(WasmVmError::WasmerMemoryNotSet)
             .map(|mem| mem.view(store))
     }
 
     pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
-        let instance_ptr = self.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
+        let instance_ptr = self
+            .wasmer_instance
+            .ok_or(WasmVmError::WasmerInstanceNotSet)?;
         unsafe { Ok(instance_ptr.as_ref()) }
     }
 
@@ -150,7 +152,7 @@ impl Environment {
     {
         let ret = self.call_function(store, name, args)?;
         if ret.len() != 1 {
-            return Err(VmError::ReturnCount {
+            return Err(WasmVmError::ReturnCount {
                 name: name.into(),
                 expect: 1,
                 actual: ret.len(),
@@ -165,7 +167,7 @@ impl Environment {
     {
         let ret = self.call_function(store, name, args)?;
         if ret.len() != 0 {
-            return Err(VmError::ReturnCount {
+            return Err(WasmVmError::ReturnCount {
                 name: name.into(),
                 expect: 0,
                 actual: ret.len(),
@@ -184,6 +186,13 @@ impl Environment {
         S: AsStoreMut,
     {
         let instance = self.get_wasmer_instance()?;
+
+        if !instance.exports.contains(name) {
+            return Err(WasmVmError::Vm(VmError::MissingExportFunction(
+                name.to_string(),
+            )));
+        }
+
         let func = instance.exports.get_function(name)?;
         // Make the function call. Then, regardless of whether the call succeeds
         // or fails, check the remaining gas points.
@@ -218,7 +227,7 @@ impl Environment {
                 self.gas_tracker.consume(self.gas_checkpoint, name)?;
                 self.gas_checkpoint = 0;
 
-                Err(VmError::GasDepletion)
+                Err(WasmVmError::GasDepletion)
             },
             // The call succeeded, but gas depleted: impossible senario.
             (Ok(_), MeteringPoints::Exhausted) => {

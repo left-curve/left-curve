@@ -1,6 +1,6 @@
 use {
     crate::{
-        read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult, GAS_COSTS,
+        read_from_memory, write_to_memory, Environment, Iterator, VmResult, WasmVmError, GAS_COSTS,
     },
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
@@ -130,7 +130,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // calls. During these calls, the contract isn't allowed to call the imports
     // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
     if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+        return Err(WasmVmError::ReadOnly);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -171,7 +171,7 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+        return Err(WasmVmError::ReadOnly);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -189,7 +189,7 @@ pub fn db_remove_range(
     let (env, mut store) = fe.data_and_store_mut();
 
     if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+        return Err(WasmVmError::ReadOnly);
     }
 
     let min = if min_ptr != 0 {

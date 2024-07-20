@@ -3,7 +3,7 @@ use {
     grug_types::{
         to_json_value, Addr, Binary, Coins, Empty, Message, NonZero, NumberConst, Uint128,
     },
-    grug_vm_wasm::{VmError, WasmVm},
+    grug_vm_wasm::{WasmVm, WasmVmError},
     std::{collections::BTreeMap, fs, io, vec},
 };
 
@@ -135,7 +135,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .should_fail_with_error(VmError::GasDepletion)?;
+        .should_fail_with_error(WasmVmError::GasDepletion)?;
 
     Ok(())
 }
@@ -168,7 +168,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // ABCI request.
     suite
         .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
-        .should_fail_with_error(VmError::ReadOnly)?;
+        .should_fail_with_error(WasmVmError::ReadOnly)?;
 
     // Execute the tester contract.
     //
@@ -183,7 +183,7 @@ fn immutable_state() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .should_fail_with_error(VmError::ReadOnly)?;
+        .should_fail_with_error(WasmVmError::ReadOnly)?;
 
     Ok(())
 }

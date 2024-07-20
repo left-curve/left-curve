@@ -1,5 +1,5 @@
 use {
-    crate::{GasTracker, QuerierProvider, StorageProvider},
+    crate::{AppError, GasTracker, QuerierProvider, StorageProvider},
     grug_types::{Batch, Context, Hash, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -87,7 +87,7 @@ pub trait Db {
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
-    type Error: ToString;
+    type Error: Into<AppError>;
     type Instance: Instance<Error = Self::Error>;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
@@ -107,7 +107,7 @@ pub trait Vm: Sized {
 }
 
 pub trait Instance {
-    type Error: ToString;
+    type Error: Into<AppError>;
 
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.

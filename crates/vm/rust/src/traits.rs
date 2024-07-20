@@ -7,6 +7,8 @@ use grug_types::{
     Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
 };
 
+use crate::VmResult;
+
 pub trait Contract {
     fn instantiate(
         &self,
@@ -105,6 +107,9 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
     ) -> GenericResult<Response>;
+
+    fn verify_entrypoiny(&self, name:&str) -> VmResult<()>;
+
 }
 
 // Trait aliases are unstable:
