@@ -234,3 +234,125 @@ impl Instance for RustInstance {
         .map_err(Into::into)
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{ContractBuilder, RustVm},
+        anyhow::ensure,
+        grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
+        grug_types::{
+            to_json_vec, Addr, Binary, BlockInfo, Coins, Context, Hash, MockStorage, NumberConst,
+            Storage, Timestamp, Uint64,
+        },
+        test_case::test_case,
+    };
+
+    mod tester {
+        use {
+            grug_types::{MutableCtx, Response, StdResult},
+            serde::{Deserialize, Serialize},
+        };
+
+        #[derive(Serialize, Deserialize)]
+        pub struct InstantiateMsg {
+            pub k: String,
+            pub v: String,
+        }
+
+        pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+            ctx.storage.write(msg.k.as_bytes(), msg.v.as_bytes());
+
+            Ok(Response::new())
+        }
+    }
+
+    #[test_case(
+        "instantiate",
+        None;
+        "known method that exists"
+    )]
+    #[test_case(
+        "execute",
+        Some("contract does not implement function `execute`");
+        "known method that doesn't exist"
+    )]
+    #[test_case(
+        "your_mom",
+        Some("unknown function: `your_mom`");
+        "unknown method"
+    )]
+    fn calling_functions(name: &'static str, maybe_error: Option<&str>) -> anyhow::Result<()> {
+        let code: Binary = ContractBuilder::new(Box::new(tester::instantiate))
+            .build()
+            .into();
+
+        let mut vm = RustVm::new();
+
+        let db = Shared::new(MockStorage::new());
+
+        let block = BlockInfo {
+            height: Uint64::ZERO,
+            timestamp: Timestamp::from_nanos(0),
+            hash: Hash::ZERO,
+        };
+
+        let gas_tracker = GasTracker::new_limitless();
+
+        let querier_provider = QuerierProvider::new(
+            vm.clone(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            block.clone(),
+        );
+
+        let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
+
+        let instance = vm.build_instance(
+            &code,
+            &Hash::ZERO,
+            storage_provider,
+            false,
+            querier_provider,
+            gas_tracker,
+        )?;
+
+        let ctx = Context {
+            chain_id: "dev-1".to_string(),
+            block,
+            contract: Addr::mock(1),
+            sender: Some(Addr::mock(2)),
+            funds: Some(Coins::new()),
+            simulate: None,
+        };
+
+        let msg = tester::InstantiateMsg {
+            k: "larry".to_string(),
+            v: "engineer".to_string(),
+        };
+
+        let result = instance.call_in_1_out_1(name, &ctx, &to_json_vec(&msg)?);
+
+        match maybe_error {
+            // We expect the call to succeed. Check that the data is correctly
+            // written to the DB.
+            None => {
+                let value = db.read_access().read(b"testerlarry");
+                ensure!(value == Some(b"engineer".to_vec()));
+            },
+            // We expect the call to fail. Check that the error message is as
+            // expected.
+            // Here we have to compare the error as strings, because we can't
+            // derive `PartialEq` on `VmError`. This is because `VmError`
+            // inherits `StdError`, which inherits `TryFromSliceError`, which
+            // doesn't implement `PartialEq`.
+            Some(expect) => {
+                ensure!(result.is_err_and(|actual| actual.to_string() == expect));
+            },
+        }
+
+        Ok(())
+    }
+}

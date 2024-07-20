@@ -1806,6 +1806,7 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "serde",
+ "test-case",
  "thiserror",
 ]
 
