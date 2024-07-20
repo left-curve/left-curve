@@ -97,7 +97,7 @@ impl Coins {
     }
 
     /// Create a new `Coins` with exactly one coin.
-    pub fn new_one<D, A>(denom: D, amount: NonZero<A>) -> Self
+    pub fn one<D, A>(denom: D, amount: NonZero<A>) -> Self
     where
         D: ToString,
         A: Into<Uint128>,
