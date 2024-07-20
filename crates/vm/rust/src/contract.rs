@@ -16,7 +16,7 @@ use {
 
 static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
 
-pub fn get_contract_impl(
+pub(crate) fn get_contract_impl(
     wrapper: ContractWrapper,
 ) -> VmResult<&'static (dyn Contract + Send + Sync)> {
     CONTRACTS
@@ -357,7 +357,7 @@ where
 
 // ----------------------------------- impl ------------------------------------
 
-pub struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> {
+struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11> {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
     migrate_fn: Option<MigrateFn<M3, E3>>,

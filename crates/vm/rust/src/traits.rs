@@ -110,7 +110,7 @@ pub trait Contract {
     ) -> VmResult<GenericResult<Response>>;
 }
 
-// Trait aliases are unstable:
+// Trait alias is unstable:
 // https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
 // So we define boxed traits as a workaround.
 
