@@ -2,7 +2,7 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
-        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        GasTracker, Vm, VmError, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
@@ -689,6 +689,12 @@ where
             Ok(events)
         },
         Err(err) => {
+            if let AppError::VM(VmError::MissingExportFunction(name)) = &err {
+                if name == "after_tx" {
+                    return Ok(vec![]);
+                }
+            };
+
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 err = err.to_string(),

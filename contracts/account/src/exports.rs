@@ -20,11 +20,6 @@ mod __wasm_exports {
     }
 
     #[no_mangle]
-    extern "C" fn after_tx(ctx_ptr: usize, tx_ptr: usize) -> usize {
-        grug_ffi::do_after_tx(&super::after_tx, ctx_ptr, tx_ptr)
-    }
-
-    #[no_mangle]
     extern "C" fn receive(ctx_ptr: usize) -> usize {
         grug_ffi::do_receive(&super::receive, ctx_ptr)
     }
@@ -46,11 +41,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
 pub fn before_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     authenticate_tx(ctx, tx)
-}
-
-pub fn after_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-    // Nothing to do
-    Ok(Response::new())
 }
 
 pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {

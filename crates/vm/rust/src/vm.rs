@@ -84,6 +84,7 @@ impl Instance for RustInstance {
         P: AsRef<[u8]>,
     {
         let contract = get_contract!(self.wrapper.index);
+        contract.verify_entrypoiny(name)?;
         let out = match name {
             "instantiate" => {
                 let msg = from_json_slice(param)?;
@@ -164,6 +165,7 @@ impl Instance for RustInstance {
         P2: AsRef<[u8]>,
     {
         let contract = get_contract!(self.wrapper.index);
+        contract.verify_entrypoiny(name)?;
         let out = match name {
             "reply" => {
                 let msg = from_json_slice(param1)?;
