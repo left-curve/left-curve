@@ -194,7 +194,6 @@ impl Coins {
             });
         };
 
-        // TODO
         *amount = amount.checked_sub(by)?;
 
         if amount.is_zero() {
