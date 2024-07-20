@@ -181,7 +181,7 @@ fn immutable_state() -> anyhow::Result<()> {
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
             msg: to_json_value(&Empty {})?,
-            funds: Coins::default(),
+            funds: Coins::new(),
         })?
         .should_fail_with_error(VmError::ReadOnly)?;
 
