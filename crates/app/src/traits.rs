@@ -87,7 +87,6 @@ pub trait Db {
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
-    // type Error: Into<AppError>;
     type Instance: Instance;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
@@ -107,8 +106,6 @@ pub trait Vm: Sized {
 }
 
 pub trait Instance {
-    // type Error: Into<AppError>;
-
     /// Call a function that takes exactly 0 input parameter (other than the
     /// context) and returns exactly 1 output.
     fn call_in_0_out_1(self, name: &str, ctx: &Context) -> Result<Vec<u8>, VmError>;
