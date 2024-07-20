@@ -204,9 +204,9 @@ fn cronjob_works() -> anyhow::Result<()> {
     ] {
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new_empty();
-        expect.increase_amount("uatom", balances.uatom.into())?;
-        expect.increase_amount("uosmo", balances.uosmo.into())?;
-        expect.increase_amount("umars", balances.umars.into())?;
+        expect.increase_amount("uatom", balances.uatom)?;
+        expect.increase_amount("uosmo", balances.uosmo)?;
+        expect.increase_amount("umars", balances.umars)?;
 
         // Advance block
         suite.make_empty_block()?;

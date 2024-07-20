@@ -154,8 +154,15 @@ impl Coins {
 
     /// Increase the amount of a denom by the given amount. If the denom doesn't
     /// exist, a new record is created.
-    pub fn increase_amount(&mut self, denom: &str, by: Uint128) -> StdResult<()> {
-        let Some(amount) = self.0.get_mut(denom) else {
+    pub fn increase_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
+    where
+        D: Into<String>,
+        A: Into<Uint128>,
+    {
+        let denom = denom.into();
+        let by = by.into();
+
+        let Some(amount) = self.0.get_mut(&denom) else {
             // If the denom doesn't exist, and we are increasing by a non-zero
             // amount: just create a new record, and we are done.
             if !by.is_zero() {
@@ -173,8 +180,15 @@ impl Coins {
     /// Decrease the amount of a denom by the given amount. Amount can't be
     /// reduced below zero. If the amount is reduced to exactly zero, the record
     /// is purged, so that only non-zero amount coins remain.
-    pub fn decrease_amount(&mut self, denom: &str, by: Uint128) -> StdResult<()> {
-        let Some(amount) = self.0.get_mut(denom) else {
+    pub fn decrease_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
+    where
+        D: Into<String>,
+        A: Into<Uint128>,
+    {
+        let denom = denom.into();
+        let by = by.into();
+
+        let Some(amount) = self.0.get_mut(&denom) else {
             return Err(StdError::DenomNotFound {
                 denom: denom.into(),
             });
@@ -184,7 +198,7 @@ impl Coins {
         *amount = amount.checked_sub(by)?;
 
         if amount.is_zero() {
-            self.0.remove(denom);
+            self.0.remove(&denom);
         }
 
         Ok(())
