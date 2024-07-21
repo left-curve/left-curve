@@ -638,12 +638,13 @@ pub fn do_before_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx, simulate) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -671,12 +672,13 @@ pub fn do_after_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx, simulate) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -705,6 +707,7 @@ fn _do_before_or_after_tx<VM>(
     block: BlockInfo,
     name: &'static str,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -718,7 +721,7 @@ where
         contract: tx.sender.clone(),
         sender: None,
         funds: None,
-        simulate: Some(false),
+        simulate: Some(simulate),
     };
 
     call_in_1_out_1_handle_response(

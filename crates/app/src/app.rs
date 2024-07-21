@@ -9,8 +9,8 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         from_json_slice, to_json_vec, Addr, BlockInfo, Duration, Event, GenesisState, Hash,
-        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        GENESIS_SENDER,
+        Message, Order, Permission, QueryRequest, QueryResponse, SimulationResponse, StdResult,
+        Storage, Timestamp, Tx, GENESIS_SENDER,
     },
 };
 
@@ -53,6 +53,7 @@ where
     VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
+    #[cfg(feature = "abci")]
     pub fn do_init_chain_raw(
         &self,
         chain_id: String,
@@ -139,6 +140,7 @@ where
         Ok(root_hash.unwrap())
     }
 
+    #[cfg(feature = "abci")]
     pub fn do_finalize_block_raw<T>(
         &self,
         block: BlockInfo,
@@ -237,6 +239,7 @@ where
                 buffer.clone(),
                 block.clone(),
                 tx,
+                false,
             ));
         }
 
@@ -299,6 +302,7 @@ where
         Ok((version, root_hash))
     }
 
+    #[cfg(feature = "abci")]
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
         let req = from_json_slice(raw_req)?;
         let res = self.do_query_app(req, height, prove)?;
@@ -366,9 +370,52 @@ where
 
         Ok((value, proof))
     }
+
+    #[cfg(feature = "abci")]
+    pub fn do_simulate_raw(&self, tx_raw: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let tx = from_json_slice(tx_raw)?;
+        let res = self.do_simulate(tx, height, prove)?;
+
+        Ok(to_json_vec(&res)?)
+    }
+
+    pub fn do_simulate(&self, tx: Tx, height: u64, prove: bool) -> AppResult<SimulationResponse> {
+        let buffer = Buffer::new(self.db.state_storage(None), None);
+
+        let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+
+        // We can't "prove" a gas simulation
+        if prove {
+            return Err(AppError::ProofNotSupported);
+        }
+
+        // We can't simulate gas at a block height
+        if height != 0 {
+            if height != block.height.number() {
+                return Err(AppError::PastHeightNotSupported);
+            }
+        }
+
+        // Run the transaction with `simulate` as `true`. Track how much gas was
+        // consumed, and, if it was successful, what events were emitted.
+        let gas_tracker = GasTracker::new(self.query_gas_limit);
+        let events = process_tx(self.vm.clone(), buffer, block, tx, true)?;
+
+        Ok(SimulationResponse {
+            gas_limit: gas_tracker.limit(),
+            gas_used: gas_tracker.used(),
+            events,
+        })
+    }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
+fn process_tx<S, VM>(
+    vm: VM,
+    storage: S,
+    block: BlockInfo,
+    tx: Tx,
+    simulate: bool,
+) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
@@ -392,6 +439,7 @@ where
         gas_tracker.clone(),
         block.clone(),
         &tx,
+        simulate,
     )?);
 
     // Update the account state. As long as authentication succeeds, regardless
@@ -431,6 +479,7 @@ where
         gas_tracker.clone(),
         block,
         &tx,
+        simulate,
     )?);
 
     // All messages succeeded. Commit the state changes.

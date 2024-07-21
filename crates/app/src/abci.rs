@@ -101,12 +101,25 @@ where
             "/app" => match self.do_query_app_raw(&req.data, req.height as u64, req.prove) {
                 Ok(res) => ResponseQuery {
                     code: 0,
-                    value: res.to_vec().into(),
+                    value: res.into(),
                     ..Default::default()
                 },
                 Err(err) => ResponseQuery {
                     code: 1,
                     codespace: "app".into(),
+                    log: err.to_string(),
+                    ..Default::default()
+                },
+            },
+            "/simulate" => match self.do_simulate_raw(&req.data, req.height as u64, req.prove) {
+                Ok(res) => ResponseQuery {
+                    code: 0,
+                    value: res.into(),
+                    ..Default::default()
+                },
+                Err(err) => ResponseQuery {
+                    code: 1,
+                    codespace: "simulate".into(),
                     log: err.to_string(),
                     ..Default::default()
                 },
@@ -138,7 +151,7 @@ where
             unknown => ResponseQuery {
                 code: 1,
                 codespace: "app".into(),
-                log: format!("unknown path `{unknown}`; must be `/app` or `/store`"),
+                log: format!("unknown path `{unknown}`; must be `/app`, `/simulate`, or `/store`"),
                 ..Default::default()
             },
         }
