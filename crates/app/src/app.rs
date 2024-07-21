@@ -203,15 +203,12 @@ where
                 "Attempting to perform cronjob"
             );
 
-            cron_outcomes.push(
-                do_cron_execute(
-                    self.vm.clone(),
-                    Box::new(buffer.clone()),
-                    GasTracker::new_limitless(),
-                    block.clone(),
-                    contract.clone(),
-                )
-                .into(),
+            let outcome = do_cron_execute(
+                self.vm.clone(),
+                Box::new(buffer.clone()),
+                GasTracker::new_limitless(),
+                block.clone(),
+                contract.clone(),
             );
 
             // Schedule the next time this cronjob is to be performed.
@@ -221,6 +218,8 @@ where
                 block.timestamp,
                 cfg.cronjobs[&contract],
             )?;
+
+            cron_outcomes.push(outcome.into());
         }
 
         // Process transactions one-by-one.
@@ -228,8 +227,9 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_outcomes
-                .push(process_tx(self.vm.clone(), buffer.clone(), block.clone(), tx, false).into());
+            let outcome = process_tx(self.vm.clone(), buffer.clone(), block.clone(), tx, false);
+
+            tx_outcomes.push(outcome.into());
         }
 
         // Save the last committed block.
