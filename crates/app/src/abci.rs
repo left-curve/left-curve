@@ -1,7 +1,7 @@
 use {
     crate::{App, AppError, Db, Outcome, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
+        to_json_vec, Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
@@ -110,10 +110,25 @@ where
         }
     }
 
-    fn check_tx(&self, _req: RequestCheckTx) -> ResponseCheckTx {
-        // TODO
-        ResponseCheckTx {
-            ..Default::default()
+    fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
+        // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
+        match self.do_simulate_raw(&req.tx, 0, false) {
+            Ok(outcome) => ResponseCheckTx {
+                code: 0,
+                // Again, really poor design of Tendermint...
+                // 1. No null value (we have to use `0` to mean no gas limit)
+                // 2. Why `i64` for gas? Who uses negative gas?
+                gas_wanted: outcome.gas_limit.unwrap_or(0) as i64,
+                gas_used: outcome.gas_used as i64,
+                events: into_tm_events(outcome.events),
+                ..Default::default()
+            },
+            Err(err) => ResponseCheckTx {
+                code: 1,
+                codespace: "simulate".into(),
+                log: err.to_string(),
+                ..Default::default()
+            },
         }
     }
 
@@ -132,10 +147,13 @@ where
                     ..Default::default()
                 },
             },
-            "/simulate" => match self.do_simulate_raw(&req.data, req.height as u64, req.prove) {
-                Ok(res) => ResponseQuery {
+            "/simulate" => match self
+                .do_simulate_raw(&req.data, req.height as u64, req.prove)
+                .and_then(|outcome| to_json_vec(&outcome).map_err(Into::into))
+            {
+                Ok(outcome) => ResponseQuery {
                     code: 0,
-                    value: res.into(),
+                    value: outcome.into(),
                     ..Default::default()
                 },
                 Err(err) => ResponseQuery {
@@ -178,8 +196,6 @@ where
         }
     }
 }
-
-// ---------------------------------- helpers ----------------------------------
 
 fn from_tm_block(height: i64, time: Option<TmTimestamp>, hash: Option<Bytes>) -> BlockInfo {
     BlockInfo {

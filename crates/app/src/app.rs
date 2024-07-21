@@ -370,11 +370,9 @@ where
         unsigned_tx_raw: &[u8],
         height: u64,
         prove: bool,
-    ) -> AppResult<Vec<u8>> {
+    ) -> AppResult<Outcome> {
         let tx = from_json_slice(unsigned_tx_raw)?;
-        let res = self.do_simulate(tx, height, prove)?;
-
-        Ok(to_json_vec(&res)?)
+        self.do_simulate(tx, height, prove)
     }
 
     pub fn do_simulate(
