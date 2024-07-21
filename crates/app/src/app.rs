@@ -53,17 +53,6 @@ where
     VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
-    #[cfg(feature = "abci")]
-    pub fn do_init_chain_raw(
-        &self,
-        chain_id: String,
-        block: BlockInfo,
-        raw_genesis_state: &[u8],
-    ) -> AppResult<Hash> {
-        let genesis_state = from_json_slice(raw_genesis_state)?;
-        self.do_init_chain(chain_id, block, genesis_state)
-    }
-
     pub fn do_init_chain(
         &self,
         chain_id: String,
@@ -138,23 +127,6 @@ where
         );
 
         Ok(root_hash.unwrap())
-    }
-
-    #[cfg(feature = "abci")]
-    pub fn do_finalize_block_raw<T>(
-        &self,
-        block: BlockInfo,
-        raw_txs: &[T],
-    ) -> AppResult<BlockOutcome>
-    where
-        T: AsRef<[u8]>,
-    {
-        let txs = raw_txs
-            .iter()
-            .map(from_json_slice)
-            .collect::<StdResult<Vec<_>>>()?;
-
-        self.do_finalize_block(block, txs)
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
@@ -295,14 +267,6 @@ where
         Ok((version, root_hash))
     }
 
-    #[cfg(feature = "abci")]
-    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = from_json_slice(raw_req)?;
-        let res = self.do_query_app(req, height, prove)?;
-
-        Ok(to_json_vec(&res)?)
-    }
-
     pub fn do_query_app(
         &self,
         req: QueryRequest,
@@ -364,17 +328,6 @@ where
         Ok((value, proof))
     }
 
-    #[cfg(feature = "abci")]
-    pub fn do_simulate_raw(
-        &self,
-        unsigned_tx_raw: &[u8],
-        height: u64,
-        prove: bool,
-    ) -> AppResult<Outcome> {
-        let tx = from_json_slice(unsigned_tx_raw)?;
-        self.do_simulate(tx, height, prove)
-    }
-
     pub fn do_simulate(
         &self,
         unsigned_tx: UnsignedTx,
@@ -408,6 +361,59 @@ where
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
         process_tx(self.vm.clone(), buffer, block, tx, true)
+    }
+}
+
+#[cfg(feature = "abci")]
+impl<DB, VM> App<DB, VM>
+where
+    DB: Db,
+    VM: Vm + Clone,
+    AppError: From<DB::Error> + From<VM::Error>,
+{
+    pub fn do_init_chain_raw(
+        &self,
+        chain_id: String,
+        block: BlockInfo,
+        raw_genesis_state: &[u8],
+    ) -> AppResult<Hash> {
+        let genesis_state = from_json_slice(raw_genesis_state)?;
+
+        self.do_init_chain(chain_id, block, genesis_state)
+    }
+
+    pub fn do_finalize_block_raw<T>(
+        &self,
+        block: BlockInfo,
+        raw_txs: &[T],
+    ) -> AppResult<BlockOutcome>
+    where
+        T: AsRef<[u8]>,
+    {
+        let txs = raw_txs
+            .iter()
+            .map(from_json_slice)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        self.do_finalize_block(block, txs)
+    }
+
+    pub fn do_simulate_raw(
+        &self,
+        raw_unsigned_tx: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<Outcome> {
+        let tx = from_json_slice(raw_unsigned_tx)?;
+
+        self.do_simulate(tx, height, prove)
+    }
+
+    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let req = from_json_slice(raw_req)?;
+        let res = self.do_query_app(req, height, prove)?;
+
+        Ok(to_json_vec(&res)?)
     }
 }
 
