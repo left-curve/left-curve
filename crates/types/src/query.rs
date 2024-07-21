@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Event, Hash, Json},
+    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash, Json},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -87,13 +87,6 @@ pub struct WasmRawResponse {
 pub struct WasmSmartResponse {
     pub contract: Addr,
     pub data: Json,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct SimulationResponse {
-    pub gas_limit: Option<u64>,
-    pub gas_used: u64,
-    pub events: Vec<Event>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

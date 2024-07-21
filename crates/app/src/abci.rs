@@ -1,7 +1,8 @@
 use {
-    crate::{App, AppError, AppResult, Db, Vm},
+    crate::{App, AppError, Db, Outcome, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, Hash, Timestamp, Uint64, GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
+        GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -67,12 +68,32 @@ where
         let block = from_tm_block(req.height, req.time, Some(req.hash));
 
         match self.do_finalize_block_raw(block, &req.txs) {
-            Ok((app_hash, events, tx_results)) => ResponseFinalizeBlock {
-                events: events.into_iter().map(to_tm_event).collect(),
-                tx_results: tx_results.into_iter().map(to_tm_tx_result).collect(),
-                validator_updates: vec![],
-                consensus_param_updates: None,
-                app_hash: app_hash.into_vec().into(),
+            Ok(outcome) => {
+                // In Cosmos SDK, this refers to the Begin/EndBlocker events.
+                // For us, this is the cronjob events.
+                // Note that failed cronjobs are ignored (not included in `ResponseFinalizeBlock`).
+                let events = outcome
+                    .cron_outcomes
+                    .into_iter()
+                    .filter_map(|res| res.ok().map(|outcome| into_tm_events(outcome.events)))
+                    .flatten()
+                    .collect();
+
+                let tx_results = outcome
+                    .tx_outcomes
+                    .into_iter()
+                    .map(into_tm_tx_result)
+                    .collect();
+
+                ResponseFinalizeBlock {
+                    app_hash: outcome.app_hash.into_vec().into(),
+                    events,
+                    tx_results,
+                    // We haven't implemented any mechanism to alter the
+                    // validator set or consensus params yet.
+                    validator_updates: vec![],
+                    consensus_param_updates: None,
+                }
             },
             Err(err) => panic!("failed to finalize block: {err}"),
         }
@@ -158,6 +179,8 @@ where
     }
 }
 
+// ---------------------------------- helpers ----------------------------------
+
 fn from_tm_block(height: i64, time: Option<TmTimestamp>, hash: Option<Bytes>) -> BlockInfo {
     BlockInfo {
         height: Uint64::new(height as u64),
@@ -177,30 +200,38 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
         .expect("incorrect block hash length")
 }
 
-fn to_tm_tx_result(tx_result: AppResult<Vec<Event>>) -> ExecTxResult {
+fn into_tm_tx_result(tx_result: GenericResult<Outcome>) -> ExecTxResult {
     match tx_result {
-        Ok(events) => ExecTxResult {
+        GenericResult::Ok(outcome) => ExecTxResult {
             code: 0,
-            events: events.into_iter().map(to_tm_event).collect(),
+            events: into_tm_events(outcome.events),
             ..Default::default()
         },
-        Err(err) => ExecTxResult {
-            code: 1,                     // TODO: custom error code
-            codespace: "tx".to_string(), // TODO: custom error codespace
+        GenericResult::Err(err) => ExecTxResult {
+            code: 1,
+            codespace: "tx".to_string(),
             log: err.to_string(),
             ..Default::default()
         },
     }
 }
 
-fn to_tm_event(event: Event) -> TmEvent {
+fn into_tm_events(events: Vec<Event>) -> Vec<TmEvent> {
+    events.into_iter().map(into_tm_event).collect()
+}
+
+fn into_tm_event(event: Event) -> TmEvent {
     TmEvent {
         r#type: event.r#type,
-        attributes: event.attributes.into_iter().map(to_tm_attribute).collect(),
+        attributes: event
+            .attributes
+            .into_iter()
+            .map(into_tm_attribute)
+            .collect(),
     }
 }
 
-fn to_tm_attribute(attr: Attribute) -> TmAttribute {
+fn into_tm_attribute(attr: Attribute) -> TmAttribute {
     TmAttribute {
         key: attr.key,
         value: attr.value,

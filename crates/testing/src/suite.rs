@@ -1,13 +1,13 @@
 use {
-    crate::{TestAccount, TestResult},
+    crate::TestAccount,
     anyhow::ensure,
-    grug_app::{App, AppError, AppResult, Vm},
+    grug_app::{App, AppError, AppResult, BlockOutcome, Outcome, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Duration, Event,
-        GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest, StdError, Tx,
-        Uint128, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Duration,
+        GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest,
+        StdError, Tx, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -44,7 +44,8 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> anyhow::Result<Self> {
-        let app = App::new(MemDb::new(), vm, None);
+        // Use `u64::MAX` as query gas limit so that there's practically no limit.
+        let app = App::new(MemDb::new(), vm, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block.clone(), genesis_state)?;
 
@@ -58,7 +59,7 @@ where
     }
 
     /// Make a new block with the given transactions.
-    pub fn make_block(&mut self, txs: Vec<Tx>) -> anyhow::Result<Vec<TestResult<Vec<Event>>>> {
+    pub fn make_block(&mut self, txs: Vec<Tx>) -> anyhow::Result<BlockOutcome> {
         let num_txs = txs.len();
 
         // Advance block height and time
@@ -66,21 +67,21 @@ where
         self.block.timestamp = self.block.timestamp + self.block_time;
 
         // Call ABCI `FinalizeBlock` method
-        let (_, _, results) = self.app.do_finalize_block(self.block.clone(), txs)?;
+        let block_outcome = self.app.do_finalize_block(self.block.clone(), txs)?;
 
         // Sanity check: the number of tx results returned by the app should
         // equal the number of txs.
         ensure!(
-            num_txs == results.len(),
+            num_txs == block_outcome.tx_outcomes.len(),
             "sent {} txs but received {} tx results; something is wrong",
             num_txs,
-            results.len()
+            block_outcome.tx_outcomes.len()
         );
 
         // Call ABCI `Commit` method
         self.app.do_commit()?;
 
-        Ok(results.into_iter().map(TestResult::from).collect())
+        Ok(block_outcome)
     }
 
     /// Make a new block without any transaction.
@@ -95,7 +96,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
-    ) -> anyhow::Result<TestResult<Vec<Event>>> {
+    ) -> anyhow::Result<GenericResult<Outcome>> {
         self.send_messages_with_gas(signer, gas_limit, vec![msg])
     }
 
@@ -105,18 +106,26 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<TestResult<Vec<Event>>> {
-        // Get the account's sequence
+    ) -> anyhow::Result<GenericResult<Outcome>> {
+        ensure!(msgs.len() > 0, "please send more than zero messages");
+
+        // Compose and sign a single message
         let sequence = self.sequences.entry(signer.address.clone()).or_insert(0);
-        // Sign the transaction
         let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
-        // Increment the sequence
         *sequence += 1;
 
         // Make a new block with only this transaction
-        let mut results = self.make_block(vec![tx])?;
+        let mut block_outcome = self.make_block(vec![tx])?;
 
-        Ok(results.pop().unwrap())
+        // Sanity check: we sent one transaction, so there should be exactly one
+        // transaction outcome in the block outcome.
+        ensure!(
+            block_outcome.tx_outcomes.len() == 1,
+            "expecting exactly one transaction outcome, got {}; something is wrong!",
+            block_outcome.tx_outcomes.len()
+        );
+
+        Ok(block_outcome.tx_outcomes.pop().unwrap())
     }
 
     /// Update the chain's config under the given gas limit.
@@ -127,7 +136,7 @@ where
         new_cfg: Config,
     ) -> anyhow::Result<()> {
         self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
-            .should_succeed()?;
+            .should_succeed();
 
         Ok(())
     }
@@ -146,7 +155,7 @@ where
         let code_hash = Hash::from_array(sha2_256(&code));
 
         self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
-            .should_succeed()?;
+            .should_succeed();
 
         Ok(code_hash)
     }
@@ -176,7 +185,7 @@ where
             gas_limit,
             Message::instantiate(code_hash, msg, salt, funds, None)?,
         )?
-        .should_succeed()?;
+        .should_succeed();
 
         Ok(address)
     }
@@ -208,7 +217,7 @@ where
             Message::upload(code),
             Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
         ])?
-        .should_succeed()?;
+        .should_succeed();
 
         Ok((code_hash, address))
     }
@@ -228,7 +237,7 @@ where
         StdError: From<C::Error>,
     {
         self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
-            .should_succeed()?;
+            .should_succeed();
 
         Ok(())
     }
@@ -250,19 +259,19 @@ where
             gas_limit,
             Message::migrate(contract, new_code_hash, msg)?,
         )?
-        .should_succeed()?;
+        .should_succeed();
 
         Ok(())
     }
 
-    pub fn query_info(&self) -> TestResult<InfoResponse> {
+    pub fn query_info(&self) -> GenericResult<InfoResponse> {
         self.app
             .do_query_app(QueryRequest::Info {}, 0, false)
             .map(|val| val.as_info())
             .into()
     }
 
-    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> TestResult<Uint128> {
+    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint128> {
         self.app
             .do_query_app(
                 QueryRequest::Balance {
@@ -276,7 +285,7 @@ where
             .into()
     }
 
-    pub fn query_balances(&self, account: &TestAccount) -> TestResult<Coins> {
+    pub fn query_balances(&self, account: &TestAccount) -> GenericResult<Coins> {
         self.app
             .do_query_app(
                 QueryRequest::Balances {
@@ -291,7 +300,7 @@ where
             .into()
     }
 
-    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> TestResult<R>
+    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> GenericResult<R>
     where
         M: Serialize,
         R: DeserializeOwned,
@@ -324,7 +333,7 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &TestAccount,
         msg: Message,
-    ) -> anyhow::Result<TestResult<Vec<Event>>> {
+    ) -> anyhow::Result<GenericResult<Outcome>> {
         self.send_message_with_gas(signer, 0, msg)
     }
 
@@ -333,7 +342,7 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &TestAccount,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<TestResult<Vec<Event>>> {
+    ) -> anyhow::Result<GenericResult<Outcome>> {
         self.send_messages_with_gas(signer, 0, msgs)
     }
 

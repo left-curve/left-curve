@@ -2,7 +2,7 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
-        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        GasTracker, Outcome, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
@@ -14,16 +14,17 @@ use {
 
 pub fn do_configure(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     sender: &Addr,
     new_cfg: Config,
-) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, block, sender, new_cfg) {
-        Ok(event) => {
+) -> AppResult<Outcome> {
+    match _do_configure(storage, gas_tracker, block, sender, new_cfg) {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
 
-            Ok(vec![event])
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -36,10 +37,11 @@ pub fn do_configure(
 
 fn _do_configure(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     block: BlockInfo,
     sender: &Addr,
     new_cfg: Config,
-) -> AppResult<Event> {
+) -> AppResult<Outcome> {
     // Make sure the sender is authorized to set the config.
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
@@ -65,22 +67,24 @@ fn _do_configure(
         }
     }
 
-    Ok(Event::new("configure").add_attribute("sender", sender))
+    Ok(Outcome::new(gas_tracker.limit())
+        .add_event(Event::new("configure").add_attribute("sender", sender)))
 }
 
 // ---------------------------------- upload -----------------------------------
 
 pub fn do_upload(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     uploader: &Addr,
     code: Vec<u8>,
-) -> AppResult<Vec<Event>> {
-    match _do_upload(storage, uploader, code) {
-        Ok((event, _code_hash)) => {
+) -> AppResult<Outcome> {
+    match _do_upload(storage, gas_tracker, uploader, code) {
+        Ok((outcome, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
 
-            Ok(vec![event])
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -94,9 +98,10 @@ pub fn do_upload(
 // Return the hash of the code that is stored, for logging purpose.
 fn _do_upload(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     uploader: &Addr,
     code: Vec<u8>,
-) -> AppResult<(Event, Hash)> {
+) -> AppResult<(Outcome, Hash)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load(storage)?;
     if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
@@ -112,7 +117,8 @@ fn _do_upload(
     CODES.save(storage, &code_hash, &code)?;
 
     Ok((
-        Event::new("upload").add_attribute("code_hash", &code_hash),
+        Outcome::new(gas_tracker.limit())
+            .add_event(Event::new("upload").add_attribute("code_hash", &code_hash)),
         code_hash,
     ))
 }
@@ -128,7 +134,7 @@ pub fn do_transfer<VM>(
     to: Addr,
     coins: Coins,
     receive: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -143,7 +149,7 @@ where
         coins.clone(),
         receive,
     ) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 from = from.to_string(),
@@ -152,7 +158,7 @@ where
                 "Transferred coins"
             );
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -176,7 +182,7 @@ fn _do_transfer<VM>(
     // - `true` when handling `Message::Transfer`
     // - `false` when handling `Message::{Instantaite,Execute}`
     do_receive: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -195,7 +201,7 @@ where
     };
     let msg = BankMsg { from, to, coins };
 
-    let mut events = call_in_1_out_1_handle_response(
+    let mut outcome = call_in_1_out_1_handle_response(
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
@@ -207,10 +213,10 @@ where
     )?;
 
     if do_receive {
-        events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
+        outcome.update(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
     }
 
-    Ok(events)
+    Ok(outcome)
 }
 
 fn _do_receive<VM>(
@@ -219,7 +225,7 @@ fn _do_receive<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg: BankMsg,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -259,7 +265,7 @@ pub fn do_instantiate<VM>(
     salt: Binary,
     funds: Coins,
     admin: Option<Addr>,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -276,11 +282,11 @@ where
         funds,
         admin,
     ) {
-        Ok((events, _address)) => {
+        Ok((outcome, _address)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(address = _address.to_string(), "Instantiated contract");
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -302,11 +308,13 @@ pub fn _do_instantiate<VM>(
     salt: Binary,
     funds: Coins,
     admin: Option<Addr>,
-) -> AppResult<(Vec<Event>, Addr)>
+) -> AppResult<(Outcome, Addr)>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    let mut outcome = Outcome::new(gas_tracker.limit());
+
     let chain_id = CHAIN_ID.load(&storage)?;
 
     // Make sure the user has the permission to instantiate contracts
@@ -327,9 +335,8 @@ where
     ACCOUNTS.save(&mut storage, &address, &account)?;
 
     // Make the fund transfer
-    let mut events = vec![];
     if !funds.is_empty() {
-        events.extend(_do_transfer(
+        outcome.update(_do_transfer(
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
@@ -350,7 +357,8 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response(
+
+    outcome.update(call_in_1_out_1_handle_response(
         vm,
         storage,
         gas_tracker,
@@ -361,7 +369,7 @@ where
         msg,
     )?);
 
-    Ok((events, ctx.contract))
+    Ok((outcome, ctx.contract))
 }
 
 // ---------------------------------- execute ----------------------------------
@@ -375,7 +383,7 @@ pub fn do_execute<VM>(
     sender: Addr,
     msg: &Json,
     funds: Coins,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -390,11 +398,11 @@ where
         msg,
         funds,
     ) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Executed contract");
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -414,18 +422,19 @@ fn _do_execute<VM>(
     sender: Addr,
     msg: &Json,
     funds: Coins,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    let mut outcome = Outcome::new(gas_tracker.limit());
+
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
 
     // Make the fund transfer
-    let mut events = vec![];
     if !funds.is_empty() {
-        events.extend(_do_transfer(
+        outcome.update(_do_transfer(
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
@@ -446,7 +455,8 @@ where
         funds: Some(funds),
         simulate: None,
     };
-    events.extend(call_in_1_out_1_handle_response(
+
+    outcome.update(call_in_1_out_1_handle_response(
         vm,
         storage,
         gas_tracker,
@@ -457,7 +467,7 @@ where
         msg,
     )?);
 
-    Ok(events)
+    Ok(outcome)
 }
 
 // ---------------------------------- migrate ----------------------------------
@@ -471,7 +481,7 @@ pub fn do_migrate<VM>(
     sender: Addr,
     new_code_hash: Hash,
     msg: &Json,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -486,11 +496,11 @@ where
         new_code_hash,
         msg,
     ) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Migrated contract");
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -510,7 +520,7 @@ fn _do_migrate<VM>(
     sender: Addr,
     new_code_hash: Hash,
     msg: &Json,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -564,7 +574,7 @@ pub fn do_reply<VM>(
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -578,11 +588,11 @@ where
         msg,
         result,
     ) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed reply");
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -601,7 +611,7 @@ fn _do_reply<VM>(
     contract: Addr,
     msg: &Json,
     result: &SubMsgResult,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -639,20 +649,20 @@ pub fn do_before_tx<VM>(
     block: BlockInfo,
     tx: &Tx,
     simulate: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx, simulate) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 sender = tx.sender.to_string(),
                 "Called before transaction hook"
             );
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -673,20 +683,20 @@ pub fn do_after_tx<VM>(
     block: BlockInfo,
     tx: &Tx,
     simulate: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx, simulate) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 sender = tx.sender.to_string(),
                 "Called after transaction hook"
             );
 
-            Ok(events)
+            Ok(outcome)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -708,7 +718,7 @@ fn _do_before_or_after_tx<VM>(
     name: &'static str,
     tx: &Tx,
     simulate: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -746,27 +756,27 @@ pub fn do_cron_execute<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
-) -> Option<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match _do_cron_execute(vm, storage, gas_tracker, block, contract.clone()) {
-        Ok(events) => {
+        Ok(outcome) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
 
-            Some(events)
+            Ok(outcome)
         },
-        Err(_err) => {
+        Err(err) => {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 contract = contract.to_string(),
-                err = _err.to_string(),
+                err = err.to_string(),
                 "Failed to perform cronjob"
             );
 
-            None
+            Err(err)
         },
     }
 }
@@ -777,7 +787,7 @@ fn _do_cron_execute<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,

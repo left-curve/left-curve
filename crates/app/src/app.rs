@@ -3,14 +3,14 @@ use {
         do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
         do_migrate, do_transfer, do_upload, query_account, query_accounts, query_balance,
         query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_raw, query_wasm_smart, AppError, AppResult, BlockOutcome, Buffer, Db,
+        GasTracker, Outcome, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        from_json_slice, to_json_vec, Addr, BlockInfo, Duration, Event, GenesisState, Hash,
-        Message, Order, Permission, QueryRequest, QueryResponse, SimulationResponse, StdResult,
-        Storage, Timestamp, Tx, GENESIS_SENDER,
+        from_json_slice, to_json_vec, Addr, Binary, BlockInfo, Duration, GenesisState, Hash,
+        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -22,7 +22,7 @@ use {
 pub struct App<DB, VM> {
     db: DB,
     vm: VM,
-    /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
+    /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
     /// contains an extremely expensive query method (such as one containing an
@@ -34,11 +34,11 @@ pub struct App<DB, VM> {
     ///
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
-    query_gas_limit: Option<u64>,
+    query_gas_limit: u64,
 }
 
 impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
+    pub fn new(db: DB, vm: VM, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
@@ -145,7 +145,7 @@ where
         &self,
         block: BlockInfo,
         raw_txs: &[T],
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)>
+    ) -> AppResult<BlockOutcome>
     where
         T: AsRef<[u8]>,
     {
@@ -157,18 +157,11 @@ where
         self.do_finalize_block(block, txs)
     }
 
-    pub fn do_finalize_block(
-        &self,
-        block: BlockInfo,
-        txs: Vec<Tx>,
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+    pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
 
-        // Events emitted by cronjobs
-        let mut cron_events = vec![];
-
-        // Results of executing transactions
-        let mut tx_results = vec![];
+        let mut cron_outcomes = vec![];
+        let mut tx_outcomes = vec![];
 
         let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -210,15 +203,16 @@ where
                 "Attempting to perform cronjob"
             );
 
-            if let Some(events) = do_cron_execute(
-                self.vm.clone(),
-                Box::new(buffer.clone()),
-                GasTracker::new_limitless(),
-                block.clone(),
-                contract.clone(),
-            ) {
-                cron_events.extend(events);
-            }
+            cron_outcomes.push(
+                do_cron_execute(
+                    self.vm.clone(),
+                    Box::new(buffer.clone()),
+                    GasTracker::new_limitless(),
+                    block.clone(),
+                    contract.clone(),
+                )
+                .into(),
+            );
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -234,13 +228,8 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_results.push(process_tx(
-                self.vm.clone(),
-                buffer.clone(),
-                block.clone(),
-                tx,
-                false,
-            ));
+            tx_outcomes
+                .push(process_tx(self.vm.clone(), buffer.clone(), block.clone(), tx, false).into());
         }
 
         // Save the last committed block.
@@ -253,23 +242,27 @@ where
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
-        let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
+        let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
         // - Merkle tree isn't empty
         debug_assert_eq!(block.height.number(), version);
-        debug_assert!(root_hash.is_some());
+        debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
             height = block.height.number(),
             time = into_utc_string(block.timestamp),
-            app_hash = root_hash.as_ref().unwrap().to_string(),
+            app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
 
-        Ok((root_hash.unwrap(), cron_events, tx_results))
+        Ok(BlockOutcome {
+            app_hash: app_hash.unwrap(),
+            cron_outcomes,
+            tx_outcomes,
+        })
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
@@ -336,7 +329,7 @@ where
 
         // The gas limit for serving this query.
         // This is set as an off-chain, per-node parameter.
-        let gas_tracker = GasTracker::new(self.query_gas_limit);
+        let gas_tracker = GasTracker::new_limited(self.query_gas_limit);
 
         process_query(self.vm.clone(), Box::new(store), gas_tracker, block, req)
     }
@@ -372,14 +365,24 @@ where
     }
 
     #[cfg(feature = "abci")]
-    pub fn do_simulate_raw(&self, tx_raw: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let tx = from_json_slice(tx_raw)?;
+    pub fn do_simulate_raw(
+        &self,
+        unsigned_tx_raw: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<Vec<u8>> {
+        let tx = from_json_slice(unsigned_tx_raw)?;
         let res = self.do_simulate(tx, height, prove)?;
 
         Ok(to_json_vec(&res)?)
     }
 
-    pub fn do_simulate(&self, tx: Tx, height: u64, prove: bool) -> AppResult<SimulationResponse> {
+    pub fn do_simulate(
+        &self,
+        unsigned_tx: UnsignedTx,
+        height: u64,
+        prove: bool,
+    ) -> AppResult<Outcome> {
         let buffer = Buffer::new(self.db.state_storage(None), None);
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -396,16 +399,19 @@ where
             }
         }
 
+        // Create a `Tx` from the unsigned transaction.
+        // Use using the node's query gas limit as the transaction gas limit,
+        // and empty bytes as credential.
+        let tx = Tx {
+            sender: unsigned_tx.sender,
+            gas_limit: self.query_gas_limit,
+            msgs: unsigned_tx.msgs,
+            credential: Binary::empty(),
+        };
+
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        let gas_tracker = GasTracker::new(self.query_gas_limit);
-        let events = process_tx(self.vm.clone(), buffer, block, tx, true)?;
-
-        Ok(SimulationResponse {
-            gas_limit: gas_tracker.limit(),
-            gas_used: gas_tracker.used(),
-            events,
-        })
+        process_tx(self.vm.clone(), buffer, block, tx, true)
     }
 }
 
@@ -415,13 +421,13 @@ fn process_tx<S, VM>(
     block: BlockInfo,
     tx: Tx,
     simulate: bool,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut events = vec![];
+    let mut outcome = Outcome::new(Some(tx.gas_limit));
 
     // Create buffer storage and gas tracker for this transaction.
     let buffer = Shared::new(Buffer::new(storage, None));
@@ -433,7 +439,7 @@ where
     // verifying a cryptographic signature.
     //
     // If this fails, abort, and discard uncommitted state changes.
-    events.extend(do_before_tx(
+    outcome.update(do_before_tx(
         vm.clone(),
         Box::new(buffer.clone()),
         gas_tracker.clone(),
@@ -459,7 +465,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        events.extend(process_msg(
+        outcome.update(process_msg(
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
@@ -473,7 +479,7 @@ where
     //
     // If this fails, abort, discard uncommitted state changes from messages.
     // State changes from `before_tx` are always kept.
-    events.extend(do_after_tx(
+    outcome.update(do_after_tx(
         vm,
         Box::new(buffer.clone()),
         gas_tracker.clone(),
@@ -485,7 +491,7 @@ where
     // All messages succeeded. Commit the state changes.
     buffer.write_access().commit();
 
-    Ok(events)
+    Ok(outcome)
 }
 
 pub fn process_msg<VM>(
@@ -495,13 +501,15 @@ pub fn process_msg<VM>(
     block: BlockInfo,
     sender: Addr,
     msg: Message,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Outcome>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
+        Message::Configure { new_cfg } => {
+            do_configure(&mut storage, gas_tracker, block, &sender, new_cfg)
+        },
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,
@@ -512,7 +520,7 @@ where
             coins,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
+        Message::Upload { code } => do_upload(&mut storage, gas_tracker, &sender, code.into()),
         Message::Instantiate {
             code_hash,
             msg,

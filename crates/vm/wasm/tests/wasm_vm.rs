@@ -25,10 +25,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(100))?;
+        .should_succeed_and_equal(Uint128::new(100));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO)?;
+        .should_succeed_and_equal(Uint128::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
@@ -50,17 +50,17 @@ fn bank_transfers() -> anyhow::Result<()> {
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?
-        .should_succeed()?;
+        .should_succeed();
 
     // Check balances again
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(30))?;
+        .should_succeed_and_equal(Uint128::new(30));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::new(70))?;
+        .should_succeed_and_equal(Uint128::new(70));
 
-    let info = suite.query_info().should_succeed()?;
+    let info = suite.query_info().should_succeed();
 
     // List all holders of the denom
     suite
@@ -75,7 +75,7 @@ fn bank_transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(BTreeMap::from([
             (accounts["sender"].address.clone(), Uint128::new(30)),
             (accounts["receiver"].address.clone(), Uint128::new(70)),
-        ]))?;
+        ]));
 
     Ok(())
 }
@@ -100,16 +100,16 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
             to: accounts["receiver"].address.clone(),
             coins: Coins::one(DENOM, NonZero::new(10_u128)),
         })?
-        .should_fail_with_error("gas")?;
+        .should_fail_with_error("gas");
 
     // Tx is went out of gas.
     // Balances should remain the same
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(100))?;
+        .should_succeed_and_equal(Uint128::new(100));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO)?;
+        .should_succeed_and_equal(Uint128::ZERO);
 
     Ok(())
 }
@@ -135,7 +135,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .should_fail_with_error(VmError::GasDepletion)?;
+        .should_fail_with_error(VmError::GasDepletion);
 
     Ok(())
 }
@@ -168,7 +168,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // ABCI request.
     suite
         .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
-        .should_fail_with_error(VmError::ReadOnly)?;
+        .should_fail_with_error(VmError::ReadOnly);
 
     // Execute the tester contract.
     //
@@ -183,7 +183,7 @@ fn immutable_state() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .should_fail_with_error(VmError::ReadOnly)?;
+        .should_fail_with_error(VmError::ReadOnly);
 
     Ok(())
 }
