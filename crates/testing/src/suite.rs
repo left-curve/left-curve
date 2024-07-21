@@ -107,7 +107,7 @@ where
         gas_limit: u64,
         msgs: Vec<Message>,
     ) -> anyhow::Result<GenericResult<Outcome>> {
-        ensure!(msgs.len() > 0, "please send more than zero messages");
+        ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
         let sequence = self.sequences.entry(signer.address.clone()).or_insert(0);

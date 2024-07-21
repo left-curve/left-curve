@@ -393,10 +393,8 @@ where
         }
 
         // We can't simulate gas at a block height
-        if height != 0 {
-            if height != block.height.number() {
-                return Err(AppError::PastHeightNotSupported);
-            }
+        if height != 0 && height != block.height.number() {
+            return Err(AppError::PastHeightNotSupported);
         }
 
         // Create a `Tx` from the unsigned transaction.
