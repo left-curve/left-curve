@@ -2,11 +2,12 @@ use {
     crate::{AdminOption, SigningOptions},
     anyhow::{bail, ensure},
     grug_account::{QueryMsg, StateResponse},
+    grug_app::Outcome,
     grug_jmt::Proof,
     grug_types::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
         Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse,
-        StdError, Tx, WasmRawResponse,
+        StdError, Tx, UnsignedTx, WasmRawResponse,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
@@ -300,6 +301,14 @@ impl Client {
             .query_app(&QueryRequest::WasmSmart { contract, msg }, height)
             .await?;
         Ok(from_json_value(res.as_wasm_smart().data)?)
+    }
+
+    /// Simulate the gas usage of a transaction.
+    pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
+        let res = self
+            .query("/simulate", to_json_vec(unsigned_tx)?, None, false)
+            .await?;
+        Ok(from_json_slice(res.value)?)
     }
 
     // -------------------------- transaction methods --------------------------

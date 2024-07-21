@@ -1707,6 +1707,7 @@ dependencies = [
  "anyhow",
  "bip32",
  "grug-account",
+ "grug-app",
  "grug-crypto",
  "grug-jmt",
  "grug-types",
