@@ -93,12 +93,12 @@ pub fn export(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
     let name = function.sig.ident.to_string();
     let args = function.sig.inputs.len();
 
-    // e.g. "ptr0: usize, ptr1: usize, ptr2: usize, "
+    // E.g. "ptr0: usize, ptr1: usize, ptr2: usize, "
     let typed_ptrs = (0..args).fold(String::new(), |acc, i| format!("{acc}ptr{i}: usize, "));
-    // e.g. "ptr0, ptr1, ptr2, "
+    // E.g. "ptr0, ptr1, ptr2, "
     let ptrs = (0..args).fold(String::new(), |acc, i| format!("{acc}ptr{i}, "));
 
-    // new module to avoid conflict of function names
+    // New module to avoid conflict of function names
     let new_code = format!(
         r##"
             #[cfg(target_arch = "wasm32")]

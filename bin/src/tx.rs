@@ -96,7 +96,7 @@ impl TxCmd {
         let sender = self.sender.ok_or(anyhow!("sender not specified"))?;
         let key_name = self.key.ok_or(anyhow!("key name not specified"))?;
 
-        // compose the message
+        // Compose the message
         let msg = match self.subcmd {
             SubCmd::Configure { new_cfg } => {
                 let new_cfg = from_json_slice(new_cfg.as_bytes())?;
@@ -145,7 +145,7 @@ impl TxCmd {
             },
         };
 
-        // load signing key
+        // Load signing key
         let key_path = key_dir.join(format!("{key_name}.json"));
         let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
         let signing_key = SigningKey::from_file(&key_path, &password)?;
@@ -156,7 +156,7 @@ impl TxCmd {
             sequence: self.sequence,
         };
 
-        // broadcast transaction
+        // Broadcast transaction
         let client = Client::connect(&self.node)?;
         let maybe_res = client
             .send_message_with_confirmation(msg, &sign_opts, |tx| {
@@ -165,7 +165,7 @@ impl TxCmd {
             })
             .await?;
 
-        // print result
+        // Print result
         if let Some(res) = maybe_res {
             print_json_pretty(PrintableBroadcastResponse::from(res))?;
         } else {

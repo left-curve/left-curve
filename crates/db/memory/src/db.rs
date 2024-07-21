@@ -156,10 +156,10 @@ impl Db for MemDb {
         self.with_write(|mut inner| {
             let changeset = inner.changeset.take().ok_or(DbError::ChangeSetNotSet)?;
 
-            // update the version
+            // Update the version
             inner.latest_version = Some(changeset.version);
 
-            // write changes to state commitment
+            // Write changes to state commitment
             for (key, op) in changeset.state_commitment {
                 if let Op::Insert(value) = op {
                     inner.state_commitment.insert(key, value);
@@ -168,14 +168,12 @@ impl Db for MemDb {
                 }
             }
 
-            // write changes to state storage
+            // Write changes to state storage
             inner.state_storage.write_batch(changeset.state_storage);
 
             Ok(())
         })
     }
-
-    // TODO: add a more performant implementation of `flush_and_commit`
 }
 
 // ----------------------------- state commitment ------------------------------

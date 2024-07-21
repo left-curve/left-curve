@@ -101,8 +101,8 @@ pub fn verify_non_membership_proof(
 ) -> Result<(), ProofError> {
     let bitarray = BitArray::from_bytes(key_hash);
     let hash = match &proof.node {
-        // if the node given is an internal node, we check the bit at the depth.
-        // if the bit is a 0, it must not have a left child; if the bit is a 1,
+        // If the node given is an internal node, we check the bit at the depth.
+        // If the bit is a 0, it must not have a left child; if the bit is a 1,
         // it must not have a right child.
         ProofNode::Internal {
             left_hash,
@@ -119,7 +119,7 @@ pub fn verify_non_membership_proof(
                 _ => hash_internal_node(left_hash.as_ref(), right_hash.as_ref()),
             }
         },
-        // if the node given is a leaf, it's bit path must share a common prefix
+        // If the node given is a leaf, it's bit path must share a common prefix
         // with the key we want to prove not exist.
         ProofNode::Leaf {
             key_hash,

@@ -88,49 +88,69 @@ mod tests {
 
     #[test]
     fn verifying_secp256k1() {
-        // generate a valid signature
+        // Generate a valid signature
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let msg = b"Jake";
         let msg_hash = Identity256::from(sha2_256(msg));
         let sig: Signature = sk.sign_digest(msg_hash.clone());
 
-        // valid signature
-        assert!(secp256k1_verify(&msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
+        // Valid signature
+        {
+            assert!(secp256k1_verify(&msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
+        }
 
-        // incorrect private key
-        let false_sk = SigningKey::random(&mut OsRng);
-        let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
-        assert!(secp256k1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
+        // Incorrect private key
+        {
+            let false_sk = SigningKey::random(&mut OsRng);
+            let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
+            assert!(
+                secp256k1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+            );
+        }
 
-        // incorrect public key
-        let false_sk = SigningKey::random(&mut OsRng);
-        let false_vk = VerifyingKey::from(&false_sk);
-        assert!(secp256k1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err());
+        // Incorrect public key
+        {
+            let false_sk = SigningKey::random(&mut OsRng);
+            let false_vk = VerifyingKey::from(&false_sk);
+            assert!(
+                secp256k1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err()
+            );
+        }
 
-        // incorrect message
-        let false_msg = b"Larry";
-        let false_msg_hash = sha2_256(false_msg);
-        assert!(secp256k1_verify(&false_msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
+        // Incorrect message
+        {
+            let false_msg = b"Larry";
+            let false_msg_hash = sha2_256(false_msg);
+            assert!(
+                secp256k1_verify(&false_msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+            );
+        }
     }
 
     #[test]
     fn recovering_secp256k1() {
-        // generate a valid signature
+        // Generate a valid signature
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let msg = b"Jake";
         let msg_hash = Identity256::from(sha2_256(msg));
         let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
 
-        let recovered_pk =
-            secp256k1_pubkey_recover(&msg_hash, &sig.to_vec(), recovery_id.to_byte(), true)
-                .unwrap();
-        assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
+        // Recover compressed pk
+        {
+            let recovered_pk =
+                secp256k1_pubkey_recover(&msg_hash, &sig.to_vec(), recovery_id.to_byte(), true)
+                    .unwrap();
+            assert_eq!(recovered_pk, vk.to_encoded_point(true).as_bytes());
+        }
 
-        let recovered_pk =
-            secp256k1_pubkey_recover(&msg_hash, &sig.to_vec(), recovery_id.to_byte(), false)
-                .unwrap();
-        assert_eq!(recovered_pk, vk.to_encoded_point(false).as_bytes());
+        // Recover uncompressed pk
+        {
+            let recovered_pk =
+                secp256k1_pubkey_recover(&msg_hash, &sig.to_vec(), recovery_id.to_byte(), false)
+                    .unwrap();
+            assert_eq!(recovered_pk, vk.to_encoded_point(false).as_bytes());
+        }
     }
 }

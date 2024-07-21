@@ -17,14 +17,14 @@ impl AsRef<[u8]> for U64Timestamp {
 
 impl From<u64> for U64Timestamp {
     fn from(value: u64) -> Self {
-        // note: use little endian encoding
+        // Note: Use little endian encoding
         Self(value.to_le_bytes())
     }
 }
 
 impl From<&[u8]> for U64Timestamp {
     fn from(bytes: &[u8]) -> Self {
-        // note: panic if slice is not exactly 8 bytes
+        // Note: Panics if slice is not exactly 8 bytes
         debug_assert_eq!(
             bytes.len(),
             Self::SIZE,
@@ -43,7 +43,7 @@ impl PartialOrd for U64Timestamp {
 
 impl Ord for U64Timestamp {
     fn cmp(&self, other: &Self) -> Ordering {
-        // note: use little endian encoding
+        // Note: Use little endian encoding
         let a = u64::from_le_bytes(self.0);
         let b = u64::from_le_bytes(other.0);
         a.cmp(&b)
@@ -72,15 +72,15 @@ impl U64Comparator {
     /// Compares two internal keys with timestamp suffix, larger timestamp
     /// comes first.
     pub fn compare(a: &[u8], b: &[u8]) -> Ordering {
-        // first, compare the keys without timestamps. if the keys are different
+        // First, compare the keys without timestamps. If the keys are different
         // then we don't have to consider timestamps at all.
         let ord = Self::compare_without_ts(a, true, b, true);
         if ord != Ordering::Equal {
             return ord;
         }
 
-        // the keys are the same, now we compare the timestamps.
-        // the larger (newer) timestamp should come first, meaning seek operation
+        // The keys are the same, now we compare the timestamps.
+        // The larger (newer) timestamp should come first, meaning seek operation
         // will try to find a version less than or equal to the target version.
         Self::compare_ts(
             extract_timestamp_from_user_key(a),

@@ -40,7 +40,7 @@ fn _do_configure(
     sender: &Addr,
     new_cfg: Config,
 ) -> AppResult<Event> {
-    // make sure the sender is authorized to set the config
+    // Make sure the sender is authorized to set the config.
     let cfg = CONFIG.load(storage)?;
     let Some(owner) = cfg.owner else {
         return Err(AppError::OwnerNotSet);
@@ -52,7 +52,7 @@ fn _do_configure(
         });
     }
 
-    // save the new config
+    // Save the new config.
     CONFIG.save(storage, &new_cfg)?;
 
     // If the list of cronjobs has been changed, we have to delete the existing
@@ -645,7 +645,6 @@ where
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
         Ok(events) => {
-            // TODO: add txhash here?
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 sender = tx.sender.to_string(),
@@ -679,7 +678,6 @@ where
 {
     match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
         Ok(events) => {
-            // TODO: add txhash here?
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 sender = tx.sender.to_string(),

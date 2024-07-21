@@ -74,8 +74,8 @@ pub struct DiskDb {
 
 struct DiskDbInner {
     db: DBWithThreadMode<MultiThreaded>,
-    // data that are ready to be persisted to the physical database.
-    // ideally we want to just use a rocksdb::WriteBatch here, but it's not
+    // Data that are ready to be persisted to the physical database.
+    // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
     // thread-safe.
     pending_data: RwLock<Option<PendingData>>,
 }
@@ -92,7 +92,7 @@ impl DiskDb {
     where
         P: AsRef<Path>,
     {
-        // note: for default and state commitment CFs, don't enable timestamping;
+        // Note: For default and state commitment CFs, don't enable timestamping;
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
@@ -163,7 +163,7 @@ impl Db for DiskDb {
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
-        // a write batch must not already exist. if it does, it means a batch
+        // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
         if self.inner.pending_data.read()?.is_some() {
@@ -171,18 +171,18 @@ impl Db for DiskDb {
         }
 
         let (old_version, new_version) = match self.latest_version() {
-            // an old version exist.
-            // set the new version to be the old version plus one
+            // An old version exist.
+            // Set the new version to be the old version plus one
             Some(v) => (v, v + 1),
-            // the old version doesn't exist. this means not a first batch has
-            // been flushed yet. in this case we set the new version to be zero.
-            // this is necessary to ensure that BaseStore version always matches
-            // the block height.
+            // The old version doesn't exist. This means not a first batch has
+            // been flushed yet. In this case, we set the new version to be zero.
+            // This is necessary to ensure that DB version always matches the
+            // block height.
             None => (0, 0),
         };
 
-        // commit hashed KVs to state commitment
-        // the DB writes here are kept in the in-memory PendingData
+        // Commit hashed KVs to state commitment.
+        // The DB writes here are kept in the in-memory `PendingData`.
         let mut cache = Buffer::new(self.state_commitment(), None);
         let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
         let (_, pending) = cache.disassemble();
@@ -205,11 +205,11 @@ impl Db for DiskDb {
             .ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
 
-        // set the new version (note: use little endian)
+        // Set the new version (note: use little endian)
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
 
-        // writes in state commitment
+        // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
         for (key, op) in pending.state_commitment {
             if let Op::Insert(value) = op {
@@ -219,7 +219,7 @@ impl Db for DiskDb {
             }
         }
 
-        // writes in state storage (note: don't forget timestamping)
+        // Writes in state storage (note: don't forget timestamping)
         let cf = cf_state_storage(&self.inner.db);
         let ts = U64Timestamp::from(pending.version);
         for (key, op) in pending.state_storage {
@@ -415,7 +415,7 @@ fn new_db_options() -> Options {
 
 fn new_cf_options_with_ts() -> Options {
     let mut opts = Options::default();
-    // must use a timestamp-enabled comparator
+    // Must use a timestamp-enabled comparator
     opts.set_comparator_with_ts(
         U64Comparator::NAME,
         U64Timestamp::SIZE,

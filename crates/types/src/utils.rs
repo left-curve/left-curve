@@ -144,14 +144,17 @@ where
 /// Given a compound key consisting of [k1, k2, ..., kN] (N > 1) that is encoded
 /// in the following way:
 ///
+/// ```plain
 /// len(k1) | k1 | len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}
+/// ```
 ///
 /// Strip the first key, returns two new byte slices:
-/// 1. k1
-/// 2. len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}
+///
+/// 1. `k1`
+/// 2. `len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}`
 #[doc(hidden)]
 pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
-    // NOTE: this panics if bytes.len() < 2
+    // Note: This panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);
     // this unwrap can't fail since split at position 2
     let len = u16::from_be_bytes(len_bytes.try_into().unwrap());
@@ -168,7 +171,7 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
 /// The resulting data looks like this:
 ///
 /// ```plain
-/// section1 || section1_len || section2 || section2_len || section3 || section3_len || …
+/// section1 | section1_len | section2 | section2_len | section3 | section3_len | …
 /// ```
 #[doc(hidden)]
 pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {

@@ -57,8 +57,8 @@ where
         );
 
         match (submsg.reply_on, result) {
-            // success - callback requested
-            // flush state changes, log events, give callback
+            // Success - callback requested
+            // Flush state changes, log events, give callback.
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
                 events.extend(submsg_events.clone());
@@ -72,8 +72,8 @@ where
                     &GenericResult::Ok(submsg_events),
                 )?);
             },
-            // error - callback requested
-            // discard uncommitted state changes, give callback
+            // Error - callback requested
+            // Discard uncommitted state changes, give callback.
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
                 events.extend(do_reply(
                     vm.clone(),
@@ -85,14 +85,14 @@ where
                     &GenericResult::Err(err.to_string()),
                 )?);
             },
-            // success - callback not requested
-            // flush state changes, log events, move on to the next submsg
+            // Success - callback not requested
+            // Flush state changes, log events, move on to the next submsg.
             (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
                 events.extend(submsg_events);
             },
-            // error - callback not requested
-            // abort by throwing error
+            // Error - callback not requested
+            // Abort by throwing error.
             (ReplyOn::Success(_) | ReplyOn::Never, Result::Err(err)) => {
                 return Err(err);
             },

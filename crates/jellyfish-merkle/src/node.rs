@@ -76,7 +76,7 @@ pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
     Hash::from_array(hasher.finalize().into())
 }
 
-// just a helper function to avoid repetitive verbose code...
+// Just a helper function to avoid repetitive verbose code...
 #[inline]
 fn hash_of(child: &Option<Child>) -> Option<&Hash> {
     child.as_ref().map(|child| &child.hash)

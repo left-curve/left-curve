@@ -75,10 +75,10 @@ impl Storage for ExternalStorage {
         }
 
         unsafe { Some(Region::consume(value_ptr as *mut Region)) }
-        // NOTE: key_ptr goes out of scope here, so the Region is dropped.
-        // however, `key` is NOT dropped, since we're only working with a
+        // NOTE: `key_ptr` goes out of scope here, so the `Region` is dropped.
+        // However, `key` is _not_ dropped, since we're only working with a
         // borrowed reference here.
-        // same case with `write` and `remove`.
+        // Same case with `write` and `remove`.
     }
 
     fn scan<'a>(
@@ -117,10 +117,6 @@ impl Storage for ExternalStorage {
         })
     }
 
-    // note: cosmwasm doesn't allow empty values:
-    // https://github.com/CosmWasm/cosmwasm/blob/v1.5.0/packages/std/src/imports.rs#L111
-    // this is because its DB backend doesn't distinguish between an empty value
-    // vs a non-existent value. but this isn't a problem for us.
     fn write(&mut self, key: &[u8], value: &[u8]) {
         let key = Region::build(key);
         let key_ptr = &*key as *const Region;
@@ -212,12 +208,12 @@ unsafe fn register_iterator(min: Option<&[u8]>, max: Option<&[u8]>, order: Order
     db_scan(min_ptr, max_ptr, order.into())
 }
 
-// clippy has a false positive here. we have to take Option<&Box<Region>>,
-// not Option<&Region>
+// Clippy has a false positive here. We _have_ to take `Option<&Box<Region>>`,
+// not `Option<&Region>`.
 #[allow(clippy::borrowed_box)]
 fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
-    // a zero memory address tells the host that no data has been loaded into
-    // memory. in case of db_scan, it means the bound is None.
+    // A zero memory address tells the host that no data has been loaded into
+    // memory. In case of `db_scan`, it means the bound is `None`.
     let Some(region) = maybe_region else {
         return 0;
     };
@@ -225,26 +221,28 @@ fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
     (region.as_ref() as *const Region) as usize
 }
 
-// unlike storage keys in Map, where we prefix the length, like this:
+// Unlike storage keys in `Map`, where we prefix the length, like this:
+//
 // storage_key := len(namespace) | namespace | len(k1) | k1 | len(k2) | k2 | k3
 //
-// here, when the host loads the next value into Wasm memory, we do it like this:
+// Here, when the host loads the next value into Wasm memory, we do it like this:
+//
 // data := key | value | len(key)
 //
-// this is because in this way, we can simply pop out the key without having to
-// allocate a new Vec.
+// This is because in this way, we can simply pop out the key without having to
+// allocate a new `Vec`.
 //
-// another difference from cosmwasm is we use 2 bytes (instead of 4) for the
-// length. this means the key cannot be more than u16::MAX = 65535 bytes long,
-// which is always true is practice (we set max key length in Item and Map).
+// Another difference from CosmWasm is we use 2 bytes (instead of 4) for the
+// length. This means the key cannot be more than `u16::MAX` = 65535 bytes long,
+// which is always true is practice (we set max key length in `Item` and `Map`).
 #[inline]
 fn split_tail(mut data: Vec<u8>) -> Record {
-    // pop two bytes from the end, must both be Some
+    // Pop two bytes from the end, must both be Some
     let (Some(byte1), Some(byte2)) = (data.pop(), data.pop()) else {
         panic!("[ExternalIterator]: can't read length suffix");
     };
 
-    // note the order here between the two bytes
+    // Note the order here between the two bytes
     let key_len = u16::from_be_bytes([byte2, byte1]);
     let value = data.split_off(key_len.into());
 

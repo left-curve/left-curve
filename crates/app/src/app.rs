@@ -71,8 +71,8 @@ where
     ) -> AppResult<Hash> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
 
-        // make sure the block height during InitChain is zero. this is necessary
-        // to ensure that block height always matches the BaseStore version.
+        // Make sure the genesis block height is zero. This is necessary to
+        // ensure that block height always matches the DB version.
         if block.height.number() != 0 {
             return Err(AppError::IncorrectBlockHeight {
                 expect: 0,
@@ -84,20 +84,22 @@ where
         // During genesis, there is no gas limit.
         let gas_tracker = GasTracker::new_limitless();
 
-        // save the config and genesis block. some genesis messages may need it
+        // Save the config and genesis block, so that they can be queried when
+        // executing genesis messages.
         CHAIN_ID.save(&mut buffer, &chain_id)?;
         CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
-        // Schedule cronjobs
+        // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
             schedule_cronjob(&mut buffer, &contract, block.timestamp, interval)?;
         }
 
-        // loop through genesis messages and execute each one.
-        // it's expected that genesis messages should all successfully execute.
-        // if anyone fails, it's fatal error and we abort the genesis.
-        // the developer should examine the error, fix it, and retry.
+        // Loop through genesis messages and execute each one.
+        //
+        // It's expected that genesis messages should all successfully execute.
+        // If anyone fails, it's considered fatal and genesis is aborted.
+        // The developer should examine the error, fix it, and retry.
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
@@ -112,16 +114,17 @@ where
             )?;
         }
 
-        // persist the state changes to disk
+        // Persist the state changes to disk
         let (_, pending) = buffer.disassemble().disassemble();
         let (version, root_hash) = self.db.flush_and_commit(pending)?;
 
-        // BaseStore version should be 0
+        // Sanity check: DB version should be 0
         debug_assert_eq!(version, 0);
 
-        // the root hash should not be None. it's only None when the merkle tree
-        // is empty, but we have written some data to it (like the chain ID and
-        // the config) so it shouldn't be empty.
+        // Sanity check: the root hash should not be `None`.
+        //
+        // It's only `None` when the Merkle tree is empty, but we have written
+        // some data to it (like chain ID and config) so it shouldn't be empty.
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
@@ -168,9 +171,8 @@ where
         let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
-        // make sure the new block height is exactly the last finalized height
-        // plus one. this ensures that block height always matches the BaseStore
-        // version.
+        // Make sure the new block height is exactly the last finalized height
+        // plus one. This ensures that block height always matches the DB version.
         if block.height.number() != last_finalized_block.height.number() + 1 {
             return Err(AppError::IncorrectBlockHeight {
                 expect: last_finalized_block.height.number() + 1,
@@ -225,7 +227,7 @@ where
             )?;
         }
 
-        // process transactions one-by-one
+        // Process transactions one-by-one.
         for (_idx, tx) in txs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
@@ -238,23 +240,22 @@ where
             ));
         }
 
-        // save the last committed block
+        // Save the last committed block.
         //
-        // note that we do this *after* the transactions have been executed, so
-        // if a contract queries the last committed block during the execution,
+        // Note that we do this _after_ the transactions have been executed.
+        // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
-        // flush the state changes to the DB, but keep it in memory, not persist
-        // to disk yet. it will be done in the ABCI `Commit` call.
+        // Flush the state changes to the DB, but keep it in memory, not persist
+        // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
         let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
 
-        // block height should match the DB version
+        // Sanity checks, same as in `do_init_chain`:
+        // - Block height matches DB version
+        // - Merkle tree isn't empty
         debug_assert_eq!(block.height.number(), version);
-
-        // the merkle tree should never be empty because at least we always have
-        // things like the config, last finalized block, ...
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
@@ -268,7 +269,6 @@ where
         Ok((root_hash.unwrap(), cron_events, tx_results))
     }
 
-    // TODO: we need to think about what to do if the flush fails here?
     pub fn do_commit(&self) -> AppResult<()> {
         self.db.commit()?;
 
@@ -278,21 +278,21 @@ where
         Ok(())
     }
 
-    // returns (last_block_height, last_block_app_hash)
-    // note that we are returning the app hash, not the block hash
+    // Returns (last_block_height, last_block_app_hash).
+    // Note that we are returning the app hash, not the block hash.
     pub fn do_info(&self) -> AppResult<(u64, Hash)> {
         let Some(version) = self.db.latest_version() else {
-            // base store doesn't have a version. this is the case if the chain
-            // hasn't started yet (prior to the InitChain call). in this case we
-            // return zero height and an all-zero zero hash.
+            // The DB doesn't have a version yet. This is the case if the chain
+            // hasn't started yet (prior to the `InitChain` call). In this case,
+            // we return zero height and an all-zero zero hash.
             return Ok((0, Hash::ZERO));
         };
 
         let Some(root_hash) = self.db.root_hash(Some(version))? else {
-            // root hash is None. since we know version is not zero at this
-            // point, the only way root hash is None is that state tree is empty.
-            // however this is impossible, since we always keep some data in the
-            // state (such as chain ID and config).
+            // Root hash is `None`. Since we know version is not zero at this
+            // point, the only way root hash is `None` is that state tree is
+            // empty. However this is impossible, since we always keep some data
+            // in the state (such as chain ID and config).
             panic!("root hash not found at the latest version ({version})");
         };
 
@@ -302,6 +302,7 @@ where
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
         let req = from_json_slice(raw_req)?;
         let res = self.do_query_app(req, height, prove)?;
+
         Ok(to_json_vec(&res)?)
     }
 
@@ -312,34 +313,33 @@ where
         prove: bool,
     ) -> AppResult<QueryResponse> {
         if prove {
-            // we can't do merkle proof for smart queries. only raw store query
-            // can be merkle proved.
+            // We can't do Merkle proof for smart queries. Only raw store query
+            // can be Merkle proved.
             return Err(AppError::ProofNotSupported);
         }
 
         let version = if height == 0 {
-            // height being zero means unspecified (protobuf doesn't have a null
+            // Height being zero means unspecified (Protobuf doesn't have a null
             // type) in which case we use the latest version.
             None
         } else {
             Some(height)
         };
 
-        // use the state storage at the given version to perform the query
+        // Use the state storage at the given version to perform the query.
         let store = self.db.state_storage(version);
         let block = LAST_FINALIZED_BLOCK.load(&store)?;
 
-        process_query(
-            self.vm.clone(),
-            Box::new(store),
-            GasTracker::new(self.query_gas_limit),
-            block,
-            req,
-        )
+        // The gas limit for serving this query.
+        // This is set as an off-chain, per-node parameter.
+        let gas_tracker = GasTracker::new(self.query_gas_limit);
+
+        process_query(self.vm.clone(), Box::new(store), gas_tracker, block, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
-    /// Returns two values:
+    ///
+    /// Returns:
     /// - the value corresponding to the given key; `None` if the key doesn't exist;
     /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
     pub fn do_query_store(
@@ -349,7 +349,7 @@ where
         prove: bool,
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let version = if height == 0 {
-            // height being zero means unspecified (protobuf doesn't have a null
+            // Height being zero means unspecified (Protobuf doesn't have a null
             // type) in which case we use the latest version.
             None
         } else {
@@ -376,12 +376,16 @@ where
 {
     let mut events = vec![];
 
-    // create buffer storage and gas tracker for this tx
+    // Create buffer storage and gas tracker for this transaction.
     let buffer = Shared::new(Buffer::new(storage, None));
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
-    // call the sender account's `before_tx` method.
-    // if this fails, abort, discard uncommitted state changes.
+    // Call the sender account's `before_tx` method.
+    //
+    // The account is expected to perform authentication at this time, such as
+    // verifying a cryptographic signature.
+    //
+    // If this fails, abort, and discard uncommitted state changes.
     events.extend(do_before_tx(
         vm.clone(),
         Box::new(buffer.clone()),
@@ -390,16 +394,19 @@ where
         &tx,
     )?);
 
-    // update the account state. as long as authentication succeeds, regardless
-    // of whether the message are successful, we update account state. if auth
-    // fails, we don't update account state.
+    // Update the account state. As long as authentication succeeds, regardless
+    // of whether the message are successful, we update account state.
+    //
+    // The account may maintain a sequence number, for example, which needs to
+    // be incremented even if the transaction fails.
     buffer.write_access().commit();
 
-    // now that the tx is authenticated, we loop through the messages and
+    // Now that the tx is authenticated, we loop through the messages and
     // execute them one by one.
-    // if any one of the msgs fails, the entire tx fails; abort, discard
-    // uncommitted changes (the changes from the before_tx call earlier are
-    // persisted)
+    //
+    // If any one of the msgs fails, the entire tx fails; abort, discard
+    // uncommitted changes (the changes from the `before_tx` call earlier are
+    // persisted).
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
@@ -414,9 +421,10 @@ where
         )?);
     }
 
-    // call the sender account's `after_tx` method.
-    // if this fails, abort, discard uncommitted state changes from messages.
-    // state changes from `before_tx` are always kept.
+    // Call the sender account's `after_tx` method.
+    //
+    // If this fails, abort, discard uncommitted state changes from messages.
+    // State changes from `before_tx` are always kept.
     events.extend(do_after_tx(
         vm,
         Box::new(buffer.clone()),
@@ -425,7 +433,7 @@ where
         &tx,
     )?);
 
-    // all messages succeeded. commit the state changes
+    // All messages succeeded. Commit the state changes.
     buffer.write_access().commit();
 
     Ok(events)
@@ -556,12 +564,12 @@ where
 }
 
 pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
-    // the genesis sender can always store code and instantiate contracts
+    // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
     }
 
-    // owner can always do anything it wants
+    // The owner can always do anything it wants.
     if let Some(owner) = owner {
         if sender == owner {
             return true;

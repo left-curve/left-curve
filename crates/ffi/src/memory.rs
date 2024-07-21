@@ -11,7 +11,8 @@ pub struct Region {
 impl Region {
     /// Build a Region describing an existing byte slice.
     ///
-    /// IMPORTANT MEMORY SAFETY NOTE:
+    /// ## Important memory safety note:
+    ///
     /// This function does NOT take ownership of `data`, therefore the host must
     /// NOT call `deallocate` to free the memory.
     pub fn build(data: &[u8]) -> Box<Region> {
@@ -28,7 +29,8 @@ impl Region {
     /// at the very end of the call. For all other use cases, Region::build
     /// probably should be used.
     ///
-    /// IMPORTANT MEMORY SAFETY NOTE:
+    /// ## Important memory safety note:
+    ///
     /// The variable `data` is dropped, but the memory it takes is not freed.
     /// The host MUST call the `deallocate` export to free the memory spaces
     /// taken by _both_ the Region and the Vec.
@@ -48,7 +50,7 @@ impl Region {
 
     /// Typically used by the guest to read data provide by the host.
     ///
-    /// NOTE: memory space taken by the Region is freed; memory space referenced
+    /// Note: Memory space taken by the Region is freed; memory space referenced
     /// by the Region has its ownership captured by the Vec.
     #[allow(clippy::missing_safety_doc)]
     pub unsafe fn consume(ptr: *mut Region) -> Vec<u8> {

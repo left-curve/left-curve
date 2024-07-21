@@ -31,7 +31,7 @@ impl BitArray {
     /// This is useful to get the child node bits from the parent node bits.
     pub fn extend_one_bit(&self, is_left: bool) -> Self {
         let mut new = self.clone();
-        // left child = 0, right child = 1
+        // Left child = 0, right child = 1
         new.push(if is_left {
             0
         } else {
@@ -41,16 +41,18 @@ impl BitArray {
     }
 
     pub fn from_bytes(slice: &[u8]) -> Self {
-        // the slice must be no longer than 32 bytes, otherwise panic
+        // The slice must be no longer than 32 bytes, otherwise panic
         assert!(
             slice.len() <= Self::MAX_BYTE_LENGTH,
             "slice too long: {} > {}",
             slice.len(),
             Self::MAX_BYTE_LENGTH
         );
-        // copy the bytes over
+
+        // Copy the bytes over
         let mut bytes = [0; Self::MAX_BYTE_LENGTH];
         bytes[..slice.len()].copy_from_slice(slice);
+
         Self {
             num_bits: slice.len() * 8,
             bytes,
@@ -65,11 +67,13 @@ impl BitArray {
             "index out of bounds: {index} >= {}",
             self.num_bits
         );
-        // we can use the `div_rem` method provided by the num-integer crate,
+
+        // We can use the `div_rem` method provided by the num-integer crate,
         // not sure if it's more efficient:
         // https://docs.rs/num-integer/latest/num_integer/fn.div_rem.html
         let (quotient, remainder) = (index / 8, index % 8);
         let byte = self.bytes[quotient];
+
         (byte >> (7 - remainder)) & 0b1
     }
 
@@ -78,18 +82,22 @@ impl BitArray {
             self.num_bits <= Self::MAX_BIT_LENGTH,
             "bitarray getting too long"
         );
+
         debug_assert!(bit == 0 || bit == 1, "bit can only be 0 or 1, got {bit}");
+
         let (quotient, remainder) = (self.num_bits / 8, self.num_bits % 8);
         let byte = &mut self.bytes[quotient];
+
         if bit == 1 {
             *byte |= 0b1 << (7 - remainder);
         } else {
-            // note: the exclamation mark `!` here is the bitwise NOT operator,
+            // Note: The exclamation mark `!` here is the bitwise NOT operator,
             // not the logical NOT operator.
-            // in Rust, `u8` has `!` as bitwise NOT; it doesn't have logical NOT.
+            // In Rust, `u8` has `!` as bitwise NOT; it doesn't have logical NOT.
             // for comparison, in C, `~` is bitwise NOT and `!` is logical NOT.
             *byte &= !(0b1 << (7 - remainder));
         }
+
         self.num_bits += 1;
     }
 
@@ -104,7 +112,7 @@ impl BitArray {
 
 impl fmt::Debug for BitArray {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // spefial case: empty bits
+        // Spefial case: empty bits
         if self.num_bits == 0 {
             return f.write_str("_");
         }
@@ -175,9 +183,9 @@ impl<'a> BitIterator<'a> {
 
     fn increment_quotient_and_remainder(&mut self) -> Option<(usize, usize)> {
         let Some((q, r)) = self.current.as_mut() else {
-            // this is the first time `next` is called. in this case, since the
-            // minimum bound in inclusive, we simply return the min q and r.
-            // make sure to check the max bound.
+            // This is the first time `next` is called. In this case, since the
+            // minimum bound in inclusive, we simply return the min `q` and `r`.
+            // Make sure to check the max bound.
             if self.min < self.max {
                 self.current = Some(self.min);
                 return self.current;
@@ -202,15 +210,16 @@ impl<'a> BitIterator<'a> {
 
     fn decrement_quotient_and_remainder(&mut self) -> Option<(usize, usize)> {
         if self.current.is_none() {
-            // this is the first time `next` is called. in this case, initialize
-            // current q and r. since max bound is exclusive, we don't just return
-            // here yet as in `increment`, but instead move on to decrement it.
+            // This is the first time `next` is called. In this case, initialize
+            // current `q` and `r`. since max bound is exclusive, we don't just
+            // return here yet as in `increment`, but instead move on to decrement it.
             self.current = Some(self.max);
         }
+
         let (q, r) = self.current.as_mut().unwrap();
 
         if *r == 0 {
-            // prevent subtraction underflow
+            // Prevent subtraction underflow
             if *q == 0 {
                 return None;
             }

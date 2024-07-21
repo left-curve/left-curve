@@ -183,7 +183,7 @@ where
             .take(Self::BATCH_SIZE)
             .collect::<Vec<_>>();
 
-        // now we need to update the bounds
+        // Now we need to update the bounds.
         if let Some((key, _)) = batch.iter().last() {
             match self.order {
                 Order::Ascending => self.min = Some(extend_one_byte(key.clone())),
@@ -202,15 +202,15 @@ where
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // get the next record in the batch. if it exists (i.e. the batch hasn't
-        // reached end yet) then simply return this record
+        // Get the next record in the batch. If it exists (i.e. the batch hasn't
+        // reached end yet) then simply return this record.
         if let Some(record) = self.batch.next() {
             return Some(record);
         }
 
-        // we're here means the batch has reached end. collect another batch
-        // from the store. return the first record in the new batch (which may
-        // be None, in which case the entire iteration has reached end)
+        // We're here means the batch has reached end. Collect another batch
+        // from the store. Return the first record in the new batch (which may
+        // be `None`, which means the entire iteration has reached end).
         self.collect_next_batch();
         self.batch.next()
     }

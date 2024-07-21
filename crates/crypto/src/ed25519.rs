@@ -74,18 +74,24 @@ mod tests {
         let msg_hash = Identity512::from(sha2_512(msg));
         let sig = sk.sign_digest(msg_hash.clone());
 
-        // valid signature
-        assert!(ed25519_verify(&msg_hash, &sig.to_bytes(), vk.as_bytes()).is_ok());
+        // Valid signature
+        {
+            assert!(ed25519_verify(&msg_hash, &sig.to_bytes(), vk.as_bytes()).is_ok());
+        }
 
-        // incorrect private key
-        let false_sk = SigningKey::generate(&mut OsRng);
-        let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
-        assert!(ed25519_verify(&msg_hash, &false_sig.to_bytes(), vk.as_bytes()).is_err());
+        // Incorrect private key
+        {
+            let false_sk = SigningKey::generate(&mut OsRng);
+            let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
+            assert!(ed25519_verify(&msg_hash, &false_sig.to_bytes(), vk.as_bytes()).is_err());
+        }
 
-        // incorrect message
-        let false_msg = b"Larry";
-        let false_msg_hash = sha2_512(false_msg);
-        assert!(ed25519_verify(&false_msg_hash, &sig.to_bytes(), vk.as_bytes()).is_err());
+        // Incorrect message
+        {
+            let false_msg = b"Larry";
+            let false_msg_hash = sha2_512(false_msg);
+            assert!(ed25519_verify(&false_msg_hash, &sig.to_bytes(), vk.as_bytes()).is_err());
+        }
     }
 
     #[test]
@@ -94,29 +100,35 @@ mod tests {
         let (prehash_msg2, sig2, vk2) = ed25519_sign("Larry");
         let (prehash_msg3, sig3, vk3) = ed25519_sign("Rhaki");
 
-        // valid signatures
-        assert!(ed25519_batch_verify(
-            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-            &[&sig1, &sig2, &sig3],
-            &[&vk1, &vk2, &vk3]
-        )
-        .is_ok());
+        // Valid signatures
+        {
+            assert!(ed25519_batch_verify(
+                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                &[&sig1, &sig2, &sig3],
+                &[&vk1, &vk2, &vk3]
+            )
+            .is_ok());
+        }
 
-        // wrong sign
-        assert!(ed25519_batch_verify(
-            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-            &[&sig2, &sig1, &sig3],
-            &[&vk1, &vk2, &vk3]
-        )
-        .is_err());
+        // Wrong sign
+        {
+            assert!(ed25519_batch_verify(
+                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                &[&sig2, &sig1, &sig3],
+                &[&vk1, &vk2, &vk3]
+            )
+            .is_err());
+        }
 
-        // wrong len
-        assert!(ed25519_batch_verify(
-            &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-            &[&sig1, &sig2, &sig3],
-            &[&vk1, &vk2]
-        )
-        .is_err());
+        // Wrong len
+        {
+            assert!(ed25519_batch_verify(
+                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                &[&sig1, &sig2, &sig3],
+                &[&vk1, &vk2]
+            )
+            .is_err());
+        }
     }
 
     fn ed25519_sign(msg: &str) -> (Vec<u8>, [u8; 64], [u8; 32]) {

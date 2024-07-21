@@ -20,7 +20,7 @@ pub enum Op<V = Vec<u8>> {
 }
 
 impl<V> Op<V> {
-    // similar to Option::as_ref
+    // Similar to `Option::as_ref`
     pub fn as_ref(&self) -> Op<&V> {
         match self {
             Op::Insert(v) => Op::Insert(v),
@@ -28,7 +28,7 @@ impl<V> Op<V> {
         }
     }
 
-    // similar to Option::map
+    // Similar to `Option::map`
     pub fn map<T>(self, f: fn(V) -> T) -> Op<T> {
         match self {
             Op::Insert(v) => Op::Insert(f(v)),
@@ -51,8 +51,8 @@ pub enum Order {
     Descending = 2,
 }
 
-// we need to convert Order into a primitive type such as i32 so that it can be
-// passed over FFI
+// We need to convert Order into a primitive type such as `i32` so that it can
+// be passed over FFI.
 impl From<Order> for i32 {
     fn from(order: Order) -> Self {
         order as _

@@ -63,13 +63,13 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // compute start and end bounds
-        // note that the store considers the start bounds as inclusive, and end
-        // bound as exclusive (see the Storage trait)
+        // Compute start and end bounds.
+        // Note that the store considers the start bounds as inclusive, and end
+        // bound as exclusive (see the Storage trait).
         let (min, max) = range_bounds(&self.namespace, min, max);
 
-        // need to make a clone of self.prefix and move it into the closure,
-        // so that the iterator can live longer than &self.
+        // Need to make a clone of self.prefix and move it into the closure,
+        // so that the iterator can live longer than `&self`.
         let namespace = self.namespace.clone();
         let iter = storage
             .scan(Some(&min), Some(&max), order)

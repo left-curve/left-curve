@@ -7,7 +7,7 @@ use {
     grug_types::{hash, Batch, Hash, Op, Order, StdResult, Storage},
 };
 
-// default storage namespaces
+// Default storage namespaces
 pub const DEFAULT_NODE_NAMESPACE: &str = "n";
 pub const DEFAULT_ORPHAN_NAMESPACE: &str = "o";
 
@@ -96,16 +96,16 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         batch: &Batch,
     ) -> StdResult<Option<Hash>> {
-        // hash the keys and values
+        // Hash the keys and values
         let mut batch: Vec<_> = batch
             .iter()
             .map(|(k, op)| (hash(k), op.as_ref().map(hash)))
             .collect();
 
-        // sort by key hashes ascendingly
+        // Sort by key hashes ascendingly
         batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
-        // apply the hashed keys and values
+        // Apply the hashed keys and values
         self.apply(storage, old_version, new_version, batch)
     }
 
@@ -126,28 +126,28 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Option<Hash>> {
-        // the caller must make sure that versions are strictly incremental.
-        // we assert this in debug mode must skip in release to save some time...
+        // The caller must make sure that versions are strictly incremental.
+        // We assert this in debug mode must skip in release to save some time...
         debug_assert!(
             new_version == 0 || new_version > old_version,
             "version is not incremental"
         );
 
-        // if an old root node exists (i.e. tree isn't empty at the old version),
-        // mark it as orphaned
+        // If an old root node exists (i.e. tree isn't empty at the old version),
+        // mark it as orphaned.
         if self.nodes.has(storage, (old_version, ROOT_BITS)) {
             self.mark_node_as_orphaned(storage, new_version, old_version, ROOT_BITS)?;
         }
 
-        // recursively apply the ops, starting at the old root
+        // Recursively apply the ops, starting at the old root.
         match self.apply_at(storage, new_version, old_version, ROOT_BITS, batch)? {
-            // if the new tree is non-empty (i.e. it has a root node), save this
-            // new root node and return its hash
+            // If the new tree is non-empty (i.e. it has a root node), save this
+            // new root node and return its hash.
             Outcome::Updated(new_root_node) | Outcome::Unchanged(Some(new_root_node)) => {
                 self.save_node(storage, new_version, ROOT_BITS, &new_root_node)?;
                 Ok(Some(new_root_node.hash()))
             },
-            // the new tree is empty. do nothing and just return None.
+            // The new tree is empty. do nothing and just return `None`.
             Outcome::Deleted | Outcome::Unchanged(None) => Ok(None),
         }
     }
@@ -183,10 +183,10 @@ impl<'a> MerkleTree<'a> {
         mut internal_node: InternalNode,
         batch: Vec<(Hash, Op<Hash>)>,
     ) -> StdResult<Outcome> {
-        // split the batch into two, one for left child, one for right
+        // Split the batch into two, one for left child, one for right.
         let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
 
-        // apply at the two children, respectively
+        // Apply at the two children, respectively.
         let left_outcome = self.apply_at_child(
             storage,
             new_version,
@@ -205,29 +205,29 @@ impl<'a> MerkleTree<'a> {
         )?;
 
         match (left_outcome, right_outcome) {
-            // neither children is changed. this node is unchanged as well
+            // Neither children is changed. This node is unchanged as well.
             (Outcome::Unchanged(_), Outcome::Unchanged(_)) => {
                 Ok(Outcome::Unchanged(Some(Node::Internal(internal_node))))
             },
-            // both children are deleted or never existed. delete this node as well
+            // Both children are deleted or never existed. Delete this node as well.
             (
                 Outcome::Deleted | Outcome::Unchanged(None),
                 Outcome::Deleted | Outcome::Unchanged(None),
             ) => Ok(Outcome::Deleted),
-            // left child is a leaf, right child is deleted.
-            // delete the current internal node and move left child up.
+            // Left child is a leaf, right child is deleted.
+            // Delete the current internal node and move left child up.
             (
                 Outcome::Updated(left) | Outcome::Unchanged(Some(left)),
                 Outcome::Deleted | Outcome::Unchanged(None),
             ) if left.is_leaf() => Ok(Outcome::Updated(left)),
-            // left child is deleted, right child is a leaf.
-            // delete the current internal node and move right child up.
+            // Left child is deleted, right child is a leaf.
+            // Delete the current internal node and move right child up.
             (
                 Outcome::Deleted | Outcome::Unchanged(None),
                 Outcome::Updated(right) | Outcome::Unchanged(Some(right)),
             ) if right.is_leaf() => Ok(Outcome::Updated(right)),
-            // at least one child is updated and the path can't be collapsed.
-            // update the currenct node and return
+            // At least one child is updated and the path can't be collapsed.
+            // Update the currenct node and return
             (left, right) => {
                 internal_node.left_child = match left {
                     Outcome::Updated(child_node) => Some(Child {
@@ -264,28 +264,28 @@ impl<'a> MerkleTree<'a> {
     ) -> StdResult<Outcome> {
         let child_bits = parent_bits.extend_one_bit(is_left);
         match (batch.is_empty(), child) {
-            // child exists, but there is no op to apply
+            // Child exists, but there is no op to apply.
             (true, Some(child)) => {
                 let child_node = self.nodes.load(storage, (child.version, &child_bits))?;
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
-            // child doesn't exist, and there is no op to apply
+            // Child doesn't exist, and there is no op to apply.
             (true, None) => Ok(Outcome::Unchanged(None)),
-            // child exists, and there are ops to apply
+            // Child exists, and there are ops to apply.
             (false, Some(child)) => {
                 let outcome =
                     self.apply_at(storage, new_version, child.version, &child_bits, batch)?;
-                // if the child has been updated, save the updated node
+                // If the child has been updated, save the updated node.
                 if let Outcome::Updated(new_child_node) = &outcome {
                     self.save_node(storage, new_version, &child_bits, new_child_node)?;
                 }
-                // if the child has been deleted or updated, mark it as orphaned
+                // If the child has been deleted or updated, mark it as orphaned.
                 if let Outcome::Deleted | Outcome::Updated(_) = &outcome {
                     self.mark_node_as_orphaned(storage, new_version, child.version, &child_bits)?;
                 }
                 Ok(outcome)
             },
-            // child doesn't exist, but there are ops to apply
+            // Child doesn't exist, but there are ops to apply.
             (false, None) => {
                 let (batch, op) = prepare_batch_for_subtree(batch, None);
                 debug_assert!(op.is_none());
@@ -306,7 +306,7 @@ impl<'a> MerkleTree<'a> {
         match (batch.is_empty(), op) {
             (true, Some(Op::Insert(value_hash))) => {
                 if value_hash == leaf_node.value_hash {
-                    // overwriting with the same value hash, no-op
+                    // Cverwriting with the same value hash, no-op.
                     Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
                 } else {
                     leaf_node.value_hash = value_hash;
@@ -410,9 +410,9 @@ impl<'a> MerkleTree<'a> {
 
         loop {
             match node {
-                // we've reached a leaf node. if the key hashes match then we've
-                // found it. if they don't match then we know the key doesn't
-                // doesn't exist in the tree. either way, break the loop.
+                // We've reached a leaf node. If the key hashes match then we've
+                // found it. If they don't match then we know the key doesn't
+                // doesn't exist in the tree. Either way, break the loop.
                 Node::Leaf(leaf) => {
                     if key_hash != leaf.key_hash {
                         proof_node = Some(ProofNode::Leaf {
@@ -422,7 +422,7 @@ impl<'a> MerkleTree<'a> {
                     }
                     break;
                 },
-                // we've reached an internal node. move on to its child based on
+                // We've reached an internal node. Move on to its child based on
                 // the next bit in the key hash. append its sibling to the sibling
                 // hashes.
                 Node::Internal(InternalNode {
@@ -455,8 +455,8 @@ impl<'a> MerkleTree<'a> {
                             break;
                         },
                         (bit, ..) => {
-                            // the next bit must exist, because if we have reached the end of the
-                            // bitarray, the node is definitely a leaf. also it can only be 0 or 1.
+                            // The next bit must exist, because if we have reached the end of the
+                            // bitarray, the node is definitely a leaf. Also it can only be 0 or 1.
                             unreachable!("unexpected next bit: {bit:?}");
                         },
                     };
@@ -464,9 +464,9 @@ impl<'a> MerkleTree<'a> {
             }
         }
 
-        // in our proof format, the sibling hashes are from bottom up (from leaf
+        // In our proof format, the sibling hashes are from bottom up (from leaf
         // to the root), so we have to reverse it.
-        // we can either reverse it during proving, or during verification.
+        // We can either reverse it during proving, or during verification.
         // we do it here since proving is usually done off-chain (e.g. an IBC
         // relayer querying the node) while verification is usally done on-chain
         // (e.g. inside an IBC light client).
@@ -485,7 +485,7 @@ impl<'a> MerkleTree<'a> {
     /// Delete nodes that are no longer part of the tree as of `up_to_version`.
     /// If no `up_to_version` is provided then delete all orphans.
     pub fn prune(&self, _store: &mut dyn Storage, _up_to_version: Option<u64>) -> StdResult<()> {
-        // we should first implement a `range_remove` method on Storage trait
+        // We should first implement a `range_remove` method on Storage trait
         todo!()
     }
 
@@ -729,7 +729,7 @@ mod tests {
             .is_none());
     }
 
-    // delete the leaves 010 and 0110. this should cause the leaf 0111 be moved
+    // Delete the leaves 010 and 0110. this should cause the leaf 0111 be moved
     // up to bit path `0`. the result tree is:
     //
     //           root
@@ -766,13 +766,13 @@ mod tests {
         );
     }
 
-    // try deleting every single node. the function should return None as the
-    // new root hash. see that nodes have been properly marked as orphaned.
+    // Try deleting every single node. the function should return None as the
+    // new root hash. See that nodes have been properly marked as orphaned.
     #[test]
     fn deleting_all_nodes() {
         let (mut storage, _) = build_test_case().unwrap();
 
-        // check that new root hash is None
+        // Check that new root hash is `None`.
         let new_root_hash = TREE
             .apply_raw(
                 &mut storage,
@@ -788,7 +788,7 @@ mod tests {
             .unwrap();
         assert!(new_root_hash.is_none());
 
-        // check that every node has been marked as orphaned
+        // Check that every node has been marked as orphaned.
         for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
             assert_eq!(version, 1);
@@ -796,8 +796,8 @@ mod tests {
         }
     }
 
-    // no-op is when the batch contains entirely of overwrites of values by the
-    // same value, or deletes of non-existing keys. the version number shouldn't
+    // No-op is when the batch contains entirely of overwrites of values by the
+    // same value, or deletes of non-existing keys. The version number shouldn't
     // be incremented and root hash shouldn't be changed.
     #[test]
     fn no_ops() {
@@ -821,11 +821,12 @@ mod tests {
                 ]),
             )
             .unwrap();
-        // make sure the root hash is unchanged
+
+        // Make sure the root hash is unchanged
         assert_eq!(new_root_hash, Some(HASH_ROOT));
 
-        // make sure that no node has been marked as orphaned (other than the
-        // old root node, which is always orphaned)
+        // Make sure that no node has been marked as orphaned (other than the
+        // old root node, which is always orphaned).
         for item in TREE.orphans.range(&storage, None, None, Order::Ascending) {
             let (orphaned_since_version, version, bits) = item.unwrap();
             assert_eq!(orphaned_since_version, 2);
@@ -833,8 +834,8 @@ mod tests {
             assert_eq!(bits, *ROOT_BITS);
         }
 
-        // make sure no node of version 2 has been written (other than the new
-        // root node, which is always written)
+        // Make sure no node of version 2 has been written (other than the new
+        // root node, which is always written).
         for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
             assert!(version == 1 || (version == 2 && bits == *ROOT_BITS));

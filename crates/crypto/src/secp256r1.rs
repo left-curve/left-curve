@@ -47,29 +47,43 @@ mod tests {
 
     #[test]
     fn verifying_secp256r1() {
-        // generate a valid signature
+        // Generate a valid signature
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let msg = b"Jake";
         let msg_hash = Identity256::from(sha2_256(msg));
         let sig: Signature = sk.sign_digest(msg_hash.clone());
 
-        // valid signature
-        assert!(secp256r1_verify(&msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
+        // Valid signature
+        {
+            assert!(secp256r1_verify(&msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_ok());
+        }
 
-        // incorrect private key
-        let false_sk = SigningKey::random(&mut OsRng);
-        let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
-        assert!(secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
+        // Incorrect private key
+        {
+            let false_sk = SigningKey::random(&mut OsRng);
+            let false_sig: Signature = false_sk.sign_digest(msg_hash.clone());
+            assert!(
+                secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+            );
+        }
 
-        // incorrect public key
-        let false_sk = SigningKey::random(&mut OsRng);
-        let false_vk = VerifyingKey::from(&false_sk);
-        assert!(secp256r1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err());
+        // Incorrect public key
+        {
+            let false_sk = SigningKey::random(&mut OsRng);
+            let false_vk = VerifyingKey::from(&false_sk);
+            assert!(
+                secp256r1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err()
+            );
+        }
 
-        // incorrect message
-        let false_msg = b"Larry";
-        let false_msg_hash = sha2_256(false_msg);
-        assert!(secp256r1_verify(&false_msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err());
+        // Incorrect message
+        {
+            let false_msg = b"Larry";
+            let false_msg_hash = sha2_256(false_msg);
+            assert!(
+                secp256r1_verify(&false_msg_hash, &sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
+            );
+        }
     }
 }

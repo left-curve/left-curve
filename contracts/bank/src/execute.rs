@@ -120,7 +120,7 @@ fn decrease_supply(
 ) -> StdResult<Option<Uint128>> {
     SUPPLIES.update(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_sub(amount)?;
-        // if supply is reduced to zero, delete it, to save disk space
+        // If supply is reduced to zero, delete it, to save disk space.
         if supply.is_zero() {
             Ok(None)
         } else {
@@ -155,7 +155,7 @@ fn decrease_balance(
 ) -> StdResult<Option<Uint128>> {
     let action = |balance: Option<Uint128>| {
         let balance = balance.unwrap_or_default().checked_sub(amount)?;
-        // if balance is reduced to zero, delete it, to save disk space
+        // If balance is reduced to zero, delete it, to save disk space.
         if balance.is_zero() {
             Ok(None)
         } else {

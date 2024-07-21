@@ -121,21 +121,23 @@ where
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
         // Find all keys within the bounds and mark them all as to be deleted.
-        // We use `self.scan_keys` here, which scans both the base and pending.
-        // We have to collect the iterator, because the iterator holds an
         //
+        // We use `self.scan_keys` here, which scans both the base and pending.
+        //
+        // We have to collect the iterator, because the iterator holds an
         // immutable reference to `self`, but `self.pending.extend` requires a
         // mutable reference, which can't coexist.
         let deletes = self
             .scan_keys(min, max, Order::Ascending)
             .map(|key| (key, Op::Delete))
             .collect::<Vec<_>>();
+
         self.pending.extend(deletes);
     }
 
     fn flush(&mut self, batch: Batch) {
-        // if we do a.extend(b), while a and b have common keys, the values in b
-        // are chosen. this is exactly what we want.
+        // When we do `a.extend(b)`, while `a` and `b` have common keys, the
+        // values in `b` are chosen. This is exactly what we want.
         self.pending.extend(batch);
     }
 }
@@ -210,7 +212,7 @@ where
 mod tests {
     use {super::*, grug_types::MockStorage};
 
-    // illustration of this test case:
+    // Illustration of this test case:
     //
     // base    : 1 2 _ 4 5 6 7 _
     // pending :   D P _ _ P D 8  (P = put, D = delete)
@@ -255,6 +257,4 @@ mod tests {
         merged.reverse();
         assert_eq!(collect_records(&buffer, Order::Descending), merged);
     }
-
-    // TODO: add fuzz test
 }

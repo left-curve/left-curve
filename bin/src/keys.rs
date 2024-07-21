@@ -66,7 +66,7 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
     let filename = dir.join(format!("{name}.json"));
     ensure!(!filename.exists(), "file `{filename:?}` already exists");
 
-    // generate or recover mnemonic phrase
+    // Generate or recover mnemonic phrase
     let mnemonic = if recover {
         let phrase = read_text("🔑 Enter your BIP-39 mnemonic".bold())?;
         Mnemonic::new(phrase, Language::English)?
@@ -74,7 +74,7 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
         Mnemonic::random(OsRng, Language::English)
     };
 
-    // ask for password and save encrypted keystore
+    // Ask for password and save encrypted keystore
     let password = read_password(
         format!("🔑 Enter a password to encrypt the keystore `{filename:?}`").bold(),
     )?;

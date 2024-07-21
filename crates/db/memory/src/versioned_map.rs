@@ -9,9 +9,9 @@ use {
 };
 
 pub struct VersionedMap<K, V> {
-    // initialized to None
-    // set to 0 the first time a batch is written
-    // incremented by 1 each following batch write
+    // Initialized to `None`.
+    // Set to 0 the first time a batch is written.
+    // Incremented by 1 each following batch write.
     pub latest_version: Option<u64>,
     // key => (version => op)
     nested_map: BTreeMap<K, BTreeMap<u64, Op<V>>>,
