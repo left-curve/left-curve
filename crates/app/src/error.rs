@@ -14,8 +14,11 @@ pub enum AppError {
     #[error("DB error: {0}")]
     Db(String),
 
-    #[error("Merkle proof is not support for `/app` query; use `/store` instead")]
+    #[error("Merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
+
+    #[error("simulating a transaction at past block height is not supported")]
+    PastHeightNotSupported,
 
     #[error("sender does not have permission to perform this action")]
     Unauthorized,

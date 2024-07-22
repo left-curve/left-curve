@@ -15,10 +15,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(100))?;
+        .should_succeed_and_equal(Uint128::new(100));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO)?;
+        .should_succeed_and_equal(Uint128::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
@@ -40,15 +40,16 @@ fn bank_transfers() -> anyhow::Result<()> {
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?
-        .should_succeed()?;
+        .result
+        .should_succeed();
 
     // Check balances again
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(30))?;
+        .should_succeed_and_equal(Uint128::new(30));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::new(70))?;
+        .should_succeed_and_equal(Uint128::new(70));
 
     Ok(())
 }

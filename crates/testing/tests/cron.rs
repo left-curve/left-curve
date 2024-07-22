@@ -110,7 +110,7 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 5
     //
     // Update the config to add the cronjobs.
-    let mut cfg = suite.query_info().should_succeed()?.config;
+    let mut cfg = suite.query_info().should_succeed().config;
     // cron1 has an interval of 0, which means it's to be called every block.
     cfg.cronjobs.insert(cron1, Duration::from_seconds(0));
     cfg.cronjobs.insert(cron2, Duration::from_seconds(2));
@@ -212,7 +212,7 @@ fn cronjob_works() -> anyhow::Result<()> {
         suite.make_empty_block()?;
 
         // Check the balances are correct
-        let actual = suite.query_balances(&accounts["jake"]).should_succeed()?;
+        let actual = suite.query_balances(&accounts["jake"]).should_succeed();
         ensure!(actual == expect);
     }
 

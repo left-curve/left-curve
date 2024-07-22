@@ -191,9 +191,6 @@ where
             permissions: Permissions {
                 upload: Permission::Everybody,
                 instantiate: Permission::Everybody,
-                create_client: Permission::Everybody,
-                create_connection: Permission::Everybody,
-                create_channel: Permission::Everybody,
             },
         };
 

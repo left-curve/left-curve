@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     grug_sdk::{Client, SigningKey, SigningOptions},
-    grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message},
+    grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -31,6 +31,10 @@ pub struct TxCmd {
     /// Account sequence number [default: query from chain]
     #[arg(long)]
     sequence: Option<u32>,
+
+    /// Simulate gas usage without submitting the transaction to mempool.
+    #[arg(long)]
+    simulate: bool,
 
     #[command(subcommand)]
     subcmd: SubCmd,
@@ -145,31 +149,41 @@ impl TxCmd {
             },
         };
 
-        // Load signing key
-        let key_path = key_dir.join(format!("{key_name}.json"));
-        let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
-        let signing_key = SigningKey::from_file(&key_path, &password)?;
-        let sign_opts = SigningOptions {
-            signing_key,
-            sender,
-            chain_id: self.chain_id,
-            sequence: self.sequence,
-        };
-
-        // Broadcast transaction
         let client = Client::connect(&self.node)?;
-        let maybe_res = client
-            .send_message_with_confirmation(msg, &sign_opts, |tx| {
-                print_json_pretty(tx)?;
-                Ok(confirm("🤔 Broadcast transaction?".bold())?)
-            })
-            .await?;
 
-        // Print result
-        if let Some(res) = maybe_res {
-            print_json_pretty(PrintableBroadcastResponse::from(res))?;
+        if self.simulate {
+            let unsigned_tx = UnsignedTx {
+                sender,
+                msgs: vec![msg],
+            };
+            let outcome = client.simulate(&unsigned_tx).await?;
+            print_json_pretty(outcome)?;
         } else {
-            println!("🤷 User aborted");
+            // Load signing key
+            let key_path = key_dir.join(format!("{key_name}.json"));
+            let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
+            let signing_key = SigningKey::from_file(&key_path, &password)?;
+            let sign_opts = SigningOptions {
+                signing_key,
+                sender,
+                chain_id: self.chain_id,
+                sequence: self.sequence,
+            };
+
+            // Broadcast transaction
+            let maybe_res = client
+                .send_message_with_confirmation(msg, &sign_opts, |tx| {
+                    print_json_pretty(tx)?;
+                    Ok(confirm("🤔 Broadcast transaction?".bold())?)
+                })
+                .await?;
+
+            // Print result
+            if let Some(res) = maybe_res {
+                print_json_pretty(PrintableBroadcastResponse::from(res))?;
+            } else {
+                println!("🤷 User aborted");
+            }
         }
 
         Ok(())

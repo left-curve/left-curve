@@ -23,7 +23,7 @@ impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
-        let app = App::new(db, vm, self.query_gas_limit);
+        let app = App::new(db, vm, self.query_gas_limit.unwrap_or(u64::MAX));
 
         Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
     }

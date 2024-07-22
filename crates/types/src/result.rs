@@ -1,6 +1,7 @@
 use {
     crate::{Event, StdError, StdResult},
     serde::{Deserialize, Serialize},
+    std::fmt::Debug,
 };
 
 /// The result for executing a submessage, provided to the contract in the `reply`
@@ -33,8 +34,8 @@ where
 }
 
 impl<T> GenericResult<T> {
-    /// Convert the GenericResult to a StdResult, so that it can be unwrapped
-    /// with the `?` operator.
+    /// Convert the `GenericResult<T>` to an `StdResult<T>`, so that it can be
+    /// unwrapped with the `?` operator.
     pub fn into_std_result(self) -> StdResult<T> {
         match self {
             GenericResult::Ok(data) => Ok(data),
@@ -42,27 +43,73 @@ impl<T> GenericResult<T> {
         }
     }
 
-    /// Assume the GenericResult is an Ok, get the data it carries. Error if it
-    /// is an Err.
-    /// This is useful if you're sure the result is an Ok, e.g. when handling a
-    /// submessage result in the `reply` entry point, when you have configured
-    /// it to reply only on success.
-    pub fn as_ok(self) -> T {
+    /// Convert the `GenericResult<T>` to an `Option<T>`, discarding the error
+    /// message.
+    pub fn ok(self) -> Option<T> {
         match self {
-            GenericResult::Ok(data) => data,
-            GenericResult::Err(_) => unreachable!(),
+            GenericResult::Ok(data) => Some(data),
+            GenericResult::Err(_) => None,
         }
     }
 
-    /// Assume the GenericResult is an Err, get the error message. Error if it
-    /// is an Ok.
-    /// This is useful if you're sure the result is an Err, e.g. when handling a
-    /// submessage result in the `reply` entry point, when you have configured
-    /// it to reply only on error.
-    pub fn as_err(self) -> String {
+    /// Ensure the result is ok; return the value.
+    pub fn should_succeed(self) -> T {
         match self {
-            GenericResult::Ok(_) => unreachable!(),
+            GenericResult::Ok(value) => value,
+            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
+        }
+    }
+
+    /// Ensure the result is error; return the error message;
+    pub fn should_fail(self) -> String
+    where
+        T: Debug,
+    {
+        match self {
             GenericResult::Err(err) => err,
+            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+        }
+    }
+
+    /// Ensure the result is ok, and matches the expect value.
+    pub fn should_succeed_and_equal<U>(self, expect: U)
+    where
+        T: Debug + PartialEq<U>,
+        U: Debug,
+    {
+        match self {
+            GenericResult::Ok(value) => {
+                assert_eq!(
+                    value, expect,
+                    "wrong value! expecting: {expect:?}, got: {value:?}"
+                );
+            },
+            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
+        }
+    }
+
+    /// Ensure the result is error, and contains the given message.
+    pub fn should_fail_with_error<M>(self, msg: M)
+    where
+        T: Debug,
+        M: ToString,
+    {
+        match self {
+            GenericResult::Err(err) => {
+                // Here we stringify the error and check for the existence of
+                // the substring, instead of utilizing the Rust type system.
+                //
+                // Have to go with this approach because errors emitted by the
+                // contract are converted to strings (as `GenericResult`) when
+                // passed through the FFI, at which time they lost their types.
+                let expect = msg.to_string();
+                let actual = err.to_string();
+                assert!(
+                    actual.contains(&expect),
+                    "wrong error! expecting: {expect}, got: {actual}"
+                );
+            },
+            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
         }
     }
 }

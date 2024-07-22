@@ -350,6 +350,7 @@ where
         funds: Some(funds),
         simulate: None,
     };
+
     events.extend(call_in_1_out_1_handle_response(
         vm,
         storage,
@@ -446,6 +447,7 @@ where
         funds: Some(funds),
         simulate: None,
     };
+
     events.extend(call_in_1_out_1_handle_response(
         vm,
         storage,
@@ -638,12 +640,13 @@ pub fn do_before_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx, simulate) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -671,12 +674,13 @@ pub fn do_after_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx) {
+    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx, simulate) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -705,6 +709,7 @@ fn _do_before_or_after_tx<VM>(
     block: BlockInfo,
     name: &'static str,
     tx: &Tx,
+    simulate: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -718,7 +723,7 @@ where
         contract: tx.sender.clone(),
         sender: None,
         funds: None,
-        simulate: Some(false),
+        simulate: Some(simulate),
     };
 
     call_in_1_out_1_handle_response(
@@ -735,15 +740,13 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-// Note that this function never fails, unlike every other function in this file.
-// If a cronjob fails, we simply ignore it and move on.
 pub fn do_cron_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     contract: Addr,
-) -> Option<Vec<Event>>
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -753,17 +756,17 @@ where
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
 
-            Some(events)
+            Ok(events)
         },
-        Err(_err) => {
+        Err(err) => {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 contract = contract.to_string(),
-                err = _err.to_string(),
+                err = err.to_string(),
                 "Failed to perform cronjob"
             );
 
-            None
+            Err(err)
         },
     }
 }

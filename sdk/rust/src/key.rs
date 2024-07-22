@@ -49,7 +49,11 @@ impl SigningKey {
     }
 
     /// Read and decrypt a keystore file.
-    pub fn from_file(filename: &Path, password: &str) -> anyhow::Result<Self> {
+    pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<Self>
+    where
+        F: AsRef<Path>,
+        P: AsRef<[u8]>,
+    {
         // read keystore file
         let keystore_str = fs::read_to_string(filename)?;
         let keystore: Keystore = serde_json::from_str(&keystore_str)?;
@@ -57,7 +61,7 @@ impl SigningKey {
         // recover encryption key from password and salt
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
         pbkdf2_hmac::<Sha256>(
-            password.as_bytes(),
+            password.as_ref(),
             &keystore.salt,
             PBKDF2_ITERATIONS,
             &mut password_hash,
@@ -74,13 +78,17 @@ impl SigningKey {
     }
 
     /// Encrypt a key and save it to a file
-    pub fn write_to_file(&self, filename: &Path, password: &str) -> anyhow::Result<Keystore> {
+    pub fn write_to_file<F, P>(&self, filename: F, password: P) -> anyhow::Result<Keystore>
+    where
+        F: AsRef<Path>,
+        P: AsRef<[u8]>,
+    {
         // generate encryption key
         let mut salt = [0u8; PBKDF2_SALT_LEN];
         OsRng.fill(&mut salt);
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
         pbkdf2_hmac::<Sha256>(
-            password.as_bytes(),
+            password.as_ref(),
             &salt,
             PBKDF2_ITERATIONS,
             &mut password_hash,

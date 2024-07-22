@@ -1,3 +1,5 @@
+#[cfg(feature = "abci")]
+use grug_types::from_json_slice;
 use {
     crate::{
         do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
@@ -8,11 +10,44 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        from_json_slice, to_json_vec, Addr, BlockInfo, Duration, Event, GenesisState, Hash,
+        to_json_vec, Addr, Binary, BlockInfo, Duration, Event, GenericResult, GenesisState, Hash,
         Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        GENESIS_SENDER,
+        UnsignedTx, GENESIS_SENDER,
     },
+    serde::{Deserialize, Serialize},
 };
+
+/// Outcome of executing a block.
+pub struct BlockOutcome {
+    /// The Merkle root hash after executing this block.
+    pub app_hash: Hash,
+    /// Results of executing the cronjobs.
+    pub cron_outcomes: Vec<Outcome>,
+    /// Results of executing the transactions.
+    pub tx_outcomes: Vec<Outcome>,
+}
+
+/// Outcome of executing a single message, transaction, or cronjob.
+///
+/// Includes the events emitted, and gas consumption.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Outcome {
+    // `None` means the call was done with unlimited gas, such as cronjobs.
+    pub gas_limit: Option<u64>,
+    pub gas_used: u64,
+    pub result: GenericResult<Vec<Event>>,
+}
+
+impl Outcome {
+    pub fn new(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Self {
+        Self {
+            gas_limit: gas_tracker.limit(),
+            gas_used: gas_tracker.used(),
+            result: result.into(),
+        }
+    }
+}
 
 /// The ABCI application.
 ///
@@ -22,7 +57,7 @@ use {
 pub struct App<DB, VM> {
     db: DB,
     vm: VM,
-    /// The gas limit when serving ABCI `Query` calls. `None` means no limit.
+    /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
     /// contains an extremely expensive query method (such as one containing an
@@ -34,11 +69,11 @@ pub struct App<DB, VM> {
     ///
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
-    query_gas_limit: Option<u64>,
+    query_gas_limit: u64,
 }
 
 impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM, query_gas_limit: Option<u64>) -> Self {
+    pub fn new(db: DB, vm: VM, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
@@ -53,16 +88,6 @@ where
     VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
-    pub fn do_init_chain_raw(
-        &self,
-        chain_id: String,
-        block: BlockInfo,
-        raw_genesis_state: &[u8],
-    ) -> AppResult<Hash> {
-        let genesis_state = from_json_slice(raw_genesis_state)?;
-        self.do_init_chain(chain_id, block, genesis_state)
-    }
-
     pub fn do_init_chain(
         &self,
         chain_id: String,
@@ -139,34 +164,11 @@ where
         Ok(root_hash.unwrap())
     }
 
-    pub fn do_finalize_block_raw<T>(
-        &self,
-        block: BlockInfo,
-        raw_txs: &[T],
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)>
-    where
-        T: AsRef<[u8]>,
-    {
-        let txs = raw_txs
-            .iter()
-            .map(from_json_slice)
-            .collect::<StdResult<Vec<_>>>()?;
-
-        self.do_finalize_block(block, txs)
-    }
-
-    pub fn do_finalize_block(
-        &self,
-        block: BlockInfo,
-        txs: Vec<Tx>,
-    ) -> AppResult<(Hash, Vec<Event>, Vec<AppResult<Vec<Event>>>)> {
+    pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
 
-        // Events emitted by cronjobs
-        let mut cron_events = vec![];
-
-        // Results of executing transactions
-        let mut tx_results = vec![];
+        let mut cron_outcomes = vec![];
+        let mut tx_outcomes = vec![];
 
         let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -208,15 +210,18 @@ where
                 "Attempting to perform cronjob"
             );
 
-            if let Some(events) = do_cron_execute(
+            // Cronjobs can use unlimited gas
+            let gas_tracker = GasTracker::new_limitless();
+
+            let result = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
-                GasTracker::new_limitless(),
+                gas_tracker.clone(),
                 block.clone(),
                 contract.clone(),
-            ) {
-                cron_events.extend(events);
-            }
+            );
+
+            cron_outcomes.push(Outcome::new(gas_tracker, result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -232,11 +237,12 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_results.push(process_tx(
+            tx_outcomes.push(process_tx(
                 self.vm.clone(),
                 buffer.clone(),
                 block.clone(),
                 tx,
+                false,
             ));
         }
 
@@ -250,23 +256,27 @@ where
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
-        let (version, root_hash) = self.db.flush_but_not_commit(batch)?;
+        let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
         // - Merkle tree isn't empty
         debug_assert_eq!(block.height.number(), version);
-        debug_assert!(root_hash.is_some());
+        debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
             height = block.height.number(),
             time = into_utc_string(block.timestamp),
-            app_hash = root_hash.as_ref().unwrap().to_string(),
+            app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
 
-        Ok((root_hash.unwrap(), cron_events, tx_results))
+        Ok(BlockOutcome {
+            app_hash: app_hash.unwrap(),
+            cron_outcomes,
+            tx_outcomes,
+        })
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
@@ -299,13 +309,6 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = from_json_slice(raw_req)?;
-        let res = self.do_query_app(req, height, prove)?;
-
-        Ok(to_json_vec(&res)?)
-    }
-
     pub fn do_query_app(
         &self,
         req: QueryRequest,
@@ -332,7 +335,7 @@ where
 
         // The gas limit for serving this query.
         // This is set as an off-chain, per-node parameter.
-        let gas_tracker = GasTracker::new(self.query_gas_limit);
+        let gas_tracker = GasTracker::new_limited(self.query_gas_limit);
 
         process_query(self.vm.clone(), Box::new(store), gas_tracker, block, req)
     }
@@ -366,19 +369,116 @@ where
 
         Ok((value, proof))
     }
+
+    pub fn do_simulate(
+        &self,
+        unsigned_tx: UnsignedTx,
+        height: u64,
+        prove: bool,
+    ) -> AppResult<Outcome> {
+        let buffer = Buffer::new(self.db.state_storage(None), None);
+
+        let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+
+        // We can't "prove" a gas simulation
+        if prove {
+            return Err(AppError::ProofNotSupported);
+        }
+
+        // We can't simulate gas at a block height
+        if height != 0 && height != block.height.number() {
+            return Err(AppError::PastHeightNotSupported);
+        }
+
+        // Create a `Tx` from the unsigned transaction.
+        // Use using the node's query gas limit as the transaction gas limit,
+        // and empty bytes as credential.
+        let tx = Tx {
+            sender: unsigned_tx.sender,
+            gas_limit: self.query_gas_limit,
+            msgs: unsigned_tx.msgs,
+            credential: Binary::empty(),
+        };
+
+        // Run the transaction with `simulate` as `true`. Track how much gas was
+        // consumed, and, if it was successful, what events were emitted.
+        Ok(process_tx(self.vm.clone(), buffer, block, tx, true))
+    }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx) -> AppResult<Vec<Event>>
+#[cfg(feature = "abci")]
+impl<DB, VM> App<DB, VM>
+where
+    DB: Db,
+    VM: Vm + Clone,
+    AppError: From<DB::Error> + From<VM::Error>,
+{
+    pub fn do_init_chain_raw(
+        &self,
+        chain_id: String,
+        block: BlockInfo,
+        raw_genesis_state: &[u8],
+    ) -> AppResult<Hash> {
+        let genesis_state = from_json_slice(raw_genesis_state)?;
+
+        self.do_init_chain(chain_id, block, genesis_state)
+    }
+
+    pub fn do_finalize_block_raw<T>(
+        &self,
+        block: BlockInfo,
+        raw_txs: &[T],
+    ) -> AppResult<BlockOutcome>
+    where
+        T: AsRef<[u8]>,
+    {
+        let txs = raw_txs
+            .iter()
+            .map(from_json_slice)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        self.do_finalize_block(block, txs)
+    }
+
+    pub fn do_simulate_raw(
+        &self,
+        raw_unsigned_tx: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<Outcome> {
+        let tx = from_json_slice(raw_unsigned_tx)?;
+
+        self.do_simulate(tx, height, prove)
+    }
+
+    pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let req = from_json_slice(raw_req)?;
+        let res = self.do_query_app(req, height, prove)?;
+
+        Ok(to_json_vec(&res)?)
+    }
+}
+
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> Outcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut events = vec![];
-
-    // Create buffer storage and gas tracker for this transaction.
     let buffer = Shared::new(Buffer::new(storage, None));
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
+    let mut events = vec![];
+
+    macro_rules! try_do {
+        ($call:expr) => {
+            match $call {
+                Ok(call_events) => events.extend(call_events),
+                Err(err) => {
+                    return Outcome::new(gas_tracker, Err(err));
+                },
+            }
+        };
+    }
 
     // Call the sender account's `before_tx` method.
     //
@@ -386,13 +486,16 @@ where
     // verifying a cryptographic signature.
     //
     // If this fails, abort, and discard uncommitted state changes.
-    events.extend(do_before_tx(
-        vm.clone(),
-        Box::new(buffer.clone()),
-        gas_tracker.clone(),
-        block.clone(),
-        &tx,
-    )?);
+    try_do! {
+        do_before_tx(
+            vm.clone(),
+            Box::new(buffer.clone()),
+            gas_tracker.clone(),
+            block.clone(),
+            &tx,
+            simulate,
+        )
+    };
 
     // Update the account state. As long as authentication succeeds, regardless
     // of whether the message are successful, we update account state.
@@ -411,32 +514,37 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        events.extend(process_msg(
-            vm.clone(),
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
-            block.clone(),
-            tx.sender.clone(),
-            msg.clone(),
-        )?);
+        try_do! {
+            process_msg(
+                vm.clone(),
+                Box::new(buffer.clone()),
+                gas_tracker.clone(),
+                block.clone(),
+                tx.sender.clone(),
+                msg.clone(),
+            )
+        }
     }
 
     // Call the sender account's `after_tx` method.
     //
     // If this fails, abort, discard uncommitted state changes from messages.
     // State changes from `before_tx` are always kept.
-    events.extend(do_after_tx(
-        vm,
-        Box::new(buffer.clone()),
-        gas_tracker.clone(),
-        block,
-        &tx,
-    )?);
+    try_do! {
+        do_after_tx(
+            vm,
+            Box::new(buffer.clone()),
+            gas_tracker.clone(),
+            block,
+            &tx,
+            simulate,
+        )
+    }
 
     // All messages succeeded. Commit the state changes.
     buffer.write_access().commit();
 
-    Ok(events)
+    Outcome::new(gas_tracker, Ok(events))
 }
 
 pub fn process_msg<VM>(

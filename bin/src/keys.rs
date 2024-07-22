@@ -79,7 +79,7 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
         format!("🔑 Enter a password to encrypt the keystore `{filename:?}`").bold(),
     )?;
     let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
-    let keystore = sk.write_to_file(&filename, &password)?;
+    let keystore = sk.write_to_file(&filename, password)?;
 
     println!();
     print_json_pretty(keystore)?;

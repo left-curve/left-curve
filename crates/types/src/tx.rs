@@ -7,9 +7,18 @@ use {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tx {
     pub sender: Addr,
+    pub gas_limit: u64,
     pub msgs: Vec<Message>,
     pub credential: Binary,
-    pub gas_limit: u64,
+}
+
+/// A transaction but without a gas limit or credential.
+///
+/// This is for using in gas simulation.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct UnsignedTx {
+    pub sender: Addr,
+    pub msgs: Vec<Message>,
 }
 
 #[skip_serializing_none]
