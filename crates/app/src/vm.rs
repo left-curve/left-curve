@@ -1,6 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, GasTracker, Instance, Outcome, QuerierProvider,
+        handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
         StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
@@ -136,7 +136,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     code_hash: &Hash,
     ctx: &Context,
     storage_readonly: bool,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -167,7 +167,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     ctx: &Context,
     storage_readonly: bool,
     param: &P,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     P: Serialize,
     VM: Vm + Clone,
@@ -201,7 +201,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     storage_readonly: bool,
     param1: &P1,
     param2: &P2,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     P1: Serialize,
     P2: Serialize,
@@ -261,18 +261,19 @@ pub(crate) fn handle_response<VM>(
     name: &'static str,
     ctx: &Context,
     response: Response,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut outcome = Outcome::new(gas_tracker.limit()).add_event(
-        Event::new(name)
-            .add_attribute(CONTRACT_ADDRESS_KEY, &ctx.contract)
-            .add_attributes(response.attributes),
-    );
+    // Create an event for this call
+    let event = Event::new(name)
+        .add_attribute(CONTRACT_ADDRESS_KEY, &ctx.contract)
+        .add_attributes(response.attributes);
 
-    outcome.update(handle_submessages(
+    // Handle submessages; append events emitted during submessage handling
+    let mut events = vec![event];
+    events.extend(handle_submessages(
         vm,
         storage,
         ctx.block.clone(),
@@ -281,5 +282,5 @@ where
         response.submsgs,
     )?);
 
-    Ok(outcome)
+    Ok(events)
 }

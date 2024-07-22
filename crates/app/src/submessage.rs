@@ -1,6 +1,6 @@
 use {
-    crate::{do_reply, process_msg, AppError, AppResult, Buffer, GasTracker, Outcome, Shared, Vm},
-    grug_types::{Addr, BlockInfo, GenericResult, ReplyOn, Storage, SubMessage},
+    crate::{do_reply, process_msg, AppError, AppResult, Buffer, GasTracker, Shared, Vm},
+    grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
 /// Recursively execute submessages emitted in a contract response using a
@@ -38,12 +38,12 @@ pub fn handle_submessages<VM>(
     gas_tracker: GasTracker,
     sender: Addr,
     submsgs: Vec<SubMessage>,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut outcome = Outcome::new(gas_tracker.limit());
+    let mut events = vec![];
 
     for submsg in submsgs {
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
@@ -59,23 +59,23 @@ where
         match (submsg.reply_on, result) {
             // Success - callback requested
             // Flush state changes, log events, give callback.
-            (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_outcome)) => {
+            (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
-                outcome.update(submsg_outcome.clone());
-                outcome.update(do_reply(
+                events.extend(submsg_events.clone());
+                events.extend(do_reply(
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
                     block.clone(),
                     sender.clone(),
                     &payload,
-                    &GenericResult::Ok(submsg_outcome.events),
+                    &GenericResult::Ok(submsg_events),
                 )?);
             },
             // Error - callback requested
             // Discard uncommitted state changes, give callback.
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                outcome.update(do_reply(
+                events.extend(do_reply(
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
@@ -89,7 +89,7 @@ where
             // Flush state changes, log events, move on to the next submsg.
             (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_outcome)) => {
                 buffer.disassemble().consume();
-                outcome.update(submsg_outcome);
+                events.extend(submsg_outcome);
             },
             // Error - callback not requested
             // Abort by throwing error.
@@ -99,5 +99,5 @@ where
         };
     }
 
-    Ok(outcome)
+    Ok(events)
 }

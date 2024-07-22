@@ -5,16 +5,49 @@ use {
         do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
         do_migrate, do_transfer, do_upload, query_account, query_accounts, query_balance,
         query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_smart, AppError, AppResult, BlockOutcome, Buffer, Db,
-        GasTracker, Outcome, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, Binary, BlockInfo, Duration, GenesisState, Hash, Message, Order,
-        Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx, UnsignedTx,
-        GENESIS_SENDER,
+        to_json_vec, Addr, Binary, BlockInfo, Duration, Event, GenericResult, GenesisState, Hash,
+        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        UnsignedTx, GENESIS_SENDER,
     },
+    serde::{Deserialize, Serialize},
 };
+
+/// Outcome of executing a block.
+pub struct BlockOutcome {
+    /// The Merkle root hash after executing this block.
+    pub app_hash: Hash,
+    /// Results of executing the cronjobs.
+    pub cron_outcomes: Vec<Outcome>,
+    /// Results of executing the transactions.
+    pub tx_outcomes: Vec<Outcome>,
+}
+
+/// Outcome of executing a single message, transaction, or cronjob.
+///
+/// Includes the events emitted, and gas consumption.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Outcome {
+    // `None` means the call was done with unlimited gas, such as cronjobs.
+    pub gas_limit: Option<u64>,
+    pub gas_used: u64,
+    pub result: GenericResult<Vec<Event>>,
+}
+
+impl Outcome {
+    pub fn new(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Self {
+        Self {
+            gas_limit: gas_tracker.limit(),
+            gas_used: gas_tracker.used(),
+            result: result.into(),
+        }
+    }
+}
 
 /// The ABCI application.
 ///
@@ -177,13 +210,18 @@ where
                 "Attempting to perform cronjob"
             );
 
-            let outcome = do_cron_execute(
+            // Cronjobs can use unlimited gas
+            let gas_tracker = GasTracker::new_limitless();
+
+            let result = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
-                GasTracker::new_limitless(),
+                gas_tracker.clone(),
                 block.clone(),
                 contract.clone(),
             );
+
+            cron_outcomes.push(Outcome::new(gas_tracker, result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -192,8 +230,6 @@ where
                 block.timestamp,
                 cfg.cronjobs[&contract],
             )?;
-
-            cron_outcomes.push(outcome.into());
         }
 
         // Process transactions one-by-one.
@@ -362,7 +398,7 @@ where
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        process_tx(self.vm.clone(), buffer, block, tx, true)
+        Ok(process_tx(self.vm.clone(), buffer, block, tx, true))
     }
 }
 
@@ -419,23 +455,26 @@ where
     }
 }
 
-fn process_tx<S, VM>(
-    vm: VM,
-    storage: S,
-    block: BlockInfo,
-    tx: Tx,
-    simulate: bool,
-) -> AppResult<Outcome>
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> Outcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut outcome = Outcome::new(Some(tx.gas_limit));
-
-    // Create buffer storage and gas tracker for this transaction.
     let buffer = Shared::new(Buffer::new(storage, None));
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
+    let mut events = vec![];
+
+    macro_rules! try_do {
+        ($call:expr) => {
+            match $call {
+                Ok(call_events) => events.extend(call_events),
+                Err(err) => {
+                    return Outcome::new(gas_tracker, Err(err));
+                },
+            }
+        };
+    }
 
     // Call the sender account's `before_tx` method.
     //
@@ -443,14 +482,16 @@ where
     // verifying a cryptographic signature.
     //
     // If this fails, abort, and discard uncommitted state changes.
-    outcome.update(do_before_tx(
-        vm.clone(),
-        Box::new(buffer.clone()),
-        gas_tracker.clone(),
-        block.clone(),
-        &tx,
-        simulate,
-    )?);
+    try_do! {
+        do_before_tx(
+            vm.clone(),
+            Box::new(buffer.clone()),
+            gas_tracker.clone(),
+            block.clone(),
+            &tx,
+            simulate,
+        )
+    };
 
     // Update the account state. As long as authentication succeeds, regardless
     // of whether the message are successful, we update account state.
@@ -469,33 +510,37 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        outcome.update(process_msg(
-            vm.clone(),
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
-            block.clone(),
-            tx.sender.clone(),
-            msg.clone(),
-        )?);
+        try_do! {
+            process_msg(
+                vm.clone(),
+                Box::new(buffer.clone()),
+                gas_tracker.clone(),
+                block.clone(),
+                tx.sender.clone(),
+                msg.clone(),
+            )
+        }
     }
 
     // Call the sender account's `after_tx` method.
     //
     // If this fails, abort, discard uncommitted state changes from messages.
     // State changes from `before_tx` are always kept.
-    outcome.update(do_after_tx(
-        vm,
-        Box::new(buffer.clone()),
-        gas_tracker.clone(),
-        block,
-        &tx,
-        simulate,
-    )?);
+    try_do! {
+        do_after_tx(
+            vm,
+            Box::new(buffer.clone()),
+            gas_tracker.clone(),
+            block,
+            &tx,
+            simulate,
+        )
+    }
 
     // All messages succeeded. Commit the state changes.
     buffer.write_access().commit();
 
-    Ok(outcome)
+    Outcome::new(gas_tracker, Ok(events))
 }
 
 pub fn process_msg<VM>(
@@ -505,15 +550,13 @@ pub fn process_msg<VM>(
     block: BlockInfo,
     sender: Addr,
     msg: Message,
-) -> AppResult<Outcome>
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => {
-            do_configure(&mut storage, gas_tracker, block, &sender, new_cfg)
-        },
+        Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
         Message::Transfer { to, coins } => do_transfer(
             vm,
             storage,
@@ -524,7 +567,7 @@ where
             coins,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, gas_tracker, &sender, code.into()),
+        Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
         Message::Instantiate {
             code_hash,
             msg,

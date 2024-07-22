@@ -1,5 +1,5 @@
 use {
-    crate::{App, AppError, Db, Outcome, Vm},
+    crate::{App, AppError, Db, Vm},
     grug_types::{
         to_json_vec, Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
@@ -17,6 +17,33 @@ use {
         google::protobuf::Timestamp as TmTimestamp,
     },
 };
+
+/// Cast an `Outcome` to either an `ExecTxResult` or `ResponseCheckTx`.
+/// These types are almost identical, so we want to avoid duplicate code.
+macro_rules! into_tm_tx_result {
+    ($outcome:expr, $ty:tt) => {{
+        let gas_wanted = $outcome.gas_limit.unwrap_or(0) as i64;
+        let gas_used = $outcome.gas_used as i64;
+
+        match $outcome.result {
+            GenericResult::Ok(events) => $ty {
+                code: 0,
+                events: into_tm_events(events),
+                gas_wanted,
+                gas_used,
+                ..Default::default()
+            },
+            GenericResult::Err(err) => $ty {
+                code: 1,
+                codespace: "tx".to_string(),
+                log: err.to_string(),
+                gas_wanted,
+                gas_used,
+                ..Default::default()
+            },
+        }
+    }};
+}
 
 impl<DB, VM> App<DB, VM>
 where
@@ -84,14 +111,14 @@ where
                 let events = outcome
                     .cron_outcomes
                     .into_iter()
-                    .filter_map(|res| res.ok().map(|outcome| into_tm_events(outcome.events)))
+                    .filter_map(|outcome| outcome.result.ok().map(into_tm_events))
                     .flatten()
                     .collect();
 
                 let tx_results = outcome
                     .tx_outcomes
                     .into_iter()
-                    .map(into_tm_tx_result)
+                    .map(|outcome| into_tm_tx_result!(outcome, ExecTxResult))
                     .collect();
 
                 ResponseFinalizeBlock {
@@ -122,16 +149,7 @@ where
     fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         match self.do_simulate_raw(&req.tx, 0, false) {
-            Ok(outcome) => ResponseCheckTx {
-                code: 0,
-                // Again, really poor design of Tendermint...
-                // 1. No null value (we have to use `0` to mean no gas limit)
-                // 2. Why `i64` for gas? Who uses negative gas?
-                gas_wanted: outcome.gas_limit.unwrap_or(0) as i64,
-                gas_used: outcome.gas_used as i64,
-                events: into_tm_events(outcome.events),
-                ..Default::default()
-            },
+            Ok(outcome) => into_tm_tx_result!(outcome, ResponseCheckTx),
             Err(err) => ResponseCheckTx {
                 code: 1,
                 codespace: "simulate".into(),
@@ -223,22 +241,6 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
         .to_vec()
         .try_into()
         .expect("incorrect block hash length")
-}
-
-fn into_tm_tx_result(tx_result: GenericResult<Outcome>) -> ExecTxResult {
-    match tx_result {
-        GenericResult::Ok(outcome) => ExecTxResult {
-            code: 0,
-            events: into_tm_events(outcome.events),
-            ..Default::default()
-        },
-        GenericResult::Err(err) => ExecTxResult {
-            code: 1,
-            codespace: "tx".to_string(),
-            log: err.to_string(),
-            ..Default::default()
-        },
-    }
 }
 
 fn into_tm_events(events: Vec<Event>) -> Vec<TmEvent> {

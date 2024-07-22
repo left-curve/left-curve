@@ -50,6 +50,7 @@ fn bank_transfers() -> anyhow::Result<()> {
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?
+        .result
         .should_succeed();
 
     // Check balances again
@@ -100,6 +101,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
             to: accounts["receiver"].address.clone(),
             coins: Coins::one(DENOM, NonZero::new(10_u128)),
         })?
+        .result
         .should_fail_with_error("gas");
 
     // Tx is went out of gas.
@@ -135,6 +137,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
+        .result
         .should_fail_with_error(VmError::GasDepletion);
 
     Ok(())
@@ -183,6 +186,7 @@ fn immutable_state() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
+        .result
         .should_fail_with_error(VmError::ReadOnly);
 
     Ok(())
