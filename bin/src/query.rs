@@ -101,7 +101,7 @@ enum SubCmd {
     },
     /// Get transaction by hash
     Tx {
-        /// Transaction hash
+        /// Transaction hash in hex encoding
         hash: String,
     },
     /// Get block by height
@@ -176,13 +176,13 @@ impl QueryCmd {
                 print_json_pretty(res)
             },
             SubCmd::WasmRaw { contract, key_hex } => {
-                // we interpret the input raw key as Hex encoded
+                // We interpret the input raw key as Hex encoded
                 let key = Binary::from(hex::decode(&key_hex)?);
                 let res = client.query_wasm_raw(contract, key, self.height).await?;
                 print_json_pretty(res)
             },
             SubCmd::WasmSmart { contract, msg } => {
-                // the input should be a JSON string, e.g. `{"config":{}}`
+                // The input should be a JSON string, e.g. `{"config":{}}`
                 let msg: Value = serde_json::from_str(&msg)?;
                 let res = client
                     .query_wasm_smart::<_, Value>(contract, &msg, self.height)
@@ -207,7 +207,9 @@ impl QueryCmd {
                 })
             },
             SubCmd::Tx { hash } => {
-                let hash = Hash::from_str(&hash)?;
+                // Cast the hex string to lowercase, so that users can use
+                // either upper or lowercase on the CLI.
+                let hash = Hash::from_str(&hash.to_ascii_lowercase())?;
                 let res = client.query_tx(hash).await?;
                 print_json_pretty(res)
             },

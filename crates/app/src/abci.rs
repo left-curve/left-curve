@@ -1,7 +1,7 @@
 use {
     crate::{App, AppError, Db, Outcome, Vm},
     grug_types::{
-        to_json_vec, Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
@@ -121,32 +121,33 @@ where
 
     fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
-        match self.do_simulate_raw(&req.tx, 0, false) {
+        match self.do_check_tx_raw(&req.tx) {
             Ok(Outcome {
                 result: GenericResult::Ok(events),
-                gas_used,
+                gas_limit,
                 ..
             }) => ResponseCheckTx {
                 code: 0,
                 events: into_tm_events(events),
-                // Note: Return `Outcome::gas_used` as `gas_wanted` here.
-                // We don't use `Outcome::gas_limit` because that is set as the
-                // node's query gas limit. If that is bigger than the block gas
-                // limit, the tx won't enter mempool.
-                gas_wanted: gas_used as i64,
-                gas_used: gas_used as i64,
+                gas_wanted: gas_limit.unwrap() as i64,
+                // Note: Return `Outcome::gas_limited` instead of `gas_used here.
+                // This is because in `CheckTx` we don't run the entire tx, just
+                // the authentication part. As such, the gas consumption is
+                // underestimated. Instead, the tx gas limit represents the max
+                // amount of gas this tx can possibly consume.
+                gas_used: gas_limit.unwrap() as i64,
                 ..Default::default()
             },
             Ok(Outcome {
                 result: GenericResult::Err(err),
-                gas_used,
+                gas_limit,
                 ..
             }) => ResponseCheckTx {
                 code: 1,
                 codespace: "tx".into(),
                 log: err,
-                gas_wanted: gas_used as i64,
-                gas_used: gas_used as i64,
+                gas_wanted: gas_limit.unwrap() as i64,
+                gas_used: gas_limit.unwrap() as i64,
                 ..Default::default()
             },
             Err(err) => ResponseCheckTx {
@@ -173,10 +174,7 @@ where
                     ..Default::default()
                 },
             },
-            "/simulate" => match self
-                .do_simulate_raw(&req.data, req.height as u64, req.prove)
-                .and_then(|outcome| to_json_vec(&outcome).map_err(Into::into))
-            {
+            "/simulate" => match self.do_simulate_raw(&req.data, req.height as u64, req.prove) {
                 Ok(outcome) => ResponseQuery {
                     code: 0,
                     value: outcome.into(),
