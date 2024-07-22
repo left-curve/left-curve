@@ -80,8 +80,15 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         sequence,
     )?;
 
-    // Verify the signature
-    // Skip if we are in simulate mode
+    // Verify the signature.
+    //
+    // This is skipped when in simulation mode.
+    // Note the gas costs for signature verification:
+    // - Secp256r1: 1,880,000
+    // - Secp256k1:   770,000
+    // - Ethereum:  1,580,000
+    // These costs are not accounted for in simulations.
+    // It may be a good idea to manually add these to your simulation result.
     if !ctx.simulate {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
