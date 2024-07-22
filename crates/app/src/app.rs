@@ -237,9 +237,13 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            let outcome = process_tx(self.vm.clone(), buffer.clone(), block.clone(), tx, false);
-
-            tx_outcomes.push(outcome.into());
+            tx_outcomes.push(process_tx(
+                self.vm.clone(),
+                buffer.clone(),
+                block.clone(),
+                tx,
+                false,
+            ));
         }
 
         // Save the last committed block.

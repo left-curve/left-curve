@@ -157,7 +157,7 @@ impl TxCmd {
                 msgs: vec![msg],
             };
             let outcome = client.simulate(&unsigned_tx).await?;
-            print_json_pretty(&outcome)?;
+            print_json_pretty(outcome)?;
         } else {
             // Load signing key
             let key_path = key_dir.join(format!("{key_name}.json"));
