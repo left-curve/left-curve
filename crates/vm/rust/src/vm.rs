@@ -24,6 +24,8 @@ pub const KNOWN_FUNCTIONS: [&str; 12] = [
     // TODO: add IBC entry points
 ];
 
+// ------------------------------------ vm -------------------------------------
+
 #[derive(Default, Clone)]
 pub struct RustVm;
 
@@ -58,6 +60,8 @@ impl Vm for RustVm {
         })
     }
 }
+
+// --------------------------------- instance ----------------------------------
 
 pub struct RustInstance {
     storage: StorageProvider,
