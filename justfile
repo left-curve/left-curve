@@ -30,9 +30,3 @@ optimize:
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     --platform linux/amd64 \
     cosmwasm/optimizer:0.16.0; fi
-
-# Compile tester contracts
-rebuild-testers:
-  @just optimize && \
-  cp -v artifacts/*.wasm crates/vm/wasm/testdata && \
-  git add -f crates/vm/wasm/testdata
