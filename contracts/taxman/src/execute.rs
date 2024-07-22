@@ -1,5 +1,5 @@
 use {
-    crate::{Config, CONFIG},
+    crate::{Config, InstantiateMsg, CONFIG},
     anyhow::ensure,
     grug_types::{
         Coins, Message, MultiplyFraction, MutableCtx, Number, Outcome, Response, StdResult,
@@ -7,8 +7,8 @@ use {
     },
 };
 
-pub fn initialize(ctx: MutableCtx, config: Config) -> StdResult<Response> {
-    CONFIG.save(ctx.storage, &config)?;
+pub fn initialize(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+    CONFIG.save(ctx.storage, &msg.config)?;
 
     Ok(Response::new())
 }
