@@ -23,8 +23,7 @@ pub struct GenesisBuilder {
     instantiate_permission: Option<Permission>,
     // Genesis messages
     upload_msgs: Vec<Message>,
-    instantiate_msgs: Vec<Message>,
-    execute_msgs: Vec<Message>,
+    other_msgs: Vec<Message>,
 }
 
 impl GenesisBuilder {
@@ -104,7 +103,7 @@ impl GenesisBuilder {
         let admin = admin_opt.decide(&address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
-        self.instantiate_msgs.push(msg);
+        self.other_msgs.push(msg);
 
         Ok(address)
     }
@@ -135,7 +134,7 @@ impl GenesisBuilder {
         StdError: From<C::Error>,
     {
         let msg = Message::execute(contract, msg, funds)?;
-        self.execute_msgs.push(msg);
+        self.other_msgs.push(msg);
 
         Ok(())
     }
@@ -185,8 +184,7 @@ impl GenesisBuilder {
         };
 
         let mut msgs = self.upload_msgs;
-        msgs.extend(self.instantiate_msgs);
-        msgs.extend(self.execute_msgs);
+        msgs.extend(self.other_msgs);
 
         let genesis_state = GenesisState { config, msgs };
         let genesis_state_json = to_json_value(&genesis_state)?;
