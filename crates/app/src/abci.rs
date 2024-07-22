@@ -1,5 +1,5 @@
 use {
-    crate::{App, AppError, Db, Vm},
+    crate::{App, AppError, Db, Outcome, Vm},
     grug_types::{
         to_json_vec, Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
@@ -17,33 +17,6 @@ use {
         google::protobuf::Timestamp as TmTimestamp,
     },
 };
-
-/// Cast an `Outcome` to either an `ExecTxResult` or `ResponseCheckTx`.
-/// These types are almost identical, so we want to avoid duplicate code.
-macro_rules! into_tm_tx_result {
-    ($outcome:expr, $ty:tt) => {{
-        let gas_wanted = $outcome.gas_limit.unwrap_or(0) as i64;
-        let gas_used = $outcome.gas_used as i64;
-
-        match $outcome.result {
-            GenericResult::Ok(events) => $ty {
-                code: 0,
-                events: into_tm_events(events),
-                gas_wanted,
-                gas_used,
-                ..Default::default()
-            },
-            GenericResult::Err(err) => $ty {
-                code: 1,
-                codespace: "tx".to_string(),
-                log: err.to_string(),
-                gas_wanted,
-                gas_used,
-                ..Default::default()
-            },
-        }
-    }};
-}
 
 impl<DB, VM> App<DB, VM>
 where
@@ -118,7 +91,7 @@ where
                 let tx_results = outcome
                     .tx_outcomes
                     .into_iter()
-                    .map(|outcome| into_tm_tx_result!(outcome, ExecTxResult))
+                    .map(into_tm_tx_result)
                     .collect();
 
                 ResponseFinalizeBlock {
@@ -149,7 +122,29 @@ where
     fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         match self.do_simulate_raw(&req.tx, 0, false) {
-            Ok(outcome) => into_tm_tx_result!(outcome, ResponseCheckTx),
+            Ok(Outcome {
+                gas_limit,
+                gas_used,
+                result: GenericResult::Ok(events),
+            }) => ResponseCheckTx {
+                code: 0,
+                events: into_tm_events(events),
+                gas_wanted: gas_limit.unwrap_or(0) as i64,
+                gas_used: gas_used as i64,
+                ..Default::default()
+            },
+            Ok(Outcome {
+                gas_limit,
+                gas_used,
+                result: GenericResult::Err(err),
+            }) => ResponseCheckTx {
+                code: 1,
+                codespace: "tx".into(),
+                log: err,
+                gas_wanted: gas_limit.unwrap_or(0) as i64,
+                gas_used: gas_used as i64,
+                ..Default::default()
+            },
             Err(err) => ResponseCheckTx {
                 code: 1,
                 codespace: "simulate".into(),
@@ -241,6 +236,29 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
         .to_vec()
         .try_into()
         .expect("incorrect block hash length")
+}
+
+fn into_tm_tx_result(outcome: Outcome) -> ExecTxResult {
+    let gas_wanted = outcome.gas_limit.unwrap_or(0) as i64;
+    let gas_used = outcome.gas_used as i64;
+
+    match outcome.result {
+        GenericResult::Ok(events) => ExecTxResult {
+            code: 0,
+            events: into_tm_events(events),
+            gas_wanted,
+            gas_used,
+            ..Default::default()
+        },
+        GenericResult::Err(err) => ExecTxResult {
+            code: 1,
+            codespace: "tx".to_string(),
+            log: err.to_string(),
+            gas_wanted,
+            gas_used,
+            ..Default::default()
+        },
+    }
 }
 
 fn into_tm_events(events: Vec<Event>) -> Vec<TmEvent> {
