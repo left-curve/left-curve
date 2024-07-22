@@ -1,12 +1,12 @@
 use {
     crate::{
-        burn, initialize, mint, query_balance, query_balances, query_holders, query_supplies,
-        query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
+        burn, force_transfer, mint, query_balance, query_balances, query_holders, query_supplies,
+        query_supply, ExecuteMsg, QueryMsg,
     },
     anyhow::bail,
     grug_types::{
-        to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, MutableCtx,
-        Response, StdResult, SudoCtx,
+        to_json_value, BankQuery, BankQueryResponse, ImmutableCtx, Json, MutableCtx, Response,
+        StdResult,
     },
 };
 
@@ -16,7 +16,7 @@ use {
 mod __wasm_exports {
     #[no_mangle]
     extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_ffi::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
+        grug_ffi::do_instantiate(&crate::initialize, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
@@ -36,7 +36,7 @@ mod __wasm_exports {
 
     #[no_mangle]
     extern "C" fn bank_execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_ffi::do_bank_execute(&super::bank_execute, ctx_ptr, msg_ptr)
+        grug_ffi::do_bank_execute(&crate::transfer, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
@@ -45,17 +45,13 @@ mod __wasm_exports {
     }
 }
 
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
-    initialize(ctx.storage, msg.initial_balances)
-}
-
 pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     // We do not expect anyone to send any fund to this contract.
     // Throw an error to revert the transfer.
     bail!("go away");
 }
 
-pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
@@ -63,6 +59,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
             denom,
             amount,
         } => burn(ctx, from, denom, amount),
+        ExecuteMsg::ForceTransfer {
+            from,
+            to,
+            denom,
+            amount,
+        } => force_transfer(ctx, from, to, denom, amount),
     }
 }
 
@@ -74,10 +76,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             limit,
         } => to_json_value(&query_holders(ctx.storage, denom, start_after, limit)?),
     }
-}
-
-pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    transfer(ctx.storage, &msg.from, &msg.to, &msg.coins)
 }
 
 #[rustfmt::skip]

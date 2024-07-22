@@ -19,6 +19,13 @@ impl Response {
         self
     }
 
+    pub fn maybe_add_message(self, maybe_msg: Option<Message>) -> Self {
+        if let Some(msg) = maybe_msg {
+            return self.add_message(msg);
+        }
+        self
+    }
+
     pub fn add_messages<M>(mut self, msgs: M) -> Self
     where
         M: IntoIterator<Item = Message>,
@@ -30,6 +37,13 @@ impl Response {
 
     pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
         self.submsgs.push(submsg);
+        self
+    }
+
+    pub fn maybe_add_submessage(self, maybe_submsg: Option<SubMessage>) -> Self {
+        if let Some(submsg) = maybe_submsg {
+            return self.add_submessage(submsg);
+        }
         self
     }
 

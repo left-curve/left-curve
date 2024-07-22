@@ -1,9 +1,7 @@
 use {
-    crate::{PublicKey, PUBLIC_KEY, SEQUENCE},
+    crate::{InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
-    grug_types::{
-        to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx,
-    },
+    grug_types::{to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Tx},
 };
 
 /// Generate the bytes that the sender of a transaction needs to sign.
@@ -45,12 +43,12 @@ where
     Ok(hasher(&prehash))
 }
 
-pub fn initialize(storage: &mut dyn Storage, public_key: &PublicKey) -> StdResult<Response> {
+pub fn initialize(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
-    PUBLIC_KEY.save(storage, public_key)?;
+    PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
 
     // Initialize the sequence number to zero
-    SEQUENCE.initialize(storage)?;
+    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }

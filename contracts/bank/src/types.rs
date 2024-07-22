@@ -24,6 +24,14 @@ pub enum ExecuteMsg {
         denom: String,
         amount: Uint128,
     },
+    /// Forcibly transfer a token.
+    /// This is used by the taxman to charge gas fee from a transaction's sender.
+    ForceTransfer {
+        from: Addr,
+        to: Addr,
+        denom: String,
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

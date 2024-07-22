@@ -81,7 +81,7 @@ This contract is called after each transaction to collect gas fee from the sende
 
 ```rust
 #[grug::export]
-fn handle_fee(ctx: SudoCtx, report: GasReport) -> Result<Response>;
+fn handle_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
 ```
 
 ## IBC

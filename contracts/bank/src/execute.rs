@@ -1,28 +1,28 @@
 use {
-    crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
-    grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
+    crate::{InstantiateMsg, BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
+    anyhow::ensure,
+    grug_types::{
+        Addr, BankMsg, MutableCtx, Number, Response, StdResult, Storage, SudoCtx, Uint128,
+    },
     std::collections::HashMap,
 };
 
-pub fn initialize<B>(storage: &mut dyn Storage, initial_balances: B) -> StdResult<Response>
-where
-    B: IntoIterator<Item = (Addr, Coins)>,
-{
+pub fn initialize(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Need to make sure there are no duplicate address in initial balances.
     // We don't need to dedup denoms however. If there's duplicate denoms, the
     // deserialization setup should have already thrown an error.
     let mut supplies = HashMap::new();
 
-    for (address, coins) in initial_balances {
+    for (address, coins) in msg.initial_balances {
         for coin in coins {
-            BALANCES_BY_ADDR.save(storage, (&address, &coin.denom), &coin.amount)?;
-            BALANCES_BY_DENOM.save(storage, (&coin.denom, &address), &coin.amount)?;
+            BALANCES_BY_ADDR.save(ctx.storage, (&address, &coin.denom), &coin.amount)?;
+            BALANCES_BY_DENOM.save(ctx.storage, (&coin.denom, &address), &coin.amount)?;
             accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
     }
 
     for (denom, amount) in supplies {
-        SUPPLIES.save(storage, &denom, &amount)?;
+        SUPPLIES.save(ctx.storage, &denom, &amount)?;
     }
 
     Ok(Response::new())
@@ -51,7 +51,7 @@ fn accumulate_supply(
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
@@ -68,7 +68,12 @@ pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdRes
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn burn(ctx: MutableCtx, from: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn burn(
+    ctx: MutableCtx,
+    from: Addr,
+    denom: String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
     decrease_balance(ctx.storage, &from, &denom, amount)?;
 
@@ -79,23 +84,43 @@ pub fn burn(ctx: MutableCtx, from: Addr, denom: String, amount: Uint128) -> StdR
         .add_attribute("amount", amount))
 }
 
+/// Forcibly transfer a token.
+/// Used by the taxman to charge fee from a transaction's sender.
+pub fn force_transfer(
+    ctx: MutableCtx,
+    from: Addr,
+    to: Addr,
+    denom: String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
+    let info = ctx.querier.query_info()?;
+
+    // Only the taxman can expropriate properties for the people.
+    ensure!(ctx.sender == info.config.taxman, "you don't have the right");
+
+    decrease_balance(ctx.storage, &from, &denom, amount)?;
+    increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "force_transfer")
+        .add_attribute("from", from)
+        .add_attribute("to", to)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
+}
+
 /// Transfer tokens from one account to another.
-pub fn transfer(
-    storage: &mut dyn Storage,
-    from: &Addr,
-    to: &Addr,
-    coins: &Coins,
-) -> StdResult<Response> {
-    for coin in coins {
-        decrease_balance(storage, from, coin.denom, *coin.amount)?;
-        increase_balance(storage, to, coin.denom, *coin.amount)?;
+pub fn transfer(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
+    for coin in &msg.coins {
+        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
     }
 
     Ok(Response::new()
         .add_attribute("method", "send")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("coins", coins.to_string()))
+        .add_attribute("from", msg.from)
+        .add_attribute("to", msg.to)
+        .add_attribute("coins", msg.coins))
 }
 
 /// Increase the total supply of a token by the given amount.

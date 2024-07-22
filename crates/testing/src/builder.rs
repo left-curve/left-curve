@@ -5,7 +5,7 @@ use {
     grug_app::AppError,
     grug_types::{
         hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Hash, Message,
-        Permission, Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        Permission, Permissions, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
         GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
@@ -17,9 +17,11 @@ use {
 };
 
 const DEFAULT_TRACING_LEVEL: Level = Level::DEBUG;
-const DEFAULT_CHAIN_ID: &str = "dev-1";
+const DEFAULT_CHAIN_ID: &str = "grug-1";
 const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
+const DEFAULT_FEE_DENOM: &str = "ugrug";
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
+const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
 
 pub struct TestBuilder<VM = RustVm>
 where
@@ -37,6 +39,8 @@ where
     accounts: TestAccounts,
     bank_code: Binary,
     bank_code_hash: Hash,
+    taxman_code: Binary,
+    taxman_code_hash: Hash,
     balances: BTreeMap<Addr, Coins>,
 }
 
@@ -60,6 +64,9 @@ where
         let bank_code = VM::default_bank_code();
         let bank_code_hash = hash(&bank_code);
 
+        let taxman_code = VM::default_taxman_code();
+        let taxman_code_hash = hash(&taxman_code);
+
         Self {
             vm,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
@@ -72,6 +79,8 @@ where
             accounts: TestAccounts::new(),
             bank_code,
             bank_code_hash,
+            taxman_code,
+            taxman_code_hash,
             balances: BTreeMap::new(),
         }
     }
@@ -154,10 +163,12 @@ where
             timestamp: genesis_time,
         };
 
-        // Upload account and bank codes, instantiate bank contract.
+        // Upload account, bank, and taxman codes, instantiate bank and taxman
+        // contracts.
         let mut msgs = vec![
             Message::upload(self.account_code),
             Message::upload(self.bank_code),
+            Message::upload(self.taxman_code),
             Message::instantiate(
                 self.bank_code_hash.clone(),
                 &grug_bank::InstantiateMsg {
@@ -165,7 +176,20 @@ where
                 },
                 DEFAULT_BANK_SALT,
                 Coins::new(),
-                None,
+                self.owner.clone(),
+            )?,
+            Message::instantiate(
+                self.taxman_code_hash.clone(),
+                &grug_taxman::InstantiateMsg {
+                    // TODO: let user customize this
+                    config: grug_taxman::Config {
+                        fee_denom: DEFAULT_FEE_DENOM.to_string(),
+                        fee_rate: Udec128::one(),
+                    },
+                },
+                DEFAULT_TAXMAN_SALT,
+                Coins::new(),
+                self.owner.clone(),
             )?,
         ];
 
@@ -182,12 +206,14 @@ where
             )?);
         }
 
-        // Create the app config
         let owner = self.owner.ok_or(anyhow!("owner is not set"))?;
         let bank = Addr::compute(&GENESIS_SENDER, &self.bank_code_hash, DEFAULT_BANK_SALT);
+        let taxman = Addr::compute(&GENESIS_SENDER, &self.taxman_code_hash, DEFAULT_TAXMAN_SALT);
+
         let config = Config {
             owner,
             bank,
+            taxman,
             cronjobs: BTreeMap::new(),
             permissions: Permissions {
                 upload: Permission::Everybody,

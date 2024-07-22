@@ -1,14 +1,14 @@
 use {
     crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
+    grug_types::{from_borsh_slice, from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
 /// Names of export functions supported by Grug.
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.
-pub const KNOWN_FUNCTIONS: [&str; 11] = [
+pub const KNOWN_FUNCTIONS: [&str; 12] = [
     "instantate",
     "execute",
     "migrate",
@@ -17,10 +17,11 @@ pub const KNOWN_FUNCTIONS: [&str; 11] = [
     "query",
     "before_tx",
     "after_tx",
+    "handle_fee",
     "bank_execute",
     "bank_query",
     "cron_execute",
-    // TODO: add taxman and IBC entry points
+    // TODO: add IBC entry points
 ];
 
 #[derive(Default, Clone)]
@@ -221,6 +222,19 @@ impl Instance for RustInstance {
                     &self.querier,
                     param1.as_ref(),
                     submsg_res,
+                )?;
+                to_json_vec(&res)
+            },
+            "handle_fee" => {
+                let tx = from_json_slice(param1)?;
+                let outcome = from_borsh_slice(param2)?;
+                let res = contract.handle_fee(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                    outcome,
                 )?;
                 to_json_vec(&res)
             },

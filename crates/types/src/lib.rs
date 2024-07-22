@@ -14,6 +14,7 @@ mod macros;
 mod math;
 #[cfg(not(target_arch = "wasm32"))]
 mod mocks;
+mod outcome;
 mod query;
 mod response;
 mod result;
@@ -27,8 +28,8 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
-    event::*, hash::*, imports::*, math::*, query::*, response::*, result::*, serde::*, signed::*,
-    time::*, tx::*, udec::*, uint::*, utils::*,
+    event::*, hash::*, imports::*, math::*, outcome::*, query::*, response::*, result::*, serde::*,
+    signed::*, time::*, tx::*, udec::*, uint::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256

@@ -52,8 +52,10 @@ pub struct GenesisState {
 pub struct Config {
     /// The account that can update this config.
     pub owner: Addr,
-    /// A contract the manages token balances and transfers.
+    /// The contract that manages token balances and transfers.
     pub bank: Addr,
+    /// The contract that manages transaction fees.
+    pub taxman: Addr,
     /// A list of contracts that are to be called at regular time intervals.
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.

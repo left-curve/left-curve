@@ -3,9 +3,9 @@ use {
     chrono::DateTime,
     grug_account::PublicKey,
     grug_sdk::{AdminOption, GenesisBuilder, SigningKey},
-    grug_types::{Coins, NonZero, Permission, Uint128},
+    grug_types::{Coins, NonZero, Permission, Udec128, Uint128},
     home::home_dir,
-    std::path::PathBuf,
+    std::{path::PathBuf, str::FromStr},
 };
 
 fn main() -> anyhow::Result<()> {
@@ -64,9 +64,24 @@ fn main() -> anyhow::Result<()> {
         AdminOption::SetToAddr(account1.clone()),
     )?;
 
+    // Deploy the taxman contract.
+    let taxman = builder.upload_and_instantiate(
+        artifacts_dir.join("grug_taxman.wasm"),
+        &grug_taxman::InstantiateMsg {
+            config: grug_taxman::Config {
+                fee_denom: "uatom".to_string(),
+                fee_rate: Udec128::from_str("0.1")?,
+            },
+        },
+        "IRS",
+        Coins::new(),
+        AdminOption::SetToAddr(account1.clone()),
+    )?;
+
     // Build the genesis state and write to CometBFT genesis file.
     builder
         .set_owner(account1)
         .set_bank(bank)
+        .set_taxman(taxman)
         .write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
 }

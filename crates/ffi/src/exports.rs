@@ -3,8 +3,8 @@ use {
     grug_types::{
         from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
         make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, QuerierWrapper,
-        Response, SubMsgResult, SudoCtx, Tx,
+        BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, Outcome,
+        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx,
     },
     serde::de::DeserializeOwned,
 };
@@ -243,36 +243,6 @@ where
     receive_fn(mutable_ctx).into()
 }
 
-// ----------------------------------- cron ------------------------------------
-
-pub fn do_cron_execute<E>(
-    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
-    ctx_ptr: usize,
-) -> usize
-where
-    E: ToString,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-
-    let res = _do_cron_execute(cron_execute_fn, &ctx_bytes);
-    let res_bytes = to_json_vec(&res).unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-fn _do_cron_execute<E>(
-    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
-    ctx_bytes: &[u8],
-) -> GenericResult<Response>
-where
-    E: ToString,
-{
-    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
-    let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-
-    cron_execute_fn(sudo_ctx).into()
-}
-
 // --------------------------------- before tx ---------------------------------
 
 pub fn do_before_tx<E>(
@@ -341,6 +311,44 @@ where
     after_tx_fn(auth_ctx, tx).into()
 }
 
+// ---------------------------------- taxman -----------------------------------
+
+pub fn do_handle_fee<E>(
+    handle_fee_fn: &dyn Fn(SudoCtx, Tx, Outcome) -> Result<Response, E>,
+    ctx_ptr: usize,
+    tx_ptr: usize,
+    outcome_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
+    let outcome_bytes = unsafe { Region::consume(outcome_ptr as *mut Region) };
+
+    let res = _do_handle_fee(handle_fee_fn, &ctx_bytes, &tx_bytes, &outcome_bytes);
+    let res_bytes = to_json_vec(&res).unwrap();
+
+    Region::release_buffer(res_bytes) as usize
+}
+
+fn _do_handle_fee<E>(
+    handle_fee_fn: &dyn Fn(SudoCtx, Tx, Outcome) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+    tx_bytes: &[u8],
+    outcome_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
+    let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+    let outcome = unwrap_into_generic_result!(from_borsh_slice(outcome_bytes));
+
+    handle_fee_fn(sudo_ctx, tx, outcome).into()
+}
+
 // ------------------------------- bank transfer -------------------------------
 
 pub fn do_bank_execute<E>(
@@ -407,4 +415,34 @@ where
     let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
 
     query_fn(immutable_ctx, msg).into()
+}
+
+// ----------------------------------- cron ------------------------------------
+
+pub fn do_cron_execute<E>(
+    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
+    ctx_ptr: usize,
+) -> usize
+where
+    E: ToString,
+{
+    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
+
+    let res = _do_cron_execute(cron_execute_fn, &ctx_bytes);
+    let res_bytes = to_json_vec(&res).unwrap();
+
+    Region::release_buffer(res_bytes) as usize
+}
+
+fn _do_cron_execute<E>(
+    cron_execute_fn: &dyn Fn(SudoCtx) -> Result<Response, E>,
+    ctx_bytes: &[u8],
+) -> GenericResult<Response>
+where
+    E: ToString,
+{
+    let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+    let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
+
+    cron_execute_fn(sudo_ctx).into()
 }

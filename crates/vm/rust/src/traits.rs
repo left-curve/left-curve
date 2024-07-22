@@ -5,8 +5,7 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
-        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, Outcome, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx
     },
 };
 
@@ -83,6 +82,16 @@ pub trait Contract {
         tx: Tx,
     ) -> VmResult<GenericResult<Response>>;
 
+    fn handle_fee(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+        outcome: Outcome,
+    ) -> VmResult<GenericResult<Response>>;
+
     fn bank_execute(
         &self,
         ctx: Context,
@@ -129,6 +138,8 @@ pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send +
 pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
 pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+
+pub type HandleFeeFn<E> = Box<dyn Fn(SudoCtx, Tx, Outcome) -> Result<Response, E> + Send + Sync>;
 
 pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 

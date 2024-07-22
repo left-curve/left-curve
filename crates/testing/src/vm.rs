@@ -12,26 +12,37 @@ pub trait TestVm: Vm {
     fn default_account_code() -> Binary;
 
     fn default_bank_code() -> Binary;
+
+    fn default_taxman_code() -> Binary;
 }
 
 impl TestVm for RustVm {
     fn default_account_code() -> Binary {
-        ContractBuilder::new(Box::new(grug_account::instantiate))
+        ContractBuilder::new(Box::new(grug_account::initialize))
             .with_execute(Box::new(grug_account::execute))
             .with_receive(Box::new(grug_account::receive))
             .with_query(Box::new(grug_account::query))
-            .with_before_tx(Box::new(grug_account::before_tx))
+            .with_before_tx(Box::new(grug_account::authenticate_tx))
             .with_after_tx(Box::new(grug_account::after_tx))
             .build()
             .into()
     }
 
     fn default_bank_code() -> Binary {
-        ContractBuilder::new(Box::new(grug_bank::instantiate))
+        ContractBuilder::new(Box::new(grug_bank::initialize))
             .with_execute(Box::new(grug_bank::execute))
             .with_query(Box::new(grug_bank::query))
-            .with_bank_execute(Box::new(grug_bank::bank_execute))
+            .with_bank_execute(Box::new(grug_bank::transfer))
             .with_bank_query(Box::new(grug_bank::bank_query))
+            .build()
+            .into()
+    }
+
+    fn default_taxman_code() -> Binary {
+        ContractBuilder::new(Box::new(grug_taxman::initialize))
+            .with_execute(Box::new(grug_taxman::execute))
+            .with_query(Box::new(grug_taxman::query))
+            .with_handle_fee(Box::new(grug_taxman::compute_and_transfer_fee))
             .build()
             .into()
     }
