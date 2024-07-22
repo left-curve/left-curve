@@ -1,3 +1,5 @@
+#[cfg(feature = "abci")]
+use grug_types::from_json_slice;
 use {
     crate::{
         do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
@@ -8,9 +10,9 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        from_json_slice, to_json_vec, Addr, Binary, BlockInfo, Duration, GenesisState, Hash,
-        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        UnsignedTx, GENESIS_SENDER,
+        to_json_vec, Addr, Binary, BlockInfo, Duration, GenesisState, Hash, Message, Order,
+        Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx, UnsignedTx,
+        GENESIS_SENDER,
     },
 };
 

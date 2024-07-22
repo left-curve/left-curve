@@ -74,9 +74,6 @@ pub struct Config {
 pub struct Permissions {
     pub upload: Permission,
     pub instantiate: Permission,
-    pub create_client: Permission,
-    pub create_connection: Permission,
-    pub create_channel: Permission,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

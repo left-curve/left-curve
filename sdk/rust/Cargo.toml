@@ -14,6 +14,7 @@ categories    = { workspace = true }
 aes-gcm        = { workspace = true, features = ["std"] }
 anyhow         = { workspace = true }
 bip32          = { workspace = true }
+chrono         = { workspace = true }
 grug-account   = { path = "../../contracts/account", features = ["library"] }
 grug-app       = { path = "../../crates/app", default-features = false }
 grug-crypto    = { path = "../../crates/crypto" }
@@ -31,3 +32,5 @@ tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
+grug-bank = { path = "../../contracts/bank", features = ["library"] }
+home      = { workspace = true }
