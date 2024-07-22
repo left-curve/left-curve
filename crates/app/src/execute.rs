@@ -40,15 +40,13 @@ fn _do_configure(
     sender: &Addr,
     new_cfg: Config,
 ) -> AppResult<Event> {
-    // Make sure the sender is authorized to set the config.
     let cfg = CONFIG.load(storage)?;
-    let Some(owner) = cfg.owner else {
-        return Err(AppError::OwnerNotSet);
-    };
-    if sender != owner {
+
+    // Only the owner can update config.
+    if sender != cfg.owner {
         return Err(AppError::NotOwner {
             sender: sender.clone(),
-            owner,
+            owner: cfg.owner,
         });
     }
 
@@ -99,7 +97,7 @@ fn _do_upload(
 ) -> AppResult<(Event, Hash)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load(storage)?;
-    if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
+    if !has_permission(&cfg.permissions.upload, &cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
     }
 
@@ -311,7 +309,7 @@ where
 
     // Make sure the user has the permission to instantiate contracts
     let cfg = CONFIG.load(&storage)?;
-    if !has_permission(&cfg.permissions.instantiate, cfg.owner.as_ref(), &sender) {
+    if !has_permission(&cfg.permissions.instantiate, &cfg.owner, &sender) {
         return Err(AppError::Unauthorized);
     }
 

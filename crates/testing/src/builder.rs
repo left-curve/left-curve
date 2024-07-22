@@ -183,9 +183,10 @@ where
         }
 
         // Create the app config
+        let owner = self.owner.ok_or(anyhow!("owner is not set"))?;
         let bank = Addr::compute(&GENESIS_SENDER, &self.bank_code_hash, DEFAULT_BANK_SALT);
         let config = Config {
-            owner: self.owner,
+            owner,
             bank,
             cronjobs: BTreeMap::new(),
             permissions: Permissions {

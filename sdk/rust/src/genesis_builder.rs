@@ -159,6 +159,10 @@ impl GenesisBuilder {
             obj.insert("chain_id".to_string(), Json::String(chain_id));
         }
 
+        let Some(owner) = self.owner else {
+            bail!("owner address isn't set");
+        };
+
         let Some(bank) = self.bank else {
             bail!("bank address isn't set");
         };
@@ -177,7 +181,7 @@ impl GenesisBuilder {
         };
 
         let config = Config {
-            owner: self.owner,
+            owner,
             bank,
             cronjobs: self.cronjobs,
             permissions,

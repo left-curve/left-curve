@@ -50,18 +50,9 @@ pub struct GenesisState {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    /// The account that can update this config. Typically it's recommended to
-    /// set this to a decentralized governance contract. Setting this to None
-    /// makes the config immutable.
-    ///
-    /// We name this `owner` instead of `admin` to avoid confusion with the
-    /// contract admin, which is the account that can update a contract's `code_hash`.
-    pub owner: Option<Addr>,
-    /// A contract the manages fungible token transfers.
-    ///
-    /// Non-fungible tokens (NFTs) can be managed by this contract as well,
-    /// using an approach similar to Solana's Metaplex standard:
-    /// <https://twitter.com/octalmage/status/1695165358955487426>
+    /// The account that can update this config.
+    pub owner: Addr,
+    /// A contract the manages token balances and transfers.
     pub bank: Addr,
     /// A list of contracts that are to be called at regular time intervals.
     pub cronjobs: BTreeMap<Addr, Duration>,
