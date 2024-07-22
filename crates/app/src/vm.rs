@@ -277,7 +277,7 @@ where
         vm,
         storage,
         ctx.block.clone(),
-        gas_tracker.clone(),
+        gas_tracker,
         ctx.contract.clone(),
         response.submsgs,
     )?);

@@ -87,9 +87,9 @@ where
             },
             // Success - callback not requested
             // Flush state changes, log events, move on to the next submsg.
-            (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_outcome)) => {
+            (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
-                events.extend(submsg_outcome);
+                events.extend(submsg_events);
             },
             // Error - callback not requested
             // Abort by throwing error.
