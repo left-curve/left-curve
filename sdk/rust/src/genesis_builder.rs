@@ -145,7 +145,7 @@ impl GenesisBuilder {
         P: AsRef<Path>,
     {
         let cometbft_genesis_raw = fs::read(path.as_ref())?;
-        let mut cometbft_genesis: Json = from_json_slice(&cometbft_genesis_raw)?;
+        let mut cometbft_genesis: Json = from_json_slice(cometbft_genesis_raw)?;
 
         let Some(obj) = cometbft_genesis.as_object_mut() else {
             bail!("CometBFT genesis file is not a JSON object");
