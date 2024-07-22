@@ -184,11 +184,11 @@ impl TxCmd {
                 GasOption::Predefined { gas_limit }
             } else {
                 GasOption::Simulate {
+                    scale: self.gas_adjustment,
                     // We always increase the simulated gas consumption by this
                     // amount, since signature verification is skipped during
                     // simulation.
                     flat_increase: GAS_COSTS.secp256k1_verify,
-                    scale: self.gas_adjustment,
                 }
             };
 

@@ -19,13 +19,14 @@ pub enum GasOption {
     /// User does not specify a gas limit. The client will simulate the gas
     /// consumption by querying a node, and applying some adjustments.
     Simulate {
-        /// Increase the simulated gas consumption by a flat amount. This is to
-        /// account for signature verification cost, which is typically not
-        /// included in simulations.
-        flat_increase: u64,
-        /// After the flat increase, multiply the gas amount by a factor.
+        /// Multiply the gas amount by this factor.
         /// This is to account for the inaccuracies in gas simulation in general.
         scale: f64,
+        /// After the scaling, increase the simulated gas consumption by this
+        /// amount.
+        /// This is to account for signature verification cost, which is
+        /// typically not included in simulations.
+        flat_increase: u64,
     },
 }
 

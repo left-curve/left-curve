@@ -398,7 +398,7 @@ impl Client {
                     msgs: msgs.clone(),
                 };
                 let outcome = self.simulate(&unsigned_tx).await?;
-                ((outcome.gas_used + flat_increase) as f64 * scale).ceil() as u64
+                (outcome.gas_used as f64 * scale).ceil() as u64 + flat_increase
             },
             GasOption::Predefined { gas_limit } => gas_limit,
         };
