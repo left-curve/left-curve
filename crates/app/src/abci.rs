@@ -52,7 +52,16 @@ where
     }
 
     fn init_chain(&self, req: RequestInitChain) -> ResponseInitChain {
-        let block = from_tm_block(req.initial_height, req.time, None);
+        // Always use zero as the genesis height.
+        // Ignore the block height from the ABCI request.
+        //
+        // It's mandatory that we genesis from block zero, such that block
+        // height matches the DB version.
+        //
+        // It doesn't seem like setting the `initial_height` in CometBFT's
+        // genesis file does anything. Setting it to zero, Comet still attmpts
+        // to start at block 1.
+        let block = from_tm_block(0, req.time, None);
 
         match self.do_init_chain_raw(req.chain_id, block, &req.app_state_bytes) {
             Ok(app_hash) => ResponseInitChain {
