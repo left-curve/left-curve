@@ -43,9 +43,6 @@ pub enum AppError {
 
     #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
-
-    #[error("code hash is not allowed as IBC client: `{code_hash}`")]
-    NotAllowedClient { code_hash: Hash },
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;
