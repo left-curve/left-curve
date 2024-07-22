@@ -6,8 +6,8 @@ use {
     grug_jmt::Proof,
     grug_types::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
-        Binary, Coin, Coins, Config, Hash, InfoResponse, Message, QueryRequest, QueryResponse,
-        StdError, Tx, UnsignedTx, WasmRawResponse,
+        Binary, Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, QueryRequest,
+        QueryResponse, StdError, Tx, UnsignedTx, WasmRawResponse,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::any::type_name,
@@ -397,8 +397,17 @@ impl Client {
                     sender: sign_opt.sender.clone(),
                     msgs: msgs.clone(),
                 };
-                let outcome = self.simulate(&unsigned_tx).await?;
-                (outcome.gas_used as f64 * scale).ceil() as u64 + flat_increase
+                match self.simulate(&unsigned_tx).await? {
+                    Outcome {
+                        result: GenericResult::Ok(_),
+                        gas_used,
+                        ..
+                    } => (gas_used as f64 * scale).ceil() as u64 + flat_increase,
+                    Outcome {
+                        result: GenericResult::Err(err),
+                        ..
+                    } => bail!("Failed to estimate gas consumption: {err}"),
+                }
             },
             GasOption::Predefined { gas_limit } => gas_limit,
         };
