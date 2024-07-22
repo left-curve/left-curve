@@ -80,6 +80,7 @@ impl TryFrom<Vec<u8>> for Hash {
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash is not of the correct length",
             ));
         };
@@ -94,6 +95,7 @@ impl TryFrom<&[u8]> for Hash {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash is not of the correct length",
             ));
         };
@@ -111,6 +113,7 @@ impl FromStr for Hash {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
         {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash must only contain lowercase alphanumeric characters",
             ));
         }

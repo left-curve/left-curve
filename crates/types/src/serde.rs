@@ -10,7 +10,7 @@ pub fn from_json_value<T>(json: Json) -> StdResult<T>
 where
     T: DeserializeOwned,
 {
-    serde_json::from_value(json).map_err(StdError::deserialize::<T, _>)
+    serde_json::from_value(json).map_err(|err| StdError::deserialize::<T, _>("json", err))
 }
 
 /// Serialize a Rust value into JSON value.
@@ -18,7 +18,7 @@ pub fn to_json_value<T>(data: &T) -> StdResult<Json>
 where
     T: Serialize,
 {
-    serde_json::to_value(data).map_err(StdError::serialize::<T, _>)
+    serde_json::to_value(data).map_err(|err| StdError::serialize::<T, _>("json", err))
 }
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
@@ -28,7 +28,7 @@ where
     B: AsRef<[u8]>,
     T: DeserializeOwned,
 {
-    serde_json::from_slice(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)
+    serde_json::from_slice(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("json", err))
 }
 
 /// Serialize a Rust value into bytes using the JSON encoding scheme.
@@ -36,7 +36,7 @@ pub fn to_json_vec<T>(data: &T) -> StdResult<Vec<u8>>
 where
     T: Serialize,
 {
-    serde_json::to_vec(data).map_err(StdError::serialize::<T, _>)
+    serde_json::to_vec(data).map_err(|err| StdError::serialize::<T, _>("json", err))
 }
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
@@ -46,7 +46,7 @@ where
     B: AsRef<[u8]>,
     T: BorshDeserialize,
 {
-    borsh::from_slice(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)
+    borsh::from_slice(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("borsh", err))
 }
 
 /// Serialize a Rust value into bytes using the [Borsh](https://crates.io/crates/borsh)
@@ -55,7 +55,7 @@ pub fn to_borsh_vec<T>(data: &T) -> StdResult<Vec<u8>>
 where
     T: BorshSerialize,
 {
-    borsh::to_vec(data).map_err(StdError::serialize::<T, _>)
+    borsh::to_vec(data).map_err(|err| StdError::serialize::<T, _>("borsh", err))
 }
 
 /// Deserialize a slice of bytes into Rust value of a given type `T` using the
@@ -65,7 +65,7 @@ where
     B: AsRef<[u8]>,
     T: Message + Default,
 {
-    T::decode(bytes.as_ref()).map_err(StdError::deserialize::<T, _>)
+    T::decode(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("proto", err))
 }
 
 /// Serialize a Rust value into bytes using the Protobuf encoding scheme.

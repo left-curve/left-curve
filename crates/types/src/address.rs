@@ -96,6 +96,7 @@ impl TryFrom<Vec<u8>> for Addr {
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -110,6 +111,7 @@ impl TryFrom<&[u8]> for Addr {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -124,6 +126,7 @@ impl FromStr for Addr {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address must use the 0x prefix",
             ));
         };

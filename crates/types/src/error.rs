@@ -117,11 +117,19 @@ pub enum StdError {
     #[error("logarithm of zero")]
     ZeroLog,
 
-    #[error("failed to serialize into json! type: {ty}, reason: {reason}")]
-    Serialize { ty: &'static str, reason: String },
+    #[error("failed to serialize! type: `{ty}`, codec: {codec}, reason: {reason}")]
+    Serialize {
+        ty: &'static str,
+        codec: &'static str,
+        reason: String,
+    },
 
-    #[error("failed to deserialize from json! type: {ty}, reason: {reason}")]
-    Deserialize { ty: &'static str, reason: String },
+    #[error("failed to deserialize! type: `{ty}`, codec: {codec}, reason: {reason}")]
+    Deserialize {
+        ty: &'static str,
+        codec: &'static str,
+        reason: String,
+    },
 }
 
 impl StdError {
@@ -281,22 +289,24 @@ impl StdError {
         Self::NegativeSqrt { a: a.to_string() }
     }
 
-    pub fn serialize<T, R>(reason: R) -> Self
+    pub fn serialize<T, R>(codec: &'static str, reason: R) -> Self
     where
         R: ToString,
     {
         Self::Serialize {
             ty: type_name::<T>(),
+            codec,
             reason: reason.to_string(),
         }
     }
 
-    pub fn deserialize<T, R>(reason: R) -> Self
+    pub fn deserialize<T, R>(codec: &'static str, reason: R) -> Self
     where
         R: ToString,
     {
         Self::Deserialize {
             ty: type_name::<T>(),
+            codec,
             reason: reason.to_string(),
         }
     }
