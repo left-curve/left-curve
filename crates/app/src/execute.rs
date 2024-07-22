@@ -6,7 +6,7 @@ use {
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
-        Storage, SubMsgResult, Tx,
+        Outcome, Storage, SubMsgResult, Tx,
     },
 };
 
@@ -736,6 +736,76 @@ where
     )
 }
 
+// ---------------------------------- taxman -----------------------------------
+
+pub fn do_handle_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    outcome: &Outcome,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    match _do_handle_fee(vm, storage, gas_tracker, block, tx, outcome) {
+        Ok(events) => {
+            // A downside of putting fee logics in a contract is we can't print
+            // more info on the fee here...
+            #[cfg(feature = "tracing")]
+            tracing::debug!("Handled fee");
+
+            Ok(events)
+        },
+        Err(err) => {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(err = err.to_string(), "Failed to handle fee");
+
+            Err(err)
+        },
+    }
+}
+
+pub fn _do_handle_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    outcome: &Outcome,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let cfg = CONFIG.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, &cfg.taxman)?;
+
+    let ctx = Context {
+        chain_id,
+        block,
+        contract: cfg.taxman,
+        sender: None,
+        funds: None,
+        simulate: None,
+    };
+
+    call_in_2_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        "handle_fee",
+        &account.code_hash,
+        &ctx,
+        false,
+        tx,
+        outcome,
+    )
+}
+
 // ----------------------------------- cron ------------------------------------
 
 pub fn do_cron_execute<VM>(
@@ -782,6 +852,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
+
     let ctx = Context {
         chain_id,
         block,

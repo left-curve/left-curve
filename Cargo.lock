@@ -1708,7 +1708,6 @@ dependencies = [
  "bip32",
  "chrono",
  "grug-account",
- "grug-app",
  "grug-bank",
  "grug-crypto",
  "grug-jmt",

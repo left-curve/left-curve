@@ -2,52 +2,19 @@
 use grug_types::from_json_slice;
 use {
     crate::{
-        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
-        do_migrate, do_transfer, do_upload, query_account, query_accounts, query_balance,
-        query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_handle_fee,
+        do_instantiate, do_migrate, do_transfer, do_upload, query_account, query_accounts,
+        query_balance, query_balances, query_code, query_codes, query_info, query_supplies,
+        query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db,
+        GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, Binary, BlockInfo, Duration, Event, GenericResult, GenesisState, Hash,
-        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        UnsignedTx, GENESIS_SENDER,
+        to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
+        Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
+        Timestamp, Tx, UnsignedTx, GENESIS_SENDER,
     },
-    serde::{Deserialize, Serialize},
 };
-
-/// Outcome of executing a block.
-pub struct BlockOutcome {
-    /// The Merkle root hash after executing this block.
-    pub app_hash: Hash,
-    /// Results of executing the cronjobs.
-    pub cron_outcomes: Vec<Outcome>,
-    /// Results of executing the transactions.
-    pub tx_outcomes: Vec<Outcome>,
-}
-
-/// Outcome of executing a single message, transaction, or cronjob.
-///
-/// Includes the events emitted, and gas consumption.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Outcome {
-    // `None` means the call was done with unlimited gas, such as cronjobs.
-    pub gas_limit: Option<u64>,
-    pub gas_used: u64,
-    pub result: GenericResult<Vec<Event>>,
-}
-
-impl Outcome {
-    pub fn new(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Self {
-        Self {
-            gas_limit: gas_tracker.limit(),
-            gas_used: gas_tracker.used(),
-            result: result.into(),
-        }
-    }
-}
 
 /// The ABCI application.
 ///
@@ -221,7 +188,7 @@ where
                 contract.clone(),
             );
 
-            cron_outcomes.push(Outcome::new(gas_tracker, result));
+            cron_outcomes.push(new_outcome(gas_tracker, result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -304,7 +271,7 @@ where
             false,
         );
 
-        Ok(Outcome::new(gas_tracker, result))
+        Ok(new_outcome(gas_tracker, result))
     }
 
     // Returns (last_block_height, last_block_app_hash).
@@ -493,84 +460,94 @@ where
 {
     let buffer = Shared::new(Buffer::new(storage, None));
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
-    let mut events = vec![];
 
-    macro_rules! try_do {
-        ($call:expr) => {
-            match $call {
-                Ok(call_events) => events.extend(call_events),
-                Err(err) => {
-                    return Outcome::new(gas_tracker, Err(err));
-                },
-            }
-        };
-    }
+    let result = (|| -> AppResult<_> {
+        let mut events = vec![];
 
-    // Call the sender account's `before_tx` method.
-    //
-    // The account is expected to perform authentication at this time, such as
-    // verifying a cryptographic signature.
-    //
-    // If this fails, abort, and discard uncommitted state changes.
-    try_do! {
-        do_before_tx(
+        // Call the sender account's `before_tx` method.
+        //
+        // The account is expected to perform authentication at this time, such as
+        // verifying a cryptographic signature.
+        //
+        // If this fails, abort, and discard uncommitted state changes.
+        events.extend(do_before_tx(
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
             block.clone(),
             &tx,
             simulate,
-        )
-    };
+        )?);
 
-    // Update the account state. As long as authentication succeeds, regardless
-    // of whether the message are successful, we update account state.
-    //
-    // The account may maintain a sequence number, for example, which needs to
-    // be incremented even if the transaction fails.
-    buffer.write_access().commit();
+        // Now that the tx is authenticated, we loop through the messages and
+        // execute them one by one.
+        //
+        // If any one of the msgs fails, the entire tx fails; abort, discard
+        // uncommitted changes (the changes from the `before_tx` call earlier are
+        // persisted).
+        for (_idx, msg) in tx.msgs.iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(idx = _idx, "Processing message");
 
-    // Now that the tx is authenticated, we loop through the messages and
-    // execute them one by one.
-    //
-    // If any one of the msgs fails, the entire tx fails; abort, discard
-    // uncommitted changes (the changes from the `before_tx` call earlier are
-    // persisted).
-    for (_idx, msg) in tx.msgs.iter().enumerate() {
-        #[cfg(feature = "tracing")]
-        tracing::debug!(idx = _idx, "Processing message");
-
-        try_do! {
-            process_msg(
+            events.extend(process_msg(
                 vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
                 block.clone(),
                 tx.sender.clone(),
                 msg.clone(),
-            )
+            )?);
         }
-    }
 
-    // Call the sender account's `after_tx` method.
-    //
-    // If this fails, abort, discard uncommitted state changes from messages.
-    // State changes from `before_tx` are always kept.
-    try_do! {
-        do_after_tx(
-            vm,
+        // Call the sender account's `after_tx` method.
+        //
+        // If this fails, abort, discard uncommitted state changes from messages.
+        // State changes from `before_tx` are always kept.
+        events.extend(do_after_tx(
+            vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            block,
+            block.clone(),
             &tx,
             simulate,
-        )
+        )?);
+
+        Ok(events)
+    })();
+
+    let mut outcome = new_outcome(gas_tracker, result);
+
+    // Call the taxman contract to handle this transaction's fee.
+    // This is done regardless whether the previous steps are successful or not.
+    // Taxman is not subject to a gas limit.
+    match do_handle_fee(
+        vm,
+        Box::new(buffer.clone()),
+        GasTracker::new_limitless(),
+        block,
+        &tx,
+        &outcome,
+    ) {
+        // Taxman has successfully handled the fee.
+        // Append the tax events to the outcome, then commit state changes.
+        Ok(tax_events) => {
+            outcome.result.map(|events| events.extend(tax_events));
+            buffer.write_access().commit();
+        },
+        // Taxman somehow failed to handle the fee.
+        //
+        // This is considered a fatal error. The devs should immediately look
+        // into this.
+        //
+        // However, halting the chain may not be the right choice here.
+        // Instead, we discard all state changes effected by the transaction and
+        // return.
+        Err(err) => {
+            outcome.result = Err(err).into();
+        },
     }
 
-    // All messages succeeded. Commit the state changes.
-    buffer.write_access().commit();
-
-    Outcome::new(gas_tracker, Ok(events))
+    outcome
 }
 
 pub fn process_msg<VM>(
@@ -733,8 +710,16 @@ pub(crate) fn schedule_cronjob(
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }
 
+fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcome {
+    Outcome {
+        gas_limit: gas_tracker.limit(),
+        gas_used: gas_tracker.used(),
+        result: result.into(),
+    }
+}
+
 #[cfg(feature = "tracing")]
-pub fn into_utc_string(timestamp: Timestamp) -> String {
+fn into_utc_string(timestamp: Timestamp) -> String {
     // This panics if the timestamp (as nanoseconds) overflows `i64` range.
     // But that'd be 500 years or so from now...
     chrono::DateTime::from_timestamp_nanos(timestamp.into_nanos() as i64)

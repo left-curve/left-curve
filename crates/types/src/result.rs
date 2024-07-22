@@ -35,21 +35,37 @@ where
 }
 
 impl<T> GenericResult<T> {
+    pub fn map<U, F>(&mut self, op: F)
+    where
+        F: FnOnce(&mut T) -> U,
+    {
+        if let GenericResult::Ok(data) = self {
+            op(data);
+        }
+    }
+
+    pub fn map_err<F, O>(&mut self, op: O)
+    where
+        O: FnOnce(&mut String) -> String,
+    {
+        if let GenericResult::Err(err) = self {
+            op(err);
+        }
+    }
+
+    pub fn ok(self) -> Option<T> {
+        match self {
+            GenericResult::Ok(data) => Some(data),
+            GenericResult::Err(_) => None,
+        }
+    }
+
     /// Convert the `GenericResult<T>` to an `StdResult<T>`, so that it can be
     /// unwrapped with the `?` operator.
     pub fn into_std_result(self) -> StdResult<T> {
         match self {
             GenericResult::Ok(data) => Ok(data),
             GenericResult::Err(err) => Err(StdError::Generic(err)),
-        }
-    }
-
-    /// Convert the `GenericResult<T>` to an `Option<T>`, discarding the error
-    /// message.
-    pub fn ok(self) -> Option<T> {
-        match self {
-            GenericResult::Ok(data) => Some(data),
-            GenericResult::Err(_) => None,
         }
     }
 

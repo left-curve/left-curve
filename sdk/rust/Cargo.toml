@@ -16,7 +16,6 @@ anyhow         = { workspace = true }
 bip32          = { workspace = true }
 chrono         = { workspace = true }
 grug-account   = { path = "../../contracts/account", features = ["library"] }
-grug-app       = { path = "../../crates/app", default-features = false }
 grug-crypto    = { path = "../../crates/crypto" }
 grug-jmt       = { path = "../../crates/jellyfish-merkle" }
 grug-types     = { path = "../../crates/types" }
