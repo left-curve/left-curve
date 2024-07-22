@@ -344,7 +344,7 @@ where
     let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
     let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
     let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
-    let outcome = unwrap_into_generic_result!(from_borsh_slice(outcome_bytes));
+    let outcome = unwrap_into_generic_result!(from_json_slice(outcome_bytes));
 
     handle_fee_fn(sudo_ctx, tx, outcome).into()
 }

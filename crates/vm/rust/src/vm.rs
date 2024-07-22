@@ -1,7 +1,7 @@
 use {
     crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{from_borsh_slice, from_json_slice, to_json_vec, Context, Hash, MockApi},
+    grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
 };
 
 /// Names of export functions supported by Grug.
@@ -227,7 +227,7 @@ impl Instance for RustInstance {
             },
             "handle_fee" => {
                 let tx = from_json_slice(param1)?;
-                let outcome = from_borsh_slice(param2)?;
+                let outcome = from_json_slice(param2)?;
                 let res = contract.handle_fee(
                     ctx.clone(),
                     &mut self.storage,
