@@ -123,25 +123,29 @@ where
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         match self.do_simulate_raw(&req.tx, 0, false) {
             Ok(Outcome {
-                gas_limit,
-                gas_used,
                 result: GenericResult::Ok(events),
+                gas_used,
+                ..
             }) => ResponseCheckTx {
                 code: 0,
                 events: into_tm_events(events),
-                gas_wanted: gas_limit.unwrap_or(0) as i64,
+                // Note: Return `Outcome::gas_used` as `gas_wanted` here.
+                // We don't use `Outcome::gas_limit` because that is set as the
+                // node's query gas limit. If that is bigger than the block gas
+                // limit, the tx won't enter mempool.
+                gas_wanted: gas_used as i64,
                 gas_used: gas_used as i64,
                 ..Default::default()
             },
             Ok(Outcome {
-                gas_limit,
-                gas_used,
                 result: GenericResult::Err(err),
+                gas_used,
+                ..
             }) => ResponseCheckTx {
                 code: 1,
                 codespace: "tx".into(),
                 log: err,
-                gas_wanted: gas_limit.unwrap_or(0) as i64,
+                gas_wanted: gas_used as i64,
                 gas_used: gas_used as i64,
                 ..Default::default()
             },
