@@ -1,7 +1,7 @@
 use {
     crate::{App, AppError, Db, Outcome, Vm},
     grug_types::{
-        to_json_vec, Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
@@ -121,7 +121,7 @@ where
 
     fn check_tx(&self, req: RequestCheckTx) -> ResponseCheckTx {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
-        match self.do_simulate_raw(&req.tx, 0, false) {
+        match self.do_check_tx_raw(&req.tx) {
             Ok(Outcome {
                 result: GenericResult::Ok(events),
                 gas_used,
@@ -173,10 +173,7 @@ where
                     ..Default::default()
                 },
             },
-            "/simulate" => match self
-                .do_simulate_raw(&req.data, req.height as u64, req.prove)
-                .and_then(|outcome| to_json_vec(&outcome).map_err(Into::into))
-            {
+            "/simulate" => match self.do_simulate_raw(&req.data, req.height as u64, req.prove) {
                 Ok(outcome) => ResponseQuery {
                     code: 0,
                     value: outcome.into(),

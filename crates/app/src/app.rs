@@ -288,6 +288,25 @@ where
         Ok(())
     }
 
+    // For `CheckTx`, we only do the `before_tx` part of the transaction, which
+    // is where the sender account is supposed to do authentication.
+    pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
+        let buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+        let gas_tracker = GasTracker::new_limited(tx.gas_limit);
+
+        let result = do_before_tx(
+            self.vm.clone(),
+            Box::new(buffer),
+            gas_tracker.clone(),
+            block,
+            &tx,
+            false,
+        );
+
+        Ok(Outcome::new(gas_tracker, result))
+    }
+
     // Returns (last_block_height, last_block_app_hash).
     // Note that we are returning the app hash, not the block hash.
     pub fn do_info(&self) -> AppResult<(u64, Hash)> {
@@ -440,15 +459,22 @@ where
         self.do_finalize_block(block, txs)
     }
 
+    pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
+        let tx = from_json_slice(raw_tx)?;
+
+        self.do_check_tx(tx)
+    }
+
     pub fn do_simulate_raw(
         &self,
         raw_unsigned_tx: &[u8],
         height: u64,
         prove: bool,
-    ) -> AppResult<Outcome> {
+    ) -> AppResult<Vec<u8>> {
         let tx = from_json_slice(raw_unsigned_tx)?;
+        let res = self.do_simulate(tx, height, prove)?;
 
-        self.do_simulate(tx, height, prove)
+        Ok(to_json_vec(&res)?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
