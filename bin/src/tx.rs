@@ -3,8 +3,9 @@ use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     colored::Colorize,
-    grug_sdk::{Client, SigningKey, SigningOption},
+    grug_sdk::{Client, GasOption, SigningKey, SigningOption},
     grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message, UnsignedTx},
+    grug_vm_wasm::GAS_COSTS,
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -31,6 +32,14 @@ pub struct TxCmd {
     /// Account sequence number [default: query from chain]
     #[arg(long)]
     sequence: Option<u32>,
+
+    /// Amount of gas units to request
+    #[arg(long)]
+    gas_limit: Option<u64>,
+
+    /// Scaling factor to apply to simulated gas consumption
+    #[arg(long, default_value_t = 1.4)]
+    gas_adjustment: f64,
 
     /// Simulate gas usage without submitting the transaction to mempool.
     #[arg(long)]
@@ -164,15 +173,28 @@ impl TxCmd {
             let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
             let signing_key = SigningKey::from_file(&key_path, &password)?;
             let sign_opt = SigningOption {
-                signing_key,
+                signing_key: &signing_key,
                 sender,
                 chain_id: self.chain_id,
                 sequence: self.sequence,
             };
 
+            // Choose gas option
+            let gas_opt = if let Some(gas_limit) = self.gas_limit {
+                GasOption::Predefined { gas_limit }
+            } else {
+                GasOption::Simulate {
+                    // We always increase the simulated gas consumption by this
+                    // amount, since signature verification is skipped during
+                    // simulation.
+                    flat_increase: GAS_COSTS.secp256k1_verify,
+                    scale: self.gas_adjustment,
+                }
+            };
+
             // Broadcast transaction
             let maybe_res = client
-                .send_message_with_confirmation(msg, &sign_opt, |tx| {
+                .send_message_with_confirmation(msg, gas_opt, sign_opt, |tx| {
                     print_json_pretty(tx)?;
                     Ok(confirm("🤔 Broadcast transaction?".bold())?)
                 })
