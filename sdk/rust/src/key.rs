@@ -127,6 +127,7 @@ impl SigningKey {
         sender: Addr,
         chain_id: &str,
         sequence: u32,
+        gas_limit: u64,
     ) -> anyhow::Result<Tx> {
         // Generate sign bytes
         let sign_bytes = grug_account::make_sign_bytes(
@@ -141,8 +142,7 @@ impl SigningKey {
         let signature = self.sign_digest(&sign_bytes);
 
         Ok(Tx {
-            // TODO: Add gas limit
-            gas_limit: 3_000_000,
+            gas_limit,
             sender,
             msgs,
             credential: signature.into(),

@@ -1,5 +1,5 @@
 use {
-    crate::{AdminOption, SigningOptions},
+    crate::{AdminOption, GasOption, SigningOption},
     anyhow::{bail, ensure},
     grug_account::{QueryMsg, StateResponse},
     grug_app::Outcome,
@@ -320,9 +320,10 @@ impl Client {
     pub async fn send_message(
         &self,
         msg: Message,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_messages(vec![msg], sign_opts).await
+        self.send_messages(vec![msg], gas_opt, sign_opt).await
     }
 
     /// Create, sign, and broadcast a transaction with a single message, with
@@ -332,10 +333,11 @@ impl Client {
     pub async fn send_message_with_confirmation(
         &self,
         msg: Message,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
-        self.send_messages_with_confirmation(vec![msg], sign_opts, confirm_fn)
+        self.send_messages_with_confirmation(vec![msg], gas_opt, sign_opt, confirm_fn)
             .await
     }
 
@@ -346,9 +348,10 @@ impl Client {
     pub async fn send_messages(
         &self,
         msgs: Vec<Message>,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
-        self.send_messages_with_confirmation(msgs, sign_opts, no_confirmation)
+        self.send_messages_with_confirmation(msgs, gas_opt, sign_opt, no_confirmation)
             .await
             .map(Option::unwrap)
     }
@@ -360,18 +363,21 @@ impl Client {
     pub async fn send_messages_with_confirmation(
         &self,
         msgs: Vec<Message>,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
-        let chain_id = match &sign_opts.chain_id {
+        // If chain ID is not provided, query from the chain
+        let chain_id = match sign_opt.chain_id {
             None => self.query_info(None).await?.chain_id,
-            Some(id) => id.to_string(),
+            Some(id) => id,
         };
 
-        let sequence = match sign_opts.sequence {
+        // If sequence is not provided, query from the chain
+        let sequence = match sign_opt.sequence {
             None => {
                 self.query_wasm_smart::<_, StateResponse>(
-                    sign_opts.sender.clone(),
+                    sign_opt.sender.clone(),
                     &QueryMsg::State {},
                     None,
                 )
@@ -381,11 +387,28 @@ impl Client {
             Some(seq) => seq,
         };
 
-        let tx = sign_opts.signing_key.create_and_sign_tx(
+        // If gas limit is not provided, simulate
+        let gas_limit = match gas_opt {
+            GasOption::Simulate {
+                flat_increase,
+                scale,
+            } => {
+                let unsigned_tx = UnsignedTx {
+                    sender: sign_opt.sender.clone(),
+                    msgs: msgs.clone(),
+                };
+                let outcome = self.simulate(&unsigned_tx).await?;
+                ((outcome.gas_used + flat_increase) as f64 * scale).ceil() as u64
+            },
+            GasOption::Predefined { gas_limit } => gas_limit,
+        };
+
+        let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,
-            sign_opts.sender.clone(),
+            sign_opt.sender.clone(),
             &chain_id,
             sequence,
+            gas_limit,
         )?;
 
         if confirm_fn(&tx)? {
@@ -400,10 +423,11 @@ impl Client {
     pub async fn configure(
         &self,
         new_cfg: Config,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
         let msg = Message::configure(new_cfg);
-        self.send_message(msg, sign_opts).await
+        self.send_message(msg, gas_opt, sign_opt).await
     }
 
     /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
@@ -411,27 +435,29 @@ impl Client {
         &self,
         to: Addr,
         coins: C,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
         let msg = Message::transfer(to, coins)?;
-        self.send_message(msg, sign_opts).await
+        self.send_message(msg, gas_opt, sign_opt).await
     }
 
     /// Send a transaction with a single [`Message::Upload`](grug_types::Message::Upload).
     pub async fn upload<B>(
         &self,
         code: B,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
         B: Into<Binary>,
     {
         let msg = Message::upload(code);
-        self.send_message(msg, sign_opts).await
+        self.send_message(msg, gas_opt, sign_opt).await
     }
 
     /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
@@ -443,8 +469,9 @@ impl Client {
         msg: &M,
         salt: S,
         funds: C,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
         admin_opt: AdminOption,
-        sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Addr, tx_sync::Response)>
     where
         M: Serialize,
@@ -453,11 +480,11 @@ impl Client {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
+        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
         let admin = admin_opt.decide(&address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
-        let res = self.send_message(msg, sign_opts).await?;
+        let res = self.send_message(msg, gas_opt, sign_opt).await?;
 
         Ok((address, res))
     }
@@ -472,8 +499,9 @@ impl Client {
         msg: &M,
         salt: S,
         funds: C,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
         admin_opt: AdminOption,
-        sign_opts: &SigningOptions,
     ) -> anyhow::Result<(Hash, Addr, tx_sync::Response)>
     where
         M: Serialize,
@@ -485,14 +513,14 @@ impl Client {
         let code = code.into();
         let code_hash = hash(&code);
         let salt = salt.into();
-        let address = Addr::compute(&sign_opts.sender, &code_hash, &salt);
+        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
         let admin = admin_opt.decide(&address);
 
         let msgs = vec![
             Message::upload(code),
             Message::instantiate(code_hash.clone(), msg, salt, funds, admin)?,
         ];
-        let res = self.send_messages(msgs, sign_opts).await?;
+        let res = self.send_messages(msgs, gas_opt, sign_opt).await?;
 
         Ok((code_hash, address, res))
     }
@@ -503,7 +531,8 @@ impl Client {
         contract: Addr,
         msg: &M,
         funds: C,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
         M: Serialize,
@@ -511,7 +540,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let msg = Message::execute(contract, msg, funds)?;
-        self.send_message(msg, sign_opts).await
+        self.send_message(msg, gas_opt, sign_opt).await
     }
 
     /// Send a transaction with a single [`Message::Migrate`](grug_types::Message::Migrate).
@@ -520,13 +549,14 @@ impl Client {
         contract: Addr,
         new_code_hash: Hash,
         msg: &M,
-        sign_opts: &SigningOptions,
+        gas_opt: GasOption,
+        sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
         M: Serialize,
     {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
-        self.send_message(msg, sign_opts).await
+        self.send_message(msg, gas_opt, sign_opt).await
     }
 }
 

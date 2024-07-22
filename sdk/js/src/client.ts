@@ -272,7 +272,7 @@ export class Client {
     return hash;
   }
 
-  public async signAndBroadcastTx(msgs: Message[], signOpts: SigningOptions): Promise<Uint8Array> {
+  public async signAndBroadcastTx(msgs: Message[], signOpts: SigningOption): Promise<Uint8Array> {
     if (!signOpts.chainId) {
       const infoRes = await this.queryInfo();
       signOpts.chainId = infoRes.chainId;
@@ -295,21 +295,21 @@ export class Client {
     return this.broadcastTx(tx);
   }
 
-  public async updateConfig(newCfg: Config, signOpts: SigningOptions): Promise<Uint8Array> {
+  public async updateConfig(newCfg: Config, signOpts: SigningOption): Promise<Uint8Array> {
     const updateCfgMsg = {
       updateConfig: { newCfg },
     };
     return this.signAndBroadcastTx([updateCfgMsg], signOpts);
   }
 
-  public async transfer(to: string, coins: Coin[], signOpts: SigningOptions): Promise<Uint8Array> {
+  public async transfer(to: string, coins: Coin[], signOpts: SigningOption): Promise<Uint8Array> {
     const transferMsg = {
       transfer: { to, coins },
     };
     return this.signAndBroadcastTx([transferMsg], signOpts);
   }
 
-  public async storeCode(wasmByteCode: Uint8Array, signOpts: SigningOptions): Promise<Uint8Array> {
+  public async storeCode(wasmByteCode: Uint8Array, signOpts: SigningOption): Promise<Uint8Array> {
     const storeCodeMsg = {
       storeCode: {
         wasmByteCode: encodeBase64(wasmByteCode),
@@ -324,7 +324,7 @@ export class Client {
     salt: Uint8Array,
     funds: Coin[],
     adminOpt: AdminOption,
-    signOpts: SigningOptions,
+    signOpts: SigningOption,
   ): Promise<[string, Uint8Array]> {
     const address = createAddress(signOpts.sender, codeHash, salt);
     const instantiateMsg = {
@@ -346,7 +346,7 @@ export class Client {
     salt: Uint8Array,
     funds: Coin[],
     adminOpt: AdminOption,
-    signOpts: SigningOptions,
+    signOpts: SigningOption,
   ): Promise<[string, Uint8Array]> {
     const codeHash = sha256(wasmByteCode);
     const address = createAddress(signOpts.sender, codeHash, salt);
@@ -372,7 +372,7 @@ export class Client {
     contract: string,
     msg: Payload,
     funds: Coin[],
-    signOpts: SigningOptions,
+    signOpts: SigningOption,
   ): Promise<Uint8Array> {
     const executeMsg = {
       execute: {
@@ -388,7 +388,7 @@ export class Client {
     contract: string,
     newCodeHash: Uint8Array,
     msg: Payload,
-    signOpts: SigningOptions,
+    signOpts: SigningOption,
   ): Promise<Uint8Array> {
     const migrateMsg = {
       migrate: {
@@ -401,7 +401,7 @@ export class Client {
   }
 }
 
-export type SigningOptions = {
+export type SigningOption = {
   signingKey: SigningKey;
   sender: string;
   chainId?: string;

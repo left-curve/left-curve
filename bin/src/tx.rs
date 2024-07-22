@@ -3,7 +3,7 @@ use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     colored::Colorize,
-    grug_sdk::{Client, SigningKey, SigningOptions},
+    grug_sdk::{Client, SigningKey, SigningOption},
     grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
@@ -163,7 +163,7 @@ impl TxCmd {
             let key_path = key_dir.join(format!("{key_name}.json"));
             let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
             let signing_key = SigningKey::from_file(&key_path, &password)?;
-            let sign_opts = SigningOptions {
+            let sign_opt = SigningOption {
                 signing_key,
                 sender,
                 chain_id: self.chain_id,
@@ -172,7 +172,7 @@ impl TxCmd {
 
             // Broadcast transaction
             let maybe_res = client
-                .send_message_with_confirmation(msg, &sign_opts, |tx| {
+                .send_message_with_confirmation(msg, &sign_opt, |tx| {
                     print_json_pretty(tx)?;
                     Ok(confirm("🤔 Broadcast transaction?".bold())?)
                 })
