@@ -5,15 +5,15 @@ use {
     },
     grug_storage::Bound,
     grug_types::{
-        AccountResponse, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins,
-        Context, GenericResult, Hash, InfoResponse, Json, Order, StdResult, Storage,
-        WasmRawResponse, WasmSmartResponse,
+        Account, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context,
+        GenericResult, Hash, InfoResponse, Json, Order, StdResult, Storage,
     },
+    std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn query_info(storage: &dyn Storage) -> AppResult<InfoResponse> {
+pub fn query_info(storage: &dyn Storage) -> StdResult<InfoResponse> {
     Ok(InfoResponse {
         chain_id: CHAIN_ID.load(storage)?,
         config: CONFIG.load(storage)?,
@@ -111,6 +111,7 @@ where
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &cfg.bank)?;
+
     let ctx = Context {
         chain_id,
         block,
@@ -134,68 +135,46 @@ where
     .map_err(AppError::Std)
 }
 
-pub fn query_code(storage: &dyn Storage, hash: Hash) -> AppResult<Binary> {
-    Ok(CODES.load(storage, &hash)?.into())
+pub fn query_code(storage: &dyn Storage, hash: Hash) -> StdResult<Binary> {
+    CODES.load(storage, &hash)
 }
 
 pub fn query_codes(
     storage: &dyn Storage,
     start_after: Option<Hash>,
     limit: Option<u32>,
-) -> AppResult<Vec<Hash>> {
+) -> StdResult<BTreeMap<Hash, Binary>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CODES
-        .keys(storage, start, None, Order::Ascending)
+        .range(storage, start, None, Order::Ascending)
         .take(limit as usize)
-        .collect::<StdResult<Vec<_>>>()
-        .map_err(Into::into)
+        .collect()
 }
 
-pub fn query_account(storage: &dyn Storage, address: Addr) -> AppResult<AccountResponse> {
-    let account = ACCOUNTS.load(storage, &address)?;
-    Ok(AccountResponse {
-        address,
-        code_hash: account.code_hash,
-        admin: account.admin,
-    })
+pub fn query_account(storage: &dyn Storage, address: Addr) -> StdResult<Account> {
+    ACCOUNTS.load(storage, &address)
 }
 
 pub fn query_accounts(
     storage: &dyn Storage,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> AppResult<Vec<AccountResponse>> {
+) -> StdResult<BTreeMap<Addr, Account>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     ACCOUNTS
         .range(storage, start, None, Order::Ascending)
         .take(limit as usize)
-        .map(|item| {
-            let (address, account) = item?;
-            Ok(AccountResponse {
-                address,
-                code_hash: account.code_hash,
-                admin: account.admin,
-            })
-        })
         .collect()
 }
 
-pub fn query_wasm_raw(
-    storage: Box<dyn Storage>,
-    contract: Addr,
-    key: Binary,
-) -> AppResult<WasmRawResponse> {
-    let substore = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
-    let value = substore.read(&key);
-    Ok(WasmRawResponse {
-        contract,
-        key,
-        value: value.map(Binary::from),
-    })
+pub fn query_wasm_raw(storage: Box<dyn Storage>, contract: Addr, key: Binary) -> Option<Binary> {
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract])
+        .read(&key)
+        .map(Binary::from)
 }
 
 pub fn query_wasm_smart<VM>(
@@ -205,13 +184,14 @@ pub fn query_wasm_smart<VM>(
     gas_tracker: GasTracker,
     contract: Addr,
     msg: Json,
-) -> AppResult<WasmSmartResponse>
+) -> AppResult<Json>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let account = ACCOUNTS.load(&storage, &contract)?;
+
     let ctx = Context {
         chain_id,
         block,
@@ -220,7 +200,8 @@ where
         funds: None,
         simulate: None,
     };
-    let data = call_in_1_out_1::<_, _, GenericResult<Json>>(
+
+    call_in_1_out_1::<_, _, GenericResult<Json>>(
         vm,
         storage,
         gas_tracker,
@@ -230,10 +211,6 @@ where
         true,
         &msg,
     )?
-    .into_std_result()?;
-
-    Ok(WasmSmartResponse {
-        contract: ctx.contract,
-        data,
-    })
+    .into_std_result()
+    .map_err(AppError::Std)
 }

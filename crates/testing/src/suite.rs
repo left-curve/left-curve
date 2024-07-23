@@ -323,8 +323,7 @@ where
                     0, // zero means to use the latest height
                     false,
                 )?
-                .as_wasm_smart()
-                .data;
+                .as_wasm_smart();
             Ok(from_json_value(res_raw)?)
         })()
         .into()

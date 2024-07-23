@@ -11,11 +11,12 @@
 
 use {
     crate::{
-        from_json_value, to_json_value, AccountResponse, Addr, Batch, Binary, Coins, Hash,
-        InfoResponse, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
+        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash, InfoResponse,
+        Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
+    std::collections::BTreeMap,
 };
 
 // ---------------------------------- storage ----------------------------------
@@ -330,13 +331,13 @@ impl<'a> QuerierWrapper<'a> {
         &self,
         start_after: Option<Hash>,
         limit: Option<u32>,
-    ) -> StdResult<Vec<Hash>> {
+    ) -> StdResult<BTreeMap<Hash, Binary>> {
         self.inner
             .query_chain(QueryRequest::Codes { start_after, limit })
             .map(|res| res.as_codes())
     }
 
-    pub fn query_account(&self, address: Addr) -> StdResult<AccountResponse> {
+    pub fn query_account(&self, address: Addr) -> StdResult<Account> {
         self.inner
             .query_chain(QueryRequest::Account { address })
             .map(|res| res.as_account())
@@ -346,7 +347,7 @@ impl<'a> QuerierWrapper<'a> {
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
-    ) -> StdResult<Vec<AccountResponse>> {
+    ) -> StdResult<BTreeMap<Addr, Account>> {
         self.inner
             .query_chain(QueryRequest::Accounts { start_after, limit })
             .map(|res| res.as_accounts())
@@ -355,7 +356,7 @@ impl<'a> QuerierWrapper<'a> {
     pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
         self.inner
             .query_chain(QueryRequest::WasmRaw { contract, key })
-            .map(|res| res.as_wasm_raw().value)
+            .map(|res| res.as_wasm_raw())
     }
 
     pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> StdResult<R>
@@ -368,6 +369,6 @@ impl<'a> QuerierWrapper<'a> {
                 contract,
                 msg: to_json_value(msg)?,
             })
-            .and_then(|res| from_json_value(res.as_wasm_smart().data))
+            .and_then(|res| from_json_value(res.as_wasm_smart()))
     }
 }

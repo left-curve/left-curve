@@ -1,6 +1,6 @@
 use {
     grug_storage::{Item, Map, Set},
-    grug_types::{Account, Addr, BlockInfo, Config, Hash, Timestamp},
+    grug_types::{Account, Addr, Binary, BlockInfo, Config, Hash, Timestamp},
 };
 
 /// A string that identifies the chain
@@ -19,7 +19,7 @@ pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_bloc
 pub const NEXT_CRONJOBS: Set<(Timestamp, &Addr)> = Set::new("jobs");
 
 /// Wasm contract byte codes: code_hash => byte_code
-pub const CODES: Map<&Hash, Vec<u8>> = Map::new("code");
+pub const CODES: Map<&Hash, Binary> = Map::new("code");
 
 /// Account metadata: address => account
 pub const ACCOUNTS: Map<&Addr, Account> = Map::new("account");
