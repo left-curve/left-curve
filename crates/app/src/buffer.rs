@@ -50,6 +50,11 @@ where
         self.base.flush(self.pending);
         self.base
     }
+
+    /// Discard all pending ops.
+    pub fn reset(&mut self) {
+        self.pending.clear();
+    }
 }
 
 impl<S> Storage for Buffer<S>

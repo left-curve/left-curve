@@ -6,8 +6,8 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
-        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
-        QueryRequest, StdError, Tx, Uint128, Uint64,
+        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst,
+        QueryRequest, StdError, Tx, TxOutcome, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -96,7 +96,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, gas_limit, vec![msg])
     }
 
@@ -106,7 +106,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
@@ -136,7 +136,6 @@ where
         new_cfg: Config,
     ) -> anyhow::Result<()> {
         self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
-            .result
             .should_succeed();
 
         Ok(())
@@ -156,7 +155,6 @@ where
         let code_hash = Hash::from_array(sha2_256(&code));
 
         self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
-            .result
             .should_succeed();
 
         Ok(code_hash)
@@ -187,7 +185,6 @@ where
             gas_limit,
             Message::instantiate(code_hash, msg, salt, funds, None)?,
         )?
-        .result
         .should_succeed();
 
         Ok(address)
@@ -220,7 +217,6 @@ where
             Message::upload(code),
             Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
         ])?
-        .result
         .should_succeed();
 
         Ok((code_hash, address))
@@ -241,7 +237,6 @@ where
         StdError: From<C::Error>,
     {
         self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
-            .result
             .should_succeed();
 
         Ok(())
@@ -264,7 +259,6 @@ where
             gas_limit,
             Message::migrate(contract, new_code_hash, msg)?,
         )?
-        .result
         .should_succeed();
 
         Ok(())
@@ -335,7 +329,11 @@ where
 // don't take a `gas_limit` parameter.
 impl TestSuite<RustVm> {
     /// Execute a single message.
-    pub fn send_message(&mut self, signer: &TestAccount, msg: Message) -> anyhow::Result<Outcome> {
+    pub fn send_message(
+        &mut self,
+        signer: &TestAccount,
+        msg: Message,
+    ) -> anyhow::Result<TxOutcome> {
         self.send_message_with_gas(signer, 0, msg)
     }
 
@@ -344,7 +342,7 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &TestAccount,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, 0, msgs)
     }
 

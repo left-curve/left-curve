@@ -40,7 +40,6 @@ fn bank_transfers() -> anyhow::Result<()> {
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?
-        .result
         .should_succeed();
 
     // Check balances again

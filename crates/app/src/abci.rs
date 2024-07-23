@@ -1,8 +1,8 @@
 use {
     crate::{App, AppError, Db, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Outcome, Timestamp, Uint64,
-        GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Outcome, Timestamp, TxOutcome,
+        Uint64, GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -240,21 +240,36 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
         .expect("incorrect block hash length")
 }
 
-fn into_tm_tx_result(outcome: Outcome) -> ExecTxResult {
-    let gas_wanted = outcome.gas_limit.unwrap_or(0) as i64;
-    let gas_used = outcome.gas_used as i64;
+fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
+    let gas_wanted = outcome.msg_outcome.gas_limit.unwrap_or(0) as i64;
+    let gas_used = outcome.msg_outcome.gas_used as i64;
 
-    match outcome.result {
-        GenericResult::Ok(events) => ExecTxResult {
+    match (outcome.msg_outcome.result, outcome.tax_outcome.result) {
+        // Both messages and fee handling succeeded.
+        // Return combined events.
+        (GenericResult::Ok(msg_events), GenericResult::Ok(tax_events)) => ExecTxResult {
             code: 0,
-            events: into_tm_events(events),
+            events: into_tm_events(msg_events.into_iter().chain(tax_events)),
             gas_wanted,
             gas_used,
             ..Default::default()
         },
-        GenericResult::Err(err) => ExecTxResult {
+        // Messages errored, fee handling succeeded.
+        // Return error string from messages + events from tax handling.
+        (GenericResult::Err(err), GenericResult::Ok(tax_events)) => ExecTxResult {
             code: 1,
-            codespace: "tx".to_string(),
+            codespace: "msg".to_string(),
+            log: err.to_string(),
+            events: into_tm_events(tax_events),
+            gas_wanted,
+            gas_used,
+            ..Default::default()
+        },
+        // Regardless of whether messages succeeded, fee handling failed.
+        // Return error string from fee handling, and no event.
+        (_, GenericResult::Err(err)) => ExecTxResult {
+            code: 1,
+            codespace: "tax".to_string(),
             log: err.to_string(),
             gas_wanted,
             gas_used,
@@ -263,7 +278,10 @@ fn into_tm_tx_result(outcome: Outcome) -> ExecTxResult {
     }
 }
 
-fn into_tm_events(events: Vec<Event>) -> Vec<TmEvent> {
+fn into_tm_events<I>(events: I) -> Vec<TmEvent>
+where
+    I: IntoIterator<Item = Event>,
+{
     events.into_iter().map(into_tm_event).collect()
 }
 

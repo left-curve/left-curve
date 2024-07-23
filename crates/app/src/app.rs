@@ -12,7 +12,7 @@ use {
     grug_types::{
         to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
         Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
-        Timestamp, Tx, UnsignedTx, GENESIS_SENDER,
+        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -361,7 +361,7 @@ where
         unsigned_tx: UnsignedTx,
         height: u64,
         prove: bool,
-    ) -> AppResult<Outcome> {
+    ) -> AppResult<TxOutcome> {
         let buffer = Buffer::new(self.db.state_storage(None), None);
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -452,7 +452,25 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> Outcome
+/// Process a transaction.
+///
+/// The steps as follows:
+/// 1. Call the sender's `before_tx` function
+/// 2. Execute the messages
+/// 3. Call the sender's `after_tx` function
+/// 4. Call the taxman's `handle_fee` function
+///
+/// Step 1-3 are atomic, meaning they either succeed together, or fail together.
+///
+/// Depends on the outcome, here's how the function behaves:
+///
+/// | Steps 1-3 | Step 4 | State Changes         |
+/// | --------- | ------ | --------------------- |
+/// | Ok        | Ok     | commit all            |
+/// | Err       | Ok     | discard 1-3, commit 4 |
+/// | Ok        | Err    | discard all           |
+/// | Err       | Err    | discard all           |
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
@@ -461,7 +479,8 @@ where
     let buffer = Shared::new(Buffer::new(storage, None));
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
-    let result = (|| -> AppResult<_> {
+    // Steps 1-3
+    let msg_result = (|| -> AppResult<_> {
         let mut events = vec![];
 
         // Call the sender account's `before_tx` method.
@@ -515,39 +534,37 @@ where
         Ok(events)
     })();
 
-    let mut outcome = new_outcome(gas_tracker, result);
-
-    // Call the taxman contract to handle this transaction's fee.
-    // This is done regardless whether the previous steps are successful or not.
-    // Taxman is not subject to a gas limit.
-    match do_handle_fee(
-        vm,
-        Box::new(buffer.clone()),
-        GasTracker::new_limitless(),
-        block,
-        &tx,
-        &outcome,
-    ) {
-        // Taxman has successfully handled the fee.
-        // Append the tax events to the outcome, then commit state changes.
-        Ok(tax_events) => {
-            outcome.result.map(|events| events.extend(tax_events));
-            buffer.write_access().commit();
-        },
-        // Taxman somehow failed to handle the fee.
-        //
-        // This is considered a fatal error. The devs should immediately look
-        // into this.
-        //
-        // However, halting the chain may not be the right choice here.
-        // Instead, we discard all state changes effected by the transaction and
-        // return.
-        Err(err) => {
-            outcome.result = Err(err).into();
-        },
+    // If anywhere in step 1-3 it has errored, discard all state changes.
+    if msg_result.is_err() {
+        buffer.write_access().reset();
     }
 
-    outcome
+    let msg_outcome = new_outcome(gas_tracker, msg_result);
+
+    // Gas tracker for the taxman call. Taxman has unlimited gas.
+    let gas_tracker = GasTracker::new_limitless();
+
+    // Step 4. handle transaction fee
+    let tax_result = do_handle_fee(
+        vm,
+        Box::new(buffer.clone()),
+        gas_tracker.clone(),
+        block,
+        &tx,
+        &msg_outcome,
+    );
+
+    // Both steps 1-3 and step 4 have succeeded. Commit all state changes.
+    if tax_result.is_ok() {
+        buffer.write_access().commit();
+    }
+
+    let tax_outcome = new_outcome(gas_tracker, tax_result);
+
+    TxOutcome {
+        msg_outcome,
+        tax_outcome,
+    }
 }
 
 pub fn process_msg<VM>(
