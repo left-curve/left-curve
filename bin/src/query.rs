@@ -126,7 +126,7 @@ impl QueryCmd {
             },
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
-                let key = Binary::from(hex::decode(&key_hex)?);
+                let key = Binary::from(hex::decode(key_hex)?);
                 QueryRequest::WasmRaw { contract, key }
             },
             SubCmd::WasmSmart { contract, msg } => {
