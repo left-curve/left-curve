@@ -59,6 +59,31 @@ impl BitArray {
         }
     }
 
+    pub fn from_bits(bits: &[u8]) -> Self {
+        // The slice must be no longer than 256 bytes, otherwise panic
+        assert!(
+            bits.len() <= Self::MAX_BIT_LENGTH,
+            "slice too long: {} > {}",
+            bits.len(),
+            Self::MAX_BIT_LENGTH
+        );
+
+        let mut bytes = [0; Self::MAX_BYTE_LENGTH];
+        for (i, chunk) in bits.chunks(8).enumerate() {
+            let mut byte = 0;
+            for (j, bit) in chunk.iter().enumerate() {
+                assert!(*bit == 0 || *bit == 1, "bit must be 0 or 1, got {bit}");
+                byte = byte | (bit << (7 - j));
+            }
+            bytes[i] = byte;
+        }
+
+        Self {
+            num_bits: bits.len(),
+            bytes,
+        }
+    }
+
     // we can't use Rust's `Index` trait, because it requires returning a &u8,
     // so we get a "cannot return local reference" error.
     pub fn bit_at_index(&self, index: usize) -> u8 {
