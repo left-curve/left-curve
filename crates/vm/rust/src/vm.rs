@@ -289,9 +289,8 @@ mod tests {
             .build()
             .into();
 
-        let mut vm = RustVm::new();
-
         let db = Shared::new(MockStorage::new());
+        let mut vm = RustVm::new();
 
         let block = BlockInfo {
             height: Uint64::ZERO,
@@ -299,24 +298,16 @@ mod tests {
             hash: Hash::ZERO,
         };
 
-        let gas_tracker = GasTracker::new_limitless();
-
-        let querier_provider = QuerierProvider::new(
-            vm.clone(),
-            Box::new(db.clone()),
-            gas_tracker.clone(),
-            block.clone(),
-        );
-
-        let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
+        let storage = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
+        let querier = QuerierProvider::new(vm.clone(), Box::new(db.clone()), block.clone());
 
         let instance = vm.build_instance(
             &code,
             &Hash::ZERO,
-            storage_provider,
+            storage,
             false,
-            querier_provider,
-            gas_tracker,
+            querier,
+            GasTracker::new_limitless(),
         )?;
 
         let ctx = Context {
@@ -339,6 +330,7 @@ mod tests {
             // We expect the call to succeed. Check that the data is correctly
             // written to the DB.
             None => {
+                ensure!(result.is_ok());
                 let value = db.read_access().read(b"testerlarry");
                 ensure!(value == Some(b"engineer".to_vec()));
             },

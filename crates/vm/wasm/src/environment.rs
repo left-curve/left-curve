@@ -190,6 +190,7 @@ impl Environment {
     {
         let instance = self.get_wasmer_instance()?;
         let func = instance.exports.get_function(name)?;
+
         // Make the function call. Then, regardless of whether the call succeeds
         // or fails, check the remaining gas points.
         match (
@@ -259,8 +260,19 @@ impl Environment {
             },
             // The contract made a host function call, but gas depleted; impossible.
             MeteringPoints::Exhausted => {
-                unreachable!("No way! Gas is depleted but contract made a host function call");
+                unreachable!("No way! Gas is depleted but contract made a host function call.");
             },
+        }
+    }
+
+    pub fn remaining_points<S>(&self, store: &mut S) -> VmResult<u64>
+    where
+        S: AsStoreMut,
+    {
+        let instance = self.get_wasmer_instance()?;
+        match get_remaining_points(store, instance) {
+            MeteringPoints::Remaining(remaining) => Ok(remaining),
+            MeteringPoints::Exhausted => unreachable!(),
         }
     }
 }

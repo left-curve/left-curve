@@ -44,16 +44,11 @@ fn looping(c: &mut Criterion) {
                 // https://bheisler.github.io/criterion.rs/book/user_guide/timing_loops.html#deprecated-timing-loops
                 b.iter_batched(
                     || -> anyhow::Result<_> {
-                        let storage = Box::new(MockStorage::new());
+                        let db = Box::new(MockStorage::new());
                         let gas_tracker = GasTracker::new_limitless();
 
-                        let querier = QuerierProvider::new(
-                            vm.clone(),
-                            storage.clone(),
-                            gas_tracker.clone(),
-                            MOCK_BLOCK,
-                        );
-                        let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
+                        let storage = StorageProvider::new(db.clone(), &[&MOCK_CONTRACT]);
+                        let querier = QuerierProvider::new(vm.clone(), db, MOCK_BLOCK);
 
                         let instance = vm.build_instance(
                             BENCHMARKER_CODE,

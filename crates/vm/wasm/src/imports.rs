@@ -1,6 +1,6 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
-    grug_app::GAS_COSTS,
+    grug_app::{GasTracker, GAS_COSTS},
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, QueryRequest, Record, Storage,
     },
@@ -229,11 +229,20 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
     let req: QueryRequest = from_json_slice(req_bytes)?;
 
+    // Create a temporary gas tracker to track the gas consumption of this query.
+    //
+    // The tracker should have the same available gas as the remaining points in
+    // the VM, so that this query would properly error if it consumes too much
+    // gas.
+    let gas_tracker = GasTracker::new_limited(env.remaining_points(&mut store)?);
+
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
-    let res = env.querier.do_query_chain(req);
+    let res = env.querier.do_query_chain(req, Some(gas_tracker.clone()));
     let res_bytes = to_json_vec(&res)?;
+
+    env.consume_external_gas(&mut store, gas_tracker.used(), "query_chain")?;
 
     write_to_memory(env, &mut store, &res_bytes)
 }
