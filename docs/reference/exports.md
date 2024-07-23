@@ -75,14 +75,27 @@ fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> Result<BankQueryResponse, Er
 
 ## Gas
 
-In Grug, gas fees are handled by a smart contract.
+In Grug, gas fees are handled by a smart contract known as the **taxman**.
 
-This contract is called after each transaction to collect gas fee from the sender. Develops can program arbitrary rules for collecting gas fees; for example, for an orderbook exchange, it may make sense to make the first few orders of each day free of charge, as a way to incentivize trading activity. Another use case is MEV capture. Osmosis is known to backrun certain DEX trades to perform arbitrage via its [ProtoRev module](https://github.com/osmosis-labs/osmosis/tree/main/x/protorev); this is something that can be realized using the gas contract, since it's automatically called after each transaction.
+Taxman must implement two entry points:
 
 ```rust
 #[grug::export]
-fn handle_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
+fn check_fee(ctx: ImmutableCtx, tx: Tx) -> Result<()>;
 ```
+
+This is called during `CheckTx`. Taxman is supposed to check whether the transaction's sender has enough tokens to afford the maximum possible amount of fee that may incur.
+
+```rust
+#[grug::export]
+fn collect_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
+```
+
+This is called after the transaction. Taxman will here compute and collect the fee from the sender.
+
+Develops can program arbitrary rules for this; for example, for an orderbook exchange, it may make sense to make the first few orders of each day free of charge, as a way to incentivize trading activity.
+
+Another use case is MEV capture. Osmosis is known to backrun certain DEX trades to perform arbitrage via its [ProtoRev module](https://github.com/osmosis-labs/osmosis/tree/main/x/protorev); this is something that can be realized using the gas contract, since it's automatically called after each transaction.
 
 ## IBC
 
