@@ -55,7 +55,7 @@ enum SubCmd {
     },
     /// Query a Wasm binary code by hash
     Code { hash: Hash },
-    /// Enumerate hashes of all Wasm byte codes
+    /// Enumerate all Wasm byte codes
     Codes {
         /// Start after this hash
         start_after: Option<Hash>,
