@@ -317,18 +317,18 @@ impl<'a> MerkleTree<'a> {
             (true, None) => Ok(Outcome::Unchanged(None)),
             // Child exists, but there is no op to apply.
             (true, Some(child)) => {
-                let child_node = self.nodes.load(storage, (child.version, &child_bits))?;
+                let child_node = self.nodes.load(storage, (child.version, child_bits))?;
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
             // Child doesn't exist, but there are ops to apply.
             (false, None) => {
                 let (batch, op) = prepare_batch_for_subtree(batch, None);
                 debug_assert!(op.is_none());
-                self.create_subtree(storage, new_version, &child_bits, batch, None)
+                self.create_subtree(storage, new_version, child_bits, batch, None)
             },
             // Child exists, and there are ops to apply.
             (false, Some(child)) => {
-                self.apply_at(storage, new_version, child.version, &child_bits, batch)
+                self.apply_at(storage, new_version, child.version, child_bits, batch)
             },
         }
     }

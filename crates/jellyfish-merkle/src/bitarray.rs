@@ -73,7 +73,7 @@ impl BitArray {
             let mut byte = 0;
             for (j, bit) in chunk.iter().enumerate() {
                 assert!(*bit == 0 || *bit == 1, "bit must be 0 or 1, got {bit}");
-                byte = byte | (bit << (7 - j));
+                byte |= bit << (7 - j);
             }
             bytes[i] = byte;
         }
