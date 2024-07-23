@@ -49,7 +49,6 @@ pub struct MutableCtx<'a> {
 ///
 /// The name is derived from the "sudo" entry point in the vanilla CosmWasm.
 /// There isn't such an entry point in Grug, but we keep the name nonetheless.
-
 pub struct SudoCtx<'a> {
     pub storage:  &'a mut dyn Storage,
     pub api:      &'a dyn Api,
