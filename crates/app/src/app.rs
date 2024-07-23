@@ -659,7 +659,6 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        // QueryRequest::Info {} => Ok(query_info(&storage).map(QueryResponse::Info)?),
         QueryRequest::Info {} => {
             let res = query_info(&storage)?;
             Ok(QueryResponse::Info(res))
