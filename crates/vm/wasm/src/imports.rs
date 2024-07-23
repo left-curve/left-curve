@@ -3,7 +3,7 @@ use {
         read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult, GAS_COSTS,
     },
     grug_types::{
-        decode_sections, from_json_slice, to_json_vec, Addr, Querier, QueryRequest, Record, Storage,
+        decode_sections, from_json_slice, to_json_vec, Addr, QueryRequest, Record, Storage,
     },
     tracing::info,
     wasmer::FunctionEnvMut,
@@ -230,7 +230,10 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
     let req: QueryRequest = from_json_slice(req_bytes)?;
 
-    let res = env.querier.query_chain(req)?;
+    // Note that although the query may fail, we don't unwrap the result here.
+    // Instead, we serialize the `GenericResult` and pass it to the contract.
+    // Let the contract decide how to handle the error.
+    let res = env.querier.do_query_chain(req);
     let res_bytes = to_json_vec(&res)?;
 
     write_to_memory(env, &mut store, &res_bytes)

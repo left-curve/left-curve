@@ -1,8 +1,8 @@
 use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, trim, BlockInfo, Order, Querier, QueryRequest, QueryResponse,
-        Record, StdError, StdResult, Storage,
+        concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, QueryRequest,
+        QueryResponse, Record, StdResult, Storage,
     },
 };
 
@@ -139,12 +139,13 @@ impl<VM> QuerierProvider<VM> {
     }
 }
 
-impl<VM> Querier for QuerierProvider<VM>
+// This is for use in `WasmVm`.
+impl<VM> QuerierProvider<VM>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+    pub fn do_query_chain(&self, req: QueryRequest) -> GenericResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
@@ -152,6 +153,17 @@ where
             self.block.clone(),
             req,
         )
-        .map_err(|err| StdError::Generic(err.to_string()))
+        .into()
+    }
+}
+
+// This is for use in `RustVm`.
+impl<VM> Querier for QuerierProvider<VM>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+        self.do_query_chain(req).into_std_result()
     }
 }
