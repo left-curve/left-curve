@@ -487,7 +487,7 @@ mod tests {
 
     impl TempDataDir {
         /// Produces a fresh (non-existent) temporary path which will be
-        /// DB::destroy'ed automatically.
+        /// `DB::destroy`'ed automatically when dropped.
         pub fn new(prefix: &str) -> Self {
             let dir = tempfile::Builder::new()
                 .prefix(prefix)
@@ -518,7 +518,7 @@ mod tests {
         }
     }
 
-    // using the same test case as in our rust-rocksdb fork:
+    // Using the same test case as in our rust-rocksdb fork:
     // https://github.com/left-curve/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
     //
     // hash(donald)  = 01000001...
@@ -527,7 +527,7 @@ mod tests {
     // hash(larry)   = 00001101...
     // hash(pumpkin) = 11111111...
 
-    // the tree at version 1 should look like:
+    // The tree at version 1 should look like:
     //
     //           root
     //         ┌──┴──┐
@@ -594,7 +594,7 @@ mod tests {
         ));
     }
 
-    // the tree at version 2 should look like:
+    // The tree at version 2 should look like:
     //
     //            root
     //         ┌───┴───┐
@@ -666,7 +666,7 @@ mod tests {
         let path = TempDataDir::new("_grug_db_base_store_works");
         let store = DiskDb::open(&path).unwrap();
 
-        // write a batch. the very first batch have version 0
+        // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
             (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
@@ -677,7 +677,7 @@ mod tests {
         assert_eq!(version, 0);
         assert_eq!(root_hash, Some(v0::ROOT_HASH));
 
-        // write another batch with version = 1
+        // Write another batch with version = 1.
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
             (b"joe".to_vec(), Op::Delete),
@@ -687,7 +687,7 @@ mod tests {
         assert_eq!(version, 1);
         assert_eq!(root_hash, Some(v1::ROOT_HASH));
 
-        // try query values at the two versions, respectively, from state storage
+        // Try query values at the two versions, respectively, from state storage.
         for (version, key, value) in [
             (0, "donald", Some("trump")),
             (0, "jake", Some("shepherd")),
@@ -709,7 +709,7 @@ mod tests {
             );
         }
 
-        // try iterating at the two versions, respectively
+        // Try iterating at the two versions, respectively.
         for (version, items) in [
             (0, [
                 ("donald", "trump"),
@@ -734,7 +734,7 @@ mod tests {
             }
         }
 
-        // try generating merkle proofs at the two versions, respectively; also
+        // Try generating merkle proofs at the two versions, respectively; also
         // verify the proofs.
         for (version, key, value, proof) in [
             (
