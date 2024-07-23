@@ -597,7 +597,7 @@ where
             coins,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, &sender, code.into()),
+        Message::Upload { code } => do_upload(&mut storage, &sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -659,40 +659,54 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        QueryRequest::Info {} => query_info(&storage).map(QueryResponse::Info),
+        // QueryRequest::Info {} => Ok(query_info(&storage).map(QueryResponse::Info)?),
+        QueryRequest::Info {} => {
+            let res = query_info(&storage)?;
+            Ok(QueryResponse::Info(res))
+        },
         QueryRequest::Balance { address, denom } => {
-            query_balance(vm, storage, block, gas_tracker, address, denom)
-                .map(QueryResponse::Balance)
+            let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;
+            Ok(QueryResponse::Balance(res))
         },
         QueryRequest::Balances {
             address,
             start_after,
             limit,
-        } => query_balances(vm, storage, block, gas_tracker, address, start_after, limit)
-            .map(QueryResponse::Balances),
+        } => {
+            let res = query_balances(vm, storage, block, gas_tracker, address, start_after, limit)?;
+            Ok(QueryResponse::Balances(res))
+        },
         QueryRequest::Supply { denom } => {
-            query_supply(vm, storage, block, gas_tracker, denom).map(QueryResponse::Supply)
+            let res = query_supply(vm, storage, block, gas_tracker, denom)?;
+            Ok(QueryResponse::Supply(res))
         },
         QueryRequest::Supplies { start_after, limit } => {
-            query_supplies(vm, storage, block, gas_tracker, start_after, limit)
-                .map(QueryResponse::Supplies)
+            let res = query_supplies(vm, storage, block, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::Supplies(res))
         },
-        QueryRequest::Code { hash } => query_code(&storage, hash).map(QueryResponse::Code),
+        QueryRequest::Code { hash } => {
+            let res = query_code(&storage, hash)?;
+            Ok(QueryResponse::Code(res))
+        },
         QueryRequest::Codes { start_after, limit } => {
-            query_codes(&storage, start_after, limit).map(QueryResponse::Codes)
+            let res = query_codes(&storage, start_after, limit)?;
+            Ok(QueryResponse::Codes(res))
         },
         QueryRequest::Account { address } => {
-            query_account(&storage, address).map(QueryResponse::Account)
+            let res = query_account(&storage, address)?;
+            Ok(QueryResponse::Account(res))
         },
         QueryRequest::Accounts { start_after, limit } => {
-            query_accounts(&storage, start_after, limit).map(QueryResponse::Accounts)
+            let res = query_accounts(&storage, start_after, limit)?;
+            Ok(QueryResponse::Accounts(res))
         },
         QueryRequest::WasmRaw { contract, key } => {
-            query_wasm_raw(storage, contract, key).map(QueryResponse::WasmRaw)
+            let res = query_wasm_raw(storage, contract, key);
+            Ok(QueryResponse::WasmRaw(res))
         },
         QueryRequest::WasmSmart { contract, msg } => {
-            query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)
-                .map(QueryResponse::WasmSmart)
+            let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
+            Ok(QueryResponse::WasmSmart(res))
         },
     }
 }

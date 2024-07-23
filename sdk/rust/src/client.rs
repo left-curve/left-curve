@@ -5,12 +5,12 @@ use {
     grug_app::Outcome,
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash, to_json_value, to_json_vec, AccountResponse, Addr,
-        Binary, Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, QueryRequest,
-        QueryResponse, StdError, Tx, UnsignedTx, WasmRawResponse,
+        from_json_slice, from_json_value, hash, to_json_value, to_json_vec, Account, Addr, Binary,
+        Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, QueryRequest,
+        QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::any::type_name,
+    std::{any::type_name, collections::BTreeMap},
     tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{
         endpoint::{abci_query::AbciQuery, block, block_results, broadcast::tx_sync, status, tx},
@@ -79,7 +79,7 @@ impl Client {
     /// Query the Grug app through the ABCI `Query` method.
     ///
     /// Used internally. Use `query_store` or `query_app` instead.
-    async fn query(
+    pub async fn query(
         &self,
         path: &str,
         data: Vec<u8>,
@@ -159,7 +159,7 @@ impl Client {
     ///
     /// Used internally. Use the `query_{info,balance,wasm_smart,...}` methods
     /// instead.
-    async fn query_app(
+    pub async fn query_app(
         &self,
         req: &QueryRequest,
         height: Option<u64>,
@@ -244,7 +244,7 @@ impl Client {
         start_after: Option<Hash>,
         limit: Option<u32>,
         height: Option<u64>,
-    ) -> anyhow::Result<Vec<Hash>> {
+    ) -> anyhow::Result<BTreeMap<Hash, Binary>> {
         let res = self
             .query_app(&QueryRequest::Codes { start_after, limit }, height)
             .await?;
@@ -256,7 +256,7 @@ impl Client {
         &self,
         address: Addr,
         height: Option<u64>,
-    ) -> anyhow::Result<AccountResponse> {
+    ) -> anyhow::Result<Account> {
         let res = self
             .query_app(&QueryRequest::Account { address }, height)
             .await?;
@@ -269,7 +269,7 @@ impl Client {
         start_after: Option<Addr>,
         limit: Option<u32>,
         height: Option<u64>,
-    ) -> anyhow::Result<Vec<AccountResponse>> {
+    ) -> anyhow::Result<BTreeMap<Addr, Account>> {
         let res = self
             .query_app(&QueryRequest::Accounts { start_after, limit }, height)
             .await?;
@@ -282,7 +282,7 @@ impl Client {
         contract: Addr,
         key: Binary,
         height: Option<u64>,
-    ) -> anyhow::Result<WasmRawResponse> {
+    ) -> anyhow::Result<Option<Binary>> {
         let res = self
             .query_app(&QueryRequest::WasmRaw { contract, key }, height)
             .await?;
@@ -300,7 +300,7 @@ impl Client {
         let res = self
             .query_app(&QueryRequest::WasmSmart { contract, msg }, height)
             .await?;
-        Ok(from_json_value(res.as_wasm_smart().data)?)
+        Ok(from_json_value(res.as_wasm_smart())?)
     }
 
     /// Simulate the gas usage of a transaction.

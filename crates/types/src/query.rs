@@ -1,7 +1,8 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, Hash, Json},
+    crate::{Account, Addr, Binary, BlockInfo, Coin, Coins, Config, Hash, Json},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeMap,
 };
 
 #[skip_serializing_none]
@@ -33,30 +34,27 @@ pub enum QueryRequest {
     /// A single Wasm byte code.
     /// Returns: `Binary`
     Code { hash: Hash },
-    /// Enumerate hashes of all codes.
+    /// Enumerate all Wasm byte codes.
     ///
-    /// Note: to limit the size of return data, we only return the hashes.
-    /// To download the actual Wasm byte code, use `Query::Code`.
-    ///
-    /// Returns: `Vec<Hash>`
+    /// Returns: `BTreeMap<Hash, Binary>`
     Codes {
         start_after: Option<Hash>,
         limit: Option<u32>,
     },
     /// Metadata of a single account.
-    /// Returns: `AccountResponse`
+    /// Returns: `Account`
     Account { address: Addr },
     /// Enumerate metadata of all accounts.
-    /// Returns: `Vec<AccountResponse>`
+    /// Returns: `BTreeMap<Addr, Account>`
     Accounts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
     /// A raw key-value pair in a contract's internal state.
-    /// Returns: `WasmRawResponse`
+    /// Returns: `Option<Binary>`
     WasmRaw { contract: Addr, key: Binary },
     /// Call the contract's query entry point with the given message.
-    /// Returns: `WasmSmartResponse`
+    /// Returns: `Json`
     WasmSmart { contract: Addr, msg: Json },
 }
 
@@ -65,28 +63,6 @@ pub struct InfoResponse {
     pub chain_id: String,
     pub config: Config,
     pub last_finalized_block: BlockInfo,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct AccountResponse {
-    pub address: Addr,
-    pub code_hash: Hash,
-    pub admin: Option<Addr>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct WasmRawResponse {
-    pub contract: Addr,
-    pub key: Binary,
-    pub value: Option<Binary>, // `None` if the key doesn't exist
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct WasmSmartResponse {
-    pub contract: Addr,
-    pub data: Json,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -98,11 +74,11 @@ pub enum QueryResponse {
     Supply(Coin),
     Supplies(Coins),
     Code(Binary),
-    Codes(Vec<Hash>),
-    Account(AccountResponse),
-    Accounts(Vec<AccountResponse>),
-    WasmRaw(WasmRawResponse),
-    WasmSmart(WasmSmartResponse),
+    Codes(BTreeMap<Hash, Binary>),
+    Account(Account),
+    Accounts(BTreeMap<Addr, Account>),
+    WasmRaw(Option<Binary>),
+    WasmSmart(Json),
 }
 
 // TODO: can we use a macro to implement these?
@@ -149,35 +125,35 @@ impl QueryResponse {
         wasm_byte_code
     }
 
-    pub fn as_codes(self) -> Vec<Hash> {
+    pub fn as_codes(self) -> BTreeMap<Hash, Binary> {
         let Self::Codes(hashes) = self else {
             panic!("QueryResponse is not Codes");
         };
         hashes
     }
 
-    pub fn as_account(self) -> AccountResponse {
+    pub fn as_account(self) -> Account {
         let Self::Account(resp) = self else {
             panic!("QueryResponse is not Account");
         };
         resp
     }
 
-    pub fn as_accounts(self) -> Vec<AccountResponse> {
+    pub fn as_accounts(self) -> BTreeMap<Addr, Account> {
         let Self::Accounts(resp) = self else {
             panic!("QueryResponse is not Accounts");
         };
         resp
     }
 
-    pub fn as_wasm_raw(self) -> WasmRawResponse {
+    pub fn as_wasm_raw(self) -> Option<Binary> {
         let Self::WasmRaw(resp) = self else {
             panic!("QueryResponse is not WasmRaw");
         };
         resp
     }
 
-    pub fn as_wasm_smart(self) -> WasmSmartResponse {
+    pub fn as_wasm_smart(self) -> Json {
         let Self::WasmSmart(resp) = self else {
             panic!("QueryResponse is not WasmSmart");
         };

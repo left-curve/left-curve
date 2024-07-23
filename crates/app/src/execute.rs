@@ -73,7 +73,7 @@ fn _do_configure(
 pub fn do_upload(
     storage: &mut dyn Storage,
     uploader: &Addr,
-    code: Vec<u8>,
+    code: &Binary,
 ) -> AppResult<Vec<Event>> {
     match _do_upload(storage, uploader, code) {
         Ok((event, _code_hash)) => {
@@ -95,7 +95,7 @@ pub fn do_upload(
 fn _do_upload(
     storage: &mut dyn Storage,
     uploader: &Addr,
-    code: Vec<u8>,
+    code: &Binary,
 ) -> AppResult<(Event, Hash)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load(storage)?;
@@ -104,12 +104,12 @@ fn _do_upload(
     }
 
     // Make sure that the same code isn't already uploaded
-    let code_hash = hash(&code);
+    let code_hash = hash(code);
     if CODES.has(storage, &code_hash) {
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save(storage, &code_hash, &code)?;
+    CODES.save(storage, &code_hash, code)?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", &code_hash),

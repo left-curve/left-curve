@@ -1,13 +1,10 @@
 use {
     crate::prompt::print_json_pretty,
-    anyhow::ensure,
     clap::{Parser, Subcommand},
     grug_jmt::Proof,
     grug_sdk::Client,
-    grug_types::{Addr, Binary, Hash},
+    grug_types::{Addr, Binary, Hash, QueryRequest},
     serde::Serialize,
-    serde_json::Value,
-    std::{fs::File, io::Write, path::PathBuf, str::FromStr},
 };
 
 #[derive(Parser)]
@@ -58,7 +55,7 @@ enum SubCmd {
     },
     /// Query a Wasm binary code by hash
     Code { hash: Hash },
-    /// Enumerate hashes of all Wasm byte codes
+    /// Enumerate all Wasm byte codes
     Codes {
         /// Start after this hash
         start_after: Option<Hash>,
@@ -99,124 +96,75 @@ enum SubCmd {
         #[arg(long, global = true, default_value_t = false)]
         prove: bool,
     },
-    /// Get transaction by hash
-    Tx {
-        /// Transaction hash in hex encoding
-        hash: String,
-    },
-    /// Get block by height
-    Block {
-        /// Block height [default: latest]
-        height: Option<u64>,
-    },
 }
 
 impl QueryCmd {
     pub async fn run(self) -> anyhow::Result<()> {
         let client = Client::connect(&self.node)?;
-        match self.subcmd {
-            SubCmd::Info => {
-                let res = client.query_info(self.height).await?;
-                print_json_pretty(res)
-            },
-            SubCmd::Balance { address, denom } => {
-                let res = client.query_balance(address, denom, self.height).await?;
-                print_json_pretty(res)
-            },
+
+        let req = match self.subcmd {
+            SubCmd::Info => QueryRequest::Info {},
+            SubCmd::Balance { address, denom } => QueryRequest::Balance { address, denom },
             SubCmd::Balances {
                 address,
                 start_after,
                 limit,
-            } => {
-                let res = client
-                    .query_balances(address, start_after, limit, self.height)
-                    .await?;
-                print_json_pretty(res)
+            } => QueryRequest::Balances {
+                address,
+                start_after,
+                limit,
             },
-            SubCmd::Supply { denom } => {
-                let res = client.query_supply(denom, self.height).await?;
-                print_json_pretty(res)
-            },
+            SubCmd::Supply { denom } => QueryRequest::Supply { denom },
             SubCmd::Supplies { start_after, limit } => {
-                let res = client
-                    .query_supplies(start_after, limit, self.height)
-                    .await?;
-                print_json_pretty(res)
+                QueryRequest::Supplies { start_after, limit }
             },
-            SubCmd::Code { hash } => {
-                // we will be writing the wasm byte code to $(pwd)/${hash}.wasm
-                // first check if the file already exists. throw if it does
-                let filename = PathBuf::from(format!("{hash}.wasm"));
-                ensure!(!filename.exists(), "file `{filename:?}` already exists!");
-
-                // make the query
-                let wasm_byte_code = client.query_code(hash, self.height).await?;
-
-                // write the bytes to the file
-                // this creates a new file if not exists, an overwrite if exists
-                let mut file = File::create(&filename)?;
-                file.write_all(&wasm_byte_code)?;
-
-                println!("Wasm byte code written to {filename:?}");
-
-                Ok(())
-            },
-            SubCmd::Codes { start_after, limit } => {
-                let res = client.query_codes(start_after, limit, self.height).await?;
-                print_json_pretty(res)
-            },
-            SubCmd::Account { address } => {
-                let res = client.query_account(address, self.height).await?;
-                print_json_pretty(res)
-            },
+            SubCmd::Code { hash } => QueryRequest::Code { hash },
+            SubCmd::Codes { start_after, limit } => QueryRequest::Codes { start_after, limit },
+            SubCmd::Account { address } => QueryRequest::Account { address },
             SubCmd::Accounts { start_after, limit } => {
-                let res = client
-                    .query_accounts(start_after, limit, self.height)
-                    .await?;
-                print_json_pretty(res)
+                QueryRequest::Accounts { start_after, limit }
             },
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
-                let key = Binary::from(hex::decode(&key_hex)?);
-                let res = client.query_wasm_raw(contract, key, self.height).await?;
-                print_json_pretty(res)
+                let key = Binary::from(hex::decode(key_hex)?);
+                QueryRequest::WasmRaw { contract, key }
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
-                let msg: Value = serde_json::from_str(&msg)?;
-                let res = client
-                    .query_wasm_smart::<_, Value>(contract, &msg, self.height)
-                    .await?;
-                print_json_pretty(res)
+                let msg = serde_json::from_str(&msg)?;
+                QueryRequest::WasmSmart { contract, msg }
             },
             SubCmd::Store { key_hex, prove } => {
-                #[derive(Serialize)]
-                struct PrintableQueryStoreResponse {
-                    key: String,
-                    value: Option<String>,
-                    proof: Option<Proof>,
-                }
+                return query_store(&client, key_hex, self.height, prove).await;
+            },
+        };
 
-                let key = hex::decode(&key_hex)?;
-                let (value, proof) = client.query_store(key, self.height, prove).await?;
-
-                print_json_pretty(PrintableQueryStoreResponse {
-                    key: key_hex,
-                    value: value.map(hex::encode),
-                    proof,
-                })
-            },
-            SubCmd::Tx { hash } => {
-                // Cast the hex string to lowercase, so that users can use
-                // either upper or lowercase on the CLI.
-                let hash = Hash::from_str(&hash.to_ascii_lowercase())?;
-                let res = client.query_tx(hash).await?;
-                print_json_pretty(res)
-            },
-            SubCmd::Block { height } => {
-                let res = client.query_block_result(height).await?;
-                print_json_pretty(res)
-            },
-        }
+        client
+            .query_app(&req, self.height)
+            .await
+            .and_then(print_json_pretty)
     }
+}
+
+#[derive(Serialize)]
+struct PrintableQueryStoreResponse {
+    key: String,
+    value: Option<String>,
+    proof: Option<Proof>,
+}
+
+async fn query_store(
+    client: &Client,
+    key_hex: String,
+    height: Option<u64>,
+    prove: bool,
+) -> anyhow::Result<()> {
+    let key = hex::decode(&key_hex)?;
+    let (value, proof) = client.query_store(key, height, prove).await?;
+
+    print_json_pretty(PrintableQueryStoreResponse {
+        key: key_hex,
+        value: value.map(hex::encode),
+        proof,
+    })
 }
