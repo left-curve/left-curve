@@ -8,8 +8,8 @@ mod tx;
 
 use {
     crate::{
-        keys::KeysCmd, query::QueryCmd, reset::ResetCmd, start::StartCmd, tendermint::StatusCmd,
-        tx::TxCmd,
+        keys::KeysCmd, query::QueryCmd, reset::ResetCmd, start::StartCmd,
+        tendermint::TendermintCmd, tx::TxCmd,
     },
     anyhow::anyhow,
     clap::Parser,
@@ -46,18 +46,19 @@ enum Command {
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
+    /// Delete node data
+    Reset(ResetCmd),
+
     /// Start the node
     Start(StartCmd),
 
-    /// Tendermint status
-    Status(StatusCmd),
+    /// Tendermint status and queries [alias: tm]
+    #[command(next_display_order = None, alias = "tm")]
+    Tendermint(TendermintCmd),
 
     /// Send a transaction
     #[command(next_display_order = None)]
     Tx(TxCmd),
-
-    /// Delete node data
-    UnsafeResetAll(ResetCmd),
 }
 
 #[tokio::main]
@@ -81,9 +82,9 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Keys(cmd) => cmd.run(keys_dir),
         Command::Query(cmd) => cmd.run().await,
+        Command::Reset(cmd) => cmd.run(data_dir),
         Command::Start(cmd) => cmd.run(data_dir).await,
-        Command::Status(cmd) => cmd.run().await,
+        Command::Tendermint(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(keys_dir).await,
-        Command::UnsafeResetAll(cmd) => cmd.run(data_dir),
     }
 }

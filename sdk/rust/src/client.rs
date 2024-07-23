@@ -79,7 +79,7 @@ impl Client {
     /// Query the Grug app through the ABCI `Query` method.
     ///
     /// Used internally. Use `query_store` or `query_app` instead.
-    async fn query(
+    pub async fn query(
         &self,
         path: &str,
         data: Vec<u8>,
@@ -159,7 +159,7 @@ impl Client {
     ///
     /// Used internally. Use the `query_{info,balance,wasm_smart,...}` methods
     /// instead.
-    async fn query_app(
+    pub async fn query_app(
         &self,
         req: &QueryRequest,
         height: Option<u64>,
