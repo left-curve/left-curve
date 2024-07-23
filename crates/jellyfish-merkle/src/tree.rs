@@ -573,9 +573,6 @@ impl<'a> MerkleTree<'a> {
     }
 }
 
-#[cfg(test)]
-impl<'a> MerkleTree<'a> {}
-
 #[inline]
 fn partition_batch<T>(
     mut batch: Vec<(Hash, T)>,
