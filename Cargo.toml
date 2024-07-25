@@ -92,15 +92,20 @@ wasmer-middlewares = "4"
 git = "https://github.com/left-curve/bnum"
 rev = "91dfe8a"
 
-# Our fork of rust-rocksdb is based on the `v0.21.0` release. It adds partial
+# Our fork of rust-rocksdb is based on the master branch. It adds partial
 # support for the user-defined timestamp feature:
 # https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
 #
-# See the `v0.21.0-grug` branch. comparison:
-# https://github.com/rust-rocksdb/rust-rocksdb/compare/v0.21.0...left-curve:rust-rocksdb:v0.21.0-grug
+# See the `timestamp` branch. comparison:
+# https://github.com/rust-rocksdb/rust-rocksdb/compare/master...left-curve:rust-rocksdb:timestamp
+#
+# Our PR:
+# https://github.com/rust-rocksdb/rust-rocksdb/pull/905
+#
+# TODO: Update to official once v0.23.0 is released.
 [workspace.dependencies.rocksdb]
 git = "https://github.com/left-curve/rust-rocksdb"
-rev = "9015972"
+rev = "97eae77"
 
 [profile.release]
 codegen-units    = 1
