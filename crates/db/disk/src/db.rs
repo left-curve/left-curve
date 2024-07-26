@@ -107,6 +107,43 @@ impl DiskDb {
             }),
         })
     }
+
+    /// Prune data of less or equal to the given version.
+    ///
+    /// That is, `up_to_version` will be thd oldest version available in the
+    /// database post pruning.
+    pub fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        // Prune state commitment
+        let mut buffer = Buffer::new(self.state_commitment(), None);
+        MERKLE_TREE.prune(&mut buffer, up_to_version)?;
+
+        let (_, pending) = buffer.disassemble();
+        let mut batch = WriteBatch::default();
+        let cf = cf_state_commitment(&self.inner.db);
+        for (key, op) in pending {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+        self.inner.db.write(batch)?;
+
+        // Prune state storage.
+        //
+        // We do this by increase the state storage column family's
+        // `full_history_ts_low` value, as in SeiDB:
+        // <https://github.com/sei-protocol/sei-db/blob/v0.0.41/ss/rocksdb/db.go#L186-L206>
+        //
+        // Note, this does _not_ incur an immediate full compaction, i.e. this
+        // performs a lazy prune. Future compactions will honor the increased
+        // `full_history_ts_low` and trim history when possible.
+        let cf = cf_state_storage(&self.inner.db);
+        let ts = U64Timestamp::from(up_to_version);
+        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+
+        Ok(())
+    }
 }
 
 impl Clone for DiskDb {
@@ -183,9 +220,9 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let mut cache = Buffer::new(self.state_commitment(), None);
-        let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
-        let (_, pending) = cache.disassemble();
+        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+        let (_, pending) = buffer.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
