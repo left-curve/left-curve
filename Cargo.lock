@@ -2209,7 +2209,7 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 [[package]]
 name = "librocksdb-sys"
 version = "0.17.0+9.0.0"
-source = "git+https://github.com/left-curve/rust-rocksdb?rev=97eae77#97eae778efe925c349e056ff7eb956bc36e4f3b2"
+source = "git+https://github.com/rust-rocksdb/rust-rocksdb?rev=1710120#1710120e4549e04ba3baa6a1ee5a5a801fa45a72"
 dependencies = [
  "bindgen",
  "bzip2-sys",
@@ -2262,9 +2262,9 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "lz4-sys"
-version = "1.9.5"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9764018d143cc854c9f17f0b907de70f14393b1f502da6375dce70f00514eb3"
+checksum = "109de74d5d2353660401699a4174a4ff23fcc649caf553df71933c7fb45ad868"
 dependencies = [
  "cc",
  "libc",
@@ -3041,7 +3041,7 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.22.0"
-source = "git+https://github.com/left-curve/rust-rocksdb?rev=97eae77#97eae778efe925c349e056ff7eb956bc36e4f3b2"
+source = "git+https://github.com/rust-rocksdb/rust-rocksdb?rev=1710120#1710120e4549e04ba3baa6a1ee5a5a801fa45a72"
 dependencies = [
  "libc",
  "librocksdb-sys",
