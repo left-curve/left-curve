@@ -218,17 +218,16 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bindgen"
-version = "0.65.1"
+version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
+checksum = "a00dc851838a2120612785d195287475a3ac45514741da670b735818822129a0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.6.0",
  "cexpr",
  "clang-sys",
+ "itertools 0.10.5",
  "lazy_static",
  "lazycell",
- "peeking_take_while",
- "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -2209,8 +2208,8 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
 name = "librocksdb-sys"
-version = "0.11.0+8.1.1"
-source = "git+https://github.com/left-curve/rust-rocksdb?rev=9015972#901597225619dd420513c337fb52799c48a3a588"
+version = "0.17.0+9.0.0"
+source = "git+https://github.com/left-curve/rust-rocksdb?rev=97eae77#97eae778efe925c349e056ff7eb956bc36e4f3b2"
 dependencies = [
  "bindgen",
  "bzip2-sys",
@@ -2510,12 +2509,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peeking_take_while"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
-
-[[package]]
 name = "peg"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2656,16 +2649,6 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
-
-[[package]]
-name = "prettyplease"
-version = "0.2.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f12335488a2f3b0a83b14edad48dca9879ce89b2edd10e80237e4e852dd645e"
-dependencies = [
- "proc-macro2",
- "syn 2.0.68",
-]
 
 [[package]]
 name = "primeorder"
@@ -3057,8 +3040,8 @@ dependencies = [
 
 [[package]]
 name = "rocksdb"
-version = "0.21.0"
-source = "git+https://github.com/left-curve/rust-rocksdb?rev=9015972#901597225619dd420513c337fb52799c48a3a588"
+version = "0.22.0"
+source = "git+https://github.com/left-curve/rust-rocksdb?rev=97eae77#97eae778efe925c349e056ff7eb956bc36e4f3b2"
 dependencies = [
  "libc",
  "librocksdb-sys",
