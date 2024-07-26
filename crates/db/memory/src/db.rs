@@ -88,16 +88,18 @@ impl Clone for MemDb {
 impl Db for MemDb {
     type Error = DbError;
     type Proof = Proof;
+    type StateCommitment = StateCommitment;
+    type StateStorage = StateStorage;
 
-    fn state_commitment(&self) -> impl Storage + Clone + 'static {
+    fn state_commitment(&self) -> StateCommitment {
         StateCommitment { db: self.clone() }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
-        StateStorage {
+    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+        Ok(StateStorage {
             db: self.clone(),
             version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
-        }
+        })
     }
 
     fn latest_version(&self) -> Option<u64> {

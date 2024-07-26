@@ -10,11 +10,11 @@ use {
 #[derive(Parser)]
 pub struct QueryCmd {
     /// Tendermint RPC address
-    #[arg(long, default_value = "http://127.0.0.1:26657")]
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
     node: String,
 
     /// The block height at which to perform queries [default: last finalized height]
-    #[arg(long)]
+    #[arg(long, global = true)]
     height: Option<u64>,
 
     #[command(subcommand)]

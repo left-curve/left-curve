@@ -21,9 +21,11 @@ pub trait Key {
     /// The number of elements in a tuple key.
     ///
     /// E.g.,
+    ///
     /// - for singleton keys, this is 1 (the default value).
     /// - for `(A, B)`, this is 2;
     /// - for `(A, B, C)`, this is 3;
+    ///
     /// so on.
     ///
     /// This value is necessary for deserializing _nested_ tuple keys.

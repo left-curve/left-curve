@@ -94,7 +94,7 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
 
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
@@ -165,7 +165,7 @@ where
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
@@ -291,7 +291,7 @@ where
     // For `CheckTx`, we only do the `before_tx` part of the transaction, which
     // is where the sender account is supposed to do authentication.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None), None));
+        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
@@ -349,14 +349,14 @@ where
         };
 
         // Use the state storage at the given version to perform the query.
-        let store = self.db.state_storage(version);
-        let block = LAST_FINALIZED_BLOCK.load(&store)?;
+        let storage = self.db.state_storage(version)?;
+        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         // The gas limit for serving this query.
         // This is set as an off-chain, per-node parameter.
         let gas_tracker = GasTracker::new_limited(self.query_gas_limit);
 
-        process_query(self.vm.clone(), Box::new(store), gas_tracker, block, req)
+        process_query(self.vm.clone(), Box::new(storage), gas_tracker, block, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -384,7 +384,7 @@ where
             None
         };
 
-        let value = self.db.state_storage(version).read(key);
+        let value = self.db.state_storage(version)?.read(key);
 
         Ok((value, proof))
     }
@@ -395,7 +395,7 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Outcome> {
-        let buffer = Buffer::new(self.db.state_storage(None), None);
+        let buffer = Buffer::new(self.db.state_storage(None)?, None);
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
