@@ -14,35 +14,35 @@ use {
 #[derive(Parser)]
 pub struct TxCmd {
     /// Tendermint RPC address
-    #[arg(long, default_value = "http://127.0.0.1:26657")]
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
     node: String,
 
     /// Name of the key to sign transactions
-    #[arg(long)]
+    #[arg(long, global = true)]
     key: Option<String>,
 
     /// Transaction sender address
-    #[arg(long)]
+    #[arg(long, global = true)]
     sender: Option<Addr>,
 
     /// Chain identifier [default: query from chain]
-    #[arg(long)]
+    #[arg(long, global = true)]
     chain_id: Option<String>,
 
     /// Account sequence number [default: query from chain]
-    #[arg(long)]
+    #[arg(long, global = true)]
     sequence: Option<u32>,
 
     /// Amount of gas units to request
-    #[arg(long)]
+    #[arg(long, global = true)]
     gas_limit: Option<u64>,
 
     /// Scaling factor to apply to simulated gas consumption
-    #[arg(long, default_value_t = 1.4)]
+    #[arg(long, global = true, default_value_t = 1.4)]
     gas_adjustment: f64,
 
     /// Simulate gas usage without submitting the transaction to mempool.
-    #[arg(long)]
+    #[arg(long, global = true)]
     simulate: bool,
 
     #[command(subcommand)]
