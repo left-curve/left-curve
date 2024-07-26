@@ -206,22 +206,20 @@ impl<'a> MerkleTree<'a> {
             batch_for_right,
         )?;
 
-        if let Outcome::Deleted | Outcome::Updated(_) = &left_outcome {
-            self.mark_node_as_orphaned(
-                storage,
-                new_version,
-                internal_node.left_child.as_ref().unwrap().version,
-                &left_bits,
-            )?;
+        // If the left child exists and have been updated or deleted, then the
+        // old one needs to be marked as orphaned.
+        if let (Outcome::Updated(_) | Outcome::Deleted, Some(left_child)) =
+            (&left_outcome, &internal_node.left_child)
+        {
+            self.mark_node_as_orphaned(storage, new_version, left_child.version, &left_bits)?;
         }
 
-        if let Outcome::Deleted | Outcome::Updated(_) = &right_outcome {
-            self.mark_node_as_orphaned(
-                storage,
-                new_version,
-                internal_node.right_child.as_ref().unwrap().version,
-                &right_bits,
-            )?;
+        // If the right child exists and have been updated or deleted, then the
+        // old one needs to be marked as orphaned.
+        if let (Outcome::Updated(_) | Outcome::Deleted, Some(right_child)) =
+            (&right_outcome, &internal_node.right_child)
+        {
+            self.mark_node_as_orphaned(storage, new_version, right_child.version, &right_bits)?;
         }
 
         match (left_outcome, right_outcome) {
@@ -236,6 +234,7 @@ impl<'a> MerkleTree<'a> {
             ) => Ok(Outcome::Deleted),
             // Left child is a leaf, right child is deleted.
             // Delete the current internal node and move left child up.
+            // The child needs to marked as orphaned.
             (Outcome::Updated(left), Outcome::Deleted | Outcome::Unchanged(None))
                 if left.is_leaf() =>
             {
@@ -254,6 +253,7 @@ impl<'a> MerkleTree<'a> {
             },
             // Left child is deleted, right child is a leaf.
             // Delete the current internal node and move right child up.
+            // The child needs to marked as orphaned.
             (Outcome::Deleted | Outcome::Unchanged(None), Outcome::Updated(right))
                 if right.is_leaf() =>
             {
