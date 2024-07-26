@@ -767,7 +767,7 @@ mod tests {
         let root_hash = TREE.apply_raw(
             &mut storage,
             0,
-            1,
+            0,
             &Batch::from([
                 (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
                 (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
@@ -813,8 +813,8 @@ mod tests {
         let new_root_hash = TREE
             .apply_raw(
                 &mut storage,
+                0,
                 1,
-                2,
                 &Batch::from([(b"r".to_vec(), Op::Delete), (b"m".to_vec(), Op::Delete)]),
             )
             .unwrap();
@@ -836,8 +836,8 @@ mod tests {
         let new_root_hash = TREE
             .apply_raw(
                 &mut storage,
+                0,
                 1,
-                2,
                 &Batch::from([
                     (b"r".to_vec(), Op::Delete),
                     (b"m".to_vec(), Op::Delete),
@@ -851,8 +851,8 @@ mod tests {
         // Check that every node has been marked as orphaned.
         for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
-            assert_eq!(version, 1);
-            assert!(TREE.orphans.has(&storage, (2, version, &bits)));
+            assert_eq!(version, 0);
+            assert!(TREE.orphans.has(&storage, (1, version, &bits)));
         }
     }
 
@@ -866,8 +866,8 @@ mod tests {
         let new_root_hash = TREE
             .apply_raw(
                 &mut storage,
+                0,
                 1,
-                2,
                 &Batch::from([
                     // overwriting keys with the same keys
                     (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
@@ -889,16 +889,16 @@ mod tests {
         // old root node, which is always orphaned).
         for item in TREE.orphans.range(&storage, None, None, Order::Ascending) {
             let (orphaned_since_version, version, bits) = item.unwrap();
-            assert_eq!(orphaned_since_version, 2);
-            assert_eq!(version, 1);
+            assert_eq!(orphaned_since_version, 1);
+            assert_eq!(version, 0);
             assert_eq!(bits, ROOT_BITS);
         }
 
-        // Make sure no node of version 2 has been written (other than the new
+        // Make sure no node of version 1 has been written (other than the new
         // root node, which is always written).
         for item in TREE.nodes.keys(&storage, None, None, Order::Ascending) {
             let (version, bits) = item.unwrap();
-            assert!(version == 1 || (version == 2 && bits == ROOT_BITS));
+            assert!(version == 0 || (version == 1 && bits == ROOT_BITS));
         }
     }
 
@@ -974,7 +974,7 @@ mod tests {
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
         assert_eq!(
-            TREE.prove(&storage, &hash(key.as_bytes()), 1).unwrap(),
+            TREE.prove(&storage, &hash(key.as_bytes()), 0).unwrap(),
             proof
         );
     }
@@ -984,12 +984,21 @@ mod tests {
         let (mut storage, _) = build_test_case().unwrap();
 
         // Do a few batches. For simplicity, we just delete one nodes each version.
+        // v1
+        TREE.apply_raw(
+            &mut storage,
+            0,
+            1,
+            &Batch::from([(b"m".to_vec(), Op::Delete)]),
+        )
+        .unwrap();
+
         // v2
         TREE.apply_raw(
             &mut storage,
             1,
             2,
-            &Batch::from([(b"m".to_vec(), Op::Delete)]),
+            &Batch::from([(b"r".to_vec(), Op::Delete)]),
         )
         .unwrap();
 
@@ -998,7 +1007,7 @@ mod tests {
             &mut storage,
             2,
             3,
-            &Batch::from([(b"r".to_vec(), Op::Delete)]),
+            &Batch::from([(b"L".to_vec(), Op::Delete)]),
         )
         .unwrap();
 
@@ -1007,15 +1016,6 @@ mod tests {
             &mut storage,
             3,
             4,
-            &Batch::from([(b"L".to_vec(), Op::Delete)]),
-        )
-        .unwrap();
-
-        // v5
-        TREE.apply_raw(
-            &mut storage,
-            4,
-            5,
             &Batch::from([(b"a".to_vec(), Op::Delete)]),
         )
         .unwrap();
@@ -1024,39 +1024,67 @@ mod tests {
         assert_tree(
             &storage,
             vec![
+                (0, ROOT_BITS),
+                (0, BitArray::from_bits(&[0])),
+                (0, BitArray::from_bits(&[1])),
+                (0, BitArray::from_bits(&[0, 1])),
+                (0, BitArray::from_bits(&[0, 1, 0])),
+                (0, BitArray::from_bits(&[0, 1, 1])),
+                (0, BitArray::from_bits(&[0, 1, 1, 0])),
+                (0, BitArray::from_bits(&[0, 1, 1, 1])),
                 (1, ROOT_BITS),
                 (1, BitArray::from_bits(&[0])),
-                (1, BitArray::from_bits(&[1])),
                 (1, BitArray::from_bits(&[0, 1])),
-                (1, BitArray::from_bits(&[0, 1, 0])),
                 (1, BitArray::from_bits(&[0, 1, 1])),
-                (1, BitArray::from_bits(&[0, 1, 1, 0])),
-                (1, BitArray::from_bits(&[0, 1, 1, 1])),
                 (2, ROOT_BITS),
                 (2, BitArray::from_bits(&[0])),
-                (2, BitArray::from_bits(&[0, 1])),
-                (2, BitArray::from_bits(&[0, 1, 1])),
                 (3, ROOT_BITS),
-                (3, BitArray::from_bits(&[0])),
-                (4, ROOT_BITS),
                 // v5 tree is empty
             ],
             vec![
+                (1, 0, ROOT_BITS),
+                (1, 0, BitArray::from_bits(&[0])),
+                (1, 0, BitArray::from_bits(&[0, 1])),
+                (1, 0, BitArray::from_bits(&[0, 1, 1])),
+                (1, 0, BitArray::from_bits(&[0, 1, 1, 0])),
+                (1, 0, BitArray::from_bits(&[0, 1, 1, 1])),
+                (2, 0, BitArray::from_bits(&[0, 1, 0])),
                 (2, 1, ROOT_BITS),
                 (2, 1, BitArray::from_bits(&[0])),
                 (2, 1, BitArray::from_bits(&[0, 1])),
                 (2, 1, BitArray::from_bits(&[0, 1, 1])),
-                (2, 1, BitArray::from_bits(&[0, 1, 1, 0])),
-                (2, 1, BitArray::from_bits(&[0, 1, 1, 1])),
-                (3, 1, BitArray::from_bits(&[0, 1, 0])),
+                (3, 0, BitArray::from_bits(&[1])),
                 (3, 2, ROOT_BITS),
                 (3, 2, BitArray::from_bits(&[0])),
-                (3, 2, BitArray::from_bits(&[0, 1])),
-                (3, 2, BitArray::from_bits(&[0, 1, 1])),
-                (4, 1, BitArray::from_bits(&[1])),
                 (4, 3, ROOT_BITS),
-                (4, 3, BitArray::from_bits(&[0])),
-                (5, 4, ROOT_BITS),
+            ],
+        );
+
+        // Prune up to v1
+        TREE.prune(&mut storage, 1).unwrap();
+        assert_tree(
+            &storage,
+            vec![
+                (0, BitArray::from_bits(&[1])),
+                (0, BitArray::from_bits(&[0, 1, 0])),
+                (1, ROOT_BITS),
+                (1, BitArray::from_bits(&[0])),
+                (1, BitArray::from_bits(&[0, 1])),
+                (1, BitArray::from_bits(&[0, 1, 1])),
+                (2, ROOT_BITS),
+                (2, BitArray::from_bits(&[0])),
+                (3, ROOT_BITS),
+            ],
+            vec![
+                (2, 0, BitArray::from_bits(&[0, 1, 0])),
+                (2, 1, ROOT_BITS),
+                (2, 1, BitArray::from_bits(&[0])),
+                (2, 1, BitArray::from_bits(&[0, 1])),
+                (2, 1, BitArray::from_bits(&[0, 1, 1])),
+                (3, 0, BitArray::from_bits(&[1])),
+                (3, 2, ROOT_BITS),
+                (3, 2, BitArray::from_bits(&[0])),
+                (4, 3, ROOT_BITS),
             ],
         );
 
@@ -1065,53 +1093,25 @@ mod tests {
         assert_tree(
             &storage,
             vec![
-                (1, BitArray::from_bits(&[1])),
-                (1, BitArray::from_bits(&[0, 1, 0])),
+                (0, BitArray::from_bits(&[1])),
                 (2, ROOT_BITS),
                 (2, BitArray::from_bits(&[0])),
-                (2, BitArray::from_bits(&[0, 1])),
-                (2, BitArray::from_bits(&[0, 1, 1])),
                 (3, ROOT_BITS),
-                (3, BitArray::from_bits(&[0])),
-                (4, ROOT_BITS),
             ],
             vec![
-                (3, 1, BitArray::from_bits(&[0, 1, 0])),
+                (3, 0, BitArray::from_bits(&[1])),
                 (3, 2, ROOT_BITS),
                 (3, 2, BitArray::from_bits(&[0])),
-                (3, 2, BitArray::from_bits(&[0, 1])),
-                (3, 2, BitArray::from_bits(&[0, 1, 1])),
-                (4, 1, BitArray::from_bits(&[1])),
                 (4, 3, ROOT_BITS),
-                (4, 3, BitArray::from_bits(&[0])),
-                (5, 4, ROOT_BITS),
             ],
         );
 
         // Prune up to v3
         TREE.prune(&mut storage, 3).unwrap();
-        assert_tree(
-            &storage,
-            vec![
-                (1, BitArray::from_bits(&[1])),
-                (3, ROOT_BITS),
-                (3, BitArray::from_bits(&[0])),
-                (4, ROOT_BITS),
-            ],
-            vec![
-                (4, 1, BitArray::from_bits(&[1])),
-                (4, 3, ROOT_BITS),
-                (4, 3, BitArray::from_bits(&[0])),
-                (5, 4, ROOT_BITS),
-            ],
-        );
+        assert_tree(&storage, vec![(3, ROOT_BITS)], vec![(4, 3, ROOT_BITS)]);
 
         // Prune up to v4
         TREE.prune(&mut storage, 4).unwrap();
-        assert_tree(&storage, vec![(4, ROOT_BITS)], vec![(5, 4, ROOT_BITS)]);
-
-        // Prune up to v5
-        TREE.prune(&mut storage, 5).unwrap();
         assert_tree(&storage, vec![], vec![]);
     }
 
