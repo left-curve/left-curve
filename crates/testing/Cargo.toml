@@ -16,6 +16,7 @@ grug-account       = { path = "../../contracts/account", features = ["library"] 
 grug-bank          = { path = "../../contracts/bank", features = ["library"] }
 grug-crypto        = { path = "../crypto" }
 grug-db-memory     = { path = "../db/memory" }
+grug-taxman        = { path = "../../contracts/taxman", features = ["library"] }
 grug-types         = { path = "../types" }
 grug-vm-rust       = { path = "../vm/rust" }
 k256               = { workspace = true }
