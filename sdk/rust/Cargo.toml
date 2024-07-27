@@ -32,5 +32,6 @@ tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
 
 [dev-dependencies]
-grug-bank = { path = "../../contracts/bank", features = ["library"] }
-home      = { workspace = true }
+grug-bank   = { path = "../../contracts/bank", features = ["library"] }
+grug-taxman = { path = "../../contracts/taxman", features = ["library"] }
+home        = { workspace = true }
