@@ -1,7 +1,7 @@
 use {
     crate::{
-        burn, initialize, mint, query_balance, query_balances, query_holders, query_supplies,
-        query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
+        burn, force_transfer, initialize, mint, query_balance, query_balances, query_holders,
+        query_supplies, query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     anyhow::bail,
     grug_types::{
@@ -55,7 +55,7 @@ pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
     bail!("go away");
 }
 
-pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
@@ -63,6 +63,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
             denom,
             amount,
         } => burn(ctx, from, denom, amount),
+        ExecuteMsg::ForceTransfer {
+            from,
+            to,
+            denom,
+            amount,
+        } => force_transfer(ctx, from, to, denom, amount),
     }
 }
 
