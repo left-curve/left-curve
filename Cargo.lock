@@ -1711,6 +1711,7 @@ dependencies = [
  "grug-bank",
  "grug-crypto",
  "grug-jmt",
+ "grug-taxman",
  "grug-types",
  "hex",
  "home",
@@ -1732,6 +1733,19 @@ dependencies = [
  "borsh",
  "grug-types",
  "prost",
+]
+
+[[package]]
+name = "grug-taxman"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "grug-bank",
+ "grug-ffi",
+ "grug-storage",
+ "grug-types",
+ "serde",
 ]
 
 [[package]]
@@ -1767,6 +1781,7 @@ dependencies = [
  "grug-crypto",
  "grug-db-memory",
  "grug-storage",
+ "grug-taxman",
  "grug-types",
  "grug-vm-rust",
  "k256",
