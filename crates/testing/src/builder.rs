@@ -5,12 +5,13 @@ use {
     grug_app::AppError,
     grug_types::{
         hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Hash, Message,
-        NumberConst, Permission, Permissions, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Permission, Permissions, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     std::{
         collections::BTreeMap,
+        str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
     },
     tracing::Level,
@@ -22,7 +23,7 @@ const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
 const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
-const DEFAULT_FEE_RATE: Udec128 = Udec128::checked_from_ratio(Uint128::ONE, Uint128::TEN).unwrap(); // 0.1 ugrug per gas
+const DEFAULT_FEE_RATE: &str = "0.1";
 
 pub struct TestBuilder<VM = RustVm>
 where
@@ -172,6 +173,14 @@ where
             .chain_id
             .unwrap_or_else(|| DEFAULT_CHAIN_ID.to_string());
 
+        let fee_denom = self
+            .fee_denom
+            .unwrap_or_else(|| DEFAULT_FEE_DENOM.to_string());
+
+        let fee_rate = self
+            .fee_rate
+            .unwrap_or_else(|| Udec128::from_str(DEFAULT_FEE_RATE).unwrap());
+
         // Use the current system time as genesis time, if unspecified.
         let genesis_time = match self.genesis_time {
             Some(time) => time,
@@ -200,13 +209,11 @@ where
                 None,
             )?,
             Message::instantiate(
-                &self.taxman_code_hash.clone(),
+                self.taxman_code_hash.clone(),
                 &grug_taxman::InstantiateMsg {
                     config: grug_taxman::Config {
-                        fee_denom: self
-                            .fee_denom
-                            .unwrap_or_else(|| DEFAULT_FEE_DENOM.to_string()),
-                        fee_rate: self.fee_rate.unwrap_or(DEFAULT_FEE_RATE),
+                        fee_denom,
+                        fee_rate,
                     },
                 },
                 DEFAULT_TAXMAN_SALT,
