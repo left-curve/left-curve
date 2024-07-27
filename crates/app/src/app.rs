@@ -10,44 +10,11 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, Binary, BlockInfo, Duration, Event, GenericResult, GenesisState, Hash,
-        Message, Order, Permission, QueryRequest, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        UnsignedTx, GENESIS_SENDER,
+        to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
+        Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
+        Timestamp, Tx, UnsignedTx, GENESIS_SENDER,
     },
-    serde::{Deserialize, Serialize},
 };
-
-/// Outcome of executing a block.
-pub struct BlockOutcome {
-    /// The Merkle root hash after executing this block.
-    pub app_hash: Hash,
-    /// Results of executing the cronjobs.
-    pub cron_outcomes: Vec<Outcome>,
-    /// Results of executing the transactions.
-    pub tx_outcomes: Vec<Outcome>,
-}
-
-/// Outcome of executing a single message, transaction, or cronjob.
-///
-/// Includes the events emitted, and gas consumption.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Outcome {
-    // `None` means the call was done with unlimited gas, such as cronjobs.
-    pub gas_limit: Option<u64>,
-    pub gas_used: u64,
-    pub result: GenericResult<Vec<Event>>,
-}
-
-impl Outcome {
-    pub fn new(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Self {
-        Self {
-            gas_limit: gas_tracker.limit(),
-            gas_used: gas_tracker.used(),
-            result: result.into(),
-        }
-    }
-}
 
 /// The ABCI application.
 ///
@@ -221,7 +188,7 @@ where
                 contract.clone(),
             );
 
-            cron_outcomes.push(Outcome::new(gas_tracker, result));
+            cron_outcomes.push(new_outcome(gas_tracker, result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -304,7 +271,7 @@ where
             false,
         );
 
-        Ok(Outcome::new(gas_tracker, result))
+        Ok(new_outcome(gas_tracker, result))
     }
 
     // Returns (last_block_height, last_block_app_hash).
@@ -500,7 +467,7 @@ where
             match $call {
                 Ok(call_events) => events.extend(call_events),
                 Err(err) => {
-                    return Outcome::new(gas_tracker, Err(err));
+                    return new_outcome(gas_tracker, Err(err));
                 },
             }
         };
@@ -570,7 +537,7 @@ where
     // All messages succeeded. Commit the state changes.
     buffer.write_access().commit();
 
-    Outcome::new(gas_tracker, Ok(events))
+    new_outcome(gas_tracker, Ok(events))
 }
 
 pub fn process_msg<VM>(
@@ -746,6 +713,14 @@ pub(crate) fn schedule_cronjob(
     );
 
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
+}
+
+fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcome {
+    Outcome {
+        gas_limit: gas_tracker.limit(),
+        gas_used: gas_tracker.used(),
+        result: result.into(),
+    }
 }
 
 #[cfg(feature = "tracing")]

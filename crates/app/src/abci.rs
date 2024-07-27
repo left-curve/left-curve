@@ -1,7 +1,7 @@
 use {
-    crate::{App, AppError, Db, Outcome, Vm},
+    crate::{App, AppError, Db, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Outcome, Timestamp, Uint64,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,

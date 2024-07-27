@@ -1,13 +1,13 @@
 use {
     crate::TestAccount,
     anyhow::ensure,
-    grug_app::{App, AppError, AppResult, BlockOutcome, Outcome, Vm},
+    grug_app::{App, AppError, AppResult, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Duration,
-        GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest,
-        StdError, Tx, Uint128, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
+        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
+        QueryRequest, StdError, Tx, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},

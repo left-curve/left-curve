@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash, Message, NumberConst, Timestamp, Uint64},
+    crate::{Addr, Duration, Event, GenericResult, Hash, Message, NumberConst, Timestamp, Uint64},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -57,12 +57,14 @@ pub struct Config {
     /// We name this `owner` instead of `admin` to avoid confusion with the
     /// contract admin, which is the account that can update a contract's `code_hash`.
     pub owner: Option<Addr>,
-    /// A contract the manages fungible token transfers.
+    /// The contract the manages fungible token transfers.
     ///
     /// Non-fungible tokens (NFTs) can be managed by this contract as well,
     /// using an approach similar to Solana's Metaplex standard:
     /// <https://twitter.com/octalmage/status/1695165358955487426>
     pub bank: Addr,
+    /// The contract that handles transaction fees.
+    pub taxman: Addr,
     /// A list of contracts that are to be called at regular time intervals.
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.
@@ -102,4 +104,26 @@ pub struct BlockInfo {
 pub struct Account {
     pub code_hash: Hash,
     pub admin: Option<Addr>,
+}
+
+/// Outcome of executing a single message, transaction, or cronjob.
+///
+/// Includes the events emitted, and gas consumption.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Outcome {
+    // `None` means the call was done with unlimited gas, such as cronjobs.
+    pub gas_limit: Option<u64>,
+    pub gas_used: u64,
+    pub result: GenericResult<Vec<Event>>,
+}
+
+/// Outcome of executing a block.
+pub struct BlockOutcome {
+    /// The Merkle root hash after executing this block.
+    pub app_hash: Hash,
+    /// Results of executing the cronjobs.
+    pub cron_outcomes: Vec<Outcome>,
+    /// Results of executing the transactions.
+    pub tx_outcomes: Vec<Outcome>,
 }
