@@ -8,7 +8,7 @@ use {
 };
 
 pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<Response> {
-    CONFIG.save(storage, &cfg)?;
+    CONFIG.save(storage, cfg)?;
 
     Ok(Response::new())
 }
