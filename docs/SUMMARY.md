@@ -14,3 +14,4 @@
 - [Exports](reference/exports.md)
 - [Gas](reference/gas.md)
 - [Generating dependency graph](reference/generate-dependency-graph.md)
+- [Transaction lifecycle](reference/transaction-lifecycle.md)
