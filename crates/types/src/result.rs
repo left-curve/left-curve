@@ -78,9 +78,7 @@ impl<T> GenericResult<T> {
         U: Debug,
     {
         match self {
-            GenericResult::Ok(value) => {
-                assert_eq!(value, expect, "wrong value!");
-            },
+            GenericResult::Ok(value) => assert_eq!(value, expect, "wrong value!"),
             GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
         }
     }
