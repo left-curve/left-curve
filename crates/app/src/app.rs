@@ -539,7 +539,9 @@ where
     } else {
         // One of the messages have failed. We:
         // 1. don't abort here, instead move on to finalize the fee;
-        // 2. discard the state changes by doing nothing and let `msg_buffer` drop.
+        // 2. drop the `msg_buffer`. Must manually drop here, such that later we
+        //    can disassemble `fee_buffer` successfully.
+        drop(msg_buffer);
     }
 
     // Call the taxman's `finalize_fee` method.
