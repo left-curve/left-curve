@@ -412,24 +412,23 @@ where
     }
 
     pub fn build(self) -> ContractWrapper {
-        let contracts = CONTRACTS.get_or_init(Default::default);
-        let index = contracts.len();
-
-        contracts.push(Box::new(ContractImpl {
-            instantiate_fn: self.instantiate_fn,
-            execute_fn: self.execute_fn,
-            migrate_fn: self.migrate_fn,
-            receive_fn: self.receive_fn,
-            reply_fn: self.reply_fn,
-            query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
-            bank_execute_fn: self.bank_execute_fn,
-            bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
-            cron_execute_fn: self.cron_execute_fn,
-        }));
+        let index = CONTRACTS
+            .get_or_init(Default::default)
+            .push_get_index(Box::new(ContractImpl {
+                instantiate_fn: self.instantiate_fn,
+                execute_fn: self.execute_fn,
+                migrate_fn: self.migrate_fn,
+                receive_fn: self.receive_fn,
+                reply_fn: self.reply_fn,
+                query_fn: self.query_fn,
+                before_tx_fn: self.before_tx_fn,
+                after_tx_fn: self.after_tx_fn,
+                bank_execute_fn: self.bank_execute_fn,
+                bank_query_fn: self.bank_query_fn,
+                withhold_fee_fn: self.withhold_fee_fn,
+                finalize_fee_fn: self.finalize_fee_fn,
+                cron_execute_fn: self.cron_execute_fn,
+            }));
 
         ContractWrapper { index }
     }
