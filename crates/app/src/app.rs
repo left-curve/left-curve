@@ -548,8 +548,7 @@ where
     let finalize_fee_result = do_finalize_fee(
         vm,
         Box::new(fee_buffer.clone()),
-        //
-        GasTracker::new_limitless(),
+        fee_gas_tracker,
         block,
         &tx,
         // TODO: should we include taxman events in the outcome as well?
