@@ -2,17 +2,17 @@
 use grug_types::from_json_slice;
 use {
     crate::{
-        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_instantiate,
-        do_migrate, do_transfer, do_upload, query_account, query_accounts, query_balance,
-        query_balances, query_code, query_codes, query_info, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_finalize_fee,
+        do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
+        query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
+        query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
+        Buffer, Db, GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
         to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
         Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
-        Timestamp, Tx, UnsignedTx, GENESIS_SENDER,
+        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -361,7 +361,7 @@ where
         unsigned_tx: UnsignedTx,
         height: u64,
         prove: bool,
-    ) -> AppResult<Outcome> {
+    ) -> AppResult<TxOutcome> {
         let buffer = Buffer::new(self.db.state_storage(None)?, None);
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -452,92 +452,137 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> Outcome
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let buffer = Shared::new(Buffer::new(storage, None));
-    let gas_tracker = GasTracker::new_limited(tx.gas_limit);
-    let mut events = vec![];
+    let fee_buffer = Shared::new(Buffer::new(storage, None));
+    let fee_gas_tracker = GasTracker::new_limitless();
 
-    macro_rules! try_do {
-        ($call:expr) => {
-            match $call {
-                Ok(call_events) => events.extend(call_events),
-                Err(err) => {
-                    return new_outcome(gas_tracker, Err(err));
-                },
-            }
+    // Call the taxman's `withhold_fee` function.
+    // This ensures the sender has enough token balance to cover the maximum
+    // amount of fee the transaction can possibly incur.
+    let withhold_fee_result = do_withhold_fee(
+        vm.clone(),
+        Box::new(fee_buffer.clone()),
+        fee_gas_tracker.clone(),
+        block.clone(),
+        &tx,
+    );
+
+    if withhold_fee_result.is_ok() {
+        // Withholding fee succeeded. Commit the state changes.
+        fee_buffer.write_access().commit();
+    } else {
+        // Withholding fee failed. We abort the transaction here, before wasting
+        // time processing any message.
+        return TxOutcome {
+            gas_limit: tx.gas_limit,
+            // Taxman is exempt from gas. This `gas_used` refers to gas consumed
+            // by the messages.
+            gas_used: 0,
+            withhold_fee_result: Some(withhold_fee_result.into()),
+            process_msgs_result: None,
+            finalize_fee_result: None,
         };
     }
 
-    // Call the sender account's `before_tx` method.
-    //
-    // The account is expected to perform authentication at this time, such as
-    // verifying a cryptographic signature.
-    //
-    // If this fails, abort, and discard uncommitted state changes.
-    try_do! {
-        do_before_tx(
+    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None));
+    let msg_gas_tracker = GasTracker::new_limited(tx.gas_limit);
+
+    // Authenticate the tx by calling the sender account's `before_tx` function.
+    // Then, loop through the messages and execute one-by-one.
+    // Finally, call the sender account's `after_tx` function.
+    let process_msgs_result = (|| -> AppResult<_> {
+        let mut events = vec![];
+
+        events.extend(do_before_tx(
             vm.clone(),
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
+            Box::new(msg_buffer.clone()),
+            msg_gas_tracker.clone(),
             block.clone(),
             &tx,
             simulate,
-        )
-    };
+        )?);
 
-    // Update the account state. As long as authentication succeeds, regardless
-    // of whether the message are successful, we update account state.
-    //
-    // The account may maintain a sequence number, for example, which needs to
-    // be incremented even if the transaction fails.
-    buffer.write_access().commit();
+        for (_idx, msg) in tx.msgs.iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(idx = _idx, "Processing message");
 
-    // Now that the tx is authenticated, we loop through the messages and
-    // execute them one by one.
-    //
-    // If any one of the msgs fails, the entire tx fails; abort, discard
-    // uncommitted changes (the changes from the `before_tx` call earlier are
-    // persisted).
-    for (_idx, msg) in tx.msgs.iter().enumerate() {
-        #[cfg(feature = "tracing")]
-        tracing::debug!(idx = _idx, "Processing message");
-
-        try_do! {
-            process_msg(
+            events.extend(process_msg(
                 vm.clone(),
-                Box::new(buffer.clone()),
-                gas_tracker.clone(),
+                Box::new(msg_buffer.clone()),
+                msg_gas_tracker.clone(),
                 block.clone(),
                 tx.sender.clone(),
                 msg.clone(),
-            )
+            )?);
         }
-    }
 
-    // Call the sender account's `after_tx` method.
-    //
-    // If this fails, abort, discard uncommitted state changes from messages.
-    // State changes from `before_tx` are always kept.
-    try_do! {
-        do_after_tx(
-            vm,
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
-            block,
+        events.extend(do_after_tx(
+            vm.clone(),
+            Box::new(msg_buffer.clone()),
+            msg_gas_tracker.clone(),
+            block.clone(),
             &tx,
             simulate,
-        )
+        )?);
+
+        Ok(events)
+    })();
+
+    if process_msgs_result.is_ok() {
+        // If all messages have succeeded, commit the state changes.
+        msg_buffer.disassemble().consume();
+    } else {
+        // One of the messages have failed. We:
+        // 1. don't abort here, instead move on to finalize the fee;
+        // 2. discard the state changes by doing nothing and let `msg_buffer` drop.
     }
 
-    // All messages succeeded. Commit the state changes.
-    buffer.write_access().commit();
+    // Call the taxman's `finalize_fee` method.
+    // If the transaction did not use up all the requested gas, the sender can
+    // get a refund here.
+    let finalize_fee_result = do_finalize_fee(
+        vm,
+        Box::new(fee_buffer.clone()),
+        //
+        GasTracker::new_limitless(),
+        block,
+        &tx,
+        // TODO: should we include taxman events in the outcome as well?
+        &new_outcome(msg_gas_tracker.clone(), process_msgs_result.clone()),
+    );
 
-    new_outcome(gas_tracker, Ok(events))
+    if finalize_fee_result.is_ok() {
+        // Everything succeeded! Commit the state changes.
+        fee_buffer.disassemble().consume();
+
+        TxOutcome {
+            gas_limit: tx.gas_limit,
+            // TODO: should we include gas used by taxman as well?
+            gas_used: msg_gas_tracker.used(),
+            withhold_fee_result: Some(withhold_fee_result.into()),
+            process_msgs_result: Some(process_msgs_result.into()),
+            finalize_fee_result: Some(finalize_fee_result.into()),
+        }
+    } else {
+        // The taxman is supposed to work in such a way that `finalize_fee`
+        // always succeeds. If it does fail, something is very wrong. We abort
+        // and discard all state changes effected by this transaction, as if it
+        // never existed.
+        TxOutcome {
+            gas_limit: tx.gas_limit,
+            gas_used: msg_gas_tracker.used(),
+            // Discard all events collected so far. Since state changes are
+            // discarded, these events reflect state changes that didn't happen.
+            withhold_fee_result: None,
+            process_msgs_result: None,
+            finalize_fee_result: Some(finalize_fee_result.into()),
+        }
+    }
 }
 
 pub fn process_msg<VM>(

@@ -5,7 +5,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum StdError {
     /// This variant exists such that we can use `Coins` as the generic `C` in
     /// contructor methods `Message::{instantiate,execute}`, which has the trait

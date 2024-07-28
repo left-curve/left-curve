@@ -106,7 +106,7 @@ pub struct Account {
     pub admin: Option<Addr>,
 }
 
-/// Outcome of executing a single message, transaction, or cronjob.
+/// Outcome of processing a message or a cronjob.
 ///
 /// Includes the events emitted, and gas consumption.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -118,6 +118,50 @@ pub struct Outcome {
     pub result: GenericResult<Vec<Event>>,
 }
 
+/// Outcome of processing a transaction.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct TxOutcome {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub withhold_fee_result: Option<GenericResult<Vec<Event>>>,
+    pub process_msgs_result: Option<GenericResult<Vec<Event>>>,
+    pub finalize_fee_result: Option<GenericResult<Vec<Event>>>,
+}
+
+impl TxOutcome {
+    /// Return `true` if the transaction was successful.
+    pub fn is_ok(&self) -> bool {
+        matches!(
+            (
+                &self.withhold_fee_result,
+                &self.process_msgs_result,
+                &self.finalize_fee_result,
+            ),
+            (
+                Some(GenericResult::Ok(_)),
+                Some(GenericResult::Ok(_)),
+                Some(GenericResult::Ok(_)),
+            )
+        )
+    }
+
+    /// Return `true` is the transaction was a failure.
+    pub fn is_err(&self) -> bool {
+        !self.is_ok()
+    }
+
+    /// Assert the transaction was successful; panic otherwise.
+    pub fn should_succeed(&self) {
+        assert!(self.is_ok(), "expecting tx to succeed, but it failed");
+    }
+
+    /// Assert the transaction was a failure; panic otherwise.
+    pub fn should_fail(&self) {
+        assert!(self.is_err(), "expecting tx to fail, but it succeeded");
+    }
+}
+
 /// Outcome of executing a block.
 pub struct BlockOutcome {
     /// The Merkle root hash after executing this block.
@@ -125,5 +169,5 @@ pub struct BlockOutcome {
     /// Results of executing the cronjobs.
     pub cron_outcomes: Vec<Outcome>,
     /// Results of executing the transactions.
-    pub tx_outcomes: Vec<Outcome>,
+    pub tx_outcomes: Vec<TxOutcome>,
 }
