@@ -28,3 +28,4 @@ tracing-subscriber = { workspace = true }
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-storage = { path = "../storage" }
+test-case    = { workspace = true }

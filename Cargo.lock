@@ -1787,6 +1787,7 @@ dependencies = [
  "k256",
  "rand",
  "serde",
+ "test-case",
  "tracing",
  "tracing-subscriber",
 ]
