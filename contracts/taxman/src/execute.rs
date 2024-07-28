@@ -73,8 +73,8 @@ pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> anyhow::Result<Re
     // Compute the amount of fee that will actually be charged, based on actual
     // gas consumption.
     //
-    // Note that we floor here, instead of ceiling.
-    let charge_amount = Uint128::from(outcome.gas_used).checked_mul_dec_floor(cfg.fee_rate)?;
+    // Same as withholding, we ceil here instead of flooring.
+    let charge_amount = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(cfg.fee_rate)?;
 
     // The difference between the two amounts is to be refunded to the user.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
