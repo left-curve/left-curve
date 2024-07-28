@@ -255,23 +255,49 @@ where
         Ok(())
     }
 
-    // For `CheckTx`, we only do the `before_tx` part of the transaction, which
-    // is where the sender account is supposed to do authentication.
+    // For `CheckTx`, we only do the first two steps of the transaction
+    // processing flow:
+    // 1.`withhold_fee`, where the taxman makes sure the sender has sufficient
+    //   tokens to cover the tx fee;
+    // 2. `before_tx`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
+        let mut events = vec![];
 
-        let result = do_before_tx(
+        match do_withhold_fee(
+            self.vm.clone(),
+            Box::new(buffer.clone()),
+            GasTracker::new_limitless(),
+            block.clone(),
+            &tx,
+        ) {
+            Ok(new_events) => {
+                events.extend(new_events);
+            },
+            Err(err) => {
+                return Ok(new_outcome(gas_tracker, Err(err)));
+            },
+        }
+
+        match do_before_tx(
             self.vm.clone(),
             Box::new(buffer),
             gas_tracker.clone(),
             block,
             &tx,
             false,
-        );
+        ) {
+            Ok(new_events) => {
+                events.extend(new_events);
+            },
+            Err(err) => {
+                return Ok(new_outcome(gas_tracker, Err(err)));
+            },
+        }
 
-        Ok(new_outcome(gas_tracker, result))
+        Ok(new_outcome(gas_tracker, Ok(events)))
     }
 
     // Returns (last_block_height, last_block_app_hash).
