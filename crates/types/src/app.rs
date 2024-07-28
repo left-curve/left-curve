@@ -153,12 +153,18 @@ impl TxOutcome {
 
     /// Assert the transaction was successful; panic otherwise.
     pub fn should_succeed(&self) {
-        assert!(self.is_ok(), "expecting tx to succeed, but it failed");
+        assert!(
+            self.is_ok(),
+            "expecting tx to succeed, but it failed: {self:?}"
+        );
     }
 
     /// Assert the transaction was a failure; panic otherwise.
     pub fn should_fail(&self) {
-        assert!(self.is_err(), "expecting tx to fail, but it succeeded");
+        assert!(
+            self.is_err(),
+            "expecting tx to fail, but it succeeded: {self:?}"
+        );
     }
 }
 
