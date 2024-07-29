@@ -642,7 +642,7 @@ where
     match do_finalize_fee(
         vm,
         Box::new(buffer.clone()),
-        gas_tracker.clone(),
+        GasTracker::new_limitless(),
         block,
         &tx,
         &outcome_so_far,
