@@ -1,10 +1,7 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{
-        Coins, Empty, Event, GenericResult, Message, MultiplyFraction, NonZero, Udec128, Uint128,
-    },
+    grug_types::{Coins, Empty, Message, NonZero, NumberConst, TxOutcome, Uint128},
     grug_vm_rust::ContractBuilder,
-    std::str::FromStr,
     test_case::test_case,
 };
 
@@ -16,7 +13,7 @@ mod taxman {
     use {
         grug_types::{
             Coins, Empty, Message, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-            Outcome, Response, StdResult, SudoCtx, Tx, Udec128, Uint128,
+            Response, StdResult, SudoCtx, Tx, TxOutcome, Udec128, Uint128,
         },
         std::str::FromStr,
     };
@@ -52,7 +49,7 @@ mod taxman {
         Ok(Response::new().may_add_message(withhold_msg))
     }
 
-    pub fn finalize_fee(ctx: SudoCtx, tx: Tx, _outcome: Outcome) -> StdResult<Response> {
+    pub fn finalize_fee(ctx: SudoCtx, tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
         let info = ctx.querier.query_info()?;
 
         // We pretend that the tx used a quarter of the gas limit.
@@ -89,97 +86,70 @@ mod taxman {
     /// An alternative version of the `finalize_fee` function that errors on
     /// purpose. Used to test whether the `App` can correctly handle the case
     /// where `finalize_fee` errors.
-    pub fn bugged_finalize_fee(_ctx: SudoCtx, _tx: Tx, _outcome: Outcome) -> StdResult<Response> {
+    pub fn bugged_finalize_fee(_ctx: SudoCtx, _tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
         let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
 
         Ok(Response::new())
     }
 }
 
-/// A contract throws error on demand.
-mod thrower {
-    use grug_types::{Empty, MutableCtx, Number, NumberConst, Response, StdResult, Uint128};
-
-    pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
-        Ok(Response::new())
-    }
-
-    pub fn execute(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
-        Ok(Response::new())
-    }
-
-    pub fn bugged_execute(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
-        let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
-
-        Ok(Response::new())
-    }
-}
-
-/// Like `TxOutcome`, but the specific events are omitted
-struct ExpectedOutcome {
-    withhold_fee_result: Option<GenericResult<()>>,
-    process_msgs_result: Option<GenericResult<()>>,
-    finalize_fee_result: Option<GenericResult<()>>,
-}
-
-fn assert_outcome(actual: &Option<GenericResult<Vec<Event>>>, expect: &Option<GenericResult<()>>) {
-    match (actual, expect) {
-        (None, None) | (Some(GenericResult::Ok(_)), Some(GenericResult::Ok(_))) => {
-            // Good, nothing to do.
-        },
-        (Some(GenericResult::Err(err1)), Some(GenericResult::Err(err2))) => {
-            // Check that the error match.
-            assert!(
-                err1.contains(err2),
-                "errors don't match! actual: {err1}, expect: {err2}"
-            );
-        },
-        _ => {
-            panic!("outcomes mismatch! actual = {actual:?}, expect = {expect:?}");
-        },
-    }
-}
-
+// In this test, a sender attempts to make a token transfer with various gas
+// limit and transfer amounts.
+//
+// Depending on these variables, the transaction may fail either during
+// `withhold_fee` or during processing the message.
+//
+// We check the transaction outcome and the account balances afterwards to make
+// sure they are the expected values.
+//
+// Case 1. Sender has enough balance to make the transfer, but not enough to
+// cover gas fee.
+// The tx should fail at `withhold_fee` stage.
+// No state change should be committed.
 #[test_case(
-    // Sender doesn't have enough balance to cover fee.
-    // 100,000 (gas limit) * 0.25 (fee rate) = 25,000 > 10
-    Uint128::new(10),
+    10,
+    1,
     100_000,
-    false,
-    ExpectedOutcome {
-        withhold_fee_result: Some(GenericResult::Err("subtraction overflow: 10 - 25000 < u128::MIN".to_string())),
-        process_msgs_result: None,
-        finalize_fee_result: None,
-    };
+    0,
+    10,
+    0,
+    Some("subtraction overflow: 10 - 25000 < u128::MIN");
     "error while withholding fee"
 )]
+// Case 2. Sender has enough balance to cover gas fee, but not enough for the
+// transfer.
+// The tx should pass `withhold_fee`, but fail at processing messages.
+// The fee should be deducted from the sender's account, but the transfer reverted.
 #[test_case(
-    Uint128::new(30_000),
+    30_000,
+    99_999,
     100_000,
-    true,
-    ExpectedOutcome {
-        withhold_fee_result: Some(GenericResult::Ok(())),
-        process_msgs_result: Some(GenericResult::Err("division by zero: 1 / 0".to_string())),
-        finalize_fee_result: Some(GenericResult::Ok(())),
-    };
+    6250,  // = 100,000 / 4 * 0.25
+    23750, // = 30,000 - (100,000 / 4 * 0.25)
+    0,
+    Some("subtraction overflow: 5000 - 99999 < u128::MIN");
     "error while processing messages"
 )]
+// Case 3. Sender has enough balance to cover both gas fee and the transfer.
+// State changes from both gas fee and transfer should be affected.
 #[test_case(
-    Uint128::new(30_000),
+    30_000,
+    123,
     100_000,
-    false,
-    ExpectedOutcome {
-        withhold_fee_result: Some(GenericResult::Ok(())),
-        process_msgs_result: Some(GenericResult::Ok(())),
-        finalize_fee_result: Some(GenericResult::Ok(())),
-    };
+    6250,  // = 100,000 / 4 * 0.25
+    23627, // = 30,000 - (100,000 / 4 * 0.25) - 123
+    123,
+    None;
     "successful tx"
 )]
 fn withholding_and_finalizing_fee_works(
-    sender_balance_before: Uint128,
+    sender_balance_before: u128,
+    send_amount: u128,
     gas_limit: u64,
-    throw: bool,
-    expect: ExpectedOutcome,
+    owner_balance_after: u128,
+    sender_balance_after: u128,
+    receiver_balance_after: u128,
+    maybe_err: Option<&str>,
 ) {
     let taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
         .with_withhold_fee(Box::new(taxman::withhold_fee))
@@ -195,60 +165,53 @@ fn withholding_and_finalizing_fee_works(
             Coins::one(taxman::FEE_DENOM, NonZero::new(sender_balance_before)),
         )
         .unwrap()
+        .add_account("receiver", Coins::new())
+        .unwrap()
         .set_owner("owner")
         .unwrap()
         .build()
         .unwrap();
 
-    // Deploy the thrower contract.
-    let thrower_code = ContractBuilder::new(Box::new(thrower::instantiate))
-        .with_execute(if throw {
-            Box::new(thrower::bugged_execute)
-        } else {
-            Box::new(thrower::execute)
-        })
-        .build();
-    let (_, thrower) = suite
-        .upload_and_instantiate(
-            &accounts["owner"],
-            thrower_code,
-            "thrower",
-            &Empty {},
-            Coins::new(),
-        )
-        .unwrap();
-
-    // Sender interacts with the thrower contract.
-    let actual = suite
+    let outcome = suite
         .send_message_with_gas(
             &accounts["sender"],
             gas_limit,
-            Message::execute(thrower, &Empty {}, Coins::new()).unwrap(),
+            Message::transfer(
+                accounts["receiver"].address.clone(),
+                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount)),
+            )
+            .unwrap(),
         )
         .unwrap();
 
-    // Tx outcome should match the expected value.
-    assert_outcome(&actual.withhold_fee_result, &expect.withhold_fee_result);
-    assert_outcome(&actual.process_msgs_result, &expect.process_msgs_result);
-    assert_outcome(&actual.finalize_fee_result, &expect.finalize_fee_result);
-
-    // Make sure the fee has been deducted from the sender's balance.
-    // this should happen regardless of whether the messages succeeded or not.
-    if let Some(GenericResult::Ok(_)) = expect.finalize_fee_result {
-        let fee_amount = Uint128::from(gas_limit / 4)
-            .checked_mul_dec_ceil(Udec128::from_str(taxman::FEE_RATE).unwrap())
-            .unwrap();
-        let sender_balance_after = sender_balance_before - fee_amount;
-
-        suite
-            .query_balance(&accounts["owner"], taxman::FEE_DENOM)
-            .should_succeed_and_equal(fee_amount);
-        suite
-            .query_balance(&accounts["sender"], taxman::FEE_DENOM)
-            .should_succeed_and_equal(sender_balance_after);
+    match maybe_err {
+        Some(err) => {
+            outcome.result.should_fail_with_error(err);
+        },
+        None => {
+            outcome.result.should_succeed();
+        },
     }
+
+    suite
+        .query_balance(&accounts["owner"], taxman::FEE_DENOM)
+        .should_succeed_and_equal(Uint128::new(owner_balance_after));
+    suite
+        .query_balance(&accounts["sender"], taxman::FEE_DENOM)
+        .should_succeed_and_equal(Uint128::new(sender_balance_after));
+    suite
+        .query_balance(&accounts["receiver"], taxman::FEE_DENOM)
+        .should_succeed_and_equal(Uint128::new(receiver_balance_after));
 }
 
+// In this test, we see what happens if the tx fails at the `finalize_fee` stage.
+//
+// This can be considered an "undefined behavior", because the taxman contract
+// is supposed to be designed in a way such that `finalize_fee` never fails.
+//
+// If it does fail though, we simply discard all state changes and events emitted
+// by the transaction, as if it never happened. We also print a log to the CLI
+// at the ERROR tracing level to raise developer's awareness.
 #[test]
 fn finalizing_fee_erroring() {
     let bugged_taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
@@ -270,22 +233,28 @@ fn finalizing_fee_erroring() {
         .build()
         .unwrap();
 
-    // Sender attempts to send a transaction.
-    let outcome = suite
-        .send_message(
+    // Send a transaction with a single message.
+    // `withhold_fee` must pass, which should be the case as we're requesting
+    // zero gas limit.
+    let TxOutcome { events, result, .. } = suite
+        .send_message_with_gas(
             &accounts["sender"],
+            0,
             Message::transfer(accounts["sender"].address.clone(), Coins::new()).unwrap(),
         )
         .unwrap();
 
-    assert_outcome(&outcome.withhold_fee_result, &None);
-    assert_outcome(&outcome.process_msgs_result, &None);
-    assert_outcome(
-        &outcome.finalize_fee_result,
-        &Some(GenericResult::Err("division by zero: 1 / 0".to_string())),
-    );
+    // Result should be an error.
+    result.should_fail_with_error("division by zero: 1 / 0");
 
-    // Sender's balance shouldn't have changed, since state changes are discarded.
+    // All events should have been discarded.
+    assert!(events.is_empty());
+
+    // Owner and sender's balances shouldn't have changed, since state changes
+    // are discarded.
+    suite
+        .query_balance(&accounts["owner"], taxman::FEE_DENOM)
+        .should_succeed_and_equal(Uint128::ZERO);
     suite
         .query_balance(&accounts["sender"], taxman::FEE_DENOM)
         .should_succeed_and_equal(Uint128::new(30_000));

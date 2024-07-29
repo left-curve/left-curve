@@ -6,7 +6,7 @@ use {
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
-        Outcome, Storage, SubMsgResult, Tx,
+        Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -799,7 +799,7 @@ pub fn do_finalize_fee<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    outcome: &Outcome,
+    outcome: &TxOutcome,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,

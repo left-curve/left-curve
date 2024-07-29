@@ -8,8 +8,8 @@ use {
     grug_types::{
         from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
         AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
-        ImmutableCtx, Json, MutableCtx, Outcome, Querier, QuerierWrapper, Response, StdError,
-        Storage, SubMsgResult, SudoCtx, Tx,
+        ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage,
+        SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -680,7 +680,7 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-        outcome: Outcome,
+        outcome: TxOutcome,
     ) -> VmResult<GenericResult<Response>> {
         let Some(finalize_fee_fn) = &self.finalize_fee_fn else {
             return Err(VmError::function_not_found("finalize_fee"));

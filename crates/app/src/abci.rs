@@ -241,65 +241,22 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
 }
 
 fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
-    let gas_wanted = outcome.gas_limit as i64;
-    let gas_used = outcome.gas_used as i64;
-
-    match (
-        outcome.withhold_fee_result,
-        outcome.process_msgs_result,
-        outcome.finalize_fee_result,
-    ) {
-        // Tx failed `withhold_fee`
-        (Some(GenericResult::Err(err)), None, None) => ExecTxResult {
-            code: 1,
-            codespace: "tx/withhold_fee".to_string(),
-            log: err.to_string(),
-            gas_wanted,
-            gas_used,
-            ..Default::default()
-        },
-        // Tx succeeded `withhold_fee` and messages, failed `finalize_fee`
-        (None, None, Some(GenericResult::Err(err))) => ExecTxResult {
-            code: 1,
-            codespace: "tx/finalize_fee".to_string(),
-            log: err.to_string(),
-            gas_wanted,
-            gas_used,
-            ..Default::default()
-        },
-        // Tx suceeded `withhold_fee`, failed messages, succeeded `finalize_fee`
-        (
-            Some(GenericResult::Ok(withhold_fee_events)),
-            Some(GenericResult::Err(err)),
-            Some(GenericResult::Ok(finalize_fee_events)),
-        ) => ExecTxResult {
-            code: 1,
-            codespace: "tx/messages".to_string(),
-            log: err.to_string(),
-            events: into_tm_events(withhold_fee_events.into_iter().chain(finalize_fee_events)),
-            gas_wanted,
-            gas_used,
-            ..Default::default()
-        },
-        // Everything succeeded
-        (
-            Some(GenericResult::Ok(withhold_fee_events)),
-            Some(GenericResult::Ok(process_msgs_events)),
-            Some(GenericResult::Ok(finalize_fee_events)),
-        ) => ExecTxResult {
+    match outcome.result {
+        GenericResult::Ok(_) => ExecTxResult {
             code: 0,
-            events: into_tm_events(
-                withhold_fee_events
-                    .into_iter()
-                    .chain(process_msgs_events)
-                    .chain(finalize_fee_events),
-            ),
-            gas_wanted,
-            gas_used,
+            gas_wanted: outcome.gas_limit as i64,
+            gas_used: outcome.gas_used as i64,
+            events: into_tm_events(outcome.events),
             ..Default::default()
         },
-        (withhold_fee, process_msgs, finalize_fee) => {
-            unreachable!("impossible transaction outcome! withhold fee: {withhold_fee:?}, process msgs: {process_msgs:?}, finalize fee: {finalize_fee:?}");
+        GenericResult::Err(err) => ExecTxResult {
+            code: 1,
+            codespace: "tx".to_string(),
+            log: err,
+            gas_wanted: outcome.gas_limit as i64,
+            gas_used: outcome.gas_used as i64,
+            events: into_tm_events(outcome.events),
+            ..Default::default()
         },
     }
 }
@@ -314,12 +271,15 @@ where
 fn into_tm_event(event: Event) -> TmEvent {
     TmEvent {
         r#type: event.r#type,
-        attributes: event
-            .attributes
-            .into_iter()
-            .map(into_tm_attribute)
-            .collect(),
+        attributes: into_tm_attributes(event.attributes),
     }
+}
+
+fn into_tm_attributes<I>(attrs: I) -> Vec<TmAttribute>
+where
+    I: IntoIterator<Item = Attribute>,
+{
+    attrs.into_iter().map(into_tm_attribute).collect()
 }
 
 fn into_tm_attribute(attr: Attribute) -> TmAttribute {

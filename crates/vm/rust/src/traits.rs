@@ -5,7 +5,8 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, Outcome, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
+        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
 };
 
@@ -116,7 +117,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-        outcome: Outcome,
+        outcome: TxOutcome,
     ) -> VmResult<GenericResult<Response>>;
 
     fn cron_execute(
@@ -154,6 +155,6 @@ pub type BankQueryFn<E> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQuer
 
 pub type WithholdFeeFn<E> = Box<dyn Fn(SudoCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
-pub type FinalizeFeeFn<E> = Box<dyn Fn(SudoCtx, Tx, Outcome) -> Result<Response, E> + Send + Sync>;
+pub type FinalizeFeeFn<E> = Box<dyn Fn(SudoCtx, Tx, TxOutcome) -> Result<Response, E> + Send + Sync>;
 
 pub type CronExecuteFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;

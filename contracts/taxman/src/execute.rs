@@ -2,8 +2,8 @@ use {
     crate::{Config, CONFIG},
     anyhow::{bail, ensure},
     grug_types::{
-        Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Outcome, Response,
-        StdResult, Storage, SudoCtx, Tx, Uint128,
+        Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Response, StdResult,
+        Storage, SudoCtx, Tx, TxOutcome, Uint128,
     },
 };
 
@@ -63,7 +63,7 @@ pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
     Ok(Response::new().may_add_message(withhold_msg))
 }
 
-pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> anyhow::Result<Response> {
+pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
     let info = ctx.querier.query_info()?;
 

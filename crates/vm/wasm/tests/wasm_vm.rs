@@ -57,7 +57,7 @@ fn bank_transfers() -> anyhow::Result<()> {
         },
     ])?;
 
-    outcome.should_succeed();
+    outcome.result.should_succeed();
 
     // Sender remaining balance should be 300k - 70 - withhold + (withhold - charge).
     // = 300k - 70 - charge
@@ -116,7 +116,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
         coins: Coins::one(DENOM, NonZero::new(10_u128)),
     })?;
 
-    outcome.should_fail();
+    outcome.result.should_fail();
 
     // The transfer should have failed, but gas fee already spent is still charged.
     let fee = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
@@ -158,8 +158,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .process_msgs_result
-        .unwrap()
+        .result
         .should_fail_with_error(VmError::GasDepletion);
 
     Ok(())
@@ -211,8 +210,7 @@ fn immutable_state() -> anyhow::Result<()> {
             msg: to_json_value(&Empty {})?,
             funds: Coins::new(),
         })?
-        .process_msgs_result
-        .unwrap()
+        .result
         .should_fail_with_error(VmError::ReadOnly);
 
     Ok(())

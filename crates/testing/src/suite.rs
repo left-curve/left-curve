@@ -135,9 +135,9 @@ where
         gas_limit: u64,
         new_cfg: Config,
     ) -> anyhow::Result<()> {
-        let outcome = self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
+            .result
+            .should_succeed();
 
         Ok(())
     }
@@ -155,9 +155,9 @@ where
         let code = code.into();
         let code_hash = Hash::from_array(sha2_256(&code));
 
-        let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code))?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
+            .result
+            .should_succeed();
 
         Ok(code_hash)
     }
@@ -182,13 +182,13 @@ where
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        let outcome = self.send_message_with_gas(
+        self.send_message_with_gas(
             signer,
             gas_limit,
             Message::instantiate(code_hash, msg, salt, funds, None)?,
-        )?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        )?
+        .result
+        .should_succeed();
 
         Ok(address)
     }
@@ -216,12 +216,12 @@ where
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
+        self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
             Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
-        ])?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        ])?
+        .result
+        .should_succeed();
 
         Ok((code_hash, address))
     }
@@ -240,10 +240,9 @@ where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        let outcome =
-            self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
+            .result
+            .should_succeed();
 
         Ok(())
     }
@@ -260,13 +259,13 @@ where
     where
         M: Serialize,
     {
-        let outcome = self.send_message_with_gas(
+        self.send_message_with_gas(
             signer,
             gas_limit,
             Message::migrate(contract, new_code_hash, msg)?,
-        )?;
-
-        ensure!(outcome.is_ok(), "tx failed with outcome: {outcome:?}");
+        )?
+        .result
+        .should_succeed();
 
         Ok(())
     }

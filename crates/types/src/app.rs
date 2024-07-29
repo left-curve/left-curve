@@ -119,53 +119,26 @@ pub struct Outcome {
 }
 
 /// Outcome of processing a transaction.
+///
+/// Different from `Outcome`, which can either succeed or fail, a transaction
+/// can partially succeed. A typical such scenario is:
+///
+/// - `withhold_fee` succeeds
+/// - `before_tx` succeeds,
+/// - one of the messages fail
+/// - `finalize_fee` succeeds
+///
+/// In this case, state changes from fee handling (e.g. deducting the fee from
+/// the sender account) and authentication (e.g. incrementing the sender account's
+/// sequence number) will be committed, and relevant events emitted to reflect
+/// this. However, state changes and events from the messages are discarded.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TxOutcome {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub withhold_fee_result: Option<GenericResult<Vec<Event>>>,
-    pub process_msgs_result: Option<GenericResult<Vec<Event>>>,
-    pub finalize_fee_result: Option<GenericResult<Vec<Event>>>,
-}
-
-impl TxOutcome {
-    /// Return `true` if the transaction was successful.
-    pub fn is_ok(&self) -> bool {
-        matches!(
-            (
-                &self.withhold_fee_result,
-                &self.process_msgs_result,
-                &self.finalize_fee_result,
-            ),
-            (
-                Some(GenericResult::Ok(_)),
-                Some(GenericResult::Ok(_)),
-                Some(GenericResult::Ok(_)),
-            )
-        )
-    }
-
-    /// Return `true` is the transaction was a failure.
-    pub fn is_err(&self) -> bool {
-        !self.is_ok()
-    }
-
-    /// Assert the transaction was successful; panic otherwise.
-    pub fn should_succeed(&self) {
-        assert!(
-            self.is_ok(),
-            "expecting tx to succeed, but it failed: {self:?}"
-        );
-    }
-
-    /// Assert the transaction was a failure; panic otherwise.
-    pub fn should_fail(&self) {
-        assert!(
-            self.is_err(),
-            "expecting tx to fail, but it succeeded: {self:?}"
-        );
-    }
+    pub events: Vec<Event>,
+    pub result: GenericResult<()>,
 }
 
 /// Outcome of executing a block.

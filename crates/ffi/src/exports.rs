@@ -3,8 +3,8 @@ use {
     grug_types::{
         from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
         make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, BankMsg, BankQuery,
-        BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, Outcome,
-        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx,
+        BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, QuerierWrapper,
+        Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
 };
@@ -318,7 +318,7 @@ where
 }
 
 pub fn do_finalize_fee<E>(
-    finalize_fee_fn: &dyn Fn(SudoCtx, Tx, Outcome) -> Result<Response, E>,
+    finalize_fee_fn: &dyn Fn(SudoCtx, Tx, TxOutcome) -> Result<Response, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
     outcome_ptr: usize,
