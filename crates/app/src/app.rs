@@ -585,9 +585,9 @@ where
     // a refund here (if taxman is programmed to do so).
     //
     // Taxman should be designed such that this call always succeeds. This
-    // failing cal be considered an "undefined behavior". In such a case, we
+    // failing can be considered an "undefined behavior". In such a case, we
     // discard all previous state changes and events, as if the tx never happened.
-    // Also, print an tracing message at the ERROR level to the CLI, to raise
+    // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
     process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Ok(()))
 }
