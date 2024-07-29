@@ -60,7 +60,10 @@ pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
         None
     };
 
-    Ok(Response::new().may_add_message(withhold_msg))
+    Ok(Response::new()
+        .may_add_message(withhold_msg)
+        .add_attribute("gas_limit", tx.gas_limit)
+        .add_attribute("withhold_amount", withhold_amount))
 }
 
 pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
@@ -108,6 +111,9 @@ pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     Ok(Response::new()
         .may_add_message(charge_msg)
         .may_add_message(refund_msg)
+        .add_attribute("gas_limit", tx.gas_limit)
+        .add_attribute("gas_used", outcome.gas_used)
+        .add_attribute("withheld_amount", withheld_amount)
         .add_attribute("charge_amount", charge_amount)
         .add_attribute("refund_amount", refund_amount))
 }
