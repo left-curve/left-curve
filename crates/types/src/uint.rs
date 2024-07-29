@@ -246,12 +246,12 @@ where
 
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
-    Uint<U>: NumberConst + MultiplyRatio + From<Uint<AsU>> + ToString,
+    Uint<U>: NumberConst + Number + MultiplyRatio + From<Uint<AsU>> + ToString,
     F: Number + Fraction<AsU> + Sign + ToString,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
-        // If the right hand side is zero, then simply return zero.
-        if rhs.is_zero() {
+        // If either left or right hand side is zero, then simply return zero.
+        if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
         // The left hand side is `Uint`, a non-negative type, so multiplication
@@ -263,7 +263,7 @@ where
     }
 
     fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
-        if rhs.is_zero() {
+        if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
         if rhs.is_negative() {

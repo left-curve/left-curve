@@ -1,5 +1,6 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
+    anyhow::ensure,
     grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
     std::collections::HashMap,
 };
@@ -51,7 +52,7 @@ fn accumulate_supply(
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
@@ -68,13 +69,44 @@ pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdRes
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn burn(ctx: MutableCtx, from: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn burn(
+    ctx: MutableCtx,
+    from: Addr,
+    denom: String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
     decrease_balance(ctx.storage, &from, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "burn")
         .add_attribute("from", from)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
+}
+
+pub fn force_transfer(
+    ctx: MutableCtx,
+    from: Addr,
+    to: Addr,
+    denom: String,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
+    let info = ctx.querier.query_info()?;
+
+    // Only the taxman can force transfer.
+    ensure!(
+        ctx.sender == info.config.taxman,
+        "you don't have the right, O you don't have the right"
+    );
+
+    decrease_balance(ctx.storage, &from, &denom, amount)?;
+    increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "force_transfer")
+        .add_attribute("from", from)
+        .add_attribute("to", to)
         .add_attribute("denom", denom)
         .add_attribute("amount", amount))
 }
@@ -92,10 +124,10 @@ pub fn transfer(
     }
 
     Ok(Response::new()
-        .add_attribute("method", "send")
+        .add_attribute("method", "transfer")
         .add_attribute("from", from)
         .add_attribute("to", to)
-        .add_attribute("coins", coins.to_string()))
+        .add_attribute("coins", coins))
 }
 
 /// Increase the total supply of a token by the given amount.

@@ -6,7 +6,7 @@ use {
     },
     grug_types::{
         hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
-        Storage, SubMsgResult, Tx,
+        Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -736,6 +736,118 @@ where
         false,
         tx,
     )
+}
+
+// ---------------------------------- taxman -----------------------------------
+
+pub fn do_withhold_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    let result = (|| {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let cfg = CONFIG.load(&storage)?;
+        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+
+        let ctx = Context {
+            chain_id,
+            block,
+            contract: cfg.taxman,
+            sender: None,
+            funds: None,
+            simulate: None,
+        };
+
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "withhold_fee",
+            &taxman.code_hash,
+            &ctx,
+            false,
+            tx,
+        )
+    })();
+
+    match result {
+        Ok(events) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Withheld fee");
+
+            Ok(events)
+        },
+        Err(err) => {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(err = err.to_string(), "Failed to withhold fee");
+
+            Err(err)
+        },
+    }
+}
+
+pub fn do_finalize_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    outcome: &TxOutcome,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    let result = (|| {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let cfg = CONFIG.load(&storage)?;
+        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+
+        let ctx = Context {
+            chain_id,
+            block,
+            contract: cfg.taxman,
+            sender: None,
+            funds: None,
+            simulate: None,
+        };
+
+        call_in_2_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "finalize_fee",
+            &taxman.code_hash,
+            &ctx,
+            false,
+            tx,
+            outcome,
+        )
+    })();
+
+    match result {
+        Ok(events) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Finalized fee");
+
+            Ok(events)
+        },
+        Err(err) => {
+            // `finalize_fee` is supposed to always succeed, so if it doesn't,
+            // we print a tracing log at ERROR level to highlight the seriousness.
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = err.to_string(), "Failed to finalize fee");
+
+            Err(err)
+        },
+    }
 }
 
 // ----------------------------------- cron ------------------------------------

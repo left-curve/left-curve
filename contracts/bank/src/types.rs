@@ -24,6 +24,15 @@ pub enum ExecuteMsg {
         denom: String,
         amount: Uint128,
     },
+    /// Forcibly transfer a coin from an account to a receiver.
+    /// Can only be called by the chain's taxman contract.
+    /// Used by taxman to withhold pending transaction fees.
+    ForceTransfer {
+        from: Addr,
+        to: Addr,
+        denom: String,
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

@@ -10,4 +10,9 @@ impl TestVm for WasmVm {
         let code: &[u8] = include_bytes!("../testdata/grug_bank.wasm");
         code.into()
     }
+
+    fn default_taxman_code() -> Binary {
+        let code: &[u8] = include_bytes!("../testdata/grug_taxman.wasm");
+        code.into()
+    }
 }

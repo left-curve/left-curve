@@ -19,6 +19,13 @@ impl Response {
         self
     }
 
+    pub fn may_add_message(mut self, maybe_msg: Option<Message>) -> Self {
+        if let Some(msg) = maybe_msg {
+            self.submsgs.push(SubMessage::reply_never(msg));
+        }
+        self
+    }
+
     pub fn add_messages<M>(mut self, msgs: M) -> Self
     where
         M: IntoIterator<Item = Message>,
@@ -30,6 +37,13 @@ impl Response {
 
     pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
         self.submsgs.push(submsg);
+        self
+    }
+
+    pub fn may_add_submessage(mut self, maybe_submsg: Option<SubMessage>) -> Self {
+        if let Some(submsg) = maybe_submsg {
+            self.submsgs.push(submsg);
+        }
         self
     }
 

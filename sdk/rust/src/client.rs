@@ -2,11 +2,10 @@ use {
     crate::{AdminOption, GasOption, SigningOption},
     anyhow::{bail, ensure},
     grug_account::{QueryMsg, StateResponse},
-    grug_app::Outcome,
     grug_jmt::Proof,
     grug_types::{
         from_json_slice, from_json_value, hash, to_json_value, to_json_vec, Account, Addr, Binary,
-        Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, QueryRequest,
+        Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, Outcome, QueryRequest,
         QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},

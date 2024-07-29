@@ -12,6 +12,8 @@ pub trait TestVm: Vm {
     fn default_account_code() -> Binary;
 
     fn default_bank_code() -> Binary;
+
+    fn default_taxman_code() -> Binary;
 }
 
 impl TestVm for RustVm {
@@ -32,6 +34,16 @@ impl TestVm for RustVm {
             .with_query(Box::new(grug_bank::query))
             .with_bank_execute(Box::new(grug_bank::bank_execute))
             .with_bank_query(Box::new(grug_bank::bank_query))
+            .build()
+            .into()
+    }
+
+    fn default_taxman_code() -> Binary {
+        ContractBuilder::new(Box::new(grug_taxman::instantiate))
+            .with_execute(Box::new(grug_taxman::execute))
+            .with_query(Box::new(grug_taxman::query))
+            .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
+            .with_finalize_fee(Box::new(grug_taxman::finalize_fee))
             .build()
             .into()
     }

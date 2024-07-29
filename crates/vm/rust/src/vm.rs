@@ -8,7 +8,7 @@ use {
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.
-pub const KNOWN_FUNCTIONS: [&str; 11] = [
+pub const KNOWN_FUNCTIONS: [&str; 13] = [
     "instantate",
     "execute",
     "migrate",
@@ -19,8 +19,10 @@ pub const KNOWN_FUNCTIONS: [&str; 11] = [
     "after_tx",
     "bank_execute",
     "bank_query",
+    "withhold_fee",
+    "finalize_fee",
     "cron_execute",
-    // TODO: add taxman and IBC entry points
+    // TODO: add IBC entry points
 ];
 
 #[derive(Default, Clone)]
@@ -189,6 +191,17 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)
             },
+            "withhold_fee" => {
+                let tx = from_json_slice(param)?;
+                let res = contract.withhold_fee(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                )?;
+                to_json_vec(&res)
+            },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 1));
             },
@@ -221,6 +234,19 @@ impl Instance for RustInstance {
                     &self.querier,
                     param1.as_ref(),
                     submsg_res,
+                )?;
+                to_json_vec(&res)
+            },
+            "finalize_fee" => {
+                let tx = from_json_slice(param1)?;
+                let outcome = from_json_slice(param2)?;
+                let res = contract.finalize_fee(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                    outcome,
                 )?;
                 to_json_vec(&res)
             },

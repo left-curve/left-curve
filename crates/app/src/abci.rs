@@ -1,8 +1,8 @@
 use {
-    crate::{App, AppError, Db, Outcome, Vm},
+    crate::{App, AppError, Db, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Timestamp, Uint64,
-        GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Outcome, Timestamp, TxOutcome,
+        Uint64, GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -240,42 +240,46 @@ fn from_tm_hash(bytes: Bytes) -> Hash {
         .expect("incorrect block hash length")
 }
 
-fn into_tm_tx_result(outcome: Outcome) -> ExecTxResult {
-    let gas_wanted = outcome.gas_limit.unwrap_or(0) as i64;
-    let gas_used = outcome.gas_used as i64;
-
+fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
     match outcome.result {
-        GenericResult::Ok(events) => ExecTxResult {
+        GenericResult::Ok(_) => ExecTxResult {
             code: 0,
-            events: into_tm_events(events),
-            gas_wanted,
-            gas_used,
+            gas_wanted: outcome.gas_limit as i64,
+            gas_used: outcome.gas_used as i64,
+            events: into_tm_events(outcome.events),
             ..Default::default()
         },
         GenericResult::Err(err) => ExecTxResult {
             code: 1,
             codespace: "tx".to_string(),
-            log: err.to_string(),
-            gas_wanted,
-            gas_used,
+            log: err,
+            gas_wanted: outcome.gas_limit as i64,
+            gas_used: outcome.gas_used as i64,
+            events: into_tm_events(outcome.events),
             ..Default::default()
         },
     }
 }
 
-fn into_tm_events(events: Vec<Event>) -> Vec<TmEvent> {
+fn into_tm_events<I>(events: I) -> Vec<TmEvent>
+where
+    I: IntoIterator<Item = Event>,
+{
     events.into_iter().map(into_tm_event).collect()
 }
 
 fn into_tm_event(event: Event) -> TmEvent {
     TmEvent {
         r#type: event.r#type,
-        attributes: event
-            .attributes
-            .into_iter()
-            .map(into_tm_attribute)
-            .collect(),
+        attributes: into_tm_attributes(event.attributes),
     }
+}
+
+fn into_tm_attributes<I>(attrs: I) -> Vec<TmAttribute>
+where
+    I: IntoIterator<Item = Attribute>,
+{
+    attrs.into_iter().map(into_tm_attribute).collect()
 }
 
 fn into_tm_attribute(attr: Attribute) -> TmAttribute {
