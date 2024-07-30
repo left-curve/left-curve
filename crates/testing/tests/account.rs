@@ -1,7 +1,10 @@
 use {
     grug_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{from_json_value, Coins, Duration, Message, NonZero, Timestamp, Tx, Uint128},
+    grug_types::{
+        from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint128,
+    },
+    grug_vm_rust::ContractBuilder,
 };
 
 #[test]
@@ -93,6 +96,131 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["larry"], "uatom")
         .should_succeed_and_equal(Uint128::new(40));
+
+    Ok(())
+}
+
+mod backrunner {
+    use grug_types::{
+        AuthCtx, AuthResponse, Coins, Message, Number, NumberConst, Response, StdResult, Tx,
+        Uint128,
+    };
+
+    // This contract is used for testing the backrunning feature, so we simply
+    // skip all authentications in `before_tx`.
+    pub fn before_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<AuthResponse> {
+        // Do request backrunning.
+        Ok(AuthResponse::new().do_backrun(true))
+    }
+
+    // Accounts can do any action while backrunning. In this test, the account
+    // attempts to mint itself a token.
+    pub fn after_tx(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
+        let info = ctx.querier.query_info()?;
+
+        Ok(Response::new().add_message(Message::execute(
+            info.config.bank,
+            &grug_bank::ExecuteMsg::Mint {
+                to: ctx.contract,
+                denom: "nft/badkids/1".to_string(),
+                amount: Uint128::ONE,
+            },
+            Coins::new(),
+        )?))
+    }
+
+    // The account can also reject and revert state changes from the messages
+    // simply by throwing en error while backrunning.
+    pub fn bugged_after_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
+        let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
+
+        Ok(Response::new())
+    }
+}
+
+#[test]
+fn backrunning_works() -> anyhow::Result<()> {
+    let account = ContractBuilder::new(Box::new(grug_account::instantiate))
+        .with_before_tx(Box::new(backrunner::before_tx))
+        .with_receive(Box::new(grug_account::receive))
+        .with_after_tx(Box::new(backrunner::after_tx))
+        .build();
+
+    let (mut suite, accounts) = TestBuilder::new()
+        .set_account_code(account, |pk| grug_account::InstantiateMsg {
+            public_key: grug_account::PublicKey::Secp256k1(pk),
+        })?
+        .add_account(
+            "sender",
+            Coins::one("ugrug", NonZero::new(Uint128::new(50_000))),
+        )?
+        .add_account("receiver", Coins::new())?
+        .set_owner("sender")?
+        .build()?;
+
+    // Attempt to send a transaction
+    suite.transfer(
+        &accounts["sender"],
+        accounts["receiver"].address.clone(),
+        Coins::one("ugrug", NonZero::new(Uint128::new(123))),
+    )?;
+
+    // Receiver should have received ugrug, and sender should have minted bad kids.
+    suite
+        .query_balance(&accounts["receiver"], "ugrug")
+        .should_succeed_and_equal(Uint128::new(123));
+    suite
+        .query_balance(&accounts["sender"], "ugrug")
+        .should_succeed_and_equal(Uint128::new(50_000 - 123));
+    suite
+        .query_balance(&accounts["sender"], "nft/badkids/1")
+        .should_succeed_and_equal(Uint128::ONE);
+
+    Ok(())
+}
+
+#[test]
+fn backrunning_with_error() -> anyhow::Result<()> {
+    let bugged_account = ContractBuilder::new(Box::new(grug_account::instantiate))
+        .with_before_tx(Box::new(backrunner::before_tx))
+        .with_receive(Box::new(grug_account::receive))
+        .with_after_tx(Box::new(backrunner::bugged_after_tx))
+        .build();
+
+    let (mut suite, accounts) = TestBuilder::new()
+        .set_account_code(bugged_account, |pk| grug_account::InstantiateMsg {
+            public_key: grug_account::PublicKey::Secp256k1(pk),
+        })?
+        .add_account(
+            "sender",
+            Coins::one("ugrug", NonZero::new(Uint128::new(50_000))),
+        )?
+        .add_account("receiver", Coins::new())?
+        .set_owner("sender")?
+        .build()?;
+
+    // Attempt to make a transfer; should fail.
+    suite
+        .send_message(
+            &accounts["sender"],
+            Message::transfer(
+                accounts["receiver"].address.clone(),
+                Coins::one("ugrug", NonZero::new(Uint128::new(123))),
+            )?,
+        )?
+        .result
+        .should_fail_with_error("division by zero: 1 / 0");
+
+    // Transfer should have been reverted, and sender doesn't get bad kids.
+    suite
+        .query_balance(&accounts["receiver"], "ugrug")
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_balance(&accounts["sender"], "ugrug")
+        .should_succeed_and_equal(Uint128::new(50_000));
+    suite
+        .query_balance(&accounts["sender"], "nft/badkids/1")
+        .should_succeed_and_equal(Uint128::ZERO);
 
     Ok(())
 }
