@@ -69,7 +69,6 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
     let next_sequence = SEQUENCE.load(ctx.storage)?;
-    ctx.api.debug(&ctx.contract, &tx.credential.to_string());
     let credential: Credential = from_json_value(tx.credential)?;
 
     match ctx.mode {

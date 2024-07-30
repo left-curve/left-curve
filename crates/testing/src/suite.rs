@@ -6,7 +6,7 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
-        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst,
+        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
         QueryRequest, StdError, Tx, TxOutcome, Uint128, Uint64,
     },
     grug_vm_rust::RustVm,
@@ -268,6 +268,21 @@ where
         .should_succeed();
 
         Ok(())
+    }
+
+    pub fn check_tx(&self, tx: Tx) -> anyhow::Result<Outcome> {
+        Ok(self.app.do_check_tx(tx)?)
+    }
+
+    pub fn check_msgs_with_gas(
+        &self,
+        signer: &TestAccount,
+        sequence: u32,
+        msgs: Vec<Message>,
+        gas_limit: u64,
+    ) -> anyhow::Result<Outcome> {
+        let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, sequence)?;
+        self.check_tx(tx)
     }
 
     pub fn query_info(&self) -> GenericResult<InfoResponse> {
