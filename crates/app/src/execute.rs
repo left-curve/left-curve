@@ -5,8 +5,7 @@ use {
         AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash, Account, Addr, AuthMode, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event,
-        Hash, Json, Storage, SubMsgResult, Tx, TxOutcome,
+        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome
     },
 };
 
@@ -654,7 +653,7 @@ where
         contract: tx.sender.clone(),
         sender: None,
         funds: None,
-        simulate: Some(simulate),
+        mode: Some(mode),
     };
 
     let result = || -> AppResult<_> {
@@ -724,7 +723,7 @@ where
         contract: tx.sender.clone(),
         sender: None,
         funds: None,
-        simulate: Some(simulate),
+        mode: Some(mode),
     };
 
     match call_in_1_out_1_handle_response(
