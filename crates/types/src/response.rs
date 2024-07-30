@@ -65,6 +65,28 @@ impl Response {
     }
 }
 
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+pub struct AuthResponse {
+    pub response: Response,
+    pub request_backrun: bool,
+}
+
+impl AuthResponse {
+    pub fn new_with_request_backrun(response: Response) -> Self {
+        Self {
+            response,
+            request_backrun: true,
+        }
+    }
+
+    pub fn new_without_request_backrun(response: Response) -> Self {
+        Self {
+            response,
+            request_backrun: false,
+        }
+    }
+}
+
 /// Indicates that after a submessage has been executed, whether the host should
 /// give the contract a callack.
 ///

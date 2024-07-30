@@ -5,8 +5,9 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
-        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+        TxOutcome,
     },
 };
 
@@ -72,7 +73,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> VmResult<GenericResult<Response>>;
+    ) -> VmResult<GenericResult<AuthResponse>>;
 
     fn after_tx(
         &self,
@@ -145,7 +146,7 @@ pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response
 
 pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
 
 pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 

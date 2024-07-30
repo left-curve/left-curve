@@ -7,9 +7,9 @@ use {
     elsa::sync::FrozenVec,
     grug_types::{
         from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
-        AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
-        ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage,
-        SubMsgResult, SudoCtx, Tx, TxOutcome,
+        AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty,
+        GenericResult, ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError,
+        Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -590,7 +590,7 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> VmResult<GenericResult<Response>> {
+    ) -> VmResult<GenericResult<AuthResponse>> {
         let Some(before_tx_fn) = &self.before_tx_fn else {
             return Err(VmError::function_not_found("before_tx"));
         };

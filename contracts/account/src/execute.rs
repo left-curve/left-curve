@@ -2,7 +2,8 @@ use {
     crate::{PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx,
+        to_json_vec, Addr, AuthCtx, AuthResponse, Message, MutableCtx, Response, StdResult,
+        Storage, Tx,
     },
 };
 
@@ -65,7 +66,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
     Ok(Response::new())
 }
 
-pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
+pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
     let sequence = SEQUENCE.load(ctx.storage)?;
 
@@ -103,7 +104,9 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Increment the sequence number
     SEQUENCE.increment(ctx.storage)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "before_tx")
-        .add_attribute("next_sequence", sequence.to_string()))
+    Ok(AuthResponse::new_without_request_backrun(
+        Response::new()
+            .add_attribute("method", "before_tx")
+            .add_attribute("next_sequence", sequence.to_string()),
+    ))
 }

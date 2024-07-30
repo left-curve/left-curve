@@ -289,7 +289,7 @@ where
             &tx,
             false,
         ) {
-            Ok(new_events) => {
+            Ok((new_events, _)) => {
                 events.extend(new_events);
             },
             Err(err) => {
@@ -534,7 +534,7 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    match do_before_tx(
+    let request_backrun = match do_before_tx(
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
@@ -542,15 +542,16 @@ where
         &tx,
         simulate,
     ) {
-        Ok(new_events) => {
+        Ok((new_events, request_backrun)) => {
             buffer2.write_access().commit();
             events.extend(new_events);
+            request_backrun
         },
         Err(err) => {
             drop(buffer2);
             return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
         },
-    }
+    };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `after_tx` method.
@@ -567,6 +568,7 @@ where
         block.clone(),
         &tx,
         simulate,
+        request_backrun,
     ) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
@@ -600,6 +602,7 @@ fn process_msgs_then_after_tx<S, VM>(
     block: BlockInfo,
     tx: &Tx,
     simulate: bool,
+    request_backrun: bool,
 ) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
@@ -622,14 +625,16 @@ where
         )?);
     }
 
-    msg_events.extend(do_after_tx(
-        vm.clone(),
-        Box::new(buffer),
-        gas_tracker,
-        block,
-        tx,
-        simulate,
-    )?);
+    if request_backrun {
+        msg_events.extend(do_after_tx(
+            vm.clone(),
+            Box::new(buffer),
+            gas_tracker,
+            block,
+            tx,
+            simulate,
+        )?);
+    }
 
     Ok(msg_events)
 }
