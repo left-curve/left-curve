@@ -4,33 +4,57 @@ use {
     quote::quote,
     std::str::FromStr,
     syn::{
-        parse_macro_input, AttributeArgs, Data, DeriveInput, Ident, ItemFn, ItemStruct, Meta,
-        NestedMeta,
+        parse::{Parse, ParseStream},
+        parse_macro_input, Data, DeriveInput, Ident, ItemFn, ItemStruct, Token,
     },
 };
 
+struct DeriveArgs {
+    serde: bool,
+    borsh: bool,
+}
+
+impl Parse for DeriveArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut serde = false;
+        let mut borsh = false;
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+
+            match ident.to_string().as_str() {
+                "serde" if serde => {
+                    return Err(input.error("don't input `serde` attribute twice"));
+                },
+                "serde" if !serde => {
+                    serde = true;
+                },
+                "borsh" if borsh => {
+                    return Err(input.error("don't input `borsh` attribute twice"));
+                },
+                "borsh" if !borsh => {
+                    borsh = true;
+                },
+                _ => {
+                    return Err(input.error("unsupported attribute, expecting `serde` or `borsh`"));
+                },
+            }
+
+            if !input.is_empty() {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        Ok(DeriveArgs { borsh, serde })
+    }
+}
+
 #[proc_macro_attribute]
 pub fn derive(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let attrs = parse_macro_input!(attr as AttributeArgs);
+    let attrs = parse_macro_input!(attr as DeriveArgs);
     let input = parse_macro_input!(input as DeriveInput);
 
-    let mut derive_serde = false;
-    let mut derive_borsh = false;
-    for attr in attrs {
-        match attr {
-            NestedMeta::Meta(Meta::Path(path)) if path.is_ident("serde") => {
-                derive_serde = true;
-            },
-            NestedMeta::Meta(Meta::Path(path)) if path.is_ident("borsh") => {
-                derive_borsh = true;
-            },
-            _ => {
-                panic!("unsupported attribute, expecting `serde` or `borsh`");
-            },
-        }
-    }
-
-    let derives = match (derive_serde, derive_borsh) {
+    let derives = match (attrs.serde, attrs.borsh) {
         (false, true) => quote! {
             #[derive(
                 ::grug::__private::borsh::BorshSerialize,
