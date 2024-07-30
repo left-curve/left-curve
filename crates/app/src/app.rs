@@ -10,8 +10,8 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
-        Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
+        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
+        Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
         Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
@@ -209,7 +209,7 @@ where
                 buffer.clone(),
                 block.clone(),
                 tx,
-                false,
+                AuthMode::Finalize,
             ));
         }
 
@@ -287,9 +287,9 @@ where
             gas_tracker.clone(),
             block,
             &tx,
-            false,
+            AuthMode::Check,
         ) {
-            Ok(new_events) => {
+            Ok((new_events, _)) => {
                 events.extend(new_events);
             },
             Err(err) => {
@@ -409,12 +409,18 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            credential: Binary::empty(),
+            credential: Json::default(),
         };
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        Ok(process_tx(self.vm.clone(), buffer, block, tx, true))
+        Ok(process_tx(
+            self.vm.clone(),
+            buffer,
+            block,
+            tx,
+            AuthMode::Simulate,
+        ))
     }
 }
 
@@ -478,7 +484,7 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> TxOutcome
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
@@ -534,23 +540,24 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    match do_before_tx(
+    let do_backrun = match do_before_tx(
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
         block.clone(),
         &tx,
-        simulate,
+        mode.clone(),
     ) {
-        Ok(new_events) => {
+        Ok((new_events, do_backrun)) => {
             buffer2.write_access().commit();
             events.extend(new_events);
+            do_backrun
         },
         Err(err) => {
             drop(buffer2);
             return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
         },
-    }
+    };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `after_tx` method.
@@ -566,7 +573,8 @@ where
         gas_tracker.clone(),
         block.clone(),
         &tx,
-        simulate,
+        mode,
+        do_backrun,
     ) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
@@ -599,7 +607,8 @@ fn process_msgs_then_after_tx<S, VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
+    mode: AuthMode,
+    do_backrun: bool,
 ) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
@@ -622,14 +631,16 @@ where
         )?);
     }
 
-    msg_events.extend(do_after_tx(
-        vm.clone(),
-        Box::new(buffer),
-        gas_tracker,
-        block,
-        tx,
-        simulate,
-    )?);
+    if do_backrun {
+        msg_events.extend(do_after_tx(
+            vm.clone(),
+            Box::new(buffer),
+            gas_tracker,
+            block,
+            tx,
+            mode,
+        )?);
+    }
 
     Ok(msg_events)
 }

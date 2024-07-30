@@ -1,12 +1,12 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
-        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
+        call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
+        AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
-        Storage, SubMsgResult, Tx, TxOutcome,
+        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
+        Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -191,7 +191,7 @@ where
         contract: cfg.bank,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
     let msg = BankMsg { from, to, coins };
 
@@ -232,7 +232,7 @@ where
         contract: msg.to,
         sender: Some(msg.from),
         funds: Some(msg.coins),
-        simulate: None,
+        mode: None,
     };
 
     call_in_0_out_1_handle_response(
@@ -348,7 +348,7 @@ where
         contract: address,
         sender: Some(sender),
         funds: Some(funds),
-        simulate: None,
+        mode: None,
     };
 
     events.extend(call_in_1_out_1_handle_response(
@@ -445,7 +445,7 @@ where
         contract,
         sender: Some(sender),
         funds: Some(funds),
-        simulate: None,
+        mode: None,
     };
 
     events.extend(call_in_1_out_1_handle_response(
@@ -541,7 +541,7 @@ where
         contract,
         sender: Some(sender),
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_1_out_1_handle_response(
@@ -616,7 +616,7 @@ where
         contract,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_2_out_1_handle_response(
@@ -640,21 +640,57 @@ pub fn do_before_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
-) -> AppResult<Vec<Event>>
+    mode: AuthMode,
+) -> AppResult<(Vec<Event>, bool)>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx, simulate) {
-        Ok(events) => {
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, &tx.sender)?;
+    let ctx = Context {
+        chain_id,
+        block,
+        contract: tx.sender.clone(),
+        sender: None,
+        funds: None,
+        mode: Some(mode),
+    };
+
+    let result = || -> AppResult<_> {
+        let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
+            "before_tx",
+            &account.code_hash,
+            &ctx,
+            false,
+            tx,
+        )?
+        .into_std_result()?;
+
+        let events = handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "before_tx",
+            &ctx,
+            auth_response.response,
+        )?;
+
+        Ok((events, auth_response.do_backrun))
+    }();
+
+    match result {
+        Ok(data) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 sender = tx.sender.to_string(),
                 "Called before transaction hook"
             );
 
-            Ok(events)
+            Ok(data)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
@@ -674,13 +710,33 @@ pub fn do_after_tx<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
+    mode: AuthMode,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx, simulate) {
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, &tx.sender)?;
+    let ctx = Context {
+        chain_id,
+        block,
+        contract: tx.sender.clone(),
+        sender: None,
+        funds: None,
+        mode: Some(mode),
+    };
+
+    match call_in_1_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        "after_tx",
+        &account.code_hash,
+        &ctx,
+        false,
+        tx,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -700,42 +756,6 @@ where
             Err(err)
         },
     }
-}
-
-fn _do_before_or_after_tx<VM>(
-    vm: VM,
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
-    block: BlockInfo,
-    name: &'static str,
-    tx: &Tx,
-    simulate: bool,
-) -> AppResult<Vec<Event>>
-where
-    VM: Vm + Clone,
-    AppError: From<VM::Error>,
-{
-    let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &tx.sender)?;
-    let ctx = Context {
-        chain_id,
-        block,
-        contract: tx.sender.clone(),
-        sender: None,
-        funds: None,
-        simulate: Some(simulate),
-    };
-
-    call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        name,
-        &account.code_hash,
-        &ctx,
-        false,
-        tx,
-    )
 }
 
 // ---------------------------------- taxman -----------------------------------
@@ -762,7 +782,7 @@ where
             contract: cfg.taxman,
             sender: None,
             funds: None,
-            simulate: None,
+            mode: None,
         };
 
         call_in_1_out_1_handle_response(
@@ -816,7 +836,7 @@ where
             contract: cfg.taxman,
             sender: None,
             funds: None,
-            simulate: None,
+            mode: None,
         };
 
         call_in_2_out_1_handle_response(
@@ -902,7 +922,7 @@ where
         contract,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_0_out_1_handle_response(

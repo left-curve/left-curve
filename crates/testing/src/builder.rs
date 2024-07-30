@@ -178,7 +178,6 @@ where
     ///
     /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
     ///     .with_before_tx(Box::new(grug_account::before_tx))
-    ///     .with_after_tx(Box::new(grug_account::after_tx))
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()

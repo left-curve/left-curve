@@ -24,7 +24,7 @@ macro_rules! make_immutable_ctx {
         {
             debug_assert!($ctx.sender.is_none());
             debug_assert!($ctx.funds.is_none());
-            debug_assert!($ctx.simulate.is_none());
+            debug_assert!($ctx.mode.is_none());
 
             ImmutableCtx {
                 storage:  $storage,
@@ -44,7 +44,7 @@ macro_rules! make_immutable_ctx {
 macro_rules! make_mutable_ctx {
     ($ctx:ident, $storage:expr, $api:expr, $querier:expr) => {
         {
-            debug_assert!($ctx.simulate.is_none());
+            debug_assert!($ctx.mode.is_none());
 
             MutableCtx {
                 storage:  $storage,
@@ -68,7 +68,7 @@ macro_rules! make_sudo_ctx {
         {
             debug_assert!($ctx.sender.is_none());
             debug_assert!($ctx.funds.is_none());
-            debug_assert!($ctx.simulate.is_none());
+            debug_assert!($ctx.mode.is_none());
 
             SudoCtx {
                 storage:  $storage,
@@ -98,7 +98,7 @@ macro_rules! make_auth_ctx {
                 chain_id: $ctx.chain_id,
                 block:    $ctx.block,
                 contract: $ctx.contract,
-                simulate: $ctx.simulate.unwrap(),
+                mode:     $ctx.mode.unwrap(),
             }
         }
     };
