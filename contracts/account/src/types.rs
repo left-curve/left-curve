@@ -14,6 +14,13 @@ pub enum PublicKey {
     Secp256r1(Binary),
 }
 
+/// Schema for the account credentials expected in [`Tx::credential`](grug_types::Tx::credential).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Credential {
+    pub sequence: u32,
+    pub signature: Binary,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InstantiateMsg {
     pub public_key: PublicKey,
