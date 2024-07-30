@@ -107,12 +107,12 @@ mod taxman {
 // The tx should fail at `withhold_fee` stage.
 // No state change should be committed.
 #[test_case(
-    10_u128,
-    1_u128,
+    10,
+    1,
     100_000,
-    0_u128,
-    10_u128,
-    0_u128,
+    0,
+    10,
+    0,
     Some("subtraction overflow: 10 - 25000 < bnum::buint::BUint<4>::MIN");
     "error while withholding fee"
 )]
@@ -121,34 +121,34 @@ mod taxman {
 // The tx should pass `withhold_fee`, but fail at processing messages.
 // The fee should be deducted from the sender's account, but the transfer reverted.
 #[test_case(
-    30_000_u128,
-    99_999_u128,
+    30_000,
+    99_999,
     100_000,
-    6250_u128,  // = 100,000 / 4 * 0.25
-    23750_u128, // = 30,000 - (100,000 / 4 * 0.25)
-    0_u128,
+    6250,  // = 100,000 / 4 * 0.25
+    23750, // = 30,000 - (100,000 / 4 * 0.25)
+    0,
     Some("subtraction overflow: 5000 - 99999 < bnum::buint::BUint<4>::MIN");
     "error while processing messages"
 )]
 // Case 3. Sender has enough balance to cover both gas fee and the transfer.
 // State changes from both gas fee and transfer should be affected.
 #[test_case(
-    30_000_u128,
-    123_u128,
+    30_000,
+    123,
     100_000,
-    6250_u128,  // = 100,000 / 4 * 0.25
-    23627_u128, // = 30,000 - (100,000 / 4 * 0.25) - 123
-    123_u128,
+    6250,  // = 100,000 / 4 * 0.25
+    23627, // = 30,000 - (100,000 / 4 * 0.25) - 123
+    123,
     None;
     "successful tx"
 )]
 fn withholding_and_finalizing_fee_works(
-    sender_balance_before: impl Into<Uint256>,
-    send_amount: impl Into<Uint256>,
+    sender_balance_before: u128,
+    send_amount: u128,
     gas_limit: u64,
-    owner_balance_after: impl Into<Uint256>,
-    sender_balance_after: impl Into<Uint256>,
-    receiver_balance_after: impl Into<Uint256>,
+    owner_balance_after: u128,
+    sender_balance_after: u128,
+    receiver_balance_after: u128,
     maybe_err: Option<&str>,
 ) {
     let taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
@@ -162,10 +162,7 @@ fn withholding_and_finalizing_fee_works(
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(
-                taxman::FEE_DENOM,
-                NonZero::new(sender_balance_before.into()),
-            ),
+            Coins::one(taxman::FEE_DENOM, NonZero::new(sender_balance_before)),
         )
         .unwrap()
         .add_account("receiver", Coins::new())
@@ -181,7 +178,7 @@ fn withholding_and_finalizing_fee_works(
             gas_limit,
             Message::transfer(
                 accounts["receiver"].address.clone(),
-                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount.into())),
+                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount)),
             )
             .unwrap(),
         )
