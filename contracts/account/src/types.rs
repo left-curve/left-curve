@@ -39,3 +39,9 @@ pub struct StateResponse {
     pub public_key: PublicKey,
     pub sequence: u32,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Credential {
+    pub signature: Binary,
+    pub sequence: u32,
+}

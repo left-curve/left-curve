@@ -16,7 +16,7 @@ pub struct Context {
     pub contract: Addr,
     pub sender:   Option<Addr>,
     pub funds:    Option<Coins>,
-    pub simulate: Option<bool>,
+    pub mode:     Option<AuthMode>,
 }
 
 /// A context that contians an immutable store. The contract is allowed to read
@@ -76,5 +76,12 @@ pub struct AuthCtx<'a> {
     pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
-    pub simulate: bool,
+    pub mode:     AuthMode,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub enum AuthMode {
+    Simulate,
+    CheckTx,
+    Finalize
 }

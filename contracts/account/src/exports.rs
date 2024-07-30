@@ -44,7 +44,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     initialize(ctx.storage, &msg.public_key)
 }
 
-pub fn before_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
+pub fn before_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     authenticate_tx(ctx, tx)
 }
 

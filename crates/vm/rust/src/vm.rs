@@ -351,7 +351,7 @@ mod tests {
             contract: Addr::mock(1),
             sender: Some(Addr::mock(2)),
             funds: Some(Coins::new()),
-            simulate: None,
+            mode: None,
         };
 
         let msg = tester::InstantiateMsg {

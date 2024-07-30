@@ -118,7 +118,7 @@ where
         contract: cfg.bank,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
@@ -198,7 +198,7 @@ where
         contract,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_1_out_1::<_, _, GenericResult<Json>>(
