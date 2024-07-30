@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, NonZero, NumberConst, TxOutcome, Uint128},
+    grug_types::{Coins, Empty, Message, NonZero, NumberConst, TxOutcome, Uint256},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };
@@ -13,7 +13,7 @@ mod taxman {
     use {
         grug_types::{
             Coins, Empty, Message, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-            Response, StdResult, SudoCtx, Tx, TxOutcome, Udec128, Uint128,
+            Response, StdResult, SudoCtx, Tx, TxOutcome, Udec128, Uint128, Uint256,
         },
         std::str::FromStr,
     };
@@ -29,7 +29,7 @@ mod taxman {
         let info = ctx.querier.query_info()?;
 
         let fee_rate = Udec128::from_str(FEE_RATE)?;
-        let withhold_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(fee_rate)?;
+        let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_rate)?;
 
         let withhold_msg = if !withhold_amount.is_zero() {
             Some(Message::execute(
@@ -107,13 +107,13 @@ mod taxman {
 // The tx should fail at `withhold_fee` stage.
 // No state change should be committed.
 #[test_case(
-    10,
-    1,
+    10_u128,
+    1_u128,
     100_000,
-    0,
-    10,
-    0,
-    Some("subtraction overflow: 10 - 25000 < u128::MIN");
+    0_u128,
+    10_u128,
+    0_u128,
+    Some("subtraction overflow: 10 - 25000 < bnum::buint::BUint<4>::MIN");
     "error while withholding fee"
 )]
 // Case 2. Sender has enough balance to cover gas fee, but not enough for the
@@ -121,34 +121,34 @@ mod taxman {
 // The tx should pass `withhold_fee`, but fail at processing messages.
 // The fee should be deducted from the sender's account, but the transfer reverted.
 #[test_case(
-    30_000,
-    99_999,
+    30_000_u128,
+    99_999_u128,
     100_000,
-    6250,  // = 100,000 / 4 * 0.25
-    23750, // = 30,000 - (100,000 / 4 * 0.25)
-    0,
-    Some("subtraction overflow: 5000 - 99999 < u128::MIN");
+    6250_u128,  // = 100,000 / 4 * 0.25
+    23750_u128, // = 30,000 - (100,000 / 4 * 0.25)
+    0_u128,
+    Some("subtraction overflow: 5000 - 99999 < bnum::buint::BUint<4>::MIN");
     "error while processing messages"
 )]
 // Case 3. Sender has enough balance to cover both gas fee and the transfer.
 // State changes from both gas fee and transfer should be affected.
 #[test_case(
-    30_000,
-    123,
+    30_000_u128,
+    123_u128,
     100_000,
-    6250,  // = 100,000 / 4 * 0.25
-    23627, // = 30,000 - (100,000 / 4 * 0.25) - 123
-    123,
+    6250_u128,  // = 100,000 / 4 * 0.25
+    23627_u128, // = 30,000 - (100,000 / 4 * 0.25) - 123
+    123_u128,
     None;
     "successful tx"
 )]
 fn withholding_and_finalizing_fee_works(
-    sender_balance_before: u128,
-    send_amount: u128,
+    sender_balance_before: impl Into<Uint256>,
+    send_amount: impl Into<Uint256>,
     gas_limit: u64,
-    owner_balance_after: u128,
-    sender_balance_after: u128,
-    receiver_balance_after: u128,
+    owner_balance_after: impl Into<Uint256>,
+    sender_balance_after: impl Into<Uint256>,
+    receiver_balance_after: impl Into<Uint256>,
     maybe_err: Option<&str>,
 ) {
     let taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
@@ -162,7 +162,10 @@ fn withholding_and_finalizing_fee_works(
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(taxman::FEE_DENOM, NonZero::new(sender_balance_before)),
+            Coins::one(
+                taxman::FEE_DENOM,
+                NonZero::new(sender_balance_before.into()),
+            ),
         )
         .unwrap()
         .add_account("receiver", Coins::new())
@@ -178,7 +181,7 @@ fn withholding_and_finalizing_fee_works(
             gas_limit,
             Message::transfer(
                 accounts["receiver"].address.clone(),
-                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount)),
+                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount.into())),
             )
             .unwrap(),
         )
@@ -195,13 +198,13 @@ fn withholding_and_finalizing_fee_works(
 
     suite
         .query_balance(&accounts["owner"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(Uint128::new(owner_balance_after));
+        .should_succeed_and_equal(owner_balance_after.into());
     suite
         .query_balance(&accounts["sender"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(Uint128::new(sender_balance_after));
+        .should_succeed_and_equal(sender_balance_after.into());
     suite
         .query_balance(&accounts["receiver"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(Uint128::new(receiver_balance_after));
+        .should_succeed_and_equal(receiver_balance_after.into());
 }
 
 // In this test, we see what happens if the tx fails at the `finalize_fee` stage.
@@ -254,8 +257,8 @@ fn finalizing_fee_erroring() {
     // are discarded.
     suite
         .query_balance(&accounts["owner"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
     suite
         .query_balance(&accounts["sender"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(Uint128::new(30_000));
+        .should_succeed_and_equal(30_000_u128.into());
 }

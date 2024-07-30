@@ -1,5 +1,5 @@
 use {
-    crate::{NonZero, Number, NumberConst, StdError, StdResult, Uint128},
+    crate::{NonZero, Number, NumberConst, StdError, StdResult, Uint256},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::{
@@ -16,7 +16,7 @@ use {
 #[serde(deny_unknown_fields)]
 pub struct Coin {
     pub denom: String,
-    pub amount: Uint128,
+    pub amount: Uint256,
 }
 
 impl Coin {
@@ -25,7 +25,7 @@ impl Coin {
     pub fn new<D, A>(denom: D, amount: NonZero<A>) -> Self
     where
         D: ToString,
-        A: Into<Uint128>,
+        A: Into<Uint256>,
     {
         let denom = denom.to_string();
         let amount = amount.into_inner().into();
@@ -66,14 +66,14 @@ impl fmt::Debug for Coin {
 #[derive(Serialize)]
 pub struct CoinRef<'a> {
     pub denom: &'a String,
-    pub amount: &'a Uint128,
+    pub amount: &'a Uint256,
 }
 
 /// A sorted list of coins or tokens.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
-pub struct Coins(BTreeMap<String, Uint128>);
+pub struct Coins(BTreeMap<String, Uint256>);
 
 impl Coins {
     // There are two ways to stringify a Coins:
@@ -100,7 +100,7 @@ impl Coins {
     pub fn one<D, A>(denom: D, amount: NonZero<A>) -> Self
     where
         D: ToString,
-        A: Into<Uint128>,
+        A: Into<Uint256>,
     {
         let denom = denom.to_string();
         let amount = amount.into_inner().into();
@@ -125,8 +125,8 @@ impl Coins {
 
     /// Get the amount of the given denom.
     /// Note, if the denom does not exist, zero is returned.
-    pub fn amount_of(&self, denom: &str) -> Uint128 {
-        self.0.get(denom).copied().unwrap_or(Uint128::ZERO)
+    pub fn amount_of(&self, denom: &str) -> Uint256 {
+        self.0.get(denom).copied().unwrap_or(Uint256::ZERO)
     }
 
     /// Do nothing if the `Coins` is empty; throw an error if not empty.
@@ -157,7 +157,7 @@ impl Coins {
     pub fn increase_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
     where
         D: Into<String>,
-        A: Into<Uint128>,
+        A: Into<Uint256>,
     {
         let denom = denom.into();
         let by = by.into();
@@ -183,7 +183,7 @@ impl Coins {
     pub fn decrease_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
     where
         D: Into<String>,
-        A: Into<Uint128>,
+        A: Into<Uint256>,
     {
         let denom = denom.into();
         let by = by.into();
@@ -210,7 +210,7 @@ impl Coins {
     fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
         D: Into<String>,
-        A: Into<Uint128>,
+        A: Into<Uint256>,
         I: IntoIterator<Item = (D, A)>,
     {
         let mut map = BTreeMap::new();
@@ -260,7 +260,7 @@ impl FromStr for Coins {
                 )));
             };
 
-            let Ok(amount) = Uint128::from_str(amount_str) else {
+            let Ok(amount) = Uint256::from_str(amount_str) else {
                 return Err(StdError::invalid_coins(format!(
                     "invalid amount `{amount_str}`"
                 )));
@@ -302,7 +302,7 @@ impl TryFrom<Vec<Coin>> for Coins {
 impl<D, A, const N: usize> TryFrom<[(D, A); N]> for Coins
 where
     D: Into<String>,
-    A: Into<Uint128>,
+    A: Into<Uint256>,
 {
     type Error = StdError;
 
@@ -314,7 +314,7 @@ where
 impl<D, A> TryFrom<BTreeMap<D, A>> for Coins
 where
     D: Into<String>,
-    A: Into<Uint128>,
+    A: Into<Uint256>,
 {
     type Error = StdError;
 
@@ -353,7 +353,7 @@ impl IntoIterator for Coins {
     }
 }
 
-pub struct CoinsIter<'a>(btree_map::Iter<'a, String, Uint128>);
+pub struct CoinsIter<'a>(btree_map::Iter<'a, String, Uint256>);
 
 impl<'a> Iterator for CoinsIter<'a> {
     type Item = CoinRef<'a>;
@@ -365,7 +365,7 @@ impl<'a> Iterator for CoinsIter<'a> {
     }
 }
 
-pub struct CoinsIntoIter(btree_map::IntoIter<String, Uint128>);
+pub struct CoinsIntoIter(btree_map::IntoIter<String, Uint256>);
 
 impl Iterator for CoinsIntoIter {
     type Item = Coin;
@@ -411,9 +411,9 @@ mod tests {
     fn mock_coins() -> Coins {
         Coins(
             [
-                (String::from("uatom"), Uint128::new(123)),
-                (String::from("umars"), Uint128::new(456)),
-                (String::from("uosmo"), Uint128::new(789)),
+                (String::from("uatom"), 123_u128.into()),
+                (String::from("umars"), 456_u128.into()),
+                (String::from("uosmo"), 789_u128.into()),
             ]
             .into(),
         )

@@ -3,7 +3,7 @@ use {
     anyhow::{bail, ensure},
     grug_types::{
         Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Response, StdResult,
-        Storage, SudoCtx, Tx, TxOutcome, Uint128,
+        Storage, SudoCtx, Tx, TxOutcome, Uint128, Uint256,
     },
 };
 
@@ -34,7 +34,7 @@ pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
     // Compute the maximum amount of fee this transaction may incur.
     //
     // Note that we ceil the amount here, instead of flooring.
-    let withhold_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(cfg.fee_rate)?;
+    let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(cfg.fee_rate)?;
 
     // If the fee amount is non-zero, we force transfer the max fee amount from
     // the sender to here (the taxman). If zero, nothing to do.

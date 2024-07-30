@@ -12,7 +12,7 @@
 use {
     crate::{
         from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash, InfoResponse,
-        Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint128,
+        Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -284,7 +284,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_info())
     }
 
-    pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint128> {
+    pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint256> {
         self.inner
             .query_chain(QueryRequest::Balance { address, denom })
             .map(|res| res.as_balance().amount)
@@ -305,7 +305,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_balances())
     }
 
-    pub fn query_supply(&self, denom: String) -> StdResult<Uint128> {
+    pub fn query_supply(&self, denom: String) -> StdResult<Uint256> {
         self.inner
             .query_chain(QueryRequest::Supply { denom })
             .map(|res| res.as_supply().amount)

@@ -99,7 +99,10 @@ impl<T> GenericResult<T> {
                 // passed through the FFI, at which time they lost their types.
                 let expect = msg.to_string();
                 let actual = err.to_string();
-                assert!(actual.contains(&expect), "wrong error!");
+                assert!(
+                    actual.contains(&expect),
+                    "wrong error! expected: {expect}, got: {actual}"
+                );
             },
             GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
         }

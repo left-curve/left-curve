@@ -1,7 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug_storage::Bound,
-    grug_types::{Addr, Coin, Coins, NumberConst, Order, StdResult, Storage, Uint128},
+    grug_types::{Addr, Coin, Coins, NumberConst, Order, StdResult, Storage, Uint256},
     std::collections::BTreeMap,
 };
 
@@ -11,7 +11,7 @@ pub fn query_balance(storage: &dyn Storage, address: Addr, denom: String) -> Std
     let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (&address, &denom))?;
     Ok(Coin {
         denom,
-        amount: maybe_amount.unwrap_or(Uint128::ZERO),
+        amount: maybe_amount.unwrap_or(Uint256::ZERO),
     })
 }
 
@@ -38,7 +38,7 @@ pub fn query_supply(storage: &dyn Storage, denom: String) -> StdResult<Coin> {
     let maybe_supply = SUPPLIES.may_load(storage, &denom)?;
     Ok(Coin {
         denom,
-        amount: maybe_supply.unwrap_or(Uint128::ZERO),
+        amount: maybe_supply.unwrap_or(Uint256::ZERO),
     })
 }
 
@@ -64,7 +64,7 @@ pub fn query_holders(
     denom: String,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, Uint128>> {
+) -> StdResult<BTreeMap<Addr, Uint256>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
