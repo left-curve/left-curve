@@ -65,25 +65,69 @@ impl Response {
     }
 }
 
+/// A special response emitted by the account contract at the end of the
+/// `before_tx` method call. In addition to the usual [`Response`](crate::Response),
+/// this also includes a boolean specifying whether the account requests a
+/// backrun call.
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct AuthResponse {
     pub response: Response,
-    pub request_backrun: bool,
+    pub do_backrun: bool,
 }
 
 impl AuthResponse {
-    pub fn new_with_request_backrun(response: Response) -> Self {
-        Self {
-            response,
-            request_backrun: true,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn new_without_request_backrun(response: Response) -> Self {
-        Self {
-            response,
-            request_backrun: false,
-        }
+    pub fn do_backrun(mut self, do_backrun: bool) -> Self {
+        self.do_backrun = do_backrun;
+        self
+    }
+
+    pub fn add_message(mut self, msg: Message) -> Self {
+        self.response = self.response.add_message(msg);
+        self
+    }
+
+    pub fn may_add_message(mut self, maybe_msg: Option<Message>) -> Self {
+        self.response = self.response.may_add_message(maybe_msg);
+        self
+    }
+
+    pub fn add_messages<M>(mut self, msgs: M) -> Self
+    where
+        M: IntoIterator<Item = Message>,
+    {
+        self.response = self.response.add_messages(msgs);
+        self
+    }
+
+    pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
+        self.response = self.response.add_submessage(submsg);
+        self
+    }
+
+    pub fn may_add_submessage(mut self, maybe_submsg: Option<SubMessage>) -> Self {
+        self.response = self.response.may_add_submessage(maybe_submsg);
+        self
+    }
+
+    pub fn add_submessages<M>(mut self, submsgs: M) -> Self
+    where
+        M: IntoIterator<Item = SubMessage>,
+    {
+        self.response = self.response.add_submessages(submsgs);
+        self
+    }
+
+    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: ToString,
+        V: ToString,
+    {
+        self.response = self.response.add_attribute(key, value);
+        self
     }
 }
 

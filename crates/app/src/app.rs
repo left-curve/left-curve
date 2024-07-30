@@ -540,7 +540,7 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    let request_backrun = match do_before_tx(
+    let do_backrun = match do_before_tx(
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
@@ -548,10 +548,10 @@ where
         &tx,
         mode.clone(),
     ) {
-        Ok((new_events, request_backrun)) => {
+        Ok((new_events, do_backrun)) => {
             buffer2.write_access().commit();
             events.extend(new_events);
-            request_backrun
+            do_backrun
         },
         Err(err) => {
             drop(buffer2);
@@ -574,7 +574,7 @@ where
         block.clone(),
         &tx,
         mode,
-        request_backrun,
+        do_backrun,
     ) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
@@ -608,7 +608,7 @@ fn process_msgs_then_after_tx<S, VM>(
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
-    request_backrun: bool,
+    do_backrun: bool,
 ) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
@@ -631,7 +631,7 @@ where
         )?);
     }
 
-    if request_backrun {
+    if do_backrun {
         msg_events.extend(do_after_tx(
             vm.clone(),
             Box::new(buffer),

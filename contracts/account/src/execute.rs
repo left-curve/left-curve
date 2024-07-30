@@ -131,9 +131,10 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // Increment the sequence number
     SEQUENCE.increment(ctx.storage)?;
 
-    Ok(AuthResponse::new_without_request_backrun(
-        Response::new()
-            .add_attribute("method", "before_tx")
-            .add_attribute("sequence", sequence),
-    ))
+    Ok(AuthResponse::new()
+        .add_attribute("method", "before_tx")
+        .add_attribute("sequence", sequence)
+        // This account implementation doesn't make use of the transaction
+        // backrunning feature, so we do not request a backrun.
+        .do_backrun(false))
 }

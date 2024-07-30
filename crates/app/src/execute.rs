@@ -679,7 +679,7 @@ where
             auth_response.response,
         )?;
 
-        Ok((events, auth_response.request_backrun))
+        Ok((events, auth_response.do_backrun))
     }();
 
     match result {
