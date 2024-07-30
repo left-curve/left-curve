@@ -10,8 +10,8 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, Binary, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
-        Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
+        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
+        Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
         Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
@@ -209,7 +209,7 @@ where
                 buffer.clone(),
                 block.clone(),
                 tx,
-                false,
+                AuthMode::Finalize,
             ));
         }
 
@@ -287,7 +287,7 @@ where
             gas_tracker.clone(),
             block,
             &tx,
-            false,
+            AuthMode::Check,
         ) {
             Ok(new_events) => {
                 events.extend(new_events);
@@ -409,12 +409,18 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            credential: Binary::empty(),
+            credential: Json::default(),
         };
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        Ok(process_tx(self.vm.clone(), buffer, block, tx, true))
+        Ok(process_tx(
+            self.vm.clone(),
+            buffer,
+            block,
+            tx,
+            AuthMode::Simulate,
+        ))
     }
 }
 
@@ -478,7 +484,7 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, simulate: bool) -> TxOutcome
+fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
@@ -540,7 +546,7 @@ where
         gas_tracker.clone(),
         block.clone(),
         &tx,
-        simulate,
+        mode.clone(),
     ) {
         Ok(new_events) => {
             buffer2.write_access().commit();
@@ -566,7 +572,7 @@ where
         gas_tracker.clone(),
         block.clone(),
         &tx,
-        simulate,
+        mode,
     ) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
@@ -599,7 +605,7 @@ fn process_msgs_then_after_tx<S, VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
+    mode: AuthMode,
 ) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
@@ -628,7 +634,7 @@ where
         gas_tracker,
         block,
         tx,
-        simulate,
+        mode,
     )?);
 
     Ok(msg_events)
