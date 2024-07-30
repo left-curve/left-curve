@@ -2,9 +2,8 @@ use {
     crate::{Credential, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx, Response,
-        StdResult,
-        Storage, Tx,
+        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
+        Response, StdResult, Storage, Tx,
     },
 };
 

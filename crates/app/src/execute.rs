@@ -5,7 +5,8 @@ use {
         AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome
+        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
+        Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
