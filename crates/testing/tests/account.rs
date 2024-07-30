@@ -65,7 +65,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     // Create a block with the txs.
     // The tx with sequence 1 should succeed.
     // The tx with sequence 2 should succeed.
-    // The tx with sequence 4 should succeed.
+    // The tx with sequence 4 should fail.
     let result = suite.make_block(txs)?;
 
     result.tx_outcomes[0].result.clone().should_succeed();
