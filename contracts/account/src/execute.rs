@@ -68,27 +68,29 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 
 pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
-    let next_sequence = SEQUENCE.load(ctx.storage)?;
+    let sequence = SEQUENCE.load(ctx.storage)?;
     let credential: Credential = from_json_value(tx.credential)?;
 
     match ctx.mode {
-        AuthMode::Simulate => {},
-        // Sequence must be equal or greater than the next sequence
-        // This because there could be multiple transactions in the mempool
-        // from the same account.
-        AuthMode::CheckTx => ensure!(
-            credential.sequence >= next_sequence,
+        // During `CheckTx`, ensure the tx's sequence is equal or greater than
+        // the expected sequence.
+        // This is to allow multiple transactions in the mempool from the same
+        // account with different sequence numbers.
+        AuthMode::Check => ensure!(
+            credential.sequence >= sequence,
             "sequence is too old: expected at least {}, got {}",
-            next_sequence,
+            sequence,
             credential.sequence
         ),
-        // Sequence must be equal than the next sequence
+        // During `FinalizeBlock`, ensure the tx's sequence equals exactly the
+        // expected sequence.
         AuthMode::Finalize => ensure!(
-            credential.sequence == next_sequence,
-            "invalid sequence number: expected {}, got {}",
-            next_sequence,
+            credential.sequence == sequence,
+            "incorrect sequence number: expected {}, got {}",
+            sequence,
             credential.sequence
         ),
+        _ => (),
     };
 
     // Prepare the hash that is expected to have been signed.
@@ -105,13 +107,15 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     // Verify the signature.
     //
     // This is skipped when in simulation mode.
+    //
     // Note the gas costs for signature verification:
     // - Secp256r1: 1,880,000
     // - Secp256k1:   770,000
     // - Ethereum:  1,580,000
+    //
     // These costs are not accounted for in simulations.
     // It may be a good idea to manually add these to your simulation result.
-    if matches!(ctx.mode, AuthMode::CheckTx | AuthMode::Finalize) {
+    if let AuthMode::Check | AuthMode::Finalize = ctx.mode {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
                 ctx.api
@@ -129,5 +133,5 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
 
     Ok(Response::new()
         .add_attribute("method", "before_tx")
-        .add_attribute("next_sequence", next_sequence.to_string()))
+        .add_attribute("sequence", sequence))
 }

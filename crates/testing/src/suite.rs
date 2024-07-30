@@ -274,17 +274,6 @@ where
         Ok(self.app.do_check_tx(tx)?)
     }
 
-    pub fn check_msgs_with_gas(
-        &self,
-        signer: &TestAccount,
-        sequence: u32,
-        msgs: Vec<Message>,
-        gas_limit: u64,
-    ) -> anyhow::Result<Outcome> {
-        let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, sequence)?;
-        self.check_tx(tx)
-    }
-
     pub fn query_info(&self) -> GenericResult<InfoResponse> {
         self.app
             .do_query_app(QueryRequest::Info {}, 0, false)

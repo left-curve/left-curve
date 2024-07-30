@@ -35,15 +35,6 @@ impl<T> NonZero<T> {
     }
 }
 
-impl<T> From<T> for NonZero<T>
-where
-    T: Number,
-{
-    fn from(inner: T) -> Self {
-        Self::new(inner)
-    }
-}
-
 // ---------------------------------- traits -----------------------------------
 
 /// Describes a type that wraps another type.

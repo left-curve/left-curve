@@ -46,15 +46,16 @@ impl TestAccount {
 
         let signature: Signature = self.sk.sign_digest(sign_bytes);
 
+        let credential = to_json_value(&Credential {
+            signature: signature.to_vec().into(),
+            sequence,
+        })?;
+
         Ok(Tx {
             sender: self.address.clone(),
             msgs,
             gas_limit,
-            // credential: signature.to_vec().into(),
-            credential: to_json_value(&Credential {
-                signature: signature.to_vec().into(),
-                sequence,
-            })?,
+            credential,
         })
     }
 }

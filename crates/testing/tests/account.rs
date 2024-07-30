@@ -1,7 +1,7 @@
 use {
     grug_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{from_json_value, Coins, Duration, Message, Timestamp, Tx, Uint128},
+    grug_types::{from_json_value, Coins, Duration, Message, NonZero, Timestamp, Tx, Uint128},
 };
 
 #[test]
@@ -17,14 +17,13 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     let transfer_msg = Message::transfer(
         accounts["larry"].address.clone(),
-        Coins::one("uatom", Uint128::new(10).into()),
+        Coins::one("uatom", NonZero::new(Uint128::new(10))),
     )?;
 
     // Create a tx to set sequence to 1.
     suite.send_message(&accounts["rhaki"], transfer_msg.clone())?;
 
     // Create a tx with sequence 0, 1, 2, 4.
-
     let info = suite.query_info().should_succeed();
 
     let txs: Vec<Tx> = [0, 1, 2, 4]
@@ -38,6 +37,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
                     &info.chain_id,
                     sequence,
                 )?;
+
                 // Check the tx and if the result is ok, return the tx.
                 suite.check_tx(tx.clone())?.result.into_std_result()?;
 
@@ -72,40 +72,27 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     result.tx_outcomes[1].result.clone().should_succeed();
     result.tx_outcomes[2].result.clone().should_fail();
 
-    assert_eq!(
-        suite
-            .query_balance(&accounts["rhaki"], "uatom")
-            .should_succeed(),
-        70_u128.into()
-    );
-    assert_eq!(
-        suite
-            .query_balance(&accounts["larry"], "uatom")
-            .should_succeed(),
-        30_u128.into()
-    );
+    suite
+        .query_balance(&accounts["rhaki"], "uatom")
+        .should_succeed_and_equal(Uint128::new(70));
+    suite
+        .query_balance(&accounts["larry"], "uatom")
+        .should_succeed_and_equal(Uint128::new(30));
 
     // Try create a block with a tx with sequence = 3
-    let tx =
-        accounts["rhaki"].sign_transaction(vec![transfer_msg.clone()], 0, &info.chain_id, 3)?;
+    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &info.chain_id, 3)?;
 
     suite.make_block(vec![tx])?.tx_outcomes[0]
         .result
         .clone()
         .should_succeed();
 
-    assert_eq!(
-        suite
-            .query_balance(&accounts["rhaki"], "uatom")
-            .should_succeed(),
-        60_u128.into()
-    );
-    assert_eq!(
-        suite
-            .query_balance(&accounts["larry"], "uatom")
-            .should_succeed(),
-        40_u128.into()
-    );
+    suite
+        .query_balance(&accounts["rhaki"], "uatom")
+        .should_succeed_and_equal(Uint128::new(60));
+    suite
+        .query_balance(&accounts["larry"], "uatom")
+        .should_succeed_and_equal(Uint128::new(40));
 
     Ok(())
 }

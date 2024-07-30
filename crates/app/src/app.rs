@@ -287,7 +287,7 @@ where
             gas_tracker.clone(),
             block,
             &tx,
-            AuthMode::CheckTx,
+            AuthMode::Check,
         ) {
             Ok(new_events) => {
                 events.extend(new_events);
