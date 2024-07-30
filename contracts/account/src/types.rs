@@ -40,6 +40,7 @@ pub struct StateResponse {
     pub sequence: u32,
 }
 
+/// Schema for the account credentials expected in [`Tx::credential`](grug_types::Tx::credential).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Credential {
     pub signature: Binary,
