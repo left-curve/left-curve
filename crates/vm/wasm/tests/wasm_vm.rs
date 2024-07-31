@@ -2,7 +2,7 @@ use {
     grug_testing::TestBuilder,
     grug_types::{
         to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
-        Udec128, Uint128,
+        Udec128, Uint256,
     },
     grug_vm_wasm::{VmError, WasmVm},
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
@@ -32,10 +32,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Sender needs to have sufficient tokens to cover gas fee and the transfers.
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(300_000));
+        .should_succeed_and_equal(Uint256::from(300_000_u128));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     let outcome = suite.send_messages_with_gas(&accounts["sender"], 2_500_000, vec![
@@ -61,8 +61,8 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // Sender remaining balance should be 300k - 70 - withhold + (withhold - charge).
     // = 300k - 70 - charge
-    let fee = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
-    let sender_balance_after = Uint128::new(300_000 - 70) - fee;
+    let fee = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
+    let sender_balance_after = Uint256::from(300_000_u128 - 70) - fee;
 
     // Check balances again
     suite
@@ -70,13 +70,13 @@ fn bank_transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(sender_balance_after);
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::new(70));
+        .should_succeed_and_equal(Uint256::from(70_u128));
 
     let info = suite.query_info().should_succeed();
 
     // List all holders of the denom
     suite
-        .query_wasm_smart::<_, BTreeMap<Addr, Uint128>>(
+        .query_wasm_smart::<_, BTreeMap<Addr, Uint256>>(
             info.config.bank,
             &grug_bank::QueryMsg::Holders {
                 denom: DENOM.to_string(),
@@ -87,7 +87,7 @@ fn bank_transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(BTreeMap::from([
             (accounts["owner"].address.clone(), fee),
             (accounts["sender"].address.clone(), sender_balance_after),
-            (accounts["receiver"].address.clone(), Uint128::new(70)),
+            (accounts["receiver"].address.clone(), Uint256::from(70_u128)),
         ]));
 
     Ok(())
@@ -119,8 +119,8 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     outcome.result.should_fail();
 
     // The transfer should have failed, but gas fee already spent is still charged.
-    let fee = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
-    let sender_balance_after = Uint128::new(200_000) - fee;
+    let fee = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
+    let sender_balance_after = Uint256::from(200_000_u128) - fee;
 
     // Tx is went out of gas.
     // Balances should remain the same
@@ -129,7 +129,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
         .should_succeed_and_equal(sender_balance_after);
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
 
     Ok(())
 }

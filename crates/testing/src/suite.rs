@@ -7,7 +7,7 @@ use {
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
         Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
-        QueryRequest, StdError, Tx, TxOutcome, Uint128, Uint64,
+        QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -300,7 +300,7 @@ where
             .into()
     }
 
-    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint128> {
+    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint256> {
         self.app
             .do_query_app(
                 QueryRequest::Balance {

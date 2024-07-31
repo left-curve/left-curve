@@ -2,7 +2,7 @@ use {
     grug_account::Credential,
     grug_testing::TestBuilder,
     grug_types::{
-        from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint128,
+        from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
     },
     grug_vm_rust::ContractBuilder,
 };
@@ -20,7 +20,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     let transfer_msg = Message::transfer(
         accounts["larry"].address.clone(),
-        Coins::one("uatom", NonZero::new(Uint128::new(10))),
+        Coins::one("uatom", NonZero::new(Uint256::from(10_u128))),
     )?;
 
     // Create a tx to set sequence to 1.
@@ -77,10 +77,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint128::new(70));
+        .should_succeed_and_equal(Uint256::from(70_u128));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint128::new(30));
+        .should_succeed_and_equal(Uint256::from(30_u128));
 
     // Try create a block with a tx with sequence = 3
     let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &info.chain_id, 3)?;
@@ -92,10 +92,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint128::new(60));
+        .should_succeed_and_equal(Uint256::from(60_u128));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint128::new(40));
+        .should_succeed_and_equal(Uint256::from(40_u128));
 
     Ok(())
 }
@@ -103,7 +103,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 mod backrunner {
     use grug_types::{
         AuthCtx, AuthResponse, Coins, Message, Number, NumberConst, Response, StdResult, Tx,
-        Uint128,
+        Uint128, Uint256,
     };
 
     // This contract is used for testing the backrunning feature, so we simply
@@ -123,7 +123,7 @@ mod backrunner {
             &grug_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: "nft/badkids/1".to_string(),
-                amount: Uint128::ONE,
+                amount: Uint256::ONE,
             },
             Coins::new(),
         )?))
@@ -152,7 +152,7 @@ fn backrunning_works() -> anyhow::Result<()> {
         })?
         .add_account(
             "sender",
-            Coins::one("ugrug", NonZero::new(Uint128::new(50_000))),
+            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))),
         )?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
@@ -162,19 +162,19 @@ fn backrunning_works() -> anyhow::Result<()> {
     suite.transfer(
         &accounts["sender"],
         accounts["receiver"].address.clone(),
-        Coins::one("ugrug", NonZero::new(Uint128::new(123))),
+        Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
     )?;
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite
         .query_balance(&accounts["receiver"], "ugrug")
-        .should_succeed_and_equal(Uint128::new(123));
+        .should_succeed_and_equal(Uint256::from(123_u128));
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint128::new(50_000 - 123));
+        .should_succeed_and_equal(Uint256::from(50_000_u128 - 123));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
-        .should_succeed_and_equal(Uint128::ONE);
+        .should_succeed_and_equal(Uint256::ONE);
 
     Ok(())
 }
@@ -193,7 +193,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         })?
         .add_account(
             "sender",
-            Coins::one("ugrug", NonZero::new(Uint128::new(50_000))),
+            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))),
         )?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
@@ -205,7 +205,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
             &accounts["sender"],
             Message::transfer(
                 accounts["receiver"].address.clone(),
-                Coins::one("ugrug", NonZero::new(Uint128::new(123))),
+                Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
             )?,
         )?
         .result
@@ -214,13 +214,13 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     // Transfer should have been reverted, and sender doesn't get bad kids.
     suite
         .query_balance(&accounts["receiver"], "ugrug")
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint128::new(50_000));
+        .should_succeed_and_equal(Uint256::from(50_000_u128));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
 
     Ok(())
 }
