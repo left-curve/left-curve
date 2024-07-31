@@ -1,6 +1,7 @@
 use {
     crate::Shared,
-    std::{fmt, fmt::Display},
+    grug_types::{StdError, StdResult},
+    std::fmt::{self, Display},
 };
 
 // ---------------------------------- config -----------------------------------
@@ -94,17 +95,6 @@ impl LinearGasCost {
 
 // ---------------------------------- tracker ----------------------------------
 
-// We create an error type specifically for the gas tracker, such that there's
-// an linear dependency relation between error types:
-// > `OutOfGasError` --> `VmError` --> `AppError`
-#[derive(Debug, thiserror::Error)]
-#[error("not enough gas! limit: {limit}, used: {used}, comment: {comment}")]
-pub struct OutOfGasError {
-    limit: u64,
-    used: u64,
-    comment: &'static str,
-}
-
 struct GasTrackerInner {
     // `None` means there is no gas limit. This is the case during genesis, and
     // for begin/end blockers.
@@ -176,7 +166,7 @@ impl GasTracker {
     /// Consume the given amount of gas. Error if the limit is exceeded.
     ///
     /// Panics if lock is poisoned.
-    pub fn consume(&self, consumed: u64, comment: &'static str) -> Result<(), OutOfGasError> {
+    pub fn consume(&self, consumed: u64, comment: &'static str) -> StdResult<()> {
         self.inner.write_with(|mut inner| {
             let used = inner.used + consumed;
 
@@ -186,7 +176,7 @@ impl GasTracker {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(limit = inner.limit, used, comment, "Out of gas");
 
-                    return Err(OutOfGasError {
+                    return Err(StdError::OutOfGas {
                         limit,
                         used,
                         comment,
