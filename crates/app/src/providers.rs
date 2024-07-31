@@ -119,12 +119,23 @@ fn prefixed_range_bounds(
 pub struct QuerierProvider<VM> {
     vm: VM,
     storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     block: BlockInfo,
 }
 
 impl<VM> QuerierProvider<VM> {
-    pub fn new(vm: VM, storage: Box<dyn Storage>, block: BlockInfo) -> Self {
-        Self { vm, storage, block }
+    pub fn new(
+        vm: VM,
+        storage: Box<dyn Storage>,
+        gas_tracker: GasTracker,
+        block: BlockInfo,
+    ) -> Self {
+        Self {
+            vm,
+            storage,
+            gas_tracker,
+            block,
+        }
     }
 }
 
@@ -134,18 +145,11 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn do_query_chain(
-        &self,
-        req: QueryRequest,
-        gas_tracker: Option<GasTracker>,
-    ) -> GenericResult<QueryResponse> {
+    pub fn do_query_chain(&self, req: QueryRequest) -> GenericResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
-            // The caller doesn't provide a gas tracker, which means for this
-            // query, there is not need to track the gas consumption.
-            // In this case, we simply use a limitness gas tracker.
-            gas_tracker.unwrap_or_else(GasTracker::new_limitless),
+            self.gas_tracker.clone(),
             self.block.clone(),
             req,
         )
@@ -160,8 +164,6 @@ where
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        // `RustVm` does not support gas tracking, so we don't provide a gas
-        // tracker here.
-        self.do_query_chain(req, None).into_std_result()
+        self.do_query_chain(req).into_std_result()
     }
 }

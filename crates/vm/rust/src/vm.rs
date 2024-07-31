@@ -324,16 +324,24 @@ mod tests {
             hash: Hash::ZERO,
         };
 
-        let storage = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
-        let querier = QuerierProvider::new(vm.clone(), Box::new(db.clone()), block.clone());
+        let gas_tracker = GasTracker::new_limitless();
+
+        let querier_provider = QuerierProvider::new(
+            vm.clone(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            block.clone(),
+        );
+
+        let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
         let instance = vm.build_instance(
             &code,
             &Hash::ZERO,
-            storage,
+            storage_provider,
             false,
-            querier,
-            GasTracker::new_limitless(),
+            querier_provider,
+            gas_tracker,
         )?;
 
         let ctx = Context {

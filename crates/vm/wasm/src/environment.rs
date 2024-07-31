@@ -269,15 +269,4 @@ impl Environment {
             },
         }
     }
-
-    pub fn remaining_points<S>(&self, store: &mut S) -> VmResult<u64>
-    where
-        S: AsStoreMut,
-    {
-        let instance = self.get_wasmer_instance()?;
-        match get_remaining_points(store, instance) {
-            MeteringPoints::Remaining(remaining) => Ok(remaining),
-            MeteringPoints::Exhausted => unreachable!(),
-        }
-    }
 }
