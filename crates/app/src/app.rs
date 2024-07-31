@@ -769,7 +769,7 @@ where
 {
     match req {
         QueryRequest::Info {} => {
-            let res = query_info(&storage)?;
+            let res = query_info(&storage, gas_tracker)?;
             Ok(QueryResponse::Info(res))
         },
         QueryRequest::Balance { address, denom } => {
@@ -793,23 +793,23 @@ where
             Ok(QueryResponse::Supplies(res))
         },
         QueryRequest::Code { hash } => {
-            let res = query_code(&storage, hash)?;
+            let res = query_code(&storage, gas_tracker, hash)?;
             Ok(QueryResponse::Code(res))
         },
         QueryRequest::Codes { start_after, limit } => {
-            let res = query_codes(&storage, start_after, limit)?;
+            let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
         QueryRequest::Account { address } => {
-            let res = query_account(&storage, address)?;
+            let res = query_account(&storage, gas_tracker, address)?;
             Ok(QueryResponse::Account(res))
         },
         QueryRequest::Accounts { start_after, limit } => {
-            let res = query_accounts(&storage, start_after, limit)?;
+            let res = query_accounts(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Accounts(res))
         },
         QueryRequest::WasmRaw { contract, key } => {
-            let res = query_wasm_raw(storage, contract, key);
+            let res = query_wasm_raw(storage, gas_tracker, contract, key)?;
             Ok(QueryResponse::WasmRaw(res))
         },
         QueryRequest::WasmSmart { contract, msg } => {
