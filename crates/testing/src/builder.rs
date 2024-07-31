@@ -177,7 +177,7 @@ where
     /// use grug_vm_rust::ContractBuilder;
     ///
     /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
-    ///     .with_before_tx(Box::new(grug_account::before_tx))
+    ///     .with_authenticate(Box::new(grug_account::authenticate))
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()

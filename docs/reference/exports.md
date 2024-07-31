@@ -46,10 +46,10 @@ These are entry points that a contract needs in order to be able to initiate tra
 
 ```rust
 #[grug::export]
-fn before_tx(ctx: AuthCtx, tx: Tx) -> Result<Response>;
+fn authenticate(ctx: AuthCtx, tx: Tx) -> Result<Response>;
 
 #[grug::export]
-fn after_tx(ctx: AuthCtx, tx: Tx) -> Result<Response>;
+fn backrun(ctx: AuthCtx, tx: Tx) -> Result<Response>;
 ```
 
 ## Cronjobs

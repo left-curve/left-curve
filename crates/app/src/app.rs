@@ -2,7 +2,7 @@
 use grug_types::from_json_slice;
 use {
     crate::{
-        do_after_tx, do_before_tx, do_configure, do_cron_execute, do_execute, do_finalize_fee,
+        do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
         query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
         query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
@@ -259,7 +259,7 @@ where
     // processing flow:
     // 1.`withhold_fee`, where the taxman makes sure the sender has sufficient
     //   tokens to cover the tx fee;
-    // 2. `before_tx`, where the sender account authenticates the transaction.
+    // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -281,7 +281,7 @@ where
             },
         }
 
-        match do_before_tx(
+        match do_authenticate(
             self.vm.clone(),
             Box::new(buffer),
             gas_tracker.clone(),
@@ -527,7 +527,7 @@ where
         },
     }
 
-    // Call the sender account's `before_tx` function.
+    // Call the sender account's `authenticate` function.
     //
     // The sender account is supposed to perform authentication here, such as
     // verifying a cryptographic signature, to ensure the tx comes from the
@@ -540,7 +540,7 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    let do_backrun = match do_before_tx(
+    let request_backrun = match do_authenticate(
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
@@ -548,10 +548,10 @@ where
         &tx,
         mode.clone(),
     ) {
-        Ok((new_events, do_backrun)) => {
+        Ok((new_events, request_backrun)) => {
             buffer2.write_access().commit();
             events.extend(new_events);
-            do_backrun
+            request_backrun
         },
         Err(err) => {
             drop(buffer2);
@@ -560,21 +560,21 @@ where
     };
 
     // Loop through the messages and execute one by one. Then, call the sender
-    // account's `after_tx` method.
+    // account's `backrun` method.
     //
     // If everything succeeds, commit state changes in `buffer2` into `buffer1`,
     // and record the events emitted.
     //
     // If anything fails, discard state changes in `buffer2` (but keeping those
     // in `buffer1`), discard the events, and jump to `finalize_fee`.
-    match process_msgs_then_after_tx(
+    match process_msgs_then_backrun(
         vm.clone(),
         buffer2.clone(),
         gas_tracker.clone(),
         block.clone(),
         &tx,
         mode,
-        do_backrun,
+        request_backrun,
     ) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
@@ -601,14 +601,14 @@ where
 }
 
 #[inline]
-fn process_msgs_then_after_tx<S, VM>(
+fn process_msgs_then_backrun<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
-    do_backrun: bool,
+    request_backrun: bool,
 ) -> AppResult<Vec<Event>>
 where
     S: Storage + Clone + 'static,
@@ -631,8 +631,8 @@ where
         )?);
     }
 
-    if do_backrun {
-        msg_events.extend(do_after_tx(
+    if request_backrun {
+        msg_events.extend(do_backrun(
             vm.clone(),
             Box::new(buffer),
             gas_tracker,

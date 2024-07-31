@@ -66,13 +66,13 @@ impl Response {
 }
 
 /// A special response emitted by the account contract at the end of the
-/// `before_tx` method call. In addition to the usual [`Response`](crate::Response),
+/// `authenticate` method call. In addition to the usual [`Response`](crate::Response),
 /// this also includes a boolean specifying whether the account requests a
 /// backrun call.
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct AuthResponse {
     pub response: Response,
-    pub do_backrun: bool,
+    pub request_backrun: bool,
 }
 
 impl AuthResponse {
@@ -80,8 +80,8 @@ impl AuthResponse {
         Self::default()
     }
 
-    pub fn do_backrun(mut self, do_backrun: bool) -> Self {
-        self.do_backrun = do_backrun;
+    pub fn request_backrun(mut self, request_backrun: bool) -> Self {
+        self.request_backrun = request_backrun;
         self
     }
 

@@ -197,8 +197,8 @@ where
     Region::release_buffer(res_bytes) as usize
 }
 
-pub fn do_before_tx<E>(
-    before_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E>,
+pub fn do_authenticate<E>(
+    authenticate_fn: &dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
 ) -> usize
@@ -213,7 +213,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
 
-        before_tx_fn(ctx, tx).into()
+        authenticate_fn(ctx, tx).into()
     })();
 
     let res_bytes = to_json_vec(&res).unwrap();
@@ -221,8 +221,8 @@ where
     Region::release_buffer(res_bytes) as usize
 }
 
-pub fn do_after_tx<E>(
-    after_tx_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
+pub fn do_backrun<E>(
+    backrun_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
 ) -> usize
@@ -237,7 +237,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
 
-        after_tx_fn(ctx, tx).into()
+        backrun_fn(ctx, tx).into()
     })();
 
     let res_bytes = to_json_vec(&res).unwrap();

@@ -63,7 +63,7 @@ pub struct SudoCtx<'a> {
 /// designates whether the contract call is done in the simulation mode (e.g.
 /// during the `CheckTx` ABCI call).
 ///
-/// This is used in the `before_tx` and `after_tx` entry points, whose primary
+/// This is used in the `authenticate` and `backrun` entry points, whose primary
 /// purpose is to authenticate transactions, hence the name.
 ///
 /// The typical use of the `simulate` parameter is to skip certain authentication
