@@ -1,7 +1,7 @@
 /// The default gas costs.
 ///
-/// TODO: We can put this in the chain's `Config`, such that this can be changed
-/// via a governance proposal, without having to fork the chain.
+/// For now, we make this a constant. In the future we can consider making this
+/// an on-chain parameter configurable by governance.
 pub const GAS_COSTS: GasCosts = GasCosts {
     // Storage.
     //

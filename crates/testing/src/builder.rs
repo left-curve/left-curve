@@ -23,7 +23,7 @@ const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
 const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
-const DEFAULT_FEE_RATE: &str = "0.1";
+const DEFAULT_FEE_RATE: &str = "0";
 
 // If the user wishes to use a custom code for account, bank, or taxman, they
 // must provide both the binary code, as well as a function for creating the

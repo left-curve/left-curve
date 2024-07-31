@@ -1,7 +1,8 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, GasTracker, StorageProvider, Vm, ACCOUNTS, CHAIN_ID,
-        CODES, CONFIG, CONTRACT_NAMESPACE, LAST_FINALIZED_BLOCK,
+        call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
+        StorageProvider, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
+        LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
@@ -13,11 +14,11 @@ use {
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn query_info(storage: &dyn Storage) -> StdResult<InfoResponse> {
+pub fn query_info(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<InfoResponse> {
     Ok(InfoResponse {
-        chain_id: CHAIN_ID.load(storage)?,
-        config: CONFIG.load(storage)?,
-        last_finalized_block: LAST_FINALIZED_BLOCK.load(storage)?,
+        chain_id: CHAIN_ID.load_with_gas(storage, gas_tracker.clone())?,
+        config: CONFIG.load_with_gas(storage, gas_tracker.clone())?,
+        last_finalized_block: LAST_FINALIZED_BLOCK.load_with_gas(storage, gas_tracker)?,
     })
 }
 
@@ -135,12 +136,13 @@ where
     .map_err(AppError::Std)
 }
 
-pub fn query_code(storage: &dyn Storage, hash: Hash) -> StdResult<Binary> {
-    CODES.load(storage, &hash)
+pub fn query_code(storage: &dyn Storage, gas_tracker: GasTracker, hash: Hash) -> StdResult<Binary> {
+    CODES.load_with_gas(storage, gas_tracker, &hash)
 }
 
 pub fn query_codes(
     storage: &dyn Storage,
+    gas_tracker: GasTracker,
     start_after: Option<Hash>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Hash, Binary>> {
@@ -148,17 +150,22 @@ pub fn query_codes(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CODES
-        .range(storage, start, None, Order::Ascending)
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
 }
 
-pub fn query_account(storage: &dyn Storage, address: Addr) -> StdResult<Account> {
-    ACCOUNTS.load(storage, &address)
+pub fn query_account(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    address: Addr,
+) -> StdResult<Account> {
+    ACCOUNTS.load_with_gas(storage, gas_tracker, &address)
 }
 
 pub fn query_accounts(
     storage: &dyn Storage,
+    gas_tracker: GasTracker,
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Addr, Account>> {
@@ -166,15 +173,20 @@ pub fn query_accounts(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     ACCOUNTS
-        .range(storage, start, None, Order::Ascending)
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
 }
 
-pub fn query_wasm_raw(storage: Box<dyn Storage>, contract: Addr, key: Binary) -> Option<Binary> {
+pub fn query_wasm_raw(
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    contract: Addr,
+    key: Binary,
+) -> StdResult<Option<Binary>> {
     StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract])
-        .read(&key)
-        .map(Binary::from)
+        .read_with_gas(gas_tracker, &key)
+        .map(|maybe_value| maybe_value.map(Binary::from))
 }
 
 pub fn query_wasm_smart<VM>(

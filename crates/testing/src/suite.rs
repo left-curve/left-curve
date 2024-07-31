@@ -362,7 +362,7 @@ impl TestSuite<RustVm> {
         signer: &TestAccount,
         msg: Message,
     ) -> anyhow::Result<TxOutcome> {
-        self.send_message_with_gas(signer, 0, msg)
+        self.send_message_with_gas(signer, u64::MAX, msg)
     }
 
     /// Execute one or more messages.
@@ -371,12 +371,12 @@ impl TestSuite<RustVm> {
         signer: &TestAccount,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TxOutcome> {
-        self.send_messages_with_gas(signer, 0, msgs)
+        self.send_messages_with_gas(signer, u64::MAX, msgs)
     }
 
     /// Update the chain's config.
     pub fn configure(&mut self, signer: &TestAccount, new_cfg: Config) -> anyhow::Result<()> {
-        self.configure_with_gas(signer, 0, new_cfg)
+        self.configure_with_gas(signer, u64::MAX, new_cfg)
     }
 
     /// Make a transfer of tokens.
@@ -385,7 +385,7 @@ impl TestSuite<RustVm> {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.transfer_with_gas(signer, 0, to, coins)
+        self.transfer_with_gas(signer, u64::MAX, to, coins)
     }
 
     /// Upload a code. Return the code's hash.
@@ -393,7 +393,7 @@ impl TestSuite<RustVm> {
     where
         B: Into<Binary>,
     {
-        self.upload_with_gas(signer, 0, code)
+        self.upload_with_gas(signer, u64::MAX, code)
     }
 
     /// Instantiate a contract. Return the contract's address.
@@ -411,7 +411,7 @@ impl TestSuite<RustVm> {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.instantiate_with_gas(signer, 0, code_hash, salt, msg, funds)
+        self.instantiate_with_gas(signer, u64::MAX, code_hash, salt, msg, funds)
     }
 
     /// Upload a code and instantiate a contract with it in one go. Return the
@@ -431,7 +431,7 @@ impl TestSuite<RustVm> {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.upload_and_instantiate_with_gas(signer, 0, code, salt, msg, funds)
+        self.upload_and_instantiate_with_gas(signer, u64::MAX, code, salt, msg, funds)
     }
 
     /// Execute a contrat.
@@ -447,7 +447,7 @@ impl TestSuite<RustVm> {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.execute_with_gas(signer, 0, contract, msg, funds)
+        self.execute_with_gas(signer, u64::MAX, contract, msg, funds)
     }
 
     /// Migrate a contract to a new code hash.
@@ -461,6 +461,6 @@ impl TestSuite<RustVm> {
     where
         M: Serialize,
     {
-        self.migrate_with_gas(signer, 0, contract, new_code_hash, msg)
+        self.migrate_with_gas(signer, u64::MAX, contract, new_code_hash, msg)
     }
 }

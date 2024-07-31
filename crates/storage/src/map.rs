@@ -39,7 +39,8 @@ where
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
-    fn path(&self, key: K) -> PathBuf<T, C> {
+    #[doc(hidden)]
+    pub fn path(&self, key: K) -> PathBuf<T, C> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())

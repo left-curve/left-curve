@@ -315,9 +315,8 @@ mod tests {
             .build()
             .into();
 
-        let mut vm = RustVm::new();
-
         let db = Shared::new(MockStorage::new());
+        let mut vm = RustVm::new();
 
         let block = BlockInfo {
             height: Uint64::ZERO,
@@ -365,6 +364,7 @@ mod tests {
             // We expect the call to succeed. Check that the data is correctly
             // written to the DB.
             None => {
+                ensure!(result.is_ok());
                 let value = db.read_access().read(b"testerlarry");
                 ensure!(value == Some(b"engineer".to_vec()));
             },

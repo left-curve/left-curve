@@ -1,7 +1,7 @@
 use {
     crate::{Iterator, VmError, VmResult, WasmVm},
     grug_app::{GasTracker, QuerierProvider, StorageProvider},
-    grug_types::Record,
+    grug_types::{Record, StdError},
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
     wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints},
@@ -190,6 +190,7 @@ impl Environment {
     {
         let instance = self.get_wasmer_instance()?;
         let func = instance.exports.get_function(name)?;
+
         // Make the function call. Then, regardless of whether the call succeeds
         // or fails, check the remaining gas points.
         match (
@@ -223,7 +224,12 @@ impl Environment {
                 self.gas_tracker.consume(self.gas_checkpoint, name)?;
                 self.gas_checkpoint = 0;
 
-                Err(VmError::GasDepletion)
+                Err(StdError::OutOfGas {
+                    limit: self.gas_tracker.limit().unwrap_or(u64::MAX),
+                    used: self.gas_tracker.used(),
+                    comment: name,
+                }
+                .into())
             },
             // The call succeeded, but gas depleted: impossible senario.
             (Ok(_), MeteringPoints::Exhausted) => {
@@ -259,7 +265,7 @@ impl Environment {
             },
             // The contract made a host function call, but gas depleted; impossible.
             MeteringPoints::Exhausted => {
-                unreachable!("No way! Gas is depleted but contract made a host function call");
+                unreachable!("No way! Gas is depleted but contract made a host function call.");
             },
         }
     }

@@ -1,7 +1,6 @@
 use {
-    crate::{
-        read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult, GAS_COSTS,
-    },
+    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    grug_app::GAS_COSTS,
     grug_types::{
         decode_sections, from_json_slice, to_json_vec, Addr, QueryRequest, Record, Storage,
     },

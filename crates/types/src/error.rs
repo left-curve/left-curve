@@ -28,6 +28,13 @@ pub enum StdError {
     #[error("signature verification failed")]
     VerificationFailed,
 
+    #[error("out of gas! limit: {limit}, used: {used}, comment: {comment}")]
+    OutOfGas {
+        limit: u64,
+        used: u64,
+        comment: &'static str,
+    },
+
     #[error("failed to parse string `{value}` into {ty}: {reason}")]
     ParseNumber {
         ty: &'static str,

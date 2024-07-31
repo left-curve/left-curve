@@ -159,7 +159,7 @@ fn infinite_loop() -> anyhow::Result<()> {
             funds: Coins::new(),
         })?
         .result
-        .should_fail_with_error(VmError::GasDepletion);
+        .should_fail_with_error("out of gas");
 
     Ok(())
 }
