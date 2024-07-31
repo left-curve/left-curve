@@ -632,9 +632,9 @@ where
     )
 }
 
-// ------------------------- before/after transaction --------------------------
+// ------------------------------- authenticate --------------------------------
 
-pub fn do_before_tx<VM>(
+pub fn do_authenticate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
@@ -662,7 +662,7 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
-            "before_tx",
+            "authenticate",
             &account.code_hash,
             &ctx,
             false,
@@ -674,37 +674,33 @@ where
             vm,
             storage,
             gas_tracker,
-            "before_tx",
+            "authenticate",
             &ctx,
             auth_response.response,
         )?;
 
-        Ok((events, auth_response.do_backrun))
+        Ok((events, auth_response.request_backrun))
     }();
 
     match result {
         Ok(data) => {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                sender = tx.sender.to_string(),
-                "Called before transaction hook"
-            );
+            tracing::debug!(sender = tx.sender.to_string(), "Authenticated transaction");
 
             Ok(data)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                err = err.to_string(),
-                "Failed to call before transaction hook"
-            );
+            tracing::warn!(err = err.to_string(), "Failed to authenticate transaction");
 
             Err(err)
         },
     }
 }
 
-pub fn do_after_tx<VM>(
+// ---------------------------------- backrun ----------------------------------
+
+pub fn do_backrun<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
@@ -731,7 +727,7 @@ where
         vm,
         storage,
         gas_tracker,
-        "after_tx",
+        "backrun",
         &account.code_hash,
         &ctx,
         false,
@@ -739,19 +735,13 @@ where
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                sender = tx.sender.to_string(),
-                "Called after transaction hook"
-            );
+            tracing::debug!(sender = tx.sender.to_string(), "Backran transaction");
 
             Ok(events)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                err = err.to_string(),
-                "Failed to call after transaction hook"
-            );
+            tracing::warn!(err = err.to_string(), "Failed to backrun transaction");
 
             Err(err)
         },

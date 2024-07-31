@@ -15,8 +15,8 @@ pub const KNOWN_FUNCTIONS: [&str; 13] = [
     "receive",
     "reply",
     "query",
-    "before_tx",
-    "after_tx",
+    "authenticate",
+    "backrun",
     "bank_execute",
     "bank_query",
     "withhold_fee",
@@ -147,9 +147,9 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)
             },
-            "before_tx" => {
+            "authenticate" => {
                 let tx = from_json_slice(param)?;
-                let res = contract.before_tx(
+                let res = contract.authenticate(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
@@ -158,9 +158,9 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)
             },
-            "after_tx" => {
+            "backrun" => {
                 let tx = from_json_slice(param)?;
-                let res = contract.after_tx(
+                let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,

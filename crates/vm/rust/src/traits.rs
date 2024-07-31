@@ -66,7 +66,7 @@ pub trait Contract {
         msg: &[u8],
     ) -> VmResult<GenericResult<Json>>;
 
-    fn before_tx(
+    fn authenticate(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -75,7 +75,7 @@ pub trait Contract {
         tx: Tx,
     ) -> VmResult<GenericResult<AuthResponse>>;
 
-    fn after_tx(
+    fn backrun(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -146,9 +146,9 @@ pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response
 
 pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
+pub type AuthenticateFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
 
-pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type BackrunFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
 pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 

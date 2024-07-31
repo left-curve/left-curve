@@ -124,7 +124,7 @@ pub struct Outcome {
 /// can partially succeed. A typical such scenario is:
 ///
 /// - `withhold_fee` succeeds
-/// - `before_tx` succeeds,
+/// - `authenticate` succeeds,
 /// - one of the messages fail
 /// - `finalize_fee` succeeds
 ///

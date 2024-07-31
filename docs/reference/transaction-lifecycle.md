@@ -107,9 +107,9 @@ When serving a `CheckTx` request, the `App` doesn't execute the entire tx. This 
 Therefore, instead, the `App` only performs the first two steps:
 
 1. Call the taxman's `withhold_fee` method. This ensures the tx's sender has enough fund to afford the tx fee.
-2. Call the sender's `before_tx` method in normal (i.e. non-simulation) mode. Here the sender performs authentication (which is skipped in simulation mode).
+2. Call the sender's `authenticate` method in normal (i.e. non-simulation) mode. Here the sender performs authentication (which is skipped in simulation mode).
 
-Tendermint will reject the tx if `CheckTx` fails (meaning, either `withfold_fee` or `before_tx` fails), or if the tx's gas limit is bigger than the block gas limit (it can't fit in a block). Otherwise, it's inserted into the mempool.
+Tendermint will reject the tx if `CheckTx` fails (meaning, either `withfold_fee` or `authenticate` fails), or if the tx's gas limit is bigger than the block gas limit (it can't fit in a block). Otherwise, it's inserted into the mempool.
 
 ## FinalizeBlock
 
@@ -118,14 +118,14 @@ In `FinalzieBlock`, the entire tx processing flow is performed, which is:
 1. Call taxman's `withhold_fee` method.
 
    This MUST succeed (if it would fail, it should have failed during `CheckTx` such that the tx is rejected from entering mempool). If does fail for some reason (e.g. a previous tx in the block drained the sender's wallet, so it can no longer affored the fee), the processing is aborted and all state changes discarded.
-2. Call sender's `before_tx` method.
+2. Call sender's `authenticate` method.
 
    If fails, discard state changes from step 2 (keeping those from step 1), then jump to step 5.
 
 3. Loop through the messages, execute one by one.
 
    If any fails, discard state changes from step 2-3, then jump to step 5.
-4. Call sender's `after_tx` method.
+4. Call sender's `backrun` method.
 
    If fails, discard state changes from step 2-4, then jump to step 5.
 5. Call taxman's `finalize_fee` method.
@@ -140,9 +140,9 @@ In `FinalzieBlock`, the entire tx processing flow is performed, which is:
 | -------------------------- | ----------------------- | ------------------- | ------------------- |
 | Input type                 | `UnsignedTx`            | `Tx`                | `Tx`                |
 | Call taxman `withhold_fee` | Yes                     | Yes                 | Yes                 |
-| Call sender `before_tx`    | Yes, in simulation mode | Yes, in normal mode | Yes, in normal mode |
+| Call sender `authenticate` | Yes, in simulation mode | Yes, in normal mode | Yes, in normal mode |
 | Execute messages           | Yes                     | No                  | Yes                 |
-| Call sender `after_tx`     | Yes                     | No                  | Yes                 |
+| Call sender `backrun`      | Yes                     | No                  | Yes                 |
 | Call taxman `finalize_fee` | Yes                     | No                  | Yes                 |
 
 [^1]: Transaction fee is still deducted. See the discussion on fee handling later in the article.

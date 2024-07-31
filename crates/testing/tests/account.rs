@@ -107,15 +107,15 @@ mod backrunner {
     };
 
     // This contract is used for testing the backrunning feature, so we simply
-    // skip all authentications in `before_tx`.
-    pub fn before_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<AuthResponse> {
+    // skip all authentications in `authenticate`.
+    pub fn authenticate(_ctx: AuthCtx, _tx: Tx) -> StdResult<AuthResponse> {
         // Do request backrunning.
-        Ok(AuthResponse::new().do_backrun(true))
+        Ok(AuthResponse::new().request_backrun(true))
     }
 
     // Accounts can do any action while backrunning. In this test, the account
     // attempts to mint itself a token.
-    pub fn after_tx(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
+    pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
         let info = ctx.querier.query_info()?;
 
         Ok(Response::new().add_message(Message::execute(
@@ -131,7 +131,7 @@ mod backrunner {
 
     // The account can also reject and revert state changes from the messages
     // simply by throwing en error while backrunning.
-    pub fn bugged_after_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
+    pub fn bugged_backrun(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
         let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
 
         Ok(Response::new())
@@ -141,9 +141,9 @@ mod backrunner {
 #[test]
 fn backrunning_works() -> anyhow::Result<()> {
     let account = ContractBuilder::new(Box::new(grug_account::instantiate))
-        .with_before_tx(Box::new(backrunner::before_tx))
         .with_receive(Box::new(grug_account::receive))
-        .with_after_tx(Box::new(backrunner::after_tx))
+        .with_authenticate(Box::new(backrunner::authenticate))
+        .with_backrun(Box::new(backrunner::backrun))
         .build();
 
     let (mut suite, accounts) = TestBuilder::new()
@@ -182,9 +182,9 @@ fn backrunning_works() -> anyhow::Result<()> {
 #[test]
 fn backrunning_with_error() -> anyhow::Result<()> {
     let bugged_account = ContractBuilder::new(Box::new(grug_account::instantiate))
-        .with_before_tx(Box::new(backrunner::before_tx))
         .with_receive(Box::new(grug_account::receive))
-        .with_after_tx(Box::new(backrunner::bugged_after_tx))
+        .with_authenticate(Box::new(backrunner::authenticate))
+        .with_backrun(Box::new(backrunner::bugged_backrun))
         .build();
 
     let (mut suite, accounts) = TestBuilder::new()

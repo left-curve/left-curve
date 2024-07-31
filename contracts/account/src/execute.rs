@@ -1,9 +1,9 @@
 use {
-    crate::{Credential, PublicKey, PUBLIC_KEY, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
         from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
-        Response, StdResult, Storage, Tx,
+        Response, StdResult, Tx,
     },
 };
 
@@ -46,12 +46,12 @@ where
     Ok(hasher(&prehash))
 }
 
-pub fn initialize(storage: &mut dyn Storage, public_key: &PublicKey) -> StdResult<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
-    PUBLIC_KEY.save(storage, public_key)?;
+    PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
 
     // Initialize the sequence number to zero
-    SEQUENCE.initialize(storage)?;
+    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }
@@ -66,7 +66,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
     Ok(Response::new())
 }
 
-pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
     let sequence = SEQUENCE.load(ctx.storage)?;
     let credential: Credential = from_json_value(tx.credential)?;
@@ -132,9 +132,9 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     SEQUENCE.increment(ctx.storage)?;
 
     Ok(AuthResponse::new()
-        .add_attribute("method", "before_tx")
+        .add_attribute("method", "authenticate")
         .add_attribute("sequence", sequence)
         // This account implementation doesn't make use of the transaction
         // backrunning feature, so we do not request a backrun.
-        .do_backrun(false))
+        .request_backrun(false))
 }

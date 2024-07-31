@@ -1,6 +1,6 @@
 use {
     crate::{
-        AfterTxFn, BankExecuteFn, BankQueryFn, BeforeTxFn, Contract, CronExecuteFn, ExecuteFn,
+        AuthenticateFn, BackrunFn, BankExecuteFn, BankQueryFn, Contract, CronExecuteFn, ExecuteFn,
         FinalizeFeeFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmError, VmResult,
         WithholdFeeFn,
     },
@@ -78,8 +78,8 @@ pub struct ContractBuilder<
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    before_tx_fn: Option<BeforeTxFn<E7>>,
-    after_tx_fn: Option<AfterTxFn<E8>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
+    backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
     withhold_fee_fn: Option<WithholdFeeFn<E11>>,
@@ -100,8 +100,8 @@ where
             receive_fn: None,
             reply_fn: None,
             query_fn: None,
-            before_tx_fn: None,
-            after_tx_fn: None,
+            authenticate_fn: None,
+            backrun_fn: None,
             bank_execute_fn: None,
             bank_query_fn: None,
             withhold_fee_fn: None,
@@ -148,8 +148,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -173,8 +173,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -197,8 +197,8 @@ where
             receive_fn: Some(receive_fn),
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -222,8 +222,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: Some(reply_fn),
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -247,8 +247,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: Some(query_fn),
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -257,9 +257,9 @@ where
         }
     }
 
-    pub fn with_before_tx<E7A>(
+    pub fn with_authenticate<E7A>(
         self,
-        before_tx_fn: BeforeTxFn<E7A>,
+        authenticate_fn: AuthenticateFn<E7A>,
     ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11, E12, E13>
     {
         ContractBuilder {
@@ -269,8 +269,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: Some(before_tx_fn),
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: Some(authenticate_fn),
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -279,9 +279,9 @@ where
         }
     }
 
-    pub fn with_after_tx<E8A>(
+    pub fn with_backrun<E8A>(
         self,
-        after_tx_fn: AfterTxFn<E8A>,
+        backrun_fn: BackrunFn<E8A>,
     ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11, E12, E13>
     {
         ContractBuilder {
@@ -291,8 +291,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: Some(after_tx_fn),
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: Some(backrun_fn),
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -313,8 +313,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: Some(bank_execute_fn),
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -335,8 +335,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: Some(bank_query_fn),
             withhold_fee_fn: self.withhold_fee_fn,
@@ -357,8 +357,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: Some(withhold_fee_fn),
@@ -379,8 +379,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -401,8 +401,8 @@ where
             receive_fn: self.receive_fn,
             reply_fn: self.reply_fn,
             query_fn: self.query_fn,
-            before_tx_fn: self.before_tx_fn,
-            after_tx_fn: self.after_tx_fn,
+            authenticate_fn: self.authenticate_fn,
+            backrun_fn: self.backrun_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
             withhold_fee_fn: self.withhold_fee_fn,
@@ -421,8 +421,8 @@ where
                 receive_fn: self.receive_fn,
                 reply_fn: self.reply_fn,
                 query_fn: self.query_fn,
-                before_tx_fn: self.before_tx_fn,
-                after_tx_fn: self.after_tx_fn,
+                authenticate_fn: self.authenticate_fn,
+                backrun_fn: self.backrun_fn,
                 bank_execute_fn: self.bank_execute_fn,
                 bank_query_fn: self.bank_query_fn,
                 withhold_fee_fn: self.withhold_fee_fn,
@@ -443,8 +443,8 @@ struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    before_tx_fn: Option<BeforeTxFn<E7>>,
-    after_tx_fn: Option<AfterTxFn<E8>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
+    backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
     withhold_fee_fn: Option<WithholdFeeFn<E11>>,
@@ -583,7 +583,7 @@ where
         Ok(res.into())
     }
 
-    fn before_tx(
+    fn authenticate(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -591,17 +591,17 @@ where
         querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<AuthResponse>> {
-        let Some(before_tx_fn) = &self.before_tx_fn else {
-            return Err(VmError::function_not_found("before_tx"));
+        let Some(authenticate_fn) = &self.authenticate_fn else {
+            return Err(VmError::function_not_found("authenticate"));
         };
 
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        let res = before_tx_fn(auth_ctx, tx);
+        let res = authenticate_fn(auth_ctx, tx);
 
         Ok(res.into())
     }
 
-    fn after_tx(
+    fn backrun(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -609,12 +609,12 @@ where
         querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>> {
-        let Some(after_tx_fn) = &self.after_tx_fn else {
-            return Err(VmError::function_not_found("after_tx"));
+        let Some(backrun_fn) = &self.backrun_fn else {
+            return Err(VmError::function_not_found("backrun"));
         };
 
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        let res = after_tx_fn(auth_ctx, tx);
+        let res = backrun_fn(auth_ctx, tx);
 
         Ok(res.into())
     }
