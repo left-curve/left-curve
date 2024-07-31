@@ -22,22 +22,22 @@ These are basic entry points that pretty much every contract may need to impleme
 
 ```rust
 #[grug::export]
-fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> Result<Response, Error>;
+fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> Result<Response>;
 
 #[grug::export]
-fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> Result<Response, Error>;
+fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> Result<Response>;
 
 #[grug::export]
-fn migrate(ctx: MutableCtx, msg: MigrateMsg) -> Result<Response, Error>;
+fn migrate(ctx: MutableCtx, msg: MigrateMsg) -> Result<Response>;
 
 #[grug::export]
-fn receive(ctx: MutableCtx) -> Result<Response, Error>;
+fn receive(ctx: MutableCtx) -> Result<Response>;
 
 #[grug::export]
-fn reply(ctx: SudoCtx, msg: ReplyMsg, submsg_res: SubMsgResult) -> Result<Response, Error>;
+fn reply(ctx: SudoCtx, msg: ReplyMsg, submsg_res: SubMsgResult) -> Result<Response>;
 
 #[grug::export]
-fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary, Error>;
+fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary>;
 ```
 
 ## Account
@@ -46,10 +46,10 @@ These are entry points that a contract needs in order to be able to initiate tra
 
 ```rust
 #[grug::export]
-fn before_tx(ctx: AuthCtx, tx: Tx) -> Result<Response, Error>;
+fn authenticate(ctx: AuthCtx, tx: Tx) -> Result<Response>;
 
 #[grug::export]
-fn after_tx(ctx: AuthCtx, tx: Tx) -> Result<Response, Error>;
+fn backrun(ctx: AuthCtx, tx: Tx) -> Result<Response>;
 ```
 
 ## Cronjobs
@@ -58,30 +58,31 @@ The chain's owner can appoint a number of contracts to be automatically invoked 
 
 ```rust
 #[grug::export]
-fn cron_execute(ctx: SudoCtx) -> Result<Response, Error>;
+fn cron_execute(ctx: SudoCtx) -> Result<Response>;
 ```
 
 ## Bank
 
-These are mandatory entry points for the chain's **bank** contract.
+In Grug, tokens balances and transfers are handled by a contract known as the **bank**. It must implement the following two exports:
 
 ```rust
 #[grug::export]
-fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> Result<Response, Error>;
+fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> Result<Response>;
 
 #[grug::export]
-fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> Result<BankQueryResponse, Error>;
+fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> Result<BankQueryResponse>;
 ```
 
-## Gas
+## Fee
 
-In Grug, gas fees are handled by a smart contract.
-
-This contract is called after each transaction to collect gas fee from the sender. Develops can program arbitrary rules for collecting gas fees; for example, for an orderbook exchange, it may make sense to make the first few orders of each day free of charge, as a way to incentivize trading activity. Another use case is MEV capture. Osmosis is known to backrun certain DEX trades to perform arbitrage via its [ProtoRev module](https://github.com/osmosis-labs/osmosis/tree/main/x/protorev); this is something that can be realized using the gas contract, since it's automatically called after each transaction.
+In Grug, gas fees are handled by a smart contract called the **taxman**. It must implement the following two exports:
 
 ```rust
 #[grug::export]
-fn handle_fee(ctx: SudoCtx, report: GasReport) -> Result<Response>;
+fn withhold_fee(ctx: SudoCtx, tx: Tx) -> Result<Response>;
+
+#[grug::export]
+fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
 ```
 
 ## IBC
@@ -90,7 +91,7 @@ Contracts that are to be used as IBC light clients must implement the following 
 
 ```rust
 #[grug::export]
-fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -> Result<()>;
+fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -> Result<IbcClientQueryResponse>;
 ```
 
 Contracts that are to be used as IBC applications must implement the following entry points:

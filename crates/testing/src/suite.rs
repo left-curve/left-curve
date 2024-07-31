@@ -1,13 +1,13 @@
 use {
     crate::TestAccount,
     anyhow::ensure,
-    grug_app::{App, AppError, AppResult, BlockOutcome, Outcome, Vm},
+    grug_app::{App, AppError, AppResult, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Duration,
-        GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, QueryRequest,
-        StdError, Tx, Uint128, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
+        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
+        QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -96,7 +96,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msg: Message,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, gas_limit, vec![msg])
     }
 
@@ -106,7 +106,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
@@ -136,6 +136,25 @@ where
         new_cfg: Config,
     ) -> anyhow::Result<()> {
         self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
+            .result
+            .should_succeed();
+
+        Ok(())
+    }
+
+    /// Make a transfer of tokens under the given gas limit.
+    pub fn transfer_with_gas<C>(
+        &mut self,
+        signer: &TestAccount,
+        gas_limit: u64,
+        to: Addr,
+        coins: C,
+    ) -> anyhow::Result<()>
+    where
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins)?)?
             .result
             .should_succeed();
 
@@ -270,6 +289,10 @@ where
         Ok(())
     }
 
+    pub fn check_tx(&self, tx: Tx) -> anyhow::Result<Outcome> {
+        Ok(self.app.do_check_tx(tx)?)
+    }
+
     pub fn query_info(&self) -> GenericResult<InfoResponse> {
         self.app
             .do_query_app(QueryRequest::Info {}, 0, false)
@@ -277,7 +300,7 @@ where
             .into()
     }
 
-    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint128> {
+    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint256> {
         self.app
             .do_query_app(
                 QueryRequest::Balance {
@@ -334,7 +357,11 @@ where
 // don't take a `gas_limit` parameter.
 impl TestSuite<RustVm> {
     /// Execute a single message.
-    pub fn send_message(&mut self, signer: &TestAccount, msg: Message) -> anyhow::Result<Outcome> {
+    pub fn send_message(
+        &mut self,
+        signer: &TestAccount,
+        msg: Message,
+    ) -> anyhow::Result<TxOutcome> {
         self.send_message_with_gas(signer, 0, msg)
     }
 
@@ -343,13 +370,22 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &TestAccount,
         msgs: Vec<Message>,
-    ) -> anyhow::Result<Outcome> {
+    ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, 0, msgs)
     }
 
     /// Update the chain's config.
     pub fn configure(&mut self, signer: &TestAccount, new_cfg: Config) -> anyhow::Result<()> {
         self.configure_with_gas(signer, 0, new_cfg)
+    }
+
+    /// Make a transfer of tokens.
+    pub fn transfer<C>(&mut self, signer: &TestAccount, to: Addr, coins: C) -> anyhow::Result<()>
+    where
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        self.transfer_with_gas(signer, 0, to, coins)
     }
 
     /// Upload a code. Return the code's hash.

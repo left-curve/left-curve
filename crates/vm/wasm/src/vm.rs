@@ -83,9 +83,9 @@ impl Vm for WasmVm {
         // the initial points in the Wasmer gas meter.
         //
         // E.g. If the tx gas limit is X, the very first call in the tx (which
-        // would be the `before_tx` call) will have the limit as X. Suppose this
-        // call consumed Y gas points, the next call will have its limit as (X-Y);
-        // so on.
+        // would be the `authenticate` call) will have the limit as X. Suppose
+        // this call consumed Y gas points, the next call will have its limit as
+        // (X-Y); so on.
         let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
 
         // Create the Wasmer store, function environment, and register import

@@ -16,7 +16,7 @@ pub struct Context {
     pub contract: Addr,
     pub sender:   Option<Addr>,
     pub funds:    Option<Coins>,
-    pub simulate: Option<bool>,
+    pub mode:     Option<AuthMode>,
 }
 
 /// A context that contians an immutable store. The contract is allowed to read
@@ -62,7 +62,7 @@ pub struct SudoCtx<'a> {
 /// designates whether the contract call is done in the simulation mode (e.g.
 /// during the `CheckTx` ABCI call).
 ///
-/// This is used in the `before_tx` and `after_tx` entry points, whose primary
+/// This is used in the `authenticate` and `backrun` entry points, whose primary
 /// purpose is to authenticate transactions, hence the name.
 ///
 /// The typical use of the `simulate` parameter is to skip certain authentication
@@ -75,5 +75,12 @@ pub struct AuthCtx<'a> {
     pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
-    pub simulate: bool,
+    pub mode:     AuthMode,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub enum AuthMode {
+    Simulate,
+    Check,
+    Finalize
 }

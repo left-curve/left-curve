@@ -9,7 +9,7 @@ use {
 #[derive(Parser)]
 pub struct TendermintCmd {
     /// Tendermint RPC address
-    #[arg(long, default_value = "http://127.0.0.1:26657")]
+    #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
     node: String,
 
     #[command(subcommand)]

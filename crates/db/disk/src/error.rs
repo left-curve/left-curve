@@ -22,6 +22,12 @@ pub enum DbError {
 
     #[error("rwlock for the write batch is poisoned")]
     PendingDataPoisoned,
+
+    #[error("requested version ({version}) is newer than the latest version ({latest_version})")]
+    VersionTooNew { version: u64, latest_version: u64 },
+
+    #[error("requested version ({version}) is older than the oldest available version ({oldest_version})")]
+    VersionTooOld { version: u64, oldest_version: u64 },
 }
 
 impl<'a> From<PoisonError<RwLockReadGuard<'a, Option<PendingData>>>> for DbError {

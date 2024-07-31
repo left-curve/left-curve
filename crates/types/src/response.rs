@@ -19,6 +19,13 @@ impl Response {
         self
     }
 
+    pub fn may_add_message(mut self, maybe_msg: Option<Message>) -> Self {
+        if let Some(msg) = maybe_msg {
+            self.submsgs.push(SubMessage::reply_never(msg));
+        }
+        self
+    }
+
     pub fn add_messages<M>(mut self, msgs: M) -> Self
     where
         M: IntoIterator<Item = Message>,
@@ -30,6 +37,13 @@ impl Response {
 
     pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
         self.submsgs.push(submsg);
+        self
+    }
+
+    pub fn may_add_submessage(mut self, maybe_submsg: Option<SubMessage>) -> Self {
+        if let Some(submsg) = maybe_submsg {
+            self.submsgs.push(submsg);
+        }
         self
     }
 
@@ -47,6 +61,72 @@ impl Response {
         V: ToString,
     {
         self.attributes.push(Attribute::new(key, value));
+        self
+    }
+}
+
+/// A special response emitted by the account contract at the end of the
+/// `authenticate` method call. In addition to the usual [`Response`](crate::Response),
+/// this also includes a boolean specifying whether the account requests a
+/// backrun call.
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+pub struct AuthResponse {
+    pub response: Response,
+    pub request_backrun: bool,
+}
+
+impl AuthResponse {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn request_backrun(mut self, request_backrun: bool) -> Self {
+        self.request_backrun = request_backrun;
+        self
+    }
+
+    pub fn add_message(mut self, msg: Message) -> Self {
+        self.response = self.response.add_message(msg);
+        self
+    }
+
+    pub fn may_add_message(mut self, maybe_msg: Option<Message>) -> Self {
+        self.response = self.response.may_add_message(maybe_msg);
+        self
+    }
+
+    pub fn add_messages<M>(mut self, msgs: M) -> Self
+    where
+        M: IntoIterator<Item = Message>,
+    {
+        self.response = self.response.add_messages(msgs);
+        self
+    }
+
+    pub fn add_submessage(mut self, submsg: SubMessage) -> Self {
+        self.response = self.response.add_submessage(submsg);
+        self
+    }
+
+    pub fn may_add_submessage(mut self, maybe_submsg: Option<SubMessage>) -> Self {
+        self.response = self.response.may_add_submessage(maybe_submsg);
+        self
+    }
+
+    pub fn add_submessages<M>(mut self, submsgs: M) -> Self
+    where
+        M: IntoIterator<Item = SubMessage>,
+    {
+        self.response = self.response.add_submessages(submsgs);
+        self
+    }
+
+    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: ToString,
+        V: ToString,
+    {
+        self.response = self.response.add_attribute(key, value);
         self
     }
 }

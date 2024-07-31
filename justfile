@@ -8,7 +8,7 @@ install:
 
 # Run tests
 test:
-  cargo test --all-targets
+  cargo test
 
 # Perform linting
 lint:

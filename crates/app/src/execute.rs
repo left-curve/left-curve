@@ -1,12 +1,12 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, has_permission, schedule_cronjob, AppError, AppResult,
-        GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
+        call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
+        AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash, Account, Addr, BankMsg, Binary, BlockInfo, Coins, Config, Context, Event, Hash, Json,
-        Storage, SubMsgResult, Tx,
+        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
+        Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -191,7 +191,7 @@ where
         contract: cfg.bank,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
     let msg = BankMsg { from, to, coins };
 
@@ -232,7 +232,7 @@ where
         contract: msg.to,
         sender: Some(msg.from),
         funds: Some(msg.coins),
-        simulate: None,
+        mode: None,
     };
 
     call_in_0_out_1_handle_response(
@@ -348,7 +348,7 @@ where
         contract: address,
         sender: Some(sender),
         funds: Some(funds),
-        simulate: None,
+        mode: None,
     };
 
     events.extend(call_in_1_out_1_handle_response(
@@ -445,7 +445,7 @@ where
         contract,
         sender: Some(sender),
         funds: Some(funds),
-        simulate: None,
+        mode: None,
     };
 
     events.extend(call_in_1_out_1_handle_response(
@@ -541,7 +541,7 @@ where
         contract,
         sender: Some(sender),
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_1_out_1_handle_response(
@@ -616,7 +616,7 @@ where
         contract,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_2_out_1_handle_response(
@@ -632,84 +632,81 @@ where
     )
 }
 
-// ------------------------- before/after transaction --------------------------
+// ------------------------------- authenticate --------------------------------
 
-pub fn do_before_tx<VM>(
+pub fn do_authenticate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
-) -> AppResult<Vec<Event>>
+    mode: AuthMode,
+) -> AppResult<(Vec<Event>, bool)>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "before_tx", tx, simulate) {
-        Ok(events) => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                sender = tx.sender.to_string(),
-                "Called before transaction hook"
-            );
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let account = ACCOUNTS.load(&storage, &tx.sender)?;
+    let ctx = Context {
+        chain_id,
+        block,
+        contract: tx.sender.clone(),
+        sender: None,
+        funds: None,
+        mode: Some(mode),
+    };
 
-            Ok(events)
+    let result = || -> AppResult<_> {
+        let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
+            "authenticate",
+            &account.code_hash,
+            &ctx,
+            false,
+            tx,
+        )?
+        .into_std_result()?;
+
+        let events = handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "authenticate",
+            &ctx,
+            auth_response.response,
+        )?;
+
+        Ok((events, auth_response.request_backrun))
+    }();
+
+    match result {
+        Ok(data) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Authenticated transaction");
+
+            Ok(data)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                err = err.to_string(),
-                "Failed to call before transaction hook"
-            );
+            tracing::warn!(err = err.to_string(), "Failed to authenticate transaction");
 
             Err(err)
         },
     }
 }
 
-pub fn do_after_tx<VM>(
+// ---------------------------------- backrun ----------------------------------
+
+pub fn do_backrun<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    simulate: bool,
-) -> AppResult<Vec<Event>>
-where
-    VM: Vm + Clone,
-    AppError: From<VM::Error>,
-{
-    match _do_before_or_after_tx(vm, storage, gas_tracker, block, "after_tx", tx, simulate) {
-        Ok(events) => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                sender = tx.sender.to_string(),
-                "Called after transaction hook"
-            );
-
-            Ok(events)
-        },
-        Err(err) => {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                err = err.to_string(),
-                "Failed to call after transaction hook"
-            );
-
-            Err(err)
-        },
-    }
-}
-
-fn _do_before_or_after_tx<VM>(
-    vm: VM,
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
-    block: BlockInfo,
-    name: &'static str,
-    tx: &Tx,
-    simulate: bool,
+    mode: AuthMode,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -723,19 +720,144 @@ where
         contract: tx.sender.clone(),
         sender: None,
         funds: None,
-        simulate: Some(simulate),
+        mode: Some(mode),
     };
 
-    call_in_1_out_1_handle_response(
+    match call_in_1_out_1_handle_response(
         vm,
         storage,
         gas_tracker,
-        name,
+        "backrun",
         &account.code_hash,
         &ctx,
         false,
         tx,
-    )
+    ) {
+        Ok(events) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Backran transaction");
+
+            Ok(events)
+        },
+        Err(err) => {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(err = err.to_string(), "Failed to backrun transaction");
+
+            Err(err)
+        },
+    }
+}
+
+// ---------------------------------- taxman -----------------------------------
+
+pub fn do_withhold_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    let result = (|| {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let cfg = CONFIG.load(&storage)?;
+        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+
+        let ctx = Context {
+            chain_id,
+            block,
+            contract: cfg.taxman,
+            sender: None,
+            funds: None,
+            mode: None,
+        };
+
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "withhold_fee",
+            &taxman.code_hash,
+            &ctx,
+            false,
+            tx,
+        )
+    })();
+
+    match result {
+        Ok(events) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Withheld fee");
+
+            Ok(events)
+        },
+        Err(err) => {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(err = err.to_string(), "Failed to withhold fee");
+
+            Err(err)
+        },
+    }
+}
+
+pub fn do_finalize_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    outcome: &TxOutcome,
+) -> AppResult<Vec<Event>>
+where
+    VM: Vm + Clone,
+    AppError: From<VM::Error>,
+{
+    let result = (|| {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let cfg = CONFIG.load(&storage)?;
+        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+
+        let ctx = Context {
+            chain_id,
+            block,
+            contract: cfg.taxman,
+            sender: None,
+            funds: None,
+            mode: None,
+        };
+
+        call_in_2_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            "finalize_fee",
+            &taxman.code_hash,
+            &ctx,
+            false,
+            tx,
+            outcome,
+        )
+    })();
+
+    match result {
+        Ok(events) => {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(sender = tx.sender.to_string(), "Finalized fee");
+
+            Ok(events)
+        },
+        Err(err) => {
+            // `finalize_fee` is supposed to always succeed, so if it doesn't,
+            // we print a tracing log at ERROR level to highlight the seriousness.
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = err.to_string(), "Failed to finalize fee");
+
+            Err(err)
+        },
+    }
 }
 
 // ----------------------------------- cron ------------------------------------
@@ -790,7 +912,7 @@ where
         contract,
         sender: None,
         funds: None,
-        simulate: None,
+        mode: None,
     };
 
     call_in_0_out_1_handle_response(

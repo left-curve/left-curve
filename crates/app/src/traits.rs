@@ -34,16 +34,22 @@ use {
 pub trait Db {
     type Error: ToString;
 
+    /// A _flat_ KV store that stores _raw_ keys and _raw_ values.
+    type StateStorage: Storage + Clone + 'static;
+
+    /// A _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
+    type StateCommitment: Storage + Clone + 'static;
+
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
     type Proof: Serialize + DeserializeOwned;
 
-    /// Return the state commitment as an owned, read-only, `Storage` object.
-    /// This should be a _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
-    fn state_commitment(&self) -> impl Storage + Clone + 'static;
+    /// Return the state commitment.
+    fn state_commitment(&self) -> Self::StateCommitment;
 
-    /// Return the state storage as an owned, read-only, `Storage` object.
-    /// This should be a _flat_ KV store that stores _raw_ keys and _raw_ values.
-    fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static;
+    /// Return the state storage.
+    ///
+    /// Error if the specified version has already been pruned.
+    fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
 
     /// Return the most recent version that has been committed.
     /// `None` if not a single version has been committed.
@@ -81,6 +87,23 @@ pub trait Db {
         self.commit()?;
         Ok((new_version, root_hash))
     }
+}
+
+/// Represents a database that can be pruned.
+///
+/// These methods aren't used by the app, so we split them off into a separate
+/// trait.
+pub trait PrunableDb: Db {
+    /// Return the oldest version available in the database.
+    /// Versions older than this have been pruned.
+    /// Return `None` if the DB hasn't been pruned once.
+    fn oldest_version(&self) -> Option<u64>;
+
+    /// Prune data of less or equal to the given version.
+    ///
+    /// That is, `up_to_version` will be thd oldest version available in the
+    /// database post pruning.
+    fn prune(&self, up_to_version: u64) -> Result<(), Self::Error>;
 }
 
 // ------------------------------------ vm -------------------------------------

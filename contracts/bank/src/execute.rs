@@ -1,6 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
-    grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint128},
+    anyhow::ensure,
+    grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint256},
     std::collections::HashMap,
 };
 
@@ -31,9 +32,9 @@ where
 // Just a helper function for use during instantiation.
 // Not to be confused with `increase_supply` also found in this contract
 fn accumulate_supply(
-    supplies: &mut HashMap<String, Uint128>,
+    supplies: &mut HashMap<String, Uint256>,
     denom: &str,
-    by: Uint128,
+    by: Uint256,
 ) -> StdResult<()> {
     let Some(supply) = supplies.get_mut(denom) else {
         supplies.insert(denom.into(), by);
@@ -51,7 +52,7 @@ fn accumulate_supply(
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint256) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
@@ -68,13 +69,44 @@ pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint128) -> StdRes
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn burn(ctx: MutableCtx, from: Addr, denom: String, amount: Uint128) -> StdResult<Response> {
+pub fn burn(
+    ctx: MutableCtx,
+    from: Addr,
+    denom: String,
+    amount: Uint256,
+) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
     decrease_balance(ctx.storage, &from, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "burn")
         .add_attribute("from", from)
+        .add_attribute("denom", denom)
+        .add_attribute("amount", amount))
+}
+
+pub fn force_transfer(
+    ctx: MutableCtx,
+    from: Addr,
+    to: Addr,
+    denom: String,
+    amount: Uint256,
+) -> anyhow::Result<Response> {
+    let info = ctx.querier.query_info()?;
+
+    // Only the taxman can force transfer.
+    ensure!(
+        ctx.sender == info.config.taxman,
+        "you don't have the right, O you don't have the right"
+    );
+
+    decrease_balance(ctx.storage, &from, &denom, amount)?;
+    increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "force_transfer")
+        .add_attribute("from", from)
+        .add_attribute("to", to)
         .add_attribute("denom", denom)
         .add_attribute("amount", amount))
 }
@@ -92,10 +124,10 @@ pub fn transfer(
     }
 
     Ok(Response::new()
-        .add_attribute("method", "send")
+        .add_attribute("method", "transfer")
         .add_attribute("from", from)
         .add_attribute("to", to)
-        .add_attribute("coins", coins.to_string()))
+        .add_attribute("coins", coins))
 }
 
 /// Increase the total supply of a token by the given amount.
@@ -103,8 +135,8 @@ pub fn transfer(
 fn increase_supply(
     storage: &mut dyn Storage,
     denom: &str,
-    amount: Uint128,
-) -> StdResult<Option<Uint128>> {
+    amount: Uint256,
+) -> StdResult<Option<Uint256>> {
     SUPPLIES.update(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_add(amount)?;
         Ok(Some(supply))
@@ -116,8 +148,8 @@ fn increase_supply(
 fn decrease_supply(
     storage: &mut dyn Storage,
     denom: &str,
-    amount: Uint128,
-) -> StdResult<Option<Uint128>> {
+    amount: Uint256,
+) -> StdResult<Option<Uint256>> {
     SUPPLIES.update(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_sub(amount)?;
         // If supply is reduced to zero, delete it, to save disk space.
@@ -135,9 +167,9 @@ fn increase_balance(
     storage: &mut dyn Storage,
     address: &Addr,
     denom: &str,
-    amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    let action = |balance: Option<Uint128>| {
+    amount: Uint256,
+) -> StdResult<Option<Uint256>> {
+    let action = |balance: Option<Uint256>| {
         let balance = balance.unwrap_or_default().checked_add(amount)?;
         Ok(Some(balance))
     };
@@ -151,9 +183,9 @@ fn decrease_balance(
     storage: &mut dyn Storage,
     address: &Addr,
     denom: &str,
-    amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    let action = |balance: Option<Uint128>| {
+    amount: Uint256,
+) -> StdResult<Option<Uint256>> {
+    let action = |balance: Option<Uint256>| {
         let balance = balance.unwrap_or_default().checked_sub(amount)?;
         // If balance is reduced to zero, delete it, to save disk space.
         if balance.is_zero() {

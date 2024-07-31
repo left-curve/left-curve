@@ -1,8 +1,6 @@
 use {
-    crate::{
-        authenticate_tx, initialize, query_state, update_key, ExecuteMsg, InstantiateMsg, QueryMsg,
-    },
-    grug_types::{to_json_value, AuthCtx, ImmutableCtx, Json, MutableCtx, Response, StdResult, Tx},
+    crate::{query_state, update_key, ExecuteMsg, QueryMsg},
+    grug_types::{to_json_value, ImmutableCtx, Json, MutableCtx, Response, StdResult},
 };
 
 // Need to define these manually because we can't use the `grug::export` macro in
@@ -11,17 +9,12 @@ use {
 mod __wasm_exports {
     #[no_mangle]
     extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_ffi::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
+        grug_ffi::do_instantiate(&crate::instantiate, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
-    extern "C" fn before_tx(ctx_ptr: usize, tx_ptr: usize) -> usize {
-        grug_ffi::do_before_tx(&super::before_tx, ctx_ptr, tx_ptr)
-    }
-
-    #[no_mangle]
-    extern "C" fn after_tx(ctx_ptr: usize, tx_ptr: usize) -> usize {
-        grug_ffi::do_after_tx(&super::after_tx, ctx_ptr, tx_ptr)
+    extern "C" fn authenticate(ctx_ptr: usize, tx_ptr: usize) -> usize {
+        grug_ffi::do_authenticate(&crate::authenticate, ctx_ptr, tx_ptr)
     }
 
     #[no_mangle]
@@ -38,19 +31,6 @@ mod __wasm_exports {
     extern "C" fn query(ctx_ptr: usize, msg_ptr: usize) -> usize {
         grug_ffi::do_query(&super::query, ctx_ptr, msg_ptr)
     }
-}
-
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
-    initialize(ctx.storage, &msg.public_key)
-}
-
-pub fn before_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    authenticate_tx(ctx, tx)
-}
-
-pub fn after_tx(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-    // Nothing to do
-    Ok(Response::new())
 }
 
 pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {

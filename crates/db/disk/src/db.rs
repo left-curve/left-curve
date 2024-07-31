@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Buffer, Db},
+    grug_app::{Buffer, Db, PrunableDb},
     grug_jmt::{MerkleTree, Proof},
     grug_types::{hash, Batch, Hash, Op, Order, Record, Storage},
     rocksdb::{
@@ -37,6 +37,9 @@ const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
 const LATEST_VERSION_KEY: &[u8] = b"latest_version";
+
+/// Storage key for the oldest version.
+const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
 /// Jellyfish Merkle tree (JMT) using default namespaces.
 const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
@@ -120,18 +123,52 @@ impl Clone for DiskDb {
 impl Db for DiskDb {
     type Error = DbError;
     type Proof = Proof;
+    type StateCommitment = StateCommitment;
+    type StateStorage = StateStorage;
 
-    fn state_commitment(&self) -> impl Storage + Clone + 'static {
+    fn state_commitment(&self) -> StateCommitment {
         StateCommitment {
             inner: Arc::clone(&self.inner),
         }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> impl Storage + Clone + 'static {
-        StateStorage {
-            inner: Arc::clone(&self.inner),
-            version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
+    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+        // Read the latest version.
+        // If it doesn't exist, this means not even a single batch has been
+        // written yet (e.g. during `InitChain`). In this case just use zero.
+        let latest_version = self.latest_version().unwrap_or(0);
+
+        // If version is unspecified, use the latest version. Otherwise, make
+        // sure it's no newer than the latest version.
+        let version = match version {
+            Some(version) => {
+                if version > latest_version {
+                    return Err(DbError::VersionTooNew {
+                        version,
+                        latest_version,
+                    });
+                }
+                version
+            },
+            None => latest_version,
+        };
+
+        // If the oldest version record exists (meaning, pruning has been
+        // performed at least once), and the requested version is older than it,
+        // return error.
+        if let Some(oldest_version) = self.oldest_version() {
+            if version < oldest_version {
+                return Err(DbError::VersionTooOld {
+                    version,
+                    oldest_version,
+                });
+            }
         }
+
+        Ok(StateStorage {
+            inner: Arc::clone(&self.inner),
+            version,
+        })
     }
 
     fn latest_version(&self) -> Option<u64> {
@@ -183,9 +220,9 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let mut cache = Buffer::new(self.state_commitment(), None);
-        let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
-        let (_, pending) = cache.disassemble();
+        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+        let (_, pending) = buffer.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
@@ -234,6 +271,62 @@ impl Db for DiskDb {
     }
 }
 
+impl PrunableDb for DiskDb {
+    fn oldest_version(&self) -> Option<u64> {
+        let cf = cf_default(&self.inner.db);
+        let bytes = self
+            .inner
+            .db
+            .get_cf(&cf, OLDEST_VERSION_KEY)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from default column family: {err}");
+            })?;
+        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
+            panic!(
+                "oldest version is of incorrect byte length: {}",
+                bytes.len()
+            );
+        });
+        Some(u64::from_le_bytes(array))
+    }
+
+    fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        // Prune state storage.
+        //
+        // We do this by increase the state storage column family's
+        // `full_history_ts_low` value, as in SeiDB:
+        // <https://github.com/sei-protocol/sei-db/blob/v0.0.41/ss/rocksdb/db.go#L186-L206>
+        //
+        // Note, this does _not_ incur an immediate full compaction, i.e. this
+        // performs a lazy prune. Future compactions will honor the increased
+        // `full_history_ts_low` and trim history when possible.
+        let cf = cf_state_storage(&self.inner.db);
+        let ts = U64Timestamp::from(up_to_version);
+        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+
+        // Prune state commitment.
+        let mut buffer = Buffer::new(self.state_commitment(), None);
+        MERKLE_TREE.prune(&mut buffer, up_to_version)?;
+
+        let (_, pending) = buffer.disassemble();
+        let mut batch = WriteBatch::default();
+        let cf = cf_state_commitment(&self.inner.db);
+        for (key, op) in pending {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+
+        // Finally, update the oldest available version value.
+        let cf = cf_default(&self.inner.db);
+        batch.put_cf(&cf, OLDEST_VERSION_KEY, up_to_version.to_le_bytes());
+
+        Ok(self.inner.db.write(batch)?)
+    }
+}
+
 // ----------------------------- state commitment ------------------------------
 
 pub struct StateCommitment {
@@ -260,29 +353,65 @@ impl Storage for StateCommitment {
 
     fn scan<'a>(
         &'a self,
-        _min: Option<&[u8]>,
-        _max: Option<&[u8]>,
-        _order: Order,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        unimplemented!("this isn't used by the Merkle tree");
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state commitment: {err}");
+                });
+                (k.to_vec(), v.to_vec())
+            });
+        Box::new(iter)
     }
 
     fn scan_keys<'a>(
         &'a self,
-        _min: Option<&[u8]>,
-        _max: Option<&[u8]>,
-        _order: Order,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        unimplemented!("this isn't used by the Merkle tree");
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, _) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state commitment: {err}");
+                });
+                k.to_vec()
+            });
+        Box::new(iter)
     }
 
     fn scan_values<'a>(
         &'a self,
-        _min: Option<&[u8]>,
-        _max: Option<&[u8]>,
-        _order: Order,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        unimplemented!("this isn't used by the Merkle tree");
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (_, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state commitment: {err}");
+                });
+                v.to_vec()
+            });
+        Box::new(iter)
     }
 
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
@@ -472,7 +601,10 @@ mod tests {
         grug_types::Hash,
         hex_literal::hex,
         rocksdb::{Options, DB},
-        std::path::{Path, PathBuf},
+        std::{
+            panic,
+            path::{Path, PathBuf},
+        },
         tempfile::TempDir,
     };
 
@@ -487,7 +619,7 @@ mod tests {
 
     impl TempDataDir {
         /// Produces a fresh (non-existent) temporary path which will be
-        /// DB::destroy'ed automatically.
+        /// `DB::destroy`'ed automatically when dropped.
         pub fn new(prefix: &str) -> Self {
             let dir = tempfile::Builder::new()
                 .prefix(prefix)
@@ -518,7 +650,7 @@ mod tests {
         }
     }
 
-    // using the same test case as in our rust-rocksdb fork:
+    // Using the same test case as in our rust-rocksdb fork:
     // https://github.com/left-curve/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
     //
     // hash(donald)  = 01000001...
@@ -527,7 +659,7 @@ mod tests {
     // hash(larry)   = 00001101...
     // hash(pumpkin) = 11111111...
 
-    // the tree at version 1 should look like:
+    // The tree at version 1 should look like:
     //
     //           root
     //         ┌──┴──┐
@@ -594,7 +726,7 @@ mod tests {
         ));
     }
 
-    // the tree at version 2 should look like:
+    // The tree at version 2 should look like:
     //
     //            root
     //         ┌───┴───┐
@@ -662,32 +794,32 @@ mod tests {
     }
 
     #[test]
-    fn base_store_works() {
-        let path = TempDataDir::new("_grug_db_base_store_works");
-        let store = DiskDb::open(&path).unwrap();
+    fn disk_db_works() {
+        let path = TempDataDir::new("_grug_disk_db_works");
+        let db = DiskDb::open(&path).unwrap();
 
-        // write a batch. the very first batch have version 0
+        // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
             (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
             (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
             (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
         ]);
-        let (version, root_hash) = store.flush_and_commit(batch).unwrap();
+        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
         assert_eq!(version, 0);
         assert_eq!(root_hash, Some(v0::ROOT_HASH));
 
-        // write another batch with version = 1
+        // Write another batch with version = 1.
         let batch = Batch::from([
             (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
             (b"joe".to_vec(), Op::Delete),
             (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
         ]);
-        let (version, root_hash) = store.flush_and_commit(batch).unwrap();
+        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
         assert_eq!(version, 1);
         assert_eq!(root_hash, Some(v1::ROOT_HASH));
 
-        // try query values at the two versions, respectively, from state storage
+        // Try query values at the two versions, respectively, from state storage.
         for (version, key, value) in [
             (0, "donald", Some("trump")),
             (0, "jake", Some("shepherd")),
@@ -700,16 +832,15 @@ mod tests {
             (1, "larry", Some("engineer")),
             (1, "pumpkin", Some("cat")),
         ] {
-            let found_value = store.state_storage(Some(version)).read(key.as_bytes());
-            assert_eq!(
-                found_value
-                    .map(|bz| String::from_utf8(bz).unwrap())
-                    .as_deref(),
-                value
-            );
+            let found_value = db
+                .state_storage(Some(version))
+                .unwrap()
+                .read(key.as_bytes())
+                .map(|bz| String::from_utf8(bz).unwrap());
+            assert_eq!(found_value.as_deref(), value);
         }
 
-        // try iterating at the two versions, respectively
+        // Try iterating at the two versions, respectively.
         for (version, items) in [
             (0, [
                 ("donald", "trump"),
@@ -724,8 +855,9 @@ mod tests {
                 ("pumpkin", "cat"),
             ]),
         ] {
-            for ((found_key, found_value), (key, value)) in store
+            for ((found_key, found_value), (key, value)) in db
                 .state_storage(Some(version))
+                .unwrap()
                 .scan(None, None, Order::Ascending)
                 .zip(items)
             {
@@ -734,7 +866,7 @@ mod tests {
             }
         }
 
-        // try generating merkle proofs at the two versions, respectively; also
+        // Try generating merkle proofs at the two versions, respectively; also
         // verify the proofs.
         for (version, key, value, proof) in [
             (
@@ -826,7 +958,7 @@ mod tests {
                 }),
             ),
         ] {
-            let found_proof = store.prove(key.as_bytes(), Some(version)).unwrap();
+            let found_proof = db.prove(key.as_bytes(), Some(version)).unwrap();
             assert_eq!(found_proof, proof);
 
             let root_hash = match version {
@@ -841,6 +973,74 @@ mod tests {
                 &found_proof,
             )
             .is_ok());
+        }
+    }
+
+    #[test]
+    fn disk_db_pruning_works() {
+        let path = TempDataDir::new("_grug_disk_db_pruning_works");
+        let db = DiskDb::open(&path).unwrap();
+
+        // Apply a few batches. Same test data as used in the JMT test.
+        for batch in [
+            // v0
+            Batch::from([
+                (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+                (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+                (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            ]),
+            // v1
+            Batch::from([(b"m".to_vec(), Op::Delete)]),
+            // v2
+            Batch::from([(b"r".to_vec(), Op::Delete)]),
+            // v3
+            Batch::from([(b"L".to_vec(), Op::Delete)]),
+            // v4
+            Batch::from([(b"a".to_vec(), Op::Delete)]),
+        ] {
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        // Prune up to v3.
+        // This deletes version 0-2. v3 is now the oldest available version.
+        db.prune(3).unwrap();
+
+        // Attempt access the state under versions 0..=2, should fail.
+        for version in 0..=2 {
+            // Request state storage. Should fail with `DbError::VersionTooOld`.
+            assert!(db.state_storage(Some(version)).is_err_and(|err| {
+                err.to_string()
+                    .contains("older than the oldest available version (3)")
+            }));
+
+            // Prove a key. Should fail when attempting to load the root node of
+            // that version.
+            assert!(db.prove(b"a", Some(version)).is_err_and(|err| {
+                err.to_string()
+                    .contains("data not found! type: grug_jmt::node::Node")
+            }));
+        }
+
+        // Doing the same under versions 3, which haven't been pruned, should work.
+        // Proof doesn't work for version 4 though, because the tree is empty.
+        // We can't proof anything if the tree is empty...
+        {
+            assert!(db.state_storage(Some(3)).is_ok());
+            assert!(db.prove(b"a", Some(3)).is_ok());
+        }
+
+        // Doing the same under version 5 (newer than the latest version) should fail.
+        {
+            assert!(db.state_storage(Some(5)).is_err_and(|err| {
+                err.to_string()
+                    .contains("newer than the latest version (4)")
+            }));
+
+            assert!(db.prove(b"a", Some(5)).is_err_and(|err| {
+                err.to_string()
+                    .contains("data not found! type: grug_jmt::node::Node")
+            }));
         }
     }
 }

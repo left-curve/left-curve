@@ -4,13 +4,14 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Hash, Message,
-        Permission, Permissions, Timestamp, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
-        GENESIS_SENDER,
+        hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message, Permission,
+        Permissions, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
+    serde::Serialize,
     std::{
         collections::BTreeMap,
+        str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
     },
     tracing::Level,
@@ -20,24 +21,42 @@ const DEFAULT_TRACING_LEVEL: Level = Level::DEBUG;
 const DEFAULT_CHAIN_ID: &str = "dev-1";
 const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
+const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
+const DEFAULT_FEE_DENOM: &str = "ugrug";
+const DEFAULT_FEE_RATE: &str = "0.1";
 
-pub struct TestBuilder<VM = RustVm>
-where
-    VM: TestVm,
-{
+// If the user wishes to use a custom code for account, bank, or taxman, they
+// must provide both the binary code, as well as a function for creating the
+// instantiate message.
+struct CodeOption<B> {
+    code: Binary,
+    msg_builder: B,
+}
+
+pub struct TestBuilder<
+    VM = RustVm,
+    M1 = grug_account::InstantiateMsg,
+    M2 = grug_bank::InstantiateMsg,
+    M3 = grug_taxman::InstantiateMsg,
+> {
     vm: VM,
+    // Basic configs
     tracing_level: Option<Level>,
     chain_id: Option<String>,
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
     owner: Option<Addr>,
-    // TODO: let user customize the codes and instantiate messages of bank and account
-    account_code: Binary,
-    account_code_hash: Hash,
+    // Accounts
+    account_opt: CodeOption<Box<dyn Fn(Binary) -> M1>>,
     accounts: TestAccounts,
-    bank_code: Binary,
-    bank_code_hash: Hash,
+    // Bank
+    bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
     balances: BTreeMap<Addr, Coins>,
+    // Taxman
+    taxman_opt: CodeOption<Box<dyn FnOnce(String, Udec128) -> M3>>,
+    fee_denom: Option<String>,
+    fee_rate: Option<Udec128>,
+    // Other contracts
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -50,39 +69,63 @@ impl TestBuilder<RustVm> {
 
 impl<VM> TestBuilder<VM>
 where
-    VM: TestVm + Clone,
-    AppError: From<VM::Error>,
+    VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        let account_code = VM::default_account_code();
-        let account_code_hash = hash(&account_code);
-
-        let bank_code = VM::default_bank_code();
-        let bank_code_hash = hash(&bank_code);
-
         Self {
+            account_opt: CodeOption {
+                code: VM::default_account_code(),
+                msg_builder: Box::new(|pk| grug_account::InstantiateMsg {
+                    public_key: PublicKey::Secp256k1(pk),
+                }),
+            },
+            bank_opt: CodeOption {
+                code: VM::default_bank_code(),
+                msg_builder: Box::new(|initial_balances| grug_bank::InstantiateMsg {
+                    initial_balances,
+                }),
+            },
+            taxman_opt: CodeOption {
+                code: VM::default_taxman_code(),
+                msg_builder: Box::new(|fee_denom, fee_rate| grug_taxman::InstantiateMsg {
+                    config: grug_taxman::Config {
+                        fee_denom,
+                        fee_rate,
+                    },
+                }),
+            },
             vm,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
             block_time: None,
             owner: None,
-            account_code,
-            account_code_hash,
             accounts: TestAccounts::new(),
-            bank_code,
-            bank_code_hash,
             balances: BTreeMap::new(),
+            fee_denom: None,
+            fee_rate: None,
         }
     }
+}
 
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3>
+where
+    M1: Serialize,
+    M2: Serialize,
+    M3: Serialize,
+    VM: TestVm + Clone,
+    AppError: From<VM::Error>,
+{
     // Setting this to `None` means no tracing.
     pub fn set_tracing_level(mut self, level: Option<Level>) -> Self {
         self.tracing_level = level;
         self
     }
 
-    pub fn set_chain_id(mut self, chain_id: impl ToString) -> Self {
+    pub fn set_chain_id<T>(mut self, chain_id: T) -> Self
+    where
+        T: ToString,
+    {
         self.chain_id = Some(chain_id.to_string());
         self
     }
@@ -108,6 +151,184 @@ where
         Ok(self)
     }
 
+    pub fn set_fee_denom<T>(mut self, fee_denom: T) -> Self
+    where
+        T: ToString,
+    {
+        self.fee_denom = Some(fee_denom.to_string());
+        self
+    }
+
+    pub fn set_fee_rate(mut self, fee_rate: Udec128) -> Self {
+        self.fee_rate = Some(fee_rate);
+        self
+    }
+
+    /// Use a custom code for the account instead the default implementation
+    /// provided by the Grug test suite.
+    ///
+    /// Must provide a builder function that generates an account's instantiate
+    /// message given an Secp256k1 public key.
+    ///
+    /// E.g.
+    ///
+    /// ```rust
+    /// use grug_testing::TestBuilder;
+    /// use grug_vm_rust::ContractBuilder;
+    ///
+    /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
+    ///     .with_authenticate(Box::new(grug_account::authenticate))
+    ///     .build();
+    ///
+    /// let (suite, accounts) = TestBuilder::new()
+    ///     .set_account_code(
+    ///         code,
+    ///         |pk| grug_account::InstantiateMsg {
+    ///             public_key: grug_account::PublicKey::Secp256k1(pk),
+    ///         },
+    ///     )
+    ///     .unwrap()
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    pub fn set_account_code<T, F, M1A>(
+        self,
+        code: T,
+        msg_builder: F,
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3>>
+    where
+        T: Into<Binary>,
+        F: Fn(Binary) -> M1A + 'static,
+    {
+        // `add_account` can't be called after `set_account_code`, otherwise the
+        // derived addresses won't be correct.
+        ensure!(
+            self.accounts.is_empty(),
+            "can't set account code after adding accounts"
+        );
+
+        Ok(TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: self.owner,
+            account_opt: CodeOption {
+                code: code.into(),
+                msg_builder: Box::new(msg_builder),
+            },
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        })
+    }
+
+    /// Use a custom code for the bank instead the default implementation
+    /// provided by the Grug test suite.
+    ///
+    /// Must provide a builder function that generates the bank's instantiate
+    /// message given the initial account balances.
+    ///
+    /// E.g.
+    ///
+    /// ```rust
+    /// use grug_testing::TestBuilder;
+    /// use grug_vm_rust::ContractBuilder;
+    ///
+    /// let code = ContractBuilder::new(Box::new(grug_bank::instantiate))
+    ///     .with_bank_execute(Box::new(grug_bank::bank_execute))
+    ///     .with_bank_query(Box::new(grug_bank::bank_query))
+    ///     .build();
+    ///
+    /// let (suite, accounts) = TestBuilder::new()
+    ///     .set_bank_code(
+    ///         code,
+    ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
+    ///     )
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    pub fn set_bank_code<T, F, M2A>(self, code: T, msg_builder: F) -> TestBuilder<VM, M1, M2A, M3>
+    where
+        T: Into<Binary>,
+        F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
+    {
+        TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: self.owner,
+            account_opt: self.account_opt,
+            accounts: self.accounts,
+            bank_opt: CodeOption {
+                code: code.into(),
+                msg_builder: Box::new(msg_builder),
+            },
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        }
+    }
+
+    /// Use a custom code for the taxman instead the default implementation
+    /// provided by the Grug test suite.
+    ///
+    /// Must provide a builder function that generates the taxman's instantiate
+    /// message given the fee denom and fee rate.
+    ///
+    /// E.g.
+    ///
+    /// ```rust
+    /// use grug_testing::TestBuilder;
+    /// use grug_vm_rust::ContractBuilder;
+    ///
+    /// let code = ContractBuilder::new(Box::new(grug_taxman::instantiate))
+    ///     .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
+    ///     .with_finalize_fee(Box::new(grug_taxman::finalize_fee))
+    ///     .build();
+    ///
+    /// let (suite, accounts) = TestBuilder::new()
+    ///     .set_taxman_code(
+    ///         code,
+    ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
+    ///             config: grug_taxman::Config { fee_denom, fee_rate },
+    ///         },
+    ///     )
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    pub fn set_taxman_code<T, F, M3A>(self, code: T, msg_builder: F) -> TestBuilder<VM, M1, M2, M3A>
+    where
+        T: Into<Binary>,
+        F: FnOnce(String, Udec128) -> M3A + 'static,
+    {
+        TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: self.owner,
+            account_opt: self.account_opt,
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: CodeOption {
+                code: code.into(),
+                msg_builder: Box::new(msg_builder),
+            },
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        }
+    }
+
     pub fn add_account<C>(mut self, name: &'static str, balances: C) -> anyhow::Result<Self>
     where
         C: TryInto<Coins>,
@@ -119,7 +340,7 @@ where
         );
 
         // Generate a random new account
-        let account = TestAccount::new_random(&self.account_code_hash, name.as_bytes());
+        let account = TestAccount::new_random(&hash(&self.account_opt.code), name.as_bytes());
 
         // Save account and balances
         let balances = balances.try_into()?;
@@ -142,6 +363,14 @@ where
             .chain_id
             .unwrap_or_else(|| DEFAULT_CHAIN_ID.to_string());
 
+        let fee_denom = self
+            .fee_denom
+            .unwrap_or_else(|| DEFAULT_FEE_DENOM.to_string());
+
+        let fee_rate = self
+            .fee_rate
+            .unwrap_or_else(|| Udec128::from_str(DEFAULT_FEE_RATE).unwrap());
+
         // Use the current system time as genesis time, if unspecified.
         let genesis_time = match self.genesis_time {
             Some(time) => time,
@@ -154,16 +383,23 @@ where
             timestamp: genesis_time,
         };
 
-        // Upload account and bank codes, instantiate bank contract.
+        // Upload account, bank, and taxman codes,
+        // instantiate bank and taxman contracts.
         let mut msgs = vec![
-            Message::upload(self.account_code),
-            Message::upload(self.bank_code),
+            Message::upload(self.account_opt.code.clone()),
+            Message::upload(self.bank_opt.code.clone()),
+            Message::upload(self.taxman_opt.code.clone()),
             Message::instantiate(
-                self.bank_code_hash.clone(),
-                &grug_bank::InstantiateMsg {
-                    initial_balances: self.balances,
-                },
+                hash(&self.bank_opt.code),
+                &(self.bank_opt.msg_builder)(self.balances),
                 DEFAULT_BANK_SALT,
+                Coins::new(),
+                None,
+            )?,
+            Message::instantiate(
+                hash(&self.taxman_opt.code),
+                &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
+                DEFAULT_TAXMAN_SALT,
                 Coins::new(),
                 None,
             )?,
@@ -172,21 +408,33 @@ where
         // Instantiate accounts
         for (name, account) in &self.accounts {
             msgs.push(Message::instantiate(
-                self.account_code_hash.clone(),
-                &grug_account::InstantiateMsg {
-                    public_key: PublicKey::Secp256k1(account.pk.clone()),
-                },
+                hash(&self.account_opt.code),
+                &(self.account_opt.msg_builder)(account.pk.clone()),
                 name.to_string(),
                 Coins::new(),
                 Some(account.address.clone()),
             )?);
         }
 
+        // Predict bank contract address
+        let bank = Addr::compute(
+            &GENESIS_SENDER,
+            &hash(&self.bank_opt.code),
+            DEFAULT_BANK_SALT,
+        );
+
+        // Prefict taxman contract address
+        let taxman = Addr::compute(
+            &GENESIS_SENDER,
+            &hash(&self.taxman_opt.code),
+            DEFAULT_TAXMAN_SALT,
+        );
+
         // Create the app config
-        let bank = Addr::compute(&GENESIS_SENDER, &self.bank_code_hash, DEFAULT_BANK_SALT);
         let config = Config {
             owner: self.owner,
             bank,
+            taxman,
             cronjobs: BTreeMap::new(),
             permissions: Permissions {
                 upload: Permission::Everybody,

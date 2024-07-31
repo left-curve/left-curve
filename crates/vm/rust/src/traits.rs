@@ -5,8 +5,9 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx,
-        Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+        TxOutcome,
     },
 };
 
@@ -65,16 +66,16 @@ pub trait Contract {
         msg: &[u8],
     ) -> VmResult<GenericResult<Json>>;
 
-    fn before_tx(
+    fn authenticate(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
         tx: Tx,
-    ) -> VmResult<GenericResult<Response>>;
+    ) -> VmResult<GenericResult<AuthResponse>>;
 
-    fn after_tx(
+    fn backrun(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -101,6 +102,25 @@ pub trait Contract {
         msg: BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>>;
 
+    fn withhold_fee(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+    ) -> VmResult<GenericResult<Response>>;
+
+    fn finalize_fee(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+        outcome: TxOutcome,
+    ) -> VmResult<GenericResult<Response>>;
+
     fn cron_execute(
         &self,
         ctx: Context,
@@ -126,12 +146,16 @@ pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response
 
 pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type BeforeTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type AuthenticateFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
 
-pub type AfterTxFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type BackrunFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
 pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 
 pub type BankQueryFn<E> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
+
+pub type WithholdFeeFn<E> = Box<dyn Fn(SudoCtx, Tx) -> Result<Response, E> + Send + Sync>;
+
+pub type FinalizeFeeFn<E> = Box<dyn Fn(SudoCtx, Tx, TxOutcome) -> Result<Response, E> + Send + Sync>;
 
 pub type CronExecuteFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;

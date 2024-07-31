@@ -1,15 +1,15 @@
+mod db;
 mod keys;
 mod prompt;
 mod query;
-mod reset;
 mod start;
 mod tendermint;
 mod tx;
 
 use {
     crate::{
-        keys::KeysCmd, query::QueryCmd, reset::ResetCmd, start::StartCmd,
-        tendermint::TendermintCmd, tx::TxCmd,
+        db::DbCmd, keys::KeysCmd, query::QueryCmd, start::StartCmd, tendermint::TendermintCmd,
+        tx::TxCmd,
     },
     anyhow::anyhow,
     clap::Parser,
@@ -38,6 +38,10 @@ struct Cli {
 
 #[derive(Parser)]
 enum Command {
+    /// Manage the database
+    #[command(subcommand, next_display_order = None)]
+    Db(DbCmd),
+
     /// Manage keys [alias: k]
     #[command(subcommand, next_display_order = None, alias = "k")]
     Keys(KeysCmd),
@@ -45,9 +49,6 @@ enum Command {
     /// Make a query [alias: q]
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
-
-    /// Delete node data
-    Reset(ResetCmd),
 
     /// Start the node
     Start(StartCmd),
@@ -80,9 +81,9 @@ async fn main() -> anyhow::Result<()> {
     let keys_dir = app_dir.join("keys");
 
     match cli.command {
+        Command::Db(cmd) => cmd.run(data_dir),
         Command::Keys(cmd) => cmd.run(keys_dir),
         Command::Query(cmd) => cmd.run().await,
-        Command::Reset(cmd) => cmd.run(data_dir),
         Command::Start(cmd) => cmd.run(data_dir).await,
         Command::Tendermint(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(keys_dir).await,

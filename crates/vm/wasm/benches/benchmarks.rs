@@ -65,7 +65,7 @@ fn looping(c: &mut Criterion) {
                             contract: MOCK_CONTRACT,
                             sender: None,
                             funds: None,
-                            simulate: None,
+                            mode: None,
                         };
 
                         let msg = to_json_vec(&QueryMsg::Loop {

@@ -18,6 +18,7 @@ pub struct GenesisBuilder {
     // Chain configs
     owner: Option<Addr>,
     bank: Option<Addr>,
+    taxman: Option<Addr>,
     cronjobs: BTreeMap<Addr, Duration>,
     upload_permission: Option<Permission>,
     instantiate_permission: Option<Permission>,
@@ -64,6 +65,11 @@ impl GenesisBuilder {
 
     pub fn set_bank(mut self, bank: Addr) -> Self {
         self.bank = Some(bank);
+        self
+    }
+
+    pub fn set_taxman(mut self, taxman: Addr) -> Self {
+        self.taxman = Some(taxman);
         self
     }
 
@@ -163,6 +169,10 @@ impl GenesisBuilder {
             bail!("bank address isn't set");
         };
 
+        let Some(taxman) = self.taxman else {
+            bail!("taxman address isn't set");
+        };
+
         let Some(upload_permission) = self.upload_permission else {
             bail!("upload permission isn't set");
         };
@@ -179,6 +189,7 @@ impl GenesisBuilder {
         let config = Config {
             owner: self.owner,
             bank,
+            taxman,
             cronjobs: self.cronjobs,
             permissions,
         };

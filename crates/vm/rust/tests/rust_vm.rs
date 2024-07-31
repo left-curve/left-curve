@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Message, NonZero, NumberConst, Uint128},
+    grug_types::{Coins, Message, NonZero, NumberConst, Uint256},
 };
 
 const DENOM: &str = "ugrug";
@@ -15,10 +15,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(100));
+        .should_succeed_and_equal(100_u128.into());
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::ZERO);
+        .should_succeed_and_equal(Uint256::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
@@ -46,10 +46,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Check balances again
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(Uint128::new(30));
+        .should_succeed_and_equal(Uint256::from(30_u128));
     suite
         .query_balance(&accounts["receiver"], DENOM)
-        .should_succeed_and_equal(Uint128::new(70));
+        .should_succeed_and_equal(Uint256::from(70_u128));
 
     Ok(())
 }

@@ -1,8 +1,9 @@
 use {
-    crate::{PublicKey, PUBLIC_KEY, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        to_json_vec, Addr, AuthCtx, Message, MutableCtx, Response, StdResult, Storage, Tx,
+        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
+        Response, StdResult, Tx,
     },
 };
 
@@ -45,12 +46,12 @@ where
     Ok(hasher(&prehash))
 }
 
-pub fn initialize(storage: &mut dyn Storage, public_key: &PublicKey) -> StdResult<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
-    PUBLIC_KEY.save(storage, public_key)?;
+    PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
 
     // Initialize the sequence number to zero
-    SEQUENCE.initialize(storage)?;
+    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }
@@ -65,11 +66,34 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
     Ok(Response::new())
 }
 
-pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
     let sequence = SEQUENCE.load(ctx.storage)?;
+    let credential: Credential = from_json_value(tx.credential)?;
 
-    // Prepare the hash that is expected to have been signed
+    match ctx.mode {
+        // During `CheckTx`, ensure the tx's sequence is equal or greater than
+        // the expected sequence.
+        // This is to allow multiple transactions in the mempool from the same
+        // account with different sequence numbers.
+        AuthMode::Check => ensure!(
+            credential.sequence >= sequence,
+            "sequence is too old: expected at least {}, got {}",
+            sequence,
+            credential.sequence
+        ),
+        // During `FinalizeBlock`, ensure the tx's sequence equals exactly the
+        // expected sequence.
+        AuthMode::Finalize => ensure!(
+            credential.sequence == sequence,
+            "incorrect sequence number: expected {}, got {}",
+            sequence,
+            credential.sequence
+        ),
+        _ => (),
+    };
+
+    // Prepare the hash that is expected to have been signed.
     let hash = make_sign_bytes(
         // Note: We can't use a trait method as a function pointer. Need to use
         // a closure instead.
@@ -77,25 +101,29 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         &tx.msgs,
         &tx.sender,
         &ctx.chain_id,
-        sequence,
+        credential.sequence,
     )?;
 
     // Verify the signature.
     //
     // This is skipped when in simulation mode.
+    //
     // Note the gas costs for signature verification:
     // - Secp256r1: 1,880,000
     // - Secp256k1:   770,000
     // - Ethereum:  1,580,000
+    //
     // These costs are not accounted for in simulations.
     // It may be a good idea to manually add these to your simulation result.
-    if !ctx.simulate {
+    if let AuthMode::Check | AuthMode::Finalize = ctx.mode {
         match &public_key {
             PublicKey::Secp256k1(bytes) => {
-                ctx.api.secp256k1_verify(&hash, &tx.credential, bytes)?;
+                ctx.api
+                    .secp256k1_verify(&hash, &credential.signature, bytes)?;
             },
             PublicKey::Secp256r1(bytes) => {
-                ctx.api.secp256r1_verify(&hash, &tx.credential, bytes)?;
+                ctx.api
+                    .secp256r1_verify(&hash, &credential.signature, bytes)?;
             },
         }
     }
@@ -103,7 +131,10 @@ pub fn authenticate_tx(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Increment the sequence number
     SEQUENCE.increment(ctx.storage)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "before_tx")
-        .add_attribute("next_sequence", sequence.to_string()))
+    Ok(AuthResponse::new()
+        .add_attribute("method", "authenticate")
+        .add_attribute("sequence", sequence)
+        // This account implementation doesn't make use of the transaction
+        // backrunning feature, so we do not request a backrun.
+        .request_backrun(false))
 }

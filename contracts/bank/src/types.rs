@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, Coins, Uint128},
+    grug_types::{Addr, Coins, Uint256},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
@@ -16,13 +16,22 @@ pub enum ExecuteMsg {
     Mint {
         to: Addr,
         denom: String,
-        amount: Uint128,
+        amount: Uint256,
     },
     /// Burn a token of the specified amount from a user.
     Burn {
         from: Addr,
         denom: String,
-        amount: Uint128,
+        amount: Uint256,
+    },
+    /// Forcibly transfer a coin from an account to a receiver.
+    /// Can only be called by the chain's taxman contract.
+    /// Used by taxman to withhold pending transaction fees.
+    ForceTransfer {
+        from: Addr,
+        to: Addr,
+        denom: String,
+        amount: Uint256,
     },
 }
 

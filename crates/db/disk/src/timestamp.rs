@@ -15,10 +15,16 @@ impl AsRef<[u8]> for U64Timestamp {
     }
 }
 
+impl From<U64Timestamp> for Vec<u8> {
+    fn from(ts: U64Timestamp) -> Self {
+        ts.0.to_vec()
+    }
+}
+
 impl From<u64> for U64Timestamp {
-    fn from(value: u64) -> Self {
+    fn from(ts: u64) -> Self {
         // Note: Use little endian encoding
-        Self(value.to_le_bytes())
+        Self(ts.to_le_bytes())
     }
 }
 
@@ -28,8 +34,9 @@ impl From<&[u8]> for U64Timestamp {
         debug_assert_eq!(
             bytes.len(),
             Self::SIZE,
-            "[U64Timestamp]: incorrect length: {}",
-            bytes.len()
+            "incorrect timestamp length: {}, should be {}",
+            bytes.len(),
+            Self::SIZE
         );
         Self(bytes.try_into().unwrap())
     }

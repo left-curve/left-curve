@@ -78,12 +78,7 @@ impl<T> GenericResult<T> {
         U: Debug,
     {
         match self {
-            GenericResult::Ok(value) => {
-                assert_eq!(
-                    value, expect,
-                    "wrong value! expecting: {expect:?}, got: {value:?}"
-                );
-            },
+            GenericResult::Ok(value) => assert_eq!(value, expect, "wrong value!"),
             GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
         }
     }
@@ -106,7 +101,7 @@ impl<T> GenericResult<T> {
                 let actual = err.to_string();
                 assert!(
                     actual.contains(&expect),
-                    "wrong error! expecting: {expect}, got: {actual}"
+                    "wrong error! expected: {expect}, got: {actual}"
                 );
             },
             GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),

@@ -8,19 +8,21 @@ use {
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.
-pub const KNOWN_FUNCTIONS: [&str; 11] = [
+pub const KNOWN_FUNCTIONS: [&str; 13] = [
     "instantate",
     "execute",
     "migrate",
     "receive",
     "reply",
     "query",
-    "before_tx",
-    "after_tx",
+    "authenticate",
+    "backrun",
     "bank_execute",
     "bank_query",
+    "withhold_fee",
+    "finalize_fee",
     "cron_execute",
-    // TODO: add taxman and IBC entry points
+    // TODO: add IBC entry points
 ];
 
 #[derive(Default, Clone)]
@@ -145,9 +147,9 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)
             },
-            "before_tx" => {
+            "authenticate" => {
                 let tx = from_json_slice(param)?;
-                let res = contract.before_tx(
+                let res = contract.authenticate(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
@@ -156,9 +158,9 @@ impl Instance for RustInstance {
                 )?;
                 to_json_vec(&res)
             },
-            "after_tx" => {
+            "backrun" => {
                 let tx = from_json_slice(param)?;
-                let res = contract.after_tx(
+                let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,
@@ -186,6 +188,17 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                     msg,
+                )?;
+                to_json_vec(&res)
+            },
+            "withhold_fee" => {
+                let tx = from_json_slice(param)?;
+                let res = contract.withhold_fee(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
                 )?;
                 to_json_vec(&res)
             },
@@ -221,6 +234,19 @@ impl Instance for RustInstance {
                     &self.querier,
                     param1.as_ref(),
                     submsg_res,
+                )?;
+                to_json_vec(&res)
+            },
+            "finalize_fee" => {
+                let tx = from_json_slice(param1)?;
+                let outcome = from_json_slice(param2)?;
+                let res = contract.finalize_fee(
+                    ctx.clone(),
+                    &mut self.storage,
+                    &MockApi,
+                    &self.querier,
+                    tx,
+                    outcome,
                 )?;
                 to_json_vec(&res)
             },
@@ -316,7 +342,7 @@ mod tests {
             contract: Addr::mock(1),
             sender: Some(Addr::mock(2)),
             funds: Some(Coins::new()),
-            simulate: None,
+            mode: None,
         };
 
         let msg = tester::InstantiateMsg {
