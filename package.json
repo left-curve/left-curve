@@ -1,0 +1,30 @@
+{
+  "name": "interface",
+  "version": "0.1.0",
+  "author": "left-curve software",
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:pkg": "turbo dev --filter=\"{./packages/**}...\"",
+    "test": "turbo test",
+    "build": "turbo build",
+    "build:pkg": "turbo build --filter=\"{./packages/**}...\""
+  },
+  "engines": {
+    "pnpm": ">=9.0.0",
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.2.3",
+    "turbo": "^2.0.11",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "typescript",
+        "tsup"
+      ]
+    }
+  }
+}

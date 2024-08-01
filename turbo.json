@@ -1,0 +1,20 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "ui": "tui",
+    "tasks": {
+      "test": {
+        "dependsOn": ["build"],
+        "inputs": ["**/*.{ts,js}"]
+      },
+      "build": {
+        "dependsOn": ["^build"],
+        "outputs": [
+          "build/**"
+        ]
+      },
+      "dev": {
+        "cache": false,
+        "persistent": true
+      }
+    }
+  }
