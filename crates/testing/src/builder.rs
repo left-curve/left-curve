@@ -5,7 +5,7 @@ use {
     grug_app::AppError,
     grug_types::{
         hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message, Permission,
-        Permissions, TSBEmpty, TSBInit, TSBRef, Timestamp, Udec128, GENESIS_BLOCK_HASH,
+        Permissions, TSBInit, TSBRef, TSBUnset, Timestamp, Udec128, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
@@ -39,7 +39,7 @@ pub struct TestBuilder<
     M1 = grug_account::InstantiateMsg,
     M2 = grug_bank::InstantiateMsg,
     M3 = grug_taxman::InstantiateMsg,
-    TA = TSBEmpty<TestAccounts>,
+    TA = TSBUnset<TestAccounts>,
 > {
     vm: VM,
     // Basic configs
@@ -102,7 +102,7 @@ where
             genesis_time: None,
             block_time: None,
             owner: None,
-            accounts: TSBEmpty(TestAccounts::new()),
+            accounts: TSBUnset::default(),
             balances: BTreeMap::new(),
             fee_denom: None,
             fee_rate: None,
@@ -279,7 +279,7 @@ where
         C: TryInto<Coins>,
         anyhow::Error: From<C::Error>,
     {
-        let mut accounts = self.accounts.inner();
+        let mut accounts = self.accounts.inner().unwrap_or_default();
         ensure!(
             !accounts.contains_key(name),
             "account with name {name} already exists"
@@ -314,7 +314,7 @@ where
 }
 
 // TSB where accounts are not set yet
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBEmpty<TestAccounts>>
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBUnset<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -357,7 +357,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, TSBEmpty<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, TSBUnset<TestAccounts>>>
     where
         T: Into<Binary>,
         F: Fn(Binary) -> M1A + 'static,
@@ -394,7 +394,7 @@ where
 {
     pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
         let owner =
-            self.accounts.borrow().get(name).ok_or_else(|| {
+            self.accounts.0.get(name).ok_or_else(|| {
                 anyhow!("failed to set owner: can't find account with name `{name}`")
             })?;
 
@@ -457,7 +457,7 @@ where
         ];
 
         // Instantiate accounts
-        for (name, account) in self.accounts.borrow() {
+        for (name, account) in &self.accounts.0 {
             msgs.push(Message::instantiate(
                 hash(&self.account_opt.code),
                 &(self.account_opt.msg_builder)(account.pk.clone()),
@@ -496,6 +496,6 @@ where
         let genesis_state = GenesisState { config, msgs };
         let suite = TestSuite::create(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
-        Ok((suite, self.accounts.inner()))
+        Ok((suite, self.accounts.0))
     }
 }
