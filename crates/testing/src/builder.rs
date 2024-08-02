@@ -5,7 +5,8 @@ use {
     grug_app::AppError,
     grug_types::{
         hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message, Permission,
-        Permissions, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Permissions, TSBEmpty, TSBInit, TSBRef, Timestamp, Udec128, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -31,47 +32,6 @@ const DEFAULT_FEE_RATE: &str = "0";
 struct CodeOption<B> {
     code: Binary,
     msg_builder: B,
-}
-
-/// `Type State Builder` for `Intitialized` field but empty (never set/used/populated).
-pub struct TSBEmpty<T>(T);
-
-/// `Type State Builder` for `Intitialized` field.
-pub struct TSBInit<T>(T);
-
-/// `Type State Builder Reference` trait, to get access
-/// to the `inner` value of [`TSBEmpty`] & [`TSBInit`].
-///
-/// Used when we want to access the `inner` value of the
-/// regarding if the field is [`TSBEmpty`] or [`TSBInit`].
-pub trait TSBRef {
-    type I;
-    fn inner(self) -> Self::I;
-    fn borrow(&self) -> &Self::I;
-}
-
-impl<T> TSBRef for TSBEmpty<T> {
-    type I = T;
-
-    fn inner(self) -> Self::I {
-        self.0
-    }
-
-    fn borrow(&self) -> &Self::I {
-        &self.0
-    }
-}
-
-impl<T> TSBRef for TSBInit<T> {
-    type I = T;
-
-    fn inner(self) -> Self::I {
-        self.0
-    }
-
-    fn borrow(&self) -> &Self::I {
-        &self.0
-    }
 }
 
 pub struct TestBuilder<

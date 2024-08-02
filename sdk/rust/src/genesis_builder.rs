@@ -4,34 +4,35 @@ use {
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
         from_json_slice, hash, to_json_value, Addr, Binary, Coins, Config, Duration, GenesisState,
-        Hash, Json, Message, Permission, Permissions, StdError, GENESIS_SENDER,
+        Hash, Json, Message, Permission, Permissions, StdError, TSBInit, TSBUnset, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, fs, path::Path},
 };
 
 #[derive(Default)]
-pub struct GenesisBuilder {
+pub struct GenesisBuilder<BA, TA, UP, IP> {
     // Consensus parameters
     genesis_time: Option<DateTime<Utc>>,
     chain_id: Option<String>,
     // Chain configs
     owner: Option<Addr>,
-    bank: Option<Addr>,
-    taxman: Option<Addr>,
+    bank: BA,
+    taxman: TA,
     cronjobs: BTreeMap<Addr, Duration>,
-    upload_permission: Option<Permission>,
-    instantiate_permission: Option<Permission>,
+    upload_permission: UP,
+    instantiate_permission: IP,
     // Genesis messages
     upload_msgs: Vec<Message>,
     other_msgs: Vec<Message>,
 }
 
-impl GenesisBuilder {
+impl GenesisBuilder<TSBUnset<Addr>, TSBUnset<Addr>, TSBUnset<Permission>, TSBUnset<Permission>> {
     pub fn new() -> Self {
-        Self::default()
+        GenesisBuilder::default()
     }
-
+}
+impl<BA, TA, UP, IP> GenesisBuilder<BA, TA, UP, IP> {
     pub fn with_genesis_time<T>(mut self, genesis_time: T) -> Self
     where
         T: Into<DateTime<Utc>>,
@@ -48,29 +49,75 @@ impl GenesisBuilder {
         self
     }
 
-    pub fn with_upload_permission(mut self, permission: Permission) -> Self {
-        self.upload_permission = Some(permission);
-        self
-    }
-
-    pub fn with_instantiate_permission(mut self, permission: Permission) -> Self {
-        self.instantiate_permission = Some(permission);
-        self
-    }
-
     pub fn set_owner(mut self, owner: Addr) -> Self {
         self.owner = Some(owner);
         self
     }
 
-    pub fn set_bank(mut self, bank: Addr) -> Self {
-        self.bank = Some(bank);
-        self
+    pub fn with_upload_permission(
+        self,
+        permission: Permission,
+    ) -> GenesisBuilder<BA, TA, TSBInit<Permission>, IP> {
+        GenesisBuilder {
+            genesis_time: self.genesis_time,
+            chain_id: self.chain_id,
+            owner: self.owner,
+            bank: self.bank,
+            taxman: self.taxman,
+            cronjobs: self.cronjobs,
+            upload_permission: TSBInit(permission),
+            instantiate_permission: self.instantiate_permission,
+            upload_msgs: self.upload_msgs,
+            other_msgs: self.other_msgs,
+        }
     }
 
-    pub fn set_taxman(mut self, taxman: Addr) -> Self {
-        self.taxman = Some(taxman);
-        self
+    pub fn with_instantiate_permission(
+        self,
+        permission: Permission,
+    ) -> GenesisBuilder<BA, TA, UP, TSBInit<Permission>> {
+        GenesisBuilder {
+            genesis_time: self.genesis_time,
+            chain_id: self.chain_id,
+            owner: self.owner,
+            bank: self.bank,
+            taxman: self.taxman,
+            cronjobs: self.cronjobs,
+            instantiate_permission: TSBInit(permission),
+            upload_permission: self.upload_permission,
+            upload_msgs: self.upload_msgs,
+            other_msgs: self.other_msgs,
+        }
+    }
+
+    pub fn set_bank(self, bank: Addr) -> GenesisBuilder<TSBInit<Addr>, TA, UP, IP> {
+        GenesisBuilder {
+            genesis_time: self.genesis_time,
+            chain_id: self.chain_id,
+            owner: self.owner,
+            bank: TSBInit(bank),
+            taxman: self.taxman,
+            cronjobs: self.cronjobs,
+            instantiate_permission: self.instantiate_permission,
+            upload_permission: self.upload_permission,
+            upload_msgs: self.upload_msgs,
+            other_msgs: self.other_msgs,
+        }
+    }
+
+    pub fn set_taxman(self, taxman: Addr) -> GenesisBuilder<BA, TSBInit<Addr>, UP, IP> {
+        GenesisBuilder {
+            genesis_time: self.genesis_time,
+            chain_id: self.chain_id,
+            owner: self.owner,
+            bank: self.bank,
+            taxman: TSBInit(taxman),
+            cronjobs: self.cronjobs,
+            instantiate_permission: self.instantiate_permission,
+            upload_permission: self.upload_permission,
+            upload_msgs: self.upload_msgs,
+            other_msgs: self.other_msgs,
+        }
     }
 
     pub fn add_cronjob(mut self, contract: Addr, interval: Duration) -> Self {
@@ -144,7 +191,9 @@ impl GenesisBuilder {
 
         Ok(())
     }
+}
 
+impl GenesisBuilder<TSBInit<Addr>, TSBInit<Addr>, TSBInit<Permission>, TSBInit<Permission>> {
     pub fn write_to_cometbft_genesis<P>(self, path: P) -> anyhow::Result<()>
     where
         P: AsRef<Path>,
@@ -165,31 +214,15 @@ impl GenesisBuilder {
             obj.insert("chain_id".to_string(), Json::String(chain_id));
         }
 
-        let Some(bank) = self.bank else {
-            bail!("bank address isn't set");
-        };
-
-        let Some(taxman) = self.taxman else {
-            bail!("taxman address isn't set");
-        };
-
-        let Some(upload_permission) = self.upload_permission else {
-            bail!("upload permission isn't set");
-        };
-
-        let Some(instantiate_permission) = self.instantiate_permission else {
-            bail!("instantiate permission isn't set");
-        };
-
         let permissions = Permissions {
-            upload: upload_permission,
-            instantiate: instantiate_permission,
+            upload: self.upload_permission.0,
+            instantiate: self.instantiate_permission.0,
         };
 
         let config = Config {
             owner: self.owner,
-            bank,
-            taxman,
+            bank: self.bank.0,
+            taxman: self.taxman.0,
             cronjobs: self.cronjobs,
             permissions,
         };
