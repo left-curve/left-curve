@@ -22,7 +22,6 @@ pub struct TSBInit<T>(pub T);
 pub trait TSBRef {
     type I;
     fn inner(self) -> Option<Self::I>;
-    fn borrow(&self) -> Option<&Self::I>;
 }
 
 impl<T> TSBRef for TSBInit<T> {
@@ -31,20 +30,12 @@ impl<T> TSBRef for TSBInit<T> {
     fn inner(self) -> Option<Self::I> {
         Some(self.0)
     }
-
-    fn borrow(&self) -> Option<&Self::I> {
-        Some(&self.0)
-    }
 }
 
 impl<T> TSBRef for TSBUnset<T> {
     type I = T;
 
     fn inner(self) -> Option<Self::I> {
-        None
-    }
-
-    fn borrow(&self) -> Option<&Self::I> {
         None
     }
 }
