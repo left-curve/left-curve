@@ -207,6 +207,7 @@ where
     /// ```rust
     /// use grug_testing::TestBuilder;
     /// use grug_vm_rust::ContractBuilder;
+    /// use grug_types::Coins;
     ///
     /// let code = ContractBuilder::new(Box::new(grug_bank::instantiate))
     ///     .with_bank_execute(Box::new(grug_bank::bank_execute))
@@ -214,6 +215,7 @@ where
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
+    ///     .add_account("owner", Coins::new()).unwrap()
     ///     .set_bank_code(
     ///         code,
     ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
@@ -261,6 +263,7 @@ where
     /// ```rust
     /// use grug_testing::TestBuilder;
     /// use grug_vm_rust::ContractBuilder;
+    /// use grug_types::Coins;
     ///
     /// let code = ContractBuilder::new(Box::new(grug_taxman::instantiate))
     ///     .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
@@ -268,6 +271,7 @@ where
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
+    ///     .add_account("owner", Coins::new()).unwrap()
     ///     .set_taxman_code(
     ///         code,
     ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
@@ -372,6 +376,7 @@ where
     /// ```rust
     /// use grug_testing::TestBuilder;
     /// use grug_vm_rust::ContractBuilder;
+    /// use grug_types::Coins;
     ///
     /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
     ///     .with_authenticate(Box::new(grug_account::authenticate))
@@ -383,8 +388,8 @@ where
     ///         |pk| grug_account::InstantiateMsg {
     ///             public_key: grug_account::PublicKey::Secp256k1(pk),
     ///         },
-    ///     )
-    ///     .unwrap()
+    ///     ).unwrap()
+    ///     .add_account("owner", Coins::new()).unwrap()
     ///     .build()
     ///     .unwrap();
     /// ```
