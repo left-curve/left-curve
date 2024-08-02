@@ -9,10 +9,6 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
-[features]
-default = []
-tsb     = []
-
 [dependencies]
 bnum          = { workspace = true, features = ["borsh"] }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
