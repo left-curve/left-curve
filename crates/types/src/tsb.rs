@@ -1,9 +1,10 @@
 use std::marker::PhantomData;
 
-/// `Type State Builder` for `Intitialized` field but empty (never set/used/populated).
-// #[derive(Default)]
+/// `Type State Builder` for `Unset` field.
 pub struct TSBUnset<T>(PhantomData<T>);
 
+// Need to implement Default manually
+// because with derive macro it require to T to impelemt default (not needed).
 impl<T> Default for TSBUnset<T> {
     fn default() -> Self {
         Self(Default::default())
