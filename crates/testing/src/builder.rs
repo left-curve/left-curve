@@ -33,11 +33,53 @@ struct CodeOption<B> {
     msg_builder: B,
 }
 
+/// `Type State Builder` for `Intitialized` field but empty (never set/used/populated).
+pub struct TSBEmpty<T>(T);
+
+/// `Type State Builder` for `Intitialized` field.
+pub struct TSBInit<T>(T);
+
+/// `Type State Builder Reference` trait, to get access
+/// to the `inner` value of [`TSBEmpty`] & [`TSBInit`].
+///
+/// Used when we want to access the `inner` value of the
+/// regarding if the field is [`TSBEmpty`] or [`TSBInit`].
+pub trait TSBRef {
+    type I;
+    fn inner(self) -> Self::I;
+    fn borrow(&self) -> &Self::I;
+}
+
+impl<T> TSBRef for TSBEmpty<T> {
+    type I = T;
+
+    fn inner(self) -> Self::I {
+        self.0
+    }
+
+    fn borrow(&self) -> &Self::I {
+        &self.0
+    }
+}
+
+impl<T> TSBRef for TSBInit<T> {
+    type I = T;
+
+    fn inner(self) -> Self::I {
+        self.0
+    }
+
+    fn borrow(&self) -> &Self::I {
+        &self.0
+    }
+}
+
 pub struct TestBuilder<
     VM = RustVm,
     M1 = grug_account::InstantiateMsg,
     M2 = grug_bank::InstantiateMsg,
     M3 = grug_taxman::InstantiateMsg,
+    TA = TSBEmpty<TestAccounts>,
 > {
     vm: VM,
     // Basic configs
@@ -48,7 +90,7 @@ pub struct TestBuilder<
     owner: Option<Addr>,
     // Accounts
     account_opt: CodeOption<Box<dyn Fn(Binary) -> M1>>,
-    accounts: TestAccounts,
+    accounts: TA,
     // Bank
     bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
     balances: BTreeMap<Addr, Coins>,
@@ -100,7 +142,7 @@ where
             genesis_time: None,
             block_time: None,
             owner: None,
-            accounts: TestAccounts::new(),
+            accounts: TSBEmpty(TestAccounts::new()),
             balances: BTreeMap::new(),
             fee_denom: None,
             fee_rate: None,
@@ -108,11 +150,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3>
+impl<VM, M1, M2, M3, TA> TestBuilder<VM, M1, M2, M3, TA>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
+    TA: TSBRef<I = TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -140,17 +183,6 @@ where
         self
     }
 
-    pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
-        let owner = self
-            .accounts
-            .get(name)
-            .ok_or_else(|| anyhow!("failed to set owner: can't find account with name `{name}`"))?;
-
-        self.owner = Some(owner.address.clone());
-
-        Ok(self)
-    }
-
     pub fn set_fee_denom<T>(mut self, fee_denom: T) -> Self
     where
         T: ToString,
@@ -162,69 +194,6 @@ where
     pub fn set_fee_rate(mut self, fee_rate: Udec128) -> Self {
         self.fee_rate = Some(fee_rate);
         self
-    }
-
-    /// Use a custom code for the account instead the default implementation
-    /// provided by the Grug test suite.
-    ///
-    /// Must provide a builder function that generates an account's instantiate
-    /// message given an Secp256k1 public key.
-    ///
-    /// E.g.
-    ///
-    /// ```rust
-    /// use grug_testing::TestBuilder;
-    /// use grug_vm_rust::ContractBuilder;
-    ///
-    /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
-    ///     .with_authenticate(Box::new(grug_account::authenticate))
-    ///     .build();
-    ///
-    /// let (suite, accounts) = TestBuilder::new()
-    ///     .set_account_code(
-    ///         code,
-    ///         |pk| grug_account::InstantiateMsg {
-    ///             public_key: grug_account::PublicKey::Secp256k1(pk),
-    ///         },
-    ///     )
-    ///     .unwrap()
-    ///     .build()
-    ///     .unwrap();
-    /// ```
-    pub fn set_account_code<T, F, M1A>(
-        self,
-        code: T,
-        msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3>>
-    where
-        T: Into<Binary>,
-        F: Fn(Binary) -> M1A + 'static,
-    {
-        // `add_account` can't be called after `set_account_code`, otherwise the
-        // derived addresses won't be correct.
-        ensure!(
-            self.accounts.is_empty(),
-            "can't set account code after adding accounts"
-        );
-
-        Ok(TestBuilder {
-            vm: self.vm,
-            tracing_level: self.tracing_level,
-            chain_id: self.chain_id,
-            genesis_time: self.genesis_time,
-            block_time: self.block_time,
-            owner: self.owner,
-            account_opt: CodeOption {
-                code: code.into(),
-                msg_builder: Box::new(msg_builder),
-            },
-            accounts: self.accounts,
-            bank_opt: self.bank_opt,
-            balances: self.balances,
-            taxman_opt: self.taxman_opt,
-            fee_denom: self.fee_denom,
-            fee_rate: self.fee_rate,
-        })
     }
 
     /// Use a custom code for the bank instead the default implementation
@@ -252,7 +221,11 @@ where
     ///     .build()
     ///     .unwrap();
     /// ```
-    pub fn set_bank_code<T, F, M2A>(self, code: T, msg_builder: F) -> TestBuilder<VM, M1, M2A, M3>
+    pub fn set_bank_code<T, F, M2A>(
+        self,
+        code: T,
+        msg_builder: F,
+    ) -> TestBuilder<VM, M1, M2A, M3, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -304,7 +277,11 @@ where
     ///     .build()
     ///     .unwrap();
     /// ```
-    pub fn set_taxman_code<T, F, M3A>(self, code: T, msg_builder: F) -> TestBuilder<VM, M1, M2, M3A>
+    pub fn set_taxman_code<T, F, M3A>(
+        self,
+        code: T,
+        msg_builder: F,
+    ) -> TestBuilder<VM, M1, M2, M3A, TA>
     where
         T: Into<Binary>,
         F: FnOnce(String, Udec128) -> M3A + 'static,
@@ -329,13 +306,18 @@ where
         }
     }
 
-    pub fn add_account<C>(mut self, name: &'static str, balances: C) -> anyhow::Result<Self>
+    pub fn add_account<C>(
+        mut self,
+        name: &'static str,
+        balances: C,
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, TSBInit<TestAccounts>>>
     where
         C: TryInto<Coins>,
         anyhow::Error: From<C::Error>,
     {
+        let mut accounts = self.accounts.inner();
         ensure!(
-            !self.accounts.contains_key(name),
+            !accounts.contains_key(name),
             "account with name {name} already exists"
         );
 
@@ -347,7 +329,111 @@ where
         if !balances.is_empty() {
             self.balances.insert(account.address.clone(), balances);
         }
-        self.accounts.insert(name, account);
+        accounts.insert(name, account);
+
+        Ok(TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: self.owner,
+            account_opt: self.account_opt,
+            accounts: TSBInit(accounts),
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        })
+    }
+}
+
+// TSB where accounts are not set yet
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBEmpty<TestAccounts>>
+where
+    M1: Serialize,
+    M2: Serialize,
+    M3: Serialize,
+    VM: TestVm + Clone,
+    AppError: From<VM::Error>,
+{
+    /// Use a custom code for the account instead the default implementation
+    /// provided by the Grug test suite.
+    ///
+    /// Must provide a builder function that generates an account's instantiate
+    /// message given an Secp256k1 public key.
+    ///
+    /// `add_account` can't be called after `set_account_code`, otherwise the
+    /// derived addresses won't be correct.
+    ///
+    /// E.g.
+    ///
+    /// ```rust
+    /// use grug_testing::TestBuilder;
+    /// use grug_vm_rust::ContractBuilder;
+    ///
+    /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
+    ///     .with_authenticate(Box::new(grug_account::authenticate))
+    ///     .build();
+    ///
+    /// let (suite, accounts) = TestBuilder::new()
+    ///     .set_account_code(
+    ///         code,
+    ///         |pk| grug_account::InstantiateMsg {
+    ///             public_key: grug_account::PublicKey::Secp256k1(pk),
+    ///         },
+    ///     )
+    ///     .unwrap()
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    pub fn set_account_code<T, F, M1A>(
+        self,
+        code: T,
+        msg_builder: F,
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, TSBEmpty<TestAccounts>>>
+    where
+        T: Into<Binary>,
+        F: Fn(Binary) -> M1A + 'static,
+    {
+        Ok(TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: self.owner,
+            account_opt: CodeOption {
+                code: code.into(),
+                msg_builder: Box::new(msg_builder),
+            },
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        })
+    }
+}
+
+// TSB where at least one account is set
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBInit<TestAccounts>>
+where
+    M1: Serialize,
+    M2: Serialize,
+    M3: Serialize,
+    VM: TestVm + Clone,
+    AppError: From<VM::Error>,
+{
+    pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
+        let owner =
+            self.accounts.borrow().get(name).ok_or_else(|| {
+                anyhow!("failed to set owner: can't find account with name `{name}`")
+            })?;
+
+        self.owner = Some(owner.address.clone());
 
         Ok(self)
     }
@@ -406,7 +492,7 @@ where
         ];
 
         // Instantiate accounts
-        for (name, account) in &self.accounts {
+        for (name, account) in self.accounts.borrow() {
             msgs.push(Message::instantiate(
                 hash(&self.account_opt.code),
                 &(self.account_opt.msg_builder)(account.pk.clone()),
@@ -445,6 +531,6 @@ where
         let genesis_state = GenesisState { config, msgs };
         let suite = TestSuite::create(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
-        Ok((suite, self.accounts))
+        Ok((suite, self.accounts.inner()))
     }
 }
