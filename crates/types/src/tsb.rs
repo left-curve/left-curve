@@ -17,8 +17,9 @@ pub struct TSBInit<T>(pub T);
 /// `Type State Builder Reference` trait, to get access
 /// to the `inner` value of [`TSBUnset`] and [`TSBInit`].
 ///
-/// Used when we want to access the `inner` value of the
-/// regarding if the field is [`TSBUnset`] or [`TSBInit`].
+/// `fn inner` will return:
+/// - `Some(T)` if the value is [`TSBInit`].
+/// - `None` if the value is [`TSBUnset`].
 pub trait TSBRef {
     type I;
     fn inner(self) -> Option<Self::I>;
