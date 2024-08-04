@@ -13,8 +13,7 @@ use {
 };
 
 /// In Grug, addresses are of 20-byte length, in Hex encoding with the `0x`
-/// prefix with checksu conforming to
-/// [EIP-55](https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md).
+/// prefix with checksu conforming to [ERC-55](https://eips.ethereum.org/EIPS/eip-55).
 ///
 /// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
 /// in Bech32 encoding. The last 6 ASCII characters are the checksum.
@@ -138,7 +137,7 @@ impl FromStr for Addr {
         let addr = Self(hash);
 
         if s != addr.to_string() {
-            return Err(StdError::deserialize::<Self, _>("invalid EIP-55 checksum"));
+            return Err(StdError::deserialize::<Self, _>("invalid ERC-55 checksum"));
         }
 
         Ok(addr)
@@ -151,8 +150,8 @@ impl From<Addr> for String {
     }
 }
 
-// Convert the raw bytes bo checksumed hex string according to EIP-55:
-// https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md#implementation
+// Convert the raw bytes bo checksumed hex string according to ERC-55:
+// https://eips.ethereum.org/EIPS/eip-55#implementation
 //
 // Adapted from alloy-rs:
 // https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
@@ -212,7 +211,7 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
     type Value = Addr;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a string representing an address conforming to EIP-55")
+        f.write_str("a string representing an address conforming to ERC-55")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
