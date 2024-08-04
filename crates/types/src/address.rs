@@ -150,7 +150,7 @@ impl From<Addr> for String {
     }
 }
 
-// Convert the raw bytes bo checksumed hex string according to ERC-55:
+// Convert the raw bytes to checksumed hex string according to ERC-55:
 // https://eips.ethereum.org/EIPS/eip-55#implementation
 //
 // Adapted from alloy-rs:
