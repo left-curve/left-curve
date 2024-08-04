@@ -7,7 +7,7 @@ use {
     grug_storage::Bound,
     grug_types::{
         Account, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context,
-        GenericResult, Hash, InfoResponse, Json, Order, StdResult, Storage,
+        GenericResult, Hash256, InfoResponse, Json, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -136,16 +136,20 @@ where
     .map_err(AppError::Std)
 }
 
-pub fn query_code(storage: &dyn Storage, gas_tracker: GasTracker, hash: Hash) -> StdResult<Binary> {
+pub fn query_code(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    hash: Hash256,
+) -> StdResult<Binary> {
     CODES.load_with_gas(storage, gas_tracker, &hash)
 }
 
 pub fn query_codes(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
-    start_after: Option<Hash>,
+    start_after: Option<Hash256>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Hash, Binary>> {
+) -> StdResult<BTreeMap<Hash256, Binary>> {
     let start = start_after.as_ref().map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 

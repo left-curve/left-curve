@@ -6,8 +6,8 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
-        Duration, GenericResult, GenesisState, Hash, InfoResponse, Message, NumberConst, Outcome,
-        QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
+        Duration, GenericResult, GenesisState, Hash256, InfoResponse, Message, NumberConst,
+        Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -167,12 +167,12 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         code: B,
-    ) -> anyhow::Result<Hash>
+    ) -> anyhow::Result<Hash256>
     where
         B: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = Hash::from_array(sha2_256(&code));
+        let code_hash = Hash256::from_array(sha2_256(&code));
 
         self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
             .result
@@ -187,7 +187,7 @@ where
         &mut self,
         signer: &TestAccount,
         gas_limit: u64,
-        code_hash: Hash,
+        code_hash: Hash256,
         salt: S,
         msg: &M,
         funds: C,
@@ -222,7 +222,7 @@ where
         salt: S,
         msg: &M,
         funds: C,
-    ) -> anyhow::Result<(Hash, Addr)>
+    ) -> anyhow::Result<(Hash256, Addr)>
     where
         M: Serialize,
         B: Into<Binary>,
@@ -231,7 +231,7 @@ where
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = Hash::from_array(sha2_256(&code));
+        let code_hash = Hash256::from_array(sha2_256(&code));
         let salt = salt.into();
         let address = Addr::compute(&signer.address, &code_hash, &salt);
 
@@ -272,7 +272,7 @@ where
         signer: &TestAccount,
         gas_limit: u64,
         contract: Addr,
-        new_code_hash: Hash,
+        new_code_hash: Hash256,
         msg: &M,
     ) -> anyhow::Result<()>
     where
@@ -389,7 +389,7 @@ impl TestSuite<RustVm> {
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload<B>(&mut self, signer: &TestAccount, code: B) -> anyhow::Result<Hash>
+    pub fn upload<B>(&mut self, signer: &TestAccount, code: B) -> anyhow::Result<Hash256>
     where
         B: Into<Binary>,
     {
@@ -400,7 +400,7 @@ impl TestSuite<RustVm> {
     pub fn instantiate<M, S, C>(
         &mut self,
         signer: &TestAccount,
-        code_hash: Hash,
+        code_hash: Hash256,
         salt: S,
         msg: &M,
         funds: C,
@@ -423,7 +423,7 @@ impl TestSuite<RustVm> {
         salt: S,
         msg: &M,
         funds: C,
-    ) -> anyhow::Result<(Hash, Addr)>
+    ) -> anyhow::Result<(Hash256, Addr)>
     where
         M: Serialize,
         B: Into<Binary>,
@@ -455,7 +455,7 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &TestAccount,
         contract: Addr,
-        new_code_hash: Hash,
+        new_code_hash: Hash256,
         msg: &M,
     ) -> anyhow::Result<()>
     where

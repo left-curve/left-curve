@@ -1,7 +1,7 @@
 use {
     crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{from_json_slice, to_json_vec, Context, Hash, MockApi},
+    grug_types::{from_json_slice, to_json_vec, Context, Hash256, MockApi},
 };
 
 /// Names of export functions supported by Grug.
@@ -41,7 +41,7 @@ impl Vm for RustVm {
     fn build_instance(
         &mut self,
         code: &[u8],
-        _code_hash: &Hash,
+        _code_hash: &Hash256,
         storage: StorageProvider,
         // Rust VM doesn't need this "readonly" flag, because everything happens
         // in Rust, the compiler can prevent storage writes in query methods

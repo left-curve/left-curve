@@ -9,6 +9,7 @@ mod empty;
 mod error;
 mod event;
 mod hash;
+mod hashers;
 mod imports;
 mod macros;
 mod math;
@@ -24,8 +25,8 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
-    event::*, hash::*, imports::*, math::*, query::*, response::*, result::*, serde::*, time::*,
-    tx::*, utils::*,
+    event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*, result::*, serde::*,
+    time::*, tx::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256

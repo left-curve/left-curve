@@ -1,7 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::Hash,
-    sha2::{Digest, Sha256},
+    grug_types::{hash256, Hash256},
 };
 
 const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
@@ -10,7 +9,7 @@ const LEAF_NODE_HASH_PERFIX: &[u8] = &[1];
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Child {
     pub version: u64,
-    pub hash: Hash,
+    pub hash: Hash256,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -21,8 +20,8 @@ pub struct InternalNode {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LeafNode {
-    pub key_hash: Hash,
-    pub value_hash: Hash,
+    pub key_hash: Hash256,
+    pub value_hash: Hash256,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -46,7 +45,7 @@ impl Node {
     ///
     /// If an internal nodes doesn't have a left or right child, that child is
     /// represented by a zero hash `[0u8; 32]`.
-    pub fn hash(&self) -> Hash {
+    pub fn hash(&self) -> Hash256 {
         match self {
             Node::Internal(InternalNode {
                 left_child,
@@ -60,24 +59,24 @@ impl Node {
     }
 }
 
-pub fn hash_internal_node(left_hash: Option<&Hash>, right_hash: Option<&Hash>) -> Hash {
-    let mut hasher = Sha256::new();
-    hasher.update(INTERNAL_NODE_HASH_PREFIX);
-    hasher.update(left_hash.unwrap_or(&Hash::ZERO));
-    hasher.update(right_hash.unwrap_or(&Hash::ZERO));
-    Hash::from_array(hasher.finalize().into())
+pub fn hash_internal_node(left_hash: Option<&Hash256>, right_hash: Option<&Hash256>) -> Hash256 {
+    let mut preimage = Vec::with_capacity(INTERNAL_NODE_HASH_PREFIX.len() + Hash256::LENGTH * 2);
+    preimage.extend_from_slice(INTERNAL_NODE_HASH_PREFIX);
+    preimage.extend_from_slice(left_hash.unwrap_or(&Hash256::ZERO));
+    preimage.extend_from_slice(right_hash.unwrap_or(&Hash256::ZERO));
+    hash256(preimage)
 }
 
-pub fn hash_leaf_node(key_hash: &Hash, value_hash: &Hash) -> Hash {
-    let mut hasher = Sha256::new();
-    hasher.update(LEAF_NODE_HASH_PERFIX);
-    hasher.update(key_hash);
-    hasher.update(value_hash);
-    Hash::from_array(hasher.finalize().into())
+pub fn hash_leaf_node(key_hash: &Hash256, value_hash: &Hash256) -> Hash256 {
+    let mut preimage = Vec::with_capacity(INTERNAL_NODE_HASH_PREFIX.len() + Hash256::LENGTH * 2);
+    preimage.extend_from_slice(LEAF_NODE_HASH_PERFIX);
+    preimage.extend_from_slice(key_hash);
+    preimage.extend_from_slice(value_hash);
+    hash256(preimage)
 }
 
 // Just a helper function to avoid repetitive verbose code...
 #[inline]
-fn hash_of(child: &Option<Child>) -> Option<&Hash> {
+fn hash_of(child: &Option<Child>) -> Option<&Hash256> {
     child.as_ref().map(|child| &child.hash)
 }

@@ -5,7 +5,7 @@ use {
     colored::Colorize,
     grug_app::GAS_COSTS,
     grug_sdk::{Client, GasOption, SigningKey, SigningOption},
-    grug_types::{from_json_slice, Addr, Binary, Coins, Hash, Message, UnsignedTx},
+    grug_types::{from_json_slice, Addr, Binary, Coins, Hash256, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -71,7 +71,7 @@ enum SubCmd {
     /// Instantiate a new contract
     Instantiate {
         /// Hash of the Wasm byte code to be associated with the contract
-        code_hash: Hash,
+        code_hash: Hash256,
         /// Instantiate message as a JSON string
         msg: String,
         /// Salt in UTF-8 encoding
@@ -98,7 +98,7 @@ enum SubCmd {
         /// Contract address
         contract: Addr,
         /// New code hash
-        new_code_hash: Hash,
+        new_code_hash: Hash256,
         /// Migrate message as a JSON string
         msg: String,
     },

@@ -1,5 +1,5 @@
 use {
-    crate::{to_json_value, Addr, Binary, Coins, Config, Hash, Json, StdError, StdResult},
+    crate::{to_json_value, Addr, Binary, Coins, Config, Hash256, Json, StdError, StdResult},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -36,7 +36,7 @@ pub enum Message {
     Upload { code: Binary },
     /// Register a new account.
     Instantiate {
-        code_hash: Hash,
+        code_hash: Hash256,
         msg: Json,
         salt: Binary,
         funds: Coins,
@@ -54,7 +54,7 @@ pub enum Message {
     /// set to `None`, no one can update the code hash.
     Migrate {
         contract: Addr,
-        new_code_hash: Hash,
+        new_code_hash: Hash256,
         msg: Json,
     },
 }
@@ -83,7 +83,7 @@ impl Message {
     }
 
     pub fn instantiate<M, S, C>(
-        code_hash: Hash,
+        code_hash: Hash256,
         msg: &M,
         salt: S,
         funds: C,
@@ -117,7 +117,7 @@ impl Message {
         })
     }
 
-    pub fn migrate<M>(contract: Addr, new_code_hash: Hash, msg: &M) -> StdResult<Self>
+    pub fn migrate<M>(contract: Addr, new_code_hash: Hash256, msg: &M) -> StdResult<Self>
     where
         M: Serialize,
     {

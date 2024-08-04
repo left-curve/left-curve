@@ -13,11 +13,13 @@ categories    = { workspace = true }
 bnum          = { workspace = true, features = ["borsh"] }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
 data-encoding = { workspace = true }
+digest        = { workspace = true }
 hex           = { workspace = true }
 hex-literal   = { workspace = true }
 dyn-clone     = { workspace = true }
 forward_ref   = { workspace = true }
 prost         = { workspace = true }
+ripemd        = { workspace = true }
 serde         = { workspace = true, features = ["derive"] }
 serde_json    = { workspace = true }
 serde_with    = { workspace = true }

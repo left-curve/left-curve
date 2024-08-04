@@ -1,8 +1,7 @@
 use {
-    crate::{forward_ref_partial_eq, Hash, StdError},
+    crate::{forward_ref_partial_eq, hash160, hash256, Hash, Hash160, Hash256, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
-    sha2::{Digest, Sha256},
     std::{
         fmt,
         ops::{Deref, DerefMut},
@@ -10,9 +9,9 @@ use {
     },
 };
 
-/// In Grug, addresses are of 32-byte length, in lowercase Hex encoding with the
-/// `0x` prefix. There is no checksum bytes. This is the same address format
-/// used by Aptos and Sui.
+/// In Grug, addresses are of 20-byte length, in lowercase Hex encoding with the
+/// `0x` prefix. Checksums are included as described by
+/// [EIP-55](https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md).
 ///
 /// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
 /// in Bech32 encoding. The last 6 ASCII characters are the checksum.
@@ -30,7 +29,7 @@ use {
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Addr(pub(crate) Hash);
+pub struct Addr(pub(crate) Hash160);
 
 forward_ref_partial_eq!(Addr, Addr);
 
@@ -39,28 +38,33 @@ impl Addr {
     pub const PREFIX: &'static str = "0x";
 
     /// Create a new address from a 32-byte byte slice.
-    pub const fn from_array(slice: [u8; Hash::LENGTH]) -> Self {
-        Self(Hash::from_array(slice))
+    pub const fn from_array(slice: [u8; Hash160::LENGTH]) -> Self {
+        Self(Hash160::from_array(slice))
     }
 
     /// Compute a contract address as:
     ///
-    /// sha256(deployer_addr | code_hash | salt)
+    /// ```plain
+    /// address := ripemd160(sha256(deployer_addr | code_hash | salt))
+    /// ```
     ///
-    /// where | means byte concatenation.
-    pub fn compute(deployer: &Addr, code_hash: &Hash, salt: &[u8]) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(deployer);
-        hasher.update(code_hash);
-        hasher.update(salt);
-        Self(Hash(hasher.finalize().into()))
+    /// where `|` means byte concatenation.
+    ///
+    /// The double hash the same as used by Bitcoin, for [preventing length
+    /// extension attacks](https://bitcoin.stackexchange.com/questions/8443/where-is-double-hashing-performed-in-bitcoin).
+    pub fn compute(deployer: &Addr, code_hash: &Hash256, salt: &[u8]) -> Self {
+        let mut preimage = Vec::with_capacity(Hash160::LENGTH + Hash256::LENGTH + salt.len());
+        preimage.extend_from_slice(deployer.as_ref());
+        preimage.extend_from_slice(code_hash.as_ref());
+        preimage.extend_from_slice(salt);
+        Self(hash160(hash256(preimage)))
     }
 
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {
-        let mut bytes = [0u8; Hash::LENGTH];
-        bytes[Hash::LENGTH - 1] = index;
-        Self(Hash(bytes))
+        let mut bytes = [0u8; Hash160::LENGTH];
+        bytes[Hash160::LENGTH - 1] = index;
+        Self(Hash160::from_array(bytes))
     }
 }
 
@@ -190,17 +194,15 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        crate::{from_json_value, to_json_value},
+        crate::{from_json_value, to_json_value, Addr},
         hex_literal::hex,
         serde_json::json,
+        std::str::FromStr,
     };
 
-    // the same as the mock hash from the Hash unit tests, except with 0x prefix
-    const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
-    const MOCK_ADDR: Addr = Addr(Hash(hex!(
-        "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"
-    )));
+    // `vitalik.eth`
+    const MOCK_STR: &str = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+    const MOCK_ADDR: Addr = Addr::from_array(hex!("d8da6bf26964af9d7eed9e03e53415d37aa96045"));
 
     #[test]
     fn serializing() {

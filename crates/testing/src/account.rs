@@ -1,7 +1,7 @@
 use {
     grug_account::Credential,
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{to_json_value, Addr, Binary, Hash, Message, Tx, GENESIS_SENDER},
+    grug_types::{to_json_value, Addr, Binary, Hash256, Message, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
@@ -16,7 +16,7 @@ pub struct TestAccount {
 }
 
 impl TestAccount {
-    pub fn new_random(code_hash: &Hash, salt: &[u8]) -> Self {
+    pub fn new_random(code_hash: &Hash256, salt: &[u8]) -> Self {
         let address = Addr::compute(&GENESIS_SENDER, code_hash, salt);
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
