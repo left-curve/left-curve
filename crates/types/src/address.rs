@@ -12,8 +12,8 @@ use {
     },
 };
 
-/// In Grug, addresses are of 20-byte length, in lowercase Hex encoding with the
-/// `0x` prefix. Checksums are included as described by
+/// In Grug, addresses are of 20-byte length, in Hex encoding with the `0x`
+/// prefix with checksu conforming to
 /// [EIP-55](https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md).
 ///
 /// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
@@ -37,7 +37,7 @@ pub struct Addr(pub(crate) Hash160);
 forward_ref_partial_eq!(Addr, Addr);
 
 impl Addr {
-    /// Addresses are encoded as lowercase hex strings, with the 0x prefix.
+    /// Addresses have the 0x prefix.
     pub const PREFIX: &'static str = "0x";
 
     /// Create a new address from a 32-byte byte slice.
@@ -212,7 +212,7 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
     type Value = Addr;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a lowercase, hex-encoded, 0x-prefixed string representing 32 bytes")
+        f.write_str("a string representing an address conforming to EIP-55")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
