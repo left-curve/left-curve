@@ -1,5 +1,7 @@
 use {
-    crate::{Addr, Duration, Event, GenericResult, Hash, Message, NumberConst, Timestamp, Uint64},
+    crate::{
+        Addr, Duration, Event, GenericResult, Hash256, Message, NumberConst, Timestamp, Uint64,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -12,10 +14,8 @@ use {
 /// Genesis messages aren't sent by a transaction, so don't actually have sender.
 /// We use this as a mock up.
 ///
-/// This is the SHA-256 hash of the UTF-8 string `"sender"`.
-pub const GENESIS_SENDER: Addr = Addr(Hash(hex!(
-    "0a367b92cf0b037dfd89960ee832d56f7fc151681bb41e53690e776f5786998a"
-)));
+/// This is the RIPEMD-160 hash of the UTF-8 string `"sender"`.
+pub const GENESIS_SENDER: Addr = Addr::from_array(hex!("114af6e7a822df07328fba90e1546b5c2b00703f"));
 
 /// The mock up block hash used for executing genesis messages.
 ///
@@ -23,7 +23,7 @@ pub const GENESIS_SENDER: Addr = Addr(Hash(hex!(
 /// this as a mock up.
 ///
 /// This is the SHA-256 hash of the UTF-8 string `"hash"`.
-pub const GENESIS_BLOCK_HASH: Hash = Hash(hex!(
+pub const GENESIS_BLOCK_HASH: Hash256 = Hash256::from_array(hex!(
     "d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"
 ));
 
@@ -95,14 +95,14 @@ pub enum Permission {
 pub struct BlockInfo {
     pub height: Uint64,
     pub timestamp: Timestamp,
-    pub hash: Hash,
+    pub hash: Hash256,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Account {
-    pub code_hash: Hash,
+    pub code_hash: Hash256,
     pub admin: Option<Addr>,
 }
 
@@ -144,7 +144,7 @@ pub struct TxOutcome {
 /// Outcome of executing a block.
 pub struct BlockOutcome {
     /// The Merkle root hash after executing this block.
-    pub app_hash: Hash,
+    pub app_hash: Hash256,
     /// Results of executing the cronjobs.
     pub cron_outcomes: Vec<Outcome>,
     /// Results of executing the transactions.

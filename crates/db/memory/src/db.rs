@@ -2,7 +2,7 @@ use {
     crate::{DbError, DbResult, VersionedMap},
     grug_app::{Buffer, Db},
     grug_jmt::{MerkleTree, Proof},
-    grug_types::{hash, Batch, Hash, Op, Order, Record, Storage},
+    grug_types::{hash256, Batch, Hash256, Op, Order, Record, Storage},
     std::{
         collections::HashMap,
         ops::Bound,
@@ -106,14 +106,14 @@ impl Db for MemDb {
         self.with_read(|inner| inner.latest_version)
     }
 
-    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash>> {
+    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
     }
 
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash(key), version)?)
+        Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash256(key), version)?)
     }
 
     // Note on implementing this function: We must make sure that we don't
@@ -125,7 +125,7 @@ impl Db for MemDb {
     // The best way to avoid this is to do everything that requires a read lock
     // first (using a `with_read` callback) and do everything that requires a
     // write lock in the end (using a `with_write` callback).
-    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash>)> {
+    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         let (new_version, root_hash, changeset) = self.with_read(|inner| {
             if inner.changeset.is_some() {
                 return Err(DbError::ChangeSetAlreadySet);

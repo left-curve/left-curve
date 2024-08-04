@@ -189,8 +189,8 @@ impl Key for Addr {
     }
 }
 
-impl Key for Hash {
-    type Output = Hash;
+impl<const N: usize> Key for Hash<N> {
+    type Output = Hash<N>;
     type Prefix = ();
     type Suffix = ();
 
@@ -433,7 +433,7 @@ impl Prefixer for Addr {
     }
 }
 
-impl Prefixer for Hash {
+impl<const N: usize> Prefixer for Hash<N> {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_ref())]
     }

@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     grug_jmt::Proof,
     grug_sdk::Client,
-    grug_types::{Addr, Binary, Hash, QueryRequest},
+    grug_types::{Addr, Binary, Hash256, QueryRequest},
     serde::Serialize,
 };
 
@@ -54,11 +54,11 @@ enum SubCmd {
         limit: Option<u32>,
     },
     /// Query a Wasm binary code by hash
-    Code { hash: Hash },
+    Code { hash: Hash256 },
     /// Enumerate all Wasm byte codes
     Codes {
         /// Start after this hash
-        start_after: Option<Hash>,
+        start_after: Option<Hash256>,
         /// Maximum number of items to display
         limit: Option<u32>,
     },

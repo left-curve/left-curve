@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, Hash, StdError},
+    grug_types::{Addr, Hash256, StdError},
     thiserror::Error,
 };
 
@@ -39,13 +39,13 @@ pub enum AppError {
     NotAdmin { sender: Addr, admin: Addr },
 
     #[error("code with hash `{code_hash}` already exists")]
-    CodeExists { code_hash: Hash },
+    CodeExists { code_hash: Hash256 },
 
     #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
 
     #[error("code hash is not allowed as IBC client: `{code_hash}`")]
-    NotAllowedClient { code_hash: Hash },
+    NotAllowedClient { code_hash: Hash256 },
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

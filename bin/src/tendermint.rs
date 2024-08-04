@@ -41,9 +41,9 @@ impl TendermintCmd {
                 print_json_pretty(res)
             },
             SubCmd::Tx { hash } => {
-                // Cast the hex string to lowercase, so that users can use
+                // Cast the hex string to uppercase, so that users can use
                 // either upper or lowercase on the CLI.
-                let hash = Hash::from_str(&hash.to_ascii_lowercase())?;
+                let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
                 let res = client.query_tx(hash).await?;
                 print_json_pretty(res)
             },

@@ -3,8 +3,8 @@ use {
     anyhow::bail,
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
-        from_json_slice, hash, to_json_value, Addr, Binary, Coins, Config, Duration, GenesisState,
-        Hash, Json, Message, Permission, Permissions, StdError, GENESIS_SENDER,
+        from_json_slice, hash256, to_json_value, Addr, Binary, Coins, Config, Duration,
+        GenesisState, Hash256, Json, Message, Permission, Permissions, StdError, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, fs, path::Path},
@@ -78,12 +78,12 @@ impl GenesisBuilder {
         self
     }
 
-    pub fn upload<P>(&mut self, path: P) -> anyhow::Result<Hash>
+    pub fn upload<P>(&mut self, path: P) -> anyhow::Result<Hash256>
     where
         P: AsRef<Path>,
     {
         let code = fs::read(path)?;
-        let code_hash = hash(&code);
+        let code_hash = hash256(&code);
 
         self.upload_msgs.push(Message::upload(code));
 
@@ -92,7 +92,7 @@ impl GenesisBuilder {
 
     pub fn instantiate<M, S, C>(
         &mut self,
-        code_hash: Hash,
+        code_hash: Hash256,
         msg: &M,
         salt: S,
         funds: C,

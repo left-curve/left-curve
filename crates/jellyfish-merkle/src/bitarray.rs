@@ -1,6 +1,6 @@
 use {
     grug_storage::Key,
-    grug_types::{split_one_key, Hash, Order, StdResult},
+    grug_types::{split_one_key, Hash256, Order, StdResult},
     std::{borrow::Cow, fmt},
 };
 
@@ -19,7 +19,7 @@ impl BitArray {
     /// Max supported bitarray length in number of bits (256)
     pub const MAX_BIT_LENGTH: usize = Self::MAX_BYTE_LENGTH * 8;
     /// Max supported bitarray length in number of bytes (32)
-    pub const MAX_BYTE_LENGTH: usize = Hash::LENGTH;
+    pub const MAX_BYTE_LENGTH: usize = Hash256::LENGTH;
 
     pub const fn new_empty() -> Self {
         Self {
@@ -150,8 +150,8 @@ impl fmt::Debug for BitArray {
     }
 }
 
-impl From<Hash> for BitArray {
-    fn from(hash: Hash) -> Self {
+impl From<Hash256> for BitArray {
+    fn from(hash: Hash256) -> Self {
         Self {
             num_bits: Self::MAX_BIT_LENGTH,
             bytes: hash.into_array(),
@@ -159,8 +159,8 @@ impl From<Hash> for BitArray {
     }
 }
 
-impl PartialEq<Hash> for BitArray {
-    fn eq(&self, hash: &Hash) -> bool {
+impl PartialEq<Hash256> for BitArray {
+    fn eq(&self, hash: &Hash256) -> bool {
         self.num_bits == Self::MAX_BIT_LENGTH && self.bytes == hash.as_ref()
     }
 }

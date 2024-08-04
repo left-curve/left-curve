@@ -10,9 +10,9 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash,
-        Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult, Storage,
-        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
+        Hash256, Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult,
+        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -60,7 +60,7 @@ where
         chain_id: String,
         block: BlockInfo,
         genesis_state: GenesisState,
-    ) -> AppResult<Hash> {
+    ) -> AppResult<Hash256> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
 
         // Make sure the genesis block height is zero. This is necessary to
@@ -302,12 +302,12 @@ where
 
     // Returns (last_block_height, last_block_app_hash).
     // Note that we are returning the app hash, not the block hash.
-    pub fn do_info(&self) -> AppResult<(u64, Hash)> {
+    pub fn do_info(&self) -> AppResult<(u64, Hash256)> {
         let Some(version) = self.db.latest_version() else {
             // The DB doesn't have a version yet. This is the case if the chain
             // hasn't started yet (prior to the `InitChain` call). In this case,
             // we return zero height and an all-zero zero hash.
-            return Ok((0, Hash::ZERO));
+            return Ok((0, Hash256::ZERO));
         };
 
         let Some(root_hash) = self.db.root_hash(Some(version))? else {
@@ -436,7 +436,7 @@ where
         chain_id: String,
         block: BlockInfo,
         raw_genesis_state: &[u8],
-    ) -> AppResult<Hash> {
+    ) -> AppResult<Hash256> {
         let genesis_state = from_json_slice(raw_genesis_state)?;
 
         self.do_init_chain(chain_id, block, genesis_state)

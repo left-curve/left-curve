@@ -11,7 +11,7 @@
 
 use {
     crate::{
-        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash, InfoResponse,
+        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
         Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
@@ -321,7 +321,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_supplies())
     }
 
-    pub fn query_code(&self, hash: Hash) -> StdResult<Binary> {
+    pub fn query_code(&self, hash: Hash256) -> StdResult<Binary> {
         self.inner
             .query_chain(QueryRequest::Code { hash })
             .map(|res| res.as_code())
@@ -329,9 +329,9 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_codes(
         &self,
-        start_after: Option<Hash>,
+        start_after: Option<Hash256>,
         limit: Option<u32>,
-    ) -> StdResult<BTreeMap<Hash, Binary>> {
+    ) -> StdResult<BTreeMap<Hash256, Binary>> {
         self.inner
             .query_chain(QueryRequest::Codes { start_after, limit })
             .map(|res| res.as_codes())

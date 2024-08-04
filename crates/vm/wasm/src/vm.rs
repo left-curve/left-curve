@@ -7,7 +7,7 @@ use {
         write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{to_borsh_vec, Context, Hash},
+    grug_types::{to_borsh_vec, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
@@ -41,7 +41,7 @@ impl Vm for WasmVm {
     fn build_instance(
         &mut self,
         code: &[u8],
-        code_hash: &Hash,
+        code_hash: &Hash256,
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<Self>,
