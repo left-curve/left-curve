@@ -177,7 +177,7 @@ mod tests {
     };
 
     // just a random block hash I grabbed from MintScan
-    const MOCK_JSON: &str = "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b";
+    const MOCK_JSON: &str = "299663875422CC5A4574816E6165824D0C5BFDBA3D58D94D37E8D832A572555B";
     const MOCK_HASH: Hash256 = Hash256::from_array(hex!(
         "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"
     ));
@@ -196,12 +196,12 @@ mod tests {
             from_json_value::<Hash256>(json!(MOCK_JSON)).unwrap()
         );
 
-        // uppercase hex strings are not accepted
-        let illegal_json = json!(MOCK_JSON.to_uppercase());
+        // Lowercase hex strings are not accepted
+        let illegal_json = json!(MOCK_JSON.to_lowercase());
         assert!(from_json_value::<Hash256>(illegal_json).is_err());
 
-        // incorrect length
-        // trim the last two characters, so the string only represents 31 bytes
+        // Incorrect length
+        // Trim the last two characters, so the string only represents 31 bytes
         let illegal_json = json!(MOCK_JSON[..MOCK_JSON.len() - 2]);
         assert!(from_json_value::<Hash256>(illegal_json).is_err());
     }
