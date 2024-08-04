@@ -1810,6 +1810,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2 0.10.8",
+ "sha3",
  "test-case",
  "thiserror",
 ]

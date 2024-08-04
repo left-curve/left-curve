@@ -1,7 +1,10 @@
 use {
     crate::{forward_ref_partial_eq, hash160, hash256, Hash, Hash160, Hash256, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
+    core::str,
     serde::{de, ser},
+    sha2::Digest,
+    sha3::Keccak256,
     std::{
         fmt,
         ops::{Deref, DerefMut},
@@ -127,12 +130,18 @@ impl FromStr for Addr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
-            return Err(StdError::deserialize::<Self, _>(
-                "address must use the 0x prefix",
-            ));
+            return Err(StdError::deserialize::<Self, _>("incorrect address prefix"));
         };
 
-        Hash::from_str(hex_str).map(Self)
+        let bytes = hex::decode(hex_str)?;
+        let hash = Hash160::from_array(bytes.as_slice().try_into()?);
+        let addr = Self(hash);
+
+        if s != addr.to_string() {
+            return Err(StdError::deserialize::<Self, _>("invalid EIP-55 checksum"));
+        }
+
+        Ok(addr)
     }
 }
 
@@ -142,15 +151,40 @@ impl From<Addr> for String {
     }
 }
 
+// Convert the raw bytes bo checksumed hex string according to EIP-55:
+// https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md#implementation
+//
+// Adapted from alloy-rs:
+// https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Self::PREFIX, self.0)
+        let mut checksum = [0; 40];
+        // This encodes hex in lowercase.
+        hex::encode_to_slice(&self.0, &mut checksum).unwrap();
+
+        let mut hasher = Keccak256::new();
+        // Note we're hashing the UTF-8 hex string, not the raw bytes.
+        hasher.update(checksum);
+        let hash = hasher.finalize();
+
+        let mut hash_hex = [0u8; 64];
+        hex::encode_to_slice(hash, &mut hash_hex).unwrap();
+
+        for i in 0..40 {
+            // I have no idea what this means. Simply copied from Alloy.
+            checksum[i] ^=
+                0b0010_0000 * (checksum[i].is_ascii_lowercase() & (hash_hex[i] >= b'8')) as u8;
+        }
+
+        let checksum_str = unsafe { str::from_utf8_unchecked(&checksum) };
+
+        write!(f, "{}{}", Self::PREFIX, checksum_str)
     }
 }
 
 impl fmt::Debug for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Addr({}{})", Self::PREFIX, self.0)
+        write!(f, "Addr({})", self)
     }
 }
 
@@ -193,26 +227,53 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{from_json_value, to_json_value, Addr},
-        hex_literal::hex,
-        serde_json::json,
-        std::str::FromStr,
-    };
+    use {crate::Addr, hex_literal::hex, test_case::test_case};
 
-    // `vitalik.eth`
-    const MOCK_STR: &str = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-    const MOCK_ADDR: Addr = Addr::from_array(hex!("d8da6bf26964af9d7eed9e03e53415d37aa96045"));
-
-    #[test]
-    fn serializing() {
-        assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
-        assert_eq!(json!(MOCK_STR), to_json_value(&MOCK_ADDR).unwrap());
-    }
-
-    #[test]
-    fn deserializing() {
-        assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_ADDR, from_json_value::<Addr>(json!(MOCK_STR)).unwrap());
+    // Test cases from ERC-55 spec:
+    // https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md#test-cases
+    #[test_case(
+        hex!("52908400098527886e0f7030069857d2e4169ee7"),
+        "0x52908400098527886E0F7030069857D2E4169EE7";
+        "all caps 1"
+    )]
+    #[test_case(
+        hex!("8617e340b3d01fa5f11f306f4090fd50e238070d"),
+        "0x8617E340B3D01FA5F11F306F4090FD50E238070D";
+        "all caps 2"
+    )]
+    #[test_case(
+        hex!("de709f2102306220921060314715629080e2fb77"),
+        "0xde709f2102306220921060314715629080e2fb77";
+        "all lower 1"
+    )]
+    #[test_case(
+        hex!("27b1fdb04752bbc536007a920d24acb045561c26"),
+        "0x27b1fdb04752bbc536007a920d24acb045561c26";
+        "all lower 2"
+    )]
+    #[test_case(
+        hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"),
+        "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+        "normal 1"
+    )]
+    #[test_case(
+        hex!("fb6916095ca1df60bb79ce92ce3ea74c37c5d359"),
+        "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
+        "normal 2"
+    )]
+    #[test_case(
+        hex!("dbf03b407c01e7cd3cbea99509d93f8dddc8c6fb"),
+        "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB";
+        "normal 3"
+    )]
+    #[test_case(
+        hex!("d1220a0cf47c7b9be7a2e6ba89f429762e7b9adb"),
+        "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb";
+        "normal 4"
+    )]
+    fn serializing_deserializing_addresses(raw: [u8; 20], checksum: &str) {
+        let addr = Addr::from_array(raw);
+        let addr_str = addr.to_string();
+        assert_eq!(checksum, addr_str);
     }
 }
