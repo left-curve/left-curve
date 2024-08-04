@@ -107,10 +107,10 @@ impl<const N: usize> FromStr for Hash<N> {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s
             .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
         {
             return Err(StdError::deserialize::<Self, _>(
-                "hash must only contain lowercase alphanumeric characters",
+                "hash must only contain uppercase alphanumeric characters",
             ));
         }
 
@@ -120,13 +120,13 @@ impl<const N: usize> FromStr for Hash<N> {
 
 impl<const N: usize> fmt::Display for Hash<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&hex::encode(self.0))
+        f.write_str(&hex::encode_upper(self.0))
     }
 }
 
 impl<const N: usize> fmt::Debug for Hash<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Hash({})", hex::encode(self.0))
+        write!(f, "Hash({})", hex::encode_upper(self.0))
     }
 }
 
@@ -154,7 +154,7 @@ impl<'de, const N: usize> de::Visitor<'de> for HashVisitor<N> {
     type Value = Hash<N>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a lowercase, hex-encoded string representing 32 bytes")
+        f.write_str("an uppercase, hex-encoded string representing a hash")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
