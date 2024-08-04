@@ -1,10 +1,13 @@
+#[cfg(feature = "erc55")]
+use {
+    crate::StdResult,
+    sha3::{Digest, Keccak256},
+};
 use {
     crate::{forward_ref_partial_eq, hash160, hash256, Hash, Hash160, Hash256, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     core::str,
     serde::{de, ser},
-    sha2::Digest,
-    sha3::Keccak256,
     std::{
         fmt,
         ops::{Deref, DerefMut},
@@ -12,9 +15,9 @@ use {
     },
 };
 
-/// In Grug, addresses are of 20-byte length, in Hex encoding with the `0x`
-/// prefix with checksu conforming to [ERC-55](https://eips.ethereum.org/EIPS/eip-55).
+/// An account address.
 ///
+/// In Grug, addresses are of 20-byte length, in Hex encoding and the `0x` prefix.
 /// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
 /// in Bech32 encoding. The last 6 ASCII characters are the checksum.
 ///
@@ -67,6 +70,49 @@ impl Addr {
         let mut bytes = [0u8; Hash160::LENGTH];
         bytes[Hash160::LENGTH - 1] = index;
         Self(Hash160::from_array(bytes))
+    }
+}
+
+#[cfg(feature = "erc55")]
+impl Addr {
+    /// Convert the address to checksumed hex string according to
+    /// [ERC-55](https://eips.ethereum.org/EIPS/eip-55#implementation).
+    ///
+    /// Adapted from
+    /// [Alloy](https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320).
+    pub fn to_erc55_string(&self) -> String {
+        let mut buf = vec![0; 42];
+        buf[0] = b'0';
+        buf[1] = b'x';
+
+        // This encodes hex in lowercase.
+        hex::encode_to_slice(&self.0, &mut buf[2..]).unwrap();
+
+        let mut hasher = Keccak256::new();
+        // Note we're hashing the UTF-8 hex string, not the raw bytes.
+        hasher.update(&buf[2..]);
+        let hash = hasher.finalize();
+
+        let mut hash_hex = [0; 64];
+        hex::encode_to_slice(hash, &mut hash_hex).unwrap();
+
+        for i in 0..40 {
+            buf[2 + i] ^=
+                0b0010_0000 * (buf[2 + i].is_ascii_lowercase() & (hash_hex[i] >= b'8')) as u8;
+        }
+
+        unsafe { String::from_utf8_unchecked(buf) }
+    }
+
+    /// Validate an ERC-55 checksumed address string.
+    pub fn from_erc55_string(s: &str) -> StdResult<Self> {
+        let addr = Addr::from_str(s)?;
+
+        if s != addr.to_erc55_string() {
+            return Err(StdError::deserialize::<Self, _>("invalid ERC-55 checksum"));
+        }
+
+        Ok(addr)
     }
 }
 
@@ -128,19 +174,18 @@ impl FromStr for Addr {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some(hex_str) = s.strip_prefix(Self::PREFIX) else {
-            return Err(StdError::deserialize::<Self, _>("incorrect address prefix"));
-        };
+        // The address must have the `0x` prefix.
+        let hex_str = s
+            .strip_prefix(Self::PREFIX)
+            .ok_or_else(|| StdError::deserialize::<Self, _>("incorrect address prefix"))?;
 
+        // Decode the hex string
         let bytes = hex::decode(hex_str)?;
+
+        // Make sure the byte slice of the correct length.
         let hash = Hash160::from_array(bytes.as_slice().try_into()?);
-        let addr = Self(hash);
 
-        if s != addr.to_string() {
-            return Err(StdError::deserialize::<Self, _>("invalid ERC-55 checksum"));
-        }
-
-        Ok(addr)
+        Ok(Self(hash))
     }
 }
 
@@ -157,27 +202,7 @@ impl From<Addr> for String {
 // https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut checksum = [0; 40];
-        // This encodes hex in lowercase.
-        hex::encode_to_slice(&self.0, &mut checksum).unwrap();
-
-        let mut hasher = Keccak256::new();
-        // Note we're hashing the UTF-8 hex string, not the raw bytes.
-        hasher.update(checksum);
-        let hash = hasher.finalize();
-
-        let mut hash_hex = [0u8; 64];
-        hex::encode_to_slice(hash, &mut hash_hex).unwrap();
-
-        for i in 0..40 {
-            // I have no idea what this means. Simply copied from Alloy.
-            checksum[i] ^=
-                0b0010_0000 * (checksum[i].is_ascii_lowercase() & (hash_hex[i] >= b'8')) as u8;
-        }
-
-        let checksum_str = unsafe { str::from_utf8_unchecked(&checksum) };
-
-        write!(f, "{}{}", Self::PREFIX, checksum_str)
+        write!(f, "{}{}", Self::PREFIX, hex::encode(&self.0))
     }
 }
 
@@ -226,10 +251,35 @@ impl<'de> de::Visitor<'de> for AddrVisitor {
 
 #[cfg(test)]
 mod tests {
-    use {crate::Addr, hex_literal::hex, test_case::test_case};
+    #[cfg(feature = "erc55")]
+    use test_case::test_case;
+    use {
+        crate::{from_json_value, to_json_value, Addr},
+        hex_literal::hex,
+        serde_json::json,
+        std::str::FromStr,
+    };
+
+    // the same as the mock hash from the Hash unit tests, except cropped to 20
+    // bytes and with the `0x` prefix.
+    const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba";
+    const MOCK_ADDR: Addr = Addr::from_array(hex!("299663875422cc5a4574816e6165824d0c5bfdba"));
+
+    #[test]
+    fn serializing() {
+        assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
+        assert_eq!(json!(MOCK_STR), to_json_value(&MOCK_ADDR).unwrap());
+    }
+
+    #[test]
+    fn deserializing() {
+        assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
+        assert_eq!(MOCK_ADDR, from_json_value::<Addr>(json!(MOCK_STR)).unwrap());
+    }
 
     // Test cases from ERC-55 spec:
     // https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md#test-cases
+    #[cfg(feature = "erc55")]
     #[test_case(
         hex!("52908400098527886e0f7030069857d2e4169ee7"),
         "0x52908400098527886E0F7030069857D2E4169EE7";
@@ -270,9 +320,9 @@ mod tests {
         "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb";
         "normal 4"
     )]
-    fn serializing_deserializing_addresses(raw: [u8; 20], checksum: &str) {
+    fn stringify_erc55(raw: [u8; 20], expect: &str) {
         let addr = Addr::from_array(raw);
-        let addr_str = addr.to_string();
-        assert_eq!(checksum, addr_str);
+        let actual = addr.to_erc55_string();
+        assert_eq!(actual, expect);
     }
 }
