@@ -27,7 +27,7 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
     event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*, result::*,
-    serializers::*, time::*, tx::*, utils::*,
+    serializers::*, time::*, tsb::*, tx::*, utils::*,
 };
 
 // Mocks need to be excluded in Wasm builds because they depend on k256/p256
