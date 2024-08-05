@@ -2,7 +2,7 @@ use {
     crate::VmResult,
     clru::CLruCache,
     grug_app::Shared,
-    grug_types::Hash,
+    grug_types::Hash256,
     std::num::NonZeroUsize,
     wasmer::{Engine, Module},
 };
@@ -14,7 +14,7 @@ pub struct Cache {
     // Must cache the module together with the engine that was used to built it.
     // There may be runtime errors if calling a wasm function using a different
     // engine from that was used to build the module.
-    inner: Shared<CLruCache<Hash, (Module, Engine)>>,
+    inner: Shared<CLruCache<Hash256, (Module, Engine)>>,
 }
 
 impl Cache {
@@ -28,7 +28,11 @@ impl Cache {
     /// Attempt to get a cached module by hash. If not found, build the module
     /// using the given method, insert the built module into the cache, and
     /// return the module.
-    pub fn get_or_build_with<B>(&self, code_hash: &Hash, builder: B) -> VmResult<(Module, Engine)>
+    pub fn get_or_build_with<B>(
+        &self,
+        code_hash: &Hash256,
+        builder: B,
+    ) -> VmResult<(Module, Engine)>
     where
         B: FnOnce() -> VmResult<(Module, Engine)>,
     {

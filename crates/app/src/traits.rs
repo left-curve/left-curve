@@ -1,6 +1,6 @@
 use {
     crate::{GasTracker, QuerierProvider, StorageProvider},
-    grug_types::{Batch, Context, Hash, Storage},
+    grug_types::{Batch, Context, Hash256, Storage},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -59,7 +59,7 @@ pub trait Db {
     /// If version is unspecified, return that of the latest committed version.
     /// `None` if the Merkle tree is empty at that version, or if that version
     /// has been pruned (we can't differentiate these two situations).
-    fn root_hash(&self, version: Option<u64>) -> Result<Option<Hash>, Self::Error>;
+    fn root_hash(&self, version: Option<u64>) -> Result<Option<Hash256>, Self::Error>;
 
     /// Generate Merkle proof of the given key at the given version.
     /// If version is unspecified, use the latest version.
@@ -72,7 +72,7 @@ pub trait Db {
     /// version.
     ///
     /// This is typically invoked in the ABCI `FinalizeBlock` call.
-    fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash>), Self::Error>;
+    fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error>;
 
     /// Persist pending data added in the `flush` method to disk.
     ///
@@ -82,7 +82,7 @@ pub trait Db {
     /// Flush and commit in one go.
     ///
     /// This is typically only invoked in the ABCI `InitChain` call.
-    fn flush_and_commit(&self, batch: Batch) -> Result<(u64, Option<Hash>), Self::Error> {
+    fn flush_and_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error> {
         let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
         self.commit()?;
         Ok((new_version, root_hash))
@@ -121,7 +121,7 @@ pub trait Vm: Sized {
     fn build_instance(
         &mut self,
         code: &[u8],
-        code_hash: &Hash,
+        code_hash: &Hash256,
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<Self>,

@@ -4,9 +4,9 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message, Permission,
-        Permissions, TSBInit, TSBRef, TSBUnset, Timestamp, Udec128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        hash256, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message,
+        Permission, Permissions, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -286,7 +286,7 @@ where
         );
 
         // Generate a random new account
-        let account = TestAccount::new_random(&hash(&self.account_opt.code), name.as_bytes());
+        let account = TestAccount::new_random(&hash256(&self.account_opt.code), name.as_bytes());
 
         // Save account and balances
         let balances = balances.try_into()?;
@@ -441,14 +441,14 @@ where
             Message::upload(self.bank_opt.code.clone()),
             Message::upload(self.taxman_opt.code.clone()),
             Message::instantiate(
-                hash(&self.bank_opt.code),
+                hash256(&self.bank_opt.code),
                 &(self.bank_opt.msg_builder)(self.balances),
                 DEFAULT_BANK_SALT,
                 Coins::new(),
                 None,
             )?,
             Message::instantiate(
-                hash(&self.taxman_opt.code),
+                hash256(&self.taxman_opt.code),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
                 DEFAULT_TAXMAN_SALT,
                 Coins::new(),
@@ -459,7 +459,7 @@ where
         // Instantiate accounts
         for (name, account) in &self.accounts.0 {
             msgs.push(Message::instantiate(
-                hash(&self.account_opt.code),
+                hash256(&self.account_opt.code),
                 &(self.account_opt.msg_builder)(account.pk.clone()),
                 name.to_string(),
                 Coins::new(),
@@ -470,14 +470,14 @@ where
         // Predict bank contract address
         let bank = Addr::compute(
             &GENESIS_SENDER,
-            &hash(&self.bank_opt.code),
+            &hash256(&self.bank_opt.code),
             DEFAULT_BANK_SALT,
         );
 
         // Prefict taxman contract address
         let taxman = Addr::compute(
             &GENESIS_SENDER,
-            &hash(&self.taxman_opt.code),
+            &hash256(&self.taxman_opt.code),
             DEFAULT_TAXMAN_SALT,
         );
 

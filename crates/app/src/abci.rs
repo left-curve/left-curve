@@ -1,8 +1,8 @@
 use {
     crate::{App, AppError, Db, Vm},
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash, Outcome, Timestamp, TxOutcome,
-        Uint64, GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, Timestamp,
+        TxOutcome, Uint64, GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -233,7 +233,7 @@ fn from_tm_timestamp(time: TmTimestamp) -> Timestamp {
     Timestamp::from_seconds(time.seconds as u128) + Duration::from_nanos(time.nanos as u128)
 }
 
-fn from_tm_hash(bytes: Bytes) -> Hash {
+fn from_tm_hash(bytes: Bytes) -> Hash256 {
     bytes
         .to_vec()
         .try_into()

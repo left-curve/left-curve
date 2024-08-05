@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash, to_json_value, to_json_vec, Account, Addr, Binary,
-        Coin, Coins, Config, GenericResult, Hash, InfoResponse, Message, Outcome, QueryRequest,
-        QueryResponse, StdError, Tx, UnsignedTx,
+        from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
+        Binary, Coin, Coins, Config, GenericResult, Hash256, InfoResponse, Message, Outcome,
+        QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -40,7 +40,7 @@ impl Client {
     }
 
     /// Query a single transaction and its execution result by hash.
-    pub async fn query_tx(&self, hash: Hash) -> anyhow::Result<tx::Response> {
+    pub async fn query_tx(&self, hash: Hash256) -> anyhow::Result<tx::Response> {
         Ok(self
             .inner
             .tx(TmHash::Sha256(hash.into_array()), false)
@@ -232,7 +232,7 @@ impl Client {
     }
 
     /// Query a single Wasm byte code by hash.
-    pub async fn query_code(&self, hash: Hash, height: Option<u64>) -> anyhow::Result<Binary> {
+    pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
         let res = self.query_app(&QueryRequest::Code { hash }, height).await?;
         Ok(res.as_code())
     }
@@ -240,10 +240,10 @@ impl Client {
     /// Enumerate hashes of all codes.
     pub async fn query_codes(
         &self,
-        start_after: Option<Hash>,
+        start_after: Option<Hash256>,
         limit: Option<u32>,
         height: Option<u64>,
-    ) -> anyhow::Result<BTreeMap<Hash, Binary>> {
+    ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
         let res = self
             .query_app(&QueryRequest::Codes { start_after, limit }, height)
             .await?;
@@ -473,7 +473,7 @@ impl Client {
     /// Return the deployed contract's address.
     pub async fn instantiate<M, S, C>(
         &self,
-        code_hash: Hash,
+        code_hash: Hash256,
         msg: &M,
         salt: S,
         funds: C,
@@ -510,7 +510,7 @@ impl Client {
         gas_opt: GasOption,
         sign_opt: SigningOption<'_>,
         admin_opt: AdminOption,
-    ) -> anyhow::Result<(Hash, Addr, tx_sync::Response)>
+    ) -> anyhow::Result<(Hash256, Addr, tx_sync::Response)>
     where
         M: Serialize,
         B: Into<Binary>,
@@ -519,7 +519,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = hash(&code);
+        let code_hash = hash256(&code);
         let salt = salt.into();
         let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
         let admin = admin_opt.decide(&address);
@@ -555,7 +555,7 @@ impl Client {
     pub async fn migrate<M>(
         &self,
         contract: Addr,
-        new_code_hash: Hash,
+        new_code_hash: Hash256,
         msg: &M,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_>,

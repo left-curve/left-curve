@@ -1,5 +1,5 @@
 use {
-    crate::{Account, Addr, Binary, BlockInfo, Coin, Coins, Config, Hash, Json},
+    crate::{Account, Addr, Binary, BlockInfo, Coin, Coins, Config, Hash256, Json},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
@@ -33,12 +33,12 @@ pub enum QueryRequest {
     },
     /// A single Wasm byte code.
     /// Returns: `Binary`
-    Code { hash: Hash },
+    Code { hash: Hash256 },
     /// Enumerate all Wasm byte codes.
     ///
     /// Returns: `BTreeMap<Hash, Binary>`
     Codes {
-        start_after: Option<Hash>,
+        start_after: Option<Hash256>,
         limit: Option<u32>,
     },
     /// Metadata of a single account.
@@ -74,7 +74,7 @@ pub enum QueryResponse {
     Supply(Coin),
     Supplies(Coins),
     Code(Binary),
-    Codes(BTreeMap<Hash, Binary>),
+    Codes(BTreeMap<Hash256, Binary>),
     Account(Account),
     Accounts(BTreeMap<Addr, Account>),
     WasmRaw(Option<Binary>),
@@ -125,7 +125,7 @@ impl QueryResponse {
         wasm_byte_code
     }
 
-    pub fn as_codes(self) -> BTreeMap<Hash, Binary> {
+    pub fn as_codes(self) -> BTreeMap<Hash256, Binary> {
         let Self::Codes(hashes) = self else {
             panic!("QueryResponse is not Codes");
         };

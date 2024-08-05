@@ -4,7 +4,7 @@ use {
         ProofNode,
     },
     grug_storage::{Map, PrefixBound, Set},
-    grug_types::{hash, Batch, Hash, Op, Order, StdResult, Storage},
+    grug_types::{hash256, Batch, Hash256, Op, Order, StdResult, Storage},
 };
 
 // Default storage namespaces
@@ -74,7 +74,7 @@ impl<'a> MerkleTree<'a> {
     /// If the root node is not found at the version, return None. There are two
     /// possible reasons that it's not found: either no data has ever been
     /// written to the tree yet, or the version is old and has been pruned.
-    pub fn root_hash(&self, storage: &dyn Storage, version: u64) -> StdResult<Option<Hash>> {
+    pub fn root_hash(&self, storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>> {
         let root_node = self.nodes.may_load(storage, (version, &ROOT_BITS))?;
         Ok(root_node.map(|node| node.hash()))
     }
@@ -95,11 +95,11 @@ impl<'a> MerkleTree<'a> {
         old_version: u64,
         new_version: u64,
         batch: &Batch,
-    ) -> StdResult<Option<Hash>> {
-        // Hash the keys and values
+    ) -> StdResult<Option<Hash256>> {
+        // Hash256 the keys and values
         let mut batch: Vec<_> = batch
             .iter()
-            .map(|(k, op)| (hash(k), op.as_ref().map(hash)))
+            .map(|(k, op)| (hash256(k), op.as_ref().map(hash256)))
             .collect();
 
         // Sort by key hashes ascendingly
@@ -124,8 +124,8 @@ impl<'a> MerkleTree<'a> {
         storage: &mut dyn Storage,
         old_version: u64,
         new_version: u64,
-        batch: Vec<(Hash, Op<Hash>)>,
-    ) -> StdResult<Option<Hash>> {
+        batch: Vec<(Hash256, Op<Hash256>)>,
+    ) -> StdResult<Option<Hash256>> {
         // The caller must make sure that versions are strictly incremental.
         // We assert this in debug mode must skip in release to save some time...
         debug_assert!(
@@ -158,7 +158,7 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         old_version: u64,
         bits: &BitArray,
-        batch: Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
         match self.nodes.may_load(storage, (old_version, bits))? {
             Some(Node::Leaf(leaf_node)) => {
@@ -181,7 +181,7 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         bits: &BitArray,
         mut internal_node: InternalNode,
-        batch: Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
         // Split the batch into two, one for left child, one for right.
         let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
@@ -310,7 +310,7 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         child_bits: &BitArray,
         child: Option<&Child>,
-        batch: Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
         match (batch.is_empty(), child) {
             // Child doesn't exist, and there is no op to apply.
@@ -339,7 +339,7 @@ impl<'a> MerkleTree<'a> {
         new_version: u64,
         bits: &BitArray,
         mut leaf_node: LeafNode,
-        batch: Vec<(Hash, Op<Hash>)>,
+        batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
         let (batch, op) = prepare_batch_for_subtree(batch, Some(&leaf_node));
         match (batch.is_empty(), op) {
@@ -372,7 +372,7 @@ impl<'a> MerkleTree<'a> {
         storage: &mut dyn Storage,
         version: u64,
         bits: &BitArray,
-        batch: Vec<(Hash, Hash)>,
+        batch: Vec<(Hash256, Hash256)>,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<Outcome> {
         let new_node = match (batch.len(), existing_leaf) {
@@ -439,7 +439,12 @@ impl<'a> MerkleTree<'a> {
     /// KV store, then `prove` on the Merkle tree. This separation of data
     /// store and data commitment was put forward by Cosmos SDK's ADR-65:
     /// <https://github.com/cosmos/cosmos-sdk/blob/main/docs/architecture/adr-065-store-v2.md>
-    pub fn prove(&self, storage: &dyn Storage, key_hash: &Hash, version: u64) -> StdResult<Proof> {
+    pub fn prove(
+        &self,
+        storage: &dyn Storage,
+        key_hash: &Hash256,
+        version: u64,
+    ) -> StdResult<Proof> {
         let mut bits = ROOT_BITS.clone();
         let bitarray = BitArray::from_bytes(key_hash);
         let mut iter = bitarray.range(None, None, Order::Ascending);
@@ -575,9 +580,9 @@ impl<'a> MerkleTree<'a> {
 
 #[inline]
 fn partition_batch<T>(
-    mut batch: Vec<(Hash, T)>,
+    mut batch: Vec<(Hash256, T)>,
     bits: &BitArray,
-) -> (Vec<(Hash, T)>, Vec<(Hash, T)>) {
+) -> (Vec<(Hash256, T)>, Vec<(Hash256, T)>) {
     let partition_point =
         batch.partition_point(|(key_hash, _)| bit_at_index(key_hash, bits.num_bits) == 0);
     let right = batch.split_off(partition_point);
@@ -606,9 +611,9 @@ fn partition_leaf(leaf: Option<LeafNode>, bits: &BitArray) -> (Option<LeafNode>,
 /// 2. Amoung the rest ops, filter off the deletes, keeping only the inserts.
 #[inline]
 fn prepare_batch_for_subtree(
-    batch: Vec<(Hash, Op<Hash>)>,
+    batch: Vec<(Hash256, Op<Hash256>)>,
     existing_leaf: Option<&LeafNode>,
-) -> (Vec<(Hash, Hash)>, Option<Op<Hash>>) {
+) -> (Vec<(Hash256, Hash256)>, Option<Op<Hash256>>) {
     let mut maybe_op = None;
     let filtered_batch = batch
         .into_iter()
@@ -648,7 +653,7 @@ fn bit_at_index(bytes: &[u8], index: usize) -> u8 {
 }
 
 #[inline]
-fn hash_of(child: Option<Child>) -> Option<Hash> {
+fn hash_of(child: Option<Child>) -> Option<Hash256> {
     child.map(|child| child.hash)
 }
 
@@ -731,38 +736,38 @@ mod tests {
 
     const TREE: MerkleTree = MerkleTree::new_default();
 
-    const HASH_ROOT: Hash = Hash::from_array(hex!(
+    const HASH_ROOT: Hash256 = Hash256::from_array(hex!(
         "ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b"
     ));
-    const HASH_0: Hash = Hash::from_array(hex!(
+    const HASH_0: Hash256 = Hash256::from_array(hex!(
         "b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042"
     ));
-    const HASH_1: Hash = Hash::from_array(hex!(
+    const HASH_1: Hash256 = Hash256::from_array(hex!(
         "cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222"
     ));
-    const HASH_01: Hash = Hash::from_array(hex!(
+    const HASH_01: Hash256 = Hash256::from_array(hex!(
         "521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b"
     ));
-    const HASH_010: Hash = Hash::from_array(hex!(
+    const HASH_010: Hash256 = Hash256::from_array(hex!(
         "c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684"
     ));
-    const HASH_011: Hash = Hash::from_array(hex!(
+    const HASH_011: Hash256 = Hash256::from_array(hex!(
         "e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744"
     ));
-    const HASH_0110: Hash = Hash::from_array(hex!(
+    const HASH_0110: Hash256 = Hash256::from_array(hex!(
         "fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280"
     ));
-    const HASH_0111: Hash = Hash::from_array(hex!(
+    const HASH_0111: Hash256 = Hash256::from_array(hex!(
         "412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b"
     ));
-    const HASH_M: Hash = Hash::from_array(hex!(
+    const HASH_M: Hash256 = Hash256::from_array(hex!(
         "62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a"
     ));
-    const HASH_BAR: Hash = Hash::from_array(hex!(
+    const HASH_BAR: Hash256 = Hash256::from_array(hex!(
         "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
     ));
 
-    fn build_test_case() -> StdResult<(MockStorage, Option<Hash>)> {
+    fn build_test_case() -> StdResult<(MockStorage, Option<Hash256>)> {
         let mut storage = MockStorage::new();
         let root_hash = TREE.apply_raw(
             &mut storage,
@@ -820,7 +825,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             new_root_hash,
-            Some(Hash::from_array(hex!(
+            Some(Hash256::from_array(hex!(
                 "b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf"
             )))
         );
@@ -974,7 +979,7 @@ mod tests {
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
         assert_eq!(
-            TREE.prove(&storage, &hash(key.as_bytes()), 0).unwrap(),
+            TREE.prove(&storage, &hash256(key.as_bytes()), 0).unwrap(),
             proof
         );
     }

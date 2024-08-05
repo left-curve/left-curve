@@ -5,8 +5,8 @@ use {
         AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
-        Context, Event, GenericResult, Hash, Json, Storage, SubMsgResult, Tx, TxOutcome,
+        hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
+        Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -96,7 +96,7 @@ fn _do_upload(
     storage: &mut dyn Storage,
     uploader: &Addr,
     code: &Binary,
-) -> AppResult<(Event, Hash)> {
+) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load(storage)?;
     if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
@@ -104,7 +104,7 @@ fn _do_upload(
     }
 
     // Make sure that the same code isn't already uploaded
-    let code_hash = hash(code);
+    let code_hash = hash256(code);
     if CODES.has(storage, &code_hash) {
         return Err(AppError::CodeExists { code_hash });
     }
@@ -254,7 +254,7 @@ pub fn do_instantiate<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     sender: Addr,
-    code_hash: Hash,
+    code_hash: Hash256,
     msg: &Json,
     salt: Binary,
     funds: Coins,
@@ -297,7 +297,7 @@ pub fn _do_instantiate<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     sender: Addr,
-    code_hash: Hash,
+    code_hash: Hash256,
     msg: &Json,
     salt: Binary,
     funds: Coins,
@@ -471,7 +471,7 @@ pub fn do_migrate<VM>(
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
-    new_code_hash: Hash,
+    new_code_hash: Hash256,
     msg: &Json,
 ) -> AppResult<Vec<Event>>
 where
@@ -510,7 +510,7 @@ fn _do_migrate<VM>(
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
-    new_code_hash: Hash,
+    new_code_hash: Hash256,
     msg: &Json,
 ) -> AppResult<Vec<Event>>
 where

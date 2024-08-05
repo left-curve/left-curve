@@ -1684,7 +1684,6 @@ dependencies = [
  "proptest",
  "rand",
  "serde",
- "sha2 0.10.8",
  "test-case",
  "thiserror",
 ]
@@ -1799,6 +1798,7 @@ dependencies = [
  "bnum",
  "borsh",
  "data-encoding",
+ "digest 0.10.7",
  "dyn-clone",
  "forward_ref",
  "grug-crypto",
@@ -1806,10 +1806,12 @@ dependencies = [
  "hex-literal",
  "proptest",
  "prost",
+ "ripemd",
  "serde",
  "serde_json",
  "serde_with",
  "sha2 0.10.8",
+ "sha3",
  "test-case",
  "thiserror",
 ]
