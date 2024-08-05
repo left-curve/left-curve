@@ -328,7 +328,7 @@ where
     /// Must provide a builder function that generates an account's instantiate
     /// message given an Secp256k1 public key.
     ///
-    /// `add_account` can't be called after `set_account_code`, otherwise the
+    /// ***WARNING:*** `set_account_code` can't be called if `add_account` has been already called, otherwise the
     /// derived addresses won't be correct.
     ///
     /// E.g.
@@ -392,6 +392,7 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
+    /// ***WARNING:*** `set_owner` can't be called if `add_account` has not been already called at least one time.
     pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
         let owner =
             self.accounts.0.get(name).ok_or_else(|| {
