@@ -15,7 +15,7 @@ use {
 #[derive(Clone)]
 pub struct StorageProvider {
     storage: Box<dyn Storage>,
-    namespace: Vec<u8>,
+    pub namespace: Vec<u8>,
 }
 
 impl StorageProvider {

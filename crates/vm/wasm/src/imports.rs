@@ -137,7 +137,9 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 
     env.consume_external_gas(
         &mut store,
-        GAS_COSTS.db_write.cost(key.len() + value.len()),
+        GAS_COSTS
+            .db_write
+            .cost(env.storage.namespace.len() + key.len() + value.len()),
         "db_write",
     )?;
 
