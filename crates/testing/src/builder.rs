@@ -4,9 +4,9 @@ use {
     grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
-        hash256, Addr, Binary, BlockInfo, Coins, Config, Duration, GenesisState, Message,
-        Permission, Permissions, TSBInit, TSBRef, TSBUnset, Timestamp, Udec128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState,
+        MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
+        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -39,7 +39,7 @@ pub struct TestBuilder<
     M1 = grug_account::InstantiateMsg,
     M2 = grug_bank::InstantiateMsg,
     M3 = grug_taxman::InstantiateMsg,
-    TA = TSBUnset<TestAccounts>,
+    TA = Undefined<TestAccounts>,
 > {
     vm: VM,
     // Basic configs
@@ -58,7 +58,6 @@ pub struct TestBuilder<
     taxman_opt: CodeOption<Box<dyn FnOnce(String, Udec128) -> M3>>,
     fee_denom: Option<String>,
     fee_rate: Option<Udec128>,
-    // Other contracts
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -102,7 +101,7 @@ where
             genesis_time: None,
             block_time: None,
             owner: None,
-            accounts: TSBUnset::default(),
+            accounts: Undefined::default(),
             balances: BTreeMap::new(),
             fee_denom: None,
             fee_rate: None,
@@ -115,7 +114,7 @@ where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    TA: TSBRef<I = TestAccounts>,
+    TA: MaybeDefined<Inner = TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -175,7 +174,8 @@ where
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
-    ///     .add_account("owner", Coins::new()).unwrap()
+    ///     .add_account("owner", Coins::new())
+    ///     .unwrap()
     ///     .set_bank_code(
     ///         code,
     ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
@@ -231,7 +231,8 @@ where
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
-    ///     .add_account("owner", Coins::new()).unwrap()
+    ///     .add_account("owner", Coins::new())
+    ///     .unwrap()
     ///     .set_taxman_code(
     ///         code,
     ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
@@ -274,12 +275,12 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, TSBInit<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>>
     where
         C: TryInto<Coins>,
         anyhow::Error: From<C::Error>,
     {
-        let mut accounts = self.accounts.inner().unwrap_or_default();
+        let mut accounts = self.accounts.maybe_inner().unwrap_or_default();
         ensure!(
             !accounts.contains_key(name),
             "account with name {name} already exists"
@@ -303,7 +304,7 @@ where
             block_time: self.block_time,
             owner: self.owner,
             account_opt: self.account_opt,
-            accounts: TSBInit(accounts),
+            accounts: Defined::new(accounts),
             bank_opt: self.bank_opt,
             balances: self.balances,
             taxman_opt: self.taxman_opt,
@@ -313,8 +314,7 @@ where
     }
 }
 
-// TSB where accounts are not set yet
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBUnset<TestAccounts>>
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -328,8 +328,8 @@ where
     /// Must provide a builder function that generates an account's instantiate
     /// message given an Secp256k1 public key.
     ///
-    /// ***WARNING:*** `set_account_code` can't be called if `add_account` has been already called, otherwise the
-    /// derived addresses won't be correct.
+    /// **Note:** `set_account_code` can only be called before any `add_account`
+    /// call, otherwise the derived addresses won't be correct.
     ///
     /// E.g.
     ///
@@ -348,8 +348,10 @@ where
     ///         |pk| grug_account::InstantiateMsg {
     ///             public_key: grug_account::PublicKey::Secp256k1(pk),
     ///         },
-    ///     ).unwrap()
-    ///     .add_account("owner", Coins::new()).unwrap()
+    ///     )
+    ///     .unwrap()
+    ///     .add_account("owner", Coins::new())
+    ///     .unwrap()
     ///     .build()
     ///     .unwrap();
     /// ```
@@ -357,7 +359,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, TSBUnset<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, Undefined<TestAccounts>>>
     where
         T: Into<Binary>,
         F: Fn(Binary) -> M1A + 'static,
@@ -384,7 +386,7 @@ where
 }
 
 // TSB where at least one account is set
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, TSBInit<TestAccounts>>
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -392,10 +394,11 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    /// ***WARNING:*** `set_owner` can't be called if `add_account` has not been already called at least one time.
+    /// **Note:** `set_owner` can only called if `add_account` has been already
+    /// called at least once.
     pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
         let owner =
-            self.accounts.0.get(name).ok_or_else(|| {
+            self.accounts.inner().get(name).ok_or_else(|| {
                 anyhow!("failed to set owner: can't find account with name `{name}`")
             })?;
 
@@ -458,7 +461,7 @@ where
         ];
 
         // Instantiate accounts
-        for (name, account) in &self.accounts.0 {
+        for (name, account) in self.accounts.inner() {
             msgs.push(Message::instantiate(
                 hash256(&self.account_opt.code),
                 &(self.account_opt.msg_builder)(account.pk.clone()),
@@ -497,6 +500,6 @@ where
         let genesis_state = GenesisState { config, msgs };
         let suite = TestSuite::create(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
-        Ok((suite, self.accounts.0))
+        Ok((suite, self.accounts.into_inner()))
     }
 }
