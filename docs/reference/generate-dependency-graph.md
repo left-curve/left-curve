@@ -4,68 +4,7 @@ Dependency relations of the crates in this repository are described by the follo
 
 ```graphviz
 digraph G {
-  fontname="Helvetica-bold";
-  node [fontname="Helvetica" style=filled];
-
-  subgraph cluster_bin {
-    label="Binaries";
-    style="filled,rounded";
-    color=whitesmoke;
-    margin=20;
-
-    cli [fillcolor=orange];
-  }
-
-  subgraph cluster_clients {
-    label="Clients";
-    style="filled,rounded";
-    color=whitesmoke;
-    margin=20;
-
-    "sdk/rust" [fillcolor=cyan];
-  }
-
-  subgraph cluster_contracts {
-    label="Contracts";
-    style="filled,rounded";
-    color=whitesmoke;
-    margin=20;
-
-    account [fillcolor=green1];
-    bank [fillcolor=green1];
-  }
-
-  subgraph cluster_libraries {
-    label="Libraries";
-    style="filled,rounded";
-    color=whitesmoke;
-    margin=20;
-
-    app [fillcolor=yellow];
-    crypto [fillcolor=yellow];
-    "db/disk" [fillcolor=yellow];
-    "db/memory" [fillcolor=yellow];
-    ffi [fillcolor=yellow];
-    jmt [fillcolor=yellow label="jellyfish-merkle"];
-    macros [fillcolor=yellow];
-    std [fillcolor=yellow];
-    storage [fillcolor=yellow];
-    testing [fillcolor=yellow];
-    types [fillcolor=yellow];
-    "vm/rust" [fillcolor=yellow];
-    "vm/wasm" [fillcolor=yellow];
-  }
-
-  cli -> app;
-  cli -> "db/disk";
-  cli -> jmt;
-  cli -> "sdk/rust";
-  cli -> types;
-  cli -> "vm/wasm";
-
-  "sdk/rust" -> account;
-  "sdk/rust" -> crypto;
-  "sdk/rust" -> types;
+  node [fontname="Helvetica" style=filled fillcolor=yellow];
 
   account -> ffi;
   account -> storage;
@@ -75,16 +14,26 @@ digraph G {
   bank -> storage;
   bank -> types;
 
+  taxman -> bank;
+  taxman -> ffi;
+  taxman -> storage;
+  taxman -> types;
+
   testing -> app;
   testing -> account;
   testing -> bank;
   testing -> crypto;
   testing -> "db/memory";
+  testing -> taxman;
   testing -> types;
   testing -> "vm/rust";
 
   app -> storage;
   app -> types;
+
+  client -> account;
+  client -> crypto;
+  client -> types;
 
   "db/disk" -> app;
   "db/disk" -> jmt;
@@ -113,7 +62,6 @@ digraph G {
 
   "vm/wasm" -> app;
   "vm/wasm" -> crypto;
-  "vm/wasm" -> testing;
   "vm/wasm" -> types;
 }
 ```
