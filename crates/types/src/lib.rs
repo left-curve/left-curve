@@ -14,12 +14,11 @@ mod hashers;
 mod imports;
 mod macros;
 mod math;
-#[cfg(not(target_arch = "wasm32"))]
-mod mocks;
 mod query;
 mod response;
 mod result;
 mod serializers;
+mod testing;
 mod time;
 mod tx;
 mod utils;
@@ -27,13 +26,8 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, coin::*, context::*, db::*, empty::*,
     error::*, event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*, result::*,
-    serializers::*, time::*, tx::*, utils::*,
+    serializers::*, testing::*, time::*, tx::*, utils::*,
 };
-
-// Mocks need to be excluded in Wasm builds because they depend on k256/p256
-// crates, which includes random operators.
-#[cfg(not(target_arch = "wasm32"))]
-pub use mocks::*;
 
 /// Represents any valid JSON value, including numbers, booleans, strings,
 /// objects, and arrays.
