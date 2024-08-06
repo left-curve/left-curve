@@ -35,7 +35,7 @@ where
 }
 
 pub struct Path<'a, T, C> {
-    storage_key: &'a [u8],
+    pub storage_key: &'a [u8],
     data: PhantomData<T>,
     codec: PhantomData<C>,
 }

@@ -2,7 +2,8 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, CHAIN_ID, CODES,
+        CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
@@ -72,10 +73,11 @@ fn _do_configure(
 
 pub fn do_upload(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     uploader: &Addr,
     code: &Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_upload(storage, uploader, code) {
+    match _do_upload(storage, gas_tracker, uploader, code) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
@@ -94,22 +96,23 @@ pub fn do_upload(
 // Return the hash of the code that is stored, for logging purpose.
 fn _do_upload(
     storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
     uploader: &Addr,
     code: &Binary,
 ) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
-    let cfg = CONFIG.load(storage)?;
+    let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
     if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
         return Err(AppError::Unauthorized);
     }
 
     // Make sure that the same code isn't already uploaded
     let code_hash = hash256(code);
-    if CODES.has(storage, &code_hash) {
+    if CODES.has_with_gas(storage, gas_tracker.clone(), &code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save(storage, &code_hash, code)?;
+    CODES.save_with_gas(storage, gas_tracker, &code_hash, code)?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", &code_hash),

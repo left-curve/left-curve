@@ -58,6 +58,21 @@ where
     fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker, key: K)
         -> StdResult<T>;
 
+    fn has_with_gas(
+        &self,
+        storage: &dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+    ) -> StdResult<bool>;
+
+    fn save_with_gas(
+        &self,
+        storage: &mut dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+        value: &T,
+    ) -> StdResult<()>;
+
     fn range_with_gas<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -84,6 +99,43 @@ where
         gas_tracker.consume(GAS_COSTS.db_read.cost(data_raw.len()), "db_read/found")?;
 
         C::decode(&data_raw)
+    }
+
+    fn has_with_gas(
+        &self,
+        storage: &dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+    ) -> StdResult<bool> {
+        match self.path(key).as_path().may_load_raw(storage) {
+            Some(data) => {
+                gas_tracker.consume(GAS_COSTS.db_read.cost(data.len()), "db_read/found")?;
+                Ok(true)
+            },
+            None => {
+                gas_tracker.consume(GAS_COSTS.db_read.cost(0), "db_read/not_found")?;
+                Ok(false)
+            },
+        }
+    }
+
+    fn save_with_gas(
+        &self,
+        storage: &mut dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+        value: &T,
+    ) -> StdResult<()> {
+        let data_raw = C::encode(value)?;
+        let path = self.path(key);
+        gas_tracker.consume(
+            GAS_COSTS
+                .db_write
+                .cost(data_raw.len() + path.as_path().storage_key.len()),
+            "db_write",
+        )?;
+        path.as_path().save_raw(storage, &data_raw);
+        Ok(())
     }
 
     fn range_with_gas<'b>(
