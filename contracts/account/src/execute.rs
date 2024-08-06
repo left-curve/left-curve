@@ -2,7 +2,7 @@ use {
     crate::{Credential, InstantiateMsg, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Binary, Message,
+        from_json_value, to_borsh_vec, Addr, AuthCtx, AuthMode, AuthResponse, Binary, Message,
         MutableCtx, Response, StdResult, Tx,
     },
 };
@@ -37,9 +37,9 @@ where
     Hasher: Fn(&[u8]) -> [u8; HASH_LEN],
 {
     let mut prehash = Vec::new();
-    // That there are multiple valid ways that the messages can be serialized
-    // into JSON. Here we use `grug::to_json_vec` as the source of truth.
-    prehash.extend(to_json_vec(&msgs)?);
+    // Use Borsh instead of JSON for this, because JSON serialization is not
+    // unique - the same Rust type can have multiple valid JSON representations.
+    prehash.extend(to_borsh_vec(&msgs)?);
     prehash.extend(sender.as_ref());
     prehash.extend(chain_id.as_bytes());
     prehash.extend(sequence.to_be_bytes());

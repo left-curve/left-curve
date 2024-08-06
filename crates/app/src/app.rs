@@ -1,5 +1,5 @@
 #[cfg(feature = "abci")]
-use grug_types::from_json_slice;
+use grug_types::from_borsh_slice;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -10,7 +10,7 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
+        to_borsh_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
         Hash256, Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult,
         Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
@@ -372,7 +372,7 @@ where
         };
 
         let proof = if prove {
-            Some(to_json_vec(&self.db.prove(key, version)?)?)
+            Some(to_borsh_vec(&self.db.prove(key, version)?)?)
         } else {
             None
         };
@@ -437,7 +437,7 @@ where
         block: BlockInfo,
         raw_genesis_state: &[u8],
     ) -> AppResult<Hash256> {
-        let genesis_state = from_json_slice(raw_genesis_state)?;
+        let genesis_state = from_borsh_slice(raw_genesis_state)?;
 
         self.do_init_chain(chain_id, block, genesis_state)
     }
@@ -452,14 +452,14 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(from_json_slice)
+            .map(from_borsh_slice)
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
-        let tx = from_json_slice(raw_tx)?;
+        let tx = from_borsh_slice(raw_tx)?;
 
         self.do_check_tx(tx)
     }
@@ -470,17 +470,17 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
-        let tx = from_json_slice(raw_unsigned_tx)?;
+        let tx = from_borsh_slice(raw_unsigned_tx)?;
         let res = self.do_simulate(tx, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(to_borsh_vec(&res)?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = from_json_slice(raw_req)?;
+        let req = from_borsh_slice(raw_req)?;
         let res = self.do_query_app(req, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(to_borsh_vec(&res)?)
     }
 }
 

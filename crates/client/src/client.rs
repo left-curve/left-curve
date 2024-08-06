@@ -4,7 +4,7 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
+        from_borsh_slice, from_json_value, hash256, to_borsh_vec, to_json_value, Account, Addr,
         Binary, Coin, Coins, Config, GenericResult, Hash256, InfoResponse, Message, Outcome,
         QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
     },
@@ -145,7 +145,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(from_json_slice(&proof.ops[0].data)?)
+            Some(from_borsh_slice(&proof.ops[0].data)?)
         } else {
             ensure!(res.proof.is_none());
             None
@@ -164,9 +164,9 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
         let res = self
-            .query("/app", to_json_vec(req)?.to_vec(), height, false)
+            .query("/app", to_borsh_vec(req)?.to_vec(), height, false)
             .await?;
-        Ok(from_json_slice(res.value)?)
+        Ok(from_borsh_slice(res.value)?)
     }
 
     /// Query the chain-level information, including the chain ID, config, and
@@ -305,9 +305,9 @@ impl Client {
     /// Simulate the gas usage of a transaction.
     pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
         let res = self
-            .query("/simulate", to_json_vec(unsigned_tx)?, None, false)
+            .query("/simulate", to_borsh_vec(unsigned_tx)?, None, false)
             .await?;
-        Ok(from_json_slice(res.value)?)
+        Ok(from_borsh_slice(res.value)?)
     }
 
     // -------------------------- transaction methods --------------------------
@@ -420,7 +420,7 @@ impl Client {
         )?;
 
         if confirm_fn(&tx)? {
-            let tx_bytes = to_json_vec(&tx)?;
+            let tx_bytes = to_borsh_vec(&tx)?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)
