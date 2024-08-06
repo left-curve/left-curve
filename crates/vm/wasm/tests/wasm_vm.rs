@@ -1,11 +1,15 @@
 use {
+    grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
+    grug_tester::{CryptoVerifyType, QueryMsg as TesterQueryMsg},
     grug_testing::TestBuilder,
     grug_types::{
         to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
         Udec128, Uint256,
     },
     grug_vm_wasm::{VmError, WasmVm},
+    rand::rngs::OsRng,
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
+    test_case::test_case,
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
@@ -218,6 +222,111 @@ fn immutable_state() -> anyhow::Result<()> {
         })?
         .result
         .should_fail_with_error(VmError::ReadOnly);
+
+    Ok(())
+}
+
+const MSG: &[u8] = b"finger but hole";
+
+const WRONG_MSG: &[u8] = b"precious item ahead";
+
+fn secp256k1() -> (TesterQueryMsg, fn(&[u8]) -> [u8; 32]) {
+    use k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+
+    let sk = SigningKey::random(&mut OsRng);
+    let vk = VerifyingKey::from(&sk);
+    let msg_hash = Identity256::from(sha2_256(MSG));
+    let sig: Signature = sk.sign_digest(msg_hash.clone());
+
+    (
+        TesterQueryMsg::CryptoVerify {
+            ty: CryptoVerifyType::Secp256k1,
+            pk: vk.to_sec1_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
+            msg: msg_hash.to_vec(),
+        },
+        sha2_256,
+    )
+}
+
+fn secp256r1() -> (TesterQueryMsg, fn(&[u8]) -> [u8; 32]) {
+    use p256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+
+    let sk = SigningKey::random(&mut OsRng);
+    let vk = VerifyingKey::from(&sk);
+    let msg_hash = Identity256::from(sha2_256(MSG));
+    let sig: Signature = sk.sign_digest(msg_hash.clone());
+
+    (
+        TesterQueryMsg::CryptoVerify {
+            ty: CryptoVerifyType::Secp256r1,
+            pk: vk.to_sec1_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
+            msg: msg_hash.to_vec(),
+        },
+        sha2_256,
+    )
+}
+
+fn ed25519() -> (TesterQueryMsg, fn(&[u8]) -> [u8; 64]) {
+    use ed25519_dalek::{DigestSigner, SigningKey, VerifyingKey};
+
+    let sk = SigningKey::generate(&mut OsRng);
+    let vk = VerifyingKey::from(&sk);
+    let msg_hash = Identity512::from(sha2_512(MSG));
+    let sig = sk.sign_digest(msg_hash.clone());
+
+    (
+        TesterQueryMsg::CryptoVerify {
+            ty: CryptoVerifyType::Ed25519,
+            pk: vk.as_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
+            msg: msg_hash.to_vec(),
+        },
+        sha2_512,
+    )
+}
+
+#[test_case(secp256k1; "wasm_secp256k1")]
+#[test_case(secp256r1; "wasm_secp256r1")]
+#[test_case(ed25519; "wasm_ed25519")]
+fn export_crypto_verify<const N: usize>(
+    clos: fn() -> (TesterQueryMsg, fn(&[u8]) -> [u8; N]),
+) -> anyhow::Result<()> {
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .set_owner("owner")?
+        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+        .set_tracing_level(None)
+        .build()?;
+
+    // Deploy the tester contract
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
+        &accounts["sender"],
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        320_000_000,
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
+        Coins::new(),
+    )?;
+
+    let (mut query_msg, hash_fn) = clos();
+
+    suite
+        .query_wasm_smart::<_, ()>(tester.clone(), &query_msg)
+        .should_succeed();
+
+    if let TesterQueryMsg::CryptoVerify { msg, .. } = &mut query_msg {
+        *msg = hash_fn(WRONG_MSG).to_vec();
+    };
+
+    suite
+        .query_wasm_smart::<_, ()>(tester, &query_msg)
+        .should_fail();
 
     Ok(())
 }
