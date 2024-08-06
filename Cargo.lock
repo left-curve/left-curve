@@ -1788,6 +1788,7 @@ dependencies = [
  "forward_ref",
  "hex",
  "hex-literal",
+ "paste",
  "proptest",
  "prost",
  "ripemd",
