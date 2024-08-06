@@ -1,9 +1,8 @@
 use {
     crate::Region,
     grug_types::{
-        encode_sections, from_borsh_slice, from_json_slice, to_json_vec, Addr, Api, CryptoError,
-        GenericResult, Order, Querier, QueryRequest, QueryResponse, Record, StdError, StdResult,
-        Storage,
+        encode_sections, from_json_slice, to_json_vec, Addr, Api, CryptoError, GenericResult,
+        Order, Querier, QueryRequest, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -34,7 +33,7 @@ extern "C" {
         sig_ptr: usize,
         recovery_id: u8,
         compressed: u8,
-    ) -> usize;
+    ) -> u64;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> usize;
     fn ed25519_batch_verify(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> usize;
 
@@ -314,10 +313,10 @@ impl Api for ExternalApi {
         let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
-        let res_ptr =
+        let res =
             unsafe { secp256r1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
-        read_crypto_verify_ptr(res_ptr)
+        parse_crypto_verify_result(res)
     }
 
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
@@ -330,10 +329,10 @@ impl Api for ExternalApi {
         let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
-        let res_ptr =
+        let res =
             unsafe { secp256k1_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
-        read_crypto_verify_ptr(res_ptr)
+        parse_crypto_verify_result(res)
     }
 
     fn secp256k1_pubkey_recover(
@@ -349,7 +348,7 @@ impl Api for ExternalApi {
         let sig_region = Region::build(sig);
         let sig_ptr = &*sig_region as *const Region;
 
-        let res_ptr = unsafe {
+        let res = unsafe {
             secp256k1_pubkey_recover(
                 msg_hash_ptr as usize,
                 sig_ptr as usize,
@@ -358,11 +357,16 @@ impl Api for ExternalApi {
             )
         };
 
-        let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
+        let ptr_result = from_high_half(res);
+        let err = from_low_half(res);
 
-        let res: Result<Vec<u8>, CryptoError> = from_borsh_slice(res_bytes)?;
-
-        Ok(res?)
+        match err {
+            0 => {
+                let val = unsafe { Region::consume(ptr_result as *mut Region) };
+                Ok(val)
+            },
+            i => Err(StdError::Crypto(CryptoError::from(i))),
+        }
     }
 
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
@@ -375,10 +379,10 @@ impl Api for ExternalApi {
         let pk_region = Region::build(pk);
         let pk_ptr = &*pk_region as *const Region;
 
-        let res_ptr =
+        let res =
             unsafe { ed25519_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
 
-        read_crypto_verify_ptr(res_ptr)
+        parse_crypto_verify_result(res)
     }
 
     fn ed25519_batch_verify(
@@ -396,23 +400,36 @@ impl Api for ExternalApi {
         let pks_region = Region::build(&encode_sections(pks)?);
         let pks_ptr = &*pks_region as *const Region;
 
-        let res_ptr = unsafe {
+        let res = unsafe {
             ed25519_batch_verify(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
         };
 
-        read_crypto_verify_ptr(res_ptr)
+        parse_crypto_verify_result(res)
     }
 }
 
-fn read_crypto_verify_ptr(res_ptr: usize) -> StdResult<()> {
-    if res_ptr == 0 {
+fn parse_crypto_verify_result(res: usize) -> StdResult<()> {
+    if res == 0 {
         Ok(())
     } else {
-        let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-        let error: CryptoError = from_borsh_slice(res_bytes)?;
-        Err(StdError::Crypto(error))
+        Err(StdError::Crypto(CryptoError::from(res as u32)))
     }
 }
+
+/// Returns the four most significant bytes
+#[allow(dead_code)] // only used in Wasm builds
+#[inline]
+pub fn from_high_half(data: u64) -> u32 {
+    (data >> 32).try_into().unwrap()
+}
+
+/// Returns the four least significant bytes
+#[allow(dead_code)] // only used in Wasm builds
+#[inline]
+pub fn from_low_half(data: u64) -> u32 {
+    (data & 0xFFFFFFFF).try_into().unwrap()
+}
+
 // ---------------------------------- querier ----------------------------------
 
 /// A zero-size wrapper over the `query_chain` FFI function.

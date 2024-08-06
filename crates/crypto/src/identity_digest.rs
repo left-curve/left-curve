@@ -10,22 +10,16 @@ use {
 };
 
 /// Try cast a slice to a fixed length array. Error if the size is incorrect.
-pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
-    data.try_into().map_err(|_| CryptoError::IncorrectLength {
-        expect: S,
-        actual: data.len(),
-    })
+pub fn to_sized<const S: usize>(data: &[u8], err: CryptoError) -> CryptoResult<[u8; S]> {
+    data.try_into().map_err(|_| err)
 }
 
 /// Truncate a slice to a fixed length array. Error if the size is less than the fixed length.
-pub fn truncate<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
+pub fn truncate<const S: usize>(data: &[u8], err: CryptoError) -> CryptoResult<[u8; S]> {
     if data.len() < S {
-        return Err(CryptoError::ExceedsMaximumLength {
-            max_length: S,
-            actual_length: data.len(),
-        });
+        return Err(err);
     }
-    to_sized(&data[..S])
+    to_sized(&data[..S], err)
 }
 
 /// To utilize the `signature::DigestVerifier::verify_digest` method, the digest

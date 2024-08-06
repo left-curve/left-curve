@@ -1,5 +1,4 @@
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
     data_encoding::BASE64,
     hex::FromHexError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
@@ -322,32 +321,55 @@ impl StdError {
 
 pub type StdResult<T> = core::result::Result<T, StdError>;
 
-#[derive(Debug, Clone, Error, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Clone, Error)]
 pub enum CryptoError {
-    #[error("verify sign failed on {0}")]
-    VerifyFailed(String),
+    #[error("verify sign failed")]
+    VerifyFailed,
 
-    #[error("public key recovery failed on {0}")]
-    RecoveryFailed(String),
+    #[error("public key recovery failed")]
+    RecoveryFailed,
 
-    #[error("invalid public key format on {0}")]
-    InvalidPk(String),
+    #[error("invalid public key format")]
+    InvalidPk,
 
-    #[error("invalid signature format on {0}")]
-    InvalidSig(String),
+    #[error("invalid signature format")]
+    InvalidSig,
 
-    #[error("data is of incorrect length: expecting {expect}, found {actual}")]
-    IncorrectLength { expect: usize, actual: usize },
+    #[error("invalid msg format")]
+    InvalidMsg,
 
-    #[error("data is of incorrect length: expecting one of {expect:?}, found {actual}")]
-    IncorrectLengths { expect: Vec<usize>, actual: usize },
+    #[error("invalid recovery id: supported values are 0 and 1")]
+    InvalidRecoveryId,
 
-    #[error("invalid recovery id {recovery_id}")]
-    InvalidRecoveryId { recovery_id: u8 },
+    #[error("unknown error code: {error_code}")]
+    UnknownErr { error_code: u32 },
+}
 
-    #[error("array exceeds maximum length, max {max_length}, found {actual_length}")]
-    ExceedsMaximumLength {
-        max_length: usize,
-        actual_length: usize,
-    },
+impl From<u32> for CryptoError {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => unreachable!("0 is not a valid error code"),
+            1 => Self::VerifyFailed,
+            2 => Self::RecoveryFailed,
+            3 => Self::InvalidPk,
+            4 => Self::InvalidSig,
+            5 => Self::InvalidMsg,
+            6 => Self::InvalidRecoveryId,
+            i => Self::UnknownErr { error_code: i },
+        }
+    }
+}
+
+impl From<CryptoError> for u32 {
+    fn from(value: CryptoError) -> Self {
+        match value {
+            CryptoError::VerifyFailed => 1,
+            CryptoError::RecoveryFailed => 2,
+            CryptoError::InvalidPk => 3,
+            CryptoError::InvalidSig => 4,
+            CryptoError::InvalidMsg => 5,
+            CryptoError::InvalidRecoveryId => 6,
+            CryptoError::UnknownErr { error_code } => error_code,
+        }
+    }
 }

@@ -10,12 +10,11 @@ const SECP256K1_SIGNATURE_LEN: usize = 64;
 
 /// NOTE: This function takes the hash of the message, not the prehash.
 pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()> {
-    let msg_hash = to_sized::<SECP256K1_DIGEST_LEN>(msg_hash)?;
+    let msg_hash = to_sized::<SECP256K1_DIGEST_LEN>(msg_hash, CryptoError::InvalidMsg)?;
     let msg_hash = Identity256::from(msg_hash);
 
-    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let mut sig =
-        Signature::from_bytes(&sig.into()).crypto_invalid_sig_format("secp256k1_verify")?;
+    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig, CryptoError::InvalidSig)?;
+    let mut sig = Signature::from_bytes(&sig.into()).crypto_invalid_sig_format()?;
 
     // High-S signatures require normalization since our verification implementation
     // rejects them by default. If we had a verifier that does not restrict to
@@ -25,16 +24,13 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     }
 
     if !SECP256K1_PUBKEY_LENS.contains(&pk.len()) {
-        return Err(CryptoError::IncorrectLengths {
-            expect: SECP256K1_PUBKEY_LENS.to_vec(),
-            actual: pk.len(),
-        });
+        return Err(CryptoError::InvalidPk);
     }
 
     VerifyingKey::from_sec1_bytes(pk)
-        .crypto_invalid_pk_format("secp256k1_verify")?
+        .crypto_invalid_pk_format()?
         .verify_digest(msg_hash, &sig)
-        .crypto_verify_failed("secp256k1_verify")
+        .crypto_verify_failed()
 }
 
 /// Recover the Secp256k1 public key as SEC1 bytes from the _hashed_ message and
@@ -55,17 +51,16 @@ pub fn secp256k1_pubkey_recover(
     recovery_id: u8,
     compressed: bool,
 ) -> CryptoResult<Vec<u8>> {
-    let msg_hash = to_sized::<SECP256K1_DIGEST_LEN>(msg_hash)?;
+    let msg_hash = to_sized::<SECP256K1_DIGEST_LEN>(msg_hash, CryptoError::InvalidMsg)?;
     let msg_hash = Identity256::from(msg_hash);
 
-    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let mut sig =
-        Signature::from_bytes(&sig.into()).crypto_invalid_sig_format("secp256k1_pubkey_recover")?;
+    let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig, CryptoError::InvalidSig)?;
+    let mut sig = Signature::from_bytes(&sig.into()).crypto_invalid_sig_format()?;
 
     let mut id = match recovery_id {
         0 => RecoveryId::new(false, false),
         1 => RecoveryId::new(true, false),
-        _ => return Err(CryptoError::InvalidRecoveryId { recovery_id }),
+        _ => return Err(CryptoError::InvalidRecoveryId),
     };
 
     if let Some(normalized) = sig.normalize_s() {
@@ -76,7 +71,7 @@ pub fn secp256k1_pubkey_recover(
     // Convert the public key to SEC1 bytes
     VerifyingKey::recover_from_digest(msg_hash, &sig, id)
         .map(|vk| vk.to_encoded_point(compressed).to_bytes().into())
-        .crypto_recovery_failed("secp256k1_pubkey_recover")
+        .crypto_recovery_failed()
 }
 
 // ----------------------------------- tests -----------------------------------
