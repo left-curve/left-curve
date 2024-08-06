@@ -1,11 +1,13 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
     grug_app::GAS_COSTS,
+    grug_crypto::CryptoResult,
     grug_types::{
-        decode_sections, from_json_slice, to_json_vec, Addr, QueryRequest, Record, Storage,
+        decode_sections, from_json_slice, to_borsh_vec, to_json_vec, Addr, QueryRequest, Record,
+        Storage,
     },
     tracing::info,
-    wasmer::FunctionEnvMut,
+    wasmer::{FunctionEnvMut, StoreMut},
 };
 
 pub fn db_read(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<u32> {
@@ -243,7 +245,7 @@ pub fn secp256k1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -252,10 +254,9 @@ pub fn secp256k1_verify(
 
     env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256k1_verify")?;
 
-    match grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
-        Ok(()) => Ok(0),
-        Err(_) => Ok(1),
-    }
+    let res = grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk);
+
+    write_verify_result(env, &mut store, res)
 }
 
 pub fn secp256r1_verify(
@@ -263,7 +264,7 @@ pub fn secp256r1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -272,10 +273,9 @@ pub fn secp256r1_verify(
 
     env.consume_external_gas(&mut store, GAS_COSTS.secp256k1_verify, "secp256r1_verify")?;
 
-    match grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
-        Ok(()) => Ok(0),
-        Err(_) => Ok(1),
-    }
+    let res = grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk);
+
+    write_verify_result(env, &mut store, res)
 }
 
 pub fn secp256k1_pubkey_recover(
@@ -302,10 +302,10 @@ pub fn secp256k1_pubkey_recover(
         "secp256k1_pubkey_recover",
     )?;
 
-    match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
-        Ok(pk) => write_to_memory(env, &mut store, &pk),
-        Err(_) => Ok(0),
-    }
+    let res = grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed);
+
+    let res_bytes = to_borsh_vec(&res)?;
+    write_to_memory(env, &mut store, &res_bytes)
 }
 
 pub fn ed25519_verify(
@@ -313,7 +313,7 @@ pub fn ed25519_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -322,10 +322,9 @@ pub fn ed25519_verify(
 
     env.consume_external_gas(&mut store, GAS_COSTS.ed25519_verify, "ed25519_verify")?;
 
-    match grug_crypto::ed25519_verify(&msg_hash, &sig, &pk) {
-        Ok(()) => Ok(0),
-        Err(_) => Ok(1),
-    }
+    let res = grug_crypto::ed25519_verify(&msg_hash, &sig, &pk);
+
+    write_verify_result(env, &mut store, res)
 }
 
 pub fn ed25519_batch_verify(
@@ -333,7 +332,7 @@ pub fn ed25519_batch_verify(
     msgs_hash_ptr: u32,
     sigs_ptr: u32,
     pks_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msgs_hash = read_from_memory(env, &store, msgs_hash_ptr)?;
@@ -350,10 +349,9 @@ pub fn ed25519_batch_verify(
         "ed25519_batch_verify",
     )?;
 
-    match grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks) {
-        Ok(()) => Ok(0),
-        Err(_) => Ok(1),
-    }
+    let res = grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks);
+
+    write_verify_result(env, &mut store, res)
 }
 
 macro_rules! impl_hash_method {
@@ -395,4 +393,18 @@ fn encode_record((mut k, v): Record) -> Vec<u8> {
     k.extend(v);
     k.extend_from_slice(&(key_len as u16).to_be_bytes());
     k
+}
+
+fn write_verify_result(
+    env: &mut Environment,
+    store: &mut StoreMut,
+    result: CryptoResult<()>,
+) -> VmResult<u32> {
+    match result {
+        Ok(()) => Ok(0),
+        Err(err) => {
+            let res_bytes = to_borsh_vec(&err)?;
+            write_to_memory(env, store, &res_bytes)
+        },
+    }
 }

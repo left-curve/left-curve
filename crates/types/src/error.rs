@@ -1,4 +1,5 @@
 use {
+    borsh::{BorshDeserialize, BorshSerialize},
     data_encoding::BASE64,
     hex::FromHexError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
@@ -321,7 +322,7 @@ impl StdError {
 
 pub type StdResult<T> = core::result::Result<T, StdError>;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, Error, BorshDeserialize, BorshSerialize)]
 pub enum CryptoError {
     #[error("verify sign failed on {0}")]
     VerifyFailed(String),
@@ -339,10 +340,7 @@ pub enum CryptoError {
     IncorrectLength { expect: usize, actual: usize },
 
     #[error("data is of incorrect length: expecting one of {expect:?}, found {actual}")]
-    IncorrectLengths {
-        expect: &'static [usize],
-        actual: usize,
-    },
+    IncorrectLengths { expect: Vec<usize>, actual: usize },
 
     #[error("invalid recovery id {recovery_id}")]
     InvalidRecoveryId { recovery_id: u8 },
