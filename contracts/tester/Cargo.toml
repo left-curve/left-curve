@@ -1,5 +1,5 @@
 [package]
-name          = "grug-tester-infinite-loop"
+name          = "grug-tester"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -12,5 +12,10 @@ categories    = { workspace = true }
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# If enabled, Wasm exports won't be created. This allows this contract to be
+# imported into other contracts as a library.
+library = []
+
 [dependencies]
-grug = { path = "../../../crates/std" }
+grug = { path = "../../crates/std" }

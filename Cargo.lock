@@ -1747,21 +1747,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-tester-benchmarker"
-version = "0.0.0"
-dependencies = [
- "grug",
-]
-
-[[package]]
-name = "grug-tester-immutable-state"
-version = "0.0.0"
-dependencies = [
- "grug",
-]
-
-[[package]]
-name = "grug-tester-infinite-loop"
+name = "grug-tester"
 version = "0.0.0"
 dependencies = [
  "grug",
@@ -1840,7 +1826,7 @@ dependencies = [
  "grug-app",
  "grug-bank",
  "grug-crypto",
- "grug-tester-benchmarker",
+ "grug-tester",
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",

@@ -2,7 +2,7 @@ use {
     criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_crypto::sha2_256,
-    grug_tester_benchmarker::QueryMsg,
+    grug_tester::QueryMsg,
     grug_types::{
         to_json_vec, Addr, BlockInfo, Context, Empty, GenericResult, Hash, MockStorage, Timestamp,
         Uint64,
@@ -21,7 +21,7 @@ const MOCK_BLOCK: BlockInfo = BlockInfo {
     hash: Hash::ZERO,
 };
 
-static BENCHMARKER_CODE: &[u8] = include_bytes!("../testdata/grug_tester_benchmarker.wasm");
+static BENCHMARKER_CODE: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
 
 fn looping(c: &mut Criterion) {
     // Share one `WasmVm` across all benches, which caches the module, so we

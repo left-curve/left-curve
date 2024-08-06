@@ -5,7 +5,7 @@ members  = [
   "contracts/account",
   "contracts/bank",
   "contracts/taxman",
-  "contracts/testers/*",
+  "contracts/tester",
   "crates/app",
   "crates/crypto",
   "crates/db/disk",

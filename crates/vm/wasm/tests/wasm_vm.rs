@@ -146,16 +146,16 @@ fn infinite_loop() -> anyhow::Result<()> {
     let (_, tester) = suite.upload_and_instantiate_with_gas(
         &accounts["sender"],
         320_000_000,
-        read_wasm_file("grug_tester_infinite_loop.wasm")?,
-        "tester/infinite_loop",
-        &Empty {},
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
         Coins::new(),
     )?;
 
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&Empty {})?,
+            msg: to_json_value(&grug_tester::ExecuteMsg::InfiniteLoop {})?,
             funds: Coins::new(),
         })?
         .result
@@ -180,9 +180,9 @@ fn immutable_state() -> anyhow::Result<()> {
         // of gas because of the need to allocate hundreds ok kB of contract
         // bytecode into Wasm memory and have the contract deserialize it...
         320_000_000,
-        read_wasm_file("grug_tester_immutable_state.wasm")?,
-        "tester/immutable_state",
-        &Empty {},
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
         Coins::new(),
     )?;
 
@@ -194,7 +194,10 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart::<_, Empty>(tester.clone(), &Empty {})
+        .query_wasm_smart::<_, Empty>(tester.clone(), &grug_tester::QueryMsg::ForceWrite {
+            key: "larry".to_string(),
+            value: "engineer".to_string(),
+        })
         .should_fail_with_error(VmError::ReadOnly);
 
     // Execute the tester contract.
@@ -207,7 +210,10 @@ fn immutable_state() -> anyhow::Result<()> {
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&Empty {})?,
+            msg: to_json_value(&grug_tester::ExecuteMsg::ForceWriteOnQuery {
+                key: "larry".to_string(),
+                value: "engineer".to_string(),
+            })?,
             funds: Coins::new(),
         })?
         .result
