@@ -1,5 +1,6 @@
 use {
-    crate::{to_sized, CryptoError, CryptoResult, Identity256},
+    crate::{to_sized, CryptoResult, Identity256, SignatureResultExt},
+    grug_types::CryptoError,
     p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
 };
 
@@ -13,7 +14,8 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg_hash = Identity256::from(msg_hash);
 
     let sig = to_sized::<SECP256R1_SIGNATURE_LEN>(sig)?;
-    let mut sig = Signature::from_bytes(&sig.into())?;
+    let mut sig =
+        Signature::from_bytes(&sig.into()).crypto_invalid_sig_format("secp256r1_verify")?;
 
     // High-S signatures require normalization since our verification implementation
     // rejects them by default. If we had a verifier that does not restrict to
@@ -29,9 +31,10 @@ pub fn secp256r1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
         });
     }
 
-    VerifyingKey::from_sec1_bytes(pk)?
+    VerifyingKey::from_sec1_bytes(pk)
+        .crypto_invalid_pk_format("secp256r1_verify")?
         .verify_digest(msg_hash, &sig)
-        .map_err(Into::into)
+        .crypto_verify_failed("secp256r1_verify")
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -66,6 +69,10 @@ mod tests {
             assert!(
                 secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
             );
+
+            let a = secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes())
+                .unwrap_err();
+            println!("{}", a);
         }
 
         // Incorrect public key

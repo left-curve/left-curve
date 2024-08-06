@@ -19,6 +19,9 @@ pub enum StdError {
     #[error(transparent)]
     TryFromSlice(#[from] TryFromSliceError),
 
+    #[error(transparent)]
+    Crypto(#[from] CryptoError),
+
     // TODO: rename this. this means an error is thrown by the host over the FFI.
     // something like `StdError::Host` may be more appropriate.
     #[error("generic error: {0}")]
@@ -317,3 +320,36 @@ impl StdError {
 }
 
 pub type StdResult<T> = core::result::Result<T, StdError>;
+
+#[derive(Debug, Clone, Error)]
+pub enum CryptoError {
+    #[error("verify sign failed on {0}")]
+    VerifyFailed(String),
+
+    #[error("public key recovery failed on {0}")]
+    RecoveryFailed(String),
+
+    #[error("invalid public key format on {0}")]
+    InvalidPk(String),
+
+    #[error("invalid signature format on {0}")]
+    InvalidSig(String),
+
+    #[error("data is of incorrect length: expecting {expect}, found {actual}")]
+    IncorrectLength { expect: usize, actual: usize },
+
+    #[error("data is of incorrect length: expecting one of {expect:?}, found {actual}")]
+    IncorrectLengths {
+        expect: &'static [usize],
+        actual: usize,
+    },
+
+    #[error("invalid recovery id {recovery_id}")]
+    InvalidRecoveryId { recovery_id: u8 },
+
+    #[error("array exceeds maximum length, max {max_length}, found {actual_length}")]
+    ExceedsMaximumLength {
+        max_length: usize,
+        actual_length: usize,
+    },
+}

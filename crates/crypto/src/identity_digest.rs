@@ -1,10 +1,11 @@
 use {
-    crate::{CryptoError, CryptoResult},
+    crate::CryptoResult,
     digest::{
         consts::{U32, U64},
         generic_array::GenericArray,
         FixedOutput, HashMarker, Output, OutputSizeUser, Update,
     },
+    grug_types::CryptoError,
     std::ops::Deref,
 };
 

@@ -1,5 +1,5 @@
 use {
-    crate::{to_sized, CryptoResult, Identity512},
+    crate::{to_sized, CryptoResult, Identity512, SignatureResultExt},
     ed25519_dalek::{DigestVerifier, Signature, VerifyingKey},
 };
 
@@ -19,9 +19,10 @@ pub fn ed25519_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<()
     let sig = Signature::from(sig);
 
     let vk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
-    let vk = VerifyingKey::from_bytes(&vk)?;
+    let vk = VerifyingKey::from_bytes(&vk).crypto_invalid_pk_format("ed25519_verify")?;
 
-    vk.verify_digest(msg_hash, &sig).map_err(Into::into)
+    vk.verify_digest(msg_hash, &sig)
+        .crypto_verify_failed("ed25519_verify")
 }
 
 /// Verify a batch of Ed25519 signatures with the given _prehash_ messages and
@@ -42,7 +43,7 @@ pub fn ed25519_batch_verify(
             let sig = Signature::from(sig);
 
             let vk = to_sized::<ED25519_PUBKEY_LEN>(pk)?;
-            let vk = VerifyingKey::from_bytes(&vk)?;
+            let vk = VerifyingKey::from_bytes(&vk).crypto_verify_failed("ed25519_batch_verify")?;
 
             Ok((sig, vk))
         })
@@ -52,7 +53,8 @@ pub fn ed25519_batch_verify(
 
     // No need to check the three slices (`msg_hashes`, `sigs`, `pks`) are of the
     // length; `ed25519_dalek::verify_batch` already does this.
-    ed25519_dalek::verify_batch(prehash_msgs, &sigs, &vks).map_err(Into::into)
+    ed25519_dalek::verify_batch(prehash_msgs, &sigs, &vks)
+        .crypto_verify_failed("ed25519_batch_verify")
 }
 
 // ----------------------------------- tests -----------------------------------

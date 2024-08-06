@@ -1,5 +1,6 @@
 use {
-    crate::{to_sized, CryptoError, CryptoResult, Identity256},
+    crate::{to_sized, CryptoResult, Identity256, SignatureResultExt},
+    grug_types::CryptoError,
     k256::ecdsa::{signature::DigestVerifier, RecoveryId, Signature, VerifyingKey},
 };
 
@@ -13,7 +14,8 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
     let msg_hash = Identity256::from(msg_hash);
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let mut sig = Signature::from_bytes(&sig.into())?;
+    let mut sig =
+        Signature::from_bytes(&sig.into()).crypto_invalid_sig_format("secp256k1_verify")?;
 
     // High-S signatures require normalization since our verification implementation
     // rejects them by default. If we had a verifier that does not restrict to
@@ -29,9 +31,10 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
         });
     }
 
-    VerifyingKey::from_sec1_bytes(pk)?
+    VerifyingKey::from_sec1_bytes(pk)
+        .crypto_invalid_pk_format("secp256k1_verify")?
         .verify_digest(msg_hash, &sig)
-        .map_err(Into::into)
+        .crypto_verify_failed("secp256k1_verify")
 }
 
 /// Recover the Secp256k1 public key as SEC1 bytes from the _hashed_ message and
@@ -56,7 +59,8 @@ pub fn secp256k1_pubkey_recover(
     let msg_hash = Identity256::from(msg_hash);
 
     let sig = to_sized::<SECP256K1_SIGNATURE_LEN>(sig)?;
-    let mut sig = Signature::from_bytes(&sig.into())?;
+    let mut sig =
+        Signature::from_bytes(&sig.into()).crypto_invalid_sig_format("secp256k1_pubkey_recover")?;
 
     let mut id = match recovery_id {
         0 => RecoveryId::new(false, false),
@@ -72,7 +76,7 @@ pub fn secp256k1_pubkey_recover(
     // Convert the public key to SEC1 bytes
     VerifyingKey::recover_from_digest(msg_hash, &sig, id)
         .map(|vk| vk.to_encoded_point(compressed).to_bytes().into())
-        .map_err(Into::into)
+        .crypto_recovery_failed("secp256k1_pubkey_recover")
 }
 
 // ----------------------------------- tests -----------------------------------
