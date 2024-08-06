@@ -1,6 +1,6 @@
 [package]
-name          = "grug-sdk"
-description   = "Rust client for interacting with Grug chains"
+name          = "grug-client"
+description   = "Rust client for interacting with Grug via Tendermint RPC"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

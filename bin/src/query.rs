@@ -1,8 +1,8 @@
 use {
     crate::prompt::print_json_pretty,
     clap::{Parser, Subcommand},
+    grug_client::Client,
     grug_jmt::Proof,
-    grug_sdk::Client,
     grug_types::{Addr, Binary, Hash256, QueryRequest},
     serde::Serialize,
 };

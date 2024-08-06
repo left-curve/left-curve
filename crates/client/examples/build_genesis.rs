@@ -1,7 +1,7 @@
 use {
     anyhow::anyhow,
     chrono::DateTime,
-    grug_sdk::{AdminOption, GenesisBuilder, SigningKey},
+    grug_client::{AdminOption, GenesisBuilder, SigningKey},
     grug_types::{Coins, NonZero, Permission, Udec128, Uint128},
     home::home_dir,
     std::{path::PathBuf, str::FromStr},

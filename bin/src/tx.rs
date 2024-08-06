@@ -4,7 +4,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     grug_app::GAS_COSTS,
-    grug_sdk::{Client, GasOption, SigningKey, SigningOption},
+    grug_client::{Client, GasOption, SigningKey, SigningOption},
     grug_types::{from_json_slice, Addr, Binary, Coins, Hash256, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},

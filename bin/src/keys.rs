@@ -4,7 +4,7 @@ use {
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
-    grug_sdk::{Keystore, SigningKey},
+    grug_client::{Keystore, SigningKey},
     grug_types::from_json_slice,
     rand::rngs::OsRng,
     std::{

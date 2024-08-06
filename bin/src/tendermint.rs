@@ -1,7 +1,7 @@
 use {
     crate::prompt::print_json_pretty,
     clap::{Parser, Subcommand},
-    grug_sdk::Client,
+    grug_client::Client,
     grug_types::Hash,
     std::str::FromStr,
 };

@@ -1601,9 +1601,9 @@ dependencies = [
  "colored_json",
  "dialoguer",
  "grug-app",
+ "grug-client",
  "grug-db-disk",
  "grug-jmt",
- "grug-sdk",
  "grug-types",
  "grug-vm-wasm",
  "hex",
@@ -1615,6 +1615,34 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "grug-client"
+version = "0.0.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "bip32",
+ "chrono",
+ "grug-account",
+ "grug-app",
+ "grug-bank",
+ "grug-crypto",
+ "grug-jmt",
+ "grug-taxman",
+ "grug-types",
+ "hex",
+ "home",
+ "k256",
+ "pbkdf2",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "signature",
+ "tendermint",
+ "tendermint-rpc",
 ]
 
 [[package]]
@@ -1694,34 +1722,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.68",
-]
-
-[[package]]
-name = "grug-sdk"
-version = "0.0.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "bip32",
- "chrono",
- "grug-account",
- "grug-app",
- "grug-bank",
- "grug-crypto",
- "grug-jmt",
- "grug-taxman",
- "grug-types",
- "hex",
- "home",
- "k256",
- "pbkdf2",
- "rand",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "signature",
- "tendermint",
- "tendermint-rpc",
 ]
 
 [[package]]
