@@ -26,5 +26,8 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@leftcurve/encoding": "workspace:^"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.4.0"
   }
 }

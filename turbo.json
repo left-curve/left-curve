@@ -4,11 +4,12 @@
     "tasks": {
       "test": {
         "dependsOn": ["build"],
-        "inputs": ["**/*.{ts,js}"]
+        "inputs": ["**/*.{ts,tsx,js,jsx}"]
       },
       "build": {
         "dependsOn": ["^build"],
         "outputs": [
+          ".next/**",
           "build/**"
         ]
       },

@@ -1,0 +1,20 @@
+{
+  "name": "@leftcurve/hooks",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "pnpm biome check --apply ./src",
+    "ci": "pnpm biome ci ./src",
+    "build": "pnpm tsup"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "@types/react": "^18.3.3",
+    "react": "^18.3.1"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

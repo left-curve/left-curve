@@ -4,6 +4,7 @@
   "author": "left-curve software",
   "scripts": {
     "dev": "turbo dev",
+    "dev:app": "turbo dev --filter=\"{./apps/superapp}...\"",
     "dev:pkg": "turbo dev --filter=\"{./packages/**}...\"",
     "test": "turbo test",
     "build": "turbo build",
