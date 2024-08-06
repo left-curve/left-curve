@@ -2,6 +2,7 @@ mod address;
 mod app;
 mod bank;
 mod binary;
+mod builder;
 mod coin;
 mod context;
 mod db;
@@ -24,8 +25,8 @@ mod tx;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, coin::*, context::*, db::*, empty::*, error::*,
-    event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*, result::*,
+    address::*, app::*, bank::*, binary::*, builder::*, coin::*, context::*, db::*, empty::*,
+    error::*, event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*, result::*,
     serializers::*, time::*, tx::*, utils::*,
 };
 

@@ -14,9 +14,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut builder = GenesisBuilder::new()
         .with_genesis_time(DateTime::parse_from_rfc3339("2024-07-22T00:00:00.00000Z")?)
-        .with_chain_id("grug-1")
-        .with_upload_permission(Permission::Everybody)
-        .with_instantiate_permission(Permission::Everybody);
+        .with_chain_id("grug-1");
 
     // Load two private keys that we created earlier.
     let k1 = SigningKey::from_file(home_dir.join(".grug/keys/test1.json"), "123")?;
@@ -80,8 +78,10 @@ fn main() -> anyhow::Result<()> {
 
     // Build the genesis state and write to CometBFT genesis file.
     builder
-        .set_owner(account1)
+        .set_owner(Some(account1))
         .set_bank(bank)
         .set_taxman(taxman)
+        .set_upload_permission(Permission::Everybody)
+        .set_instantiate_permission(Permission::Everybody)
         .write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
 }
