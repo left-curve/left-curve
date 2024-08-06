@@ -54,7 +54,7 @@ pub trait Contract {
         api: &dyn Api,
         querier: &dyn Querier,
         msg: &[u8],
-        submsg_res: SubMsgResult,
+        result: SubMsgResult,
     ) -> VmResult<GenericResult<Response>>;
 
     fn query(

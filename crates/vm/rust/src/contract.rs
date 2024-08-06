@@ -551,7 +551,7 @@ where
         api: &dyn Api,
         querier: &dyn Querier,
         msg: &[u8],
-        submsg_res: SubMsgResult,
+        result: SubMsgResult,
     ) -> VmResult<GenericResult<Response>> {
         let Some(reply_fn) = &self.reply_fn else {
             return Err(VmError::function_not_found("reply"));
@@ -559,7 +559,7 @@ where
 
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         let msg = from_json_slice(msg)?;
-        let res = reply_fn(sudo_ctx, msg, submsg_res);
+        let res = reply_fn(sudo_ctx, msg, result);
 
         Ok(res.into())
     }
