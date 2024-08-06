@@ -35,4 +35,18 @@ pub enum QueryMsg {
     /// `db_remove`, or `db_remove_range` FFI import methods directly. We need
     /// to test whether the VM can properly reject this behavior.
     ForceWrite { key: String, value: String },
+
+    CryptoVerify {
+        ty: CryptoVerifyType,
+        pk: Vec<u8>,
+        sig: Vec<u8>,
+        msg: Vec<u8>,
+    },
+}
+
+#[grug::derive(serde)]
+pub enum CryptoVerifyType {
+    Ed25519,
+    Secp256k1,
+    Secp256r1,
 }

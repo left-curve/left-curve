@@ -1,4 +1,6 @@
-use grug::{Empty, Number, StdResult, Uint128};
+use grug::{Empty, ImmutableCtx, Number, StdResult, Uint128};
+
+use crate::CryptoVerifyType;
 
 pub fn query_loop(iterations: u64) -> StdResult<Empty> {
     // Keep the same operation per iteration for consistency
@@ -36,4 +38,18 @@ pub fn query_force_write(_key: &str, _value: &str) -> Empty {
     }
 
     Empty {}
+}
+
+pub fn query_crypto_verify(
+    ctx: ImmutableCtx,
+    ty: CryptoVerifyType,
+    pk: Vec<u8>,
+    sig: Vec<u8>,
+    msg_hash: Vec<u8>,
+) -> StdResult<()> {
+    match ty {
+        CryptoVerifyType::Ed25519 => ctx.api.ed25519_verify(&msg_hash, &sig, &pk),
+        CryptoVerifyType::Secp256k1 => ctx.api.secp256k1_verify(&msg_hash, &sig, &pk),
+        CryptoVerifyType::Secp256r1 => ctx.api.secp256r1_verify(&msg_hash, &sig, &pk),
+    }
 }
