@@ -1,9 +1,9 @@
 use {
-    crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
-        Response, StdResult, Tx,
+        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Binary, Message,
+        MutableCtx, Response, StdResult, Tx,
     },
 };
 
@@ -56,7 +56,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     Ok(Response::new())
 }
 
-pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result<Response> {
+pub fn update_key(ctx: MutableCtx, new_public_key: &Binary) -> anyhow::Result<Response> {
     // Only the account itself can update its key
     ensure!(ctx.sender == ctx.contract, "Nice try lol");
 
@@ -108,24 +108,12 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     //
     // This is skipped when in simulation mode.
     //
-    // Note the gas costs for signature verification:
-    // - Secp256r1: 1,880,000
-    // - Secp256k1:   770,000
-    // - Ethereum:  1,580,000
-    //
-    // These costs are not accounted for in simulations.
+    // Note the gas costs for verifying an Secp256k1 signature: 770,000 gas.
+    // This cost are not accounted for in simulations.
     // It may be a good idea to manually add these to your simulation result.
     if let AuthMode::Check | AuthMode::Finalize = ctx.mode {
-        match &public_key {
-            PublicKey::Secp256k1(bytes) => {
-                ctx.api
-                    .secp256k1_verify(&hash, &credential.signature, bytes)?;
-            },
-            PublicKey::Secp256r1(bytes) => {
-                ctx.api
-                    .secp256r1_verify(&hash, &credential.signature, bytes)?;
-            },
-        }
+        ctx.api
+            .secp256k1_verify(&hash, &credential.signature, &public_key)?;
     }
 
     // Increment the sequence number

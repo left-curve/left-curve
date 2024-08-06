@@ -1,7 +1,6 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::{anyhow, ensure},
-    grug_account::PublicKey,
     grug_app::AppError,
     grug_types::{
         hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState,
@@ -76,9 +75,7 @@ where
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
-                msg_builder: Box::new(|pk| grug_account::InstantiateMsg {
-                    public_key: PublicKey::Secp256k1(pk),
-                }),
+                msg_builder: Box::new(|public_key| grug_account::InstantiateMsg { public_key }),
             },
             bank_opt: CodeOption {
                 code: VM::default_bank_code(),
@@ -345,9 +342,7 @@ where
     /// let (suite, accounts) = TestBuilder::new()
     ///     .set_account_code(
     ///         code,
-    ///         |pk| grug_account::InstantiateMsg {
-    ///             public_key: grug_account::PublicKey::Secp256k1(pk),
-    ///         },
+    ///         |public_key| grug_account::InstantiateMsg { public_key },
     ///     )
     ///     .unwrap()
     ///     .add_account("owner", Coins::new())

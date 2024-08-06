@@ -1,18 +1,7 @@
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
     grug_types::Binary,
     serde::{Deserialize, Serialize},
 };
-
-/// Public key associated with an account.
-///
-/// Two cryptographic signature schemes are accepted: Secp256k1 and Secp256r1.
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename = "snake_case")]
-pub enum PublicKey {
-    Secp256k1(Binary),
-    Secp256r1(Binary),
-}
 
 /// Schema for the account credentials expected in [`Tx::credential`](grug_types::Tx::credential).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -23,14 +12,15 @@ pub struct Credential {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InstantiateMsg {
-    pub public_key: PublicKey,
+    /// The Secp256k1 public key to be associated with the account.
+    pub public_key: Binary,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename = "snake_case")]
 pub enum ExecuteMsg {
     /// Change the public key associated with the account to a new one.
-    UpdateKey { new_public_key: PublicKey },
+    UpdateKey { new_public_key: Binary },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -43,6 +33,6 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct StateResponse {
-    pub public_key: PublicKey,
+    pub public_key: Binary,
     pub sequence: u32,
 }

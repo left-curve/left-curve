@@ -1,7 +1,6 @@
 use {
     anyhow::anyhow,
     chrono::DateTime,
-    grug_account::PublicKey,
     grug_sdk::{AdminOption, GenesisBuilder, SigningKey},
     grug_types::{Coins, NonZero, Permission, Udec128, Uint128},
     home::home_dir,
@@ -25,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     let account1 = builder.instantiate(
         account_code_hash.clone(),
         &grug_account::InstantiateMsg {
-            public_key: PublicKey::Secp256k1(k1.public_key().into()),
+            public_key: k1.public_key().into(),
         },
         "k1",
         Coins::new(),
@@ -34,7 +33,7 @@ fn main() -> anyhow::Result<()> {
     let account2 = builder.instantiate(
         account_code_hash.clone(),
         &grug_account::InstantiateMsg {
-            public_key: PublicKey::Secp256k1(k2.public_key().into()),
+            public_key: k2.public_key().into(),
         },
         "k2",
         Coins::new(),
