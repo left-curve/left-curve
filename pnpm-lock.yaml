@@ -121,6 +121,9 @@ importers:
       '@noble/hashes':
         specifier: ^1.4.0
         version: 1.4.0
+      webauthn-p256:
+        specifier: ^0.0.9
+        version: 0.0.9
     devDependencies:
       '@leftcurve/config':
         specifier: workspace:^
@@ -409,6 +412,9 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@noble/curves@1.4.2':
+    resolution: {integrity: sha512-TavHr8qycMChk8UwMld0ZDRvatedkzWfH8IiaeGCfymOP5i0hSCozz9vHOL0nkwk7HRMlFnAiKpS2jrUmSybcw==}
 
   '@noble/hashes@1.4.0':
     resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
@@ -1264,6 +1270,9 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
+  webauthn-p256@0.0.9:
+    resolution: {integrity: sha512-sPO724txvAG1uZw1oEyLu9ed9CEixWuQBCqBDyk30JcjLvfCf4595HwNCJWqkCyuP0LIUa6brVSuy1X3OAnSSQ==}
+
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
@@ -1436,6 +1445,10 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@14.2.5':
     optional: true
+
+  '@noble/curves@1.4.2':
+    dependencies:
+      '@noble/hashes': 1.4.0
 
   '@noble/hashes@1.4.0': {}
 
@@ -2221,6 +2234,11 @@ snapshots:
   undici-types@5.26.5: {}
 
   util-deprecate@1.0.2: {}
+
+  webauthn-p256@0.0.9:
+    dependencies:
+      '@noble/curves': 1.4.2
+      '@noble/hashes': 1.4.0
 
   webidl-conversions@4.0.2: {}
 

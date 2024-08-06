@@ -3,19 +3,23 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@leftcurve/components";
 
-import Login from "./Login";
-import Register from "./Register";
+import LoginFlow from "./LoginFlow";
+import RegisterFlow from "./SignupFlow";
 
 import type React from "react";
 
-export const AccountConnect: React.FC = () => {
+interface Props {
+	onFinish?: () => void;
+}
+
+export const AccountConnect: React.FC<Props> = ({ onFinish }) => {
 	const [selectedOption, setSelectedOption] = useState<
 		"register" | "login" | null
 	>(null);
 
 	const WizardComponent = useMemo(() => {
 		if (!selectedOption) return null;
-		return selectedOption === "register" ? Register : Login;
+		return selectedOption === "register" ? RegisterFlow : LoginFlow;
 	}, [selectedOption]);
 
 	return (
@@ -23,7 +27,10 @@ export const AccountConnect: React.FC = () => {
 			<AnimatePresence mode="wait">
 				<motion.div className="rounded-xl bg-white p-4 shadow-xl flex flex-col gap-10 min-h-[20rem] md:min-w-[25rem] items-center overflow-hidden md:p-8">
 					{WizardComponent ? (
-						<WizardComponent setSelectedOption={setSelectedOption} />
+						<WizardComponent
+							changeSelection={setSelectedOption}
+							onFinish={onFinish}
+						/>
 					) : (
 						<motion.div
 							className="flex flex-col gap-10 items-center w-full justify-center"
@@ -50,7 +57,7 @@ export const AccountConnect: React.FC = () => {
 				</motion.div>
 			</AnimatePresence>
 			<div className="bg-primary-700 text-[0.6rem] text-white rounded-b-lg py-1 px-2 font-bold">
-				powered by GRUG
+				Powered by -
 			</div>
 		</div>
 	);

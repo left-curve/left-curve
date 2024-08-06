@@ -13,7 +13,15 @@ import React, {
 
 type Handler = (() => Promise<void>) | (() => void) | null;
 
-type WizardValues = {
+type WizardValues<T = unknown> = {
+	/**
+	 * Reset the wizard to the initial state
+	 */
+	reset: () => void;
+	/**
+	 * It trigger the onFinish callback if provided and reset the state
+	 */
+	done: () => void;
 	/**
 	 * Go to the next step
 	 */
@@ -30,9 +38,13 @@ type WizardValues = {
 	/**
 	 * Attach a callback that will be called when calling `nextStep()`
 	 * @param handler Can be either sync or async
-	 * @param data Any data to pass between steps
 	 */
-	handleStep: (handler: Handler, data?: unknown) => void;
+	onStepLeave: (handler: Handler) => void;
+	/**
+	 * Update the data passed between steps
+	 * @param data The data to pass
+	 */
+	setData: (data: Partial<T>) => void;
 	/**
 	 * Indicate the current state of the handler
 	 *
@@ -49,20 +61,24 @@ type WizardValues = {
 	/** Indicate if the current step is the last step (aka no next step) */
 	isLastStep: boolean;
 	/** The data passed between steps */
-	// biome-ignore lint/suspicious/noExplicitAny: The data can be of any type
-	data: any;
+	data: T;
 };
 
 const WizardContext = createContext<WizardValues | null>(null);
 
-export const useWizard = () => {
+// biome-ignore lint/suspicious/noExplicitAny: Data could be any type.
+export function useWizard<T = any>(): WizardValues<T> {
 	const context = useContext(WizardContext);
 	if (!context) throw Error("useWizard must be used within a WizardProvider");
-	return context;
-};
+	return context as WizardValues<T>;
+}
 
 interface Props {
 	wrapper?: React.ReactElement;
+	/** Callback that will be invoked when the wizard is reset */
+	onReset?: () => void;
+	/** Callback that will be invoked when the wizard is done */
+	onFinish?: () => void;
 	/** Callback that will be invoked with the new step index when the wizard changes steps */
 	onStepChange?: (stepIndex: number) => void;
 	/** Optional start index @default 0 */
@@ -70,7 +86,14 @@ interface Props {
 }
 
 export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
-	({ children, onStepChange, wrapper: Wrapper, startIndex = 0 }) => {
+	({
+		children,
+		onStepChange,
+		wrapper: Wrapper,
+		startIndex = 0,
+		onReset,
+		onFinish,
+	}) => {
 		const [activeStep, setActiveStep] = useState(startIndex || 0);
 		const [isLoading, setIsLoading] = useState(false);
 		const wizardData = useRef<unknown>(null);
@@ -113,10 +136,14 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
 		);
 
 		// Callback to attach the step handler
-		const handleStep = useRef((handler: Handler, payload?: unknown) => {
+		const handleStep = useRef((handler: Handler) => {
 			nextStepHandler.current = handler;
-			if (payload) wizardData.current = payload;
 		});
+
+		// Callback to update the data passed between steps
+		const setData = useCallback((data: unknown) => {
+			wizardData.current = data;
+		}, []);
 
 		const doNextStep = useCallback(async () => {
 			if (hasNextStep.current && nextStepHandler.current) {
@@ -135,26 +162,42 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
 			}
 		}, [goToNextStep]);
 
+		const doReset = useCallback(() => {
+			setActiveStep(startIndex);
+			wizardData.current = null;
+			onReset?.();
+		}, [startIndex, onReset]);
+
+		const doFinish = useCallback(() => {
+			onFinish?.();
+		}, [onFinish]);
+
 		const wizardValue = useMemo(
 			() => ({
+				reset: doReset,
+				done: doFinish,
 				nextStep: doNextStep,
 				previousStep: goToPreviousStep,
-				handleStep: handleStep.current,
+				onStepLeave: handleStep.current,
+				setData,
+				goToStep,
 				isLoading,
 				activeStep,
 				stepCount,
 				data: wizardData.current,
 				isFirstStep: !hasPreviousStep.current,
 				isLastStep: !hasNextStep.current,
-				goToStep,
 			}),
 			[
+				doReset,
+				doFinish,
 				doNextStep,
 				goToPreviousStep,
 				isLoading,
 				activeStep,
 				stepCount,
 				goToStep,
+				setData,
 			],
 		);
 
