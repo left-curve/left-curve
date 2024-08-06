@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useWizard, WizardContainer } from "@leftcurve/hooks";
 import { Button, Input } from "@leftcurve/components";
 import { createCredential } from "@leftcurve/crypto";
+import { getNavigatorOS } from "@leftcurve/utils";
 import { useState } from "react";
 
 interface Props {
@@ -68,7 +69,7 @@ const Step2: React.FC = () => {
 	const getPublicKeyFromPasskey = async () => {
 		try {
 			const { id, publicKey } = await createCredential({
-				name: data.userId,
+				name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
 				rp: {
 					name: window.document.title,
 					id: window.location.hostname,

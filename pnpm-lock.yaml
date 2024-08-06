@@ -72,6 +72,9 @@ importers:
       '@leftcurve/hooks':
         specifier: workspace:^
         version: link:../hooks
+      '@leftcurve/utils':
+        specifier: workspace:^
+        version: link:../utils
     devDependencies:
       '@leftcurve/config':
         specifier: workspace:^
@@ -153,6 +156,12 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+
+  packages/utils:
+    devDependencies:
+      '@leftcurve/config':
+        specifier: workspace:^
+        version: link:../config
 
 packages:
 

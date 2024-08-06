@@ -11,7 +11,8 @@
   "dependencies": {
     "@leftcurve/components": "workspace:^",
     "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/hooks": "workspace:^"
+    "@leftcurve/hooks": "workspace:^",
+    "@leftcurve/utils": "workspace:^"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
