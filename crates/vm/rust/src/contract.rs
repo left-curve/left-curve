@@ -6,10 +6,10 @@ use {
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
-        AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty,
-        GenericResult, ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError,
-        Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        from_borsh_slice, from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
+        make_sudo_ctx, Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary,
+        Context, Empty, GenericResult, ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper,
+        Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -483,7 +483,7 @@ where
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = from_json_value(from_borsh_slice(msg)?)?;
         let res = (self.instantiate_fn)(mutable_ctx, msg);
 
         Ok(res.into())
@@ -502,7 +502,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = from_json_value(from_borsh_slice(msg)?)?;
         let res = execute_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -521,7 +521,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = from_json_value(from_borsh_slice(msg)?)?;
         let res = migrate_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -558,7 +558,7 @@ where
         };
 
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = from_json_value(from_borsh_slice(msg)?)?;
         let res = reply_fn(sudo_ctx, msg, submsg_res);
 
         Ok(res.into())
@@ -577,7 +577,7 @@ where
         };
 
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = from_json_value(from_borsh_slice(msg)?)?;
         let res = query_fn(immutable_ctx, msg);
 
         Ok(res.into())

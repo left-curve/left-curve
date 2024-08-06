@@ -124,10 +124,10 @@ pub enum StdError {
     #[error("logarithm of zero")]
     ZeroLog,
 
-    #[error("failed to serialize into json! type: {ty}, reason: {reason}")]
+    #[error("failed to serialize! type: {ty}, reason: {reason}")]
     Serialize { ty: &'static str, reason: String },
 
-    #[error("failed to deserialize from json! type: {ty}, reason: {reason}")]
+    #[error("failed to deserialize! type: {ty}, reason: {reason}")]
     Deserialize { ty: &'static str, reason: String },
 }
 

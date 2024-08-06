@@ -1,6 +1,11 @@
-use serde::{Deserialize, Serialize};
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    serde::{Deserialize, Serialize},
+};
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 pub struct Event {
     pub r#type: String,
     pub attributes: Vec<Attribute>,
@@ -35,7 +40,9 @@ impl Event {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 pub struct Attribute {
     pub key: String,
     pub value: String,

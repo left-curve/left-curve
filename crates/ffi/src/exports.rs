@@ -1,8 +1,8 @@
 use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
     grug_types::{
-        from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
-        make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg,
+        from_borsh_slice, from_json_value, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
+        make_sudo_ctx, to_borsh_vec, unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg,
         BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx,
         QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
@@ -42,12 +42,14 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg_raw = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(from_json_value(msg_raw));
 
         instantiate_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -67,12 +69,14 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg_raw = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(from_json_value(msg_raw));
 
         execute_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -93,11 +97,13 @@ where
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let immutable_ctx =
             make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg_raw = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(from_json_value(msg_raw));
 
         query_fn(immutable_ctx, msg).into()
     })();
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -117,12 +123,14 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg_raw = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(from_json_value(msg_raw));
 
         migrate_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -144,13 +152,16 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
-        let events = unwrap_into_generic_result!(from_json_slice(events_bytes));
+
+        let msg_raw = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(from_json_value(msg_raw));
+
+        let events = unwrap_into_generic_result!(from_borsh_slice(events_bytes));
 
         reply_fn(ctx, msg, events).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -171,7 +182,7 @@ where
         receive_fn(ctx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -192,7 +203,7 @@ where
         cron_execute_fn(ctx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -211,12 +222,13 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+
+        let tx = unwrap_into_generic_result!(from_borsh_slice(tx_bytes));
 
         authenticate_fn(ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -235,12 +247,13 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+
+        let tx = unwrap_into_generic_result!(from_borsh_slice(tx_bytes));
 
         backrun_fn(ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -259,12 +272,13 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
 
         transfer_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -283,12 +297,13 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let ctx = make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+
+        let msg = unwrap_into_generic_result!(from_borsh_slice(msg_bytes));
 
         query_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -307,12 +322,13 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+
+        let tx = unwrap_into_generic_result!(from_borsh_slice(tx_bytes));
 
         withhold_fee_fn(sudo_ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -333,13 +349,14 @@ where
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
         let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
-        let outcome = unwrap_into_generic_result!(from_json_slice(outcome_bytes));
+
+        let tx = unwrap_into_generic_result!(from_borsh_slice(tx_bytes));
+        let outcome = unwrap_into_generic_result!(from_borsh_slice(outcome_bytes));
 
         finalize_fee_fn(sudo_ctx, tx, outcome).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = to_borsh_vec(&res).unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }

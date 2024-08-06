@@ -38,7 +38,7 @@ pub const GENESIS_BLOCK_HEIGHT: Uint64 = Uint64::ZERO;
 
 /// The chain's genesis state. To be included in the `app_state` field of
 /// CometBFT's `genesis.json`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct GenesisState {
     pub config: Config,
@@ -109,7 +109,7 @@ pub struct Account {
 /// Outcome of processing a message or a cronjob.
 ///
 /// Includes the events emitted, and gas consumption.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Outcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
@@ -132,7 +132,7 @@ pub struct Outcome {
 /// the sender account) and authentication (e.g. incrementing the sender account's
 /// sequence number) will be committed, and relevant events emitted to reflect
 /// this. However, state changes and events from the messages are discarded.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TxOutcome {
     pub gas_limit: u64,

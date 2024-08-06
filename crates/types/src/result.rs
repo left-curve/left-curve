@@ -1,5 +1,6 @@
 use {
     crate::{Event, StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
 };
@@ -14,7 +15,7 @@ pub type SubMsgResult = GenericResult<Vec<Event>>;
 /// This is used in two cases:
 /// - the host calls an export function on the Wasm module
 /// - the Wasm module calls an import function provided by the host
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum GenericResult<T> {
     Ok(T),

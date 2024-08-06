@@ -1,12 +1,13 @@
 use {
     crate::{Account, Addr, Binary, BlockInfo, Coin, Coins, Config, Hash256, Json},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
 };
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
@@ -58,14 +59,14 @@ pub enum QueryRequest {
     WasmSmart { contract: Addr, msg: Json },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
     pub chain_id: String,
     pub config: Config,
     pub last_finalized_block: BlockInfo,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),

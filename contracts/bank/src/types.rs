@@ -1,15 +1,16 @@
 use {
+    borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Addr, Coins, Uint256},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InstantiateMsg {
     pub initial_balances: BTreeMap<Addr, Coins>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename = "snake_case")]
 pub enum ExecuteMsg {
     /// Mint a token of the specified amount to a user.
@@ -35,7 +36,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename = "snake_case")]
 pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.

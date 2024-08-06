@@ -1,9 +1,12 @@
 use {
     crate::{to_json_value, Attribute, Json, Message, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 pub struct Response {
     pub submsgs: Vec<SubMessage>,
     pub attributes: Vec<Attribute>,
@@ -69,7 +72,9 @@ impl Response {
 /// `authenticate` method call. In addition to the usual [`Response`](crate::Response),
 /// this also includes a boolean specifying whether the account requests a
 /// backrun call.
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 pub struct AuthResponse {
     pub response: Response,
     pub request_backrun: bool,
@@ -143,7 +148,7 @@ impl AuthResponse {
 ///
 /// In case a callback is to be performed, the host passes a piece of binary
 /// payload data to the contract.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ReplyOn {
     Success(Json),
     Error(Json),
@@ -151,7 +156,7 @@ pub enum ReplyOn {
     Never,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SubMessage {
     pub msg: Message,
     pub reply_on: ReplyOn,

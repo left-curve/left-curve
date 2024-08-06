@@ -3,11 +3,11 @@ use {
         handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
         StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
+    borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash256,
+        from_borsh_slice, to_borsh_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash256,
         Response, Storage,
     },
-    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 /// Create a VM instance, and call a function that takes no input parameter and
@@ -22,7 +22,7 @@ pub fn call_in_0_out_1<VM, R>(
     storage_readonly: bool,
 ) -> AppResult<R>
 where
-    R: DeserializeOwned,
+    R: BorshDeserialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -39,7 +39,7 @@ where
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_0_out_1(name, ctx)?;
-    let out = from_json_slice(out_raw)?;
+    let out = from_borsh_slice(out_raw)?;
 
     Ok(out)
 }
@@ -57,8 +57,8 @@ pub fn call_in_1_out_1<VM, P, R>(
     param: &P,
 ) -> AppResult<R>
 where
-    P: Serialize,
-    R: DeserializeOwned,
+    P: BorshSerialize,
+    R: BorshDeserialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -73,12 +73,12 @@ where
         storage_readonly,
     )?;
 
-    // Serialize the param as JSON
-    let param_raw = to_json_vec(param)?;
+    // Serialize the param as Borsh
+    let param_raw = to_borsh_vec(param)?;
 
-    // Call the function; deserialize the output as JSON
+    // Call the function; deserialize the output as Borsh
     let out_raw = instance.call_in_1_out_1(name, ctx, &param_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = from_borsh_slice(out_raw)?;
 
     Ok(out)
 }
@@ -97,9 +97,9 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     param2: &P2,
 ) -> AppResult<R>
 where
-    P1: Serialize,
-    P2: Serialize,
-    R: DeserializeOwned,
+    P1: BorshSerialize,
+    P2: BorshSerialize,
+    R: BorshDeserialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -115,12 +115,12 @@ where
     )?;
 
     // Serialize the params as JSON
-    let param1_raw = to_json_vec(param1)?;
-    let param2_raw = to_json_vec(param2)?;
+    let param1_raw = to_borsh_vec(param1)?;
+    let param2_raw = to_borsh_vec(param2)?;
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_2_out_1(name, ctx, &param1_raw, &param2_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = from_borsh_slice(out_raw)?;
 
     Ok(out)
 }
@@ -169,7 +169,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
-    P: Serialize,
+    P: BorshSerialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -203,8 +203,8 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     param2: &P2,
 ) -> AppResult<Vec<Event>>
 where
-    P1: Serialize,
-    P2: Serialize,
+    P1: BorshSerialize,
+    P2: BorshSerialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {

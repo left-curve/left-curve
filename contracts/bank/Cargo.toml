@@ -23,6 +23,7 @@ library = []
 # Instead, they have to use Grug crates (types, storage, ffi) individually.
 [dependencies]
 anyhow       = { workspace = true }
+borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-ffi     = { path = "../../crates/ffi" }
 grug-storage = { path = "../../crates/storage" }
 grug-types   = { path = "../../crates/types" }

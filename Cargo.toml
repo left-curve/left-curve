@@ -66,7 +66,6 @@ quote              = "1"
 rand               = "0.8"
 ripemd             = "0.1"
 serde              = "1"
-serde_json         = "1"
 serde_with         = "3"
 sha2               = "0.10"
 sha3               = "0.10"
@@ -88,7 +87,7 @@ wasmer-middlewares = "4"
 # Our fork of rust-rocksdb is based on the `v0.11.0` release. It adds borsh
 # serialization and implements `From`/`TryFrom` traits for `BUint` types.
 #
-# See the `v0.11.0-grug` branch. comparison:
+# See the `v0.11.0-grug` branch. Comparison:
 # https://github.com/isaacholt100/bnum/compare/v0.11.0...left-curve:bnum:v0.11.0-grug
 [workspace.dependencies.bnum]
 git = "https://github.com/left-curve/bnum"
@@ -102,6 +101,16 @@ rev = "91dfe8a"
 [workspace.dependencies.rocksdb]
 git = "https://github.com/rust-rocksdb/rust-rocksdb"
 rev = "1710120"
+
+# Our fork of serde_json based on the `v1.0.122` release. It adds a `borsh`
+# features, which if enabled, derives Borsh traits for `serde_json::Value`.
+#
+# See the `v1.0.122-grug` branch. Comparison:
+# https://github.com/serde-rs/json/compare/v1.0.122...left-curve:serde-json:v1.0.122-grug
+[workspace.dependencies.serde_json]
+git = "https://github.com/left-curve/serde-json"
+rev = "db9f334"
+features = ["borsh"]
 
 [profile.release]
 codegen-units    = 1

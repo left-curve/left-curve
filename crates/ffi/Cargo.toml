@@ -10,7 +10,6 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-types = { path = "../types" }
 serde      = { workspace = true }
 

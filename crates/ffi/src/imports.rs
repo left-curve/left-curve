@@ -1,7 +1,7 @@
 use {
     crate::Region,
     grug_types::{
-        encode_sections, from_json_slice, to_json_vec, Addr, Api, GenericResult, Order, Querier,
+        encode_sections, from_borsh_slice, to_borsh_vec, Addr, Api, GenericResult, Order, Querier,
         QueryRequest, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
@@ -432,13 +432,13 @@ pub struct ExternalQuerier;
 
 impl Querier for ExternalQuerier {
     fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
-        let req_bytes = to_json_vec(&req)?;
+        let req_bytes = to_borsh_vec(&req)?;
         let req_region = Region::build(&req_bytes);
         let req_ptr = &*req_region as *const Region;
 
         let res_ptr = unsafe { query_chain(req_ptr as usize) };
         let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-        let res: GenericResult<QueryResponse> = from_json_slice(res_bytes)?;
+        let res: GenericResult<QueryResponse> = from_borsh_slice(res_bytes)?;
 
         res.into_std_result()
     }
