@@ -65,14 +65,6 @@ where
         key: K,
     ) -> StdResult<bool>;
 
-    fn save_with_gas(
-        &self,
-        storage: &mut dyn Storage,
-        gas_tracker: GasTracker,
-        key: K,
-        value: &T,
-    ) -> StdResult<()>;
-
     fn range_with_gas<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -81,6 +73,14 @@ where
         max: Option<Bound<K>>,
         order: Order,
     ) -> StdResult<Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>>;
+
+    fn save_with_gas(
+        &self,
+        storage: &mut dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+        value: &T,
+    ) -> StdResult<()>;
 }
 
 impl<'a, K, T, C> MeteredMap<K, T> for Map<'a, K, T, C>
@@ -119,29 +119,6 @@ where
         }
     }
 
-    fn save_with_gas(
-        &self,
-        storage: &mut dyn Storage,
-        gas_tracker: GasTracker,
-        key: K,
-        value: &T,
-    ) -> StdResult<()> {
-        let data_raw = C::encode(value)?;
-        let path = self.path(key);
-
-        let gas_cost = GAS_COSTS
-            .db_write
-            .cost(data_raw.len() + path.as_path().storage_key().len());
-
-        // Charge gas before writing the data, such that if run out of gas,
-        // the data isn't written.
-        gas_tracker.consume(gas_cost, "db_write")?;
-
-        path.as_path().save_raw(storage, &data_raw);
-
-        Ok(())
-    }
-
     fn range_with_gas<'b>(
         &self,
         storage: &'b dyn Storage,
@@ -164,6 +141,29 @@ where
             });
 
         Ok(Box::new(iter))
+    }
+
+    fn save_with_gas(
+        &self,
+        storage: &mut dyn Storage,
+        gas_tracker: GasTracker,
+        key: K,
+        value: &T,
+    ) -> StdResult<()> {
+        let data_raw = C::encode(value)?;
+        let path = self.path(key);
+
+        let gas_cost = GAS_COSTS
+            .db_write
+            .cost(data_raw.len() + path.as_path().storage_key().len());
+
+        // Charge gas before writing the data, such that if run out of gas,
+        // the data isn't written.
+        gas_tracker.consume(gas_cost, "db_write")?;
+
+        path.as_path().save_raw(storage, &data_raw);
+
+        Ok(())
     }
 }
 
