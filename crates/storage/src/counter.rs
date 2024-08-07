@@ -55,3 +55,34 @@ where
         Ok(new_value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use {
+        super::Counter,
+        crate::{Borsh, Codec, Proto},
+        grug_types::MockStorage,
+        test_case::test_case,
+    };
+
+    #[test_case(Borsh; "counter_borsh")]
+    #[test_case(Proto; "counter_proto")]
+    fn counter<C>(_codec: C)
+    where
+        C: Codec<u32>,
+    {
+        let mut storage = MockStorage::new();
+        let counter = Counter::<u32, C>::new("counter");
+        counter.load(&storage).unwrap_err();
+
+        counter.initialize(&mut storage).unwrap();
+        assert_eq!(counter.load(&storage).unwrap(), 0);
+
+        assert_eq!(counter.increment(&mut storage).unwrap(), 1);
+        assert_eq!(counter.load(&storage).unwrap(), 1);
+
+        assert_eq!(counter.increment(&mut storage).unwrap(), 2);
+        assert_eq!(counter.load(&storage).unwrap(), 2);
+    }
+}
