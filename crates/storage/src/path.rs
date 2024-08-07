@@ -44,7 +44,7 @@ impl<'a, T, C> Path<'a, T, C>
 where
     C: Codec<T>,
 {
-    pub(crate) fn from_raw(storage_key: &'a [u8]) -> Self {
+    pub(crate) const fn from_raw(storage_key: &'a [u8]) -> Self {
         Self {
             storage_key,
             data: PhantomData,
