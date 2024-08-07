@@ -32,6 +32,10 @@ impl StorageProvider {
 
         Self { storage, namespace }
     }
+
+    pub fn namespace(&self) -> &[u8] {
+        &self.namespace
+    }
 }
 
 impl Storage for StorageProvider {

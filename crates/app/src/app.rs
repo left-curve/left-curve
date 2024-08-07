@@ -706,7 +706,7 @@ where
             coins,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, &sender, &code),
+        Message::Upload { code } => do_upload(&mut storage, gas_tracker, &sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
