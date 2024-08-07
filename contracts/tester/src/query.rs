@@ -53,3 +53,34 @@ pub fn query_crypto_verify(
         CryptoVerifyType::Secp256r1 => ctx.api.secp256r1_verify(&msg_hash, &sig, &pk),
     }
 }
+
+pub fn query_crypto_recover_secp256k1(
+    ctx: ImmutableCtx,
+    sig: Vec<u8>,
+    msg_hash: Vec<u8>,
+    recovery_id: u8,
+    compressed: bool,
+) -> StdResult<Vec<u8>> {
+    ctx.api
+        .secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed)
+}
+
+macro_rules! slice_of_slices {
+    ($vec:expr) => {{
+        let slice_of_slices: Vec<&[u8]> = $vec.iter().map(|v| &v[..]).collect();
+        slice_of_slices
+    }};
+}
+
+pub fn query_crypto_ed25519_batch_verify(
+    ctx: ImmutableCtx,
+    prehash_msgs: Vec<Vec<u8>>,
+    sigs: Vec<Vec<u8>>,
+    pks: Vec<Vec<u8>>,
+) -> StdResult<()> {
+    let m = slice_of_slices!(prehash_msgs);
+    let s = slice_of_slices!(sigs);
+    let p = slice_of_slices!(pks);
+
+    ctx.api.ed25519_batch_verify(&m, &s, &p)
+}

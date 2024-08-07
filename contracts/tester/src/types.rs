@@ -40,7 +40,19 @@ pub enum QueryMsg {
         ty: CryptoVerifyType,
         pk: Vec<u8>,
         sig: Vec<u8>,
-        msg: Vec<u8>,
+        msg_hash: Vec<u8>,
+    },
+    RecoverSepc256k1 {
+        sig: Vec<u8>,
+        msg_hash: Vec<u8>,
+        recovery_id: u8,
+        compressed: bool,
+    },
+
+    Ed25519BatchVerify {
+        prehash_msgs: Vec<Vec<u8>>,
+        sigs: Vec<Vec<u8>>,
+        pks: Vec<Vec<u8>>,
     },
 }
 

@@ -391,13 +391,16 @@ impl Api for ExternalApi {
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()> {
-        let msgs_hash_region = Region::build(&encode_sections(msgs_hash)?);
+        let msg_encoded = encode_sections(msgs_hash)?;
+        let msgs_hash_region = Region::build(&msg_encoded);
         let msgs_hash_ptr = &*msgs_hash_region as *const Region;
 
-        let sigs_region = Region::build(&encode_sections(sigs)?);
+        let sigs_encoded = encode_sections(sigs)?;
+        let sigs_region = Region::build(&sigs_encoded);
         let sigs_ptr = &*sigs_region as *const Region;
 
-        let pks_region = Region::build(&encode_sections(pks)?);
+        let pks_encoded = encode_sections(pks)?;
+        let pks_region = Region::build(&pks_encoded);
         let pks_ptr = &*pks_region as *const Region;
 
         let res = unsafe {
