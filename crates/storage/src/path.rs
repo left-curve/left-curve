@@ -35,7 +35,7 @@ where
 }
 
 pub struct Path<'a, T, C> {
-    pub storage_key: &'a [u8],
+    storage_key: &'a [u8],
     data: PhantomData<T>,
     codec: PhantomData<C>,
 }
@@ -50,6 +50,10 @@ where
             data: PhantomData,
             codec: PhantomData,
         }
+    }
+
+    pub fn storage_key(&self) -> &[u8] {
+        self.storage_key
     }
 
     pub fn exists(&self, storage: &dyn Storage) -> bool {

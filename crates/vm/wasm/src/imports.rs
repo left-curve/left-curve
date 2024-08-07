@@ -135,13 +135,11 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     let key = read_from_memory(env, &store, key_ptr)?;
     let value = read_from_memory(env, &store, value_ptr)?;
 
-    env.consume_external_gas(
-        &mut store,
-        GAS_COSTS
-            .db_write
-            .cost(env.storage.namespace.len() + key.len() + value.len()),
-        "db_write",
-    )?;
+    let gas_cost = GAS_COSTS
+        .db_write
+        .cost(env.storage.namespace().len() + key.len() + value.len());
+
+    env.consume_external_gas(&mut store, gas_cost, "db_write")?;
 
     env.storage.write(&key, &value);
 

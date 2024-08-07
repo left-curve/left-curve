@@ -128,13 +128,17 @@ where
     ) -> StdResult<()> {
         let data_raw = C::encode(value)?;
         let path = self.path(key);
-        gas_tracker.consume(
-            GAS_COSTS
-                .db_write
-                .cost(data_raw.len() + path.as_path().storage_key.len()),
-            "db_write",
-        )?;
+
+        let gas_cost = GAS_COSTS
+            .db_write
+            .cost(data_raw.len() + path.as_path().storage_key().len());
+
+        // Charge gas before writing the data, such that if run out of gas,
+        // the data isn't written.
+        gas_tracker.consume(gas_cost, "db_write")?;
+
         path.as_path().save_raw(storage, &data_raw);
+
         Ok(())
     }
 

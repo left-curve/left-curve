@@ -15,7 +15,7 @@ use {
 #[derive(Clone)]
 pub struct StorageProvider {
     storage: Box<dyn Storage>,
-    pub namespace: Vec<u8>,
+    namespace: Vec<u8>,
 }
 
 impl StorageProvider {
@@ -31,6 +31,10 @@ impl StorageProvider {
         }
 
         Self { storage, namespace }
+    }
+
+    pub fn namespace(&self) -> &[u8] {
+        &self.namespace
     }
 }
 
