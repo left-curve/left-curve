@@ -484,7 +484,7 @@ impl_integer_prefixer!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {super::*, std::fmt::Debug, test_case::test_case};
 
     #[test]
     fn triple_tuple_key() {
@@ -547,5 +547,36 @@ mod tests {
             deserialized,
             ((a, (b.to_string(), c.to_string())), d.to_string())
         );
+    }
+
+    /// `len(u32) = 4 | 10_u32.to_be_bytes() | 265_u32.to_be_bytes()`
+    const DOUBLE_TUPLE_BYTES: &[u8] = &[0, 4, 0, 0, 0, 10, 0, 0, 1, 9];
+    /// `len(b"Hello") = 5 | b"Hello" | len(u32) = 4 | 10_u32 | b"World"`
+    const DOUBLE_TRIPLE_BYTES: &[u8] = &[
+        0, 5, 72, 101, 108, 108, 111, 0, 4, 0, 0, 0, 10, 87, 111, 114, 108, 100,
+    ];
+
+    #[test_case(b"slice".as_slice(), b"slice"; "slice")]
+    #[test_case(b"Vec".to_vec(), b"Vec"; "vec_u8")]
+    #[test_case("str", b"str"; "str")]
+    #[test_case("String".to_string(), b"String"; "string")]
+    #[test_case(Addr::from_array(*b"ThisIsAValidAddress-"), b"ThisIsAValidAddress-"; "addr")]
+    #[test_case(&Addr::from_array(*b"ThisIsAValidAddress-"), b"ThisIsAValidAddress-"; "borrow_addr")]
+    #[test_case(Hash::<32>::from_array([1;32]), &[1; 32]; "hash")]
+    #[test_case(&Hash::<20>::from_array([2;20]), &[2; 20]; "borrow_hash")]
+    #[test_case(Duration::from_nanos(100), &100_u128.to_be_bytes(); "duration")]
+    #[test_case((10_u32, 265_u32 ), &DOUBLE_TUPLE_BYTES; "double_tuple")]
+    #[test_case(("Hello".to_string(), 10_u32, "World".to_string() ), &DOUBLE_TRIPLE_BYTES; "triple")]
+
+    fn key<T>(compare: T, bytes: &[u8])
+    where
+        T: Key + PartialEq<<T as Key>::Output> + Debug,
+        <T as Key>::Output: PartialEq<T> + Debug,
+    {
+        let des = T::from_slice(bytes).unwrap();
+        assert_eq!(compare, des);
+
+        let ser = compare.joined_key();
+        assert_eq!(bytes, ser);
     }
 }
