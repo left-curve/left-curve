@@ -61,28 +61,37 @@ mod tests {
 
     use {
         super::Counter,
-        crate::{Borsh, Codec, Proto},
-        grug_types::MockStorage,
+        borsh::{BorshDeserialize, BorshSerialize},
+        grug_types::{Dec128, Int128, MockStorage, Number, NumberConst, Uint128, Uint512},
+        std::{fmt::Debug, marker::PhantomData},
         test_case::test_case,
     };
 
-    #[test_case(Borsh; "counter_borsh")]
-    #[test_case(Proto; "counter_proto")]
-    fn counter<C>(_codec: C)
+    #[test_case(PhantomData::<u8>; "u8")]
+    #[test_case(PhantomData::<Uint128>; "uint128")]
+    #[test_case(PhantomData::<Uint512>; "uint512")]
+    #[test_case(PhantomData::<Int128>; "int128")]
+    #[test_case(PhantomData::<Dec128>; "dec128")]
+    fn counter<T>(_p: PhantomData<T>)
     where
-        C: Codec<u32>,
+        T: BorshSerialize + BorshDeserialize + NumberConst + Number + PartialEq + Debug,
     {
         let mut storage = MockStorage::new();
-        let counter = Counter::<u32, C>::new("counter");
+        let counter = Counter::<T>::new("counter");
+
         counter.load(&storage).unwrap_err();
 
+        let mut asserter = T::ZERO;
+
         counter.initialize(&mut storage).unwrap();
-        assert_eq!(counter.load(&storage).unwrap(), 0);
+        assert_eq!(counter.load(&storage).unwrap(), asserter);
 
-        assert_eq!(counter.increment(&mut storage).unwrap(), 1);
-        assert_eq!(counter.load(&storage).unwrap(), 1);
+        asserter = asserter.checked_add(T::ONE).unwrap();
+        assert_eq!(counter.increment(&mut storage).unwrap(), asserter);
+        assert_eq!(counter.load(&storage).unwrap(), asserter);
 
-        assert_eq!(counter.increment(&mut storage).unwrap(), 2);
-        assert_eq!(counter.load(&storage).unwrap(), 2);
+        asserter = asserter.checked_add(T::ONE).unwrap();
+        assert_eq!(counter.increment(&mut storage).unwrap(), asserter);
+        assert_eq!(counter.load(&storage).unwrap(), asserter);
     }
 }

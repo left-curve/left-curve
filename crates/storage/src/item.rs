@@ -69,3 +69,6 @@ where
         self.path().update(storage, action)
     }
 }
+
+#[cfg(test)]
+mod tests {}
