@@ -427,12 +427,12 @@ mod test {
 }
 
 #[cfg(test)]
-mod test2 {
+mod cosmwasm_test {
     use {
         super::Map,
-        crate::Bound,
+        crate::{Bound, Key, PrefixBound},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{to_borsh_vec, MockStorage, Order, StdResult, Storage},
+        grug_types::{from_borsh_slice, to_borsh_vec, MockStorage, Order, StdResult, Storage},
     };
 
     #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
@@ -1016,677 +1016,715 @@ mod test2 {
         assert_eq!(all, vec![(50, data3)]);
     }
 
-    // #[test]
-    // fn range_raw_composite_key() {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on three keys, one under different owner
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner", b"spender"), &1000)
-    //         .unwrap();
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner", b"spender2"), &3000)
-    //         .unwrap();
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner2", b"spender"), &5000)
-    //         .unwrap();
-
-    //     // let's try to iterate!
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(3, all.len());
-    //     assert_eq!(all, vec![
-    //         ((b"owner".to_vec(), b"spender".to_vec()).joined_key(), 1000),
-    //         ((b"owner".to_vec(), b"spender2".to_vec()).joined_key(), 3000),
-    //         ((b"owner2".to_vec(), b"spender".to_vec()).joined_key(), 5000),
-    //     ]);
-
-    //     // let's try to iterate over a prefix
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         (b"spender".to_vec(), 1000),
-    //         (b"spender2".to_vec(), 3000)
-    //     ]);
-    // }
-
-    // #[test]
-    // fn range_composite_key() {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on three keys, one under different owner
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner", b"spender"), &1000)
-    //         .unwrap();
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner", b"spender2"), &3000)
-    //         .unwrap();
-    //     ALLOWANCE
-    //         .save(&mut store, (b"owner2", b"spender"), &5000)
-    //         .unwrap();
-
-    //     // let's try to iterate!
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(3, all.len());
-    //     assert_eq!(all, vec![
-    //         ((b"owner".to_vec(), b"spender".to_vec()), 1000),
-    //         ((b"owner".to_vec(), b"spender2".to_vec()), 3000),
-    //         ((b"owner2".to_vec(), b"spender".to_vec()), 5000)
-    //     ]);
-
-    //     // let's try to iterate over a prefix
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         (b"spender".to_vec(), 1000),
-    //         (b"spender2".to_vec(), 3000),
-    //     ]);
-
-    //     // let's try to iterate over a prefixed restricted inclusive range
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range(&store, b"spender".inclusive_bound(), None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         (b"spender".to_vec(), 1000),
-    //         (b"spender2".to_vec(), 3000),
-    //     ]);
-
-    //     // let's try to iterate over a prefixed restricted exclusive range
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range(&store, b"spender".exclusive_bound(), None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(1, all.len());
-    //     assert_eq!(all, vec![(b"spender2".to_vec(), 3000),]);
-    // }
-
-    // #[test]
-    // fn range_raw_triple_key() {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on three keys, one under different owner
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 9, "recipient"), &1000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 9, "recipient2"), &3000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 10, "recipient3"), &3000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner2", 9, "recipient"), &5000)
-    //         .unwrap();
-
-    //     // let's try to iterate!
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(4, all.len());
-    //     assert_eq!(all, vec![
-    //         (
-    //             (b"owner".to_vec(), 9u8, b"recipient".to_vec()).joined_key(),
-    //             1000
-    //         ),
-    //         (
-    //             (b"owner".to_vec(), 9u8, b"recipient2".to_vec()).joined_key(),
-    //             3000
-    //         ),
-    //         (
-    //             (b"owner".to_vec(), 10u8, b"recipient3".to_vec()).joined_key(),
-    //             3000
-    //         ),
-    //         (
-    //             (b"owner2".to_vec(), 9u8, b"recipient".to_vec()).joined_key(),
-    //             5000
-    //         )
-    //     ]);
-
-    //     // let's iterate over a prefix
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .prefix((b"owner", 9))
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         (b"recipient".to_vec(), 1000),
-    //         (b"recipient2".to_vec(), 3000)
-    //     ]);
-
-    //     // let's iterate over a sub prefix
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .sub_prefix(b"owner")
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(3, all.len());
-    //     // Use range() if you want key deserialization
-    //     assert_eq!(all, vec![
-    //         ((9u8, b"recipient".to_vec()).joined_key(), 1000),
-    //         ((9u8, b"recipient2".to_vec()).joined_key(), 3000),
-    //         ((10u8, b"recipient3".to_vec()).joined_key(), 3000)
-    //     ]);
-    // }
-
-    // #[test]
-    // fn range_triple_key() {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on three keys, one under different owner
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 9u8, "recipient"), &1000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 9u8, "recipient2"), &3000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner", 10u8, "recipient3"), &3000)
-    //         .unwrap();
-    //     TRIPLE
-    //         .save(&mut store, (b"owner2", 9u8, "recipient"), &5000)
-    //         .unwrap();
-
-    //     // let's try to iterate!
-    //     let all: StdResult<Vec<_>> = TRIPLE.range(&store, None, None, Order::Ascending).collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(4, all.len());
-    //     assert_eq!(all, vec![
-    //         ((b"owner".to_vec(), 9, "recipient".to_string()), 1000),
-    //         ((b"owner".to_vec(), 9, "recipient2".to_string()), 3000),
-    //         ((b"owner".to_vec(), 10, "recipient3".to_string()), 3000),
-    //         ((b"owner2".to_vec(), 9, "recipient".to_string()), 5000)
-    //     ]);
-
-    //     // let's iterate over a sub_prefix
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .sub_prefix(b"owner")
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(3, all.len());
-    //     assert_eq!(all, vec![
-    //         ((9, "recipient".to_string()), 1000),
-    //         ((9, "recipient2".to_string()), 3000),
-    //         ((10, "recipient3".to_string()), 3000),
-    //     ]);
-
-    //     // let's iterate over a prefix
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .prefix((b"owner", 9))
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         ("recipient".to_string(), 1000),
-    //         ("recipient2".to_string(), 3000),
-    //     ]);
-
-    //     // let's try to iterate over a prefixed restricted inclusive range
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .prefix((b"owner", 9))
-    //         .range(
-    //             &store,
-    //             "recipient".inclusive_bound(),
-    //             None,
-    //             Order::Ascending,
-    //         )
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(2, all.len());
-    //     assert_eq!(all, vec![
-    //         ("recipient".to_string(), 1000),
-    //         ("recipient2".to_string(), 3000),
-    //     ]);
-
-    //     // let's try to iterate over a prefixed restricted exclusive range
-    //     let all: StdResult<Vec<_>> = TRIPLE
-    //         .prefix((b"owner", 9))
-    //         .range(
-    //             &store,
-    //             "recipient".exclusive_bound(),
-    //             None,
-    //             Order::Ascending,
-    //         )
-    //         .collect();
-    //     let all = all.unwrap();
-    //     assert_eq!(1, all.len());
-    //     assert_eq!(all, vec![("recipient2".to_string(), 3000),]);
-    // }
-
-    // #[test]
-    // fn basic_update() {
-    //     let mut store = MockStorage::new();
-
-    //     let add_ten = |a: Option<u64>| -> StdResult<_> { Ok(a.unwrap_or_default() + 10) };
-
-    //     // save and load on three keys, one under different owner
-    //     let key: (&[u8], &[u8]) = (b"owner", b"spender");
-    //     ALLOWANCE.update(&mut store, key, add_ten).unwrap();
-    //     let twenty = ALLOWANCE.update(&mut store, key, add_ten).unwrap();
-    //     assert_eq!(20, twenty);
-    //     let loaded = ALLOWANCE.load(&store, key).unwrap();
-    //     assert_eq!(20, loaded);
-    // }
-
-    // #[test]
-    // fn readme_works() -> StdResult<()> {
-    //     let mut store = MockStorage::new();
-    //     let data = Data {
-    //         name: "John".to_string(),
-    //         age: 32,
-    //     };
-
-    //     // load and save with extra key argument
-    //     let empty = PEOPLE.may_load(&store, b"john")?;
-    //     assert_eq!(None, empty);
-    //     PEOPLE.save(&mut store, b"john", &data)?;
-    //     let loaded = PEOPLE.load(&store, b"john")?;
-    //     assert_eq!(data, loaded);
-
-    //     // nothing on another key
-    //     let missing = PEOPLE.may_load(&store, b"jack")?;
-    //     assert_eq!(None, missing);
-
-    //     // update function for new or existing keys
-    //     let birthday = |d: Option<Data>| -> StdResult<Data> {
-    //         match d {
-    //             Some(one) => Ok(Data {
-    //                 name: one.name,
-    //                 age: one.age + 1,
-    //             }),
-    //             None => Ok(Data {
-    //                 name: "Newborn".to_string(),
-    //                 age: 0,
-    //             }),
-    //         }
-    //     };
-
-    //     let old_john = PEOPLE.update(&mut store, b"john", birthday)?;
-    //     assert_eq!(33, old_john.age);
-    //     assert_eq!("John", old_john.name.as_str());
-
-    //     let new_jack = PEOPLE.update(&mut store, b"jack", birthday)?;
-    //     assert_eq!(0, new_jack.age);
-    //     assert_eq!("Newborn", new_jack.name.as_str());
-
-    //     // update also changes the store
-    //     assert_eq!(old_john, PEOPLE.load(&store, b"john")?);
-    //     assert_eq!(new_jack, PEOPLE.load(&store, b"jack")?);
-
-    //     // removing leaves us empty
-    //     PEOPLE.remove(&mut store, b"john");
-    //     let empty = PEOPLE.may_load(&store, b"john")?;
-    //     assert_eq!(None, empty);
-
-    //     Ok(())
-    // }
-
-    // #[test]
-    // fn readme_works_composite_keys() -> StdResult<()> {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on a composite key
-    //     let empty = ALLOWANCE.may_load(&store, (b"owner", b"spender"))?;
-    //     assert_eq!(None, empty);
-    //     ALLOWANCE.save(&mut store, (b"owner", b"spender"), &777)?;
-    //     let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
-    //     assert_eq!(777, loaded);
-
-    //     // doesn't appear under other key (even if a concat would be the same)
-    //     let different = ALLOWANCE.may_load(&store, (b"owners", b"pender")).unwrap();
-    //     assert_eq!(None, different);
-
-    //     // simple update
-    //     ALLOWANCE.update(&mut store, (b"owner", b"spender"), |v| -> StdResult<u64> {
-    //         Ok(v.unwrap_or_default() + 222)
-    //     })?;
-    //     let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
-    //     assert_eq!(999, loaded);
-
-    //     Ok(())
-    // }
-
-    // #[test]
-    // fn readme_works_with_path() -> StdResult<()> {
-    //     let mut store = MockStorage::new();
-    //     let data = Data {
-    //         name: "John".to_string(),
-    //         age: 32,
-    //     };
-
-    //     // create a Path one time to use below
-    //     let john = PEOPLE.key(b"john");
-
-    //     // Use this just like an Item above
-    //     let empty = john.may_load(&store)?;
-    //     assert_eq!(None, empty);
-    //     john.save(&mut store, &data)?;
-    //     let loaded = john.load(&store)?;
-    //     assert_eq!(data, loaded);
-    //     john.remove(&mut store);
-    //     let empty = john.may_load(&store)?;
-    //     assert_eq!(None, empty);
-
-    //     // same for composite keys, just use both parts in key()
-    //     let allow = ALLOWANCE.key((b"owner", b"spender"));
-    //     allow.save(&mut store, &1234)?;
-    //     let loaded = allow.load(&store)?;
-    //     assert_eq!(1234, loaded);
-    //     allow.update(&mut store, |x| -> StdResult<u64> {
-    //         Ok(x.unwrap_or_default() * 2)
-    //     })?;
-    //     let loaded = allow.load(&store)?;
-    //     assert_eq!(2468, loaded);
-
-    //     Ok(())
-    // }
-
-    // #[test]
-    // fn readme_with_range_raw() -> StdResult<()> {
-    //     let mut store = MockStorage::new();
-
-    //     // save and load on two keys
-    //     let data = Data {
-    //         name: "John".to_string(),
-    //         age: 32,
-    //     };
-    //     PEOPLE.save(&mut store, b"john", &data)?;
-    //     let data2 = Data {
-    //         name: "Jim".to_string(),
-    //         age: 44,
-    //     };
-    //     PEOPLE.save(&mut store, b"jim", &data2)?;
-
-    //     // iterate over them all
-    //     let all: StdResult<Vec<_>> = PEOPLE
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     assert_eq!(all?, vec![
-    //         (b"jim".to_vec(), data2),
-    //         (b"john".to_vec(), data.clone())
-    //     ]);
-
-    //     // or just show what is after jim
-    //     let all: StdResult<Vec<_>> = PEOPLE
-    //         .range_raw(
-    //             &store,
-    //             Some(Bound::exclusive(b"jim" as &[u8])),
-    //             None,
-    //             Order::Ascending,
-    //         )
-    //         .collect();
-    //     assert_eq!(all?, vec![(b"john".to_vec(), data)]);
-
-    //     // save and load on three keys, one under different owner
-    //     ALLOWANCE.save(&mut store, (b"owner", b"spender"), &1000)?;
-    //     ALLOWANCE.save(&mut store, (b"owner", b"spender2"), &3000)?;
-    //     ALLOWANCE.save(&mut store, (b"owner2", b"spender"), &5000)?;
-
-    //     // get all under one key
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     assert_eq!(all?, vec![
-    //         (b"spender".to_vec(), 1000),
-    //         (b"spender2".to_vec(), 3000)
-    //     ]);
-
-    //     // Or ranges between two items (even reverse)
-    //     let all: StdResult<Vec<_>> = ALLOWANCE
-    //         .prefix(b"owner")
-    //         .range_raw(
-    //             &store,
-    //             Some(Bound::exclusive(b"spender1" as &[u8])),
-    //             Some(Bound::inclusive(b"spender2" as &[u8])),
-    //             Order::Descending,
-    //         )
-    //         .collect();
-    //     assert_eq!(all?, vec![(b"spender2".to_vec(), 3000)]);
-
-    //     Ok(())
-    // }
-
-    // #[test]
-    // fn prefixed_range_raw_works() {
-    //     // this is designed to look as much like a secondary index as possible
-    //     // we want to query over a range of u32 for the first key and all subkeys
-    //     const AGES: Map<(u32, Vec<u8>), u64> = Map::new("ages");
-
-    //     let mut store = MockStorage::new();
-    //     AGES.save(&mut store, (2, vec![1, 2, 3]), &123).unwrap();
-    //     AGES.save(&mut store, (3, vec![4, 5, 6]), &456).unwrap();
-    //     AGES.save(&mut store, (5, vec![7, 8, 9]), &789).unwrap();
-    //     AGES.save(&mut store, (5, vec![9, 8, 7]), &987).unwrap();
-    //     AGES.save(&mut store, (7, vec![20, 21, 22]), &2002).unwrap();
-    //     AGES.save(&mut store, (8, vec![23, 24, 25]), &2332).unwrap();
-
-    //     // typical range under one prefix as a control
-    //     let fives = AGES
-    //         .prefix(5)
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(fives.len(), 2);
-    //     assert_eq!(fives, vec![(vec![7, 8, 9], 789), (vec![9, 8, 7], 987)]);
-
-    //     let keys: Vec<_> = AGES
-    //         .keys_raw(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     println!("keys: {:?}", keys);
-
-    //     // using inclusive bounds both sides
-    //     let include = AGES
-    //         .prefix_range_raw(
-    //             &store,
-    //             Some(PrefixBound::inclusive(3u32)),
-    //             Some(PrefixBound::inclusive(7u32)),
-    //             Order::Ascending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 4);
-    //     assert_eq!(include, vec![456, 789, 987, 2002]);
-
-    //     // using exclusive bounds both sides
-    //     let exclude = AGES
-    //         .prefix_range_raw(
-    //             &store,
-    //             Some(PrefixBound::exclusive(3u32)),
-    //             Some(PrefixBound::exclusive(7u32)),
-    //             Order::Ascending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(exclude.len(), 2);
-    //     assert_eq!(exclude, vec![789, 987]);
-
-    //     // using inclusive in descending
-    //     let include = AGES
-    //         .prefix_range_raw(
-    //             &store,
-    //             Some(PrefixBound::inclusive(3u32)),
-    //             Some(PrefixBound::inclusive(5u32)),
-    //             Order::Descending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 3);
-    //     assert_eq!(include, vec![987, 789, 456]);
-
-    //     // using exclusive in descending
-    //     let include = AGES
-    //         .prefix_range_raw(
-    //             &store,
-    //             Some(PrefixBound::exclusive(2u32)),
-    //             Some(PrefixBound::exclusive(5u32)),
-    //             Order::Descending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 1);
-    //     assert_eq!(include, vec![456]);
-    // }
-
-    // #[test]
-    // fn prefixed_range_works() {
-    //     // this is designed to look as much like a secondary index as possible
-    //     // we want to query over a range of u32 for the first key and all subkeys
-    //     const AGES: Map<(u32, &str), u64> = Map::new("ages");
-
-    //     let mut store = MockStorage::new();
-    //     AGES.save(&mut store, (2, "123"), &123).unwrap();
-    //     AGES.save(&mut store, (3, "456"), &456).unwrap();
-    //     AGES.save(&mut store, (5, "789"), &789).unwrap();
-    //     AGES.save(&mut store, (5, "987"), &987).unwrap();
-    //     AGES.save(&mut store, (7, "202122"), &2002).unwrap();
-    //     AGES.save(&mut store, (8, "232425"), &2332).unwrap();
-
-    //     // typical range under one prefix as a control
-    //     let fives = AGES
-    //         .prefix(5)
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(fives.len(), 2);
-    //     assert_eq!(fives, vec![
-    //         ("789".to_string(), 789),
-    //         ("987".to_string(), 987)
-    //     ]);
-
-    //     let keys: Vec<_> = AGES.keys(&store, None, None, Order::Ascending).collect();
-    //     println!("keys: {:?}", keys);
-
-    //     // using inclusive bounds both sides
-    //     let include = AGES
-    //         .prefix_range(
-    //             &store,
-    //             Some(PrefixBound::inclusive(3u32)),
-    //             Some(PrefixBound::inclusive(7u32)),
-    //             Order::Ascending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 4);
-    //     assert_eq!(include, vec![456, 789, 987, 2002]);
-
-    //     // using exclusive bounds both sides
-    //     let exclude = AGES
-    //         .prefix_range(
-    //             &store,
-    //             Some(PrefixBound::exclusive(3u32)),
-    //             Some(PrefixBound::exclusive(7u32)),
-    //             Order::Ascending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(exclude.len(), 2);
-    //     assert_eq!(exclude, vec![789, 987]);
-
-    //     // using inclusive in descending
-    //     let include = AGES
-    //         .prefix_range(
-    //             &store,
-    //             Some(PrefixBound::inclusive(3u32)),
-    //             Some(PrefixBound::inclusive(5u32)),
-    //             Order::Descending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 3);
-    //     assert_eq!(include, vec![987, 789, 456]);
-
-    //     // using exclusive in descending
-    //     let include = AGES
-    //         .prefix_range(
-    //             &store,
-    //             Some(PrefixBound::exclusive(2u32)),
-    //             Some(PrefixBound::exclusive(5u32)),
-    //             Order::Descending,
-    //         )
-    //         .map(|r| r.map(|(_, v)| v))
-    //         .collect::<StdResult<Vec<_>>>()
-    //         .unwrap();
-    //     assert_eq!(include.len(), 1);
-    //     assert_eq!(include, vec![456]);
-    // }
-
-    // #[test]
-    // fn clear_works() {
-    //     const TEST_MAP: Map<&str, u32> = Map::new("test_map");
-
-    //     let mut storage = MockStorage::new();
-    //     TEST_MAP.save(&mut storage, "key0", &0u32).unwrap();
-    //     TEST_MAP.save(&mut storage, "key1", &1u32).unwrap();
-    //     TEST_MAP.save(&mut storage, "key2", &2u32).unwrap();
-    //     TEST_MAP.save(&mut storage, "key3", &3u32).unwrap();
-    //     TEST_MAP.save(&mut storage, "key4", &4u32).unwrap();
-
-    //     TEST_MAP.clear(&mut storage);
-
-    //     assert!(!TEST_MAP.has(&storage, "key0"));
-    //     assert!(!TEST_MAP.has(&storage, "key1"));
-    //     assert!(!TEST_MAP.has(&storage, "key2"));
-    //     assert!(!TEST_MAP.has(&storage, "key3"));
-    //     assert!(!TEST_MAP.has(&storage, "key4"));
-    // }
-
-    // #[test]
-    // fn is_empty_works() {
-    //     const TEST_MAP: Map<&str, u32> = Map::new("test_map");
-
-    //     let mut storage = MockStorage::new();
-
-    //     assert!(TEST_MAP.is_empty(&storage));
-
-    //     TEST_MAP.save(&mut storage, "key1", &1u32).unwrap();
-    //     TEST_MAP.save(&mut storage, "key2", &2u32).unwrap();
-
-    //     assert!(!TEST_MAP.is_empty(&storage));
-    // }
-
-    // #[test]
-    // fn first_last_work() {
-    //     let mut storage = cosmwasm_std::testing::MockStorage::new();
-    //     const MAP: Map<&str, u32> = Map::new("map");
-
-    //     // empty map
-    //     assert_eq!(MAP.first(&storage), Ok(None));
-    //     assert_eq!(MAP.last(&storage), Ok(None));
-
-    //     // insert entries
-    //     MAP.save(&mut storage, "ghi", &1).unwrap();
-    //     MAP.save(&mut storage, "abc", &2).unwrap();
-    //     MAP.save(&mut storage, "def", &3).unwrap();
-
-    //     assert_eq!(MAP.first(&storage), Ok(Some(("abc".to_string(), 2))));
-    //     assert_eq!(MAP.last(&storage), Ok(Some(("ghi".to_string(), 1))));
-    // }
+    #[test]
+    fn range_raw_composite_key() {
+        let mut store = MockStorage::new();
+
+        // save and load on three keys, one under different owner
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender"), &1000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .unwrap();
+
+        // let's try to iterate!
+        let all: Vec<_> = ALLOWANCE
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(3, all.len());
+        assert_eq!(all, vec![
+            (
+                (b"owner".to_vec(), b"spender".to_vec()).joined_key(),
+                to_borsh_vec(&1000_u64).unwrap()
+            ),
+            (
+                (b"owner".to_vec(), b"spender2".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            ),
+            (
+                (b"owner2".to_vec(), b"spender".to_vec()).joined_key(),
+                to_borsh_vec(&5000_u64).unwrap()
+            ),
+        ]);
+
+        // let's try to iterate over a prefix
+        let all: Vec<_> = ALLOWANCE
+            .prefix(b"owner")
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(2, all.len());
+        assert_eq!(all, vec![
+            (b"spender".to_vec(), to_borsh_vec(&1000_u64).unwrap()),
+            (b"spender2".to_vec(), to_borsh_vec(&3000_u64).unwrap())
+        ]);
+    }
+
+    #[test]
+    fn range_composite_key() {
+        let mut store = MockStorage::new();
+
+        // save and load on three keys, one under different owner
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender"), &1000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .unwrap();
+
+        // let's try to iterate!
+        let all: StdResult<Vec<_>> = ALLOWANCE
+            .range(&store, None, None, Order::Ascending)
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(3, all.len());
+        assert_eq!(all, vec![
+            ((b"owner".to_vec(), b"spender".to_vec()), 1000),
+            ((b"owner".to_vec(), b"spender2".to_vec()), 3000),
+            ((b"owner2".to_vec(), b"spender".to_vec()), 5000)
+        ]);
+
+        // let's try to iterate over a prefix
+        let all: StdResult<Vec<_>> = ALLOWANCE
+            .prefix(b"owner")
+            .range(&store, None, None, Order::Ascending)
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(2, all.len());
+        assert_eq!(all, vec![
+            (b"spender".to_vec(), 1000),
+            (b"spender2".to_vec(), 3000),
+        ]);
+
+        // let's try to iterate over a prefixed restricted inclusive range
+        let all: StdResult<Vec<_>> = ALLOWANCE
+            .prefix(b"owner")
+            .range(
+                &store,
+                Some(Bound::inclusive(b"spender".as_slice())),
+                None,
+                Order::Ascending,
+            )
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(2, all.len());
+        assert_eq!(all, vec![
+            (b"spender".to_vec(), 1000),
+            (b"spender2".to_vec(), 3000),
+        ]);
+
+        // let's try to iterate over a prefixed restricted exclusive range
+        let all: StdResult<Vec<_>> = ALLOWANCE
+            .prefix(b"owner")
+            .range(
+                &store,
+                Some(Bound::exclusive(b"spender".as_slice())),
+                None,
+                Order::Ascending,
+            )
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(1, all.len());
+        assert_eq!(all, vec![(b"spender2".to_vec(), 3000),]);
+    }
+
+    #[test]
+    fn range_raw_triple_key() {
+        let mut store = MockStorage::new();
+
+        // save and load on three keys, one under different owner
+        TRIPLE
+            .save(&mut store, (b"owner", 9, "recipient"), &1000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner", 9, "recipient2"), &3000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner", 10, "recipient3"), &3000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner2", 9, "recipient"), &5000)
+            .unwrap();
+
+        // let's try to iterate!
+        let all: Vec<_> = TRIPLE
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(4, all.len());
+        assert_eq!(all, vec![
+            (
+                (b"owner".to_vec(), 9u8, b"recipient".to_vec()).joined_key(),
+                to_borsh_vec(&1000_u64).unwrap()
+            ),
+            (
+                (b"owner".to_vec(), 9u8, b"recipient2".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            ),
+            (
+                (b"owner".to_vec(), 10u8, b"recipient3".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            ),
+            (
+                (b"owner2".to_vec(), 9u8, b"recipient".to_vec()).joined_key(),
+                to_borsh_vec(&5000_u64).unwrap()
+            )
+        ]);
+
+        // let's iterate over a prefix
+        let all: Vec<_> = TRIPLE
+            .prefix(b"owner")
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(3, all.len());
+        assert_eq!(all, vec![
+            (
+                (9u8, b"recipient".to_vec()).joined_key(),
+                to_borsh_vec(&1000_u64).unwrap()
+            ),
+            (
+                (9u8, b"recipient2".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            ),
+            (
+                (10u8, b"recipient3".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            )
+        ]);
+
+        // let's iterate over a sub prefix
+        let all: Vec<_> = TRIPLE
+            .prefix(b"owner")
+            .append(9)
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(2, all.len());
+        // Use range() if you want key deserialization
+        assert_eq!(all, vec![
+            (
+                (b"recipient".to_vec()).joined_key(),
+                to_borsh_vec(&1000_u64).unwrap()
+            ),
+            (
+                (b"recipient2".to_vec()).joined_key(),
+                to_borsh_vec(&3000_u64).unwrap()
+            ),
+        ]);
+    }
+
+    #[test]
+    fn range_triple_key() {
+        let mut store = MockStorage::new();
+
+        // save and load on three keys, one under different owner
+        TRIPLE
+            .save(&mut store, (b"owner", 9u8, "recipient"), &1000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner", 9u8, "recipient2"), &3000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner", 10u8, "recipient3"), &3000)
+            .unwrap();
+        TRIPLE
+            .save(&mut store, (b"owner2", 9u8, "recipient"), &5000)
+            .unwrap();
+
+        // let's try to iterate!
+        let all: StdResult<Vec<_>> = TRIPLE.range(&store, None, None, Order::Ascending).collect();
+        let all = all.unwrap();
+        assert_eq!(4, all.len());
+        assert_eq!(all, vec![
+            ((b"owner".to_vec(), 9, "recipient".to_string()), 1000),
+            ((b"owner".to_vec(), 9, "recipient2".to_string()), 3000),
+            ((b"owner".to_vec(), 10, "recipient3".to_string()), 3000),
+            ((b"owner2".to_vec(), 9, "recipient".to_string()), 5000)
+        ]);
+
+        // let's iterate over a sub_prefix
+        let all: StdResult<Vec<_>> = TRIPLE
+            .prefix(b"owner")
+            .range(&store, None, None, Order::Ascending)
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(3, all.len());
+        assert_eq!(all, vec![
+            ((9, "recipient".to_string()), 1000),
+            ((9, "recipient2".to_string()), 3000),
+            ((10, "recipient3".to_string()), 3000),
+        ]);
+
+        // let's iterate over a prefix
+        let all: StdResult<Vec<_>> = TRIPLE
+            .prefix(b"owner")
+            .append(9)
+            .range(&store, None, None, Order::Ascending)
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(2, all.len());
+        assert_eq!(all, vec![
+            ("recipient".to_string(), 1000),
+            ("recipient2".to_string(), 3000),
+        ]);
+
+        // let's try to iterate over a prefixed restricted inclusive range
+        let all: StdResult<Vec<_>> = TRIPLE
+            .prefix(b"owner")
+            .append(9)
+            .range(
+                &store,
+                Some(Bound::inclusive("recipient")),
+                None,
+                Order::Ascending,
+            )
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(2, all.len());
+        assert_eq!(all, vec![
+            ("recipient".to_string(), 1000),
+            ("recipient2".to_string(), 3000),
+        ]);
+
+        // let's try to iterate over a prefixed restricted exclusive range
+        let all: StdResult<Vec<_>> = TRIPLE
+            .prefix(b"owner")
+            .append(9)
+            .range(
+                &store,
+                Some(Bound::exclusive("recipient")),
+                None,
+                Order::Ascending,
+            )
+            .collect();
+        let all = all.unwrap();
+        assert_eq!(1, all.len());
+        assert_eq!(all, vec![("recipient2".to_string(), 3000),]);
+    }
+
+    #[test]
+    fn basic_update() {
+        let mut store = MockStorage::new();
+
+        let add_ten = |a: Option<u64>| -> StdResult<_> { Ok(Some(a.unwrap_or_default() + 10)) };
+
+        // save and load on three keys, one under different owner
+        let key: (&[u8], &[u8]) = (b"owner", b"spender");
+        ALLOWANCE.update(&mut store, key, add_ten).unwrap();
+        let twenty = ALLOWANCE.update(&mut store, key, add_ten).unwrap().unwrap();
+        assert_eq!(20, twenty);
+        let loaded = ALLOWANCE.load(&store, key).unwrap();
+        assert_eq!(20, loaded);
+    }
+
+    #[test]
+    fn readme_works() -> StdResult<()> {
+        let mut store = MockStorage::new();
+        let data = Data {
+            name: "John".to_string(),
+            age: 32,
+        };
+
+        // load and save with extra key argument
+        let empty = PEOPLE.may_load(&store, b"john")?;
+        assert_eq!(None, empty);
+        PEOPLE.save(&mut store, b"john", &data)?;
+        let loaded = PEOPLE.load(&store, b"john")?;
+        assert_eq!(data, loaded);
+
+        // nothing on another key
+        let missing = PEOPLE.may_load(&store, b"jack")?;
+        assert_eq!(None, missing);
+
+        // update function for new or existing keys
+        let birthday = |d: Option<Data>| -> StdResult<Option<Data>> {
+            match d {
+                Some(one) => Ok(Some(Data {
+                    name: one.name,
+                    age: one.age + 1,
+                })),
+                None => Ok(Some(Data {
+                    name: "Newborn".to_string(),
+                    age: 0,
+                })),
+            }
+        };
+
+        let old_john = PEOPLE.update(&mut store, b"john", birthday)?.unwrap();
+        assert_eq!(33, old_john.age);
+        assert_eq!("John", old_john.name.as_str());
+
+        let new_jack = PEOPLE.update(&mut store, b"jack", birthday)?.unwrap();
+        assert_eq!(0, new_jack.age);
+        assert_eq!("Newborn", new_jack.name.as_str());
+
+        // update also changes the store
+        assert_eq!(old_john, PEOPLE.load(&store, b"john")?);
+        assert_eq!(new_jack, PEOPLE.load(&store, b"jack")?);
+
+        // removing leaves us empty
+        PEOPLE.remove(&mut store, b"john");
+        let empty = PEOPLE.may_load(&store, b"john")?;
+        assert_eq!(None, empty);
+
+        Ok(())
+    }
+
+    #[test]
+    fn readme_works_composite_keys() -> StdResult<()> {
+        let mut store = MockStorage::new();
+
+        // save and load on a composite key
+        let empty = ALLOWANCE.may_load(&store, (b"owner", b"spender"))?;
+        assert_eq!(None, empty);
+        ALLOWANCE.save(&mut store, (b"owner", b"spender"), &777)?;
+        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
+        assert_eq!(777, loaded);
+
+        // doesn't appear under other key (even if a concat would be the same)
+        let different = ALLOWANCE.may_load(&store, (b"owners", b"pender")).unwrap();
+        assert_eq!(None, different);
+
+        // simple update
+        ALLOWANCE.update(
+            &mut store,
+            (b"owner", b"spender"),
+            |v| -> StdResult<Option<u64>> { Ok(Some(v.unwrap_or_default() + 222)) },
+        )?;
+        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
+        assert_eq!(999, loaded);
+
+        Ok(())
+    }
+
+    #[test]
+    fn readme_works_with_path() -> StdResult<()> {
+        let mut store = MockStorage::new();
+        let data = Data {
+            name: "John".to_string(),
+            age: 32,
+        };
+
+        // create a Path one time to use below
+        let john = PEOPLE.path(b"john");
+        let john = john.as_path();
+
+        // Use this just like an Item above
+        let empty = john.may_load(&store)?;
+        assert_eq!(None, empty);
+        john.save(&mut store, &data)?;
+        let loaded = john.load(&store)?;
+        assert_eq!(data, loaded);
+        john.remove(&mut store);
+        let empty = john.may_load(&store)?;
+        assert_eq!(None, empty);
+
+        // same for composite keys, just use both parts in key()
+        let allow = ALLOWANCE.path((b"owner", b"spender"));
+        let allow = allow.as_path();
+        allow.save(&mut store, &1234)?;
+        let loaded = allow.load(&store)?;
+        assert_eq!(1234, loaded);
+        allow.update(&mut store, |x| -> StdResult<Option<u64>> {
+            Ok(Some(x.unwrap_or_default() * 2))
+        })?;
+        let loaded = allow.load(&store)?;
+        assert_eq!(2468, loaded);
+
+        Ok(())
+    }
+
+    #[test]
+    fn readme_with_range_raw() -> StdResult<()> {
+        let mut store = MockStorage::new();
+
+        // save and load on two keys
+        let data = Data {
+            name: "John".to_string(),
+            age: 32,
+        };
+        PEOPLE.save(&mut store, b"john", &data)?;
+        let data2 = Data {
+            name: "Jim".to_string(),
+            age: 44,
+        };
+        PEOPLE.save(&mut store, b"jim", &data2)?;
+
+        // iterate over them all
+        let all: Vec<_> = PEOPLE
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(all, vec![
+            (b"jim".to_vec(), to_borsh_vec(&data2)?),
+            (b"john".to_vec(), to_borsh_vec(&data)?)
+        ]);
+
+        // or just show what is after jim
+        let all: Vec<_> = PEOPLE
+            .range_raw(
+                &store,
+                Some(Bound::exclusive(b"jim" as &[u8])),
+                None,
+                Order::Ascending,
+            )
+            .collect();
+        assert_eq!(all, vec![(b"john".to_vec(), to_borsh_vec(&data)?)]);
+
+        // save and load on three keys, one under different owner
+        ALLOWANCE.save(&mut store, (b"owner", b"spender"), &1000)?;
+        ALLOWANCE.save(&mut store, (b"owner", b"spender2"), &3000)?;
+        ALLOWANCE.save(&mut store, (b"owner2", b"spender"), &5000)?;
+
+        // get all under one key
+        let all: Vec<_> = ALLOWANCE
+            .prefix(b"owner")
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect();
+        assert_eq!(all, vec![
+            (b"spender".to_vec(), to_borsh_vec(&1000_u64)?),
+            (b"spender2".to_vec(), to_borsh_vec(&3000_u64)?)
+        ]);
+
+        // Or ranges between two items (even reverse)
+        let all: Vec<_> = ALLOWANCE
+            .prefix(b"owner")
+            .range_raw(
+                &store,
+                Some(Bound::exclusive(b"spender1" as &[u8])),
+                Some(Bound::inclusive(b"spender2" as &[u8])),
+                Order::Descending,
+            )
+            .collect();
+        assert_eq!(all, vec![(b"spender2".to_vec(), to_borsh_vec(&3000_u64)?)]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn prefixed_range_raw_works() {
+        // this is designed to look as much like a secondary index as possible
+        // we want to query over a range of u32 for the first key and all subkeys
+        const AGES: Map<(u32, Vec<u8>), u64> = Map::new("ages");
+
+        let mut store = MockStorage::new();
+        AGES.save(&mut store, (2, vec![1, 2, 3]), &123).unwrap();
+        AGES.save(&mut store, (3, vec![4, 5, 6]), &456).unwrap();
+        AGES.save(&mut store, (5, vec![7, 8, 9]), &789).unwrap();
+        AGES.save(&mut store, (5, vec![9, 8, 7]), &987).unwrap();
+        AGES.save(&mut store, (7, vec![20, 21, 22]), &2002).unwrap();
+        AGES.save(&mut store, (8, vec![23, 24, 25]), &2332).unwrap();
+
+        // typical range under one prefix as a control
+        let fives = AGES
+            .prefix(5)
+            .range_raw(&store, None, None, Order::Ascending)
+            .collect::<Vec<_>>();
+
+        assert_eq!(fives.len(), 2);
+        assert_eq!(fives, vec![
+            (vec![7, 8, 9], to_borsh_vec(&789_u64).unwrap()),
+            (vec![9, 8, 7], to_borsh_vec(&987_u64).unwrap())
+        ]);
+
+        let keys: Vec<_> = AGES
+            .keys_raw(&store, None, None, Order::Ascending)
+            .collect();
+        println!("keys: {:?}", keys);
+
+        // using inclusive bounds both sides
+        let include = AGES
+            .prefix_range_raw(
+                &store,
+                Some(PrefixBound::inclusive(3u32)),
+                Some(PrefixBound::inclusive(7u32)),
+                Order::Ascending,
+            )
+            .map(|r| from_borsh_slice(r.1).unwrap())
+            .collect::<Vec<u64>>();
+        assert_eq!(include.len(), 4);
+        assert_eq!(include, vec![456, 789, 987, 2002]);
+
+        // using exclusive bounds both sides
+        let exclude = AGES
+            .prefix_range_raw(
+                &store,
+                Some(PrefixBound::exclusive(3u32)),
+                Some(PrefixBound::exclusive(7u32)),
+                Order::Ascending,
+            )
+            .map(|r| from_borsh_slice(r.1).unwrap())
+            .collect::<Vec<u64>>();
+
+        assert_eq!(exclude.len(), 2);
+        assert_eq!(exclude, vec![789, 987]);
+
+        // using inclusive in descending
+        let include = AGES
+            .prefix_range_raw(
+                &store,
+                Some(PrefixBound::inclusive(3u32)),
+                Some(PrefixBound::inclusive(5u32)),
+                Order::Descending,
+            )
+            .map(|r| from_borsh_slice(r.1).unwrap())
+            .collect::<Vec<u64>>();
+        assert_eq!(include.len(), 3);
+        assert_eq!(include, vec![987, 789, 456]);
+
+        // using exclusive in descending
+        let include = AGES
+            .prefix_range_raw(
+                &store,
+                Some(PrefixBound::exclusive(2u32)),
+                Some(PrefixBound::exclusive(5u32)),
+                Order::Descending,
+            )
+            .map(|r| from_borsh_slice(r.1).unwrap())
+            .collect::<Vec<u64>>();
+        assert_eq!(include.len(), 1);
+        assert_eq!(include, vec![456]);
+    }
+
+    #[test]
+    fn prefixed_range_works() {
+        // this is designed to look as much like a secondary index as possible
+        // we want to query over a range of u32 for the first key and all subkeys
+        const AGES: Map<(u32, &str), u64> = Map::new("ages");
+
+        let mut store = MockStorage::new();
+        AGES.save(&mut store, (2, "123"), &123).unwrap();
+        AGES.save(&mut store, (3, "456"), &456).unwrap();
+        AGES.save(&mut store, (5, "789"), &789).unwrap();
+        AGES.save(&mut store, (5, "987"), &987).unwrap();
+        AGES.save(&mut store, (7, "202122"), &2002).unwrap();
+        AGES.save(&mut store, (8, "232425"), &2332).unwrap();
+
+        // typical range under one prefix as a control
+        let fives = AGES
+            .prefix(5)
+            .range(&store, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(fives.len(), 2);
+        assert_eq!(fives, vec![
+            ("789".to_string(), 789),
+            ("987".to_string(), 987)
+        ]);
+
+        let keys: Vec<_> = AGES.keys(&store, None, None, Order::Ascending).collect();
+        println!("keys: {:?}", keys);
+
+        // using inclusive bounds both sides
+        let include = AGES
+            .prefix_range(
+                &store,
+                Some(PrefixBound::inclusive(3u32)),
+                Some(PrefixBound::inclusive(7u32)),
+                Order::Ascending,
+            )
+            .map(|r| r.map(|(_, v)| v))
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(include.len(), 4);
+        assert_eq!(include, vec![456, 789, 987, 2002]);
+
+        // using exclusive bounds both sides
+        let exclude = AGES
+            .prefix_range(
+                &store,
+                Some(PrefixBound::exclusive(3u32)),
+                Some(PrefixBound::exclusive(7u32)),
+                Order::Ascending,
+            )
+            .map(|r| r.map(|(_, v)| v))
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(exclude.len(), 2);
+        assert_eq!(exclude, vec![789, 987]);
+
+        // using inclusive in descending
+        let include = AGES
+            .prefix_range(
+                &store,
+                Some(PrefixBound::inclusive(3u32)),
+                Some(PrefixBound::inclusive(5u32)),
+                Order::Descending,
+            )
+            .map(|r| r.map(|(_, v)| v))
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(include.len(), 3);
+        assert_eq!(include, vec![987, 789, 456]);
+
+        // using exclusive in descending
+        let include = AGES
+            .prefix_range(
+                &store,
+                Some(PrefixBound::exclusive(2u32)),
+                Some(PrefixBound::exclusive(5u32)),
+                Order::Descending,
+            )
+            .map(|r| r.map(|(_, v)| v))
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(include.len(), 1);
+        assert_eq!(include, vec![456]);
+    }
+
+    #[test]
+    fn clear_works() {
+        const TEST_MAP: Map<&str, u32> = Map::new("test_map");
+
+        let mut storage = MockStorage::new();
+        TEST_MAP.save(&mut storage, "key0", &0u32).unwrap();
+        TEST_MAP.save(&mut storage, "key1", &1u32).unwrap();
+        TEST_MAP.save(&mut storage, "key2", &2u32).unwrap();
+        TEST_MAP.save(&mut storage, "key3", &3u32).unwrap();
+        TEST_MAP.save(&mut storage, "key4", &4u32).unwrap();
+
+        TEST_MAP.clear(&mut storage, None, None);
+
+        assert!(!TEST_MAP.has(&storage, "key0"));
+        assert!(!TEST_MAP.has(&storage, "key1"));
+        assert!(!TEST_MAP.has(&storage, "key2"));
+        assert!(!TEST_MAP.has(&storage, "key3"));
+        assert!(!TEST_MAP.has(&storage, "key4"));
+
+        let mut storage = MockStorage::new();
+        TEST_MAP.save(&mut storage, "key0", &0u32).unwrap();
+        TEST_MAP.save(&mut storage, "key1", &1u32).unwrap();
+        TEST_MAP.save(&mut storage, "key2", &2u32).unwrap();
+        TEST_MAP.save(&mut storage, "key3", &3u32).unwrap();
+        TEST_MAP.save(&mut storage, "key4", &4u32).unwrap();
+
+        TEST_MAP.clear(
+            &mut storage,
+            Some(Bound::inclusive("key0")),
+            Some(Bound::exclusive("key3")),
+        );
+
+        assert!(!TEST_MAP.has(&storage, "key0"));
+        assert!(!TEST_MAP.has(&storage, "key1"));
+        assert!(!TEST_MAP.has(&storage, "key2"));
+        assert!(TEST_MAP.has(&storage, "key3"));
+        assert!(TEST_MAP.has(&storage, "key4"));
+    }
+
+    #[test]
+    fn is_empty_works() {
+        const TEST_MAP: Map<&str, u32> = Map::new("test_map");
+
+        let mut storage = MockStorage::new();
+
+        assert!(TEST_MAP.is_empty(&storage));
+
+        TEST_MAP.save(&mut storage, "key1", &1u32).unwrap();
+        TEST_MAP.save(&mut storage, "key2", &2u32).unwrap();
+
+        assert!(!TEST_MAP.is_empty(&storage));
+    }
 }

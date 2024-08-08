@@ -1,7 +1,7 @@
 use {
     grug_types::{
-        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, StdError, StdResult, Uint128,
-        Uint256, Uint512, Uint64,
+        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, Sign, Signed, StdError,
+        StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
     },
     std::{borrow::Cow, mem},
 };
@@ -303,6 +303,68 @@ where
     }
 }
 
+impl<T> Key for Signed<T>
+where
+    T: Key<Output = T>,
+{
+    type Output = Self;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        let mut keys = self.inner().raw_keys();
+
+        if let Some(first) = keys.first_mut() {
+            let sign = if self.is_negative() {
+                0
+            } else {
+                1
+            };
+
+            match first {
+                Cow::Borrowed(borrowed) => {
+                    let mut bytes = borrowed.to_vec();
+                    bytes.insert(0, sign);
+                    *first = Cow::Owned(bytes);
+                },
+                Cow::Owned(owned) => owned.insert(0, sign),
+            }
+        }
+
+        keys
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let negative = match bytes.first() {
+            Some(0) => true,
+            Some(1) => false,
+            _ => return Err(StdError::deserialize::<Self::Output, _>("missing sign")),
+        };
+
+        let inner = T::from_slice(&bytes[1..])?;
+        Ok(Signed::new(inner, negative))
+    }
+}
+
+impl<T, const S: u32> Key for Udec<T, S>
+where
+    Uint<T>: Key<Output = Uint<T>>,
+{
+    type Output = Self;
+    type Prefix = ();
+    type Suffix = ();
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        let key = self.numerator().raw_keys();
+        key
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let numerator = Uint::<T>::from_slice(bytes)?;
+        Ok(Self::raw(numerator))
+    }
+}
+
 /// Given the raw bytes of a tuple key consisting of at least one subkey, each
 /// subkey having one or more key elements, split off the first subkey.
 ///
@@ -356,8 +418,8 @@ pub(crate) fn split_first_key(key_elems: u16, value: &[u8]) -> (Vec<u8>, &[u8]) 
     (first_key, remainder)
 }
 
-macro_rules! impl_integer_key {
-    ($($t:ty),+ $(,)?) => {
+macro_rules! impl_unsigned_integer_key {
+    ($($t:ty),+) => {
         $(impl Key for $t {
             type Prefix = ();
             type Suffix = ();
@@ -382,9 +444,37 @@ macro_rules! impl_integer_key {
     }
 }
 
-impl_integer_key!(
-    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512,
-);
+impl_unsigned_integer_key!(u8, u16, u32, u64, u128, Uint64, Uint128, Uint256, Uint512);
+
+macro_rules! impl_signed_integer_key {
+    ($($s:ty => $u:ty),+ ) => {
+        $(impl Key for $s {
+            type Prefix = ();
+            type Suffix = ();
+            type Output = $s;
+
+            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+                let bytes = (*self as $u ^ <$s>::MIN as $u).to_be_bytes().to_vec();
+                vec![Cow::Owned(bytes)]
+            }
+
+            fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+                let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
+                    return Err(StdError::deserialize::<Self::Output, _>(format!(
+                        "wrong number of bytes: expecting {}, got {}",
+                        mem::size_of::<Self>(),
+                        bytes.len(),
+                    )));
+                };
+
+                Ok((Self::from_be_bytes(bytes) as $u ^ <$s>::MIN as $u) as _)
+
+            }
+        })*
+    }
+}
+
+impl_signed_integer_key!(i8 => u8, i16 => u16, i32 => u32, i64 => u64, i128 => u128);
 
 // --------------------------------- prefixer ----------------------------------
 
@@ -547,6 +637,7 @@ mod tests {
             deserialized,
             ((a, (b.to_string(), c.to_string())), d.to_string())
         );
+
     }
 
     /// `len(u32) = 4 | 10_u32.to_be_bytes() | 265_u32.to_be_bytes()`
