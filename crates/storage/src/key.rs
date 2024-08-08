@@ -568,6 +568,25 @@ where
     }
 }
 
+impl<T, const S: u32> Prefixer for Udec<T, S>
+where
+    Uint<T>: Key<Output = Uint<T>>,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        self.raw_keys()
+    }
+}
+
+impl<T> Prefixer for Signed<T>
+where
+    T: Key<Output = T> + Sub<Output = T> + Copy,
+    T: NumberConst,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        self.raw_keys()
+    }
+}
+
 macro_rules! impl_integer_prefixer {
     ($($t:ty),+ $(,)?) => {
         $(impl Prefixer for $t {

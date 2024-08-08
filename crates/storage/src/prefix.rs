@@ -7,17 +7,25 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub struct Prefix<K, T, C>
+pub trait AsKeysIterator {}
+pub trait AsRangeIterator {}
+
+pub struct KeysIterator;
+impl AsKeysIterator for KeysIterator {}
+
+pub struct RangeIterator;
+impl AsRangeIterator for RangeIterator {}
+impl AsKeysIterator for RangeIterator {}
+
+pub struct Prefix<K, T, C, I = RangeIterator>
 where
     C: Codec<T>,
 {
     namespace: Vec<u8>,
-    suffix: PhantomData<K>,
-    data: PhantomData<T>,
-    codec: PhantomData<C>,
+    phantom: PhantomData<(K, T, C, I)>,
 }
 
-impl<K, T, C> Prefix<K, T, C>
+impl<K, T, C, I> Prefix<K, T, C, I>
 where
     C: Codec<T>,
 {
@@ -28,14 +36,12 @@ where
                 prefixes,
                 <Option<&Cow<[u8]>>>::None,
             ),
-            suffix: PhantomData,
-            data: PhantomData,
-            codec: PhantomData,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<K, T, C> Prefix<K, T, C>
+impl<K, T, C, I> Prefix<K, T, C, I>
 where
     K: Key,
     C: Codec<T>,
@@ -48,61 +54,41 @@ where
 
         Prefix {
             namespace: self.namespace,
-            suffix: PhantomData,
-            data: self.data,
-            codec: self.codec,
+            phantom: PhantomData,
         }
-    }
-
-    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.keys_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
     }
 
     // -------------------- iteration methods (full bound) ---------------------
 
-    pub fn range_raw<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // Compute start and end bounds.
-        // Note that the store considers the start bounds as inclusive, and end
-        // bound as exclusive (see the Storage trait).
+    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
         let (min, max) = range_bounds(&self.namespace, min, max);
-
-        // Need to make a clone of self.prefix and move it into the closure,
-        // so that the iterator can live longer than `&self`.
-        let namespace = self.namespace.clone();
-        let iter = storage
-            .scan(Some(&min), Some(&max), order)
-            .map(move |(k, v)| {
-                debug_assert_eq!(&k[0..namespace.len()], namespace, "namespace mispatch");
-                (trim(&namespace, &k), v)
-            });
-
-        Box::new(iter)
+        storage.remove_range(Some(&min), Some(&max))
     }
 
-    pub fn range<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<Bound<K>>,
-        max: Option<Bound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .map(|(key_raw, value_raw)| {
-                let key = K::from_slice(&key_raw)?;
-                let value = C::decode(&value_raw)?;
-                Ok((key, value))
-            });
+    // ------------------- iteration methods (prefix bound) --------------------
 
-        Box::new(iter)
+    pub fn prefix_clear(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+    ) {
+        let (min, max) = range_prefix_bounds(&self.namespace, min, max);
+        storage.remove_range(Some(&min), Some(&max))
+    }
+}
+
+// --- Keys iterator ---
+impl<K, T, C, I> Prefix<K, T, C, I>
+where
+    K: Key,
+    C: Codec<T>,
+    I: AsKeysIterator,
+{
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.keys_raw(storage, None, None, Order::Ascending)
+            .next()
+            .is_none()
     }
 
     pub fn keys_raw<'a>(
@@ -155,6 +141,90 @@ where
         Box::new(iter)
     }
 
+    pub fn prefix_keys_raw<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let (min, max) = range_prefix_bounds(&self.namespace, min, max);
+        let namespace = self.namespace.clone();
+        let iter = storage
+            .scan_keys(Some(&min), Some(&max), order)
+            .map(move |k| {
+                debug_assert_eq!(&k[0..namespace.len()], namespace, "namespace mispatch");
+                trim(&namespace, &k)
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_keys<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
+        let iter = self
+            .prefix_keys_raw(storage, min, max, order)
+            .map(|key_raw| K::from_slice(&key_raw));
+
+        Box::new(iter)
+    }
+}
+
+// --- Range iterator ---
+impl<K, T, C, I> Prefix<K, T, C, I>
+where
+    K: Key,
+    C: Codec<T>,
+    I: AsRangeIterator,
+{
+    pub fn range_raw<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // Compute start and end bounds.
+        // Note that the store considers the start bounds as inclusive, and end
+        // bound as exclusive (see the Storage trait).
+        let (min, max) = range_bounds(&self.namespace, min, max);
+
+        // Need to make a clone of self.prefix and move it into the closure,
+        // so that the iterator can live longer than `&self`.
+        let namespace = self.namespace.clone();
+        let iter = storage
+            .scan(Some(&min), Some(&max), order)
+            .map(move |(k, v)| {
+                debug_assert_eq!(&k[0..namespace.len()], namespace, "namespace mispatch");
+                (trim(&namespace, &k), v)
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn range<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'a> {
+        let iter = self
+            .range_raw(storage, min, max, order)
+            .map(|(key_raw, value_raw)| {
+                let key = K::from_slice(&key_raw)?;
+                let value = C::decode(&value_raw)?;
+                Ok((key, value))
+            });
+
+        Box::new(iter)
+    }
+
     pub fn values_raw<'a>(
         &self,
         storage: &'a dyn Storage,
@@ -181,13 +251,6 @@ where
 
         Box::new(iter)
     }
-
-    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
-        let (min, max) = range_bounds(&self.namespace, min, max);
-        storage.remove_range(Some(&min), Some(&max))
-    }
-
-    // ------------------- iteration methods (prefix bound) --------------------
 
     pub fn prefix_range_raw<'a>(
         &self,
@@ -226,39 +289,6 @@ where
         Box::new(iter)
     }
 
-    pub fn prefix_keys_raw<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<PrefixBound<K>>,
-        max: Option<PrefixBound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let (min, max) = range_prefix_bounds(&self.namespace, min, max);
-        let namespace = self.namespace.clone();
-        let iter = storage
-            .scan_keys(Some(&min), Some(&max), order)
-            .map(move |k| {
-                debug_assert_eq!(&k[0..namespace.len()], namespace, "namespace mispatch");
-                trim(&namespace, &k)
-            });
-
-        Box::new(iter)
-    }
-
-    pub fn prefix_keys<'a>(
-        &self,
-        storage: &'a dyn Storage,
-        min: Option<PrefixBound<K>>,
-        max: Option<PrefixBound<K>>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
-        let iter = self
-            .prefix_keys_raw(storage, min, max, order)
-            .map(|key_raw| K::from_slice(&key_raw));
-
-        Box::new(iter)
-    }
-
     pub fn prefix_values_raw<'a>(
         &self,
         storage: &'a dyn Storage,
@@ -285,17 +315,9 @@ where
 
         Box::new(iter)
     }
-
-    pub fn prefix_clear(
-        &self,
-        storage: &mut dyn Storage,
-        min: Option<PrefixBound<K>>,
-        max: Option<PrefixBound<K>>,
-    ) {
-        let (min, max) = range_prefix_bounds(&self.namespace, min, max);
-        storage.remove_range(Some(&min), Some(&max))
-    }
 }
+
+// ------
 
 fn range_bounds<K>(
     namespace: &[u8],
@@ -351,9 +373,7 @@ mod test {
         // manually create this - not testing nested prefixes here
         let prefix: Prefix<Vec<u8>, u64, Borsh> = Prefix {
             namespace: b"foo".to_vec(),
-            data: PhantomData,
-            codec: PhantomData,
-            suffix: PhantomData,
+            phantom: PhantomData,
         };
 
         // set some data, we care about "foo" prefix
@@ -500,9 +520,7 @@ mod test {
         // manually create this - not testing nested prefixes here
         let prefix: Prefix<i32, u64, Borsh> = Prefix {
             namespace: b"foo".to_vec(),
-            data: PhantomData,
-            suffix: PhantomData,
-            codec: PhantomData,
+            phantom: PhantomData,
         };
 
         // set some data, we care about "foo" prefix
