@@ -55,9 +55,7 @@ where
     }
 
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
-        self.keys_raw(storage, None, None, Order::Ascending)
-            .next()
-            .is_none()
+        self.no_prefix().is_empty(storage)
     }
 
     // ---------------------- methods for single entries -----------------------
