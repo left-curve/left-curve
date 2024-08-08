@@ -87,7 +87,7 @@ where
     T: NumberConst,
 {
     const MAX: Self = Self::new_positive(T::MAX);
-    const MIN: Self = Self::new_negative(T::MIN);
+    const MIN: Self = Self::new_negative(T::MAX);
     const ONE: Self = Self::new_positive(T::ONE);
     const TEN: Self = Self::new_positive(T::TEN);
     const ZERO: Self = Self::new_positive(T::ZERO);

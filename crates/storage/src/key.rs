@@ -1,9 +1,9 @@
 use {
     grug_types::{
-        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, Sign, Signed, StdError,
-        StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, NumberConst, Sign, Signed,
+        StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
     },
-    std::{borrow::Cow, mem},
+    std::{borrow::Cow, mem, ops::Sub},
 };
 
 // ------------------------------------ key ------------------------------------
@@ -305,22 +305,30 @@ where
 
 impl<T> Key for Signed<T>
 where
-    T: Key<Output = T>,
+    T: Key<Output = T> + Sub<Output = T> + Copy,
+    T: NumberConst,
 {
     type Output = Self;
     type Prefix = ();
     type Suffix = ();
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        let mut keys = self.inner().raw_keys();
+        let (mut keys, sign) = match self.is_negative() {
+            true => {
+                let dif = T::MAX - *self.inner();
+
+                let keys = dif
+                    .raw_keys()
+                    .into_iter()
+                    .map(|val: Cow<[u8]>| Cow::Owned(val.into_owned()))
+                    .collect();
+
+                (keys, 0)
+            },
+            false => (self.inner().raw_keys(), 1),
+        };
 
         if let Some(first) = keys.first_mut() {
-            let sign = if self.is_negative() {
-                0
-            } else {
-                1
-            };
-
             match first {
                 Cow::Borrowed(borrowed) => {
                     let mut bytes = borrowed.to_vec();
@@ -335,13 +343,17 @@ where
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let mut inner = T::from_slice(&bytes[1..])?;
+
         let negative = match bytes.first() {
-            Some(0) => true,
+            Some(0) => {
+                inner = T::MAX - inner;
+                true
+            },
             Some(1) => false,
             _ => return Err(StdError::deserialize::<Self::Output, _>("missing sign")),
         };
 
-        let inner = T::from_slice(&bytes[1..])?;
         Ok(Signed::new(inner, negative))
     }
 }
@@ -687,13 +699,13 @@ mod tests {
     #[test_case(Udec256::MAX, &Uint256::MAX.to_be_bytes(); "udec256_MAX")]
     /// ---- Signed integers ----
     #[test_case(Int64::new_positive(10_u64.into()), &with_sign(1, 10_u64.to_be_bytes()); "int64_10")]
-    #[test_case(Int128::new_negative(10_u64.into()), &with_sign(0, 10_u128.to_be_bytes()); "int128_neg_10")]
+    #[test_case(Int128::new_negative(10_u64.into()), &with_sign(0, (u128::MAX - 10).to_be_bytes()); "int128_neg_10")]
     #[test_case(Int256::MIN, &with_sign(0, Uint256::MIN.to_be_bytes()); "int256_MIN")]
     #[test_case(Int256::MAX, &with_sign(1, Uint256::MAX.to_be_bytes()); "int256_MAX")]
     /// ---- Signed Decimals ----
     #[test_case(Dec128::MAX, &with_sign(1, Uint128::MAX.to_be_bytes()); "dec128_MAX")]
     #[test_case(Dec128::MIN, &with_sign(0, Uint128::MIN.to_be_bytes()); "dec128_MIN")]
-    #[test_case(Dec256::from_str("-10.5").unwrap(), &with_sign(0, (Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2 )).to_be_bytes()); "dec128_neg_10_5")]
+    #[test_case(Dec256::from_str("-10.5").unwrap(), &with_sign(0, (Uint256::MAX - Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2)).to_be_bytes()); "dec128_neg_10_5")]
     #[test_case(Dec256::from_str("20.75").unwrap(), &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes()); "dec128_20_75")]
     fn key<T>(compare: T, bytes: &[u8])
     where
