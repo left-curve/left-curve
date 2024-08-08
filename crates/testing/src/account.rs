@@ -47,7 +47,7 @@ impl TestAccount {
         let signature: Signature = self.sk.sign_digest(sign_bytes);
 
         let credential = to_json_value(&Credential {
-            signature: signature.to_vec().into(),
+            signature: signature.to_vec().try_into()?,
             sequence,
         })?;
 

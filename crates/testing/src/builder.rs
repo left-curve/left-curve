@@ -75,7 +75,9 @@ where
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
-                msg_builder: Box::new(|public_key| grug_account::InstantiateMsg { public_key }),
+                msg_builder: Box::new(|public_key| grug_account::InstantiateMsg {
+                    public_key: public_key.try_into().unwrap(),
+                }),
             },
             bank_opt: CodeOption {
                 code: VM::default_bank_code(),
