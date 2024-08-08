@@ -671,6 +671,10 @@ mod tests {
     #[test_case(Duration::from_nanos(100), &100_u128.to_be_bytes(); "duration")]
     #[test_case((10_u32, 265_u32 ), &DOUBLE_TUPLE_BYTES; "double_tuple")]
     #[test_case(("Hello".to_string(), 10_u32, "World".to_string()), &DOUBLE_TRIPLE_BYTES; "triple")]
+    /// ---- Rust native numbers ----
+    #[test_case(10_u64, &10_u64.to_be_bytes(); "u64_10")]
+    #[test_case(-1_i8, &[127]; "i8_neg_1")]
+    #[test_case(1_i8, &[129]; "i8_1")]
     /// ---- Unisgned integers ----
     #[test_case(Uint64::new(10), &10_u64.to_be_bytes(); "uint64_10")]
     #[test_case(Uint128::new(10), &Uint128::new(10).to_be_bytes(); "uint128_10")]
@@ -684,8 +688,8 @@ mod tests {
     /// ---- Signed integers ----
     #[test_case(Int64::new_positive(10_u64.into()), &with_sign(1, 10_u64.to_be_bytes()); "int64_10")]
     #[test_case(Int128::new_negative(10_u64.into()), &with_sign(0, 10_u128.to_be_bytes()); "int128_neg_10")]
-    #[test_case(Int256::MIN, &with_sign(0, Uint256::MIN.to_be_bytes()); "int256_min")]
-    #[test_case(Int256::MAX, &with_sign(1, Uint256::MAX.to_be_bytes()); "int256_max")]
+    #[test_case(Int256::MIN, &with_sign(0, Uint256::MIN.to_be_bytes()); "int256_MIN")]
+    #[test_case(Int256::MAX, &with_sign(1, Uint256::MAX.to_be_bytes()); "int256_MAX")]
     /// ---- Signed Decimals ----
     #[test_case(Dec128::MAX, &with_sign(1, Uint128::MAX.to_be_bytes()); "dec128_MAX")]
     #[test_case(Dec128::MIN, &with_sign(0, Uint128::MIN.to_be_bytes()); "dec128_MIN")]
