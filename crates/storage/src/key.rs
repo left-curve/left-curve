@@ -574,7 +574,12 @@ impl_integer_prefixer!(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, std::fmt::Debug, test_case::test_case};
+    use {
+        super::*,
+        grug_types::{Dec128, Dec256, Int128, Int256, Int64, NumberConst, Udec128, Udec256},
+        std::{fmt::Debug, str::FromStr},
+        test_case::test_case,
+    };
 
     #[test]
     fn triple_tuple_key() {
@@ -647,6 +652,14 @@ mod tests {
         0, 5, 72, 101, 108, 108, 111, 0, 4, 0, 0, 0, 10, 87, 111, 114, 108, 100,
     ];
 
+    const DEC128_SHIFT: u128 = 10_u128.pow(18);
+
+    fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
+        let mut bytes = vec![s];
+        bytes.extend_from_slice(&b);
+        bytes
+    }
+
     #[test_case(b"slice".as_slice(), b"slice"; "slice")]
     #[test_case(b"Vec".to_vec(), b"Vec"; "vec_u8")]
     #[test_case("str", b"str"; "str")]
@@ -657,8 +670,27 @@ mod tests {
     #[test_case(&Hash::<20>::from_array([2;20]), &[2; 20]; "borrow_hash")]
     #[test_case(Duration::from_nanos(100), &100_u128.to_be_bytes(); "duration")]
     #[test_case((10_u32, 265_u32 ), &DOUBLE_TUPLE_BYTES; "double_tuple")]
-    #[test_case(("Hello".to_string(), 10_u32, "World".to_string() ), &DOUBLE_TRIPLE_BYTES; "triple")]
-
+    #[test_case(("Hello".to_string(), 10_u32, "World".to_string()), &DOUBLE_TRIPLE_BYTES; "triple")]
+    /// ---- Unisgned integers ----
+    #[test_case(Uint64::new(10), &10_u64.to_be_bytes(); "uint64_10")]
+    #[test_case(Uint128::new(10), &Uint128::new(10).to_be_bytes(); "uint128_10")]
+    #[test_case(Uint256::MIN, &[0; 32]; "uint256_MIN")]
+    #[test_case(Uint512::MAX, &Uint512::MAX.to_be_bytes(); "uint256_MAX")]
+    /// ---- Unisgned Decimals ----
+    #[test_case(Udec128::from_str("10").unwrap(), &(10 * DEC128_SHIFT).to_be_bytes(); "udec128_10")]
+    #[test_case(Udec128::from_str("5.5").unwrap(), &(5 * DEC128_SHIFT + DEC128_SHIFT / 2).to_be_bytes(); "udec128_5.5")]
+    #[test_case(Udec128::MIN, &Uint128::MIN.to_be_bytes(); "udec128_0")]
+    #[test_case(Udec256::MAX, &Uint256::MAX.to_be_bytes(); "udec256_MAX")]
+    /// ---- Signed integers ----
+    #[test_case(Int64::new_positive(10_u64.into()), &with_sign(1, 10_u64.to_be_bytes()); "int64_10")]
+    #[test_case(Int128::new_negative(10_u64.into()), &with_sign(0, 10_u128.to_be_bytes()); "int128_neg_10")]
+    #[test_case(Int256::MIN, &with_sign(0, Uint256::MIN.to_be_bytes()); "int256_min")]
+    #[test_case(Int256::MAX, &with_sign(1, Uint256::MAX.to_be_bytes()); "int256_max")]
+    /// ---- Signed Decimals ----
+    #[test_case(Dec128::MAX, &with_sign(1, Uint128::MAX.to_be_bytes()); "dec128_MAX")]
+    #[test_case(Dec128::MIN, &with_sign(0, Uint128::MIN.to_be_bytes()); "dec128_MIN")]
+    #[test_case(Dec256::from_str("-10.5").unwrap(), &with_sign(0, (Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2 )).to_be_bytes()); "dec128_neg_10_5")]
+    #[test_case(Dec256::from_str("20.75").unwrap(), &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes()); "dec128_20_75")]
     fn key<T>(compare: T, bytes: &[u8])
     where
         T: Key + PartialEq<<T as Key>::Output> + Debug,
