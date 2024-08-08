@@ -1,5 +1,5 @@
 use {
-    crate::{StdError, StdResult},
+    crate::{Binary, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     data_encoding::BASE64,
     serde::{de, ser},
@@ -68,6 +68,14 @@ impl<const N: usize> TryFrom<Vec<u8>> for ByteArray<N> {
 
     fn try_from(vec: Vec<u8>) -> StdResult<Self> {
         vec.as_slice().try_into()
+    }
+}
+
+impl<const N: usize> TryFrom<Binary> for ByteArray<N> {
+    type Error = StdError;
+
+    fn try_from(binary: Binary) -> StdResult<Self> {
+        binary.as_ref().try_into()
     }
 }
 
