@@ -229,14 +229,14 @@ impl Instance for RustInstance {
         let contract = get_contract_impl(self.wrapper)?;
         match name {
             "reply" => {
-                let submsg_res = from_json_slice(param2)?;
+                let result = from_json_slice(param2)?;
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
                     &InternalApi,
                     &self.querier,
                     param1.as_ref(),
-                    submsg_res,
+                    result,
                 )?;
                 to_json_vec(&res)
             },

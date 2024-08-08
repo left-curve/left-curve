@@ -34,7 +34,7 @@ fn migrate(ctx: MutableCtx, msg: MigrateMsg) -> Result<Response>;
 fn receive(ctx: MutableCtx) -> Result<Response>;
 
 #[grug::export]
-fn reply(ctx: SudoCtx, msg: ReplyMsg, submsg_res: SubMsgResult) -> Result<Response>;
+fn reply(ctx: SudoCtx, msg: ReplyMsg, result: SubMsgResult) -> Result<Response>;
 
 #[grug::export]
 fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary>;
