@@ -1,9 +1,9 @@
 use {
-    crate::{Credential, InstantiateMsg, PUBLIC_KEY, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Binary, Message,
-        MutableCtx, Response, StdResult, Tx,
+        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
+        Response, StdResult, Tx,
     },
 };
 
@@ -56,7 +56,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     Ok(Response::new())
 }
 
-pub fn update_key(ctx: MutableCtx, new_public_key: &Binary) -> anyhow::Result<Response> {
+pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result<Response> {
     // Only the account itself can update its key
     ensure!(ctx.sender == ctx.contract, "Nice try lol");
 
