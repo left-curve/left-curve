@@ -1,7 +1,7 @@
 use {
-    grug_account::Credential,
+    grug_account::{Credential, PublicKey},
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{to_json_value, Addr, Binary, Hash256, Message, Tx, GENESIS_SENDER},
+    grug_types::{to_json_value, Addr, Hash256, Message, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
@@ -12,7 +12,7 @@ pub type TestAccounts = HashMap<&'static str, TestAccount>;
 pub struct TestAccount {
     pub address: Addr,
     pub sk: SigningKey,
-    pub pk: Binary,
+    pub pk: PublicKey,
 }
 
 impl TestAccount {
@@ -24,7 +24,8 @@ impl TestAccount {
             .to_encoded_point(true)
             .to_bytes()
             .to_vec()
-            .into();
+            .try_into()
+            .expect("pk is of wrong length");
 
         Self { address, sk, pk }
     }
