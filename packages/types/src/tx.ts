@@ -1,0 +1,58 @@
+import type { Coin } from "./coins";
+
+export type Tx = {
+  sender: string;
+  msgs: Message[];
+  credential: string;
+};
+
+// biome-ignore format: biome's style of formatting union types is ugly
+export type Message = {
+	updateConfig: MsgUpdateConfig;
+  } | {
+	transfer: MsgTransfer;
+  } | {
+	storeCode: MsgStoreCode;
+  } | {
+	instantiate: MsgInstantiate;
+  } | {
+	execute: MsgExecute;
+  } | {
+	migrate: MsgMigrate;
+  };
+
+export type MsgUpdateConfig = {
+  newCfg: {
+    owner?: string;
+    bank: string;
+  };
+};
+
+export type MsgTransfer = {
+  to: string;
+  coins: Coin[];
+};
+
+export type MsgStoreCode = {
+  wasmByteCode: string;
+};
+
+export type MsgInstantiate = {
+  codeHash: string;
+  msg: string;
+  salt: string;
+  funds: Coin[];
+  admin?: string;
+};
+
+export type MsgExecute = {
+  contract: string;
+  msg: string;
+  funds: Coin[];
+};
+
+export type MsgMigrate = {
+  contract: string;
+  newCodeHash: string;
+  msg: string;
+};

@@ -2,26 +2,29 @@
   "name": "@leftcurve/applets",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
   "scripts": {
-    "lint": "pnpm biome check --apply ./src",
-    "ci": "pnpm biome ci ./src"
+    "dev": "pnpm tsup --watch --silent",
+    "lint": "pnpm biome check --write ./src",
+    "ci": "pnpm biome ci ./src",
+    "build": "pnpm tsup"
   },
   "dependencies": {
-    "@leftcurve/components": "workspace:^",
+    "@emotion/is-prop-valid": "^1.3.0",
     "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/hooks": "workspace:^",
-    "@leftcurve/utils": "workspace:^"
+    "@leftcurve/utils": "workspace:^",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "framer-motion": "^11.3.21",
+    "tailwind-variants": "^0.2.1"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@types/react": "^18.3.3",
-    "framer-motion": "^11.3.21",
-    "react": "^18.3.1"
+    "react": "^18"
   },
   "peerDependencies": {
-    "framer-motion": "^11.3.21",
-    "react": "^18.3.1"
+    "react": "^18"
   }
 }

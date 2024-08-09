@@ -8,27 +8,24 @@
     "build",
     "src"
   ],
-  "tsup": {
-    "entry": [
-      "src/index.ts"
-    ],
-    "outDir": "build",
-    "sourcemap": true,
-    "dts": true,
-    "clean": true
-  },
   "scripts": {
+    "build": "pnpm tsup",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest --watch",
     "dev": "pnpm tsup --watch --silent",
-    "lint": "pnpm biome check --apply ./src",
-    "ci": "pnpm biome ci ./src",
-    "build": "pnpm tsup"
+    "lint": "pnpm biome check --write src",
+    "ci": "pnpm biome ci ./src"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
-    "@leftcurve/encoding": "workspace:^"
+    "@leftcurve/encoding": "workspace:^",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
+    "@noble/curves": "^1.5.0",
     "@noble/hashes": "^1.4.0",
-    "webauthn-p256": "^0.0.9"
+    "@scure/bip32": "^1.4.0",
+    "@scure/bip39": "^1.3.0",
+    "cbor-x": "^1.6.0"
   }
 }

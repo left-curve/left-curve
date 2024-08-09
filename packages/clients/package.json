@@ -1,0 +1,30 @@
+{
+  "name": "@leftcurve/clients",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "dev": "pnpm tsup --watch --silent",
+    "lint": "pnpm biome check --write src",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "ci": "pnpm biome ci ./src",
+    "build": "pnpm tsup"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@cosmjs/tendermint-rpc": "^0.32.4",
+    "@leftcurve/types": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
+    "@leftcurve/crypto": "workspace:^",
+    "@leftcurve/encoding": "workspace:^"
+  }
+}

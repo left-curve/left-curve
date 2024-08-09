@@ -8,25 +8,19 @@
     "build",
     "src"
   ],
-  "tsup": {
-    "entry": [
-      "src/index.ts"
-    ],
-    "outDir": "build",
-    "sourcemap": true,
-    "dts": true,
-    "clean": true
-  },
   "scripts": {
     "dev": "pnpm tsup --watch --silent",
-    "lint": "pnpm biome check --apply ./src",
+    "lint": "pnpm biome check --write ./src",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
     "ci": "pnpm biome ci ./src",
     "build": "pnpm tsup"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^"
+    "@leftcurve/config": "workspace:^",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
-    "cbor-x": "^1.6.0"
+    "@leftcurve/utils": "workspace:^"
   }
 }
