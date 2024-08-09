@@ -52,6 +52,10 @@ where
         }
     }
 
+    pub fn storage_key(&self) -> &[u8] {
+        self.storage_key
+    }
+
     pub fn exists(&self, storage: &dyn Storage) -> bool {
         storage.read(self.storage_key).is_some()
     }

@@ -1,17 +1,12 @@
-# editors
+# Editors
 .idea/
 .vscode/
 
-# rust
+# Rust
 **/target/
 **/artifacts/
 
-# javascript
-**/dist/
-**/node_modules/
-sdk/js/docs/
-
-# data for test purpose
+# Data used in testing
 **/testdata/
 **/proptest-regressions/
 

@@ -24,7 +24,7 @@ members  = [
 
 [workspace.package]
 version       = "0.0.0"
-authors       = ["Left Curve Software Ltd. (https://leftcurve.software/)"]
+authors       = ["Left Curve Software Limited (https://leftcurve.software/)"]
 edition       = "2021"
 rust-version  = "1.73"
 documentation = "https://leftcurve.software/grug"

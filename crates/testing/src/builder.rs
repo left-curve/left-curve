@@ -48,7 +48,7 @@ pub struct TestBuilder<
     block_time: Option<Duration>,
     owner: Option<Addr>,
     // Accounts
-    account_opt: CodeOption<Box<dyn Fn(Binary) -> M1>>,
+    account_opt: CodeOption<Box<dyn Fn(grug_account::PublicKey) -> M1>>,
     accounts: TA,
     // Bank
     bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
@@ -357,7 +357,7 @@ where
     ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, Undefined<TestAccounts>>>
     where
         T: Into<Binary>,
-        F: Fn(Binary) -> M1A + 'static,
+        F: Fn(grug_account::PublicKey) -> M1A + 'static,
     {
         Ok(TestBuilder {
             vm: self.vm,
@@ -459,7 +459,7 @@ where
         for (name, account) in self.accounts.inner() {
             msgs.push(Message::instantiate(
                 hash256(&self.account_opt.code),
-                &(self.account_opt.msg_builder)(account.pk.clone()),
+                &(self.account_opt.msg_builder)(account.pk),
                 name.to_string(),
                 Coins::new(),
                 Some(account.address.clone()),
