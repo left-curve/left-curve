@@ -158,16 +158,25 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         self
     }
 
-    pub fn upload<P>(&mut self, path: P) -> anyhow::Result<Hash256>
+    pub fn upload<D>(&mut self, code: D) -> anyhow::Result<Hash256>
     where
-        P: AsRef<Path>,
+        D: Into<Binary>,
     {
-        let code = fs::read(path)?;
+        let code = code.into();
         let code_hash = hash256(&code);
 
         self.upload_msgs.push(Message::upload(code));
 
         Ok(code_hash)
+    }
+
+    pub fn upload_file<P>(&mut self, path: P) -> anyhow::Result<Hash256>
+    where
+        P: AsRef<Path>,
+    {
+        let code = fs::read(path)?;
+
+        self.upload(code)
     }
 
     pub fn instantiate<M, S, C>(
@@ -194,7 +203,26 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         Ok(address)
     }
 
-    pub fn upload_and_instantiate<P, M, S, C>(
+    pub fn upload_and_instantiate<D, M, S, C>(
+        &mut self,
+        code: D,
+        msg: &M,
+        salt: S,
+        funds: C,
+        admin_opt: AdminOption,
+    ) -> anyhow::Result<Addr>
+    where
+        D: Into<Binary>,
+        M: Serialize,
+        S: Into<Binary>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        let code_hash = self.upload(code)?;
+        self.instantiate(code_hash, msg, salt, funds, admin_opt)
+    }
+
+    pub fn upload_file_and_instantiate<P, M, S, C>(
         &mut self,
         path: P,
         msg: &M,
@@ -209,7 +237,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        let code_hash = self.upload(path)?;
+        let code_hash = self.upload_file(path)?;
         self.instantiate(code_hash, msg, salt, funds, admin_opt)
     }
 
@@ -235,26 +263,7 @@ impl
         Defined<Permission>,
     >
 {
-    pub fn write_to_cometbft_genesis<P>(self, path: P) -> anyhow::Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let cometbft_genesis_raw = fs::read(path.as_ref())?;
-        let mut cometbft_genesis: Json = from_json_slice(cometbft_genesis_raw)?;
-
-        let Some(obj) = cometbft_genesis.as_object_mut() else {
-            bail!("CometBFT genesis file is not a JSON object");
-        };
-
-        if let Some(genesis_time) = self.genesis_time {
-            let genesis_time_str = genesis_time.to_rfc3339_opts(SecondsFormat::Nanos, true);
-            obj.insert("genesis_time".to_string(), Json::String(genesis_time_str));
-        }
-
-        if let Some(chain_id) = self.chain_id {
-            obj.insert("chain_id".to_string(), Json::String(chain_id));
-        }
-
+    pub fn build(self) -> GenesisState {
         let permissions = Permissions {
             upload: self.upload_permission.into_inner(),
             instantiate: self.instantiate_permission.into_inner(),
@@ -271,7 +280,30 @@ impl
         let mut msgs = self.upload_msgs;
         msgs.extend(self.other_msgs);
 
-        let genesis_state = GenesisState { config, msgs };
+        GenesisState { config, msgs }
+    }
+
+    pub fn build_and_write_to_cometbft_genesis<P>(self, path: P) -> anyhow::Result<GenesisState>
+    where
+        P: AsRef<Path>,
+    {
+        let cometbft_genesis_raw = fs::read(path.as_ref())?;
+        let mut cometbft_genesis: Json = from_json_slice(cometbft_genesis_raw)?;
+
+        let Some(obj) = cometbft_genesis.as_object_mut() else {
+            bail!("CometBFT genesis file is not a JSON object");
+        };
+
+        if let Some(genesis_time) = &self.genesis_time {
+            let genesis_time_str = genesis_time.to_rfc3339_opts(SecondsFormat::Nanos, true);
+            obj.insert("genesis_time".to_string(), Json::String(genesis_time_str));
+        }
+
+        if let Some(chain_id) = &self.chain_id {
+            obj.insert("chain_id".to_string(), Json::String(chain_id.clone()));
+        }
+
+        let genesis_state = self.build();
         let genesis_state_json = to_json_value(&genesis_state)?;
 
         obj.insert("app_state".to_string(), genesis_state_json);
@@ -280,6 +312,6 @@ impl
 
         fs::write(path, cometbft_genesis_raw)?;
 
-        Ok(())
+        Ok(genesis_state)
     }
 }

@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     let k2 = SigningKey::from_file(home_dir.join(".grug/keys/test2.json"), "123")?;
 
     // Create two genesis accounts using the keys.
-    let account_code_hash = builder.upload(artifacts_dir.join("grug_account.wasm"))?;
+    let account_code_hash = builder.upload_file(artifacts_dir.join("grug_account.wasm"))?;
     let account1 = builder.instantiate(
         account_code_hash.clone(),
         &grug_account::InstantiateMsg {
@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // Deploy the bank contract; give the two genesis accounts some balances.
-    let bank = builder.upload_and_instantiate(
+    let bank = builder.upload_file_and_instantiate(
         artifacts_dir.join("grug_bank.wasm"),
         &grug_bank::InstantiateMsg {
             initial_balances: [
@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // Deploy the taxman contract.
-    let taxman = builder.upload_and_instantiate(
+    let taxman = builder.upload_file_and_instantiate(
         artifacts_dir.join("grug_taxman.wasm"),
         &grug_taxman::InstantiateMsg {
             config: grug_taxman::Config {
@@ -82,5 +82,6 @@ fn main() -> anyhow::Result<()> {
         .set_taxman(taxman)
         .set_upload_permission(Permission::Everybody)
         .set_instantiate_permission(Permission::Everybody)
-        .write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
+        .build_and_write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
+        .map(|_| ())
 }
