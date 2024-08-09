@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo dev",
     "doc": "typedoc",
+    "lerna": "lerna",
     "dev:app": "turbo dev --filter=\"{./apps/superapp}...\"",
     "dev:pkg": "turbo dev --filter=\"{./packages/**}...\"",
     "test": "turbo test",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
+    "lerna": "^8.1.8",
     "tsup": "^8.2.3",
     "turbo": "^2.0.11",
     "typedoc": "^0.26.5",
@@ -25,7 +27,11 @@
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "peerDependencyRules": {
-      "ignoreMissing": ["typescript", "tsup", "@biomejs/biome"]
+      "ignoreMissing": [
+        "typescript",
+        "tsup",
+        "@biomejs/biome"
+      ]
     }
   }
 }
