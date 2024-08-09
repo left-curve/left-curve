@@ -9,6 +9,7 @@ pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
     pub msgs: Vec<Message>,
+    pub data: Json,
     pub credential: Json,
 }
 

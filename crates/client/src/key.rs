@@ -2,7 +2,7 @@ use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
     grug_crypto::Identity256,
-    grug_types::{Addr, Binary, Message, Tx},
+    grug_types::{Addr, Binary, Json, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -145,6 +145,7 @@ impl SigningKey {
             gas_limit,
             sender,
             msgs,
+            data: Json::Null,
             credential: signature.into(),
         })
     }
