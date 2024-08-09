@@ -83,5 +83,5 @@ fn main() -> anyhow::Result<()> {
         .set_upload_permission(Permission::Everybody)
         .set_instantiate_permission(Permission::Everybody)
         .build_and_write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
-        .map(|_| ())
+        .map(drop)
 }
