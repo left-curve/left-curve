@@ -8,6 +8,9 @@ on:
 
 jobs:
   deploy:
+    permissions:
+      contents: read
+      deployments: write
     runs-on: ubuntu-22.04
     steps:
       - name: Git Checkout
@@ -17,7 +20,7 @@ jobs:
         with:
           version: 9.0.0
 
-      - name: Setup Node.js environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -32,8 +35,13 @@ jobs:
       - name: Build Doc
         run: pnpm doc
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Uploading to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          wranglerVersion: '3'
+          apiToken: ${{ secrets.CF_TOKEN }}
+          accountId: 9f30716e11f27c296dfbadb7b7571ae6
+          projectName: ui-doc
+          directory: ./docs
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${GITHUB_REF##*/}
