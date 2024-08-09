@@ -1,21 +1,18 @@
 {
-    "$schema": "https://turbo.build/schema.json",
-    "ui": "tui",
-    "tasks": {
-      "test": {
-        "dependsOn": ["build"],
-        "inputs": ["**/*.{ts,tsx,js,jsx}"]
-      },
-      "build": {
-        "dependsOn": ["^build"],
-        "outputs": [
-          ".next/**",
-          "build/**"
-        ]
-      },
-      "dev": {
-        "cache": false,
-        "persistent": true
-      }
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "test": {
+      "dependsOn": ["build"],
+      "inputs": ["**/*.{ts,tsx,js,jsx}"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "build/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
     }
   }
+}
