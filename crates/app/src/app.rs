@@ -409,7 +409,8 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            credential: Json::default(),
+            data: Json::Null,
+            credential: Json::Null,
         };
 
         // Run the transaction with `simulate` as `true`. Track how much gas was

@@ -1,7 +1,7 @@
 use {
     grug_account::{Credential, PublicKey},
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{to_json_value, Addr, Hash256, Message, Tx, GENESIS_SENDER},
+    grug_types::{to_json_value, Addr, Hash256, Json, Message, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
@@ -54,8 +54,9 @@ impl TestAccount {
 
         Ok(Tx {
             sender: self.address.clone(),
-            msgs,
             gas_limit,
+            msgs,
+            data: Json::Null,
             credential,
         })
     }
