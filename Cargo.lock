@@ -1642,6 +1642,7 @@ dependencies = [
  "signature",
  "tendermint",
  "tendermint-rpc",
+ "tokio",
 ]
 
 [[package]]

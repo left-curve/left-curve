@@ -367,49 +367,57 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
         // If chain ID is not provided, query from the chain
-        let chain_id = match sign_opt.chain_id {
-            None => self.query_info(None).await?.chain_id,
-            Some(id) => id,
+        let task_chain_id = || async {
+            match sign_opt.chain_id {
+                None => self.query_info(None).await.map(|res| res.chain_id),
+                Some(id) => Ok(id),
+            }
         };
 
         // If sequence is not provided, query from the chain
-        let sequence = match sign_opt.sequence {
-            None => {
-                self.query_wasm_smart::<_, StateResponse>(
-                    sign_opt.sender.clone(),
-                    &QueryMsg::State {},
-                    None,
-                )
-                .await?
-                .sequence
-            },
-            Some(seq) => seq,
+        let task_sequence = || async {
+            match sign_opt.sequence {
+                None => self
+                    .query_wasm_smart::<_, StateResponse>(
+                        sign_opt.sender.clone(),
+                        &QueryMsg::State {},
+                        None,
+                    )
+                    .await
+                    .map(|res| res.sequence),
+                Some(seq) => Ok(seq),
+            }
         };
 
         // If gas limit is not provided, simulate
-        let gas_limit = match gas_opt {
-            GasOption::Simulate {
-                flat_increase,
-                scale,
-            } => {
-                let unsigned_tx = UnsignedTx {
-                    sender: sign_opt.sender.clone(),
-                    msgs: msgs.clone(),
-                };
-                match self.simulate(&unsigned_tx).await? {
-                    Outcome {
-                        result: GenericResult::Ok(_),
-                        gas_used,
-                        ..
-                    } => (gas_used as f64 * scale).ceil() as u64 + flat_increase,
-                    Outcome {
-                        result: GenericResult::Err(err),
-                        ..
-                    } => bail!("Failed to estimate gas consumption: {err}"),
-                }
-            },
-            GasOption::Predefined { gas_limit } => gas_limit,
+        let task_gas_limit = || async {
+            match gas_opt {
+                GasOption::Simulate {
+                    flat_increase,
+                    scale,
+                } => {
+                    let unsigned_tx = UnsignedTx {
+                        sender: sign_opt.sender.clone(),
+                        msgs: msgs.clone(),
+                    };
+                    match self.simulate(&unsigned_tx).await? {
+                        Outcome {
+                            result: GenericResult::Ok(_),
+                            gas_used,
+                            ..
+                        } => Ok((gas_used as f64 * scale).ceil() as u64 + flat_increase),
+                        Outcome {
+                            result: GenericResult::Err(err),
+                            ..
+                        } => bail!("Failed to estimate gas consumption: {err}"),
+                    }
+                },
+                GasOption::Predefined { gas_limit } => Ok(gas_limit),
+            }
         };
+
+        let (chain_id, sequence, gas_limit) =
+            tokio::try_join!(task_chain_id(), task_sequence(), task_gas_limit())?;
 
         let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,

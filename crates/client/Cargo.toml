@@ -30,6 +30,7 @@ sha2           = { workspace = true }
 signature      = { workspace = true }
 tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
+tokio          = { workspace = true }
 
 [dev-dependencies]
 grug-bank   = { path = "../../contracts/bank", features = ["library"] }
