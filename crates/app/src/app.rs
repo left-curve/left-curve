@@ -817,6 +817,21 @@ where
             let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
             Ok(QueryResponse::WasmSmart(res))
         },
+        QueryRequest::Multi(reqs) => {
+            let res = reqs
+                .into_iter()
+                .map(|req| {
+                    process_query(
+                        vm.clone(),
+                        storage.clone(),
+                        gas_tracker.clone(),
+                        block.clone(),
+                        req,
+                    )
+                })
+                .collect::<AppResult<Vec<_>>>()?;
+            Ok(QueryResponse::Multi(res))
+        },
     }
 }
 
