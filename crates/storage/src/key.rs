@@ -111,6 +111,7 @@ impl Key for () {
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
             return Err(StdError::deserialize::<Self::Output, _>(
+                "key",
                 "expecting empty bytes",
             ));
         }
@@ -157,7 +158,8 @@ impl Key for &str {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output, _>)
+        String::from_utf8(bytes.to_vec())
+            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
     }
 }
 
@@ -171,7 +173,8 @@ impl Key for String {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec()).map_err(StdError::deserialize::<Self::Output, _>)
+        String::from_utf8(bytes.to_vec())
+            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
     }
 }
 
@@ -369,11 +372,14 @@ macro_rules! impl_integer_key {
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(format!(
-                        "wrong number of bytes: expecting {}, got {}",
-                        mem::size_of::<Self>(),
-                        bytes.len(),
-                    )));
+                    return Err(StdError::deserialize::<Self::Output, _>(
+                        "key",
+                        format!(
+                            "wrong number of bytes: expecting {}, got {}",
+                            mem::size_of::<Self>(),
+                            bytes.len(),
+                        ),
+                    ));
                 };
 
                 Ok(Self::from_be_bytes(bytes))
