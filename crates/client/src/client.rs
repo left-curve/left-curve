@@ -417,7 +417,7 @@ impl Client {
         };
 
         let (chain_id, sequence, gas_limit) =
-            tokio::try_join!(task_chain_id(), task_sequence(), task_gas_limit())?;
+            futures::try_join!(task_chain_id(), task_sequence(), task_gas_limit())?;
 
         let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,
