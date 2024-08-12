@@ -10,6 +10,7 @@
     "dev:pkg": "turbo dev --filter=\"{./packages/**}...\"",
     "test": "turbo test",
     "build": "turbo build",
+    "build:app": "pnpm build:pkg && pnpm -F superapp build:cf",
     "build:pkg": "turbo build --filter=\"{./packages/**}...\""
   },
   "engines": {
