@@ -86,7 +86,7 @@ impl Addr {
         buf[1] = b'x';
 
         // This encodes hex in lowercase.
-        hex::encode_to_slice(&self.0, &mut buf[2..]).unwrap();
+        hex::encode_to_slice(self.0, &mut buf[2..]).unwrap();
 
         let mut hasher = Keccak256::new();
         // Note we're hashing the UTF-8 hex string, not the raw bytes.
