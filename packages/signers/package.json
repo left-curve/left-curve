@@ -22,7 +22,7 @@
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
     "ci": "pnpm biome ci ./src",
-    "build": "pnpm tsup"
+    "build": "pnpm tsup --clean"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",

@@ -3,8 +3,8 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "node_modules/@leftcurve/applets/**/*.{js,ts,jsx,tsx}",
+    "./.storybook/**/*.{js,ts,jsx,tsx,stories.tsx}",
+    "./src/**/*.{js,ts,jsx,tsx,stories.tsx}",
   ],
   theme: {
     extend: {},

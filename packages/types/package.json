@@ -12,7 +12,7 @@
     "dev": "pnpm tsup --watch --silent",
     "lint": "pnpm biome check --write ./src",
     "ci": "pnpm biome ci ./src",
-    "build": "pnpm tsup"
+    "build": "pnpm tsup --clean"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",

@@ -31,11 +31,20 @@ const buttonVariants = tv({
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  /**
+   * When true, the button will render as a `Slot` component.
+   * @default false
+   */
   asChild?: boolean;
+  /**
+   * When true, the button will be disabled.
+   * @default false
+   */
+  isDisabled?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant = "default", size = "default", asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return <Comp className={buttonVariants({ size, variant, className })} ref={ref} {...props} />;
   },

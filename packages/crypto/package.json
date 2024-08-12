@@ -9,7 +9,7 @@
     "src"
   ],
   "scripts": {
-    "build": "pnpm tsup",
+    "build": "pnpm tsup --clean",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest --watch",
     "dev": "pnpm tsup --watch --silent",

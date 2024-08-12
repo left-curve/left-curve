@@ -1,8 +1,11 @@
 {
-    "name": "@leftcurve/config",
-    "version": "0.1.0",
-    "files": [
-      "ts",
-      "biome"
-    ]
+  "name": "@leftcurve/config",
+  "version": "0.1.0",
+  "files": [
+    "ts",
+    "biome"
+  ],
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
   }
+}
