@@ -33,7 +33,7 @@ use {
 /// In Grug, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr(pub(crate) Hash160);
 
 forward_ref_partial_eq!(Addr, Addr);
@@ -57,7 +57,7 @@ impl Addr {
     ///
     /// The double hash the same as used by Bitcoin, for [preventing length
     /// extension attacks](https://bitcoin.stackexchange.com/questions/8443/where-is-double-hashing-performed-in-bitcoin).
-    pub fn compute(deployer: &Addr, code_hash: &Hash256, salt: &[u8]) -> Self {
+    pub fn compute(deployer: Addr, code_hash: Hash256, salt: &[u8]) -> Self {
         let mut preimage = Vec::with_capacity(Hash160::LENGTH + Hash256::LENGTH + salt.len());
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());
@@ -207,7 +207,7 @@ impl From<Addr> for String {
 // https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Self::PREFIX, hex::encode(&self.0))
+        write!(f, "{}{}", Self::PREFIX, hex::encode(self.0))
     }
 }
 

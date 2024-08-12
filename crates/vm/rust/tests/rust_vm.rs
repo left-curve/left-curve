@@ -24,19 +24,19 @@ fn bank_transfers() -> anyhow::Result<()> {
     suite
         .send_messages(&accounts["sender"], vec![
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(10_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(15_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(20_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?

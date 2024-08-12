@@ -194,8 +194,8 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(&GENESIS_SENDER, &code_hash, &salt);
-        let admin = admin_opt.decide(&address);
+        let address = Addr::compute(GENESIS_SENDER, code_hash, &salt);
+        let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
         self.other_msgs.push(msg);

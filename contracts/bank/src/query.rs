@@ -8,7 +8,7 @@ use {
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 pub fn query_balance(storage: &dyn Storage, address: Addr, denom: String) -> StdResult<Coin> {
-    let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (&address, &denom))?;
+    let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (address, &denom))?;
     Ok(Coin {
         denom,
         amount: maybe_amount.unwrap_or(Uint256::ZERO),
@@ -27,7 +27,7 @@ pub fn query_balances(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES_BY_ADDR
-        .prefix(&address)
+        .prefix(address)
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<BTreeMap<_, _>>>()?
@@ -65,7 +65,7 @@ pub fn query_holders(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Addr, Uint256>> {
-    let start = start_after.as_ref().map(Bound::exclusive);
+    let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     BALANCES_BY_DENOM

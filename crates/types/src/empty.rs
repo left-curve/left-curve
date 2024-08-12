@@ -7,7 +7,9 @@ use {
 /// When serializing with Borsh, gives empty bytes: ``.
 /// Useful for use in contract messages when there isn't any intended inputs, or
 /// in contract storage to represent empty value (e.g. in `grug::Set`).
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
+)]
 pub struct Empty {}
 
 #[cfg(test)]

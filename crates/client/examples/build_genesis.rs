@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     // Create two genesis accounts using the keys.
     let account_code_hash = builder.upload_file(artifacts_dir.join("grug_account.wasm"))?;
     let account1 = builder.instantiate(
-        account_code_hash.clone(),
+        account_code_hash,
         &grug_account::InstantiateMsg {
             public_key: k1.public_key().into(),
         },
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         AdminOption::SetToSelf,
     )?;
     let account2 = builder.instantiate(
-        account_code_hash.clone(),
+        account_code_hash,
         &grug_account::InstantiateMsg {
             public_key: k2.public_key().into(),
         },
@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
         &grug_bank::InstantiateMsg {
             initial_balances: [
                 (
-                    account1.clone(),
+                    account1,
                     Coins::one("uatom", NonZero::new(Uint128::new(1_000_000))),
                 ),
                 (
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
         },
         "bank",
         Coins::new(),
-        AdminOption::SetToAddr(account1.clone()),
+        AdminOption::SetToAddr(account1),
     )?;
 
     // Deploy the taxman contract.
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
         },
         "taxman",
         Coins::new(),
-        AdminOption::SetToAddr(account1.clone()),
+        AdminOption::SetToAddr(account1),
     )?;
 
     // Build the genesis state and write to CometBFT genesis file.

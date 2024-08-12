@@ -442,11 +442,11 @@ impl<'a> MerkleTree<'a> {
     pub fn prove(
         &self,
         storage: &dyn Storage,
-        key_hash: &Hash256,
+        key_hash: Hash256,
         version: u64,
     ) -> StdResult<Proof> {
-        let mut bits = ROOT_BITS.clone();
-        let bitarray = BitArray::from_bytes(key_hash);
+        let mut bits = ROOT_BITS;
+        let bitarray = BitArray::from_bytes(&key_hash);
         let mut iter = bitarray.range(None, None, Order::Ascending);
         let mut node = self.nodes.load(storage, (version, &bits))?;
         let mut proof_node = None;
@@ -979,7 +979,7 @@ mod tests {
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
         assert_eq!(
-            TREE.prove(&storage, &hash256(key.as_bytes()), 0).unwrap(),
+            TREE.prove(&storage, hash256(key.as_bytes()), 0).unwrap(),
             proof
         );
     }

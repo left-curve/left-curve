@@ -16,7 +16,7 @@ use {
 pub fn do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
-    sender: &Addr,
+    sender: Addr,
     new_cfg: Config,
 ) -> AppResult<Vec<Event>> {
     match _do_configure(storage, block, sender, new_cfg) {
@@ -38,7 +38,7 @@ pub fn do_configure(
 fn _do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
-    sender: &Addr,
+    sender: Addr,
     new_cfg: Config,
 ) -> AppResult<Event> {
     // Make sure the sender is authorized to set the config.
@@ -47,10 +47,7 @@ fn _do_configure(
         return Err(AppError::OwnerNotSet);
     };
     if sender != owner {
-        return Err(AppError::NotOwner {
-            sender: sender.clone(),
-            owner,
-        });
+        return Err(AppError::NotOwner { sender, owner });
     }
 
     // Save the new config.
@@ -62,7 +59,7 @@ fn _do_configure(
         NEXT_CRONJOBS.clear(storage, None, None);
 
         for (contract, interval) in new_cfg.cronjobs {
-            schedule_cronjob(storage, &contract, block.timestamp, interval)?;
+            schedule_cronjob(storage, contract, block.timestamp, interval)?;
         }
     }
 
@@ -74,7 +71,7 @@ fn _do_configure(
 pub fn do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
-    uploader: &Addr,
+    uploader: Addr,
     code: &Binary,
 ) -> AppResult<Vec<Event>> {
     match _do_upload(storage, gas_tracker, uploader, code) {
@@ -97,25 +94,25 @@ pub fn do_upload(
 fn _do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
-    uploader: &Addr,
+    uploader: Addr,
     code: &Binary,
 ) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
-    if !has_permission(&cfg.permissions.upload, cfg.owner.as_ref(), uploader) {
+    if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
     }
 
     // Make sure that the same code isn't already uploaded
     let code_hash = hash256(code);
-    if CODES.has_with_gas(storage, gas_tracker.clone(), &code_hash)? {
+    if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(storage, gas_tracker, &code_hash, code)?;
+    CODES.save_with_gas(storage, gas_tracker, code_hash, code)?;
 
     Ok((
-        Event::new("upload").add_attribute("code_hash", &code_hash),
+        Event::new("upload").add_attribute("code_hash", code_hash),
         code_hash,
     ))
 }
@@ -141,8 +138,8 @@ where
         storage,
         gas_tracker,
         block,
-        from.clone(),
-        to.clone(),
+        from,
+        to,
         coins.clone(),
         receive,
     ) {
@@ -186,7 +183,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &cfg.bank)?;
+    let account = ACCOUNTS.load(&storage, cfg.bank)?;
 
     let ctx = Context {
         chain_id,
@@ -203,7 +200,7 @@ where
         storage.clone(),
         gas_tracker.clone(),
         "bank_execute",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         &msg,
@@ -228,7 +225,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &msg.to)?;
+    let account = ACCOUNTS.load(&storage, msg.to)?;
     let ctx = Context {
         chain_id,
         block,
@@ -243,7 +240,7 @@ where
         storage,
         gas_tracker,
         "receive",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
     )
@@ -314,20 +311,20 @@ where
 
     // Make sure the user has the permission to instantiate contracts
     let cfg = CONFIG.load(&storage)?;
-    if !has_permission(&cfg.permissions.instantiate, cfg.owner.as_ref(), &sender) {
+    if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
         return Err(AppError::Unauthorized);
     }
 
     // Compute the contract address, and make sure there isn't already an
     // account of the same address.
-    let address = Addr::compute(&sender, &code_hash, &salt);
-    if ACCOUNTS.has(&storage, &address) {
+    let address = Addr::compute(sender, code_hash, &salt);
+    if ACCOUNTS.has(&storage, address) {
         return Err(AppError::AccountExists { address });
     }
 
     // Save the account info
     let account = Account { code_hash, admin };
-    ACCOUNTS.save(&mut storage, &address, &account)?;
+    ACCOUNTS.save(&mut storage, address, &account)?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -336,9 +333,9 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
-            block.clone(),
-            sender.clone(),
-            address.clone(),
+            block,
+            sender,
+            address,
             funds.clone(),
             false,
         )?);
@@ -359,7 +356,7 @@ where
         storage,
         gas_tracker,
         "instantiate",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         msg,
@@ -389,7 +386,7 @@ where
         storage,
         gas_tracker,
         block,
-        contract.clone(),
+        contract,
         sender,
         msg,
         funds,
@@ -424,7 +421,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &contract)?;
+    let account = ACCOUNTS.load(&storage, contract)?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -433,9 +430,9 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
-            block.clone(),
-            sender.clone(),
-            contract.clone(),
+            block,
+            sender,
+            contract,
             funds.clone(),
             false,
         )?);
@@ -456,7 +453,7 @@ where
         storage,
         gas_tracker,
         "execute",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         msg,
@@ -486,7 +483,7 @@ where
         storage,
         gas_tracker,
         block,
-        contract.clone(),
+        contract,
         sender,
         new_code_hash,
         msg,
@@ -521,7 +518,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let mut account = ACCOUNTS.load(&storage, &contract)?;
+    let mut account = ACCOUNTS.load(&storage, contract)?;
 
     // Only the account's admin can migrate it
     let Some(admin) = &account.admin else {
@@ -536,7 +533,7 @@ where
 
     // Update account info and save
     account.code_hash = new_code_hash;
-    ACCOUNTS.save(&mut storage, &contract, &account)?;
+    ACCOUNTS.save(&mut storage, contract, &account)?;
 
     let ctx = Context {
         chain_id,
@@ -552,7 +549,7 @@ where
         storage,
         gas_tracker,
         "migrate",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         msg,
@@ -574,15 +571,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_reply(
-        vm,
-        storage,
-        gas_tracker,
-        block,
-        contract.clone(),
-        msg,
-        result,
-    ) {
+    match _do_reply(vm, storage, gas_tracker, block, contract, msg, result) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed reply");
@@ -612,7 +601,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &contract)?;
+    let account = ACCOUNTS.load(&storage, contract)?;
     let ctx = Context {
         chain_id,
         block,
@@ -627,7 +616,7 @@ where
         storage,
         gas_tracker,
         "reply",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         msg,
@@ -650,11 +639,11 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &tx.sender)?;
+    let account = ACCOUNTS.load(&storage, tx.sender)?;
     let ctx = Context {
         chain_id,
         block,
-        contract: tx.sender.clone(),
+        contract: tx.sender,
         sender: None,
         funds: None,
         mode: Some(mode),
@@ -666,7 +655,7 @@ where
             storage.clone(),
             gas_tracker.clone(),
             "authenticate",
-            &account.code_hash,
+            account.code_hash,
             &ctx,
             false,
             tx,
@@ -716,11 +705,11 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &tx.sender)?;
+    let account = ACCOUNTS.load(&storage, tx.sender)?;
     let ctx = Context {
         chain_id,
         block,
-        contract: tx.sender.clone(),
+        contract: tx.sender,
         sender: None,
         funds: None,
         mode: Some(mode),
@@ -731,7 +720,7 @@ where
         storage,
         gas_tracker,
         "backrun",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
         tx,
@@ -767,7 +756,7 @@ where
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
         let cfg = CONFIG.load(&storage)?;
-        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+        let taxman = ACCOUNTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
             chain_id,
@@ -783,7 +772,7 @@ where
             storage,
             gas_tracker,
             "withhold_fee",
-            &taxman.code_hash,
+            taxman.code_hash,
             &ctx,
             false,
             tx,
@@ -821,7 +810,7 @@ where
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
         let cfg = CONFIG.load(&storage)?;
-        let taxman = ACCOUNTS.load(&storage, &cfg.taxman)?;
+        let taxman = ACCOUNTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
             chain_id,
@@ -837,7 +826,7 @@ where
             storage,
             gas_tracker,
             "finalize_fee",
-            &taxman.code_hash,
+            taxman.code_hash,
             &ctx,
             false,
             tx,
@@ -876,7 +865,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_cron_execute(vm, storage, gas_tracker, block, contract.clone()) {
+    match _do_cron_execute(vm, storage, gas_tracker, block, contract) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
@@ -908,7 +897,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &contract)?;
+    let account = ACCOUNTS.load(&storage, contract)?;
     let ctx = Context {
         chain_id,
         block,
@@ -923,7 +912,7 @@ where
         storage,
         gas_tracker,
         "cron_execute",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         false,
     )

@@ -59,9 +59,9 @@ pub enum ProofNode {
 }
 
 pub fn verify_proof(
-    root_hash: &Hash256,
-    key_hash: &Hash256,
-    value_hash: Option<&Hash256>,
+    root_hash: Hash256,
+    key_hash: Hash256,
+    value_hash: Option<Hash256>,
     proof: &Proof,
 ) -> Result<(), ProofError> {
     match (value_hash, proof) {
@@ -83,24 +83,24 @@ pub fn verify_proof(
 }
 
 pub fn verify_membership_proof(
-    root_hash: &Hash256,
-    key_hash: &Hash256,
-    value_hash: &Hash256,
+    root_hash: Hash256,
+    key_hash: Hash256,
+    value_hash: Hash256,
     proof: &MembershipProof,
 ) -> Result<(), ProofError> {
-    let bitarray = BitArray::from_bytes(key_hash);
+    let bitarray = BitArray::from_bytes(&key_hash);
     let hash = hash_leaf_node(key_hash, value_hash);
 
     compute_and_compare_root_hash(root_hash, &bitarray, &proof.sibling_hashes, hash)
 }
 
 pub fn verify_non_membership_proof(
-    root_hash: &Hash256,
-    key_hash: &Hash256,
+    root_hash: Hash256,
+    key_hash: Hash256,
     proof: &NonMembershipProof,
 ) -> Result<(), ProofError> {
-    let bitarray = BitArray::from_bytes(key_hash);
-    let hash = match &proof.node {
+    let bitarray = BitArray::from_bytes(&key_hash);
+    let hash = match proof.node {
         // If the node given is an internal node, we check the bit at the depth.
         // If the bit is a 0, it must not have a left child; if the bit is a 1,
         // it must not have a right child.
@@ -116,7 +116,7 @@ pub fn verify_non_membership_proof(
                 (0, Some(_), _) | (1, _, Some(_)) => {
                     return Err(ProofError::UnexpectedChild);
                 },
-                _ => hash_internal_node(left_hash.as_ref(), right_hash.as_ref()),
+                _ => hash_internal_node(left_hash, right_hash),
             }
         },
         // If the node given is a leaf, it's bit path must share a common prefix
@@ -125,7 +125,7 @@ pub fn verify_non_membership_proof(
             key_hash,
             value_hash,
         } => {
-            let non_exist_bitarray = BitArray::from_bytes(key_hash);
+            let non_exist_bitarray = BitArray::from_bytes(&key_hash);
             let exist_bits =
                 bitarray.range(None, Some(proof.sibling_hashes.len()), Order::Descending);
             let non_exist_bits =
@@ -141,7 +141,7 @@ pub fn verify_non_membership_proof(
 }
 
 fn compute_and_compare_root_hash(
-    root_hash: &Hash256,
+    root_hash: Hash256,
     bitarray: &BitArray,
     sibling_hashes: &[Option<Hash256>],
     mut hash: Hash256,
@@ -151,16 +151,16 @@ fn compute_and_compare_root_hash(
         .zip(sibling_hashes)
     {
         if bit == 0 {
-            hash = hash_internal_node(Some(&hash), sibling_hash.as_ref());
+            hash = hash_internal_node(Some(hash), *sibling_hash);
         } else {
-            hash = hash_internal_node(sibling_hash.as_ref(), Some(&hash));
+            hash = hash_internal_node(*sibling_hash, Some(hash));
         }
     }
 
     if hash != root_hash {
         return Err(ProofError::RootHashMismatch {
             computed: hash,
-            actual: root_hash.clone(),
+            actual: root_hash,
         });
     }
 
@@ -258,9 +258,9 @@ mod tests {
     )]
     fn verifying_membership(key: &str, value: &str, proof: MembershipProof) {
         assert!(verify_membership_proof(
-            &HASH_ROOT,
-            &hash256(key.as_bytes()),
-            &hash256(value.as_bytes()),
+            HASH_ROOT,
+            hash256(key.as_bytes()),
+            hash256(value.as_bytes()),
             &proof,
         )
         .is_ok());
@@ -294,7 +294,7 @@ mod tests {
         "proving o"
     )]
     fn verifying_non_membership(key: &str, proof: NonMembershipProof) {
-        assert!(verify_non_membership_proof(&HASH_ROOT, &hash256(key.as_bytes()), &proof,).is_ok());
+        assert!(verify_non_membership_proof(HASH_ROOT, hash256(key.as_bytes()), &proof).is_ok());
     }
 
     // TODO: add fail cases for proofs

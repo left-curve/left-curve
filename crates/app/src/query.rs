@@ -111,7 +111,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &cfg.bank)?;
+    let account = ACCOUNTS.load(&storage, cfg.bank)?;
 
     let ctx = Context {
         chain_id,
@@ -127,7 +127,7 @@ where
         storage,
         gas_tracker,
         "bank_query",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         true,
         msg,
@@ -141,7 +141,7 @@ pub fn query_code(
     gas_tracker: GasTracker,
     hash: Hash256,
 ) -> StdResult<Binary> {
-    CODES.load_with_gas(storage, gas_tracker, &hash)
+    CODES.load_with_gas(storage, gas_tracker, hash)
 }
 
 pub fn query_codes(
@@ -150,7 +150,7 @@ pub fn query_codes(
     start_after: Option<Hash256>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Hash256, Binary>> {
-    let start = start_after.as_ref().map(Bound::exclusive);
+    let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CODES
@@ -164,7 +164,7 @@ pub fn query_account(
     gas_tracker: GasTracker,
     address: Addr,
 ) -> StdResult<Account> {
-    ACCOUNTS.load_with_gas(storage, gas_tracker, &address)
+    ACCOUNTS.load_with_gas(storage, gas_tracker, address)
 }
 
 pub fn query_accounts(
@@ -173,7 +173,7 @@ pub fn query_accounts(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Addr, Account>> {
-    let start = start_after.as_ref().map(Bound::exclusive);
+    let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     ACCOUNTS
@@ -206,7 +206,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, &contract)?;
+    let account = ACCOUNTS.load(&storage, contract)?;
 
     let ctx = Context {
         chain_id,
@@ -222,7 +222,7 @@ where
         storage,
         gas_tracker,
         "query",
-        &account.code_hash,
+        account.code_hash,
         &ctx,
         true,
         &msg,

@@ -379,7 +379,7 @@ impl Client {
             match sign_opt.sequence {
                 None => self
                     .query_wasm_smart::<_, StateResponse>(
-                        sign_opt.sender.clone(),
+                        sign_opt.sender,
                         &QueryMsg::State {},
                         None,
                     )
@@ -397,7 +397,7 @@ impl Client {
                     scale,
                 } => {
                     let unsigned_tx = UnsignedTx {
-                        sender: sign_opt.sender.clone(),
+                        sender: sign_opt.sender,
                         msgs: msgs.clone(),
                     };
                     match self.simulate(&unsigned_tx).await? {
@@ -421,7 +421,7 @@ impl Client {
 
         let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,
-            sign_opt.sender.clone(),
+            sign_opt.sender,
             &chain_id,
             sequence,
             gas_limit,
@@ -496,8 +496,8 @@ impl Client {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
-        let admin = admin_opt.decide(&address);
+        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
         let res = self.send_message(msg, gas_opt, sign_opt).await?;
@@ -529,12 +529,12 @@ impl Client {
         let code = code.into();
         let code_hash = hash256(&code);
         let salt = salt.into();
-        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
-        let admin = admin_opt.decide(&address);
+        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let admin = admin_opt.decide(address);
 
         let msgs = vec![
             Message::upload(code),
-            Message::instantiate(code_hash.clone(), msg, salt, funds, admin)?,
+            Message::instantiate(code_hash, msg, salt, funds, admin)?,
         ];
         let res = self.send_messages(msgs, gas_opt, sign_opt).await?;
 

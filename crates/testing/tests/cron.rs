@@ -74,10 +74,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Each contract is given an initial coin balance.
     let cron1 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron1",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("uatom", NonZero::new(Uint128::new(1))),
         },
         Coin::new("uatom", NonZero::new(Uint128::new(3))),
@@ -86,10 +86,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 3
     let cron2 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron2",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("uosmo", NonZero::new(Uint128::new(1))),
         },
         Coin::new("uosmo", NonZero::new(Uint128::new(3))),
@@ -98,10 +98,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 4
     let cron3 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron3",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("umars", NonZero::new(Uint128::new(1))),
         },
         Coin::new("umars", NonZero::new(Uint128::new(3))),

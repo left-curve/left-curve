@@ -177,7 +177,7 @@ pub trait Api {
     /// debug builds, this `debug` method is also included in release builds,
     /// and incurs gas cost. Make sure to comment this out before compiling your
     /// contracts.
-    fn debug(&self, addr: &Addr, msg: &str);
+    fn debug(&self, addr: Addr, msg: &str);
 
     /// Verify an Secp256r1 signature with the given hashed message and public
     /// key.
