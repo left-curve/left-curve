@@ -109,7 +109,10 @@ impl Addr {
         let addr = Addr::from_str(s)?;
 
         if s != addr.to_erc55_string() {
-            return Err(StdError::deserialize::<Self, _>("invalid ERC-55 checksum"));
+            return Err(StdError::deserialize::<Self, _>(
+                "hex",
+                "invalid ERC-55 checksum",
+            ));
         }
 
         Ok(addr)
@@ -148,6 +151,7 @@ impl TryFrom<Vec<u8>> for Addr {
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -162,6 +166,7 @@ impl TryFrom<&[u8]> for Addr {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -177,7 +182,7 @@ impl FromStr for Addr {
         // The address must have the `0x` prefix.
         let hex_str = s
             .strip_prefix(Self::PREFIX)
-            .ok_or_else(|| StdError::deserialize::<Self, _>("incorrect address prefix"))?;
+            .ok_or_else(|| StdError::deserialize::<Self, _>("hex", "incorrect address prefix"))?;
 
         // Decode the hex string
         let bytes = hex::decode(hex_str)?;
