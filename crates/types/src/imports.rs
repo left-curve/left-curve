@@ -371,4 +371,26 @@ impl<'a> QuerierWrapper<'a> {
             })
             .and_then(|res| from_json_value(res.as_wasm_smart()))
     }
+
+    pub fn query_multi<const N: usize>(
+        &self,
+        requests: [QueryRequest; N],
+    ) -> StdResult<[QueryResponse; N]> {
+        self.inner
+            .query_chain(QueryRequest::Multi(requests.into()))
+            .map(|res| {
+                // We trust that the host has properly implemented the multi
+                // query method, meaning the number of responses should always
+                // match the number of requests.
+                let responses = res.as_multi();
+                debug_assert_eq!(
+                    responses.len(),
+                    N,
+                    "number of responses ({}) does not match that of requests ({})",
+                    responses.len(),
+                    N
+                );
+                responses.try_into().unwrap()
+            })
+    }
 }

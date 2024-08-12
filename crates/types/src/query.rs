@@ -56,6 +56,9 @@ pub enum QueryRequest {
     /// Call the contract's query entry point with the given message.
     /// Returns: `Json`
     WasmSmart { contract: Addr, msg: Json },
+    /// Perform multiple queries at once.
+    /// Returns: `Vec<QueryResponse>`.
+    Multi(Vec<QueryRequest>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -79,6 +82,7 @@ pub enum QueryResponse {
     Accounts(BTreeMap<Addr, Account>),
     WasmRaw(Option<Binary>),
     WasmSmart(Json),
+    Multi(Vec<QueryResponse>),
 }
 
 // TODO: can we use a macro to implement these?
@@ -156,6 +160,13 @@ impl QueryResponse {
     pub fn as_wasm_smart(self) -> Json {
         let Self::WasmSmart(resp) = self else {
             panic!("QueryResponse is not WasmSmart");
+        };
+        resp
+    }
+
+    pub fn as_multi(self) -> Vec<QueryResponse> {
+        let Self::Multi(resp) = self else {
+            panic!("QueryResponse is not Multi");
         };
         resp
     }
