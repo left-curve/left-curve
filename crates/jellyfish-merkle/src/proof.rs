@@ -91,7 +91,7 @@ pub fn verify_membership_proof(
     let bitarray = BitArray::from_bytes(&key_hash);
     let hash = hash_leaf_node(key_hash, value_hash);
 
-    compute_and_compare_root_hash(root_hash, &bitarray, &proof.sibling_hashes, hash)
+    compute_and_compare_root_hash(root_hash, bitarray, &proof.sibling_hashes, hash)
 }
 
 pub fn verify_non_membership_proof(
@@ -137,12 +137,12 @@ pub fn verify_non_membership_proof(
         },
     };
 
-    compute_and_compare_root_hash(root_hash, &bitarray, &proof.sibling_hashes, hash)
+    compute_and_compare_root_hash(root_hash, bitarray, &proof.sibling_hashes, hash)
 }
 
 fn compute_and_compare_root_hash(
     root_hash: Hash256,
-    bitarray: &BitArray,
+    bitarray: BitArray,
     sibling_hashes: &[Option<Hash256>],
     mut hash: Hash256,
 ) -> Result<(), ProofError> {
