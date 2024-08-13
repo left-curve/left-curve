@@ -9,7 +9,7 @@ use {
 
 /// Describes an account that is capable of signing transactions.
 pub trait Signer {
-    /// Return an owned copy of the signer's address.
+    /// Return the signer's address.
     fn address(&self) -> Addr;
 
     /// Given a list of messages and relevant metadata, produce a signed transaction.
