@@ -1,6 +1,6 @@
 use {
     grug_account::Credential,
-    grug_testing::TestBuilder,
+    grug_testing::{Signer, TestBuilder},
     grug_types::{
         from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
     },

@@ -1,5 +1,5 @@
 use {
-    crate::TestAccount,
+    crate::Signer,
     anyhow::ensure,
     grug_app::{App, AppError, AppResult, Vm},
     grug_crypto::sha2_256,
@@ -93,7 +93,7 @@ where
     /// Execute a single message under the given gas limit.
     pub fn send_message_with_gas(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         msg: Message,
     ) -> anyhow::Result<TxOutcome> {
@@ -103,14 +103,14 @@ where
     /// Execute one or more messages under the given gas limit.
     pub fn send_messages_with_gas(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TxOutcome> {
         ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
-        let sequence = self.sequences.entry(signer.address).or_insert(0);
+        let sequence = self.sequences.entry(signer.address()).or_insert(0);
         let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
         *sequence += 1;
 
@@ -131,7 +131,7 @@ where
     /// Update the chain's config under the given gas limit.
     pub fn configure_with_gas(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         new_cfg: Config,
     ) -> anyhow::Result<()> {
@@ -145,7 +145,7 @@ where
     /// Make a transfer of tokens under the given gas limit.
     pub fn transfer_with_gas<C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         to: Addr,
         coins: C,
@@ -164,7 +164,7 @@ where
     /// Upload a code under the given gas limit. Return the code's hash.
     pub fn upload_with_gas<B>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         code: B,
     ) -> anyhow::Result<Hash256>
@@ -185,7 +185,7 @@ where
     /// address.
     pub fn instantiate_with_gas<M, S, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         code_hash: Hash256,
         salt: S,
@@ -199,7 +199,7 @@ where
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(signer.address, code_hash, &salt);
+        let address = Addr::compute(signer.address(), code_hash, &salt);
 
         self.send_message_with_gas(
             signer,
@@ -216,7 +216,7 @@ where
     /// given gas limit. Return the code hash as well as the contract's address.
     pub fn upload_and_instantiate_with_gas<M, B, S, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         code: B,
         salt: S,
@@ -233,7 +233,7 @@ where
         let code = code.into();
         let code_hash = Hash256::from_array(sha2_256(&code));
         let salt = salt.into();
-        let address = Addr::compute(signer.address, code_hash, &salt);
+        let address = Addr::compute(signer.address(), code_hash, &salt);
 
         self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
@@ -248,7 +248,7 @@ where
     /// Execute a contrat under the given gas limit.
     pub fn execute_with_gas<M, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         contract: Addr,
         msg: &M,
@@ -269,7 +269,7 @@ where
     /// Migrate a contract to a new code hash, under the given gas limit.
     pub fn migrate_with_gas<M>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         gas_limit: u64,
         contract: Addr,
         new_code_hash: Hash256,
@@ -300,11 +300,11 @@ where
             .into()
     }
 
-    pub fn query_balance(&self, account: &TestAccount, denom: &str) -> GenericResult<Uint256> {
+    pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> GenericResult<Uint256> {
         self.app
             .do_query_app(
                 QueryRequest::Balance {
-                    address: account.address,
+                    address: account.address(),
                     denom: denom.to_string(),
                 },
                 0, // zero means to use the latest height
@@ -314,11 +314,11 @@ where
             .into()
     }
 
-    pub fn query_balances(&self, account: &TestAccount) -> GenericResult<Coins> {
+    pub fn query_balances(&self, account: &dyn Signer) -> GenericResult<Coins> {
         self.app
             .do_query_app(
                 QueryRequest::Balances {
-                    address: account.address,
+                    address: account.address(),
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
@@ -357,30 +357,26 @@ where
 // don't take a `gas_limit` parameter.
 impl TestSuite<RustVm> {
     /// Execute a single message.
-    pub fn send_message(
-        &mut self,
-        signer: &TestAccount,
-        msg: Message,
-    ) -> anyhow::Result<TxOutcome> {
+    pub fn send_message(&mut self, signer: &dyn Signer, msg: Message) -> anyhow::Result<TxOutcome> {
         self.send_message_with_gas(signer, u64::MAX, msg)
     }
 
     /// Execute one or more messages.
     pub fn send_messages(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, u64::MAX, msgs)
     }
 
     /// Update the chain's config.
-    pub fn configure(&mut self, signer: &TestAccount, new_cfg: Config) -> anyhow::Result<()> {
+    pub fn configure(&mut self, signer: &dyn Signer, new_cfg: Config) -> anyhow::Result<()> {
         self.configure_with_gas(signer, u64::MAX, new_cfg)
     }
 
     /// Make a transfer of tokens.
-    pub fn transfer<C>(&mut self, signer: &TestAccount, to: Addr, coins: C) -> anyhow::Result<()>
+    pub fn transfer<C>(&mut self, signer: &dyn Signer, to: Addr, coins: C) -> anyhow::Result<()>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -389,7 +385,7 @@ impl TestSuite<RustVm> {
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload<B>(&mut self, signer: &TestAccount, code: B) -> anyhow::Result<Hash256>
+    pub fn upload<B>(&mut self, signer: &dyn Signer, code: B) -> anyhow::Result<Hash256>
     where
         B: Into<Binary>,
     {
@@ -399,7 +395,7 @@ impl TestSuite<RustVm> {
     /// Instantiate a contract. Return the contract's address.
     pub fn instantiate<M, S, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         code_hash: Hash256,
         salt: S,
         msg: &M,
@@ -418,7 +414,7 @@ impl TestSuite<RustVm> {
     /// code hash as well as the contract's address.
     pub fn upload_and_instantiate<M, B, S, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         code: B,
         salt: S,
         msg: &M,
@@ -437,7 +433,7 @@ impl TestSuite<RustVm> {
     /// Execute a contrat.
     pub fn execute<M, C>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         contract: Addr,
         msg: &M,
         funds: C,
@@ -453,7 +449,7 @@ impl TestSuite<RustVm> {
     /// Migrate a contract to a new code hash.
     pub fn migrate<M>(
         &mut self,
-        signer: &TestAccount,
+        signer: &dyn Signer,
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
