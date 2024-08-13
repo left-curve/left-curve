@@ -154,7 +154,7 @@ where
             self.vm.clone(),
             self.storage.clone(),
             self.gas_tracker.clone(),
-            self.block.clone(),
+            self.block,
             req,
         )
         .into()

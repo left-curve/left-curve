@@ -284,12 +284,12 @@ where
         );
 
         // Generate a random new account
-        let account = TestAccount::new_random(&hash256(&self.account_opt.code), name.as_bytes());
+        let account = TestAccount::new_random(hash256(&self.account_opt.code), name.as_bytes());
 
         // Save account and balances
         let balances = balances.try_into()?;
         if !balances.is_empty() {
-            self.balances.insert(account.address.clone(), balances);
+            self.balances.insert(account.address, balances);
         }
         accounts.insert(name, account);
 
@@ -397,7 +397,7 @@ where
                 anyhow!("failed to set owner: can't find account with name `{name}`")
             })?;
 
-        self.owner = Some(owner.address.clone());
+        self.owner = Some(owner.address);
 
         Ok(self)
     }
@@ -462,21 +462,21 @@ where
                 &(self.account_opt.msg_builder)(account.pk),
                 name.to_string(),
                 Coins::new(),
-                Some(account.address.clone()),
+                Some(account.address),
             )?);
         }
 
         // Predict bank contract address
         let bank = Addr::compute(
-            &GENESIS_SENDER,
-            &hash256(&self.bank_opt.code),
+            GENESIS_SENDER,
+            hash256(&self.bank_opt.code),
             DEFAULT_BANK_SALT,
         );
 
         // Prefict taxman contract address
         let taxman = Addr::compute(
-            &GENESIS_SENDER,
-            &hash256(&self.taxman_opt.code),
+            GENESIS_SENDER,
+            hash256(&self.taxman_opt.code),
             DEFAULT_TAXMAN_SALT,
         );
 

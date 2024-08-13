@@ -29,7 +29,7 @@ use {
 pub fn make_sign_bytes<Hasher, const HASH_LEN: usize>(
     hasher: Hasher,
     msgs: &[Message],
-    sender: &Addr,
+    sender: Addr,
     chain_id: &str,
     sequence: u32,
 ) -> StdResult<[u8; HASH_LEN]>
@@ -99,7 +99,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         // a closure instead.
         |prehash| ctx.api.sha2_256(prehash),
         &tx.msgs,
-        &tx.sender,
+        tx.sender,
         &ctx.chain_id,
         credential.sequence,
     )?;

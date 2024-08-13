@@ -16,8 +16,8 @@ pub struct TestAccount {
 }
 
 impl TestAccount {
-    pub fn new_random(code_hash: &Hash256, salt: &[u8]) -> Self {
-        let address = Addr::compute(&GENESIS_SENDER, code_hash, salt);
+    pub fn new_random(code_hash: Hash256, salt: &[u8]) -> Self {
+        let address = Addr::compute(GENESIS_SENDER, code_hash, salt);
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
             .verifying_key()
@@ -40,7 +40,7 @@ impl TestAccount {
         let sign_bytes = Identity256::from(grug_account::make_sign_bytes(
             sha2_256,
             &msgs,
-            &self.address,
+            self.address,
             chain_id,
             sequence,
         )?);
@@ -53,7 +53,7 @@ impl TestAccount {
         })?;
 
         Ok(Tx {
-            sender: self.address.clone(),
+            sender: self.address,
             gas_limit,
             msgs,
             data: Json::Null,

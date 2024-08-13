@@ -133,7 +133,7 @@ impl SigningKey {
         let sign_bytes = grug_account::make_sign_bytes(
             grug_crypto::sha2_256,
             &msgs,
-            &sender,
+            sender,
             chain_id,
             sequence,
         )?;

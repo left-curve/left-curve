@@ -47,7 +47,7 @@ where
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(MemDb::new(), vm, u64::MAX);
 
-        app.do_init_chain(chain_id.clone(), genesis_block.clone(), genesis_state)?;
+        app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)?;
 
         Ok(Self {
             app,
@@ -67,7 +67,7 @@ where
         self.block.timestamp = self.block.timestamp + self.block_time;
 
         // Call ABCI `FinalizeBlock` method
-        let block_outcome = self.app.do_finalize_block(self.block.clone(), txs)?;
+        let block_outcome = self.app.do_finalize_block(self.block, txs)?;
 
         // Sanity check: the number of tx results returned by the app should
         // equal the number of txs.
@@ -110,7 +110,7 @@ where
         ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
-        let sequence = self.sequences.entry(signer.address.clone()).or_insert(0);
+        let sequence = self.sequences.entry(signer.address).or_insert(0);
         let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
         *sequence += 1;
 
@@ -199,7 +199,7 @@ where
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(&signer.address, &code_hash, &salt);
+        let address = Addr::compute(signer.address, code_hash, &salt);
 
         self.send_message_with_gas(
             signer,
@@ -233,11 +233,11 @@ where
         let code = code.into();
         let code_hash = Hash256::from_array(sha2_256(&code));
         let salt = salt.into();
-        let address = Addr::compute(&signer.address, &code_hash, &salt);
+        let address = Addr::compute(signer.address, code_hash, &salt);
 
         self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
-            Message::instantiate(code_hash.clone(), msg, salt, funds, None)?,
+            Message::instantiate(code_hash, msg, salt, funds, None)?,
         ])?
         .result
         .should_succeed();
@@ -304,7 +304,7 @@ where
         self.app
             .do_query_app(
                 QueryRequest::Balance {
-                    address: account.address.clone(),
+                    address: account.address,
                     denom: denom.to_string(),
                 },
                 0, // zero means to use the latest height
@@ -318,7 +318,7 @@ where
         self.app
             .do_query_app(
                 QueryRequest::Balances {
-                    address: account.address.clone(),
+                    address: account.address,
                     start_after: None,
                     limit: Some(u32::MAX),
                 },

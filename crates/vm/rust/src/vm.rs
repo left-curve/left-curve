@@ -40,7 +40,7 @@ impl Vm for RustVm {
     fn build_instance(
         &mut self,
         code: &[u8],
-        _code_hash: &Hash256,
+        _code_hash: Hash256,
         storage: StorageProvider,
         // Rust VM doesn't need this "readonly" flag, because everything happens
         // in Rust, the compiler can prevent storage writes in query methods
@@ -329,18 +329,14 @@ mod tests {
 
         let gas_tracker = GasTracker::new_limitless();
 
-        let querier_provider = QuerierProvider::new(
-            vm.clone(),
-            Box::new(db.clone()),
-            gas_tracker.clone(),
-            block.clone(),
-        );
+        let querier_provider =
+            QuerierProvider::new(vm.clone(), Box::new(db.clone()), gas_tracker.clone(), block);
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
         let instance = vm.build_instance(
             &code,
-            &Hash::ZERO,
+            Hash::ZERO,
             storage_provider,
             false,
             querier_provider,

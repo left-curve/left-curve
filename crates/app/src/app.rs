@@ -84,7 +84,7 @@ where
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, &contract, block.timestamp, interval)?;
+            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
         }
 
         // Loop through genesis messages and execute each one.
@@ -100,7 +100,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block.clone(),
+                block,
                 GENESIS_SENDER,
                 msg,
             )?;
@@ -184,8 +184,8 @@ where
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block.clone(),
-                contract.clone(),
+                block,
+                contract,
             );
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
@@ -193,7 +193,7 @@ where
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
                 &mut buffer,
-                &contract,
+                contract,
                 block.timestamp,
                 cfg.cronjobs[&contract],
             )?;
@@ -207,7 +207,7 @@ where
             tx_outcomes.push(process_tx(
                 self.vm.clone(),
                 buffer.clone(),
-                block.clone(),
+                block,
                 tx,
                 AuthMode::Finalize,
             ));
@@ -270,7 +270,7 @@ where
             self.vm.clone(),
             Box::new(buffer.clone()),
             GasTracker::new_limitless(),
-            block.clone(),
+            block,
             &tx,
         ) {
             Ok(new_events) => {
@@ -517,7 +517,7 @@ where
         vm.clone(),
         Box::new(buffer1.clone()),
         GasTracker::new_limitless(),
-        block.clone(),
+        block,
         &tx,
     ) {
         Ok(new_events) => {
@@ -545,7 +545,7 @@ where
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
-        block.clone(),
+        block,
         &tx,
         mode.clone(),
     ) {
@@ -572,7 +572,7 @@ where
         vm.clone(),
         buffer2.clone(),
         gas_tracker.clone(),
-        block.clone(),
+        block,
         &tx,
         mode,
         request_backrun,
@@ -626,8 +626,8 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            block.clone(),
-            tx.sender.clone(),
+            block,
+            tx.sender,
             msg.clone(),
         )?);
     }
@@ -696,18 +696,11 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
-        Message::Transfer { to, coins } => do_transfer(
-            vm,
-            storage,
-            gas_tracker,
-            block,
-            sender.clone(),
-            to,
-            coins,
-            true,
-        ),
-        Message::Upload { code } => do_upload(&mut storage, gas_tracker, &sender, &code),
+        Message::Configure { new_cfg } => do_configure(&mut storage, block, sender, new_cfg),
+        Message::Transfer { to, coins } => {
+            do_transfer(vm, storage, gas_tracker, block, sender, to, coins, true)
+        },
+        Message::Upload { code } => do_upload(&mut storage, gas_tracker, sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -821,13 +814,7 @@ where
             let res = reqs
                 .into_iter()
                 .map(|req| {
-                    process_query(
-                        vm.clone(),
-                        storage.clone(),
-                        gas_tracker.clone(),
-                        block.clone(),
-                        req,
-                    )
+                    process_query(vm.clone(), storage.clone(), gas_tracker.clone(), block, req)
                 })
                 .collect::<AppResult<Vec<_>>>()?;
             Ok(QueryResponse::Multi(res))
@@ -835,7 +822,7 @@ where
     }
 }
 
-pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+pub(crate) fn has_permission(permission: &Permission, owner: Option<Addr>, sender: Addr) -> bool {
     // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
@@ -851,13 +838,13 @@ pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, send
     match permission {
         Permission::Nobody => false,
         Permission::Everybody => true,
-        Permission::Somebodies(accounts) => accounts.contains(sender),
+        Permission::Somebodies(accounts) => accounts.contains(&sender),
     }
 }
 
 pub(crate) fn schedule_cronjob(
     storage: &mut dyn Storage,
-    contract: &Addr,
+    contract: Addr,
     current_time: Timestamp,
     interval: Duration,
 ) -> StdResult<()> {

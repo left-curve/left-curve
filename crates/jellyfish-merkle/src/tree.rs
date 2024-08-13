@@ -136,15 +136,15 @@ impl<'a> MerkleTree<'a> {
         // If an old root node exists (i.e. tree isn't empty at the old version),
         // mark it as orphaned.
         if self.nodes.has(storage, (old_version, &ROOT_BITS)) {
-            self.mark_node_as_orphaned(storage, new_version, old_version, &ROOT_BITS)?;
+            self.mark_node_as_orphaned(storage, new_version, old_version, ROOT_BITS)?;
         }
 
         // Recursively apply the ops, starting at the old root.
-        match self.apply_at(storage, new_version, old_version, &ROOT_BITS, batch)? {
+        match self.apply_at(storage, new_version, old_version, ROOT_BITS, batch)? {
             // If the new tree is non-empty (i.e. it has a root node), save this
             // new root node and return its hash.
             Outcome::Updated(new_root_node) | Outcome::Unchanged(Some(new_root_node)) => {
-                self.save_node(storage, new_version, &ROOT_BITS, &new_root_node)?;
+                self.save_node(storage, new_version, ROOT_BITS, &new_root_node)?;
                 Ok(Some(new_root_node.hash()))
             },
             // The new tree is empty. do nothing and just return `None`.
@@ -157,10 +157,10 @@ impl<'a> MerkleTree<'a> {
         storage: &mut dyn Storage,
         new_version: u64,
         old_version: u64,
-        bits: &BitArray,
+        bits: BitArray,
         batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
-        match self.nodes.may_load(storage, (old_version, bits))? {
+        match self.nodes.may_load(storage, (old_version, &bits))? {
             Some(Node::Leaf(leaf_node)) => {
                 self.apply_at_leaf(storage, new_version, bits, leaf_node, batch)
             },
@@ -179,7 +179,7 @@ impl<'a> MerkleTree<'a> {
         &self,
         storage: &mut dyn Storage,
         new_version: u64,
-        bits: &BitArray,
+        bits: BitArray,
         mut internal_node: InternalNode,
         batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
@@ -191,8 +191,8 @@ impl<'a> MerkleTree<'a> {
         let left_outcome = self.apply_at_child(
             storage,
             new_version,
-            &left_bits,
-            internal_node.left_child.as_ref(),
+            left_bits,
+            internal_node.left_child,
             batch_for_left,
         )?;
 
@@ -201,8 +201,8 @@ impl<'a> MerkleTree<'a> {
         let right_outcome = self.apply_at_child(
             storage,
             new_version,
-            &right_bits,
-            internal_node.right_child.as_ref(),
+            right_bits,
+            internal_node.right_child,
             batch_for_right,
         )?;
 
@@ -211,7 +211,7 @@ impl<'a> MerkleTree<'a> {
         if let (Outcome::Updated(_) | Outcome::Deleted, Some(left_child)) =
             (&left_outcome, &internal_node.left_child)
         {
-            self.mark_node_as_orphaned(storage, new_version, left_child.version, &left_bits)?;
+            self.mark_node_as_orphaned(storage, new_version, left_child.version, left_bits)?;
         }
 
         // If the right child exists and have been updated or deleted, then the
@@ -219,7 +219,7 @@ impl<'a> MerkleTree<'a> {
         if let (Outcome::Updated(_) | Outcome::Deleted, Some(right_child)) =
             (&right_outcome, &internal_node.right_child)
         {
-            self.mark_node_as_orphaned(storage, new_version, right_child.version, &right_bits)?;
+            self.mark_node_as_orphaned(storage, new_version, right_child.version, right_bits)?;
         }
 
         match (left_outcome, right_outcome) {
@@ -246,7 +246,7 @@ impl<'a> MerkleTree<'a> {
                     storage,
                     new_version,
                     internal_node.left_child.unwrap().version,
-                    &left_bits,
+                    left_bits,
                 )?;
 
                 Ok(Outcome::Updated(left))
@@ -265,7 +265,7 @@ impl<'a> MerkleTree<'a> {
                     storage,
                     new_version,
                     internal_node.right_child.unwrap().version,
-                    &right_bits,
+                    right_bits,
                 )?;
 
                 Ok(Outcome::Updated(right))
@@ -275,7 +275,7 @@ impl<'a> MerkleTree<'a> {
             (left, right) => {
                 internal_node.left_child = match left {
                     Outcome::Updated(node) => {
-                        self.save_node(storage, new_version, &left_bits, &node)?;
+                        self.save_node(storage, new_version, left_bits, &node)?;
 
                         Some(Child {
                             version: new_version,
@@ -288,7 +288,7 @@ impl<'a> MerkleTree<'a> {
 
                 internal_node.right_child = match right {
                     Outcome::Updated(node) => {
-                        self.save_node(storage, new_version, &right_bits, &node)?;
+                        self.save_node(storage, new_version, right_bits, &node)?;
 
                         Some(Child {
                             version: new_version,
@@ -308,8 +308,8 @@ impl<'a> MerkleTree<'a> {
         &self,
         storage: &mut dyn Storage,
         new_version: u64,
-        child_bits: &BitArray,
-        child: Option<&Child>,
+        child_bits: BitArray,
+        child: Option<Child>,
         batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
         match (batch.is_empty(), child) {
@@ -317,7 +317,7 @@ impl<'a> MerkleTree<'a> {
             (true, None) => Ok(Outcome::Unchanged(None)),
             // Child exists, but there is no op to apply.
             (true, Some(child)) => {
-                let child_node = self.nodes.load(storage, (child.version, child_bits))?;
+                let child_node = self.nodes.load(storage, (child.version, &child_bits))?;
                 Ok(Outcome::Unchanged(Some(child_node)))
             },
             // Child doesn't exist, but there are ops to apply.
@@ -337,11 +337,11 @@ impl<'a> MerkleTree<'a> {
         &self,
         storage: &mut dyn Storage,
         new_version: u64,
-        bits: &BitArray,
+        bits: BitArray,
         mut leaf_node: LeafNode,
         batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> {
-        let (batch, op) = prepare_batch_for_subtree(batch, Some(&leaf_node));
+        let (batch, op) = prepare_batch_for_subtree(batch, Some(leaf_node));
         match (batch.is_empty(), op) {
             (true, Some(Op::Insert(value_hash))) => {
                 if value_hash == leaf_node.value_hash {
@@ -371,7 +371,7 @@ impl<'a> MerkleTree<'a> {
         &self,
         storage: &mut dyn Storage,
         version: u64,
-        bits: &BitArray,
+        bits: BitArray,
         batch: Vec<(Hash256, Hash256)>,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<Outcome> {
@@ -393,14 +393,14 @@ impl<'a> MerkleTree<'a> {
                 let left_outcome = self.create_subtree(
                     storage,
                     version,
-                    &bits.extend_one_bit(true),
+                    bits.extend_one_bit(true),
                     batch_for_left,
                     leaf_for_left,
                 )?;
                 let right_outcome = self.create_subtree(
                     storage,
                     version,
-                    &bits.extend_one_bit(false),
+                    bits.extend_one_bit(false),
                     batch_for_right,
                     leaf_for_right,
                 )?;
@@ -442,11 +442,11 @@ impl<'a> MerkleTree<'a> {
     pub fn prove(
         &self,
         storage: &dyn Storage,
-        key_hash: &Hash256,
+        key_hash: Hash256,
         version: u64,
     ) -> StdResult<Proof> {
-        let mut bits = ROOT_BITS.clone();
-        let bitarray = BitArray::from_bytes(key_hash);
+        let mut bits = ROOT_BITS;
+        let bitarray = BitArray::from_bytes(&key_hash);
         let mut iter = bitarray.range(None, None, Order::Ascending);
         let mut node = self.nodes.load(storage, (version, &bits))?;
         let mut proof_node = None;
@@ -559,10 +559,10 @@ impl<'a> MerkleTree<'a> {
         &self,
         storage: &mut dyn Storage,
         version: u64,
-        bits: &BitArray,
+        bits: BitArray,
         node: &Node,
     ) -> StdResult<()> {
-        self.nodes.save(storage, (version, bits), node)
+        self.nodes.save(storage, (version, &bits), node)
     }
 
     #[inline]
@@ -571,17 +571,17 @@ impl<'a> MerkleTree<'a> {
         storage: &mut dyn Storage,
         orphaned_since_version: u64,
         version: u64,
-        bits: &BitArray,
+        bits: BitArray,
     ) -> StdResult<()> {
         self.orphans
-            .insert(storage, (orphaned_since_version, version, bits))
+            .insert(storage, (orphaned_since_version, version, &bits))
     }
 }
 
 #[inline]
 fn partition_batch<T>(
     mut batch: Vec<(Hash256, T)>,
-    bits: &BitArray,
+    bits: BitArray,
 ) -> (Vec<(Hash256, T)>, Vec<(Hash256, T)>) {
     let partition_point =
         batch.partition_point(|(key_hash, _)| bit_at_index(key_hash, bits.num_bits) == 0);
@@ -590,7 +590,7 @@ fn partition_batch<T>(
 }
 
 #[inline]
-fn partition_leaf(leaf: Option<LeafNode>, bits: &BitArray) -> (Option<LeafNode>, Option<LeafNode>) {
+fn partition_leaf(leaf: Option<LeafNode>, bits: BitArray) -> (Option<LeafNode>, Option<LeafNode>) {
     if let Some(leaf) = leaf {
         let bit = bit_at_index(&leaf.key_hash, bits.num_bits);
         // 0 = left, 1 = right
@@ -612,7 +612,7 @@ fn partition_leaf(leaf: Option<LeafNode>, bits: &BitArray) -> (Option<LeafNode>,
 #[inline]
 fn prepare_batch_for_subtree(
     batch: Vec<(Hash256, Op<Hash256>)>,
-    existing_leaf: Option<&LeafNode>,
+    existing_leaf: Option<LeafNode>,
 ) -> (Vec<(Hash256, Hash256)>, Option<Op<Hash256>>) {
     let mut maybe_op = None;
     let filtered_batch = batch
@@ -979,7 +979,7 @@ mod tests {
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
         assert_eq!(
-            TREE.prove(&storage, &hash256(key.as_bytes()), 0).unwrap(),
+            TREE.prove(&storage, hash256(key.as_bytes()), 0).unwrap(),
             proof
         );
     }

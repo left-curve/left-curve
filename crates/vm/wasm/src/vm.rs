@@ -41,7 +41,7 @@ impl Vm for WasmVm {
     fn build_instance(
         &mut self,
         code: &[u8],
-        code_hash: &Hash256,
+        code_hash: Hash256,
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<Self>,
