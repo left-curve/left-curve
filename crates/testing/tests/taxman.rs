@@ -60,9 +60,8 @@ mod taxman {
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
         let charge_msg = if !charge_amount.is_zero() {
-            let owner = info.config.owner.expect("owner not set");
             Some(Message::transfer(
-                owner,
+                info.config.owner,
                 Coins::one(FEE_DENOM, NonZero::new(charge_amount)),
             )?)
         } else {

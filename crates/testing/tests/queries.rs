@@ -36,6 +36,7 @@ fn handling_multi_query() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", NonZero::new(123_u128)))?
         .set_chain_id("kebab")
+        .set_owner("larry")?
         .build()?;
 
     let query_maker_code = ContractBuilder::new(Box::new(query_maker::instantiate)).build();

@@ -834,17 +834,15 @@ where
     }
 }
 
-pub(crate) fn has_permission(permission: &Permission, owner: Option<Addr>, sender: Addr) -> bool {
+pub(crate) fn has_permission(permission: &Permission, owner: Addr, sender: Addr) -> bool {
     // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
     }
 
     // The owner can always do anything it wants.
-    if let Some(owner) = owner {
-        if sender == owner {
-            return true;
-        }
+    if sender == owner {
+        return true;
     }
 
     match permission {
