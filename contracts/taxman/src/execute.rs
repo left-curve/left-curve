@@ -1,6 +1,6 @@
 use {
     crate::{Config, CONFIG},
-    anyhow::{bail, ensure},
+    anyhow::ensure,
     grug_types::{
         Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Response, StdResult,
         Storage, SudoCtx, Tx, TxOutcome, Uint128, Uint256,
@@ -18,7 +18,7 @@ pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Respon
 
     // Only the chain's owner can update fee config.
     ensure!(
-        Some(ctx.sender) == info.config.owner,
+        ctx.sender == info.config.owner,
         "you don't have the right, O you don't have the right"
     );
 
@@ -87,12 +87,8 @@ pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     // This is just a demo. In practice, it probably makes more sense to have a
     // fee distributor contract that distribute to stakers so something like that.
     let charge_msg = if !charge_amount.is_zero() {
-        let Some(owner) = info.config.owner else {
-            bail!("chain owner is not set!");
-        };
-
         Some(Message::Transfer {
-            to: owner,
+            to: info.config.owner,
             coins: Coins::one(cfg.fee_denom.clone(), NonZero::new(charge_amount)),
         })
     } else {

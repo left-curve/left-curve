@@ -44,13 +44,14 @@ fn _do_configure(
     cfg: Config,
     app_cfgs: BTreeMap<String, Json>,
 ) -> AppResult<Event> {
-    // Make sure the sender is authorized to set the config.
     let current_cfg = CONFIG.load(storage)?;
-    let Some(owner) = current_cfg.owner else {
-        return Err(AppError::OwnerNotSet);
-    };
-    if sender != owner {
-        return Err(AppError::NotOwner { sender, owner });
+
+    // Make sure the sender is authorized to set the config.
+    if sender != current_cfg.owner {
+        return Err(AppError::NotOwner {
+            sender,
+            owner: current_cfg.owner,
+        });
     }
 
     // Save the new config.

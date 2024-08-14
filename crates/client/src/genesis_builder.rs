@@ -13,7 +13,7 @@ use {
 
 #[derive(Default)]
 pub struct GenesisBuilder<
-    O = Undefined<Option<Addr>>,
+    O = Undefined<Addr>,
     B = Undefined<Addr>,
     T = Undefined<Addr>,
     U = Undefined<Permission>,
@@ -42,11 +42,8 @@ impl GenesisBuilder {
     }
 }
 
-impl<B, T, U, I> GenesisBuilder<Undefined<Option<Addr>>, B, T, U, I> {
-    pub fn set_owner(
-        self,
-        owner: Option<Addr>,
-    ) -> GenesisBuilder<Defined<Option<Addr>>, B, T, U, I> {
+impl<B, T, U, I> GenesisBuilder<Undefined<Addr>, B, T, U, I> {
+    pub fn set_owner(self, owner: Addr) -> GenesisBuilder<Defined<Addr>, B, T, U, I> {
         GenesisBuilder {
             genesis_time: self.genesis_time,
             chain_id: self.chain_id,
@@ -256,7 +253,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
 
 impl
     GenesisBuilder<
-        Defined<Option<Addr>>,
+        Defined<Addr>,
         Defined<Addr>,
         Defined<Addr>,
         Defined<Permission>,

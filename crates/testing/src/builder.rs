@@ -38,6 +38,7 @@ pub struct TestBuilder<
     M1 = grug_account::InstantiateMsg,
     M2 = grug_bank::InstantiateMsg,
     M3 = grug_taxman::InstantiateMsg,
+    OW = Undefined<Addr>,
     TA = Undefined<TestAccounts>,
 > {
     vm: VM,
@@ -46,7 +47,8 @@ pub struct TestBuilder<
     chain_id: Option<String>,
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
-    owner: Option<Addr>,
+    // Owner
+    owner: OW,
     // Accounts
     account_opt: CodeOption<Box<dyn Fn(grug_account::PublicKey) -> M1>>,
     accounts: TA,
@@ -97,7 +99,7 @@ where
             chain_id: None,
             genesis_time: None,
             block_time: None,
-            owner: None,
+            owner: Undefined::default(),
             accounts: Undefined::default(),
             balances: BTreeMap::new(),
             fee_denom: None,
@@ -106,11 +108,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3, TA> TestBuilder<VM, M1, M2, M3, TA>
+impl<VM, M1, M2, M3, OW, TA> TestBuilder<VM, M1, M2, M3, OW, TA>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
+    OW: MaybeDefined<Inner = Addr>,
     TA: MaybeDefined<Inner = TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
@@ -173,6 +176,8 @@ where
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .set_bank_code(
     ///         code,
     ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
@@ -184,7 +189,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2A, M3, TA>
+    ) -> TestBuilder<VM, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -230,6 +235,8 @@ where
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .set_taxman_code(
     ///         code,
     ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
@@ -243,7 +250,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2, M3A, TA>
+    ) -> TestBuilder<VM, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(String, Udec128) -> M3A + 'static,
@@ -272,7 +279,7 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, OW, Defined<TestAccounts>>>
     where
         C: TryInto<Coins>,
         anyhow::Error: From<C::Error>,
@@ -311,11 +318,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<TestAccounts>>
+impl<VM, M1, M2, M3, OW> TestBuilder<VM, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
+    OW: MaybeDefined<Inner = Addr>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -347,6 +355,8 @@ where
     ///     .unwrap()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .build()
     ///     .unwrap();
     /// ```
@@ -354,7 +364,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, Undefined<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>>
     where
         T: Into<Binary>,
         F: Fn(grug_account::PublicKey) -> M1A + 'static,
@@ -380,8 +390,38 @@ where
     }
 }
 
-// TSB where at least one account is set
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>
+// `set_owner` can only be called if `add_accounts` has been called at least
+// once, and `set_owner` hasn't already been called.
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
+    pub fn set_owner(
+        self,
+        name: &'static str,
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>> {
+        let owner =
+            self.accounts.inner().get(name).ok_or_else(|| {
+                anyhow!("failed to set owner: can't find account with name `{name}`")
+            })?;
+
+        Ok(TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            owner: Defined::new(owner.address),
+            account_opt: self.account_opt,
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        })
+    }
+}
+
+// `build` can only be called if both `owner` and `accounts` have been set.
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -389,19 +429,6 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    /// **Note:** `set_owner` can only called if `add_account` has been already
-    /// called at least once.
-    pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
-        let owner =
-            self.accounts.inner().get(name).ok_or_else(|| {
-                anyhow!("failed to set owner: can't find account with name `{name}`")
-            })?;
-
-        self.owner = Some(owner.address);
-
-        Ok(self)
-    }
-
     pub fn build(self) -> anyhow::Result<(TestSuite<VM>, TestAccounts)> {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
@@ -482,7 +509,7 @@ where
 
         // Create the app config
         let config = Config {
-            owner: self.owner,
+            owner: self.owner.into_inner(),
             bank,
             taxman,
             cronjobs: BTreeMap::new(),

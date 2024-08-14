@@ -77,7 +77,7 @@ fn main() -> anyhow::Result<()> {
 
     // Build the genesis state and write to CometBFT genesis file.
     builder
-        .set_owner(Some(account1))
+        .set_owner(account1)
         .set_bank(bank)
         .set_taxman(taxman)
         .set_upload_permission(Permission::Everybody)
