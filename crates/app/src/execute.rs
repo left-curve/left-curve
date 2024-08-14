@@ -73,8 +73,8 @@ fn _do_configure(
         if new_cronjobs != cfg.cronjobs {
             NEXT_CRONJOBS.clear(storage, None, None);
 
-            for (contract, interval) in cfg.cronjobs {
-                schedule_cronjob(storage, contract, block.timestamp, interval)?;
+            for (contract, interval) in &new_cronjobs {
+                schedule_cronjob(storage, *contract, block.timestamp, *interval)?;
             }
         }
 
