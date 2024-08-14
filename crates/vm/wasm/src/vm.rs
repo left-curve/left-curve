@@ -34,8 +34,7 @@ impl WasmVm {
     }
 }
 
-impl Vm for WasmVm
-    {
+impl Vm for WasmVm {
     type Error = VmError;
     type Instance = WasmInstance;
 
@@ -165,8 +164,7 @@ pub struct WasmInstance {
     fe: FunctionEnv<Environment>,
 }
 
-impl Instance for WasmInstance
-    {
+impl Instance for WasmInstance {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
