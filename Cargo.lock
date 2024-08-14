@@ -1759,6 +1759,7 @@ dependencies = [
  "borsh",
  "grug-types",
  "prost",
+ "serde",
 ]
 
 [[package]]

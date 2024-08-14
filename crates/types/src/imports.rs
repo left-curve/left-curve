@@ -12,7 +12,7 @@
 use {
     crate::{
         from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Json, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -282,6 +282,26 @@ impl<'a> QuerierWrapper<'a> {
         self.inner
             .query_chain(QueryRequest::Info {})
             .map(|res| res.as_info())
+    }
+
+    pub fn query_app_config<K, T>(&self, key: K) -> StdResult<T>
+    where
+        K: Into<String>,
+        T: DeserializeOwned,
+    {
+        self.inner
+            .query_chain(QueryRequest::AppConfig { key: key.into() })
+            .and_then(|res| from_json_value(res.as_app_config()))
+    }
+
+    pub fn query_app_configs(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> StdResult<BTreeMap<String, Json>> {
+        self.inner
+            .query_chain(QueryRequest::AppConfigs { start_after, limit })
+            .map(|res| res.as_app_configs())
     }
 
     pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint256> {

@@ -12,6 +12,15 @@ pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: `InfoResponse`
     Info {},
+    /// A single application-specific configuration.
+    /// Returns: `Json`
+    AppConfig { key: String },
+    /// Enumerate all application-specific configurations.
+    /// Returns: `BTreeMap<String, Json>`
+    AppConfigs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// An account's balance in a single denom.
     /// Returns: `Coin`
     Balance { address: Addr, denom: String },
@@ -72,6 +81,8 @@ pub struct InfoResponse {
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),
+    AppConfig(Json),
+    AppConfigs(BTreeMap<String, Json>),
     Balance(Coin),
     Balances(Coins),
     Supply(Coin),
@@ -92,6 +103,20 @@ impl QueryResponse {
             panic!("QueryResponse is not Info");
         };
         resp
+    }
+
+    pub fn as_app_config(self) -> Json {
+        let Self::AppConfig(value) = self else {
+            panic!("QueryResponse is not AppCofnig");
+        };
+        value
+    }
+
+    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
+        let Self::AppConfigs(map) = self else {
+            panic!("QueryResponse is not AppCofnigs");
+        };
+        map
     }
 
     pub fn as_balance(self) -> Coin {

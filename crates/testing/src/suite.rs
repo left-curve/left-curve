@@ -6,12 +6,12 @@ use {
     grug_db_memory::MemDb,
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
-        Duration, GenericResult, GenesisState, Hash256, InfoResponse, Message, NumberConst,
+        Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message, NumberConst,
         Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::collections::HashMap,
+    std::collections::{BTreeMap, HashMap},
 };
 
 pub struct TestSuite<VM = RustVm>
@@ -136,9 +136,10 @@ where
         &mut self,
         signer: &dyn Signer,
         gas_limit: u64,
-        new_cfg: Config,
+        cfg: Config,
+        app_cfgs: BTreeMap<String, Json>,
     ) -> anyhow::Result<()> {
-        self.send_message_with_gas(signer, gas_limit, Message::configure(new_cfg))?
+        self.send_message_with_gas(signer, gas_limit, Message::configure(cfg, app_cfgs))?
             .result
             .should_succeed();
 
@@ -393,8 +394,13 @@ impl TestSuite<RustVm> {
     }
 
     /// Update the chain's config.
-    pub fn configure(&mut self, signer: &dyn Signer, new_cfg: Config) -> anyhow::Result<()> {
-        self.configure_with_gas(signer, u64::MAX, new_cfg)
+    pub fn configure(
+        &mut self,
+        signer: &dyn Signer,
+        cfg: Config,
+        app_cfgs: BTreeMap<String, Json>,
+    ) -> anyhow::Result<()> {
+        self.configure_with_gas(signer, u64::MAX, cfg, app_cfgs)
     }
 
     /// Make a transfer of tokens.

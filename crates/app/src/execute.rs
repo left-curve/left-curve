@@ -2,13 +2,14 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, CHAIN_ID, CODES,
-        CONFIG, NEXT_CRONJOBS,
+        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, APP_CONFIGS,
+        CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
         hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
         Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx, TxOutcome,
     },
+    std::collections::BTreeMap,
 };
 
 // ---------------------------------- config -----------------------------------
@@ -17,9 +18,10 @@ pub fn do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    new_cfg: Config,
+    cfg: Config,
+    app_cfgs: BTreeMap<String, Json>,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, block, sender, new_cfg) {
+    match _do_configure(storage, block, sender, cfg, app_cfgs) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -39,11 +41,12 @@ fn _do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    new_cfg: Config,
+    cfg: Config,
+    app_cfgs: BTreeMap<String, Json>,
 ) -> AppResult<Event> {
     // Make sure the sender is authorized to set the config.
-    let cfg = CONFIG.load(storage)?;
-    let Some(owner) = cfg.owner else {
+    let current_cfg = CONFIG.load(storage)?;
+    let Some(owner) = current_cfg.owner else {
         return Err(AppError::OwnerNotSet);
     };
     if sender != owner {
@@ -51,15 +54,24 @@ fn _do_configure(
     }
 
     // Save the new config.
-    CONFIG.save(storage, &new_cfg)?;
+    CONFIG.save(storage, &cfg)?;
 
     // If the list of cronjobs has been changed, we have to delete the existing
     // scheduled ones and reschedule.
-    if cfg.cronjobs != new_cfg.cronjobs {
+    if cfg.cronjobs != current_cfg.cronjobs {
         NEXT_CRONJOBS.clear(storage, None, None);
 
-        for (contract, interval) in new_cfg.cronjobs {
+        for (contract, interval) in cfg.cronjobs {
             schedule_cronjob(storage, contract, block.timestamp, interval)?;
+        }
+    }
+
+    // Update app configs
+    for (key, value) in app_cfgs {
+        if value.is_null() {
+            APP_CONFIGS.remove(storage, &key);
+        } else {
+            APP_CONFIGS.save(storage, &key, &value)?;
         }
     }
 
