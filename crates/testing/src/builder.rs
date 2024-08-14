@@ -493,7 +493,8 @@ where
         };
 
         let genesis_state = GenesisState { config, msgs };
-        let suite = TestSuite::create(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
+        let suite =
+            TestSuite::new_with_vm(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
         Ok((suite, self.accounts.into_inner()))
     }

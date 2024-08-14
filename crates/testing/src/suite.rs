@@ -36,8 +36,11 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    /// Only exposed to the crate. Use `TestBuilder` instead.
-    pub(crate) fn create(
+    /// Create a new test suite with a given VM.
+    ///
+    /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
+    /// instead.
+    pub fn new_with_vm(
         vm: VM,
         chain_id: String,
         block_time: Duration,
@@ -356,6 +359,25 @@ where
 // Rust VM doesn't support gas, so we introduce these convenience methods that
 // don't take a `gas_limit` parameter.
 impl TestSuite<RustVm> {
+    /// Create a new test suite.
+    ///
+    /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
+    /// instead.
+    pub fn new(
+        chain_id: String,
+        block_time: Duration,
+        genesis_block: BlockInfo,
+        genesis_state: GenesisState,
+    ) -> anyhow::Result<Self> {
+        Self::new_with_vm(
+            RustVm::new(),
+            chain_id,
+            block_time,
+            genesis_block,
+            genesis_state,
+        )
+    }
+
     /// Execute a single message.
     pub fn send_message(&mut self, signer: &dyn Signer, msg: Message) -> anyhow::Result<TxOutcome> {
         self.send_message_with_gas(signer, u64::MAX, msg)
