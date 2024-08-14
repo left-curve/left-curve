@@ -5,9 +5,9 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins, Config,
-        Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message, NumberConst,
-        Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
+        from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins,
+        ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
+        NumberConst, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -136,10 +136,10 @@ where
         &mut self,
         signer: &dyn Signer,
         gas_limit: u64,
-        cfg: Config,
-        app_cfgs: BTreeMap<String, Json>,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Json>,
     ) -> anyhow::Result<()> {
-        self.send_message_with_gas(signer, gas_limit, Message::configure(cfg, app_cfgs))?
+        self.send_message_with_gas(signer, gas_limit, Message::configure(updates, app_updates))?
             .result
             .should_succeed();
 
@@ -397,10 +397,10 @@ impl TestSuite<RustVm> {
     pub fn configure(
         &mut self,
         signer: &dyn Signer,
-        cfg: Config,
-        app_cfgs: BTreeMap<String, Json>,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Json>,
     ) -> anyhow::Result<()> {
-        self.configure_with_gas(signer, u64::MAX, cfg, app_cfgs)
+        self.configure_with_gas(signer, u64::MAX, updates, app_updates)
     }
 
     /// Make a transfer of tokens.

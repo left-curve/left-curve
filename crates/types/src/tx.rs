@@ -1,5 +1,7 @@
 use {
-    crate::{to_json_value, Addr, Binary, Coins, Config, Hash256, Json, StdError, StdResult},
+    crate::{
+        to_json_value, Addr, Binary, Coins, ConfigUpdates, Hash256, Json, StdError, StdResult,
+    },
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
@@ -34,8 +36,8 @@ pub enum Message {
     ///
     /// For app-level config, setting a value to `Null` means to delete it.
     Configure {
-        cfg: Config,
-        app_cfgs: BTreeMap<String, Json>,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Json>,
     },
     /// Send coins to the given recipient address.
     Transfer { to: Addr, coins: Coins },
@@ -67,8 +69,11 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn configure(cfg: Config, app_cfgs: BTreeMap<String, Json>) -> Self {
-        Self::Configure { cfg, app_cfgs }
+    pub fn configure(updates: ConfigUpdates, app_updates: BTreeMap<String, Json>) -> Self {
+        Self::Configure {
+            updates,
+            app_updates,
+        }
     }
 
     pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>

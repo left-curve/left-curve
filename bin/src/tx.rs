@@ -53,10 +53,10 @@ pub struct TxCmd {
 enum SubCmd {
     /// Update the chain-level configurations
     Configure {
-        /// New chain configurations as a JSON string
-        cfg: String,
-        /// New app configurations as a JSON string
-        app_cfgs: String,
+        /// Updates to the chain configuration
+        updates: String,
+        /// Updates to the app configuration
+        app_updates: String,
     },
     /// Send coins to the given recipient address
     Transfer {
@@ -113,10 +113,16 @@ impl TxCmd {
 
         // Compose the message
         let msg = match self.subcmd {
-            SubCmd::Configure { cfg, app_cfgs } => {
-                let cfg = from_json_str(&cfg)?;
-                let app_cfgs = from_json_str(&app_cfgs)?;
-                Message::Configure { cfg, app_cfgs }
+            SubCmd::Configure {
+                updates,
+                app_updates,
+            } => {
+                let updates = from_json_str(&updates)?;
+                let app_updates = from_json_str(&app_updates)?;
+                Message::Configure {
+                    updates,
+                    app_updates,
+                }
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;

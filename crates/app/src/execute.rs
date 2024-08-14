@@ -6,8 +6,9 @@ use {
         CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
-        Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx, TxOutcome,
+        hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins,
+        ConfigUpdates, Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx,
+        TxOutcome,
     },
     std::collections::BTreeMap,
 };
@@ -18,10 +19,10 @@ pub fn do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    cfg: Config,
-    app_cfgs: BTreeMap<String, Json>,
+    updates: ConfigUpdates,
+    app_updates: BTreeMap<String, Json>,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, block, sender, cfg, app_cfgs) {
+    match _do_configure(storage, block, sender, updates, app_updates) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -41,34 +42,54 @@ fn _do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    cfg: Config,
-    app_cfgs: BTreeMap<String, Json>,
+    updates: ConfigUpdates,
+    app_updates: BTreeMap<String, Json>,
 ) -> AppResult<Event> {
-    let current_cfg = CONFIG.load(storage)?;
+    let mut cfg = CONFIG.load(storage)?;
 
     // Make sure the sender is authorized to set the config.
-    if sender != current_cfg.owner {
+    if sender != cfg.owner {
         return Err(AppError::NotOwner {
             sender,
-            owner: current_cfg.owner,
+            owner: cfg.owner,
         });
     }
 
-    // Save the new config.
-    CONFIG.save(storage, &cfg)?;
-
-    // If the list of cronjobs has been changed, we have to delete the existing
-    // scheduled ones and reschedule.
-    if cfg.cronjobs != current_cfg.cronjobs {
-        NEXT_CRONJOBS.clear(storage, None, None);
-
-        for (contract, interval) in cfg.cronjobs {
-            schedule_cronjob(storage, contract, block.timestamp, interval)?;
-        }
+    if let Some(new_owner) = updates.owner {
+        cfg.owner = new_owner;
     }
 
+    if let Some(new_bank) = updates.bank {
+        cfg.bank = new_bank;
+    }
+
+    if let Some(new_taxman) = updates.taxman {
+        cfg.taxman = new_taxman;
+    }
+
+    if let Some(new_cronjobs) = updates.cronjobs {
+        // If the list of cronjobs has been changed, we have to delete the
+        // existing scheduled ones and reschedule.
+        if new_cronjobs != cfg.cronjobs {
+            NEXT_CRONJOBS.clear(storage, None, None);
+
+            for (contract, interval) in cfg.cronjobs {
+                schedule_cronjob(storage, contract, block.timestamp, interval)?;
+            }
+        }
+
+        cfg.cronjobs = new_cronjobs;
+    }
+
+    if let Some(new_permissions) = updates.permissions {
+        cfg.permissions = new_permissions;
+    }
+
+    // Save the updated config.
+    CONFIG.save(storage, &cfg)?;
+
     // Update app configs
-    for (key, value) in app_cfgs {
+    for (key, value) in app_updates {
         if value.is_null() {
             APP_CONFIGS.remove(storage, &key);
         } else {
