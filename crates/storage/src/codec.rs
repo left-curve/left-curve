@@ -1,7 +1,11 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{from_borsh_slice, from_proto_slice, to_borsh_vec, to_proto_vec, StdResult},
+    grug_types::{
+        from_borsh_slice, from_json_slice, from_proto_slice, to_borsh_vec, to_json_vec,
+        to_proto_vec, StdResult,
+    },
     prost::Message,
+    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 /// A marker that designates encoding/decoding schemes.
@@ -40,5 +44,25 @@ where
 
     fn decode(data: &[u8]) -> StdResult<T> {
         from_proto_slice(data)
+    }
+}
+
+/// Represents the JSON encoding scheme.
+///
+/// TODO: `Serde` is probably not a good naming, because serde library supports
+/// more encoding schemes than just JSON. But for now I don't have a better idea
+/// on how to name this.
+pub struct Serde;
+
+impl<T> Codec<T> for Serde
+where
+    T: Serialize + DeserializeOwned,
+{
+    fn encode(data: &T) -> StdResult<Vec<u8>> {
+        to_json_vec(data)
+    }
+
+    fn decode(data: &[u8]) -> StdResult<T> {
+        from_json_slice(data)
     }
 }

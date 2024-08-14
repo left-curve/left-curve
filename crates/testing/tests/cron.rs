@@ -3,6 +3,7 @@ use {
     grug_testing::TestBuilder,
     grug_types::{Coin, Coins, Duration, NonZero, Timestamp, Uint128},
     grug_vm_rust::ContractBuilder,
+    std::collections::BTreeMap,
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -119,7 +120,7 @@ fn cronjob_works() -> anyhow::Result<()> {
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite.configure(&accounts["larry"], cfg)?;
+    suite.configure(&accounts["larry"], cfg, BTreeMap::new())?;
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.

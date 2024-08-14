@@ -2,6 +2,7 @@ use {
     crate::{to_json_value, Addr, Binary, Coins, Config, Hash256, Json, StdError, StdResult},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeMap,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -26,11 +27,16 @@ pub struct UnsignedTx {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
-    /// Update the chain-level configurations.
+    /// Update the chain- and app-level configurations.
     ///
     /// Only the `owner` is authorized to do this. If the owner is set to `None`,
     /// no one can update the config.
-    Configure { new_cfg: Config },
+    ///
+    /// For app-level config, setting a value to `Null` means to delete it.
+    Configure {
+        cfg: Config,
+        app_cfgs: BTreeMap<String, Json>,
+    },
     /// Send coins to the given recipient address.
     Transfer { to: Addr, coins: Coins },
     /// Upload a Wasm binary code and store it in the chain's state.
@@ -61,8 +67,8 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn configure(new_cfg: Config) -> Self {
-        Self::Configure { new_cfg }
+    pub fn configure(cfg: Config, app_cfgs: BTreeMap<String, Json>) -> Self {
+        Self::Configure { cfg, app_cfgs }
     }
 
     pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>

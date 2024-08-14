@@ -1,5 +1,7 @@
+use crate::{query_app_config, query_app_configs};
 #[cfg(feature = "abci")]
 use grug_types::from_json_slice;
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -696,7 +698,9 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, block, sender, new_cfg),
+        Message::Configure { cfg, app_cfgs } => {
+            do_configure(&mut storage, block, sender, cfg, app_cfgs)
+        },
         Message::Transfer { to, coins } => {
             do_transfer(vm, storage, gas_tracker, block, sender, to, coins, true)
         },
@@ -765,6 +769,14 @@ where
         QueryRequest::Info {} => {
             let res = query_info(&storage, gas_tracker)?;
             Ok(QueryResponse::Info(res))
+        },
+        QueryRequest::AppConfig { key } => {
+            let res = query_app_config(&storage, gas_tracker, &key)?;
+            Ok(QueryResponse::AppConfig(res))
+        },
+        QueryRequest::AppConfigs { start_after, limit } => {
+            let res = query_app_configs(&storage, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::AppConfigs(res))
         },
         QueryRequest::Balance { address, denom } => {
             let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;

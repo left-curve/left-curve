@@ -25,6 +25,13 @@ pub struct QueryCmd {
 enum SubCmd {
     /// Query the chain's global information
     Info,
+    /// Query a single application-specific configuration.
+    AppConfig { key: String },
+    /// Enumerate all application-specific configurations.
+    AppConfigs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Query an account's balance in a single denom
     Balance {
         /// Account address
@@ -104,6 +111,10 @@ impl QueryCmd {
 
         let req = match self.subcmd {
             SubCmd::Info => QueryRequest::Info {},
+            SubCmd::AppConfig { key } => QueryRequest::AppConfig { key },
+            SubCmd::AppConfigs { start_after, limit } => {
+                QueryRequest::AppConfigs { start_after, limit }
+            },
             SubCmd::Balance { address, denom } => QueryRequest::Balance { address, denom },
             SubCmd::Balances {
                 address,
