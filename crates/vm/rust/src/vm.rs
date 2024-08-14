@@ -54,7 +54,7 @@ impl Vm for RustVm {
         Ok(RustInstance {
             storage,
             querier,
-            wrapper: ContractWrapper::from(code),
+            wrapper: ContractWrapper::from_bytes(code),
         })
     }
 }
@@ -316,6 +316,7 @@ mod tests {
     fn calling_functions(name: &'static str, maybe_error: Option<&str>) -> anyhow::Result<()> {
         let code: Binary = ContractBuilder::new(Box::new(tester::instantiate))
             .build()
+            .to_bytes()
             .into();
 
         let db = Shared::new(MockStorage::new());
