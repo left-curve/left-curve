@@ -4,7 +4,7 @@ use {
     std::{borrow::Cow, fmt},
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct BitArray {
     pub num_bits: usize,
     /// We opt for the stack-allocated `[u8; N]` over heap-allocated `Vec<u8>`.
@@ -29,15 +29,14 @@ impl BitArray {
     }
 
     /// This is useful to get the child node bits from the parent node bits.
-    pub fn extend_one_bit(&self, is_left: bool) -> Self {
-        let mut new = self.clone();
+    pub fn extend_one_bit(mut self, is_left: bool) -> Self {
         // Left child = 0, right child = 1
-        new.push(if is_left {
+        self.push(if is_left {
             0
         } else {
             1
         });
-        new
+        self
     }
 
     pub fn from_bytes(slice: &[u8]) -> Self {

@@ -196,7 +196,7 @@ impl Db for DiskDb {
 
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), &hash256(key), version)?)
+        Ok(MERKLE_TREE.prove(&self.state_commitment(), hash256(key), version)?)
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
@@ -966,9 +966,9 @@ mod tests {
                 _ => unreachable!(),
             };
             assert!(verify_proof(
-                &root_hash,
-                &hash256(key.as_bytes()),
-                value.map(hash256).as_ref(),
+                root_hash,
+                hash256(key.as_bytes()),
+                value.map(hash256),
                 &found_proof,
             )
             .is_ok());

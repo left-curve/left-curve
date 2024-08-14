@@ -1,13 +1,26 @@
 use {
     grug_account::{Credential, PublicKey},
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{to_json_value, Addr, Hash256, Json, Message, Tx, GENESIS_SENDER},
+    grug_types::{to_json_value, Addr, Hash256, Json, Message, StdResult, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
 };
 
-pub type TestAccounts = HashMap<&'static str, TestAccount>;
+/// Describes an account that is capable of signing transactions.
+pub trait Signer {
+    /// Return the signer's address.
+    fn address(&self) -> Addr;
+
+    /// Given a list of messages and relevant metadata, produce a signed transaction.
+    fn sign_transaction(
+        &self,
+        msgs: Vec<Message>,
+        gas_limit: u64,
+        chain_id: &str,
+        sequence: u32,
+    ) -> StdResult<Tx>;
+}
 
 pub struct TestAccount {
     pub address: Addr,
@@ -16,8 +29,8 @@ pub struct TestAccount {
 }
 
 impl TestAccount {
-    pub fn new_random(code_hash: &Hash256, salt: &[u8]) -> Self {
-        let address = Addr::compute(&GENESIS_SENDER, code_hash, salt);
+    pub fn new_random(code_hash: Hash256, salt: &[u8]) -> Self {
+        let address = Addr::compute(GENESIS_SENDER, code_hash, salt);
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
             .verifying_key()
@@ -29,18 +42,24 @@ impl TestAccount {
 
         Self { address, sk, pk }
     }
+}
 
-    pub fn sign_transaction(
+impl Signer for TestAccount {
+    fn address(&self) -> Addr {
+        self.address
+    }
+
+    fn sign_transaction(
         &self,
         msgs: Vec<Message>,
         gas_limit: u64,
         chain_id: &str,
         sequence: u32,
-    ) -> anyhow::Result<Tx> {
+    ) -> StdResult<Tx> {
         let sign_bytes = Identity256::from(grug_account::make_sign_bytes(
             sha2_256,
             &msgs,
-            &self.address,
+            self.address,
             chain_id,
             sequence,
         )?);
@@ -53,7 +72,7 @@ impl TestAccount {
         })?;
 
         Ok(Tx {
-            sender: self.address.clone(),
+            sender: self.address,
             gas_limit,
             msgs,
             data: Json::Null,
@@ -61,3 +80,5 @@ impl TestAccount {
         })
     }
 }
+
+pub type TestAccounts = HashMap<&'static str, TestAccount>;

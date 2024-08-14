@@ -33,20 +33,21 @@ pub struct ContractWrapper {
     index: usize,
 }
 
-impl<T> From<T> for ContractWrapper
-where
-    T: AsRef<[u8]>,
-{
-    fn from(bytes: T) -> Self {
+impl ContractWrapper {
+    pub fn from_bytes(bytes: &[u8]) -> Self {
         Self {
             index: usize::from_le_bytes(bytes.as_ref().try_into().unwrap()),
         }
+    }
+
+    pub fn to_bytes(&self) -> [u8; usize::BITS as usize / 8] {
+        self.index.to_le_bytes()
     }
 }
 
 impl From<ContractWrapper> for Binary {
     fn from(wrapper: ContractWrapper) -> Self {
-        wrapper.index.to_le_bytes().into()
+        wrapper.to_bytes().into()
     }
 }
 

@@ -13,7 +13,7 @@ pub type Hash160 = Hash<20>;
 
 pub type Hash256 = Hash<32>;
 
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash<const N: usize>(pub(crate) [u8; N]);
 
 forward_ref_partial_eq!(Hash160, Hash160);

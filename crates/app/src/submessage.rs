@@ -51,8 +51,8 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            block.clone(),
-            sender.clone(),
+            block,
+            sender,
             submsg.msg,
         );
 
@@ -66,8 +66,8 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    block.clone(),
-                    sender.clone(),
+                    block,
+                    sender,
                     &payload,
                     &GenericResult::Ok(submsg_events),
                 )?);
@@ -79,8 +79,8 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    block.clone(),
-                    sender.clone(),
+                    block,
+                    sender,
                     &payload,
                     &GenericResult::Err(err.to_string()),
                 )?);

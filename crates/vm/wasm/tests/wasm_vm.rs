@@ -40,19 +40,19 @@ fn bank_transfers() -> anyhow::Result<()> {
     // Sender sends 70 ugrug to the receiver across multiple messages
     let outcome = suite.send_messages_with_gas(&accounts["sender"], 2_500_000, vec![
         Message::Transfer {
-            to: accounts["receiver"].address.clone(),
+            to: accounts["receiver"].address,
             coins: Coins::one(DENOM, NonZero::new(10_u128)),
         },
         Message::Transfer {
-            to: accounts["receiver"].address.clone(),
+            to: accounts["receiver"].address,
             coins: Coins::one(DENOM, NonZero::new(15_u128)),
         },
         Message::Transfer {
-            to: accounts["receiver"].address.clone(),
+            to: accounts["receiver"].address,
             coins: Coins::one(DENOM, NonZero::new(20_u128)),
         },
         Message::Transfer {
-            to: accounts["receiver"].address.clone(),
+            to: accounts["receiver"].address,
             coins: Coins::one(DENOM, NonZero::new(25_u128)),
         },
     ])?;
@@ -85,9 +85,9 @@ fn bank_transfers() -> anyhow::Result<()> {
             },
         )
         .should_succeed_and_equal(BTreeMap::from([
-            (accounts["owner"].address.clone(), fee),
-            (accounts["sender"].address.clone(), sender_balance_after),
-            (accounts["receiver"].address.clone(), Uint256::from(70_u128)),
+            (accounts["owner"].address, fee),
+            (accounts["sender"].address, sender_balance_after),
+            (accounts["receiver"].address, Uint256::from(70_u128)),
         ]));
 
     Ok(())
@@ -112,7 +112,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
     // say that the error has to be one of the two. Therefore, we simply ensure
     // the error message contains the word "gas".
     let outcome = suite.send_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
-        to: accounts["receiver"].address.clone(),
+        to: accounts["receiver"].address,
         coins: Coins::one(DENOM, NonZero::new(10_u128)),
     })?;
 
@@ -194,7 +194,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart::<_, Empty>(tester.clone(), &grug_tester::QueryMsg::ForceWrite {
+        .query_wasm_smart::<_, Empty>(tester, &grug_tester::QueryMsg::ForceWrite {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })

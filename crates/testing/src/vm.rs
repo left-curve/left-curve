@@ -24,6 +24,7 @@ impl TestVm for RustVm {
             .with_query(Box::new(grug_account::query))
             .with_authenticate(Box::new(grug_account::authenticate))
             .build()
+            .to_bytes()
             .into()
     }
 
@@ -34,6 +35,7 @@ impl TestVm for RustVm {
             .with_bank_execute(Box::new(grug_bank::bank_execute))
             .with_bank_query(Box::new(grug_bank::bank_query))
             .build()
+            .to_bytes()
             .into()
     }
 
@@ -44,6 +46,7 @@ impl TestVm for RustVm {
             .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
             .with_finalize_fee(Box::new(grug_taxman::finalize_fee))
             .build()
+            .to_bytes()
             .into()
     }
 }

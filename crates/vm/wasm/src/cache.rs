@@ -18,7 +18,7 @@ pub fn new_cacher(capacity: usize) ->Box<dyn Cacher> {
 pub trait Cacher: Send {
     fn get_or_build_with(
         &self,
-        code_hash: &Hash256,
+        code_hash: Hash256,
         builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
     ) -> VmResult<(Module, Engine)>;
 
@@ -56,12 +56,12 @@ impl Cacher for Cache {
     /// return the module.
     fn get_or_build_with(
         &self,
-        code_hash: &Hash256,
+        code_hash: Hash256,
         builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
     ) -> VmResult<(Module, Engine)>
     {
         // Cache hit - simply clone the module and return
-        if let Some(module) = self.inner.write_access().get(code_hash) {
+        if let Some(module) = self.inner.write_access().get(&code_hash) {
             return Ok(module.clone());
         }
 
@@ -70,7 +70,7 @@ impl Cacher for Cache {
         let (module, engine) = builder()?;
         self.inner
             .write_access()
-            .put(code_hash.clone(), (module.clone(), engine.clone()));
+            .put(code_hash, (module.clone(), engine.clone()));
 
         Ok((module, engine))
     }
@@ -103,7 +103,7 @@ impl Default for NoCache {
 impl Cacher for NoCache {
     fn get_or_build_with(
         &self,
-        _code_hash: &Hash256,
+        _code_hash: Hash256,
         builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
     ) -> VmResult<(Module, Engine)>
     {

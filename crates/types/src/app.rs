@@ -90,7 +90,9 @@ pub enum Permission {
     Somebodies(BTreeSet<Addr>),
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
+)]
 #[serde(deny_unknown_fields)]
 pub struct BlockInfo {
     pub height: Uint64,
@@ -99,7 +101,9 @@ pub struct BlockInfo {
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
+)]
 #[serde(deny_unknown_fields)]
 pub struct Account {
     pub code_hash: Hash256,

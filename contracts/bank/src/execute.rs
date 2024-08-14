@@ -16,8 +16,8 @@ where
 
     for (address, coins) in initial_balances {
         for coin in coins {
-            BALANCES_BY_ADDR.save(storage, (&address, &coin.denom), &coin.amount)?;
-            BALANCES_BY_DENOM.save(storage, (&coin.denom, &address), &coin.amount)?;
+            BALANCES_BY_ADDR.save(storage, (address, &coin.denom), &coin.amount)?;
+            BALANCES_BY_DENOM.save(storage, (&coin.denom, address), &coin.amount)?;
             accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
         }
     }
@@ -54,7 +54,7 @@ fn accumulate_supply(
 /// Apparently, this is not intended for using in production.
 pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint256) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
-    increase_balance(ctx.storage, &to, &denom, amount)?;
+    increase_balance(ctx.storage, to, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "mint")
@@ -76,7 +76,7 @@ pub fn burn(
     amount: Uint256,
 ) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
-    decrease_balance(ctx.storage, &from, &denom, amount)?;
+    decrease_balance(ctx.storage, from, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "burn")
@@ -100,8 +100,8 @@ pub fn force_transfer(
         "you don't have the right, O you don't have the right"
     );
 
-    decrease_balance(ctx.storage, &from, &denom, amount)?;
-    increase_balance(ctx.storage, &to, &denom, amount)?;
+    decrease_balance(ctx.storage, from, &denom, amount)?;
+    increase_balance(ctx.storage, to, &denom, amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "force_transfer")
@@ -114,8 +114,8 @@ pub fn force_transfer(
 /// Transfer tokens from one account to another.
 pub fn transfer(
     storage: &mut dyn Storage,
-    from: &Addr,
-    to: &Addr,
+    from: Addr,
+    to: Addr,
     coins: &Coins,
 ) -> StdResult<Response> {
     for coin in coins {
@@ -165,7 +165,7 @@ fn decrease_supply(
 /// Return the balance value after the increase.
 fn increase_balance(
     storage: &mut dyn Storage,
-    address: &Addr,
+    address: Addr,
     denom: &str,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
@@ -181,7 +181,7 @@ fn increase_balance(
 /// Return the balance value after the decrease.
 fn decrease_balance(
     storage: &mut dyn Storage,
-    address: &Addr,
+    address: Addr,
     denom: &str,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
