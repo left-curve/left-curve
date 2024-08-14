@@ -7,7 +7,7 @@ use {
         to_json_vec, Addr, BlockInfo, Context, Empty, GenericResult, Hash, MockStorage, Timestamp,
         Uint64,
     },
-    grug_vm_wasm::WasmVm,
+    grug_vm_wasm::{new_cacher, WasmVm},
     std::time::Duration,
 };
 
@@ -26,7 +26,7 @@ static BENCHMARKER_CODE: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
 fn looping(c: &mut Criterion) {
     // Share one `WasmVm` across all benches, which caches the module, so we
     // don't need to rebuild it every time.
-    let mut vm = WasmVm::new(100);
+    let mut vm = WasmVm::new(new_cacher(100));
 
     for iterations in [200_000, 400_000, 600_000, 800_000, 1_000_000] {
         // The `criterion` library only benchmarks the time consumption, however

@@ -7,6 +7,30 @@ use {
     wasmer::{Engine, Module},
 };
 
+pub fn new_cacher(capacity: usize) ->Box<dyn Cacher> {
+    if let Some(x) = NonZeroUsize::new(capacity) {
+        return Box::new(Cache::new(x));
+    }
+    Box::new(NoCache::default())
+}
+
+
+pub trait Cacher: Send {
+    fn get_or_build_with(
+        &self,
+        code_hash: &Hash256,
+        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
+    ) -> VmResult<(Module, Engine)>;
+
+    fn clone_box(&self) -> Box<dyn Cacher>;
+}
+
+impl Clone for Box<dyn Cacher> {
+    fn clone(&self) -> Box<dyn Cacher> {
+        self.clone_box()
+    }
+}
+
 /// An in-memory cache for wasm modules, so that they don't need to be re-built
 /// every time the same contract is called.
 #[derive(Clone)]
@@ -24,17 +48,17 @@ impl Cache {
             inner: Shared::new(CLruCache::new(capacity)),
         }
     }
+}
 
+impl Cacher for Cache {
     /// Attempt to get a cached module by hash. If not found, build the module
     /// using the given method, insert the built module into the cache, and
     /// return the module.
-    pub fn get_or_build_with<B>(
+    fn get_or_build_with(
         &self,
         code_hash: &Hash256,
-        builder: B,
+        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
     ) -> VmResult<(Module, Engine)>
-    where
-        B: FnOnce() -> VmResult<(Module, Engine)>,
     {
         // Cache hit - simply clone the module and return
         if let Some(module) = self.inner.write_access().get(code_hash) {
@@ -49,5 +73,45 @@ impl Cache {
             .put(code_hash.clone(), (module.clone(), engine.clone()));
 
         Ok((module, engine))
+    }
+
+    fn clone_box(&self) -> Box<dyn Cacher> {
+        Box::new(self.clone())
+    }
+}
+
+/// It stores nothing, so wasm modules will be re-built
+/// every time the same contract is called.
+#[derive(Clone)]
+pub struct NoCache {}
+
+impl NoCache {
+    /// Create a NoCache
+    pub fn new() -> Self {
+        Self{}
+    }
+
+}
+
+impl Default for NoCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
+impl Cacher for NoCache {
+    fn get_or_build_with(
+        &self,
+        _code_hash: &Hash256,
+        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
+    ) -> VmResult<(Module, Engine)>
+    {
+       let (module, engine)  = builder()?;
+       Ok((module, engine))
+    }
+
+    fn clone_box(&self) -> Box<dyn Cacher> {
+        Box::new(self.clone())
     }
 }

@@ -4,14 +4,15 @@ use {
         db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
+        write_to_memory, Environment, Gatekeeper, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{to_borsh_vec, Context, Hash256},
-    std::{num::NonZeroUsize, sync::Arc},
+    std::sync::Arc,
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
+use crate::cache::Cacher;
 
 /// Gas cost per operation
 ///
@@ -22,19 +23,19 @@ const GAS_PER_OPERATION: u64 = 1;
 
 #[derive(Clone)]
 pub struct WasmVm {
-    cache: Cache,
+    cache: Box<dyn Cacher>,
 }
 
 impl WasmVm {
-    pub fn new(cache_capacity: usize) -> Self {
-        // TODO: handle the case where cache capacity is zero (which means not to use a cache)
+    pub fn new(cache: Box<dyn Cacher>) -> Self {
         Self {
-            cache: Cache::new(NonZeroUsize::new(cache_capacity).unwrap()),
+            cache,
         }
     }
 }
 
-impl Vm for WasmVm {
+impl Vm for WasmVm
+    {
     type Error = VmError;
     type Instance = WasmInstance;
 
@@ -49,7 +50,8 @@ impl Vm for WasmVm {
     ) -> VmResult<WasmInstance> {
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
-        let (module, engine) = self.cache.get_or_build_with(code_hash, || {
+        let owned_code = code.to_owned();
+        let (module, engine) = self.cache.get_or_build_with(code_hash, Box::new(|| {
             let mut compiler = Singlepass::new();
 
             // Set up the gas metering middleware.
@@ -74,10 +76,10 @@ impl Vm for WasmVm {
             compiler.canonicalize_nans(true);
 
             let engine = Engine::from(compiler);
-            let module = Module::new(&engine, code)?;
+            let module = Module::new(&engine, owned_code)?;
 
             Ok((module, engine))
-        })?;
+        }))?;
 
         // Compute the amount of gas left for this call. This will be used as
         // the initial points in the Wasmer gas meter.
@@ -163,7 +165,8 @@ pub struct WasmInstance {
     fe: FunctionEnv<Environment>,
 }
 
-impl Instance for WasmInstance {
+impl Instance for WasmInstance
+    {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {

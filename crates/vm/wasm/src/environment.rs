@@ -45,9 +45,11 @@ pub struct Environment {
 // cosmwasm-vm does the same:
 // https://github.com/CosmWasm/cosmwasm/blob/v2.0.3/packages/vm/src/environment.rs#L120-L122
 // TODO: need to think about whether this is safe
-unsafe impl Send for Environment {}
+unsafe impl Send for Environment 
+{}
 
-impl Environment {
+impl Environment
+    {
     pub fn new(
         storage: StorageProvider,
         storage_readonly: bool,

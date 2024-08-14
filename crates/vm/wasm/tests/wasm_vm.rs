@@ -4,7 +4,7 @@ use {
         to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
         Udec128, Uint256,
     },
-    grug_vm_wasm::{VmError, WasmVm},
+    grug_vm_wasm::{new_cacher, VmError, WasmVm},
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
 };
 
@@ -19,7 +19,7 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 
 #[test]
 fn bank_transfers() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM, NonZero::new(300_000_u128)))?
         .add_account("receiver", Coins::new())?
@@ -95,7 +95,7 @@ fn bank_transfers() -> anyhow::Result<()> {
 
 #[test]
 fn gas_limit_too_low() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM, NonZero::new(200_000_u128)))?
         .add_account("receiver", Coins::new())?
@@ -136,7 +136,7 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
 
 #[test]
 fn infinite_loop() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
         .set_owner("owner")?
@@ -166,7 +166,7 @@ fn infinite_loop() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
         .set_owner("owner")?
