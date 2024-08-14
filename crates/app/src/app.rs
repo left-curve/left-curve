@@ -698,9 +698,10 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { cfg, app_cfgs } => {
-            do_configure(&mut storage, block, sender, cfg, app_cfgs)
-        },
+        Message::Configure {
+            updates,
+            app_updates,
+        } => do_configure(&mut storage, block, sender, updates, app_updates),
         Message::Transfer { to, coins } => {
             do_transfer(vm, storage, gas_tracker, block, sender, to, coins, true)
         },

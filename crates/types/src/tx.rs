@@ -1,5 +1,7 @@
 use {
-    crate::{to_json_value, Addr, Binary, Coins, Config, Hash256, Json, StdError, StdResult},
+    crate::{
+        to_json_value, Addr, Binary, Coins, ConfigUpdates, Hash256, Json, Op, StdError, StdResult,
+    },
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
@@ -29,13 +31,10 @@ pub struct UnsignedTx {
 pub enum Message {
     /// Update the chain- and app-level configurations.
     ///
-    /// Only the `owner` is authorized to do this. If the owner is set to `None`,
-    /// no one can update the config.
-    ///
-    /// For app-level config, setting a value to `Null` means to delete it.
+    /// Only the `owner` is authorized to do this.
     Configure {
-        cfg: Config,
-        app_cfgs: BTreeMap<String, Json>,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Op<Json>>,
     },
     /// Send coins to the given recipient address.
     Transfer { to: Addr, coins: Coins },
@@ -67,8 +66,11 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn configure(cfg: Config, app_cfgs: BTreeMap<String, Json>) -> Self {
-        Self::Configure { cfg, app_cfgs }
+    pub fn configure(updates: ConfigUpdates, app_updates: BTreeMap<String, Op<Json>>) -> Self {
+        Self::Configure {
+            updates,
+            app_updates,
+        }
     }
 
     pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>

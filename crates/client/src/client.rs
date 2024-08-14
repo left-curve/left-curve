@@ -5,8 +5,8 @@ use {
     grug_jmt::Proof,
     grug_types::{
         from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
-        Binary, Coin, Coins, Config, GenericResult, Hash256, InfoResponse, Json, Message, Outcome,
-        QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
+        Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
+        Op, Outcome, QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -438,12 +438,12 @@ impl Client {
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
     pub async fn configure(
         &self,
-        cfg: Config,
-        app_cfgs: BTreeMap<String, Json>,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Op<Json>>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::configure(cfg, app_cfgs);
+        let msg = Message::configure(updates, app_updates);
         self.send_message(msg, gas_opt, sign_opt).await
     }
 

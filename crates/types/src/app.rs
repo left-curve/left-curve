@@ -62,6 +62,21 @@ pub struct Config {
     pub permissions: Permissions,
 }
 
+/// Set of updates to be made to the config.
+///
+/// A field being `Some` means it is to be updated to be the given value;
+/// it being `None` means it is not to be updated.
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ConfigUpdates {
+    pub owner: Option<Addr>,
+    pub bank: Option<Addr>,
+    pub taxman: Option<Addr>,
+    pub cronjobs: Option<BTreeMap<Addr, Duration>>,
+    pub permissions: Option<Permissions>,
+}
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Permissions {
