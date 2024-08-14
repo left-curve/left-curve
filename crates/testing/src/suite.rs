@@ -7,7 +7,7 @@ use {
     grug_types::{
         from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins,
         ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
-        NumberConst, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
+        NumberConst, Op, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -137,7 +137,7 @@ where
         signer: &dyn Signer,
         gas_limit: u64,
         updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Json>,
+        app_updates: BTreeMap<String, Op<Json>>,
     ) -> anyhow::Result<()> {
         self.send_message_with_gas(signer, gas_limit, Message::configure(updates, app_updates))?
             .result
@@ -398,7 +398,7 @@ impl TestSuite<RustVm> {
         &mut self,
         signer: &dyn Signer,
         updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Json>,
+        app_updates: BTreeMap<String, Op<Json>>,
     ) -> anyhow::Result<()> {
         self.configure_with_gas(signer, u64::MAX, updates, app_updates)
     }

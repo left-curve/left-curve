@@ -7,7 +7,7 @@ use {
     },
     grug_types::{
         hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins,
-        ConfigUpdates, Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx,
+        ConfigUpdates, Context, Event, GenericResult, Hash256, Json, Op, Storage, SubMsgResult, Tx,
         TxOutcome,
     },
     std::collections::BTreeMap,
@@ -20,7 +20,7 @@ pub fn do_configure(
     block: BlockInfo,
     sender: Addr,
     updates: ConfigUpdates,
-    app_updates: BTreeMap<String, Json>,
+    app_updates: BTreeMap<String, Op<Json>>,
 ) -> AppResult<Vec<Event>> {
     match _do_configure(storage, block, sender, updates, app_updates) {
         Ok(event) => {
@@ -43,7 +43,7 @@ fn _do_configure(
     block: BlockInfo,
     sender: Addr,
     updates: ConfigUpdates,
-    app_updates: BTreeMap<String, Json>,
+    app_updates: BTreeMap<String, Op<Json>>,
 ) -> AppResult<Event> {
     let mut cfg = CONFIG.load(storage)?;
 
@@ -89,11 +89,11 @@ fn _do_configure(
     CONFIG.save(storage, &cfg)?;
 
     // Update app configs
-    for (key, value) in app_updates {
-        if value.is_null() {
-            APP_CONFIGS.remove(storage, &key);
-        } else {
+    for (key, op) in app_updates {
+        if let Op::Insert(value) = op {
             APP_CONFIGS.save(storage, &key, &value)?;
+        } else {
+            APP_CONFIGS.remove(storage, &key);
         }
     }
 

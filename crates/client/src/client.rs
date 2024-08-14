@@ -6,7 +6,7 @@ use {
     grug_types::{
         from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
         Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
-        Outcome, QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
+        Op, Outcome, QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -439,7 +439,7 @@ impl Client {
     pub async fn configure(
         &self,
         updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Json>,
+        app_updates: BTreeMap<String, Op<Json>>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
