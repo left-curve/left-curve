@@ -50,9 +50,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     // Save the public key in contract store
     PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
 
-    // Initialize the sequence number to zero
-    SEQUENCE.initialize(ctx.storage)?;
-
     Ok(Response::new())
 }
 
@@ -68,8 +65,13 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
-    let sequence = SEQUENCE.load(ctx.storage)?;
+
+    // Decode the credential, which should contain the sequence and signature.
     let credential: Credential = from_json_value(tx.credential)?;
+
+    // Incrementing the sequence. We expect the transaction to be signed by the
+    // sequence _before_ the incrementing.
+    let (sequence, _) = SEQUENCE.increment(ctx.storage)?;
 
     match ctx.mode {
         // During `CheckTx`, ensure the tx's sequence is equal or greater than
@@ -115,9 +117,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         ctx.api
             .secp256k1_verify(&hash, &credential.signature, &public_key)?;
     }
-
-    // Increment the sequence number
-    SEQUENCE.increment(ctx.storage)?;
 
     Ok(AuthResponse::new()
         .add_attribute("method", "authenticate")
