@@ -17,9 +17,5 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "vitest": "^2.0.5"
-  },
-  "dependencies": {
-    "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/encoding": "workspace:^"
   }
 }

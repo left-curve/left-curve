@@ -1,6 +1,7 @@
-import type { Message, Tx } from "./tx";
+import type { Hex } from "./common";
+import type { Credential, Message } from "./tx";
 
-export type AbstractSigner<T = unknown> = {
-  getKeyId(): Promise<string>;
-  signTx(msgs: Message[], sender: string, chainId: string, accountState: T): Promise<Tx>;
+export type AbstractSigner = {
+  getKeyId: () => Promise<Hex>;
+  signTx: (msgs: Message[], chainId: string, sequence: number) => Promise<Credential>;
 };

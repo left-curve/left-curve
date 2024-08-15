@@ -1,5 +1,6 @@
 import type { Coin } from "./coins";
 import type { Json } from "./common";
+import type { Message } from "./tx";
 
 export type BlockInfo = {
   height: string;
@@ -10,6 +11,16 @@ export type BlockInfo = {
 export type ChainConfig = {
   owner?: string;
   bank: string;
+};
+
+export type SimulateRequest = {
+  sender: string;
+  msgs: Message[];
+};
+
+export type SimulateResponse = {
+  gasLimit: number;
+  gasUsed: number;
 };
 
 export type QueryRequest =

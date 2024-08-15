@@ -1,9 +1,8 @@
-import { Secp256k1, ripemd160 } from "@leftcurve/crypto";
-import { encodeBase64, encodeHex } from "@leftcurve/encoding";
-import { createSignBytes } from "@leftcurve/types";
+import { Secp256k1, ripemd160, sha256 } from "@leftcurve/crypto";
+import { encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
 
 import type { AbstractSigner } from "@leftcurve/types";
-import type { Message, Tx } from "@leftcurve/types";
+import type { Credential, Message } from "@leftcurve/types";
 
 export type WalletEvm = {
   getPublicKey(): Promise<Uint8Array>;
@@ -11,7 +10,7 @@ export type WalletEvm = {
   signBytes(bytes: Uint8Array): Promise<Uint8Array>;
 };
 
-export class WalletEvmSigner implements AbstractSigner<{ sequence: number }> {
+export class WalletEvmSigner implements AbstractSigner {
   #wallet: WalletEvm;
 
   constructor(wallet: WalletEvm) {
@@ -29,21 +28,10 @@ export class WalletEvmSigner implements AbstractSigner<{ sequence: number }> {
     return encodeHex(keyId);
   }
 
-  async signTx(
-    msgs: Message[],
-    sender: string,
-    chainId: string,
-    accountState: { sequence: number },
-  ): Promise<Tx> {
-    const { sequence } = accountState;
-    const tx = createSignBytes(msgs, sender, chainId, sequence);
+  async signTx(msgs: Message[], chainId: string, sequence: number): Promise<Credential> {
+    const tx = sha256(serialize({ messages: msgs, chainId, sequence }));
 
     const signature = await this.#wallet.signBytes(tx);
-
-    return {
-      sender,
-      msgs,
-      credential: encodeBase64(signature),
-    };
+    return { secp256k1: encodeBase64(signature) };
   }
 }

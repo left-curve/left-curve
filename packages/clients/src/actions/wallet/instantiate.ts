@@ -1,15 +1,15 @@
 import { encodeBase64, encodeHex } from "@leftcurve/encoding";
-import {
-  type Account,
-  type AdminOption,
-  type Chain,
-  type Client,
-  type Coin,
-  type Hex,
-  type Json,
-  type Transport,
-  createAddress,
+import type {
+  Account,
+  AdminOption,
+  Chain,
+  Client,
+  Coin,
+  Hex,
+  Json,
+  Transport,
 } from "@leftcurve/types";
+import { createAddress } from "../../account";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type InstantiateParameters = {

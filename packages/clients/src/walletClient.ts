@@ -7,7 +7,10 @@ export type WalletClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = undefined,
-> = Pick<ClientConfig<transport, chain, account>, "batch" | "chain" | "key" | "name" | "transport">;
+> = Pick<
+  ClientConfig<transport, chain, account>,
+  "account" | "batch" | "chain" | "key" | "name" | "transport"
+>;
 
 export type WalletClient<
   transport extends Transport = Transport,

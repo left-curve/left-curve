@@ -1,6 +1,7 @@
 import type { Account, Chain, Client, Hex, Message, Transport } from "@leftcurve/types";
 import { getAccountState } from "../public/getAccountState";
 import { getChainInfo } from "../public/getChainInfo";
+import { simulate } from "../public/simulate";
 
 export type SignAndBroadcastTxParameters = {
   sender: string;
@@ -25,11 +26,10 @@ export async function signAndBroadcastTx<
     chainId = response.chainId;
   }
 
-  const accountState = await getAccountState(client, { address: sender }).catch(() => ({
-    sequence: 0,
-  }));
+  const { sequence } = await getAccountState(client, { address: sender });
 
-  const { credential, data } = await client.account.signTx(msgs, sender, chainId, accountState);
-  // TODO: get gas limit from chain
-  return await client.broadcast({ sender, credential, data, msgs, gasLimit: 10_000_000 });
+  const { credential, data } = await client.account.signTx(msgs, chainId, sequence || 0);
+  const { gasLimit } = await simulate(client, { simulate: { sender, msgs } });
+
+  return await client.broadcast({ sender, credential, data, msgs, gasLimit });
 }

@@ -156,34 +156,6 @@ importers:
         specifier: ^3.4.1
         version: 3.4.7
 
-  packages/core:
-    dependencies:
-      '@cosmjs/tendermint-rpc':
-        specifier: ^0.32.4
-        version: 0.32.4
-      '@leftcurve/clients':
-        specifier: workspace:^
-        version: link:../clients
-      '@leftcurve/crypto':
-        specifier: workspace:^
-        version: link:../crypto
-      '@leftcurve/signers':
-        specifier: workspace:^
-        version: link:../signers
-      eventemitter3:
-        specifier: ^5.0.1
-        version: 5.0.1
-      zustand:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/react@18.3.3)(react@18.3.1)
-    devDependencies:
-      '@leftcurve/config':
-        specifier: workspace:^
-        version: link:../config
-      vitest:
-        specifier: ^2.0.5
-        version: 2.0.5(@types/node@20.14.14)(terser@5.31.5)
-
   packages/crypto:
     dependencies:
       '@noble/curves':
@@ -221,9 +193,6 @@ importers:
       '@leftcurve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/types':
-        specifier: workspace:^
-        version: link:../types
       vitest:
         specifier: ^2.0.5
         version: 2.0.5(@types/node@20.14.14)(terser@5.31.5)
@@ -251,13 +220,6 @@ importers:
         version: 2.0.5(@types/node@20.14.14)(terser@5.31.5)
 
   packages/types:
-    dependencies:
-      '@leftcurve/crypto':
-        specifier: workspace:^
-        version: link:../crypto
-      '@leftcurve/encoding':
-        specifier: workspace:^
-        version: link:../encoding
     devDependencies:
       '@leftcurve/config':
         specifier: workspace:^
@@ -3482,9 +3444,6 @@ packages:
   eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
 
-  eventemitter3@5.0.1:
-    resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
-
   events@3.3.0:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
@@ -6192,11 +6151,6 @@ packages:
     resolution: {integrity: sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg==}
     engines: {node: '>= 0.4'}
 
-  use-sync-external-store@1.2.0:
-    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
@@ -6472,21 +6426,6 @@ packages:
   yocto-queue@1.1.1:
     resolution: {integrity: sha512-b4JR1PFR10y1mKjhHY9LaGo6tmrgjit7hxVIeAmyMw3jegXR4dhYqLaQF5zMXZxY7tLpMyJeLjr1C4rLmkVe8g==}
     engines: {node: '>=12.20'}
-
-  zustand@4.5.4:
-    resolution: {integrity: sha512-/BPMyLKJPtFEvVL0E9E9BTUM63MNyhPGlvxk1XjrfWTUlV+BR8jufjsovHzrtR6YNcBEcL7cMHovL1n9xHawEg==}
-    engines: {node: '>=12.7.0'}
-    peerDependencies:
-      '@types/react': '>=16.8'
-      immer: '>=9.0.6'
-      react: '>=16.8'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      immer:
-        optional: true
-      react:
-        optional: true
 
 snapshots:
 
@@ -10169,8 +10108,6 @@ snapshots:
 
   eventemitter3@4.0.7: {}
 
-  eventemitter3@5.0.1: {}
-
   events@3.3.0: {}
 
   evp_bytestokey@1.0.3:
@@ -13211,10 +13148,6 @@ snapshots:
       punycode: 1.4.1
       qs: 6.13.0
 
-  use-sync-external-store@1.2.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   util-deprecate@1.0.2: {}
 
   util@0.12.5:
@@ -13503,10 +13436,3 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yocto-queue@1.1.1: {}
-
-  zustand@4.5.4(@types/react@18.3.3)(react@18.3.1):
-    dependencies:
-      use-sync-external-store: 1.2.0(react@18.3.1)
-    optionalDependencies:
-      '@types/react': 18.3.3
-      react: 18.3.1

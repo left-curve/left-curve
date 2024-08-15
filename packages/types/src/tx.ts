@@ -1,11 +1,11 @@
 import type { Coin } from "./coins";
 import type { Base64, Hex, Json } from "./common";
 
-export type Credential = { secp256k1: string } | { ed25519: string } | { passkey: unknown };
+export type Credential = { secp256k1: Base64 } | { ed25519: Base64 } | { passkey: Base64 };
 
 export type Metadata = {
   username: string;
-  keyId: string;
+  keyId: Hex;
   sequence: number;
 };
 
@@ -17,10 +17,12 @@ export type Tx = {
   data: Metadata;
 };
 
-export type UnsignedTx = Pick<Tx, "sender" | "msgs" | "gasLimit"> & {
+export type CreateAccounTx = Pick<Tx, "sender" | "msgs" | "gasLimit"> & {
   credential: null;
   data: Json;
 };
+
+export type UnsignedTx = Pick<Tx, "sender" | "msgs">;
 
 // biome-ignore format: biome's style of formatting union types is ugly
 export type Message = {

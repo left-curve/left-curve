@@ -1,9 +1,8 @@
-import { requestWebAuthnSignature } from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
-import { createSignBytes } from "@leftcurve/types";
+import { requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
+import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
 
-import type { AbstractSigner } from "@leftcurve/types";
-import type { Message, Tx } from "@leftcurve/types";
+import type { AbstractSigner, Credential, Json } from "@leftcurve/types";
+import type { Message } from "@leftcurve/types";
 
 export class WebauthnSigner implements AbstractSigner {
   async getKeyId(): Promise<string> {
@@ -15,14 +14,8 @@ export class WebauthnSigner implements AbstractSigner {
     return credentialId;
   }
 
-  async signTx(
-    msgs: Message[],
-    sender: string,
-    chainId: string,
-    accountState: { sequence: number },
-  ): Promise<Tx> {
-    const { sequence } = accountState;
-    const tx = createSignBytes(msgs, sender, chainId, sequence);
+  async signTx(msgs: Message[], chainId: string, sequence: number): Promise<Credential> {
+    const tx = sha256(serialize({ messages: msgs, chainId, sequence }));
 
     const { signature, webauthn } = await requestWebAuthnSignature({
       challenge: tx,
@@ -37,10 +30,6 @@ export class WebauthnSigner implements AbstractSigner {
       }),
     );
 
-    return {
-      sender,
-      msgs,
-      credential: encodeBase64(credential),
-    };
+    return { passkey: encodeBase64(credential) };
   }
 }

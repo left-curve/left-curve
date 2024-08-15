@@ -1,9 +1,4 @@
-export type {
-  AccountFactoryExecuteMsg,
-  AccountStateResponse,
-  MsgRegisterAccount,
-  PublicKey,
-} from "./account";
+export type { AccountStateResponse } from "./account";
 
 export type {
   AccountResponse,
@@ -25,6 +20,8 @@ export type {
   QueryWasmSmartRequest,
   WasmRawResponse,
   WasmSmartResponse,
+  SimulateRequest,
+  SimulateResponse,
 } from "./queries";
 
 export type {
@@ -41,6 +38,7 @@ export type {
   AdminOption,
   AdminOptionKind,
   UnsignedTx,
+  CreateAccounTx,
 } from "./tx";
 
 export type {
@@ -70,7 +68,7 @@ export type {
 
 export type { Chain } from "./chain";
 
-export type { Account } from "./account";
+export type { Account, Address } from "./account";
 
 export type { ClientConfig, Client, ClientBase, ClientExtend } from "./client";
 
@@ -79,11 +77,5 @@ export type { Json, Hex, Base64 } from "./common";
 export type { AbstractSigner } from "./signer";
 
 export type { Coin } from "./coins";
-
-export { verifyProof, verifyMembershipProof, verifyNonMembershipProof } from "./proof";
-
-export { createSignBytes } from "./account";
-
-export { createAddress, createSalt } from "./address";
 
 export { UrlRequiredError } from "./errors/transports";

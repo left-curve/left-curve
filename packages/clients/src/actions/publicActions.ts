@@ -50,6 +50,8 @@ import {
   createAccount,
 } from "./public/createAccount";
 
+import { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
+
 export type PublicActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
@@ -72,6 +74,7 @@ export type PublicActions<
     args: QueryWasmSmartParameters,
   ) => QueryWasmSmartReturnType<value>;
   createAccount: (args: CreateAccountParameters) => CreateAccountReturnType;
+  simulate: (args: SimulateParameters) => SimulateReturnType;
 };
 
 export function publicActions<
@@ -91,5 +94,6 @@ export function publicActions<
     queryWasmRaw: (args) => queryWasmRaw(client, args),
     queryWasmSmart: (args) => queryWasmSmart(client, args),
     createAccount: (args) => createAccount(client, args),
+    simulate: (args) => simulate(client, args),
   };
 }

@@ -1,10 +1,10 @@
 import { encodeBase64, encodeHex } from "@leftcurve/encoding";
-import type { Account, Chain, Client, Hex, PublicKey, Transport } from "@leftcurve/types";
+import type { Account, Chain, Client, Credential, Hex, Transport } from "@leftcurve/types";
 
 export type CreateAccountParameters = {
   username: string;
   keyId: Hex;
-  pubKey: PublicKey;
+  pubKey: Credential;
   accountType: "spot" | "margin";
 };
 

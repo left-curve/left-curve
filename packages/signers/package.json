@@ -29,8 +29,9 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@leftcurve/types": "workspace:^",
     "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/encoding": "workspace:^"
+    "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@noble/hashes": "^1.4.0"
   }
 }

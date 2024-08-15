@@ -1,7 +1,14 @@
 import { Comet38Client, HttpBatchClient, HttpClient } from "@cosmjs/tendermint-rpc";
 import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import { serialize } from "@leftcurve/encoding";
-import { type Hex, type Transport, type Tx, UrlRequiredError } from "@leftcurve/types";
+import {
+  type Hex,
+  type Json,
+  type Transport,
+  type Tx,
+  type UnsignedTx,
+  UrlRequiredError,
+} from "@leftcurve/types";
 import { createTransport } from "./createTransport";
 
 export type HttpTransportConfig = {
@@ -64,9 +71,9 @@ export function http(url?: string | undefined, config: HttpTransportConfig = {})
       );
     }
 
-    async function broadcast(tx: Tx): Promise<Hex> {
+    async function broadcast(tx: Tx | UnsignedTx): Promise<Hex> {
       const { code, codespace, log, hash } = await cometClient.broadcastTxSync({
-        tx: serialize(tx),
+        tx: serialize(tx as Json),
       });
       if (code === 0) return hash;
       throw new Error(

@@ -48,6 +48,8 @@ export {
   createAccount,
 } from "./public/createAccount";
 
+export { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
+
 export type { Account, Chain, Client, Transport } from "@leftcurve/types";
 
 export { type ExecuteParameters, type ExecuteReturnType, execute } from "./wallet/execute";
