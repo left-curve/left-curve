@@ -7,4 +7,4 @@ use {
 pub const PUBLIC_KEY: Item<PublicKey> = Item::new("pk");
 
 /// The account's sequence number, also known as "nonce" in Ethereum.
-pub const SEQUENCE: Counter<u32> = Counter::new("seq");
+pub const SEQUENCE: Counter<u32> = Counter::new("seq", 0, 1);
