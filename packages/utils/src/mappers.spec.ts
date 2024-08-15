@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { recursiveTransform } from "./mappers";
 import { camelToSnake, snakeToCamel } from "./strings";
 
-import type { Payload } from "./mappers";
-
 describe("recursiveTransform", () => {
   it("transforms keys in objects from camelCase to snake_case", () => {
     const payload = {
@@ -32,7 +30,7 @@ describe("recursiveTransform", () => {
   it("transforms elements in arrays", () => {
     const payload = [{ someKey: "value" }, { anotherKey: "anotherValue" }];
     const expected = [{ some_key: "value" }, { another_key: "anotherValue" }];
-    expect(recursiveTransform(payload as unknown as Payload, camelToSnake)).toEqual(expected);
+    expect(recursiveTransform(payload, camelToSnake)).toEqual(expected);
   });
 
   it("handles strings, numbers, and booleans without transformation", () => {

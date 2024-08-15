@@ -1,4 +1,5 @@
 import type { Coin } from "./coins";
+import type { Json } from "./common";
 
 export type BlockInfo = {
   height: string;
@@ -11,29 +12,40 @@ export type ChainConfig = {
   bank: string;
 };
 
-export type QueryRequest = {
-  info: QueryInfoRequest;
-} | {
-  balance: QueryBalanceRequest;
-} | {
-  balances: QueryBalancesRequest;
-} | {
-  supply: QuerySupplyRequest;
-} | {
-  supplies: QuerySuppliesReuest;
-} | {
-  code: QueryCodeRequest;
-} | {
-  codes: QueryCodesRequest;
-} | {
-  account: QueryAccountRequest;
-} | {
-  accounts: QueryAccountsRequest;
-} | {
-  wasmRaw: QueryWasmRawRequest;
-} | {
-  wasmSmart: QueryWasmSmartRequest;
-};
+export type QueryRequest =
+  | {
+      info: QueryInfoRequest;
+    }
+  | {
+      balance: QueryBalanceRequest;
+    }
+  | {
+      balances: QueryBalancesRequest;
+    }
+  | {
+      supply: QuerySupplyRequest;
+    }
+  | {
+      supplies: QuerySuppliesReuest;
+    }
+  | {
+      code: QueryCodeRequest;
+    }
+  | {
+      codes: QueryCodesRequest;
+    }
+  | {
+      account: QueryAccountRequest;
+    }
+  | {
+      accounts: QueryAccountsRequest;
+    }
+  | {
+      wasmRaw: QueryWasmRawRequest;
+    }
+  | {
+      wasmSmart: QueryWasmSmartRequest;
+    };
 
 // The info request is just an empty object (`{}`), but we can't define it that
 // way, because of: https://typescript-eslint.io/rules/ban-types/#:~:text=Avoid%20the%20Object%20and%20%7B%7D%20types
@@ -84,7 +96,7 @@ export type QueryWasmRawRequest = {
 
 export type QueryWasmSmartRequest = {
   contract: string;
-  msg: string;
+  msg: Json;
 };
 
 // biome-ignore format: biome's style of formatting union types is ugly
@@ -93,11 +105,11 @@ export type QueryResponse = {
 } | {
   balance: Coin;
 } | {
-  balances: Coin[];
+  balances: Coin;
 } | {
   supply: Coin;
 } | {
-  supplies: Coin[];
+  supplies: Coin;
 } | {
   code: string;
 } | {

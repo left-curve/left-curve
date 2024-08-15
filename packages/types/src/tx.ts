@@ -1,18 +1,34 @@
 import type { Coin } from "./coins";
+import type { Base64, Hex, Json } from "./common";
+
+export type Credential = { secp256k1: string } | { ed25519: string } | { passkey: unknown };
+
+export type Metadata = {
+  username: string;
+  keyId: string;
+  sequence: number;
+};
 
 export type Tx = {
   sender: string;
   msgs: Message[];
-  credential: string;
+  gasLimit: number;
+  credential: Credential;
+  data: Metadata;
+};
+
+export type UnsignedTx = Pick<Tx, "sender" | "msgs" | "gasLimit"> & {
+  credential: null;
+  data: Json;
 };
 
 // biome-ignore format: biome's style of formatting union types is ugly
 export type Message = {
-	updateConfig: MsgUpdateConfig;
+	configure: MsgUpdateConfig;
   } | {
 	transfer: MsgTransfer;
   } | {
-	storeCode: MsgStoreCode;
+	upload: MsgStoreCode;
   } | {
 	instantiate: MsgInstantiate;
   } | {
@@ -30,29 +46,40 @@ export type MsgUpdateConfig = {
 
 export type MsgTransfer = {
   to: string;
-  coins: Coin[];
+  coins: Coin;
 };
 
 export type MsgStoreCode = {
-  wasmByteCode: string;
+  code: Base64;
 };
 
 export type MsgInstantiate = {
-  codeHash: string;
-  msg: string;
-  salt: string;
-  funds: Coin[];
+  codeHash: Hex;
+  msg: Json;
+  salt: Base64;
+  funds: Coin;
   admin?: string;
 };
 
 export type MsgExecute = {
   contract: string;
-  msg: string;
-  funds: Coin[];
+  msg: Json;
+  funds: Coin;
 };
 
 export type MsgMigrate = {
   contract: string;
-  newCodeHash: string;
-  msg: string;
+  newCodeHash: Hex;
+  msg: Json;
 };
+
+export enum AdminOptionKind {
+  SetToSelf = 0,
+  SetToNone = 1,
+}
+
+export type AdminOption =
+  | string
+  | AdminOptionKind.SetToSelf
+  | AdminOptionKind.SetToNone
+  | undefined;

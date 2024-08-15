@@ -1,4 +1,5 @@
-import { type Payload, camelToSnake, recursiveTransform, snakeToCamel } from "@leftcurve/utils";
+import type { Json } from "@leftcurve/types";
+import { camelToSnake, recursiveTransform, snakeToCamel } from "@leftcurve/utils";
 import { decodeUtf8, encodeUtf8 } from "./utf8";
 
 /**
@@ -7,13 +8,42 @@ import { decodeUtf8, encodeUtf8 } from "./utf8";
  * The payload is first converted to snake_case, encoded to a JSON string, then
  * to UTF8 bytes.
  */
-export function serialize(payload: Payload): Uint8Array {
+export function serialize(payload: Json): Uint8Array {
   return encodeUtf8(JSON.stringify(recursiveTransform(payload, camelToSnake)));
 }
 
 /**
  * Deserialize a JSON string to a payload. The reverse operation of `serialize`.
  */
-export function deserialize<T = Payload>(bytes: Uint8Array): T {
+export function deserialize<T = Json>(bytes: Uint8Array): T {
   return recursiveTransform(JSON.parse(decodeUtf8(bytes)), snakeToCamel) as unknown as T;
+}
+
+/**
+ *  Encodes a string to a Uint8Array with a length prefix.
+ * @param str - The string to encode.
+ * @returns The encoded Uint8Array.
+ */
+
+export function stringToUint8ArrayWithLength(str: string) {
+  const bytesStr = encodeUtf8(str);
+  const bytesLength = numberToUint8Array(bytesStr.length, 4);
+  const result = new Uint8Array(bytesLength.length + bytesStr.length);
+  result.set(bytesLength, 0);
+  result.set(bytesStr, bytesLength.length);
+  return result;
+}
+
+/**
+ * Encodes a number to a Uint8Array with a fixed length.
+ * @param num - The number to encode.
+ * @param length - The number of bytes to encode the number into.
+ * @returns The encoded Uint8Array.
+ */
+export function numberToUint8Array(num: number, length: number) {
+  const array = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    array[i] = (num >> (8 * i)) & 0xff;
+  }
+  return array;
 }

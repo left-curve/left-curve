@@ -1,9 +1,4 @@
-/**
- * Represents either an JSON object, an array, a string, a number, or a boolean.
- * Note that we utilize a recursive type definition here.
- */
-export type Payload = { [key: string]: Payload } | Payload[] | string | number | boolean;
-
+import type { Json } from "@leftcurve/types";
 /**
  * Given a payload, recursively transform the case of the keys.
  *
@@ -19,10 +14,7 @@ export type Payload = { [key: string]: Payload } | Payload[] | string | number |
  * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
  * ```
  */
-export function recursiveTransform(
-  payload: Payload,
-  transformFn: (str: string) => string,
-): Payload {
+export function recursiveTransform(payload: Json, transformFn: (str: string) => string): Json {
   // for strings, numbers, and nulls, there's no key to be transformed
   if (typeof payload !== "object" || payload === null) {
     return payload;
@@ -34,9 +26,9 @@ export function recursiveTransform(
   }
 
   // for objects, we go through each key, transforming it to snake_case
-  const newObj = {} as { [key: string]: Payload };
+  const obj = Object.create({});
   for (const [key, value] of Object.entries(payload)) {
-    newObj[transformFn(key)] = recursiveTransform(value, transformFn);
+    obj[transformFn(key)] = recursiveTransform(value, transformFn);
   }
-  return newObj;
+  return obj;
 }

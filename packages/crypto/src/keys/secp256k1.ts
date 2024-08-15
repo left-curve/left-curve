@@ -72,6 +72,10 @@ export class Secp256k1 implements KeyPair {
     return secp256k1.getPublicKey(this.#privateKey);
   }
 
+  get privateKey() {
+    return this.#privateKey;
+  }
+
   /**
    * Sign a message hash with the private key.
    * @param messageHash - The hash of the message to sign.

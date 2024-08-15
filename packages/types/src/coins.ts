@@ -1,4 +1,1 @@
-export type Coin = {
-  denom: string;
-  amount: string;
-};
+export type Coin = Record<string, string>;
