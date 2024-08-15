@@ -1,4 +1,4 @@
-use crate::{query_app_config, query_app_configs};
+use crate::{query_app_config, query_app_configs, APP_CONFIGS};
 #[cfg(feature = "abci")]
 use grug_types::from_json_slice;
 
@@ -83,6 +83,11 @@ where
         CHAIN_ID.save(&mut buffer, &chain_id)?;
         CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+
+        // Save app configs.
+        for (key, value) in genesis_state.app_configs {
+            APP_CONFIGS.save(&mut buffer, &key, &value)?;
+        }
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {

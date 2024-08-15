@@ -3,9 +3,9 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState,
-        MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
-        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        hash256, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration,
+        GenesisState, Json, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128,
+        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -42,11 +42,13 @@ pub struct TestBuilder<
     TA = Undefined<TestAccounts>,
 > {
     vm: VM,
-    // Basic configs
+    // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
+    // App configs
+    app_configs: BTreeMap<String, Json>,
     // Owner
     owner: OW,
     // Accounts
@@ -99,6 +101,7 @@ where
             chain_id: None,
             genesis_time: None,
             block_time: None,
+            app_configs: BTreeMap::new(),
             owner: Undefined::default(),
             accounts: Undefined::default(),
             balances: BTreeMap::new(),
@@ -155,6 +158,24 @@ where
         self
     }
 
+    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
+    where
+        K: Into<String>,
+        V: Serialize,
+    {
+        let key = key.into();
+        let value = to_json_value(value)?;
+
+        ensure!(
+            !self.app_configs.contains_key(&key),
+            "app config key `{key}` is already set"
+        );
+
+        self.app_configs.insert(key, value);
+
+        Ok(self)
+    }
+
     /// Use a custom code for the bank instead the default implementation
     /// provided by the Grug test suite.
     ///
@@ -200,6 +221,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -261,6 +283,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -306,6 +329,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: Defined::new(accounts),
@@ -375,6 +399,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: CodeOption {
                 code: code.into(),
@@ -408,6 +433,7 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: Defined::new(owner.address),
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -519,7 +545,12 @@ where
             },
         };
 
-        let genesis_state = GenesisState { config, msgs };
+        let genesis_state = GenesisState {
+            config,
+            msgs,
+            app_configs: self.app_configs,
+        };
+
         let suite =
             TestSuite::new_with_vm(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 
