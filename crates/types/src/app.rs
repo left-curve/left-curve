@@ -1,6 +1,7 @@
 use {
     crate::{
-        Addr, Duration, Event, GenericResult, Hash256, Message, NumberConst, Timestamp, Uint64,
+        Addr, Duration, Event, GenericResult, Hash256, Json, Message, NumberConst, Timestamp,
+        Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
@@ -41,7 +42,11 @@ pub const GENESIS_BLOCK_HEIGHT: Uint64 = Uint64::ZERO;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct GenesisState {
+    /// Chain configurations.
     pub config: Config,
+    /// App-specific configurations.
+    pub app_configs: BTreeMap<String, Json>,
+    /// Messages to be executed in order during genesis.
     pub msgs: Vec<Message>,
 }
 
