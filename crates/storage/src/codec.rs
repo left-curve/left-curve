@@ -15,6 +15,8 @@ pub trait Codec<T> {
     fn decode(data: &[u8]) -> StdResult<T>;
 }
 
+// ----------------------------------- borsh -----------------------------------
+
 /// Represents the Borsh encoding scheme.
 pub struct Borsh;
 
@@ -31,6 +33,8 @@ where
     }
 }
 
+// ----------------------------------- proto -----------------------------------
+
 /// Represents the Protobuf encoding scheme.
 pub struct Proto;
 
@@ -46,6 +50,8 @@ where
         from_proto_slice(data)
     }
 }
+
+// -------------------------------- serde json ---------------------------------
 
 /// Represents the JSON encoding scheme.
 ///
@@ -66,6 +72,8 @@ where
         from_json_slice(data)
     }
 }
+
+// ------------------------------------ raw ------------------------------------
 
 /// Represents raw bytes without encoding.
 pub struct Raw;
