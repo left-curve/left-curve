@@ -1,4 +1,4 @@
 {
-    "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
-    "extends": ["@leftcurve/config/biome/common"]
+  "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
+  "extends": ["@leftcurve/config/biome/common"]
 }

@@ -4,10 +4,7 @@
   "private": true,
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
-  "files": [
-    "build",
-    "src"
-  ],
+  "files": ["build", "src"],
   "scripts": {
     "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write src",

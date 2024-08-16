@@ -1,0 +1,11 @@
+{
+  "extends": "@leftcurve/config/ts/react.json",
+  "include": ["src"],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "baseUrl": "src",
+    "paths": {
+      "~/*": ["./*"]
+    }
+  }
+}

@@ -1,21 +1,21 @@
 {
-    "$schema": "https://json.schemastore.org/tsconfig",
-    "extends": "./common.json",
-    "compilerOptions": {
-      "lib": ["dom", "dom.iterable", "esnext"],
-      "module": "esnext",
-      "moduleResolution": "bundler",
-      "target": "es2015",
-      "allowJs": true,
-      "allowSyntheticDefaultImports": true,
-      "esModuleInterop": true,
-      "isolatedModules": true,
-      "jsx": "react-jsx",
-      "noEmit": true,
-      "noFallthroughCasesInSwitch": true,
-      "resolveJsonModule": true,
-      "skipLibCheck": true,
-      "strict": true,
-      "strictNullChecks": true
-    }
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./common.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2015",
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": true
   }
+}

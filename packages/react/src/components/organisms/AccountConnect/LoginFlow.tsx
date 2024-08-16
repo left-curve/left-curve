@@ -6,7 +6,7 @@ import type React from "react";
 import { requestWebAuthnSignature } from "@leftcurve/crypto";
 import { useState } from "react";
 import { Button, Input } from "~/components";
-import { WizardContainer, useWizard } from "~/hooks";
+import { WizardContainer, useWizard } from "~/providers";
 
 interface Props {
   onFinish?: () => void;

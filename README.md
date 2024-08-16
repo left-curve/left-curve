@@ -14,8 +14,8 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 
 | Package                           | Description                                                                                                                                                 |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`applets`](./packages/applets)   | React components, hooks, providers and others that help to build [SuperApp]. It includes a [Storybook] server.                                              |
-| [`clients`](./packages/clients)   | -                                                                                                                                                           |
+| [`react`](./packages/applets)     | React components, hooks, providers and others that help to build [SuperApp]. It includes a [Storybook] server.                                              |
+| [`sdk`](./packages/sdk)           | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
 | [`config`](./packages/config)     | Common configurations for tsconfig, tsup, biome, typedoc and tailwind                                                                                       |
 | [`crypto`](./packages/crypto)     | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
 | [`encoding`](./packages/encoding) | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
@@ -45,6 +45,7 @@ We are grateful to both [Viem] and [Cosmjs] for their open-source contributions 
 
 TBD
 
+[Grug]: https://github.com/left-curve/grug
 [Storybook]: https://storybook.js.org/
 [SuperApp]: ./apps/superapp
 [Hacking.md]: ./HACKING.md

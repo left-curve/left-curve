@@ -1,9 +1,6 @@
 {
-  "name": "@leftcurve/applets",
+  "name": "@leftcurve/react",
   "version": "0.1.0",
-  "private": true,
-  "main": "./build/index.js",
-  "types": "./build/index.d.ts",
   "scripts": {
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",
@@ -11,6 +8,41 @@
     "lint": "pnpm biome check --write ./src",
     "ci": "pnpm biome ci ./src",
     "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
+  "typpings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": ["src, build"],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs",
+      "default": "./build/index.js"
+    },
+    "./components": {
+      "types": "./build/components/index.d.ts",
+      "import": "./build/components/index.mjs",
+      "default": "./build/components/index.js"
+    },
+    "./hooks": {
+      "types": "./build/hooks/index.d.ts",
+      "import": "./build/hooks/index.mjs",
+      "default": "./build/hooks/index.js"
+    },
+    "./providers": {
+      "types": "./build/providers/index.d.ts",
+      "import": "./build/providers/index.mjs",
+      "default": "./build/providers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "components": ["./build/components/index.d.ts"],
+      "hooks": ["./build/hooks/index.d.ts"],
+      "providers": ["./build/providers/index.d.ts"]
+    }
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.3.0",

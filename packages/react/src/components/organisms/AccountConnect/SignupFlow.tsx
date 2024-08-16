@@ -5,7 +5,7 @@ import { getNavigatorOS } from "@leftcurve/utils";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Button, Input } from "~/components";
-import { WizardContainer, useWizard } from "~/hooks";
+import { WizardContainer, useWizard } from "~/providers";
 
 import type React from "react";
 
