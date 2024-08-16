@@ -18,12 +18,12 @@ where
     IK: Key + Clone,
     C: Codec<T>,
 {
-    /// A function that takes a piece of data, and return the index key it
+    /// A function that takes a key-value pair, and return the index key it
     /// should be indexed at.
     indexer: fn(&PK, &T) -> IK,
-    /// Primary key by the _raw_ index key.
+    // Index => _raw_ primary key
     index_map: Map<'a, IK, Vec<u8>, Raw>,
-    /// Data indexed by primary key.
+    // Primary key => data
     primary_map: Map<'a, PK, T, C>,
 }
 
