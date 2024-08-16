@@ -300,7 +300,7 @@ mod tests {
             "foo",
             "foo__name_surname",
         ),
-        id: UniqueIndex::new(|data| data.id, "foo__id"),
+        id: UniqueIndex::new(|_, data| data.id, "foo", "foo__id"),
     });
 
     #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -323,7 +323,7 @@ mod tests {
     struct FooIndexes<'a> {
         pub name: MultiIndex<'a, (u64, u64), String, Foo>,
         pub name_surname: MultiIndex<'a, (u64, u64), (String, String), Foo>,
-        pub id: UniqueIndex<'a, u32, Foo>,
+        pub id: UniqueIndex<'a, (u64, u64), u32, Foo>,
     }
 
     impl<'a> IndexList<(u64, u64), Foo> for FooIndexes<'a> {
@@ -357,7 +357,7 @@ mod tests {
 
         // Load a single data by the index.
         {
-            let val = FOOS.idx.id.load(&storage, 104).unwrap();
+            let val = FOOS.idx.id.load_value(&storage, 104).unwrap();
             assert_eq!(val, Foo::new("bar", "s_fooes", 104));
         }
 
@@ -372,7 +372,7 @@ mod tests {
             let val = FOOS
                 .idx
                 .id
-                .range(&storage, None, None, Order::Ascending)
+                .values(&storage, None, None, Order::Ascending)
                 .map(|val| val.unwrap())
                 .collect::<Vec<_>>();
 
