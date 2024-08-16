@@ -7,7 +7,7 @@ export type Account = {
   username: string;
   computeAddress: (
     username: string,
-    factoryAddr: string,
+    factoryAddr: Address,
     accountTypeCodeHash: string,
   ) => Promise<Address>;
   getKeyId: () => Promise<Hex>;

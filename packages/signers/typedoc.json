@@ -1,9 +1,0 @@
-{
-  "$schema": "https://typedoc.org/schema.json",
-  "extends": [
-    "@leftcurve/config/typedoc/common"
-  ],
-  "entryPoints": [
-    "src/index.ts"
-  ]
-}

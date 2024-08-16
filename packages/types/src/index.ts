@@ -77,5 +77,3 @@ export type { Json, Hex, Base64 } from "./common";
 export type { AbstractSigner } from "./signer";
 
 export type { Coin } from "./coins";
-
-export { UrlRequiredError } from "./errors/transports";

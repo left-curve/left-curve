@@ -1,8 +1,7 @@
 {
   "name": "Leftcurve Grug",
   "entryPoints": [
-    "./packages/clients",
-    "./packages/signers",
+    "./packages/sdk",
     "./packages/crypto",
     "./packages/encoding",
     "./packages/types",

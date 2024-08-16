@@ -1,0 +1,14 @@
+{
+  "name": "@leftcurve/example-nodejs",
+  "private": true,
+  "scripts": {
+    "x": "tsx --"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^"
+  },
+  "dependencies": {
+    "@leftcurve/sdk": "workspace:^",
+    "tsx": "^4.17.0"
+  }
+}
