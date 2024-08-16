@@ -85,7 +85,7 @@ where
             .index_map
             .range_raw(storage, min, max, order)
             .map(|(ik_raw, pk_raw)| {
-                let v_raw = self.primary_map.load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
                 (ik_raw, pk_raw, v_raw)
             });
 
@@ -151,7 +151,7 @@ where
             .index_map
             .range_raw(storage, min, max, order)
             .map(|(ik_raw, pk_raw)| {
-                let v_raw = self.primary_map.load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
                 (ik_raw, v_raw)
             });
 
@@ -174,7 +174,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|(ik_raw, pk_raw)| {
                 let ik = IK::from_slice(&ik_raw)?;
-                let v_raw = self.primary_map.load_raw(storage, &pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
                 let v = PC::decode(&v_raw)?;
                 Ok((ik, v))
             });

@@ -81,7 +81,7 @@ where
                 //
                 // If the indexed map works correctly, the data should always exist,
                 // so we can safely unwrap the `Option` here.
-                let v_raw = self.primary_map.load_raw(storage, pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
                 (ik_raw, pk_raw.to_vec(), v_raw)
             });
 
@@ -150,7 +150,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                self.primary_map.load_raw(storage, pk_raw).unwrap()
+                self.primary_map.may_load_raw(storage, pk_raw).unwrap()
             });
 
         Box::new(iter)
@@ -168,7 +168,7 @@ where
             .range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
-                let v_raw = self.primary_map.load_raw(storage, pk_raw).unwrap();
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
                 C::decode(&v_raw)
             });
 
