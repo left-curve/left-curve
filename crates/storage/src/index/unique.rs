@@ -195,8 +195,7 @@ where
 
         // Ensure that indexes are unique.
         if self.index_map.has(storage, idx.clone()) {
-            // TODO: create a `StdError::DuplicateData` for this?
-            return Err(StdError::generic_err("Violates unique constraint on index"));
+            return Err(StdError::duplicate_data::<IK>(&idx.joined_key()));
         }
 
         self.index_map.save(storage, idx, &pk)
