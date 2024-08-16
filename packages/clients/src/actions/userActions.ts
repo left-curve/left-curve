@@ -1,32 +1,32 @@
 import type { Account, Chain, Client, Transport } from "@leftcurve/types";
 
-import { type ExecuteParameters, type ExecuteReturnType, execute } from "./wallet/execute";
+import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
 
-import { type MigrateParameters, type MigrateReturnType, migrate } from "./wallet/migrate";
+import { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate";
 
-import { type TransferParameters, type TransferReturnType, transfer } from "./wallet/transfer";
+import { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer";
 
-import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./wallet/storeCode";
+import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode";
 
 import {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./wallet/instantiate";
+} from "./user/instantiate";
 
 import {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./wallet/storeCodeAndInstantiate";
+} from "./user/storeCodeAndInstantiate";
 
 import {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./wallet/signAndBroadcastTx";
+} from "./user/signAndBroadcastTx";
 
-export type WalletActions<
+export type UserActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
@@ -42,11 +42,11 @@ export type WalletActions<
   signAndBroadcastTx: (args: SignAndBroadcastTxParameters) => SignAndBroadcastTxReturnType;
 };
 
-export function walletActions<
+export function userActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
->(client: Client<transport, chain, account>): WalletActions<transport, chain, account> {
+>(client: Client<transport, chain, account>): UserActions<transport, chain, account> {
   return {
     execute: (args: ExecuteParameters) => execute<chain, account>(client, args),
     migrate: (args: MigrateParameters) => migrate<chain, account>(client, args),

@@ -10,10 +10,10 @@ import type { Transport } from "./transports";
 export type ClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account,
+  account extends Account | undefined = undefined,
 > = {
   /** The account associated with the client. */
-  account?: account | undefined;
+  account: account;
   /** * Indicates whether to batch requests. */
   batch?: boolean;
   /** The chain to connect to. */
@@ -31,7 +31,7 @@ export type ClientConfig<
 export type ClientBase<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account,
+  account extends Account | undefined = undefined,
 > = {
   account: account;
   batch?: boolean | undefined;
@@ -49,7 +49,7 @@ export type ClientBase<
 export type Client<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account,
+  account extends Account | undefined = undefined,
   extended extends ClientExtend | undefined = ClientExtend | undefined,
 > = ClientBase<transport, chain, account> &
   (extended extends ClientExtend ? extended : unknown) & {

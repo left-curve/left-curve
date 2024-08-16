@@ -13,6 +13,6 @@ export default defineConfig({
   target: "esnext",
   format: ["esm", "cjs"],
   treeshake: "recommended",
-  entry: ["./src/index.ts"],
+  entry: ["src/**"],
   external: [],
 });

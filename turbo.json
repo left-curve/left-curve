@@ -2,10 +2,8 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "tasks": {
-    "test": {
-      "dependsOn": ["build"],
-      "inputs": ["**/*.{ts,tsx,js,jsx}"]
-    },
+    "lint": {},
+    "test": {},
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "build/**"]

@@ -7,7 +7,7 @@
   "scripts": {
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",
-    "dev": "pnpm tsup --watch --silent",
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write ./src",
     "ci": "pnpm biome ci ./src",
     "build": "pnpm tsup --clean"

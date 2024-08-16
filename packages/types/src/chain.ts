@@ -1,3 +1,4 @@
+import type { Json } from "./common";
 import type { NativeCurrency } from "./currency";
 
 /**
@@ -5,9 +6,7 @@ import type { NativeCurrency } from "./currency";
  *
  * @template custom - Custom properties specific to the chain.
  */
-export type Chain<
-  custom extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
-> = {
+export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
    * Block explorers for the chain.
    * This is an optional property.

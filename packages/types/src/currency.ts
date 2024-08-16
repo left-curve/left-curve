@@ -7,7 +7,6 @@ export type WithGasPriceStep<T> = T & {
 };
 
 export interface BaseCurrency {
-  readonly chainId: string;
   readonly symbol: string;
   readonly name: string;
   readonly denom: string;

@@ -1,6 +1,6 @@
 export { createBaseClient } from "./baseClient";
 export { createPublicClient } from "./publicClient";
-export { createWalletClient } from "./walletClient";
+export { createUserClient } from "./userClient";
 
 export { http } from "./transports/http";
 

@@ -9,7 +9,7 @@
     "src"
   ],
   "scripts": {
-    "dev": "pnpm tsup --watch --silent",
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write src",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",

@@ -52,28 +52,28 @@ export { type SimulateParameters, type SimulateReturnType, simulate } from "./pu
 
 export type { Account, Chain, Client, Transport } from "@leftcurve/types";
 
-export { type ExecuteParameters, type ExecuteReturnType, execute } from "./wallet/execute";
+export { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
 
-export { type MigrateParameters, type MigrateReturnType, migrate } from "./wallet/migrate";
+export { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate";
 
-export { type TransferParameters, type TransferReturnType, transfer } from "./wallet/transfer";
+export { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer";
 
-export { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./wallet/storeCode";
+export { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode";
 
 export {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./wallet/instantiate";
+} from "./user/instantiate";
 
 export {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./wallet/storeCodeAndInstantiate";
+} from "./user/storeCodeAndInstantiate";
 
 export {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./wallet/signAndBroadcastTx";
+} from "./user/signAndBroadcastTx";
