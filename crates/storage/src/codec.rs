@@ -66,3 +66,16 @@ where
         from_json_slice(data)
     }
 }
+
+/// Represents raw bytes without encoding.
+pub struct Raw;
+
+impl Codec<Vec<u8>> for Raw {
+    fn encode(data: &Vec<u8>) -> StdResult<Vec<u8>> {
+        Ok(data.clone())
+    }
+
+    fn decode(data: &[u8]) -> StdResult<Vec<u8>> {
+        Ok(data.to_vec())
+    }
+}

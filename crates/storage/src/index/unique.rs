@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Key, Map},
+    crate::{Borsh, Bound, Codec, Index, Key, Map, Raw},
     grug_types::{Order, StdError, StdResult, Storage},
 };
 
@@ -12,28 +12,26 @@ use {
 ///
 /// - In the primary map: (pk_namespace, pk) => value
 /// - in the index map: (idx_namespace, ik) => value
-pub struct UniqueIndex<'a, PK, IK, T, PC = Borsh, IC = Borsh>
+pub struct UniqueIndex<'a, PK, IK, T, C = Borsh>
 where
-    PK: Key + Clone,
+    PK: Key,
     IK: Key + Clone,
-    PC: Codec<T>,
-    IC: Codec<PK>,
+    C: Codec<T>,
 {
     /// A function that takes a piece of data, and return the index key it
     /// should be indexed at.
     indexer: fn(&PK, &T) -> IK,
-    /// Primary key by the index key.
-    index_map: Map<'a, IK, PK, IC>,
+    /// Primary key by the _raw_ index key.
+    index_map: Map<'a, IK, Vec<u8>, Raw>,
     /// Data indexed by primary key.
-    primary_map: Map<'a, PK, T, PC>,
+    primary_map: Map<'a, PK, T, C>,
 }
 
-impl<'a, PK, IK, T, PC, IC> UniqueIndex<'a, PK, IK, T, PC, IC>
+impl<'a, PK, IK, T, C> UniqueIndex<'a, PK, IK, T, C>
 where
-    PK: Key + Clone,
+    PK: Key,
     IK: Key + Clone,
-    PC: Codec<T>,
-    IC: Codec<PK>,
+    C: Codec<T>,
 {
     /// Note: The developer must make sure that `idx_namespace` is not the same
     /// as the primary map namespace.
@@ -50,21 +48,29 @@ where
     }
 
     /// Given an index value, load the corresponding key.
-    pub fn load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<PK> {
-        self.index_map.load(storage, idx)
+    pub fn load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<PK::Output> {
+        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+
+        PK::from_slice(&pk_raw)
     }
 
     /// Given an index value, load the corresponding value.
     pub fn load_value(&self, storage: &dyn Storage, idx: IK) -> StdResult<T> {
-        let pk = self.index_map.load(storage, idx)?;
+        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
 
-        self.primary_map.load(storage, pk)
+        // This must exist, so we can safely unwrap the `Option<T>`.
+        let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+
+        C::decode(&v_raw)
     }
 
     /// Given an index value, load the corresponding primary key and value.
-    pub fn load(&self, storage: &dyn Storage, idx: IK) -> StdResult<(PK, T)> {
-        let pk = self.index_map.load(storage, idx)?;
-        let v = self.primary_map.load(storage, pk.clone())?;
+    pub fn load(&self, storage: &dyn Storage, idx: IK) -> StdResult<(PK::Output, T)> {
+        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+        let pk = PK::from_slice(&pk_raw)?;
+
+        let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+        let v = C::decode(&v_raw)?;
 
         Ok((pk, v))
     }
@@ -99,15 +105,20 @@ where
         min: Option<Bound<IK>>,
         max: Option<Bound<IK>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK, T)>> + 'b>
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output, T)>> + 'b>
     where
         'a: 'b,
     {
-        let iter = self.index_map.range(storage, min, max, order).map(|ik_pk| {
-            let (ik, pk) = ik_pk?;
-            let v = self.primary_map.load(storage, pk.clone())?;
-            Ok((ik, pk, v))
-        });
+        let iter = self
+            .index_map
+            .range_raw(storage, min, max, order)
+            .map(|(ik_raw, pk_raw)| {
+                let ik = IK::from_slice(&ik_raw)?;
+                let pk = PK::from_slice(&pk_raw)?;
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                let v = C::decode(&v_raw)?;
+                Ok((ik, pk, v))
+            });
 
         Box::new(iter)
     }
@@ -131,8 +142,17 @@ where
         min: Option<Bound<IK>>,
         max: Option<Bound<IK>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK)>> + 'b> {
-        self.index_map.range(storage, min, max, order)
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output)>> + 'b> {
+        let iter = self
+            .index_map
+            .range_raw(storage, min, max, order)
+            .map(|(ik_raw, pk_raw)| {
+                let ik = IK::from_slice(&ik_raw)?;
+                let pk = PK::from_slice(&pk_raw)?;
+                Ok((ik, pk))
+            });
+
+        Box::new(iter)
     }
 
     /// Iterate all {index, value} tuples within a bound of indexes, without
@@ -175,7 +195,7 @@ where
             .map(|(ik_raw, pk_raw)| {
                 let ik = IK::from_slice(&ik_raw)?;
                 let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-                let v = PC::decode(&v_raw)?;
+                let v = C::decode(&v_raw)?;
                 Ok((ik, v))
             });
 
@@ -183,12 +203,11 @@ where
     }
 }
 
-impl<'a, PK, IK, T, PC, IC> Index<PK, T> for UniqueIndex<'a, PK, IK, T, PC, IC>
+impl<'a, PK, IK, T, C> Index<PK, T> for UniqueIndex<'a, PK, IK, T, C>
 where
-    PK: Key + Clone,
+    PK: Key,
     IK: Key + Clone,
-    PC: Codec<T>,
-    IC: Codec<PK>,
+    C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
         let idx = (self.indexer)(&pk, data);
@@ -198,11 +217,12 @@ where
             return Err(StdError::duplicate_data::<IK>(&idx.joined_key()));
         }
 
-        self.index_map.save(storage, idx, &pk)
+        self.index_map.save(storage, idx, &pk.joined_key())
     }
 
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
         let idx = (self.indexer)(&pk, old_data);
-        self.index_map.remove(storage, idx);
+
+        self.index_map.remove(storage, idx)
     }
 }
