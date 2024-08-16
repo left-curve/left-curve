@@ -42,7 +42,7 @@ pub fn process(attrs: TokenStream, item: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let expanded = quote! {
+    quote! {
         #input
 
         impl grug::IndexList<#pk, #ty> for #struct_ty<'_> {
@@ -51,7 +51,6 @@ pub fn process(attrs: TokenStream, item: TokenStream) -> TokenStream {
                 Box::new(v.into_iter())
             }
         }
-    };
-
-    TokenStream::from(expanded)
+    }
+    .into()
 }
