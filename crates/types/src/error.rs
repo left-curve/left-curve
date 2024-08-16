@@ -55,7 +55,7 @@ pub enum StdError {
     DataNotFound { ty: &'static str, key: String },
 
     #[error("duplicate data found! type: {ty}, data: {data}")]
-    DataDuplicate { ty: &'static str, data: String },
+    DuplicateData { ty: &'static str, data: String },
 
     #[error("cannot find iterator with ID {iterator_id}")]
     IteratorNotFound { iterator_id: i32 },
@@ -176,7 +176,7 @@ impl StdError {
     }
 
     pub fn duplicate_data<T>(data: &[u8]) -> Self {
-        Self::DataDuplicate {
+        Self::DuplicateData {
             ty: type_name::<T>(),
             data: BASE64.encode(data),
         }
