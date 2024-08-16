@@ -7,13 +7,13 @@ on:
       - 'main'
       - 'develop'
     paths:
-      - 'packages/applets/**'
+      - 'packages/react/**'
       - 'apps/superapp/**'
   pull_request:
     branches:
       - '*'
     paths:
-      - 'packages/applets/**'
+      - 'packages/react/**'
       - 'apps/superapp/**'
 
 jobs:

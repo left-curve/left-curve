@@ -6,7 +6,7 @@ on:
     branches:
       - 'main'
     paths:
-      - 'packages/applets/**'
+      - 'packages/react/**'
 
 jobs:
   deploy:
@@ -33,7 +33,7 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Build Storybook
-        working-directory: ./packages/applets
+        working-directory: ./packages/react
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages
@@ -43,6 +43,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-storybook
-          directory: ./packages/applets/storybook-static
+          directory: ./packages/react/storybook-static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

@@ -34,7 +34,12 @@ jobs:
         run: pnpm build:pkg
 
       - name: Build Doc
-        run: pnpm doc
+        run: |
+          pnpm doc
+          # cloudflare broke all user's Sites that have a "functions" path.
+          # - https://github.com/cloudflare/wrangler2/issues/2240
+          mv docs/functions docs/funcs
+          find ./docs -type f -name '*.html' -exec sed -i.bak -E 's:(href="[^"]+)functions/:\1funcs/:g' {} +
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
