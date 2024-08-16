@@ -1,7 +1,7 @@
 use {
     crate::{
         forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
-        impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
+        impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer,
         impl_number, Bytable, Fraction, Inner, Integer, MultiplyFraction, MultiplyRatio,
         NextNumber, Number, NumberConst, Sign, StdError, StdResult,
     },
@@ -402,6 +402,7 @@ generate_uint!(
     inner_type = u64,
     from_int = [],
     from_std = [u32, u16, u8],
+    next = [Uint128],
     doc = "64-bit unsigned integer.",
 );
 
@@ -410,6 +411,7 @@ generate_uint!(
     inner_type = u128,
     from_int = [Uint64],
     from_std = [u32, u16, u8],
+    next = [Uint256],
     doc = "128-bit unsigned integer.",
 );
 
@@ -418,6 +420,7 @@ generate_uint!(
     inner_type = U256,
     from_int = [Uint64, Uint128],
     from_std = [u32, u16, u8],
+    next = [Uint512],
     doc = "256-bit unsigned integer.",
 );
 
@@ -426,13 +429,9 @@ generate_uint!(
     inner_type = U512,
     from_int = [Uint256, Uint64, Uint128],
     from_std = [u32, u16, u8],
+    next = [],
     doc = "512-bit unsigned integer.",
 );
-
-// TODO: can we merge these into `generate_uint`?
-impl_next!(Uint64, Uint128);
-impl_next!(Uint128, Uint256);
-impl_next!(Uint256, Uint512);
 
 // ----------------------------------- tests -----------------------------------
 

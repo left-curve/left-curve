@@ -139,6 +139,7 @@ macro_rules! generate_uint {
         inner_type = $inner:ty,
         from_int = [$($from:ty),*],
         from_std = [$($from_std:ty),*],
+        next = [$($next:ty)?],
         doc = $doc:literal,
     ) => {
         #[doc = $doc]
@@ -218,6 +219,13 @@ macro_rules! generate_uint {
                value.number()
             }
         }
+
+        $(
+        // --- Impl NextNumbr ---
+        impl NextNumber for $name {
+            type Next = $next;
+        }
+        )?
     };
 }
 
@@ -721,16 +729,6 @@ macro_rules! impl_integer_number {
             fn checked_ilog10(self) -> StdResult<u32> {
                 self.checked_ilog10().ok_or_else(|| StdError::zero_log())
             }
-        }
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
-macro_rules! impl_next {
-    ($t:ty, $next:ty) => {
-        impl NextNumber for $t {
-            type Next = $next;
         }
     };
 }
