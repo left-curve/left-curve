@@ -156,6 +156,7 @@ pub struct TxOutcome {
     pub result: GenericResult<()>,
 }
 
+#[derive(Debug)]
 /// Outcome of executing a block.
 pub struct BlockOutcome {
     /// The Merkle root hash after executing this block.
