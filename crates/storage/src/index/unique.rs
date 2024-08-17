@@ -47,32 +47,70 @@ where
         }
     }
 
+    /// Given an index value, which may or may not exist, load the corresponding
+    /// key.
+    pub fn may_load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<PK::Output>> {
+        self.index_map
+            .may_load_raw(storage, &idx.joined_key())
+            .map(|pk_raw| PK::from_slice(&pk_raw))
+            .transpose()
+    }
+
     /// Given an index value, load the corresponding key.
     pub fn load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<PK::Output> {
-        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+        self.index_map
+            .load_raw(storage, &idx.joined_key())
+            .and_then(|pk_raw| PK::from_slice(&pk_raw))
+    }
 
-        PK::from_slice(&pk_raw)
+    /// Given an index value, which may or may not exist, load the corresponding
+    /// value.
+    pub fn may_load_value(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<T>> {
+        self.index_map
+            .may_load_raw(storage, &idx.joined_key())
+            .map(|pk_raw| self.primary_map.may_load_raw(storage, &pk_raw).unwrap())
+            .map(|v_raw| C::decode(&v_raw))
+            .transpose()
     }
 
     /// Given an index value, load the corresponding value.
     pub fn load_value(&self, storage: &dyn Storage, idx: IK) -> StdResult<T> {
-        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
+        self.index_map
+            .load_raw(storage, &idx.joined_key())
+            .map(|pk_raw| self.primary_map.may_load_raw(storage, &pk_raw).unwrap())
+            .and_then(|v_raw| C::decode(&v_raw))
+    }
 
-        // This must exist, so we can safely unwrap the `Option<T>`.
-        let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-
-        C::decode(&v_raw)
+    /// Given an index value, which may or may not exist, load the corresponding
+    /// key and value.
+    pub fn may_load(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<(PK::Output, T)>> {
+        self.index_map
+            .may_load_raw(storage, &idx.joined_key())
+            .map(|pk_raw| {
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                (pk_raw, v_raw)
+            })
+            .map(|(pk_raw, v_raw)| {
+                let pk = PK::from_slice(&pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok((pk, v))
+            })
+            .transpose()
     }
 
     /// Given an index value, load the corresponding primary key and value.
     pub fn load(&self, storage: &dyn Storage, idx: IK) -> StdResult<(PK::Output, T)> {
-        let pk_raw = self.index_map.load_raw(storage, &idx.joined_key())?;
-        let pk = PK::from_slice(&pk_raw)?;
-
-        let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
-        let v = C::decode(&v_raw)?;
-
-        Ok((pk, v))
+        self.index_map
+            .load_raw(storage, &idx.joined_key())
+            .map(|pk_raw| {
+                let v_raw = self.primary_map.may_load_raw(storage, &pk_raw).unwrap();
+                (pk_raw, v_raw)
+            })
+            .and_then(|(pk_raw, v_raw)| {
+                let pk = PK::from_slice(&pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok((pk, v))
+            })
     }
 
     /// Iterate all {index, primary key, value} tuples within a bound of indexes,
