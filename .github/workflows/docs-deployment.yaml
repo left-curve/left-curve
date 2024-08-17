@@ -36,10 +36,9 @@ jobs:
       - name: Build Doc
         run: |
           pnpm doc
-          # cloudflare broke all user's Sites that have a "functions" path.
-          # - https://github.com/cloudflare/wrangler2/issues/2240
-          mv docs/functions docs/funcs
-          find ./docs -type f -name '*.html' -exec sed -i.bak -E 's:(href="[^"]+)functions/:\1funcs/:g' {} +
+          # Cloudflare issue: https://github.com/cloudflare/workers-sdk/issues/2240
+          curl -O https://gist.githubusercontent.com/j0nl1/7f9b5210c9e6ecbabe322baa16dcb5db/raw/760de77327bf83671cfb6bd4e64181299ba26113/typedoc-fix-cf.mjs
+          node typedoc-fix-cf.mjs docs
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
