@@ -1595,6 +1595,7 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "chrono",
  "grug-storage",
  "grug-types",

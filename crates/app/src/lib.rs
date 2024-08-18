@@ -13,8 +13,9 @@ mod state;
 mod submessage;
 mod traits;
 mod vm;
+mod balances_tracker;
 
 pub use crate::{
     app::*, buffer::*, error::*, events::*, execute::*, gas::*, providers::*, query::*, shared::*,
-    state::*, submessage::*, traits::*, vm::*,
+    state::*, submessage::*, traits::*, vm::*, balances_tracker::*,
 };

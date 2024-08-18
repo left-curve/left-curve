@@ -6,7 +6,7 @@ use {
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
         query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
         query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
-        Buffer, Db, GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        Buffer, Db, GasTracker, BalancesTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -75,6 +75,7 @@ where
         // Create gas tracker for genesis.
         // During genesis, there is no gas limit.
         let gas_tracker = GasTracker::new_limitless();
+        let balances_tracker = BalancesTracker::notrack();
 
         // Save the config and genesis block, so that they can be queried when
         // executing genesis messages.
@@ -100,6 +101,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
+                balances_tracker.clone(),
                 block.clone(),
                 GENESIS_SENDER,
                 msg,
@@ -179,11 +181,13 @@ where
 
             // Cronjobs can use unlimited gas
             let gas_tracker = GasTracker::new_limitless();
+            let balances_tracker = BalancesTracker::notrack();
 
             let result = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
+                balances_tracker.clone(),
                 block.clone(),
                 contract.clone(),
             );
@@ -270,6 +274,7 @@ where
             self.vm.clone(),
             Box::new(buffer.clone()),
             GasTracker::new_limitless(),
+            BalancesTracker::notrack(),
             block.clone(),
             &tx,
         ) {
@@ -285,6 +290,7 @@ where
             self.vm.clone(),
             Box::new(buffer),
             gas_tracker.clone(),
+            BalancesTracker::notrack(),
             block,
             &tx,
             AuthMode::Check,
@@ -502,6 +508,7 @@ where
     // the transaction.
     let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
+
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
 
@@ -517,6 +524,7 @@ where
         vm.clone(),
         Box::new(buffer1.clone()),
         GasTracker::new_limitless(),
+        BalancesTracker::notrack(),
         block.clone(),
         &tx,
     ) {
@@ -524,7 +532,7 @@ where
             events.extend(new_events);
         },
         Err(err) => {
-            return new_tx_outcome(gas_tracker.clone(), events.clone(), Err(err));
+            return new_tx_outcome(gas_tracker.clone(), BalancesTracker::notrack(), events.clone(), Err(err));
         },
     }
 
@@ -545,6 +553,7 @@ where
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
+        BalancesTracker::notrack(),
         block.clone(),
         &tx,
         mode.clone(),
@@ -556,10 +565,11 @@ where
         },
         Err(err) => {
             drop(buffer2);
-            return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
+            return process_finalize_fee(vm, buffer1, gas_tracker, BalancesTracker::notrack(), block, tx, events, Err(err));
         },
     };
 
+    let balances_tracker = BalancesTracker::new(tx.sender.clone());
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
     //
@@ -572,6 +582,7 @@ where
         vm.clone(),
         buffer2.clone(),
         gas_tracker.clone(),
+        balances_tracker.clone(),
         block.clone(),
         &tx,
         mode,
@@ -583,7 +594,7 @@ where
         },
         Err(err) => {
             drop(buffer2);
-            return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
+            return process_finalize_fee(vm, buffer1, gas_tracker, balances_tracker, block, tx, events, Err(err));
         },
     }
 
@@ -598,7 +609,7 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Ok(()))
+    process_finalize_fee(vm, buffer1, gas_tracker, balances_tracker, block, tx, events, Ok(()))
 }
 
 #[inline]
@@ -606,6 +617,7 @@ fn process_msgs_then_backrun<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
@@ -626,6 +638,7 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
+            balances_tracker.clone(),
             block.clone(),
             tx.sender.clone(),
             msg.clone(),
@@ -637,6 +650,7 @@ where
             vm.clone(),
             Box::new(buffer),
             gas_tracker,
+            BalancesTracker::notrack(),
             block,
             tx,
             mode,
@@ -650,6 +664,7 @@ fn process_finalize_fee<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: Tx,
     mut events: Vec<Event>,
@@ -660,12 +675,13 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
+    let outcome_so_far = new_tx_outcome(gas_tracker.clone(), balances_tracker.clone(), events.clone(), result.clone());
 
     match do_finalize_fee(
         vm,
         Box::new(buffer.clone()),
         GasTracker::new_limitless(),
+        BalancesTracker::notrack(),
         block,
         &tx,
         &outcome_so_far,
@@ -673,12 +689,12 @@ where
         Ok(new_events) => {
             events.extend(new_events);
             buffer.disassemble().consume();
-            new_tx_outcome(gas_tracker, events, result)
+            new_tx_outcome(gas_tracker, balances_tracker, events, result)
         },
         Err(err) => {
             events.clear();
             drop(buffer);
-            new_tx_outcome(gas_tracker, Vec::new(), Err(err))
+            new_tx_outcome(gas_tracker, BalancesTracker::notrack(), Vec::new(), Err(err))
         },
     }
 }
@@ -687,6 +703,7 @@ pub fn process_msg<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     sender: Addr,
     msg: Message,
@@ -701,6 +718,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             block,
             sender.clone(),
             to,
@@ -718,6 +736,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             block,
             sender,
             code_hash,
@@ -734,6 +753,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             block,
             contract,
             sender,
@@ -748,6 +768,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             block,
             contract,
             sender,
@@ -881,8 +902,9 @@ fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcom
     }
 }
 
-fn new_tx_outcome(gas_tracker: GasTracker, events: Vec<Event>, result: AppResult<()>) -> TxOutcome {
+fn new_tx_outcome(gas_tracker: GasTracker, balances_tracker: BalancesTracker, events: Vec<Event>, result: AppResult<()>) -> TxOutcome {
     TxOutcome {
+        balances_difference:balances_tracker.get_balances_difference(),
         gas_limit: gas_tracker.limit().unwrap(),
         gas_used: gas_tracker.used(),
         events,

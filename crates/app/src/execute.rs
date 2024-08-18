@@ -1,9 +1,6 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, CHAIN_ID, CODES,
-        CONFIG, NEXT_CRONJOBS,
+        call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response, call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppError, AppResult, BalancesTracker, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS
     },
     grug_types::{
         hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
@@ -126,6 +123,7 @@ pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -140,6 +138,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker.clone(),
         block,
         from.clone(),
         to.clone(),
@@ -170,6 +169,7 @@ fn _do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -196,12 +196,13 @@ where
         funds: None,
         mode: None,
     };
-    let msg = BankMsg { from, to, coins };
+    let msg = BankMsg { from: from.clone(), to: to.clone(), coins: coins.clone() };
 
     let mut events = call_in_1_out_1_handle_response(
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
+        balances_tracker.clone(),
         "bank_execute",
         &account.code_hash,
         &ctx,
@@ -209,8 +210,17 @@ where
         &msg,
     )?;
 
+    coins.into_iter().for_each(|coin| {
+        balances_tracker.transfered(
+            &from,
+            &to,
+            coin.denom.clone(),
+            coin.amount,
+        );
+    });
+
     if do_receive {
-        events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
+        events.extend(_do_receive(vm, storage, gas_tracker, balances_tracker.clone(), ctx.block, msg)?);
     }
 
     Ok(events)
@@ -220,6 +230,7 @@ fn _do_receive<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
@@ -242,6 +253,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "receive",
         &account.code_hash,
         &ctx,
@@ -255,6 +267,7 @@ pub fn do_instantiate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash256,
@@ -271,6 +284,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         block,
         sender,
         code_hash,
@@ -298,6 +312,7 @@ pub fn _do_instantiate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash256,
@@ -336,6 +351,7 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            balances_tracker.clone(),
             block.clone(),
             sender.clone(),
             address.clone(),
@@ -358,6 +374,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "instantiate",
         &account.code_hash,
         &ctx,
@@ -374,6 +391,7 @@ pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -388,6 +406,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         block,
         contract.clone(),
         sender,
@@ -413,6 +432,7 @@ fn _do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -433,6 +453,7 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            balances_tracker.clone(),
             block.clone(),
             sender.clone(),
             contract.clone(),
@@ -455,6 +476,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "execute",
         &account.code_hash,
         &ctx,
@@ -471,6 +493,7 @@ pub fn do_migrate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -485,6 +508,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         block,
         contract.clone(),
         sender,
@@ -510,6 +534,7 @@ fn _do_migrate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     sender: Addr,
@@ -551,6 +576,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker, 
         "migrate",
         &account.code_hash,
         &ctx,
@@ -565,6 +591,7 @@ pub fn do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -578,6 +605,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         block,
         contract.clone(),
         msg,
@@ -602,6 +630,7 @@ fn _do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -626,6 +655,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "reply",
         &account.code_hash,
         &ctx,
@@ -641,6 +671,7 @@ pub fn do_authenticate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
@@ -677,6 +708,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             "authenticate",
             &ctx,
             auth_response.response,
@@ -707,6 +739,7 @@ pub fn do_backrun<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
@@ -730,6 +763,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "backrun",
         &account.code_hash,
         &ctx,
@@ -757,6 +791,7 @@ pub fn do_withhold_fee<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: &Tx,
 ) -> AppResult<Vec<Event>>
@@ -782,6 +817,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             "withhold_fee",
             &taxman.code_hash,
             &ctx,
@@ -810,6 +846,7 @@ pub fn do_finalize_fee<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     tx: &Tx,
     outcome: &TxOutcome,
@@ -836,6 +873,7 @@ where
             vm,
             storage,
             gas_tracker,
+            balances_tracker,
             "finalize_fee",
             &taxman.code_hash,
             &ctx,
@@ -869,6 +907,7 @@ pub fn do_cron_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
@@ -876,7 +915,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_cron_execute(vm, storage, gas_tracker, block, contract.clone()) {
+    match _do_cron_execute(vm, storage, gas_tracker,balances_tracker, block, contract.clone()) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
@@ -900,6 +939,7 @@ fn _do_cron_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     block: BlockInfo,
     contract: Addr,
 ) -> AppResult<Vec<Event>>
@@ -922,6 +962,7 @@ where
         vm,
         storage,
         gas_tracker,
+        balances_tracker,
         "cron_execute",
         &account.code_hash,
         &ctx,

@@ -1,7 +1,6 @@
 use {
     crate::{
-        handle_submessages, AppError, AppResult, GasTracker, Instance, QuerierProvider,
-        StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        handle_submessages, AppError, AppResult, BalancesTracker, GasTracker, Instance, QuerierProvider, StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE
     },
     grug_types::{
         from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash256,
@@ -132,6 +131,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     name: &'static str,
     code_hash: &Hash256,
     ctx: &Context,
@@ -152,7 +152,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker, balances_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -162,6 +162,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     name: &'static str,
     code_hash: &Hash256,
     ctx: &Context,
@@ -185,7 +186,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker, balances_tracker, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -195,6 +196,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     name: &'static str,
     code_hash: &Hash256,
     ctx: &Context,
@@ -221,7 +223,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker,balances_tracker, name, ctx, response)
 }
 
 fn create_vm_instance<VM>(
@@ -258,6 +260,7 @@ pub(crate) fn handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    balances_tracker: BalancesTracker,
     name: &'static str,
     ctx: &Context,
     response: Response,
@@ -278,6 +281,7 @@ where
         storage,
         ctx.block.clone(),
         gas_tracker,
+        balances_tracker,
         ctx.contract.clone(),
         response.submsgs,
     )?);

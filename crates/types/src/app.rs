@@ -1,6 +1,6 @@
 use {
     crate::{
-        Addr, Duration, Event, GenericResult, Hash256, Message, NumberConst, Timestamp, Uint64,
+        Addr, Coin, Duration, Event, GenericResult, Hash256, Message, NumberConst, Timestamp, Uint64,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
@@ -138,6 +138,7 @@ pub struct TxOutcome {
     pub gas_limit: u64,
     pub gas_used: u64,
     pub events: Vec<Event>,
+    pub balances_difference: Vec<BalanceDifference>,
     pub result: GenericResult<()>,
 }
 
@@ -149,4 +150,18 @@ pub struct BlockOutcome {
     pub cron_outcomes: Vec<Outcome>,
     /// Results of executing the transactions.
     pub tx_outcomes: Vec<TxOutcome>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum CoinDirection {
+    In,
+    Out,
+}
+
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct BalanceDifference  {
+    pub direction: CoinDirection,
+    pub coin: Coin,
 }

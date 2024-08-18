@@ -1,8 +1,7 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{
-        to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
-        Udec128, Uint256,
+        to_json_value, Addr, Binary, CoinDirection, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst, Udec128, Uint256
     },
     grug_vm_wasm::{VmError, WasmVm},
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
@@ -63,6 +62,10 @@ fn bank_transfers() -> anyhow::Result<()> {
     // = 300k - 70 - charge
     let fee = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(Udec128::from_str(FEE_RATE)?)?;
     let sender_balance_after = Uint256::from(300_000_u128 - 70) - fee;
+    assert_eq!(1, outcome.balances_difference.len(), "expected balances difference len 1 but got {}", outcome.balances_difference.len());
+    assert_eq!(CoinDirection::Out, outcome.balances_difference[0].direction);
+    assert_eq!(DENOM, outcome.balances_difference[0].coin.denom);
+    assert_eq!(Uint256::from(70_u128), outcome.balances_difference[0].coin.amount);
 
     // Check balances again
     suite
