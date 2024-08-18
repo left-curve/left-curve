@@ -45,7 +45,7 @@ pub trait Key {
     /// elements, can we deserialize this correctly.
     ///
     /// See the following PR for details: <https://github.com/CosmWasm/cw-storage-plus/pull/34>.
-    const KEY_ELEMS: u16 = 1;
+    const KEY_ELEMS: u8;
 
     /// For tuple keys, the first element.
     ///
@@ -104,6 +104,8 @@ impl Key for () {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![]
     }
@@ -125,6 +127,8 @@ impl Key for &[u8] {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self)]
     }
@@ -139,6 +143,8 @@ impl Key for Vec<u8> {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self)]
     }
@@ -152,6 +158,8 @@ impl Key for &str {
     type Output = String;
     type Prefix = ();
     type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_bytes())]
@@ -168,6 +176,8 @@ impl Key for String {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_bytes())]
     }
@@ -183,6 +193,8 @@ impl Key for Addr {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_ref())]
     }
@@ -197,6 +209,8 @@ impl<const N: usize> Key for Hash<N> {
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_ref())]
     }
@@ -210,6 +224,8 @@ impl Key for Duration {
     type Output = Duration;
     type Prefix = ();
     type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
@@ -229,6 +245,8 @@ where
     type Prefix = K::Prefix;
     type Suffix = K::Suffix;
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         (*self).raw_keys()
     }
@@ -247,7 +265,7 @@ where
     type Prefix = A;
     type Suffix = B;
 
-    const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS;
+    const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let mut keys = self.0.raw_keys();
@@ -285,7 +303,7 @@ where
     type Prefix = A;
     type Suffix = (B, C);
 
-    const KEY_ELEMS: u16 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
+    const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let mut keys = self.0.raw_keys();
@@ -336,7 +354,7 @@ where
 /// ```
 ///
 /// is also returned.
-pub(crate) fn split_first_key(key_elems: u16, value: &[u8]) -> (Vec<u8>, &[u8]) {
+pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
     let mut index = 0;
     let mut first_key = Vec::new();
 
@@ -365,6 +383,8 @@ macro_rules! impl_integer_key {
             type Prefix = ();
             type Suffix = ();
             type Output = $t;
+
+            const KEY_ELEMS: u8 = 1;
 
             fn raw_keys(&self) -> Vec<Cow<[u8]>> {
                 vec![Cow::Owned(self.to_be_bytes().to_vec())]

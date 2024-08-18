@@ -169,6 +169,8 @@ impl<'a> Key for &'a BitArray {
     type Prefix = u16;
     type Suffix = &'a [u8];
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let num_bytes = self.num_bits.div_ceil(8);
         vec![
