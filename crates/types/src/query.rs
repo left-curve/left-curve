@@ -132,24 +132,9 @@ impl QueryResponse {
 
     generate_as!(WasmSmart => Json);
 
-    pub fn as_multi(self) -> Vec<QueryResponse> {
-        let Self::Multi(resp) = self else {
-            panic!("QueryResponse is not Multi");
-        };
-        resp
-    }
+    generate_as!(Multi => Vec<QueryResponse>);
 
-    pub fn as_app_config(self) -> Json {
-        let Self::AppConfig(value) = self else {
-            panic!("QueryResponse is not AppCofnig");
-        };
-        value
-    }
+    generate_as!(AppConfig => Json);
 
-    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
-        let Self::AppConfigs(map) = self else {
-            panic!("QueryResponse is not AppCofnigs");
-        };
-        map
-    }
+    generate_as!(AppConfigs => BTreeMap<String, Json>);
 }
