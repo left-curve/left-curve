@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, KeysIterator, PathBuf, Prefix, PrefixBound, Prefixer},
+    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, PrefixBound, Prefixer},
     grug_types::{Empty, Order, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -51,7 +51,8 @@ where
         Prefix::new(self.namespace, &[])
     }
 
-    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty, C, KeysIterator> {
+    // Return Prefix with I = Empty to allow only keys iterator methods.
+    pub fn prefix(&self, prefix: T::Prefix) -> Prefix<T::Suffix, Empty, C, Empty> {
         Prefix::new(self.namespace, &prefix.raw_prefixes())
     }
 

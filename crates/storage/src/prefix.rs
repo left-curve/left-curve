@@ -7,15 +7,8 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-pub trait AsKeysIterator {}
-pub trait AsRangeIterator {}
-
-pub struct KeysIterator;
-impl AsKeysIterator for KeysIterator {}
-
+/// Generic type `I` for [`Prefix`] for enable `range/values` methods.
 pub struct RangeIterator;
-impl AsRangeIterator for RangeIterator {}
-impl AsKeysIterator for RangeIterator {}
 
 pub struct Prefix<K, T, C, I = RangeIterator>
 where
@@ -78,12 +71,12 @@ where
     }
 }
 
-// --- Keys iterator ---
+// ----------------------------------- keys iterator -----------------------------------
+
 impl<K, T, C, I> Prefix<K, T, C, I>
 where
     K: Key,
     C: Codec<T>,
-    I: AsKeysIterator,
 {
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
         self.keys_raw(storage, None, None, Order::Ascending)
@@ -175,12 +168,12 @@ where
     }
 }
 
-// --- Range iterator ---
-impl<K, T, C, I> Prefix<K, T, C, I>
+// ----------------------------------- range iterator -----------------------------------
+
+impl<K, T, C> Prefix<K, T, C, RangeIterator>
 where
     K: Key,
     C: Codec<T>,
-    I: AsRangeIterator,
 {
     pub fn range_raw<'a>(
         &self,

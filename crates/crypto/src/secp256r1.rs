@@ -65,10 +65,6 @@ mod tests {
             assert!(
                 secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
             );
-
-            let a = secp256r1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes())
-                .unwrap_err();
-            println!("{}", a);
         }
 
         // Incorrect public key
