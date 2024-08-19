@@ -12,6 +12,15 @@ pub enum QueryRequest {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: `InfoResponse`
     Info {},
+    /// A single application-specific configuration.
+    /// Returns: `Json`
+    AppConfig { key: String },
+    /// Enumerate all application-specific configurations.
+    /// Returns: `BTreeMap<String, Json>`
+    AppConfigs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// An account's balance in a single denom.
     /// Returns: `Coin`
     Balance { address: Addr, denom: String },
@@ -56,6 +65,9 @@ pub enum QueryRequest {
     /// Call the contract's query entry point with the given message.
     /// Returns: `Json`
     WasmSmart { contract: Addr, msg: Json },
+    /// Perform multiple queries at once.
+    /// Returns: `Vec<QueryResponse>`.
+    Multi(Vec<QueryRequest>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -69,6 +81,8 @@ pub struct InfoResponse {
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Info(InfoResponse),
+    AppConfig(Json),
+    AppConfigs(BTreeMap<String, Json>),
     Balance(Coin),
     Balances(Coins),
     Supply(Coin),
@@ -79,6 +93,7 @@ pub enum QueryResponse {
     Accounts(BTreeMap<Addr, Account>),
     WasmRaw(Option<Binary>),
     WasmSmart(Json),
+    Multi(Vec<QueryResponse>),
 }
 
 macro_rules! generate_as {
@@ -90,6 +105,20 @@ macro_rules! generate_as {
                 };
                 resp
             }
+
+    pub fn as_app_config(self) -> Json {
+        let Self::AppConfig(value) = self else {
+            panic!("QueryResponse is not AppCofnig");
+        };
+        value
+    }
+
+    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
+        let Self::AppConfigs(map) = self else {
+            panic!("QueryResponse is not AppCofnigs");
+        };
+        map
+    }
         }
     };
 }
@@ -116,4 +145,11 @@ impl QueryResponse {
     generate_as!(WasmRaw => Option<Binary>);
 
     generate_as!(WasmSmart => Json);
+
+    pub fn as_multi(self) -> Vec<QueryResponse> {
+        let Self::Multi(resp) = self else {
+            panic!("QueryResponse is not Multi");
+        };
+        resp
+    }
 }

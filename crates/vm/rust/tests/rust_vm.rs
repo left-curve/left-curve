@@ -10,6 +10,7 @@ fn bank_transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("sender", Coins::one(DENOM, NonZero::new(100_u128)))?
         .add_account("receiver", Coins::new())?
+        .set_owner("sender")?
         .build()?;
 
     // Check that sender has been given 100 ugrug
@@ -24,19 +25,19 @@ fn bank_transfers() -> anyhow::Result<()> {
     suite
         .send_messages(&accounts["sender"], vec![
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(10_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(15_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(20_u128)),
             },
             Message::Transfer {
-                to: accounts["receiver"].address.clone(),
+                to: accounts["receiver"].address,
                 coins: Coins::one(DENOM, NonZero::new(25_u128)),
             },
         ])?

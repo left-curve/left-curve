@@ -1,7 +1,11 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{from_borsh_slice, from_proto_slice, to_borsh_vec, to_proto_vec, StdResult},
+    grug_types::{
+        from_borsh_slice, from_json_slice, from_proto_slice, to_borsh_vec, to_json_vec,
+        to_proto_vec, StdResult,
+    },
     prost::Message,
+    serde::{de::DeserializeOwned, ser::Serialize},
 };
 
 /// A marker that designates encoding/decoding schemes.
@@ -10,6 +14,8 @@ pub trait Codec<T> {
 
     fn decode(data: &[u8]) -> StdResult<T>;
 }
+
+// ----------------------------------- borsh -----------------------------------
 
 /// Represents the Borsh encoding scheme.
 pub struct Borsh;
@@ -27,6 +33,8 @@ where
     }
 }
 
+// ----------------------------------- proto -----------------------------------
+
 /// Represents the Protobuf encoding scheme.
 pub struct Proto;
 
@@ -43,42 +51,39 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use {
-        super::Codec,
-        crate::{Borsh, Proto},
-        borsh::{BorshDeserialize, BorshSerialize},
-        std::fmt::Debug,
-        test_case::test_case,
-    };
+// -------------------------------- serde json ---------------------------------
 
-    #[derive(BorshSerialize, BorshDeserialize, prost::Message, PartialEq)]
-    struct Test {
-        #[prost(uint32, tag = "1")]
-        foo: u32,
-        #[prost(string, tag = "2")]
-        bar: String,
+/// Represents the JSON encoding scheme.
+///
+/// TODO: `Serde` is probably not a good naming, because serde library supports
+/// more encoding schemes than just JSON. But for now I don't have a better idea
+/// on how to name this.
+pub struct Serde;
+
+impl<T> Codec<T> for Serde
+where
+    T: Serialize + DeserializeOwned,
+{
+    fn encode(data: &T) -> StdResult<Vec<u8>> {
+        to_json_vec(data)
     }
 
-    impl Test {
-        fn mock() -> Self {
-            Self {
-                foo: 3,
-                bar: "bar".to_string(),
-            }
-        }
+    fn decode(data: &[u8]) -> StdResult<T> {
+        from_json_slice(data)
+    }
+}
+
+// ------------------------------------ raw ------------------------------------
+
+/// Represents raw bytes without encoding.
+pub struct Raw;
+
+impl Codec<Vec<u8>> for Raw {
+    fn encode(data: &Vec<u8>) -> StdResult<Vec<u8>> {
+        Ok(data.clone())
     }
 
-    #[test_case(Test::mock(), Borsh; "borsh")]
-    #[test_case(Test::mock(), Proto; "proto")]
-    fn codec<T, C>(data: T, _codec: C)
-    where
-        T: PartialEq + Debug,
-        C: Codec<T>,
-    {
-        let encoded = C::encode(&data).unwrap();
-        let decoded = C::decode(&encoded).unwrap();
-        assert_eq!(data, decoded);
+    fn decode(data: &[u8]) -> StdResult<Vec<u8>> {
+        Ok(data.to_vec())
     }
 }

@@ -57,6 +57,9 @@ pub enum StdError {
     #[error("data not found! type: {ty}, storage key: {key}")]
     DataNotFound { ty: &'static str, key: String },
 
+    #[error("duplicate data found! type: {ty}, data: {data}")]
+    DuplicateData { ty: &'static str, data: String },
+
     #[error("cannot find iterator with ID {iterator_id}")]
     IteratorNotFound { iterator_id: i32 },
 
@@ -127,11 +130,19 @@ pub enum StdError {
     #[error("logarithm of zero")]
     ZeroLog,
 
-    #[error("failed to serialize into json! type: {ty}, reason: {reason}")]
-    Serialize { ty: &'static str, reason: String },
+    #[error("failed to serialize into json! codec: {codec}, type: {ty}, reason: {reason}")]
+    Serialize {
+        codec: &'static str,
+        ty: &'static str,
+        reason: String,
+    },
 
-    #[error("failed to deserialize from json! type: {ty}, reason: {reason}")]
-    Deserialize { ty: &'static str, reason: String },
+    #[error("failed to deserialize from json! codec: {codec}, type: {ty}, reason: {reason}")]
+    Deserialize {
+        codec: &'static str,
+        ty: &'static str,
+        reason: String,
+    },
 }
 
 impl StdError {
@@ -164,6 +175,13 @@ impl StdError {
         Self::DataNotFound {
             ty: type_name::<T>(),
             key: BASE64.encode(key),
+        }
+    }
+
+    pub fn duplicate_data<T>(data: &[u8]) -> Self {
+        Self::DuplicateData {
+            ty: type_name::<T>(),
+            data: BASE64.encode(data),
         }
     }
 
@@ -291,21 +309,23 @@ impl StdError {
         Self::NegativeSqrt { a: a.to_string() }
     }
 
-    pub fn serialize<T, R>(reason: R) -> Self
+    pub fn serialize<T, R>(codec: &'static str, reason: R) -> Self
     where
         R: ToString,
     {
         Self::Serialize {
+            codec,
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
     }
 
-    pub fn deserialize<T, R>(reason: R) -> Self
+    pub fn deserialize<T, R>(codec: &'static str, reason: R) -> Self
     where
         R: ToString,
     {
         Self::Deserialize {
+            codec,
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }

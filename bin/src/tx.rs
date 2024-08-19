@@ -5,7 +5,7 @@ use {
     colored::Colorize,
     grug_app::GAS_COSTS,
     grug_client::{Client, GasOption, SigningKey, SigningOption},
-    grug_types::{from_json_slice, Addr, Binary, Coins, Hash256, Message, UnsignedTx},
+    grug_types::{from_json_str, Addr, Binary, Coins, Hash256, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -53,8 +53,10 @@ pub struct TxCmd {
 enum SubCmd {
     /// Update the chain-level configurations
     Configure {
-        /// New configurations as a JSON string
-        new_cfg: String,
+        /// Updates to the chain configuration
+        updates: String,
+        /// Updates to the app configuration
+        app_updates: String,
     },
     /// Send coins to the given recipient address
     Transfer {
@@ -111,9 +113,16 @@ impl TxCmd {
 
         // Compose the message
         let msg = match self.subcmd {
-            SubCmd::Configure { new_cfg } => {
-                let new_cfg = from_json_slice(new_cfg.as_bytes())?;
-                Message::Configure { new_cfg }
+            SubCmd::Configure {
+                updates,
+                app_updates,
+            } => {
+                let updates = from_json_str(&updates)?;
+                let app_updates = from_json_str(&app_updates)?;
+                Message::Configure {
+                    updates,
+                    app_updates,
+                }
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;

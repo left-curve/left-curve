@@ -254,11 +254,13 @@ where
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
+
         // The left hand side is `Uint`, a non-negative type, so multiplication
         // with any non-zero negative number goes out of bound.
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
+
         self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator().into_inner())
     }
 
@@ -266,23 +268,49 @@ where
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
+
         if rhs.is_negative() {
             return Err(StdError::negative_mul(self, rhs));
         }
+
         self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator().into_inner())
     }
 
     fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
+        // If right hand side is zero, throw error, because you can't divide any
+        // number by zero.
+        if rhs.is_zero() {
+            return Err(StdError::division_by_zero(self));
+        }
+
+        // If right hand side is negative, throw error, because you can't divide
+        // and unsigned number with a negative number.
         if rhs.is_negative() {
             return Err(StdError::negative_div(self, rhs));
         }
+
+        // If left hand side is zero, and we know right hand size is positive,
+        // then simply return zero.
+        if self.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
         self.checked_multiply_ratio_floor(F::denominator().into_inner(), rhs.numerator())
     }
 
     fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
+        if rhs.is_zero() {
+            return Err(StdError::division_by_zero(self));
+        }
+
         if rhs.is_negative() {
             return Err(StdError::negative_div(self, rhs));
         }
+
+        if self.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
         self.checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
     }
 }

@@ -28,16 +28,12 @@ impl Cache {
     /// Attempt to get a cached module by hash. If not found, build the module
     /// using the given method, insert the built module into the cache, and
     /// return the module.
-    pub fn get_or_build_with<B>(
-        &self,
-        code_hash: &Hash256,
-        builder: B,
-    ) -> VmResult<(Module, Engine)>
+    pub fn get_or_build_with<B>(&self, code_hash: Hash256, builder: B) -> VmResult<(Module, Engine)>
     where
         B: FnOnce() -> VmResult<(Module, Engine)>,
     {
         // Cache hit - simply clone the module and return
-        if let Some(module) = self.inner.write_access().get(code_hash) {
+        if let Some(module) = self.inner.write_access().get(&code_hash) {
             return Ok(module.clone());
         }
 
@@ -46,7 +42,7 @@ impl Cache {
         let (module, engine) = builder()?;
         self.inner
             .write_access()
-            .put(code_hash.clone(), (module.clone(), engine.clone()));
+            .put(code_hash, (module.clone(), engine.clone()));
 
         Ok((module, engine))
     }

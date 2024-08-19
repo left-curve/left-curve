@@ -5,8 +5,8 @@ use {
     grug_jmt::Proof,
     grug_types::{
         from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
-        Binary, Coin, Coins, Config, GenericResult, Hash256, InfoResponse, Message, Outcome,
-        QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
+        Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
+        Op, Outcome, QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -367,53 +367,61 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
         // If chain ID is not provided, query from the chain
-        let chain_id = match sign_opt.chain_id {
-            None => self.query_info(None).await?.chain_id,
-            Some(id) => id,
+        let task_chain_id = || async {
+            match sign_opt.chain_id {
+                None => self.query_info(None).await.map(|res| res.chain_id),
+                Some(id) => Ok(id),
+            }
         };
 
         // If sequence is not provided, query from the chain
-        let sequence = match sign_opt.sequence {
-            None => {
-                self.query_wasm_smart::<_, StateResponse>(
-                    sign_opt.sender.clone(),
-                    &QueryMsg::State {},
-                    None,
-                )
-                .await?
-                .sequence
-            },
-            Some(seq) => seq,
+        let task_sequence = || async {
+            match sign_opt.sequence {
+                None => self
+                    .query_wasm_smart::<_, StateResponse>(
+                        sign_opt.sender,
+                        &QueryMsg::State {},
+                        None,
+                    )
+                    .await
+                    .map(|res| res.sequence),
+                Some(seq) => Ok(seq),
+            }
         };
 
         // If gas limit is not provided, simulate
-        let gas_limit = match gas_opt {
-            GasOption::Simulate {
-                flat_increase,
-                scale,
-            } => {
-                let unsigned_tx = UnsignedTx {
-                    sender: sign_opt.sender.clone(),
-                    msgs: msgs.clone(),
-                };
-                match self.simulate(&unsigned_tx).await? {
-                    Outcome {
-                        result: GenericResult::Ok(_),
-                        gas_used,
-                        ..
-                    } => (gas_used as f64 * scale).ceil() as u64 + flat_increase,
-                    Outcome {
-                        result: GenericResult::Err(err),
-                        ..
-                    } => bail!("Failed to estimate gas consumption: {err}"),
-                }
-            },
-            GasOption::Predefined { gas_limit } => gas_limit,
+        let task_gas_limit = || async {
+            match gas_opt {
+                GasOption::Simulate {
+                    flat_increase,
+                    scale,
+                } => {
+                    let unsigned_tx = UnsignedTx {
+                        sender: sign_opt.sender,
+                        msgs: msgs.clone(),
+                    };
+                    match self.simulate(&unsigned_tx).await? {
+                        Outcome {
+                            result: GenericResult::Ok(_),
+                            gas_used,
+                            ..
+                        } => Ok((gas_used as f64 * scale).ceil() as u64 + flat_increase),
+                        Outcome {
+                            result: GenericResult::Err(err),
+                            ..
+                        } => bail!("Failed to estimate gas consumption: {err}"),
+                    }
+                },
+                GasOption::Predefined { gas_limit } => Ok(gas_limit),
+            }
         };
+
+        let (chain_id, sequence, gas_limit) =
+            futures::try_join!(task_chain_id(), task_sequence(), task_gas_limit())?;
 
         let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,
-            sign_opt.sender.clone(),
+            sign_opt.sender,
             &chain_id,
             sequence,
             gas_limit,
@@ -430,11 +438,12 @@ impl Client {
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
     pub async fn configure(
         &self,
-        new_cfg: Config,
+        updates: ConfigUpdates,
+        app_updates: BTreeMap<String, Op<Json>>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response> {
-        let msg = Message::configure(new_cfg);
+        let msg = Message::configure(updates, app_updates);
         self.send_message(msg, gas_opt, sign_opt).await
     }
 
@@ -488,8 +497,8 @@ impl Client {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
-        let admin = admin_opt.decide(&address);
+        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
         let res = self.send_message(msg, gas_opt, sign_opt).await?;
@@ -521,12 +530,12 @@ impl Client {
         let code = code.into();
         let code_hash = hash256(&code);
         let salt = salt.into();
-        let address = Addr::compute(&sign_opt.sender, &code_hash, &salt);
-        let admin = admin_opt.decide(&address);
+        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let admin = admin_opt.decide(address);
 
         let msgs = vec![
             Message::upload(code),
-            Message::instantiate(code_hash.clone(), msg, salt, funds, admin)?,
+            Message::instantiate(code_hash, msg, salt, funds, admin)?,
         ];
         let res = self.send_messages(msgs, gas_opt, sign_opt).await?;
 

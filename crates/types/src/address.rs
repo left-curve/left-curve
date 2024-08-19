@@ -33,7 +33,7 @@ use {
 /// In Grug, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr(pub(crate) Hash160);
 
 forward_ref_partial_eq!(Addr, Addr);
@@ -57,7 +57,7 @@ impl Addr {
     ///
     /// The double hash the same as used by Bitcoin, for [preventing length
     /// extension attacks](https://bitcoin.stackexchange.com/questions/8443/where-is-double-hashing-performed-in-bitcoin).
-    pub fn compute(deployer: &Addr, code_hash: &Hash256, salt: &[u8]) -> Self {
+    pub fn compute(deployer: Addr, code_hash: Hash256, salt: &[u8]) -> Self {
         let mut preimage = Vec::with_capacity(Hash160::LENGTH + Hash256::LENGTH + salt.len());
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());
@@ -86,7 +86,7 @@ impl Addr {
         buf[1] = b'x';
 
         // This encodes hex in lowercase.
-        hex::encode_to_slice(&self.0, &mut buf[2..]).unwrap();
+        hex::encode_to_slice(self.0, &mut buf[2..]).unwrap();
 
         let mut hasher = Keccak256::new();
         // Note we're hashing the UTF-8 hex string, not the raw bytes.
@@ -109,7 +109,10 @@ impl Addr {
         let addr = Addr::from_str(s)?;
 
         if s != addr.to_erc55_string() {
-            return Err(StdError::deserialize::<Self, _>("invalid ERC-55 checksum"));
+            return Err(StdError::deserialize::<Self, _>(
+                "hex",
+                "invalid ERC-55 checksum",
+            ));
         }
 
         Ok(addr)
@@ -148,6 +151,7 @@ impl TryFrom<Vec<u8>> for Addr {
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -162,6 +166,7 @@ impl TryFrom<&[u8]> for Addr {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "address is not of the correct length",
             ));
         };
@@ -177,7 +182,7 @@ impl FromStr for Addr {
         // The address must have the `0x` prefix.
         let hex_str = s
             .strip_prefix(Self::PREFIX)
-            .ok_or_else(|| StdError::deserialize::<Self, _>("incorrect address prefix"))?;
+            .ok_or_else(|| StdError::deserialize::<Self, _>("hex", "incorrect address prefix"))?;
 
         // Decode the hex string
         let bytes = hex::decode(hex_str)?;
@@ -202,7 +207,7 @@ impl From<Addr> for String {
 // https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Self::PREFIX, hex::encode(&self.0))
+        write!(f, "{}{}", Self::PREFIX, hex::encode(self.0))
     }
 }
 

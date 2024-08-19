@@ -12,7 +12,7 @@
 use {
     crate::{
         from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Json, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -177,7 +177,7 @@ pub trait Api {
     /// debug builds, this `debug` method is also included in release builds,
     /// and incurs gas cost. Make sure to comment this out before compiling your
     /// contracts.
-    fn debug(&self, addr: &Addr, msg: &str);
+    fn debug(&self, addr: Addr, msg: &str);
 
     /// Verify an Secp256r1 signature with the given hashed message and public
     /// key.
@@ -284,6 +284,26 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_info())
     }
 
+    pub fn query_app_config<K, T>(&self, key: K) -> StdResult<T>
+    where
+        K: Into<String>,
+        T: DeserializeOwned,
+    {
+        self.inner
+            .query_chain(QueryRequest::AppConfig { key: key.into() })
+            .and_then(|res| from_json_value(res.as_app_config()))
+    }
+
+    pub fn query_app_configs(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> StdResult<BTreeMap<String, Json>> {
+        self.inner
+            .query_chain(QueryRequest::AppConfigs { start_after, limit })
+            .map(|res| res.as_app_configs())
+    }
+
     pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint256> {
         self.inner
             .query_chain(QueryRequest::Balance { address, denom })
@@ -370,5 +390,27 @@ impl<'a> QuerierWrapper<'a> {
                 msg: to_json_value(msg)?,
             })
             .and_then(|res| from_json_value(res.as_wasm_smart()))
+    }
+
+    pub fn query_multi<const N: usize>(
+        &self,
+        requests: [QueryRequest; N],
+    ) -> StdResult<[QueryResponse; N]> {
+        self.inner
+            .query_chain(QueryRequest::Multi(requests.into()))
+            .map(|res| {
+                // We trust that the host has properly implemented the multi
+                // query method, meaning the number of responses should always
+                // match the number of requests.
+                let responses = res.as_multi();
+                debug_assert_eq!(
+                    responses.len(),
+                    N,
+                    "number of responses ({}) does not match that of requests ({})",
+                    responses.len(),
+                    N
+                );
+                responses.try_into().unwrap()
+            })
     }
 }

@@ -1,8 +1,9 @@
 use {
     anyhow::ensure,
     grug_testing::TestBuilder,
-    grug_types::{Coin, Coins, Duration, NonZero, Timestamp, Uint128},
+    grug_types::{btreemap, Coin, Coins, ConfigUpdates, Duration, NonZero, Timestamp, Uint128},
     grug_vm_rust::ContractBuilder,
+    std::collections::BTreeMap,
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -74,10 +75,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Each contract is given an initial coin balance.
     let cron1 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron1",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("uatom", NonZero::new(Uint128::new(1))),
         },
         Coin::new("uatom", NonZero::new(Uint128::new(3))),
@@ -86,10 +87,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 3
     let cron2 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron2",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("uosmo", NonZero::new(Uint128::new(1))),
         },
         Coin::new("uosmo", NonZero::new(Uint128::new(3))),
@@ -98,10 +99,10 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 4
     let cron3 = suite.instantiate(
         &accounts["larry"],
-        tester_code_hash.clone(),
+        tester_code_hash,
         "cron3",
         &tester::Job {
-            receiver: accounts["jake"].address.clone(),
+            receiver: accounts["jake"].address,
             coin: Coin::new("umars", NonZero::new(Uint128::new(1))),
         },
         Coin::new("umars", NonZero::new(Uint128::new(3))),
@@ -110,16 +111,20 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 5
     //
     // Update the config to add the cronjobs.
-    let mut cfg = suite.query_info().should_succeed().config;
-    // cron1 has an interval of 0, which means it's to be called every block.
-    cfg.cronjobs.insert(cron1, Duration::from_seconds(0));
-    cfg.cronjobs.insert(cron2, Duration::from_seconds(2));
-    cfg.cronjobs.insert(cron3, Duration::from_seconds(3));
+    let updates = ConfigUpdates {
+        cronjobs: Some(btreemap! {
+            // cron1 has interval of 0, meaning it's to be called every block.
+            cron1 => Duration::from_seconds(0),
+            cron2 => Duration::from_seconds(2),
+            cron3 => Duration::from_seconds(3),
+        }),
+        ..Default::default()
+    };
 
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite.configure(&accounts["larry"], cfg)?;
+    suite.configure(&accounts["larry"], updates, BTreeMap::new())?;
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.

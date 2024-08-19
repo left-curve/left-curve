@@ -44,10 +44,10 @@ pub enum AdminOption {
 
 impl AdminOption {
     /// Decide the admin address based on ths option chosen.
-    pub(crate) fn decide(self, self_addr: &Addr) -> Option<Addr> {
+    pub(crate) fn decide(self, self_addr: Addr) -> Option<Addr> {
         match self {
             AdminOption::SetToAddr(addr) => Some(addr),
-            AdminOption::SetToSelf => Some(self_addr.clone()),
+            AdminOption::SetToSelf => Some(self_addr),
             AdminOption::SetToNone => None,
         }
     }

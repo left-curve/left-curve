@@ -13,7 +13,7 @@ pub type Hash160 = Hash<20>;
 
 pub type Hash256 = Hash<32>;
 
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash<const N: usize>(pub(crate) [u8; N]);
 
 forward_ref_partial_eq!(Hash160, Hash160);
@@ -79,6 +79,7 @@ impl<const N: usize> TryFrom<Vec<u8>> for Hash<N> {
     fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash is not of the correct length",
             ));
         };
@@ -93,6 +94,7 @@ impl<const N: usize> TryFrom<&[u8]> for Hash<N> {
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let Ok(bytes) = bytes.try_into() else {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash is not of the correct length",
             ));
         };
@@ -110,6 +112,7 @@ impl<const N: usize> FromStr for Hash<N> {
             .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
         {
             return Err(StdError::deserialize::<Self, _>(
+                "hex",
                 "hash must only contain uppercase alphanumeric characters",
             ));
         }

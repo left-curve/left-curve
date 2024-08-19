@@ -5,7 +5,7 @@ use grug_types::{Addr, Api, StdError, StdResult};
 pub struct InternalApi;
 
 impl Api for InternalApi {
-    fn debug(&self, addr: &Addr, msg: &str) {
+    fn debug(&self, addr: Addr, msg: &str) {
         println!("Contract emitted debug message! addr = {addr}, msg = {msg}");
     }
 

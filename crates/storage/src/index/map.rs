@@ -300,7 +300,7 @@ mod tests {
             "foo",
             "foo__name_surname",
         ),
-        id: UniqueIndex::new(|data| data.id, "foo__id"),
+        id: UniqueIndex::new(|_, data| data.id, "foo", "foo__id"),
     });
 
     #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -357,11 +357,8 @@ mod tests {
 
         // Load a single data by the index.
         {
-            let val = FOOS.idx.id.load(&storage, 104).unwrap();
-            assert_eq!(
-                val.key_value_deref().unwrap(),
-                ((1, 2), Foo::new("bar", "s_fooes", 104))
-            );
+            let val = FOOS.idx.id.load_value(&storage, 104).unwrap();
+            assert_eq!(val, Foo::new("bar", "s_fooes", 104));
         }
 
         // Try to save a data with duplicate index; should fail.
@@ -375,11 +372,8 @@ mod tests {
             let val = FOOS
                 .idx
                 .id
-                .range(&storage, None, None, Order::Ascending)
-                .map(|val| {
-                    let val = val.unwrap();
-                    (val.0, val.1.value)
-                })
+                .values(&storage, None, None, Order::Ascending)
+                .map(|val| val.unwrap())
                 .collect::<Vec<_>>();
 
             assert_eq!(val, vec![

@@ -2,7 +2,7 @@ use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
     grug_crypto::Identity256,
-    grug_types::{Addr, Binary, Message, Tx},
+    grug_types::{Addr, Binary, Json, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -133,7 +133,7 @@ impl SigningKey {
         let sign_bytes = grug_account::make_sign_bytes(
             grug_crypto::sha2_256,
             &msgs,
-            &sender,
+            sender,
             chain_id,
             sequence,
         )?;
@@ -145,6 +145,7 @@ impl SigningKey {
             gas_limit,
             sender,
             msgs,
+            data: Json::Null,
             credential: signature.into(),
         })
     }

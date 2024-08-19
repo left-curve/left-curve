@@ -17,7 +17,7 @@ pub fn call_in_0_out_1<VM, R>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
 ) -> AppResult<R>
@@ -31,8 +31,8 @@ where
         vm,
         storage,
         gas_tracker,
-        ctx.block.clone(),
-        &ctx.contract,
+        ctx.block,
+        ctx.contract,
         code_hash,
         storage_readonly,
     )?;
@@ -51,7 +51,7 @@ pub fn call_in_1_out_1<VM, P, R>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
     param: &P,
@@ -67,8 +67,8 @@ where
         vm,
         storage,
         gas_tracker,
-        ctx.block.clone(),
-        &ctx.contract,
+        ctx.block,
+        ctx.contract,
         code_hash,
         storage_readonly,
     )?;
@@ -90,7 +90,7 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
     param1: &P1,
@@ -108,8 +108,8 @@ where
         vm,
         storage,
         gas_tracker,
-        ctx.block.clone(),
-        &ctx.contract,
+        ctx.block,
+        ctx.contract,
         code_hash,
         storage_readonly,
     )?;
@@ -133,7 +133,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
 ) -> AppResult<Vec<Event>>
@@ -163,7 +163,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
     param: &P,
@@ -196,7 +196,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     name: &'static str,
-    code_hash: &Hash256,
+    code_hash: Hash256,
     ctx: &Context,
     storage_readonly: bool,
     param1: &P1,
@@ -229,8 +229,8 @@ fn create_vm_instance<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
-    address: &Addr,
-    code_hash: &Hash256,
+    address: Addr,
+    code_hash: Hash256,
     storage_readonly: bool,
 ) -> AppResult<VM::Instance>
 where
@@ -242,7 +242,7 @@ where
 
     // Create the providers
     let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
-    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, address]);
+    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &address]);
 
     Ok(vm.build_instance(
         &code,
@@ -268,7 +268,7 @@ where
 {
     // Create an event for this call
     let event = Event::new(name)
-        .add_attribute(CONTRACT_ADDRESS_KEY, &ctx.contract)
+        .add_attribute(CONTRACT_ADDRESS_KEY, ctx.contract)
         .add_attributes(response.attributes);
 
     // Handle submessages; append events emitted during submessage handling
@@ -276,9 +276,9 @@ where
     events.extend(handle_submessages(
         vm,
         storage,
-        ctx.block.clone(),
+        ctx.block,
         gas_tracker,
-        ctx.contract.clone(),
+        ctx.contract,
         response.submsgs,
     )?);
 

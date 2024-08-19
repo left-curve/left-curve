@@ -20,9 +20,9 @@ fn main() -> anyhow::Result<()> {
     let k2 = SigningKey::from_file(home_dir.join(".grug/keys/test2.json"), "123")?;
 
     // Create two genesis accounts using the keys.
-    let account_code_hash = builder.upload(artifacts_dir.join("grug_account.wasm"))?;
+    let account_code_hash = builder.upload_file(artifacts_dir.join("grug_account.wasm"))?;
     let account1 = builder.instantiate(
-        account_code_hash.clone(),
+        account_code_hash,
         &grug_account::InstantiateMsg {
             public_key: k1.public_key().into(),
         },
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         AdminOption::SetToSelf,
     )?;
     let account2 = builder.instantiate(
-        account_code_hash.clone(),
+        account_code_hash,
         &grug_account::InstantiateMsg {
             public_key: k2.public_key().into(),
         },
@@ -41,12 +41,12 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // Deploy the bank contract; give the two genesis accounts some balances.
-    let bank = builder.upload_and_instantiate(
+    let bank = builder.upload_file_and_instantiate(
         artifacts_dir.join("grug_bank.wasm"),
         &grug_bank::InstantiateMsg {
             initial_balances: [
                 (
-                    account1.clone(),
+                    account1,
                     Coins::one("uatom", NonZero::new(Uint128::new(1_000_000))),
                 ),
                 (
@@ -58,11 +58,11 @@ fn main() -> anyhow::Result<()> {
         },
         "bank",
         Coins::new(),
-        AdminOption::SetToAddr(account1.clone()),
+        AdminOption::SetToAddr(account1),
     )?;
 
     // Deploy the taxman contract.
-    let taxman = builder.upload_and_instantiate(
+    let taxman = builder.upload_file_and_instantiate(
         artifacts_dir.join("grug_taxman.wasm"),
         &grug_taxman::InstantiateMsg {
             config: grug_taxman::Config {
@@ -72,15 +72,16 @@ fn main() -> anyhow::Result<()> {
         },
         "taxman",
         Coins::new(),
-        AdminOption::SetToAddr(account1.clone()),
+        AdminOption::SetToAddr(account1),
     )?;
 
     // Build the genesis state and write to CometBFT genesis file.
     builder
-        .set_owner(Some(account1))
+        .set_owner(account1)
         .set_bank(bank)
         .set_taxman(taxman)
         .set_upload_permission(Permission::Everybody)
         .set_instantiate_permission(Permission::Everybody)
-        .write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
+        .build_and_write_to_cometbft_genesis(home_dir.join(".cometbft/config/genesis.json"))
+        .map(drop)
 }

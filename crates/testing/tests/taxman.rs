@@ -60,9 +60,8 @@ mod taxman {
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
         let charge_msg = if !charge_amount.is_zero() {
-            let owner = info.config.owner.expect("owner not set");
             Some(Message::transfer(
-                owner,
+                info.config.owner,
                 Coins::one(FEE_DENOM, NonZero::new(charge_amount)),
             )?)
         } else {
@@ -177,7 +176,7 @@ fn withholding_and_finalizing_fee_works(
             &accounts["sender"],
             gas_limit,
             Message::transfer(
-                accounts["receiver"].address.clone(),
+                accounts["receiver"].address,
                 Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount)),
             )
             .unwrap(),
@@ -240,7 +239,7 @@ fn finalizing_fee_erroring() {
         .send_message_with_gas(
             &accounts["sender"],
             0,
-            Message::transfer(accounts["sender"].address.clone(), Coins::new()).unwrap(),
+            Message::transfer(accounts["sender"].address, Coins::new()).unwrap(),
         )
         .unwrap();
 

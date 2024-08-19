@@ -1,5 +1,7 @@
+use crate::{query_app_config, query_app_configs, APP_CONFIGS};
 #[cfg(feature = "abci")]
 use grug_types::from_json_slice;
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -82,9 +84,14 @@ where
         CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
+        // Save app configs.
+        for (key, value) in genesis_state.app_configs {
+            APP_CONFIGS.save(&mut buffer, &key, &value)?;
+        }
+
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, &contract, block.timestamp, interval)?;
+            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
         }
 
         // Loop through genesis messages and execute each one.
@@ -100,7 +107,7 @@ where
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block.clone(),
+                block,
                 GENESIS_SENDER,
                 msg,
             )?;
@@ -184,8 +191,8 @@ where
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block.clone(),
-                contract.clone(),
+                block,
+                contract,
             );
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
@@ -193,7 +200,7 @@ where
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
                 &mut buffer,
-                &contract,
+                contract,
                 block.timestamp,
                 cfg.cronjobs[&contract],
             )?;
@@ -207,7 +214,7 @@ where
             tx_outcomes.push(process_tx(
                 self.vm.clone(),
                 buffer.clone(),
-                block.clone(),
+                block,
                 tx,
                 AuthMode::Finalize,
             ));
@@ -270,7 +277,7 @@ where
             self.vm.clone(),
             Box::new(buffer.clone()),
             GasTracker::new_limitless(),
-            block.clone(),
+            block,
             &tx,
         ) {
             Ok(new_events) => {
@@ -409,7 +416,8 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            credential: Json::default(),
+            data: Json::Null,
+            credential: Json::Null,
         };
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
@@ -516,7 +524,7 @@ where
         vm.clone(),
         Box::new(buffer1.clone()),
         GasTracker::new_limitless(),
-        block.clone(),
+        block,
         &tx,
     ) {
         Ok(new_events) => {
@@ -544,7 +552,7 @@ where
         vm.clone(),
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
-        block.clone(),
+        block,
         &tx,
         mode.clone(),
     ) {
@@ -571,7 +579,7 @@ where
         vm.clone(),
         buffer2.clone(),
         gas_tracker.clone(),
-        block.clone(),
+        block,
         &tx,
         mode,
         request_backrun,
@@ -625,8 +633,8 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            block.clone(),
-            tx.sender.clone(),
+            block,
+            tx.sender,
             msg.clone(),
         )?);
     }
@@ -695,18 +703,14 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, block, &sender, new_cfg),
-        Message::Transfer { to, coins } => do_transfer(
-            vm,
-            storage,
-            gas_tracker,
-            block,
-            sender.clone(),
-            to,
-            coins,
-            true,
-        ),
-        Message::Upload { code } => do_upload(&mut storage, gas_tracker, &sender, &code),
+        Message::Configure {
+            updates,
+            app_updates,
+        } => do_configure(&mut storage, block, sender, updates, app_updates),
+        Message::Transfer { to, coins } => {
+            do_transfer(vm, storage, gas_tracker, block, sender, to, coins, true)
+        },
+        Message::Upload { code } => do_upload(&mut storage, gas_tracker, sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -772,6 +776,14 @@ where
             let res = query_info(&storage, gas_tracker)?;
             Ok(QueryResponse::Info(res))
         },
+        QueryRequest::AppConfig { key } => {
+            let res = query_app_config(&storage, gas_tracker, &key)?;
+            Ok(QueryResponse::AppConfig(res))
+        },
+        QueryRequest::AppConfigs { start_after, limit } => {
+            let res = query_app_configs(&storage, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::AppConfigs(res))
+        },
         QueryRequest::Balance { address, denom } => {
             let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;
             Ok(QueryResponse::Balance(res))
@@ -816,32 +828,39 @@ where
             let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
             Ok(QueryResponse::WasmSmart(res))
         },
+        QueryRequest::Multi(reqs) => {
+            let res = reqs
+                .into_iter()
+                .map(|req| {
+                    process_query(vm.clone(), storage.clone(), gas_tracker.clone(), block, req)
+                })
+                .collect::<AppResult<Vec<_>>>()?;
+            Ok(QueryResponse::Multi(res))
+        },
     }
 }
 
-pub(crate) fn has_permission(permission: &Permission, owner: Option<&Addr>, sender: &Addr) -> bool {
+pub(crate) fn has_permission(permission: &Permission, owner: Addr, sender: Addr) -> bool {
     // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
     }
 
     // The owner can always do anything it wants.
-    if let Some(owner) = owner {
-        if sender == owner {
-            return true;
-        }
+    if sender == owner {
+        return true;
     }
 
     match permission {
         Permission::Nobody => false,
         Permission::Everybody => true,
-        Permission::Somebodies(accounts) => accounts.contains(sender),
+        Permission::Somebodies(accounts) => accounts.contains(&sender),
     }
 }
 
 pub(crate) fn schedule_cronjob(
     storage: &mut dyn Storage,
-    contract: &Addr,
+    contract: Addr,
     current_time: Timestamp,
     interval: Duration,
 ) -> StdResult<()> {

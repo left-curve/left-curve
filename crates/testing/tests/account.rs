@@ -1,6 +1,6 @@
 use {
     grug_account::Credential,
-    grug_testing::TestBuilder,
+    grug_testing::{Signer, TestBuilder},
     grug_types::{
         from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
     },
@@ -19,7 +19,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .build()?;
 
     let transfer_msg = Message::transfer(
-        accounts["larry"].address.clone(),
+        accounts["larry"].address,
         Coins::one("uatom", NonZero::new(Uint256::from(10_u128))),
     )?;
 
@@ -161,7 +161,7 @@ fn backrunning_works() -> anyhow::Result<()> {
     // Attempt to send a transaction
     suite.transfer(
         &accounts["sender"],
-        accounts["receiver"].address.clone(),
+        accounts["receiver"].address,
         Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
     )?;
 
@@ -204,7 +204,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .send_message(
             &accounts["sender"],
             Message::transfer(
-                accounts["receiver"].address.clone(),
+                accounts["receiver"].address,
                 Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
             )?,
         )?

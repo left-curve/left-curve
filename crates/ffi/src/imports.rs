@@ -294,8 +294,8 @@ impl Api for ExternalApi {
 
     impl_hash_method!(blake3, 32);
 
-    fn debug(&self, addr: &Addr, msg: &str) {
-        let addr_region = Region::build(addr);
+    fn debug(&self, addr: Addr, msg: &str) {
+        let addr_region = Region::build(&addr);
         let addr_ptr = &*addr_region as *const Region;
         let msg_region = Region::build(msg.as_bytes());
         let msg_ptr = &*msg_region as *const Region;
