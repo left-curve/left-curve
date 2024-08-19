@@ -104,35 +104,45 @@ mod tests {
         super::Counter,
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::{Dec128, Int128, MockStorage, Number, NumberConst, Uint128, Uint512},
-        std::{fmt::Debug, marker::PhantomData},
+        std::{fmt::Debug, ops::Sub, str::FromStr},
         test_case::test_case,
     };
 
-    #[test_case(PhantomData::<u8>; "u8")]
-    #[test_case(PhantomData::<Uint128>; "uint128")]
-    #[test_case(PhantomData::<Uint512>; "uint512")]
-    #[test_case(PhantomData::<Int128>; "int128")]
-    #[test_case(PhantomData::<Dec128>; "dec128")]
-    fn counter<T>(_p: PhantomData<T>)
+    #[test_case(0_u8, 1_u8; "u8")]
+    #[test_case(Uint128::ZERO, Uint128::TEN; "uint128")]
+    #[test_case(Uint512::ONE, Uint512::ONE; "uint512")]
+    #[test_case(Int128::new_negative(Uint128::ONE), Int128::new_negative(Uint128::ONE); "int128")]
+    #[test_case(Dec128::from_str("0.5").unwrap(), Dec128::from_str("1.5").unwrap(); "dec128")]
+    fn counter<T>(base: T, increment: T)
     where
-        T: BorshSerialize + BorshDeserialize + NumberConst + Number + PartialEq + Debug,
+        T: BorshSerialize
+            + BorshDeserialize
+            + NumberConst
+            + Number
+            + PartialEq
+            + Debug
+            + Copy
+            + Sub<Output = T>,
     {
         let mut storage = MockStorage::new();
-        let counter = Counter::<T>::new("counter");
+        let counter = Counter::<T>::new("counter", base, increment);
 
-        counter.load(&storage).unwrap_err();
+        let mut asserter = base;
 
-        let mut asserter = T::ZERO;
+        assert_eq!(counter.current(&storage).unwrap(), asserter);
 
-        counter.initialize(&mut storage).unwrap();
-        assert_eq!(counter.load(&storage).unwrap(), asserter);
+        asserter = asserter.checked_add(increment).unwrap();
+        assert_eq!(
+            counter.increment(&mut storage).unwrap(),
+            (asserter - increment, asserter)
+        );
+        assert_eq!(counter.current(&storage).unwrap(), asserter);
 
-        asserter = asserter.checked_add(T::ONE).unwrap();
-        assert_eq!(counter.increment(&mut storage).unwrap(), asserter);
-        assert_eq!(counter.load(&storage).unwrap(), asserter);
-
-        asserter = asserter.checked_add(T::ONE).unwrap();
-        assert_eq!(counter.increment(&mut storage).unwrap(), asserter);
-        assert_eq!(counter.load(&storage).unwrap(), asserter);
+        asserter = asserter.checked_add(increment).unwrap();
+        assert_eq!(
+            counter.increment(&mut storage).unwrap(),
+            (asserter - increment, asserter)
+        );
+        assert_eq!(counter.current(&storage).unwrap(), asserter);
     }
 }

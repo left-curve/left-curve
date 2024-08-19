@@ -319,7 +319,7 @@ fn export_crypto_verify<const N: usize>(
     // Ok
     {
         suite
-            .query_wasm_smart::<_, ()>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, ()>(tester, &query_msg)
             .should_succeed();
     }
 
@@ -330,7 +330,7 @@ fn export_crypto_verify<const N: usize>(
             *msg_hash = hash_fn(WRONG_MSG).to_vec();
         };
         suite
-            .query_wasm_smart::<_, ()>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, ()>(tester, &query_msg)
             .should_fail_with_error("verify sign failed");
     }
 
@@ -389,7 +389,7 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
     // Ok
     {
         let pk = suite
-            .query_wasm_smart::<_, Vec<u8>>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, Vec<u8>>(tester, &query_msg)
             .should_succeed();
 
         assert_eq!(pk.to_vec(), vk.to_sec1_bytes().to_vec());
@@ -401,7 +401,7 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
             *msg_hash = sha2_256(WRONG_MSG).to_vec();
         };
         let pk = suite
-            .query_wasm_smart::<_, Vec<u8>>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, Vec<u8>>(tester, &query_msg)
             .should_succeed();
 
         assert_ne!(pk.to_vec(), vk.to_sec1_bytes().to_vec());
@@ -414,7 +414,7 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
         };
 
         suite
-            .query_wasm_smart::<_, Vec<u8>>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, Vec<u8>>(tester, &query_msg)
             .should_fail_with_error("invalid msg format");
     }
 
@@ -466,7 +466,7 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
     // Ok
     {
         suite
-            .query_wasm_smart::<_, ()>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, ()>(tester, &query_msg)
             .should_succeed();
     }
 
@@ -476,7 +476,7 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
             sigs.reverse();
         };
         suite
-            .query_wasm_smart::<_, ()>(tester.clone(), &query_msg)
+            .query_wasm_smart::<_, ()>(tester, &query_msg)
             .should_fail_with_error("verify sign failed");
     }
 

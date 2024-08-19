@@ -333,6 +333,8 @@ where
     type Prefix = ();
     type Suffix = ();
 
+    const KEY_ELEMS: u8 = 1;
+
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let (mut keys, sign) = match self.is_negative() {
             true => {
@@ -372,7 +374,12 @@ where
                 true
             },
             Some(1) => false,
-            _ => return Err(StdError::deserialize::<Self::Output, _>("missing sign")),
+            _ => {
+                return Err(StdError::deserialize::<Self::Output, _>(
+                    "key",
+                    "missing sign",
+                ))
+            },
         };
 
         Ok(Signed::new(inner, negative))
@@ -386,6 +393,8 @@ where
     type Output = Self;
     type Prefix = ();
     type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let key = self.numerator().raw_keys();
@@ -490,6 +499,8 @@ macro_rules! impl_signed_integer_key {
             type Prefix = ();
             type Suffix = ();
             type Output = $s;
+            const KEY_ELEMS: u8 = 1;
+
 
             fn raw_keys(&self) -> Vec<Cow<[u8]>> {
                 let bytes = (*self as $u ^ <$s>::MIN as $u).to_be_bytes().to_vec();
@@ -498,11 +509,14 @@ macro_rules! impl_signed_integer_key {
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(format!(
-                        "wrong number of bytes: expecting {}, got {}",
-                        mem::size_of::<Self>(),
-                        bytes.len(),
-                    )));
+                    return Err(StdError::deserialize::<Self::Output, _>(
+                        "key",
+                        format!(
+                            "wrong number of bytes: expecting {}, got {}",
+                            mem::size_of::<Self>(),
+                            bytes.len(),
+                        )
+                    ));
                 };
 
                 Ok((Self::from_be_bytes(bytes) as $u ^ <$s>::MIN as $u) as _)

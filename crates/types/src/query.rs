@@ -105,20 +105,6 @@ macro_rules! generate_as {
                 };
                 resp
             }
-
-    pub fn as_app_config(self) -> Json {
-        let Self::AppConfig(value) = self else {
-            panic!("QueryResponse is not AppCofnig");
-        };
-        value
-    }
-
-    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
-        let Self::AppConfigs(map) = self else {
-            panic!("QueryResponse is not AppCofnigs");
-        };
-        map
-    }
         }
     };
 }
@@ -151,5 +137,19 @@ impl QueryResponse {
             panic!("QueryResponse is not Multi");
         };
         resp
+    }
+
+    pub fn as_app_config(self) -> Json {
+        let Self::AppConfig(value) = self else {
+            panic!("QueryResponse is not AppCofnig");
+        };
+        value
+    }
+
+    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
+        let Self::AppConfigs(map) = self else {
+            panic!("QueryResponse is not AppCofnigs");
+        };
+        map
     }
 }
