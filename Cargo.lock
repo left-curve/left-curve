@@ -1682,6 +1682,7 @@ dependencies = [
  "criterion",
  "digest 0.10.7",
  "ed25519-dalek",
+ "grug-types",
  "hex",
  "hex-literal",
  "k256",
@@ -1692,7 +1693,6 @@ dependencies = [
  "sha2 0.10.8",
  "sha3",
  "signature",
- "thiserror",
 ]
 
 [[package]]
@@ -1760,6 +1760,7 @@ dependencies = [
  "grug-types",
  "prost",
  "serde",
+ "test-case",
 ]
 
 [[package]]
@@ -1817,6 +1818,7 @@ dependencies = [
  "forward_ref",
  "hex",
  "hex-literal",
+ "paste",
  "proptest",
  "prost",
  "ripemd",
@@ -1852,6 +1854,7 @@ dependencies = [
  "clru",
  "criterion",
  "data-encoding",
+ "ed25519-dalek",
  "grug-app",
  "grug-bank",
  "grug-crypto",
@@ -1859,7 +1862,11 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",
+ "k256",
+ "p256",
+ "rand",
  "serde",
+ "test-case",
  "thiserror",
  "tracing",
  "wasmer",
