@@ -78,7 +78,7 @@ pub struct AuthCtx<'a> {
     pub mode:     AuthMode,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthMode {
     Simulate,
     Check,

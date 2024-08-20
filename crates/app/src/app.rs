@@ -554,7 +554,7 @@ where
         gas_tracker.clone(),
         block,
         &tx,
-        mode.clone(),
+        mode,
     ) {
         Ok((new_events, request_backrun)) => {
             buffer2.write_access().commit();
