@@ -13,6 +13,7 @@ use {
         ops::{Deref, DerefMut},
         str::FromStr,
     },
+    ts_rs::TS,
 };
 
 /// An account address.
@@ -33,7 +34,10 @@ use {
 /// In Grug, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TS,
+)]
+#[ts(type = "string")]
 pub struct Addr(pub(crate) Hash160);
 
 forward_ref_partial_eq!(Addr, Addr);

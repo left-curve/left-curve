@@ -6,11 +6,13 @@ use {
         fmt,
         ops::{Deref, DerefMut},
     },
+    ts_rs::TS,
 };
 
 #[derive(
-    BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
+    BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TS,
 )]
+#[ts(type = "Uint8Array")]
 pub struct Binary(Vec<u8>);
 
 impl Binary {

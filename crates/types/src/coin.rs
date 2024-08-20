@@ -7,6 +7,7 @@ use {
         fmt,
         str::FromStr,
     },
+    ts_rs::TS,
 };
 
 // ----------------------------------- coin ------------------------------------
@@ -71,8 +72,9 @@ pub struct CoinRef<'a> {
 
 /// A sorted list of coins or tokens.
 #[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, TS,
 )]
+#[ts(type = "string")]
 pub struct Coins(BTreeMap<String, Uint256>);
 
 impl Coins {

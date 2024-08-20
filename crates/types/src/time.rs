@@ -3,6 +3,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
+    ts_rs::TS,
 };
 
 /// How many nanoseconds are there in a second.
@@ -36,7 +37,9 @@ pub type Timestamp = Duration;
     Eq,
     PartialOrd,
     Ord,
+    TS,
 )]
+#[ts(type = "string")]
 pub struct Duration(Uint128);
 
 impl Duration {

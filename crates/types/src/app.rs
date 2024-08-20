@@ -8,6 +8,7 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::{BTreeMap, BTreeSet},
+    ts_rs::TS,
 };
 
 /// The mock up sender address used for executing genesis messages.
@@ -72,8 +73,9 @@ pub struct Config {
 /// A field being `Some` means it is to be updated to be the given value;
 /// it being `None` means it is not to be updated.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq, TS)]
 #[serde(deny_unknown_fields)]
+#[ts(export)]
 pub struct ConfigUpdates {
     pub owner: Option<Addr>,
     pub bank: Option<Addr>,
@@ -82,15 +84,21 @@ pub struct ConfigUpdates {
     pub permissions: Option<Permissions>,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, TS,
+)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
+#[ts(export)]
 pub struct Permissions {
     pub upload: Permission,
     pub instantiate: Permission,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, TS,
+)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
+#[ts(export)]
 pub enum Permission {
     /// Only the owner can perform the action. Note, the owner is always able to
     /// upload code or instantiate contracts.

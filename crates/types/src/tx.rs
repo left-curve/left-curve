@@ -5,35 +5,42 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
+    ts_rs::TS,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, TS)]
+#[ts(export)]
 pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
     pub msgs: Vec<Message>,
+    #[ts(type = "Record<string, any>")]
     pub data: Json,
+    #[ts(type = "Record<string, any>")]
     pub credential: Json,
 }
 
 /// A transaction but without a gas limit or credential.
 ///
 /// This is for using in gas simulation.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, TS)]
+#[ts(export)]
 pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: Vec<Message>,
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, TS)]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum Message {
     /// Update the chain- and app-level configurations.
     ///
     /// Only the `owner` is authorized to do this.
     Configure {
         updates: ConfigUpdates,
+        #[ts(type = "Record<string, any>")]
         app_updates: BTreeMap<String, Op<Json>>,
     },
     /// Send coins to the given recipient address.
@@ -42,7 +49,9 @@ pub enum Message {
     Upload { code: Binary },
     /// Register a new account.
     Instantiate {
+        #[ts(type = "string")]
         code_hash: Hash256,
+        #[ts(type = "Record<string, any>")]
         msg: Json,
         salt: Binary,
         funds: Coins,
@@ -51,6 +60,7 @@ pub enum Message {
     /// Execute a contract.
     Execute {
         contract: Addr,
+        #[ts(type = "Record<string, any>")]
         msg: Json,
         funds: Coins,
     },
@@ -60,7 +70,9 @@ pub enum Message {
     /// set to `None`, no one can update the code hash.
     Migrate {
         contract: Addr,
+        #[ts(type = "string")]
         new_code_hash: Hash256,
+        #[ts(type = "Record<string, any>")]
         msg: Json,
     },
 }
