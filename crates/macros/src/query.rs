@@ -11,15 +11,12 @@ pub fn process(input: TokenStream) -> TokenStream {
     let name = input.ident;
 
     let Data::Enum(data) = input.data else {
-        panic!("only Enums are supported")
+        panic!("query message must be an enum")
     };
 
     let mut generated_structs = Vec::new();
-
     let mut impl_req_to_enum = Vec::new();
-
     let mut impl_trait_response = Vec::new();
-
     let mut impl_as_query_msg = Vec::new();
 
     for variant in data.variants.into_iter() {
@@ -55,13 +52,11 @@ pub fn process(input: TokenStream) -> TokenStream {
                 }
 
                 // Generate the struct definition
-                let struct_def = quote! {
+                generated_structs.push(quote! {
                     pub struct #struct_name {
                         #(#fields_struct_definition)*
                     }
-                };
-
-                generated_structs.push(struct_def);
+                });
 
                 impl_req_to_enum.push(quote! {
                     impl From<#struct_name> for #name {
@@ -85,9 +80,10 @@ pub fn process(input: TokenStream) -> TokenStream {
                         }
                     }
                 });
+
                 unamed
             },
-            syn::Fields::Unit => panic!("Unit variants are not supported"),
+            syn::Fields::Unit => panic!("query message cannot contain unit variants"),
         };
 
         impl_trait_response.push(quote! {
