@@ -14,16 +14,6 @@ pub fn process(input: TokenStream) -> TokenStream {
         panic!("only Enums are supported")
     };
 
-    let path = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().get_ident().unwrap() == "query_path_override")
-        .map(|attr| {
-            attr.parse_args::<proc_macro2::TokenStream>()
-                .expect("query_path_override must be a valid path")
-        })
-        .unwrap_or(quote! { ::grug });
-
     let mut generated_structs = Vec::new();
 
     let mut impl_req_to_enum = Vec::new();
@@ -101,13 +91,13 @@ pub fn process(input: TokenStream) -> TokenStream {
         };
 
         impl_trait_response.push(quote! {
-            impl #path::QueryResponseType for #request {
+            impl ::grug::QueryResponseType for #request {
                 type Response = #return_type;
             }
         });
 
         impl_as_query_msg.push(quote! {
-            impl #path::AsQueryMsg for #request {
+            impl ::grug::AsQueryMsg for #request {
                 type QueryMsg = #name;
             }
         });
