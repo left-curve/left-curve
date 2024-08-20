@@ -1,37 +1,33 @@
 use {
-    grug::{Coins, ContractBuilder, NonZero, TestBuilder, Uint128},
-    super_smart_querier::{Data, QueryDataRequest},
+    grug::{Addr, Coins, ContractBuilder, Empty, NonZero, TestBuilder},
+    super_smart_querier::{QueryFooRequest, QueryFuzzRequest},
 };
 
 mod super_smart_querier {
-    use grug::{to_json_value, ImmutableCtx, Item, Json, MutableCtx, Response, StdResult, Uint128};
-
-    const DATA: Item<Data> = Item::new("data");
-
-    #[grug::derive(serde, borsh)]
-    pub struct Data {
-        pub foo: String,
-        pub bar: Uint128,
-    }
+    use grug::{to_json_value, Addr, Empty, ImmutableCtx, Json, MutableCtx, Response, StdResult};
 
     #[grug::derive(serde)]
     #[derive(grug::Query)]
     pub enum QueryMsg {
-        #[returns(Data)]
-        Data {},
+        #[returns(String)]
+        Foo { bar: u64 },
+        #[returns(Addr)]
+        Fuzz(u8),
     }
 
-    pub fn instantiate(ctx: MutableCtx, data: Data) -> StdResult<Response> {
-        DATA.save(ctx.storage, &data)?;
-
+    pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
         Ok(Response::new())
     }
 
-    pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+    pub fn query(_ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         match msg {
-            QueryMsg::Data {} => {
-                let data = &DATA.load(ctx.storage)?;
-                to_json_value(&data)
+            QueryMsg::Foo { bar } => {
+                let bar = bar.to_string();
+                to_json_value(&bar)
+            },
+            QueryMsg::Fuzz(buzz) => {
+                let buzz = Addr::mock(buzz);
+                to_json_value(&buzz)
             },
         }
     }
@@ -57,20 +53,20 @@ fn query_super_smart() {
             &accounts["larry"],
             code,
             "contract",
-            &Data {
-                foo: "rhaki".to_string(),
-                bar: Uint128::new(123),
-            },
+            &Empty {},
             Coins::new(),
         )
         .unwrap();
 
     // Here, the compiler should be able to infer the type of the response as
-    // `Data` based on the request type `DataRequest`.
-    let res = suite
-        .query_wasm_super_smart(contract, QueryDataRequest {})
-        .should_succeed();
+    // `String` based on the request type `QueryFooRequest`.
+    suite
+        .query_wasm_super_smart(contract, QueryFooRequest { bar: 12345 })
+        .should_succeed_and_equal(12345.to_string());
 
-    assert_eq!(res.foo, "rhaki");
-    assert_eq!(res.bar.number(), 123);
+    // Similarly, the compiler should be able to infer the type of response as
+    // `Addr` based on the request type `QueryBarRequest`.
+    suite
+        .query_wasm_super_smart(contract, QueryFuzzRequest(123))
+        .should_succeed_and_equal(Addr::mock(123));
 }

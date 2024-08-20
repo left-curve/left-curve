@@ -114,7 +114,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // pub struct QueryFuzzRequest(i128);
                 // ```
                 generated_structs.push(quote! {
-                    pub struct #request_name(#variant_ty);
+                    pub struct #request_name(pub #variant_ty);
                 });
 
                 // E.g.
