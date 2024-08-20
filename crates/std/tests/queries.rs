@@ -1,60 +1,37 @@
 use {
-    grug::{Coins, ContractBuilder, Empty, NonZero, TestBuilder},
-    super_smart_querier::{AskConfigRequest, ConfigHost, QueryMsgClient},
+    grug::{Coins, ContractBuilder, NonZero, TestBuilder, Uint128},
+    super_smart_querier::{Data, DataRequest},
 };
 
 mod super_smart_querier {
-    use grug::{
-        to_json_value, Addr, Empty, ImmutableCtx, Item, Json, MutableCtx, Response, StdResult,
-        Uint128,
-    };
+    use grug::{to_json_value, ImmutableCtx, Item, Json, MutableCtx, Response, StdResult, Uint128};
 
-    const CONFIG: Item<ConfigHost> = Item::new("c");
+    const DATA: Item<Data> = Item::new("data");
 
     #[grug::derive(serde, borsh)]
-    pub struct ConfigHost {
-        pub owner: String,
-        pub balance: Uint128,
+    pub struct Data {
+        pub foo: String,
+        pub bar: Uint128,
     }
 
     #[grug::derive(serde)]
     #[derive(grug::Query)]
-    pub enum QueryMsgHost {
-        #[returns(ConfigHost)]
-        Config {},
+    pub enum QueryMsg {
+        #[returns(Data)]
+        Data {},
     }
 
-    pub fn instantiate_host(ctx: MutableCtx, config: ConfigHost) -> StdResult<Response> {
-        CONFIG.save(ctx.storage, &config)?;
+    pub fn instantiate(ctx: MutableCtx, data: Data) -> StdResult<Response> {
+        DATA.save(ctx.storage, &data)?;
 
         Ok(Response::new())
     }
 
-    pub fn query_host(ctx: ImmutableCtx, msg: QueryMsgHost) -> StdResult<Json> {
+    pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         match msg {
-            QueryMsgHost::Config {} => to_json_value(&CONFIG.load(ctx.storage)?),
-        }
-    }
-
-    // ---- Client ----
-    #[grug::derive(serde)]
-    #[derive(grug::Query)]
-    pub enum QueryMsgClient {
-        #[returns(ConfigHost)]
-        AskConfig { contract: Addr },
-    }
-
-    pub fn instantiate_client(_: MutableCtx, _: Empty) -> StdResult<Response> {
-        Ok(Response::new())
-    }
-
-    pub fn query_client(ctx: ImmutableCtx, msg: QueryMsgClient) -> StdResult<Json> {
-        match msg {
-            QueryMsgClient::AskConfig { contract } => {
-                let request = ConfigRequest {};
-                let response = ctx.querier.query_wasm_super_smart(contract, request)?;
-
-                Ok(to_json_value(&response)?)
+            QueryMsg::Data {} => {
+                let data = &DATA.load(ctx.storage)?;
+                to_json_value(&data)
             },
         }
     }
@@ -71,58 +48,29 @@ fn query_super_smart() {
         .build()
         .unwrap();
 
-    let host_contract = ContractBuilder::new(Box::new(super_smart_querier::instantiate_host))
-        .with_query(Box::new(super_smart_querier::query_host))
+    let code = ContractBuilder::new(Box::new(super_smart_querier::instantiate))
+        .with_query(Box::new(super_smart_querier::query))
         .build();
 
-    let client_contract = ContractBuilder::new(Box::new(super_smart_querier::instantiate_client))
-        .with_query(Box::new(super_smart_querier::query_client))
-        .build();
-
-    // If the contract successfully deploys, the multi query must have worked.
-    let (_, host_contract) = suite
+    let (_, contract) = suite
         .upload_and_instantiate(
             &accounts["larry"],
-            host_contract,
-            "host_contract",
-            &ConfigHost {
-                owner: "rhaki".to_string(),
-                balance: 123_u128.into(),
+            code,
+            "contract",
+            &Data {
+                foo: "rhaki".to_string(),
+                bar: Uint128::new(123),
             },
             Coins::new(),
         )
         .unwrap();
 
-    let (_, client_contract) = suite
-        .upload_and_instantiate(
-            &accounts["larry"],
-            client_contract,
-            "client_contract",
-            &Empty {},
-            Coins::new(),
-        )
-        .unwrap();
+    // Here, the compiler should be able to infer the type of the response as
+    // `Data` based on the request type `DataRequest`.
+    let res = suite
+        .query_wasm_super_smart(contract, DataRequest {})
+        .should_succeed();
 
-    // Standard query_wasm_smart on suite
-    {
-        let result: ConfigHost = suite
-            .query_wasm_smart(client_contract, &QueryMsgClient::AskConfig {
-                contract: host_contract,
-            })
-            .should_succeed();
-
-        assert_eq!(result.owner, "rhaki");
-        assert_eq!(result.balance, 123_u128.into());
-    }
-
-    {
-        let result = suite
-            .query_wasm_super_smart(client_contract, AskConfigRequest {
-                contract: host_contract,
-            })
-            .should_succeed();
-
-        assert_eq!(result.owner, "rhaki");
-        assert_eq!(result.balance, 123_u128.into());
-    }
+    assert_eq!(res.foo, "rhaki");
+    assert_eq!(res.bar.number(), 123);
 }
