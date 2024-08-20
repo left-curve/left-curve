@@ -5,9 +5,10 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Addr, Binary, BlockInfo, BlockOutcome, Coins,
+        from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
         ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
         NumberConst, Op, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -61,6 +62,21 @@ where
         })
     }
 
+    /// Simulate the gas cost and event outputs of an unsigned transaction.
+    pub fn simulate_tx(&self, unsigned_tx: UnsignedTx) -> anyhow::Result<TxOutcome> {
+        Ok(self.app.do_simulate(unsigned_tx, 0, false)?)
+    }
+
+    /// Perform ABCI `CheckTx` call of a transaction.
+    pub fn check_tx(&self, tx: Tx) -> anyhow::Result<Outcome> {
+        Ok(self.app.do_check_tx(tx)?)
+    }
+
+    /// Make a new block without any transaction.
+    pub fn make_empty_block(&mut self) -> anyhow::Result<BlockOutcome> {
+        self.make_block(vec![])
+    }
+
     /// Make a new block with the given transactions.
     pub fn make_block(&mut self, txs: Vec<Tx>) -> anyhow::Result<BlockOutcome> {
         let num_txs = txs.len();
@@ -87,10 +103,19 @@ where
         Ok(block_outcome)
     }
 
-    /// Make a new block without any transaction.
-    pub fn make_empty_block(&mut self) -> anyhow::Result<()> {
-        self.make_block(vec![])?;
-        Ok(())
+    /// Execute a single transaction.
+    pub fn send_transaction(&mut self, tx: Tx) -> anyhow::Result<TxOutcome> {
+        let mut block_outcome = self.make_block(vec![tx])?;
+
+        // Sanity check: we sent one transaction, so there should be exactly one
+        // transaction outcome in the block outcome.
+        ensure!(
+            block_outcome.tx_outcomes.len() == 1,
+            "expecting exactly one transaction outcome, got {}; something is wrong!",
+            block_outcome.tx_outcomes.len()
+        );
+
+        Ok(block_outcome.tx_outcomes.pop().unwrap())
     }
 
     /// Execute a single message under the given gas limit.
@@ -117,18 +142,7 @@ where
         let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
         *sequence += 1;
 
-        // Make a new block with only this transaction
-        let mut block_outcome = self.make_block(vec![tx])?;
-
-        // Sanity check: we sent one transaction, so there should be exactly one
-        // transaction outcome in the block outcome.
-        ensure!(
-            block_outcome.tx_outcomes.len() == 1,
-            "expecting exactly one transaction outcome, got {}; something is wrong!",
-            block_outcome.tx_outcomes.len()
-        );
-
-        Ok(block_outcome.tx_outcomes.pop().unwrap())
+        self.send_transaction(tx)
     }
 
     /// Update the chain's config under the given gas limit.
@@ -293,14 +307,37 @@ where
         Ok(())
     }
 
-    pub fn check_tx(&self, tx: Tx) -> anyhow::Result<Outcome> {
-        Ok(self.app.do_check_tx(tx)?)
-    }
-
     pub fn query_info(&self) -> GenericResult<InfoResponse> {
         self.app
             .do_query_app(QueryRequest::Info {}, 0, false)
             .map(|val| val.as_info())
+            .into()
+    }
+
+    pub fn query_app_config(&self, key: &str) -> GenericResult<Json> {
+        self.app
+            .do_query_app(
+                QueryRequest::AppConfig {
+                    key: key.to_string(),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_app_config())
+            .into()
+    }
+
+    pub fn query_app_configs(&self) -> GenericResult<BTreeMap<String, Json>> {
+        self.app
+            .do_query_app(
+                QueryRequest::AppConfigs {
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_app_configs())
             .into()
     }
 
@@ -330,6 +367,98 @@ where
                 false,
             )
             .map(|res| res.as_balances())
+            .into()
+    }
+
+    pub fn query_supply(&self, denom: &str) -> GenericResult<Uint256> {
+        self.app
+            .do_query_app(
+                QueryRequest::Supply {
+                    denom: denom.to_string(),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_supply().amount)
+            .into()
+    }
+
+    pub fn query_supplies(&self) -> GenericResult<Coins> {
+        self.app
+            .do_query_app(
+                QueryRequest::Supplies {
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_supplies())
+            .into()
+    }
+
+    pub fn query_code(&self, hash: Hash256) -> GenericResult<Binary> {
+        self.app
+            .do_query_app(QueryRequest::Code { hash }, 0, false)
+            .map(|res| res.as_code())
+            .into()
+    }
+
+    pub fn query_codes(&self) -> GenericResult<BTreeMap<Hash256, Binary>> {
+        self.app
+            .do_query_app(
+                QueryRequest::Codes {
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_codes())
+            .into()
+    }
+
+    pub fn query_account(&self, signer: &dyn Signer) -> GenericResult<Account> {
+        self.app
+            .do_query_app(
+                QueryRequest::Account {
+                    address: signer.address(),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_account())
+            .into()
+    }
+
+    pub fn query_accounts(&self) -> GenericResult<BTreeMap<Addr, Account>> {
+        self.app
+            .do_query_app(
+                QueryRequest::Accounts {
+                    start_after: None,
+                    limit: Some(u32::MAX),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_accounts())
+            .into()
+    }
+
+    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> GenericResult<Option<Binary>>
+    where
+        B: Into<Binary>,
+    {
+        self.app
+            .do_query_app(
+                QueryRequest::WasmRaw {
+                    contract,
+                    key: key.into(),
+                },
+                0,
+                false,
+            )
+            .map(|res| res.as_wasm_raw())
             .into()
     }
 

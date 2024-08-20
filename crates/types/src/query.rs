@@ -45,7 +45,7 @@ pub enum QueryRequest {
     Code { hash: Hash256 },
     /// Enumerate all Wasm byte codes.
     ///
-    /// Returns: `BTreeMap<Hash, Binary>`
+    /// Returns: `BTreeMap<Hash256, Binary>`
     Codes {
         start_after: Option<Hash256>,
         limit: Option<u32>,
