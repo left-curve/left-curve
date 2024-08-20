@@ -1,6 +1,7 @@
 mod derive;
 mod export;
 mod index_list;
+mod query;
 
 use proc_macro::TokenStream;
 
@@ -47,4 +48,9 @@ pub fn export(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn index_list(attr: TokenStream, input: TokenStream) -> TokenStream {
     index_list::process(attr, input)
+}
+
+#[proc_macro_derive(Query, attributes(returns, query_path_override))]
+pub fn derive_query(input: TokenStream) -> TokenStream {
+    query::process(input)
 }

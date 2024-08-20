@@ -196,3 +196,18 @@ impl QueryResponse {
         resp
     }
 }
+
+pub trait QueryResponseType {
+    type Response;
+}
+
+pub trait AsQueryMsg: Sized
+where
+    <Self as AsQueryMsg>::QueryMsg: From<Self>,
+{
+    type QueryMsg;
+
+    fn into_query_msg(self) -> Self::QueryMsg {
+        self.into()
+    }
+}

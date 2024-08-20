@@ -5,10 +5,10 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
-        ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
-        NumberConst, Op, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
-        UnsignedTx,
+        from_json_value, to_json_value, Account, Addr, AsQueryMsg, Binary, BlockInfo, BlockOutcome,
+        Coins, ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json,
+        Message, NumberConst, Op, Outcome, QueryRequest, QueryResponseType, StdError, Tx,
+        TxOutcome, Uint256, Uint64, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -469,6 +469,30 @@ where
     {
         (|| -> AppResult<_> {
             let msg_raw = to_json_value(msg)?;
+            let res_raw = self
+                .app
+                .do_query_app(
+                    QueryRequest::WasmSmart {
+                        contract,
+                        msg: msg_raw,
+                    },
+                    0, // zero means to use the latest height
+                    false,
+                )?
+                .as_wasm_smart();
+            Ok(from_json_value(res_raw)?)
+        })()
+        .into()
+    }
+
+    pub fn query_wasm_super_smart<R>(&self, contract: Addr, msg: R) -> GenericResult<R::Response>
+    where
+        R: AsQueryMsg + QueryResponseType,
+        <R as AsQueryMsg>::QueryMsg: Serialize,
+        <R as QueryResponseType>::Response: DeserializeOwned,
+    {
+        (|| -> AppResult<_> {
+            let msg_raw = to_json_value(&msg.into_query_msg())?;
             let res_raw = self
                 .app
                 .do_query_app(
