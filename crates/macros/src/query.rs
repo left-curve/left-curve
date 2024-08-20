@@ -1,7 +1,7 @@
 use {
     core::panic,
     proc_macro::TokenStream,
-    quote::quote,
+    quote::{quote, ToTokens},
     syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, Type},
 };
 
@@ -33,7 +33,7 @@ pub fn process(input: TokenStream) -> TokenStream {
     let mut impl_as_query_msg = Vec::new();
 
     // Iterate through the variants of the query message.
-    for variant in data.variants.into_iter() {
+    for variant in data.variants {
         // E.g. `Foo`.
         let variant_name = &variant.ident;
 
@@ -108,13 +108,15 @@ pub fn process(input: TokenStream) -> TokenStream {
                 });
             },
             Fields::Unnamed(variant_ty) => {
+                let unnamed = variant_ty.unnamed.into_token_stream();
+
                 // Generate the query request struct definition, e.g.
                 //
                 // ```rust
                 // pub struct QueryFuzzRequest(i128);
                 // ```
                 generated_structs.push(quote! {
-                    pub struct #request_name(pub #variant_ty);
+                    pub struct #request_name(pub #unnamed);
                 });
 
                 // E.g.
