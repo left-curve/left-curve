@@ -1,6 +1,6 @@
 use {
     grug::{Coins, ContractBuilder, NonZero, TestBuilder, Uint128},
-    super_smart_querier::{Data, DataRequest},
+    super_smart_querier::{Data, QueryDataRequest},
 };
 
 mod super_smart_querier {
@@ -68,7 +68,7 @@ fn query_super_smart() {
     // Here, the compiler should be able to infer the type of the response as
     // `Data` based on the request type `DataRequest`.
     let res = suite
-        .query_wasm_super_smart(contract, DataRequest {})
+        .query_wasm_super_smart(contract, QueryDataRequest {})
         .should_succeed();
 
     assert_eq!(res.foo, "rhaki");
