@@ -13,8 +13,10 @@ use {
 /// enum QueryMsg {
 ///     #[returns(String)]
 ///     Foo { bar: u64 },
-///     #[returns(Buzz)]
-///     Fuzz(i128),
+///     #[returns(Addr)]
+///     Fuzz(u8),
+///     #[returns(Hash256)]
+///     Buzz,
 /// }
 /// ```
 pub fn process(input: TokenStream) -> TokenStream {
@@ -42,7 +44,7 @@ pub fn process(input: TokenStream) -> TokenStream {
         let request_name = Ident::new(&format!("Query{variant_name}Request"), variant.ident.span());
 
         // Return type for this variant specified in the `#[return]` attribute.
-        // E.g. for `Foo`, this would be `String`; for `Fuzz`, this would be `Buzz`.
+        // E.g. for `Foo`, this would be `String`.
         let return_type: Type = variant
             .attrs
             .iter()
@@ -52,7 +54,6 @@ pub fn process(input: TokenStream) -> TokenStream {
             .expect("only one type supported");
 
         // Iterate through fields in the query message variant.
-        // In the example, there is one variant: `bar`.
         match variant.fields {
             Fields::Named(variant_ty) => {
                 let mut fields_struct_definition = Vec::new();
@@ -110,10 +111,10 @@ pub fn process(input: TokenStream) -> TokenStream {
             Fields::Unnamed(variant_ty) => {
                 let unnamed = variant_ty.unnamed.into_token_stream();
 
-                // Generate the query request struct definition, e.g.
+                // E.g.
                 //
                 // ```rust
-                // pub struct QueryFuzzRequest(i128);
+                // pub struct QueryFuzzRequest(u8);
                 // ```
                 generated_structs.push(quote! {
                     pub struct #request_name(pub #unnamed);
@@ -136,7 +137,33 @@ pub fn process(input: TokenStream) -> TokenStream {
                     }
                 });
             },
-            Fields::Unit => panic!("query message cannot contain unit variants"),
+            Fields::Unit => {
+                // E.g.
+                //
+                // ```rust
+                // pub struct QueryBuzzRequest;
+                // ```
+                generated_structs.push(quote! {
+                    pub struct #request_name;
+                });
+
+                // E.g.
+                //
+                // ```rust
+                // impl From<QueryBuzzRequest> for QueryMsg {
+                //     fn from(_val: QueryBuzzRequest) -> Self {
+                //         Self::Buzz
+                //     }
+                // }
+                // ```
+                impl_req_to_enum.push(quote! {
+                    impl From<#request_name> for #name {
+                        fn from(_val: #request_name) -> Self {
+                            Self::#variant_name
+                        }
+                    }
+                })
+            },
         };
 
         impl_trait_response.push(quote! {

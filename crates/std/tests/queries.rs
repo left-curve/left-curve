@@ -1,10 +1,12 @@
 use {
-    grug::{Addr, Coins, ContractBuilder, Empty, NonZero, TestBuilder},
-    super_smart_querier::{QueryFooRequest, QueryFuzzRequest},
+    grug::{Addr, Coins, ContractBuilder, Empty, Hash256, NonZero, TestBuilder},
+    super_smart_querier::{QueryBuzzRequest, QueryFooRequest, QueryFuzzRequest},
 };
 
 mod super_smart_querier {
-    use grug::{to_json_value, Addr, Empty, ImmutableCtx, Json, MutableCtx, Response, StdResult};
+    use grug::{
+        to_json_value, Addr, Empty, Hash256, ImmutableCtx, Json, MutableCtx, Response, StdResult,
+    };
 
     #[grug::derive(serde)]
     #[derive(grug::Query)]
@@ -13,6 +15,8 @@ mod super_smart_querier {
         Foo { bar: u64 },
         #[returns(Addr)]
         Fuzz(u8),
+        #[returns(Hash256)]
+        Buzz,
     }
 
     pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
@@ -25,8 +29,12 @@ mod super_smart_querier {
                 let bar = bar.to_string();
                 to_json_value(&bar)
             },
-            QueryMsg::Fuzz(buzz) => {
-                let buzz = Addr::mock(buzz);
+            QueryMsg::Fuzz(fuzz) => {
+                let fuzz = Addr::mock(fuzz);
+                to_json_value(&fuzz)
+            },
+            QueryMsg::Buzz => {
+                let buzz = Hash256::from_array([1; 32]);
                 to_json_value(&buzz)
             },
         }
@@ -64,9 +72,13 @@ fn query_super_smart() {
         .query_wasm_super_smart(contract, QueryFooRequest { bar: 12345 })
         .should_succeed_and_equal(12345.to_string());
 
-    // Similarly, the compiler should be able to infer the type of response as
-    // `Addr` based on the request type `QueryBarRequest`.
+    // Similarly, for unnamed variant `Fuzz`.
     suite
         .query_wasm_super_smart(contract, QueryFuzzRequest(123))
         .should_succeed_and_equal(Addr::mock(123));
+
+    // Similarly, for unit variant `Buzz`.
+    suite
+        .query_wasm_super_smart(contract, QueryBuzzRequest)
+        .should_succeed_and_equal(Hash256::from_array([1; 32]));
 }
