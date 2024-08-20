@@ -8,6 +8,7 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::{BTreeMap, BTreeSet},
+    typeshare::typeshare,
 };
 
 /// The mock up sender address used for executing genesis messages.
@@ -74,10 +75,12 @@ pub struct Config {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+#[typeshare]
 pub struct ConfigUpdates {
     pub owner: Option<Addr>,
     pub bank: Option<Addr>,
     pub taxman: Option<Addr>,
+    #[typeshare(typescript(type = "Record<Addr, Duration>"))]
     pub cronjobs: Option<BTreeMap<Addr, Duration>>,
     pub permissions: Option<Permissions>,
 }

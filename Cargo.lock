@@ -1827,6 +1827,7 @@ dependencies = [
  "sha3",
  "test-case",
  "thiserror",
+ "typeshare",
 ]
 
 [[package]]
@@ -4079,6 +4080,26 @@ name = "typenum"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
+
+[[package]]
+name = "typeshare"
+version = "1.0.3"
+source = "git+https://github.com/j0nl1/typeshare#980d8d9e40b15b082a907c05ba7cae2d6bccb4da"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "typeshare-annotation",
+]
+
+[[package]]
+name = "typeshare-annotation"
+version = "1.0.4"
+source = "git+https://github.com/j0nl1/typeshare#980d8d9e40b15b082a907c05ba7cae2d6bccb4da"
+dependencies = [
+ "quote",
+ "syn 2.0.73",
+]
 
 [[package]]
 name = "unarray"

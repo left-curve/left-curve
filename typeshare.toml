@@ -1,0 +1,3 @@
+[typescript.type_mappings]
+Json = "any"
+Hash256 = "string"

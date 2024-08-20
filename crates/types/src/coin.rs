@@ -7,6 +7,7 @@ use {
         fmt,
         str::FromStr,
     },
+    typeshare::typeshare,
 };
 
 // ----------------------------------- coin ------------------------------------
@@ -73,6 +74,7 @@ pub struct CoinRef<'a> {
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
+#[typeshare(serialized_as = "Record<string, string>")]
 pub struct Coins(BTreeMap<String, Uint256>);
 
 impl Coins {

@@ -5,9 +5,11 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
+    typeshare::typeshare,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[typeshare]
 pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
@@ -27,13 +29,15 @@ pub struct UnsignedTx {
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", tag = "type", content = "content")]
+#[typeshare]
 pub enum Message {
     /// Update the chain- and app-level configurations.
     ///
     /// Only the `owner` is authorized to do this.
     Configure {
         updates: ConfigUpdates,
+        #[typeshare(typescript(type = "Record<string, any>"))]
         app_updates: BTreeMap<String, Op<Json>>,
     },
     /// Send coins to the given recipient address.

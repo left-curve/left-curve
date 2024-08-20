@@ -81,6 +81,7 @@ tendermint-rpc     = "0.39"
 test-case          = "3"
 thiserror          = "1"
 tokio              = "1"
+typeshare          = { git = "https://github.com/j0nl1/typeshare", commit = "de54f19"}
 tracing            = "0.1"
 tracing-subscriber = "0.3"
 wasmer             = "4"

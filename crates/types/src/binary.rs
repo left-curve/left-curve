@@ -6,11 +6,13 @@ use {
         fmt,
         ops::{Deref, DerefMut},
     },
+    typeshare::typeshare,
 };
 
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]
+#[typeshare]
 pub struct Binary(Vec<u8>);
 
 impl Binary {
