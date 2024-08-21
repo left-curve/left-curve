@@ -163,17 +163,19 @@ impl Client {
         req: &Query,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
-        let res = self
-            .query("/app", req.to_json_vec()?.to_vec(), height, false)
-            .await?;
-        Ok(res.value.deserialize_json()?)
+        self.query("/app", req.to_json_vec()?.to_vec(), height, false)
+            .await?
+            .value
+            .deserialize_json()
+            .map_err(Into::into)
     }
 
     /// Query the chain-level information, including the chain ID, config, and
     /// the latest finalized block.
     pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
-        let res = self.query_app(&Query::Info {}, height).await?;
-        Ok(res.as_info())
+        self.query_app(&Query::Info {}, height)
+            .await
+            .map(|res| res.as_info())
     }
 
     /// Query an account's balance in a single denom.
@@ -183,10 +185,9 @@ impl Client {
         denom: String,
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
-        let res = self
-            .query_app(&Query::Balance { address, denom }, height)
-            .await?;
-        Ok(res.as_balance())
+        self.query_app(&Query::Balance { address, denom }, height)
+            .await
+            .map(|res| res.as_balance())
     }
 
     /// Enumerate an account's balances in all denoms
@@ -197,23 +198,23 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self
-            .query_app(
-                &Query::Balances {
-                    address,
-                    start_after,
-                    limit,
-                },
-                height,
-            )
-            .await?;
-        Ok(res.as_balances())
+        self.query_app(
+            &Query::Balances {
+                address,
+                start_after,
+                limit,
+            },
+            height,
+        )
+        .await
+        .map(|res| res.as_balances())
     }
 
     /// Query a token's total supply.
     pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
-        let res = self.query_app(&Query::Supply { denom }, height).await?;
-        Ok(res.as_supply())
+        self.query_app(&Query::Supply { denom }, height)
+            .await
+            .map(|res| res.as_supply())
     }
 
     /// Enumerate all token's total supplies.
@@ -223,16 +224,16 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self
-            .query_app(&Query::Supplies { start_after, limit }, height)
-            .await?;
-        Ok(res.as_supplies())
+        self.query_app(&Query::Supplies { start_after, limit }, height)
+            .await
+            .map(|res| res.as_supplies())
     }
 
     /// Query a single Wasm byte code by hash.
     pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
-        let res = self.query_app(&Query::Code { hash }, height).await?;
-        Ok(res.as_code())
+        self.query_app(&Query::Code { hash }, height)
+            .await
+            .map(|res| res.as_code())
     }
 
     /// Enumerate hashes of all codes.
@@ -242,10 +243,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
-        let res = self
-            .query_app(&Query::Codes { start_after, limit }, height)
-            .await?;
-        Ok(res.as_codes())
+        self.query_app(&Query::Codes { start_after, limit }, height)
+            .await
+            .map(|res| res.as_codes())
     }
 
     /// Query the metadata of a single account.
@@ -254,8 +254,9 @@ impl Client {
         address: Addr,
         height: Option<u64>,
     ) -> anyhow::Result<Account> {
-        let res = self.query_app(&Query::Account { address }, height).await?;
-        Ok(res.as_account())
+        self.query_app(&Query::Account { address }, height)
+            .await
+            .map(|res| res.as_account())
     }
 
     /// Enumerate metadata of all accounts.
@@ -265,10 +266,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Addr, Account>> {
-        let res = self
-            .query_app(&Query::Accounts { start_after, limit }, height)
-            .await?;
-        Ok(res.as_accounts())
+        self.query_app(&Query::Accounts { start_after, limit }, height)
+            .await
+            .map(|res| res.as_accounts())
     }
 
     /// Query a raw key-value pair in a contract's internal state.
@@ -278,24 +278,33 @@ impl Client {
         key: Binary,
         height: Option<u64>,
     ) -> anyhow::Result<Option<Binary>> {
-        let res = self
-            .query_app(&Query::WasmRaw { contract, key }, height)
-            .await?;
-        Ok(res.as_wasm_raw())
+        self.query_app(&Query::WasmRaw { contract, key }, height)
+            .await
+            .map(|res| res.as_wasm_raw())
     }
 
     /// Call the contract's query entry point with the given message.
-    pub async fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
+    pub async fn query_wasm_smart<M, R>(
         &self,
         contract: Addr,
         msg: &M,
         height: Option<u64>,
-    ) -> anyhow::Result<R> {
-        let msg = msg.to_json_value()?;
-        let res = self
-            .query_app(&Query::WasmSmart { contract, msg }, height)
-            .await?;
-        Ok(res.as_wasm_smart().deserialize_json()?)
+    ) -> anyhow::Result<R>
+    where
+        M: Serialize,
+        R: DeserializeOwned,
+    {
+        self.query_app(
+            &Query::WasmSmart {
+                contract,
+                msg: msg.to_json_value()?,
+            },
+            height,
+        )
+        .await?
+        .as_wasm_smart()
+        .deserialize_json()
+        .map_err(Into::into)
     }
 
     /// Simulate the gas usage of a transaction.
