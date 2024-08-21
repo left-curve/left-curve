@@ -7,6 +7,8 @@ use {
 
 // ----------------------------------- json ------------------------------------
 
+/// Represents a value that can be serialized and deserialized with the JSON
+/// encoding.
 pub trait JsonExt: Sized {
     /// Deserialize a slice of JSON bytes into Rust value.
     fn from_json_slice<B>(bytes: B) -> StdResult<Self>
@@ -77,6 +79,8 @@ where
 
 // ----------------------------------- borsh -----------------------------------
 
+/// Represents a value that can be serialized and deserialized using the Borsh
+/// encoding.
 pub trait BorshExt: Sized {
     /// Deserialize a slice of Borsh bytes into Rust value.
     fn from_borsh_slice<B>(bytes: B) -> StdResult<Self>
@@ -105,6 +109,8 @@ where
 
 // --------------------------------- protobuf ----------------------------------
 
+/// Represents a value that can be serialized and deserialized with the Protobuf
+/// encoding.
 pub trait ProtoExt: Sized {
     /// Deserialize a slice of Protobuf bytes into Rust value.
     fn from_proto_slice<B>(bytes: B) -> StdResult<Self>
