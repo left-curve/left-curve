@@ -8,8 +8,8 @@ use {
 /// Throughout the function, we will use comments to illustrate how it works,
 /// based on the following example:
 ///
-/// ```rust
-/// #[derive(grug::Query)]
+/// ```rust ignore
+/// #[derive(grug::QueryRequest)]
 /// enum QueryMsg {
 ///     #[returns(String)]
 ///     Foo { bar: u64 },
