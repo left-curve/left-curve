@@ -318,6 +318,29 @@ impl Client {
 
     // -------------------------- transaction methods --------------------------
 
+    /// Broadcast an already signed transaction, without terminal prompt for
+    /// confirmation.
+    pub async fn broadcast_tx(&self, tx: Tx) -> anyhow::Result<tx_sync::Response> {
+        self.broadcast_tx_with_confirmation(tx, no_confirmation)
+            .await
+            .map(Option::unwrap)
+    }
+
+    /// Broadcast an already signed transaction, with terminal prompt for
+    /// confirmation.
+    pub async fn broadcast_tx_with_confirmation(
+        &self,
+        tx: Tx,
+        confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
+    ) -> anyhow::Result<Option<tx_sync::Response>> {
+        if confirm_fn(&tx)? {
+            let tx_bytes = tx.to_json_vec()?;
+            Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Create, sign, and broadcast a transaction with a single message, without
     /// terminal prompt for confirmation.
     ///
@@ -435,12 +458,7 @@ impl Client {
             gas_limit,
         )?;
 
-        if confirm_fn(&tx)? {
-            let tx_bytes = tx.to_json_vec()?;
-            Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
-        } else {
-            Ok(None)
-        }
+        self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
 
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
