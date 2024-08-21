@@ -1,7 +1,7 @@
 use {
     crate::{get_contract_impl, ContractWrapper, InternalApi, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{from_json_slice, to_json_vec, Context, Hash256},
+    grug_types::{BankMsg, BankQuery, Context, Hash256, JsonExt, SubMsgResult, Tx, TxOutcome},
 };
 
 /// Names of export functions supported by Grug.
@@ -78,7 +78,7 @@ impl Instance for RustInstance {
                     &InternalApi,
                     &self.querier,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "cron_execute" => {
                 let res = contract.cron_execute(
@@ -87,7 +87,7 @@ impl Instance for RustInstance {
                     &InternalApi,
                     &self.querier,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 0));
@@ -118,7 +118,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "execute" => {
                 let res = contract.execute(
@@ -128,7 +128,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "migrate" => {
                 let res = contract.migrate(
@@ -138,7 +138,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "query" => {
                 let res = contract.query(
@@ -148,10 +148,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "authenticate" => {
-                let tx = from_json_slice(param)?;
+                let tx = Tx::from_json_slice(param)?;
                 let res = contract.authenticate(
                     ctx.clone(),
                     &mut self.storage,
@@ -159,10 +159,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "backrun" => {
-                let tx = from_json_slice(param)?;
+                let tx = Tx::from_json_slice(param)?;
                 let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
@@ -170,10 +170,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "bank_execute" => {
-                let msg = from_json_slice(param)?;
+                let msg = BankMsg::from_json_slice(param)?;
                 let res = contract.bank_execute(
                     ctx.clone(),
                     &mut self.storage,
@@ -181,10 +181,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "bank_query" => {
-                let msg = from_json_slice(param)?;
+                let msg = BankQuery::from_json_slice(param)?;
                 let res = contract.bank_query(
                     ctx.clone(),
                     &self.storage,
@@ -192,10 +192,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "withhold_fee" => {
-                let tx = from_json_slice(param)?;
+                let tx = Tx::from_json_slice(param)?;
                 let res = contract.withhold_fee(
                     ctx.clone(),
                     &mut self.storage,
@@ -203,7 +203,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 1));
@@ -229,7 +229,7 @@ impl Instance for RustInstance {
         let contract = get_contract_impl(self.wrapper)?;
         match name {
             "reply" => {
-                let result = from_json_slice(param2)?;
+                let result = SubMsgResult::from_json_slice(param2)?;
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
@@ -238,11 +238,11 @@ impl Instance for RustInstance {
                     param1.as_ref(),
                     result,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             "finalize_fee" => {
-                let tx = from_json_slice(param1)?;
-                let outcome = from_json_slice(param2)?;
+                let tx = Tx::from_json_slice(param1)?;
+                let outcome = TxOutcome::from_json_slice(param2)?;
                 let res = contract.finalize_fee(
                     ctx.clone(),
                     &mut self.storage,
@@ -251,7 +251,7 @@ impl Instance for RustInstance {
                     tx,
                     outcome,
                 )?;
-                to_json_vec(&res)
+                res.to_json_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 2));
@@ -273,7 +273,7 @@ mod tests {
         anyhow::ensure,
         grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
-            to_json_vec, Addr, Binary, BlockInfo, Coins, Context, Hash, MockStorage, NumberConst,
+            Addr, Binary, BlockInfo, Coins, Context, Hash, JsonExt, MockStorage, NumberConst,
             Storage, Timestamp, Uint64,
         },
         test_case::test_case,
@@ -358,7 +358,7 @@ mod tests {
             v: "engineer".to_string(),
         };
 
-        let result = instance.call_in_1_out_1(name, &ctx, &to_json_vec(&msg)?);
+        let result = instance.call_in_1_out_1(name, &ctx, &msg.to_json_vec()?);
 
         match maybe_error {
             // We expect the call to succeed. Check that the data is correctly

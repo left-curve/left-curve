@@ -3,9 +3,9 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        hash256, to_json_value, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration,
-        GenesisState, Json, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128,
-        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, Json,
+        JsonExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
+        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -161,10 +161,10 @@ where
     pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
     where
         K: Into<String>,
-        V: Serialize,
+        V: JsonExt,
     {
         let key = key.into();
-        let value = to_json_value(value)?;
+        let value = value.to_json_value()?;
 
         ensure!(
             !self.app_configs.contains_key(&key),
@@ -449,9 +449,9 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
 // `build` can only be called if both `owner` and `accounts` have been set.
 impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
-    M1: Serialize,
-    M2: Serialize,
-    M3: Serialize,
+    M1: JsonExt,
+    M2: JsonExt,
+    M3: JsonExt,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {

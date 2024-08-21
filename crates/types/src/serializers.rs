@@ -5,98 +5,128 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
-/// Deserialize a JSON value into Rust value of a given type `T`.
-pub fn from_json_value<T>(json: Json) -> StdResult<T>
-where
-    T: DeserializeOwned,
-{
-    serde_json::from_value(json).map_err(|err| StdError::deserialize::<T, _>("json", err))
+// ----------------------------------- json ------------------------------------
+
+pub trait JsonExt: Sized {
+    /// Deserialize a slice of JSON bytes into Rust value.
+    fn from_json_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>;
+
+    /// Deserialize a JSON string into Rust value.
+    fn from_json_str<S>(string: S) -> StdResult<Self>
+    where
+        S: AsRef<str>;
+
+    /// Deserialize a JSON value into Rust value.
+    fn from_json_value(value: Json) -> StdResult<Self>;
+
+    /// Serialize the Rust value into JSON bytes.
+    fn to_json_vec(&self) -> StdResult<Vec<u8>>;
+
+    /// Serialize the Rust value into JSON string.
+    fn to_json_string(&self) -> StdResult<String>;
+
+    /// Serialize the Rust value into pretty JSON string.
+    fn to_json_string_pretty(&self) -> StdResult<String>;
+
+    /// Serialize the Rust value into JSON value.
+    fn to_json_value(&self) -> StdResult<Json>;
 }
 
-/// Serialize a Rust value into JSON value.
-pub fn to_json_value<T>(data: &T) -> StdResult<Json>
+impl<T> JsonExt for T
 where
-    T: Serialize,
+    T: Serialize + DeserializeOwned,
 {
-    serde_json::to_value(data).map_err(|err| StdError::serialize::<T, _>("json", err))
+    fn from_json_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>,
+    {
+        serde_json::from_slice(bytes.as_ref())
+            .map_err(|err| StdError::deserialize::<T, _>("json", err))
+    }
+
+    fn from_json_str<S>(string: S) -> StdResult<Self>
+    where
+        S: AsRef<str>,
+    {
+        serde_json::from_str(string.as_ref())
+            .map_err(|err| StdError::deserialize::<T, _>("json", err))
+    }
+
+    fn from_json_value(value: Json) -> StdResult<Self> {
+        serde_json::from_value(value).map_err(|err| StdError::deserialize::<T, _>("json", err))
+    }
+
+    fn to_json_vec(&self) -> StdResult<Vec<u8>> {
+        serde_json::to_vec(self).map_err(|err| StdError::serialize::<T, _>("json", err))
+    }
+
+    fn to_json_string(&self) -> StdResult<String> {
+        serde_json::to_string(self).map_err(|err| StdError::serialize::<T, _>("json", err))
+    }
+
+    fn to_json_string_pretty(&self) -> StdResult<String> {
+        serde_json::to_string_pretty(self).map_err(|err| StdError::serialize::<T, _>("json", err))
+    }
+
+    fn to_json_value(&self) -> StdResult<Json> {
+        serde_json::to_value(self).map_err(|err| StdError::serialize::<T, _>("json", err))
+    }
 }
 
-/// Deserialize a slice of bytes into Rust value of a given type `T` using the
-/// JSON encoding scheme.
-pub fn from_json_slice<B, T>(bytes: B) -> StdResult<T>
-where
-    B: AsRef<[u8]>,
-    T: DeserializeOwned,
-{
-    serde_json::from_slice(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("json", err))
+// ----------------------------------- borsh -----------------------------------
+
+pub trait BorshExt: Sized {
+    /// Deserialize a slice of Borsh bytes into Rust value.
+    fn from_borsh_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>;
+
+    /// Serialize the Rust value into Borsh bytes.
+    fn to_borsh_vec(&self) -> StdResult<Vec<u8>>;
 }
 
-/// Serialize a Rust value into bytes using the JSON encoding scheme.
-pub fn to_json_vec<T>(data: &T) -> StdResult<Vec<u8>>
+impl<T> BorshExt for T
 where
-    T: Serialize,
+    T: BorshSerialize + BorshDeserialize,
 {
-    serde_json::to_vec(data).map_err(|err| StdError::serialize::<T, _>("json", err))
+    fn from_borsh_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>,
+    {
+        borsh::from_slice(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("borsh", err))
+    }
+
+    fn to_borsh_vec(&self) -> StdResult<Vec<u8>> {
+        borsh::to_vec(self).map_err(|err| StdError::serialize::<T, _>("borsh", err))
+    }
 }
 
-/// Deserialize a JSON string into Rust value of a given type `T`.
-pub fn from_json_str<S, T>(string: S) -> StdResult<T>
-where
-    S: AsRef<str>,
-    T: DeserializeOwned,
-{
-    serde_json::from_str(string.as_ref()).map_err(|err| StdError::deserialize::<T, _>("json", err))
+// --------------------------------- protobuf ----------------------------------
+
+pub trait ProtoExt: Sized {
+    /// Deserialize a slice of Protobuf bytes into Rust value.
+    fn from_proto_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>;
+
+    /// Serialize the Rust value into Protobuf bytes.
+    fn to_proto_vec(&self) -> Vec<u8>;
 }
 
-/// Serialize a Rust value into a JSON string.
-pub fn to_json_string<T>(data: &T) -> StdResult<String>
+impl<T> ProtoExt for T
 where
-    T: Serialize,
-{
-    serde_json::to_string(data).map_err(|err| StdError::serialize::<T, _>("json", err))
-}
-
-/// Serialize a Rust value into a a pretty JSON string.
-pub fn to_json_string_pretty<T>(data: &T) -> StdResult<String>
-where
-    T: Serialize,
-{
-    serde_json::to_string_pretty(data).map_err(|err| StdError::serialize::<T, _>("json", err))
-}
-
-/// Deserialize a slice of bytes into Rust value of a given type `T` using the
-/// [Borsh](https://crates.io/crates/borsh) encoding scheme.
-pub fn from_borsh_slice<B, T>(bytes: B) -> StdResult<T>
-where
-    B: AsRef<[u8]>,
-    T: BorshDeserialize,
-{
-    borsh::from_slice(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("borsh", err))
-}
-
-/// Serialize a Rust value into bytes using the [Borsh](https://crates.io/crates/borsh)
-/// encoding scheme.
-pub fn to_borsh_vec<T>(data: &T) -> StdResult<Vec<u8>>
-where
-    T: BorshSerialize,
-{
-    borsh::to_vec(data).map_err(|err| StdError::serialize::<T, _>("borsh", err))
-}
-
-/// Deserialize a slice of bytes into Rust value of a given type `T` using the
-/// Protobuf encoding scheme.
-pub fn from_proto_slice<B, T>(bytes: B) -> StdResult<T>
-where
-    B: AsRef<[u8]>,
     T: Message + Default,
 {
-    T::decode(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("protobuf", err))
-}
+    fn from_proto_slice<B>(bytes: B) -> StdResult<Self>
+    where
+        B: AsRef<[u8]>,
+    {
+        T::decode(bytes.as_ref()).map_err(|err| StdError::deserialize::<T, _>("protobuf", err))
+    }
 
-/// Serialize a Rust value into bytes using the Protobuf encoding scheme.
-pub fn to_proto_vec<T>(data: &T) -> Vec<u8>
-where
-    T: Message,
-{
-    data.encode_to_vec()
+    fn to_proto_vec(&self) -> Vec<u8> {
+        self.encode_to_vec()
+    }
 }

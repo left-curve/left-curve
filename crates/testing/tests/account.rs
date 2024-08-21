@@ -1,9 +1,7 @@
 use {
     grug_account::Credential,
     grug_testing::{Signer, TestBuilder},
-    grug_types::{
-        from_json_value, Coins, Duration, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
-    },
+    grug_types::{Coins, Duration, JsonExt, Message, NonZero, NumberConst, Timestamp, Tx, Uint256},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -53,15 +51,15 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     // The tx with sequence 0 should fails check_tx.
     assert_eq!(txs.len(), 3);
     assert_eq!(
-        from_json_value::<Credential>(txs[0].credential.clone())?.sequence,
+        Credential::from_json_value(txs[0].credential.clone())?.sequence,
         1
     );
     assert_eq!(
-        from_json_value::<Credential>(txs[1].credential.clone())?.sequence,
+        Credential::from_json_value(txs[1].credential.clone())?.sequence,
         2
     );
     assert_eq!(
-        from_json_value::<Credential>(txs[2].credential.clone())?.sequence,
+        Credential::from_json_value(txs[2].credential.clone())?.sequence,
         4
     );
 

@@ -1,20 +1,17 @@
-use crate::{query_app_config, query_app_configs, APP_CONFIGS};
-#[cfg(feature = "abci")]
-use grug_types::from_json_slice;
-
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
-        query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
-        query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
-        Buffer, Db, GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_accounts, query_app_config, query_app_configs, query_balance, query_balances,
+        query_code, query_codes, query_info, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
+        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
-        Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult,
-        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash256, Json,
+        JsonExt, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult, Storage,
+        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -374,7 +371,7 @@ where
         };
 
         let proof = if prove {
-            Some(to_json_vec(&self.db.prove(key, version)?)?)
+            Some(self.db.prove(key, version)?.to_json_vec()?)
         } else {
             None
         };
@@ -440,7 +437,7 @@ where
         block: BlockInfo,
         raw_genesis_state: &[u8],
     ) -> AppResult<Hash256> {
-        let genesis_state = from_json_slice(raw_genesis_state)?;
+        let genesis_state = GenesisState::from_json_slice(raw_genesis_state)?;
 
         self.do_init_chain(chain_id, block, genesis_state)
     }
@@ -455,14 +452,14 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(from_json_slice)
+            .map(Tx::from_json_slice)
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
-        let tx = from_json_slice(raw_tx)?;
+        let tx = Tx::from_json_slice(raw_tx)?;
 
         self.do_check_tx(tx)
     }
@@ -473,17 +470,17 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
-        let tx = from_json_slice(raw_unsigned_tx)?;
+        let tx = UnsignedTx::from_json_slice(raw_unsigned_tx)?;
         let res = self.do_simulate(tx, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(res.to_json_vec()?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = from_json_slice(raw_req)?;
+        let req = Query::from_json_slice(raw_req)?;
         let res = self.do_query_app(req, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(res.to_json_vec()?)
     }
 }
 

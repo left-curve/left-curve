@@ -5,13 +5,11 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
-        ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
-        NumberConst, Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
-        UnsignedTx,
+        Account, Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, Duration,
+        GenericResult, GenesisState, Hash256, InfoResponse, Json, JsonExt, Message, NumberConst,
+        Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    serde::{de::DeserializeOwned, ser::Serialize},
     std::collections::{BTreeMap, HashMap},
 };
 
@@ -211,7 +209,7 @@ where
         funds: C,
     ) -> anyhow::Result<Addr>
     where
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -242,7 +240,7 @@ where
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
     where
-        M: Serialize,
+        M: JsonExt,
         B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
@@ -273,7 +271,7 @@ where
         funds: C,
     ) -> anyhow::Result<()>
     where
-        M: Serialize,
+        M: JsonExt,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -294,7 +292,7 @@ where
         msg: &M,
     ) -> anyhow::Result<()>
     where
-        M: Serialize,
+        M: JsonExt,
     {
         self.send_message_with_gas(
             signer,
@@ -465,12 +463,12 @@ where
     pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
     where
         R: QueryRequest,
-        R::Message: Serialize,
-        R::Response: DeserializeOwned,
+        R::Message: JsonExt,
+        R::Response: JsonExt,
     {
         (|| -> AppResult<_> {
             let msg = R::Message::from(req);
-            let msg_raw = to_json_value(&msg)?;
+            let msg_raw = msg.to_json_value()?;
             let res_raw = self
                 .app
                 .do_query_app(
@@ -482,7 +480,7 @@ where
                     false,
                 )?
                 .as_wasm_smart();
-            Ok(from_json_value(res_raw)?)
+            Ok(R::Response::from_json_value(res_raw)?)
         })()
         .into()
     }
@@ -561,7 +559,7 @@ impl TestSuite<RustVm> {
         funds: C,
     ) -> anyhow::Result<Addr>
     where
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -580,7 +578,7 @@ impl TestSuite<RustVm> {
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
     where
-        M: Serialize,
+        M: JsonExt,
         B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
@@ -598,7 +596,7 @@ impl TestSuite<RustVm> {
         funds: C,
     ) -> anyhow::Result<()>
     where
-        M: Serialize,
+        M: JsonExt,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -614,7 +612,7 @@ impl TestSuite<RustVm> {
         msg: &M,
     ) -> anyhow::Result<()>
     where
-        M: Serialize,
+        M: JsonExt,
     {
         self.migrate_with_gas(signer, u64::MAX, contract, new_code_hash, msg)
     }

@@ -1,7 +1,5 @@
 use {
-    crate::{
-        to_json_value, Addr, Binary, Coins, ConfigUpdates, Hash256, Json, Op, StdError, StdResult,
-    },
+    crate::{Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonExt, Op, StdError, StdResult},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
@@ -99,14 +97,14 @@ impl Message {
         admin: Option<Addr>,
     ) -> StdResult<Self>
     where
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
         Ok(Self::Instantiate {
             code_hash,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
             salt: salt.into(),
             funds: funds.try_into()?,
             admin,
@@ -115,25 +113,25 @@ impl Message {
 
     pub fn execute<M, C>(contract: Addr, msg: &M, funds: C) -> StdResult<Self>
     where
-        M: Serialize,
+        M: JsonExt,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
         Ok(Self::Execute {
             contract,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
             funds: funds.try_into()?,
         })
     }
 
     pub fn migrate<M>(contract: Addr, new_code_hash: Hash256, msg: &M) -> StdResult<Self>
     where
-        M: Serialize,
+        M: JsonExt,
     {
         Ok(Self::Migrate {
             contract,
             new_code_hash,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
         })
     }
 }

@@ -15,21 +15,20 @@ pub struct Empty {}
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        crate::{from_borsh_slice, from_json_value, to_borsh_vec, to_json_value},
+        crate::{BorshExt, Empty, JsonExt},
         serde_json::json,
     };
 
     #[test]
     fn encoding_with_serde() {
         let empty_json = json!({});
-        assert_eq!(to_json_value(&Empty {}).unwrap(), empty_json);
-        assert_eq!(from_json_value::<Empty>(empty_json).unwrap(), Empty {});
+        assert_eq!(Empty {}.to_json_value().unwrap(), empty_json);
+        assert_eq!(Empty::from_json_value(empty_json).unwrap(), Empty {});
     }
 
     #[test]
     fn encoding_with_borsh() {
-        assert!(to_borsh_vec(&Empty {}).unwrap().is_empty());
-        assert_eq!(from_borsh_slice::<_, Empty>(&[]).unwrap(), Empty {});
+        assert!(Empty {}.to_borsh_vec().unwrap().is_empty());
+        assert_eq!(Empty::from_borsh_slice([]).unwrap(), Empty {});
     }
 }

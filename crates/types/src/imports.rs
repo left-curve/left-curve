@@ -11,11 +11,10 @@
 
 use {
     crate::{
-        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Json, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse, Json, JsonExt, Op, Order,
+        Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
-    serde::{de::DeserializeOwned, ser::Serialize},
     std::collections::BTreeMap,
 };
 
@@ -287,11 +286,11 @@ impl<'a> QuerierWrapper<'a> {
     pub fn query_app_config<K, T>(&self, key: K) -> StdResult<T>
     where
         K: Into<String>,
-        T: DeserializeOwned,
+        T: JsonExt,
     {
         self.inner
             .query_chain(Query::AppConfig { key: key.into() })
-            .and_then(|res| from_json_value(res.as_app_config()))
+            .and_then(|res| T::from_json_value(res.as_app_config()))
     }
 
     pub fn query_app_configs(
@@ -382,17 +381,17 @@ impl<'a> QuerierWrapper<'a> {
     pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
     where
         R: QueryRequest,
-        R::Message: Serialize,
-        R::Response: DeserializeOwned,
+        R::Message: JsonExt,
+        R::Response: JsonExt,
     {
         let msg = R::Message::from(req);
 
         self.inner
             .query_chain(Query::WasmSmart {
                 contract,
-                msg: to_json_value(&msg)?,
+                msg: msg.to_json_value()?,
             })
-            .and_then(|res| from_json_value(res.as_wasm_smart()))
+            .and_then(|res| R::Response::from_json_value(res.as_wasm_smart()))
     }
 
     pub fn query_multi<const N: usize>(

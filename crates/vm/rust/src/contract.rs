@@ -6,9 +6,9 @@ use {
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api,
-        AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty,
-        GenericResult, ImmutableCtx, Json, MutableCtx, Querier, QuerierWrapper, Response, StdError,
+        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api, AuthCtx,
+        AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
+        ImmutableCtx, Json, JsonExt, MutableCtx, Querier, QuerierWrapper, Response, StdError,
         Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
@@ -115,11 +115,11 @@ where
 impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
 where
-    M1: DeserializeOwned + 'static,
-    M2: DeserializeOwned + 'static,
-    M3: DeserializeOwned + 'static,
-    M5: DeserializeOwned + 'static,
-    M6: DeserializeOwned + 'static,
+    M1: JsonExt + 'static,
+    M2: JsonExt + 'static,
+    M3: JsonExt + 'static,
+    M5: JsonExt + 'static,
+    M6: JsonExt + 'static,
     E1: ToString + 'static,
     E2: ToString + 'static,
     E3: ToString + 'static,
@@ -456,11 +456,11 @@ struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,
 impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13> Contract
     for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
 where
-    M1: DeserializeOwned,
-    M2: DeserializeOwned,
-    M3: DeserializeOwned,
-    M5: DeserializeOwned,
-    M6: DeserializeOwned,
+    M1: JsonExt,
+    M2: JsonExt,
+    M3: JsonExt,
+    M5: JsonExt,
+    M6: JsonExt,
     E1: ToString,
     E2: ToString,
     E3: ToString,
@@ -484,7 +484,7 @@ where
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = M1::from_json_slice(msg)?;
         let res = (self.instantiate_fn)(mutable_ctx, msg);
 
         Ok(res.into())
@@ -503,7 +503,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = M2::from_json_slice(msg)?;
         let res = execute_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -522,7 +522,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = M3::from_json_slice(msg)?;
         let res = migrate_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -559,7 +559,7 @@ where
         };
 
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = M5::from_json_slice(msg)?;
         let res = reply_fn(sudo_ctx, msg, result);
 
         Ok(res.into())
@@ -578,7 +578,7 @@ where
         };
 
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = from_json_slice(msg)?;
+        let msg = M6::from_json_slice(msg)?;
         let res = query_fn(immutable_ctx, msg);
 
         Ok(res.into())

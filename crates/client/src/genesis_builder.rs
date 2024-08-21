@@ -3,11 +3,9 @@ use {
     anyhow::{bail, ensure},
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
-        from_json_slice, hash256, to_json_value, Addr, Binary, Coins, Config, Defined, Duration,
-        GenesisState, Hash256, Json, Message, Permission, Permissions, StdError, Undefined,
-        GENESIS_SENDER,
+        hash256, Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, Json,
+        JsonExt, Message, Permission, Permissions, StdError, Undefined, GENESIS_SENDER,
     },
-    serde::Serialize,
     std::{collections::BTreeMap, fs, path::Path},
 };
 
@@ -165,10 +163,10 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
     pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
     where
         K: Into<String>,
-        V: Serialize,
+        V: JsonExt,
     {
         let key = key.into();
-        let value = to_json_value(value)?;
+        let value = value.to_json_value()?;
 
         ensure!(
             !self.app_configs.contains_key(&key),
@@ -210,7 +208,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         admin_opt: AdminOption,
     ) -> anyhow::Result<Addr>
     where
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -235,7 +233,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
     ) -> anyhow::Result<Addr>
     where
         D: Into<Binary>,
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -254,7 +252,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
     ) -> anyhow::Result<Addr>
     where
         P: AsRef<Path>,
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -265,7 +263,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
 
     pub fn execute<M, C>(&mut self, contract: Addr, msg: &M, funds: C) -> anyhow::Result<()>
     where
-        M: Serialize,
+        M: JsonExt,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -314,7 +312,7 @@ impl
         P: AsRef<Path>,
     {
         let cometbft_genesis_raw = fs::read(path.as_ref())?;
-        let mut cometbft_genesis: Json = from_json_slice(cometbft_genesis_raw)?;
+        let mut cometbft_genesis = Json::from_json_slice(cometbft_genesis_raw)?;
 
         let Some(obj) = cometbft_genesis.as_object_mut() else {
             bail!("CometBFT genesis file is not a JSON object");
@@ -330,7 +328,7 @@ impl
         }
 
         let genesis_state = self.build();
-        let genesis_state_json = to_json_value(&genesis_state)?;
+        let genesis_state_json = genesis_state.to_json_value()?;
 
         obj.insert("app_state".to_string(), genesis_state_json);
 

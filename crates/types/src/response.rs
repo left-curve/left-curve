@@ -1,5 +1,5 @@
 use {
-    crate::{to_json_value, Attribute, Json, Message, StdResult},
+    crate::{Attribute, Json, JsonExt, Message, StdResult},
     serde::{Deserialize, Serialize},
 };
 
@@ -167,31 +167,31 @@ impl SubMessage {
 
     pub fn reply_always<P>(msg: Message, payload: &P) -> StdResult<Self>
     where
-        P: Serialize,
+        P: JsonExt,
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Always(to_json_value(payload)?),
+            reply_on: ReplyOn::Always(payload.to_json_value()?),
         })
     }
 
     pub fn reply_on_success<P>(msg: Message, payload: &P) -> StdResult<Self>
     where
-        P: Serialize,
+        P: JsonExt,
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Success(to_json_value(payload)?),
+            reply_on: ReplyOn::Success(payload.to_json_value()?),
         })
     }
 
     pub fn reply_on_error<P>(msg: Message, payload: &P) -> StdResult<Self>
     where
-        P: Serialize,
+        P: JsonExt,
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Error(to_json_value(payload)?),
+            reply_on: ReplyOn::Error(payload.to_json_value()?),
         })
     }
 }

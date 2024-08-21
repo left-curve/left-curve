@@ -4,11 +4,10 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
-        Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
-        Op, Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
+        hash256, Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256,
+        InfoResponse, Json, JsonExt, Message, Op, Outcome, Query, QueryResponse, StdError, Tx,
+        UnsignedTx,
     },
-    serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
     tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{
@@ -145,7 +144,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(from_json_slice(&proof.ops[0].data)?)
+            Some(Proof::from_json_slice(&proof.ops[0].data)?)
         } else {
             ensure!(res.proof.is_none());
             None
@@ -164,9 +163,9 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
         let res = self
-            .query("/app", to_json_vec(req)?.to_vec(), height, false)
+            .query("/app", req.to_json_vec()?.to_vec(), height, false)
             .await?;
-        Ok(from_json_slice(res.value)?)
+        Ok(QueryResponse::from_json_slice(res.value)?)
     }
 
     /// Query the chain-level information, including the chain ID, config, and
@@ -285,25 +284,29 @@ impl Client {
     }
 
     /// Call the contract's query entry point with the given message.
-    pub async fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
+    pub async fn query_wasm_smart<M, R>(
         &self,
         contract: Addr,
         msg: &M,
         height: Option<u64>,
-    ) -> anyhow::Result<R> {
-        let msg = to_json_value(msg)?;
+    ) -> anyhow::Result<R>
+    where
+        M: JsonExt,
+        R: JsonExt,
+    {
+        let msg = msg.to_json_value()?;
         let res = self
             .query_app(&Query::WasmSmart { contract, msg }, height)
             .await?;
-        Ok(from_json_value(res.as_wasm_smart())?)
+        Ok(R::from_json_value(res.as_wasm_smart())?)
     }
 
     /// Simulate the gas usage of a transaction.
     pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
         let res = self
-            .query("/simulate", to_json_vec(unsigned_tx)?, None, false)
+            .query("/simulate", unsigned_tx.to_json_vec()?, None, false)
             .await?;
-        Ok(from_json_slice(res.value)?)
+        Ok(Outcome::from_json_slice(res.value)?)
     }
 
     // -------------------------- transaction methods --------------------------
@@ -424,7 +427,7 @@ impl Client {
         )?;
 
         if confirm_fn(&tx)? {
-            let tx_bytes = to_json_vec(&tx)?;
+            let tx_bytes = tx.to_json_vec()?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)
@@ -487,7 +490,7 @@ impl Client {
         admin_opt: AdminOption,
     ) -> anyhow::Result<(Addr, tx_sync::Response)>
     where
-        M: Serialize,
+        M: JsonExt,
         S: Into<Binary>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -517,7 +520,7 @@ impl Client {
         admin_opt: AdminOption,
     ) -> anyhow::Result<(Hash256, Addr, tx_sync::Response)>
     where
-        M: Serialize,
+        M: JsonExt,
         B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
@@ -548,7 +551,7 @@ impl Client {
         sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
-        M: Serialize,
+        M: JsonExt,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -566,7 +569,7 @@ impl Client {
         sign_opt: SigningOption<'_>,
     ) -> anyhow::Result<tx_sync::Response>
     where
-        M: Serialize,
+        M: JsonExt,
     {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
         self.send_message(msg, gas_opt, sign_opt).await

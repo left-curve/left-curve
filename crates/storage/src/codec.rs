@@ -1,10 +1,5 @@
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{
-        from_borsh_slice, from_json_slice, from_proto_slice, to_borsh_vec, to_json_vec,
-        to_proto_vec, StdResult,
-    },
-    prost::Message,
+    grug_types::{BorshExt, JsonExt, ProtoExt, StdResult},
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -22,14 +17,14 @@ pub struct Borsh;
 
 impl<T> Codec<T> for Borsh
 where
-    T: BorshSerialize + BorshDeserialize,
+    T: BorshExt,
 {
     fn encode(data: &T) -> StdResult<Vec<u8>> {
-        to_borsh_vec(&data)
+        data.to_borsh_vec()
     }
 
     fn decode(data: &[u8]) -> StdResult<T> {
-        from_borsh_slice(data)
+        T::from_borsh_slice(data)
     }
 }
 
@@ -40,14 +35,14 @@ pub struct Proto;
 
 impl<T> Codec<T> for Proto
 where
-    T: Message + Default,
+    T: ProtoExt,
 {
     fn encode(data: &T) -> StdResult<Vec<u8>> {
-        Ok(to_proto_vec(data))
+        Ok(data.to_proto_vec())
     }
 
     fn decode(data: &[u8]) -> StdResult<T> {
-        from_proto_slice(data)
+        T::from_proto_slice(data)
     }
 }
 
@@ -65,11 +60,11 @@ where
     T: Serialize + DeserializeOwned,
 {
     fn encode(data: &T) -> StdResult<Vec<u8>> {
-        to_json_vec(data)
+        data.to_json_vec()
     }
 
     fn decode(data: &[u8]) -> StdResult<T> {
-        from_json_slice(data)
+        T::from_json_slice(data)
     }
 }
 

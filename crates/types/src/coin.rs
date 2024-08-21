@@ -403,20 +403,18 @@ impl fmt::Debug for Coins {
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        crate::{from_json_value, to_json_value, Json},
+        crate::{Coins, Json, JsonExt},
         serde_json::json,
+        std::str::FromStr,
     };
 
     fn mock_coins() -> Coins {
-        Coins(
-            [
-                (String::from("uatom"), 123_u128.into()),
-                (String::from("umars"), 456_u128.into()),
-                (String::from("uosmo"), 789_u128.into()),
-            ]
-            .into(),
-        )
+        Coins::try_from([
+            (String::from("uatom"), 123_u128),
+            (String::from("umars"), 456_u128),
+            (String::from("uosmo"), 789_u128),
+        ])
+        .unwrap()
     }
 
     fn mock_coins_json() -> Json {
@@ -429,14 +427,14 @@ mod tests {
 
     #[test]
     fn serializing_coins() {
-        assert_eq!(to_json_value(&mock_coins()).unwrap(), mock_coins_json());
+        assert_eq!(mock_coins().to_json_value().unwrap(), mock_coins_json());
     }
 
     #[test]
     fn deserializing_coins() {
         // valid string
         assert_eq!(
-            from_json_value::<Coins>(mock_coins_json()).unwrap(),
+            Coins::from_json_value(mock_coins_json()).unwrap(),
             mock_coins()
         );
 
@@ -447,7 +445,7 @@ mod tests {
                 "amount": "0",
             },
         ]);
-        assert!(from_json_value::<Coins>(illegal_json).is_err());
+        assert!(Coins::from_json_value(illegal_json).is_err());
 
         // invalid json: contains duplicate
         let illegal_json = json!([
@@ -460,7 +458,7 @@ mod tests {
                 "amount": "456",
             },
         ]);
-        assert!(from_json_value::<Coins>(illegal_json).is_err());
+        assert!(Coins::from_json_value(illegal_json).is_err());
     }
 
     #[test]
