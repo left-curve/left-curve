@@ -1,8 +1,8 @@
 use {
     crate::prompt::print_json_pretty,
     clap::{Parser, Subcommand},
+    grug::Hash256,
     grug_client::Client,
-    grug_types::Hash,
     std::str::FromStr,
 };
 
@@ -38,18 +38,18 @@ impl TendermintCmd {
         match self.subcmd {
             SubCmd::Status {} => {
                 let res = client.query_status().await?;
-                print_json_pretty(res)
+                print_json_pretty(&res)
             },
             SubCmd::Tx { hash } => {
                 // Cast the hex string to uppercase, so that users can use
                 // either upper or lowercase on the CLI.
-                let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
+                let hash = Hash256::from_str(&hash.to_ascii_uppercase())?;
                 let res = client.query_tx(hash).await?;
-                print_json_pretty(res)
+                print_json_pretty(&res)
             },
             SubCmd::Block { height } => {
                 let res = client.query_block_result(height).await?;
-                print_json_pretty(res)
+                print_json_pretty(&res)
             },
         }
     }

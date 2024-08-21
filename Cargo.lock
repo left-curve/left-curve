@@ -1599,7 +1599,6 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "prost",
- "serde",
  "tendermint-abci",
  "tendermint-proto",
  "thiserror",
@@ -1627,17 +1626,15 @@ dependencies = [
  "colored",
  "colored_json",
  "dialoguer",
+ "grug",
  "grug-app",
  "grug-client",
  "grug-db-disk",
  "grug-jmt",
- "grug-types",
  "grug-vm-wasm",
  "hex",
  "home",
  "rand",
- "serde",
- "serde_json",
  "tendermint-rpc",
  "tokio",
  "tracing",
@@ -1653,20 +1650,17 @@ dependencies = [
  "bip32",
  "chrono",
  "futures",
+ "grug",
  "grug-account",
- "grug-app",
  "grug-bank",
  "grug-crypto",
  "grug-jmt",
  "grug-taxman",
- "grug-types",
  "hex",
  "home",
  "k256",
  "pbkdf2",
  "rand",
- "serde",
- "serde_json",
  "sha2 0.10.8",
  "signature",
  "tendermint",
@@ -1722,9 +1716,7 @@ dependencies = [
 name = "grug-ffi"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "grug-types",
- "serde",
 ]
 
 [[package]]
@@ -1758,8 +1750,6 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "grug-types",
- "prost",
- "serde",
 ]
 
 [[package]]
@@ -1860,7 +1850,6 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",
- "serde",
  "thiserror",
  "tracing",
  "wasmer",

@@ -10,9 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh      = { workspace = true }
 grug-types = { path = "../types" }
-prost      = { workspace = true }
-serde      = { workspace = true }
 
 [dev-dependencies]
+borsh = { workspace = true, features = ["derive", "de_strict_order"] }

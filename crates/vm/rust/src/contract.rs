@@ -11,7 +11,6 @@ use {
         ImmutableCtx, Json, JsonExt, MutableCtx, Querier, QuerierWrapper, Response, StdError,
         Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
-    serde::de::DeserializeOwned,
     std::sync::OnceLock,
 };
 
@@ -90,7 +89,7 @@ pub struct ContractBuilder<
 
 impl<M1, E1> ContractBuilder<M1, E1>
 where
-    M1: DeserializeOwned + 'static,
+    M1: JsonExt + 'static,
     E1: ToString + 'static,
 {
     pub fn new(instantiate_fn: InstantiateFn<M1, E1>) -> Self {
@@ -139,7 +138,7 @@ where
         execute_fn: ExecuteFn<M2A, E2A>,
     ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
-        M2A: DeserializeOwned + 'static,
+        M2A: JsonExt + 'static,
         E2A: ToString + 'static,
     {
         ContractBuilder {
@@ -164,7 +163,7 @@ where
         migrate_fn: MigrateFn<M3A, E3A>,
     ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
-        M3A: DeserializeOwned + 'static,
+        M3A: JsonExt + 'static,
         E3A: ToString + 'static,
     {
         ContractBuilder {
@@ -213,7 +212,7 @@ where
         reply_fn: ReplyFn<M5A, E5A>,
     ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12, E13>
     where
-        M5A: DeserializeOwned + 'static,
+        M5A: JsonExt + 'static,
         E5A: ToString + 'static,
     {
         ContractBuilder {
@@ -238,7 +237,7 @@ where
         query_fn: QueryFn<M6A, E6A>,
     ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12, E13>
     where
-        M6A: DeserializeOwned + 'static,
+        M6A: JsonExt + 'static,
         E6A: ToString + 'static,
     {
         ContractBuilder {

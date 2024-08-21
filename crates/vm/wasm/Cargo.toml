@@ -21,7 +21,6 @@ grug-app           = { path = "../../app" }
 grug-crypto        = { path = "../../crypto" }
 grug-testing       = { path = "../../testing", optional = true }
 grug-types         = { path = "../../types" }
-serde              = { workspace = true }
 thiserror          = { workspace = true }
 tracing            = { workspace = true }
 wasmer             = { workspace = true, features = ["singlepass"] }

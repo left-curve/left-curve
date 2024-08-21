@@ -1,13 +1,13 @@
 use {
     crate::{AdminOption, GasOption, SigningOption},
     anyhow::{bail, ensure},
-    grug_account::{QueryMsg, StateResponse},
-    grug_jmt::Proof,
-    grug_types::{
+    grug::{
         Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, Hasher,
         InfoResponse, Json, JsonExt, Message, Op, Outcome, Query, QueryResponse, StdError, Tx,
         UnsignedTx,
     },
+    grug_account::{QueryMsg, StateResponse},
+    grug_jmt::Proof,
     std::{any::type_name, collections::BTreeMap},
     tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{

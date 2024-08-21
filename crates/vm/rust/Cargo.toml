@@ -14,10 +14,10 @@ elsa        = { workspace = true }
 grug-app    = { path = "../../app" }
 grug-crypto = { path = "../../crypto" }
 grug-types  = { path = "../../types" }
-serde       = { workspace = true }
 thiserror   = { workspace = true }
 
 [dev-dependencies]
 anyhow       = { workspace = true }
 grug-testing = { path = "../../testing" }
+serde        = { workspace = true }
 test-case    = { workspace = true }

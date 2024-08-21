@@ -4,8 +4,8 @@ use {
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
+    grug::JsonExt,
     grug_client::{Keystore, SigningKey},
-    grug_types::JsonExt,
     rand::rngs::OsRng,
     std::{
         fs,
@@ -82,7 +82,7 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
     let keystore = sk.write_to_file(&filename, password)?;
 
     println!();
-    print_json_pretty(keystore)?;
+    print_json_pretty(&keystore)?;
 
     if !recover {
         println!(
@@ -115,7 +115,7 @@ fn show(dir: &Path, name: &str) -> anyhow::Result<()> {
     let keystore_raw = fs::read(filename)?;
     let keystore = Keystore::from_json_slice(keystore_raw)?;
 
-    print_json_pretty(keystore)
+    print_json_pretty(&keystore)
 }
 
 fn list(dir: &Path) -> anyhow::Result<()> {
@@ -123,9 +123,9 @@ fn list(dir: &Path) -> anyhow::Result<()> {
     for entry in dir.read_dir()? {
         let entry = entry?;
         let keystore_str = fs::read_to_string(entry.path())?;
-        let keystore: Keystore = serde_json::from_str(&keystore_str)?;
+        let keystore = Keystore::from_json_str(&keystore_str)?;
         keystores.push(keystore);
     }
 
-    print_json_pretty(keystores)
+    print_json_pretty(&keystores)
 }

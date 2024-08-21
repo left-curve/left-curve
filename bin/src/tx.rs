@@ -3,10 +3,9 @@ use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     colored::Colorize,
+    grug::{Addr, Binary, Coins, Hash256, JsonExt, Message, UnsignedTx},
     grug_app::GAS_COSTS,
     grug_client::{Client, GasOption, SigningKey, SigningOption},
-    grug_types::{Addr, Binary, Coins, Hash256, JsonExt, Message, UnsignedTx},
-    serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
 };
@@ -175,7 +174,7 @@ impl TxCmd {
                 msgs: vec![msg],
             };
             let outcome = client.simulate(&unsigned_tx).await?;
-            print_json_pretty(outcome)?;
+            print_json_pretty(&outcome)?;
         } else {
             // Load signing key
             let key_path = key_dir.join(format!("{key_name}.json"));
@@ -211,7 +210,7 @@ impl TxCmd {
 
             // Print result
             if let Some(res) = maybe_res {
-                print_json_pretty(PrintableBroadcastResponse::from(res))?;
+                print_json_pretty(&PrintableBroadcastResponse::from(res))?;
             } else {
                 println!("🤷 User aborted");
             }
@@ -222,7 +221,7 @@ impl TxCmd {
 }
 
 /// Similar to tendermint_rpc Response but serializes to nicer JSON.
-#[derive(Serialize)]
+#[grug::derive(serde)]
 struct PrintableBroadcastResponse {
     code: u32,
     data: Binary,

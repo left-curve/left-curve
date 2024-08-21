@@ -1,10 +1,9 @@
 use {
     crate::prompt::print_json_pretty,
     clap::{Parser, Subcommand},
+    grug::{Addr, Binary, Hash256, Json, JsonExt, Query},
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Hash256, Query},
-    serde::Serialize,
 };
 
 #[derive(Parser)]
@@ -136,7 +135,7 @@ impl QueryCmd {
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
-                let msg = serde_json::from_str(&msg)?;
+                let msg = Json::from_json_str(&msg)?;
                 Query::WasmSmart { contract, msg }
             },
             SubCmd::Store { key_hex, prove } => {
@@ -147,11 +146,11 @@ impl QueryCmd {
         client
             .query_app(&req, self.height)
             .await
-            .and_then(print_json_pretty)
+            .and_then(|res| print_json_pretty(&res))
     }
 }
 
-#[derive(Serialize)]
+#[grug::derive(serde)]
 struct PrintableQueryStoreResponse {
     key: String,
     value: Option<String>,
@@ -167,7 +166,7 @@ async fn query_store(
     let key = hex::decode(&key_hex)?;
     let (value, proof) = client.query_store(key, height, prove).await?;
 
-    print_json_pretty(PrintableQueryStoreResponse {
+    print_json_pretty(&PrintableQueryStoreResponse {
         key: key_hex,
         value: value.map(hex::encode),
         proof,

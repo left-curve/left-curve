@@ -8,7 +8,6 @@ use {
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    serde::Serialize,
     std::{
         collections::BTreeMap,
         str::FromStr,
@@ -113,9 +112,9 @@ where
 
 impl<VM, M1, M2, M3, OW, TA> TestBuilder<VM, M1, M2, M3, OW, TA>
 where
-    M1: Serialize,
-    M2: Serialize,
-    M3: Serialize,
+    M1: JsonExt,
+    M2: JsonExt,
+    M3: JsonExt,
     OW: MaybeDefined<Inner = Addr>,
     TA: MaybeDefined<Inner = TestAccounts>,
     VM: TestVm + Clone,
@@ -344,9 +343,9 @@ where
 
 impl<VM, M1, M2, M3, OW> TestBuilder<VM, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
-    M1: Serialize,
-    M2: Serialize,
-    M3: Serialize,
+    M1: JsonExt,
+    M2: JsonExt,
+    M3: JsonExt,
     OW: MaybeDefined<Inner = Addr>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,

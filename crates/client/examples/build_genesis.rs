@@ -1,8 +1,8 @@
 use {
     anyhow::anyhow,
     chrono::DateTime,
+    grug::{Coins, NonZero, Permission, Udec128, Uint128},
     grug_client::{AdminOption, GenesisBuilder, SigningKey},
-    grug_types::{Coins, NonZero, Permission, Udec128, Uint128},
     home::home_dir,
     std::{path::PathBuf, str::FromStr},
 };

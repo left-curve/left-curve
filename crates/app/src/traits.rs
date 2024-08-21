@@ -1,7 +1,6 @@
 use {
     crate::{GasTracker, QuerierProvider, StorageProvider},
-    grug_types::{Batch, Context, Hash256, Storage},
-    serde::{de::DeserializeOwned, ser::Serialize},
+    grug_types::{Batch, Context, Hash256, JsonExt, Storage},
 };
 
 // ------------------------------------ db -------------------------------------
@@ -41,7 +40,7 @@ pub trait Db {
     type StateCommitment: Storage + Clone + 'static;
 
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
-    type Proof: Serialize + DeserializeOwned;
+    type Proof: JsonExt;
 
     /// Return the state commitment.
     fn state_commitment(&self) -> Self::StateCommitment;

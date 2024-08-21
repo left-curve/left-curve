@@ -1,7 +1,4 @@
-use {
-    grug_types::{BorshExt, JsonExt, ProtoExt, StdResult},
-    serde::{de::DeserializeOwned, ser::Serialize},
-};
+use grug_types::{BorshExt, JsonExt, ProtoExt, StdResult};
 
 /// A marker that designates encoding/decoding schemes.
 pub trait Codec<T> {
@@ -57,7 +54,7 @@ pub struct Serde;
 
 impl<T> Codec<T> for Serde
 where
-    T: Serialize + DeserializeOwned,
+    T: JsonExt,
 {
     fn encode(data: &T) -> StdResult<Vec<u8>> {
         data.to_json_vec()

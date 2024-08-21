@@ -1,4 +1,4 @@
-use {crate::SigningKey, grug_types::Addr};
+use {crate::SigningKey, grug::Addr};
 
 /// Configurations necessary for signing a transaction, including the signing
 /// key, sender address, and so on.

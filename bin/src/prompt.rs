@@ -1,10 +1,10 @@
-use {colored_json::ToColoredJson, serde::Serialize};
+use {colored_json::ToColoredJson, grug::JsonExt};
 
-pub fn print_json_pretty<T>(data: T) -> anyhow::Result<()>
+pub fn print_json_pretty<T>(data: &T) -> anyhow::Result<()>
 where
-    T: Serialize,
+    T: JsonExt,
 {
-    let json = serde_json::to_string_pretty(&data)?;
+    let json = data.to_json_string_pretty()?;
     let colored = json.to_colored_json_auto()?;
 
     println!("{colored}");

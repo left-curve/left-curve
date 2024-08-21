@@ -20,17 +20,15 @@ clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
 dialoguer          = { workspace = true }
+grug               = { path = "../crates/std" }
 grug-app           = { path = "../crates/app", features = ["abci", "tracing"] }
 grug-client        = { path = "../crates/client" }
 grug-db-disk       = { path = "../crates/db/disk" }
 grug-jmt           = { path = "../crates/jellyfish-merkle" }
-grug-types         = { path = "../crates/types" }
 grug-vm-wasm       = { path = "../crates/vm/wasm" }
 hex                = { workspace = true }
 home               = { workspace = true }
 rand               = { workspace = true }
-serde              = { workspace = true }
-serde_json         = { workspace = true }
 tendermint-rpc     = { workspace = true, features = ["http-client"] }
 tokio              = { workspace = true }
 tracing            = { workspace = true }

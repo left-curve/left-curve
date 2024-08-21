@@ -1,12 +1,11 @@
 use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
+    grug::{Addr, Binary, Json, JsonExt, Message, Tx},
     grug_crypto::Identity256,
-    grug_types::{Addr, Binary, Json, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
-    serde::{Deserialize, Serialize},
     sha2::Sha256,
     signature::DigestSigner,
     std::{fs, path::Path},
@@ -18,7 +17,7 @@ const PBKDF2_KEY_LEN: usize = 32;
 
 /// [`SigningKey`](crate::SigningKey) serialized into JSON format, to be stored
 /// on disk.
-#[derive(Serialize, Deserialize)]
+#[grug::derive(serde)]
 pub struct Keystore {
     pk: Binary,
     salt: Binary,
@@ -56,7 +55,7 @@ impl SigningKey {
     {
         // read keystore file
         let keystore_str = fs::read_to_string(filename)?;
-        let keystore: Keystore = serde_json::from_str(&keystore_str)?;
+        let keystore = Keystore::from_json_str(&keystore_str)?;
 
         // recover encryption key from password and salt
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
@@ -106,7 +105,7 @@ impl SigningKey {
             nonce: nonce.to_vec().into(),
             ciphertext: ciphertext.into(),
         };
-        let keystore_str = serde_json::to_string_pretty(&keystore)?;
+        let keystore_str = keystore.to_json_string_pretty()?;
         fs::write(filename, keystore_str.as_bytes())?;
 
         Ok(keystore)
