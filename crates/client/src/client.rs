@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
-        Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
-        Op, Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
+        from_json_slice, from_json_value, to_json_value, to_json_vec, Account, Addr, Binary, Coin,
+        Coins, ConfigUpdates, GenericResult, Hash256, HashExt, InfoResponse, Json, Message, Op,
+        Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -524,7 +524,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
         let salt = salt.into();
         let address = Addr::compute(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);
