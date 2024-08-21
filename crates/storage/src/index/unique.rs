@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Key, Map, Raw},
+    crate::{Borsh, Bound, Codec, Index, Map, PrimaryKey, Raw},
     grug_types::{Order, StdError, StdResult, Storage},
 };
 
@@ -14,8 +14,8 @@ use {
 /// - in the index map: (idx_namespace, ik) => value
 pub struct UniqueIndex<'a, PK, IK, T, C = Borsh>
 where
-    PK: Key,
-    IK: Key + Clone,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Clone,
     C: Codec<T>,
 {
     /// A function that takes a key-value pair, and return the index key it
@@ -29,8 +29,8 @@ where
 
 impl<'a, PK, IK, T, C> UniqueIndex<'a, PK, IK, T, C>
 where
-    PK: Key,
-    IK: Key + Clone,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Clone,
     C: Codec<T>,
 {
     /// Note: The developer must make sure that `idx_namespace` is not the same
@@ -243,8 +243,8 @@ where
 
 impl<'a, PK, IK, T, C> Index<PK, T> for UniqueIndex<'a, PK, IK, T, C>
 where
-    PK: Key,
-    IK: Key + Clone,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Clone,
     C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
