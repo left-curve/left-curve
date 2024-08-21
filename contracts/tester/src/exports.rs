@@ -30,28 +30,18 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             pk,
             sig,
             msg_hash,
-        } => to_json_value(&query_crypto_verify(ctx, ty, pk, sig, msg_hash)?),
+        } => query_crypto_verify(ctx, ty, pk, sig, msg_hash)?.to_json_value(),
         QueryMsg::RecoverSepc256k1 {
             sig,
             msg_hash,
             recovery_id,
             compressed,
-        } => to_json_value(&query_crypto_recover_secp256k1(
-            ctx,
-            sig,
-            msg_hash,
-            recovery_id,
-            compressed,
-        )?),
+        } => query_crypto_recover_secp256k1(ctx, sig, msg_hash, recovery_id, compressed)?
+            .to_json_value(),
         QueryMsg::Ed25519BatchVerify {
             prehash_msgs,
             sigs,
             pks,
-        } => to_json_value(&query_crypto_ed25519_batch_verify(
-            ctx,
-            prehash_msgs,
-            sigs,
-            pks,
-        )?),
+        } => query_crypto_ed25519_batch_verify(ctx, prehash_msgs, sigs, pks)?.to_json_value(),
     }
 }

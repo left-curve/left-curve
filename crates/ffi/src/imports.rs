@@ -1,8 +1,8 @@
 use {
     crate::Region,
     grug_types::{
-        encode_sections, Addr, Api, CryptoError, GenericResult,
-        JsonDeExt, JsonSerExt, Order, Querier, Query, QueryResponse, Record, StdError, StdResult, Storage,
+        encode_sections, Addr, Api, CryptoError, GenericResult, JsonDeExt, JsonSerExt, Order,
+        Querier, Query, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
