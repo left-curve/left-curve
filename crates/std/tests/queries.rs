@@ -9,7 +9,7 @@ mod super_smart_querier {
     };
 
     #[grug::derive(serde)]
-    #[derive(grug::Query)]
+    #[derive(grug::QueryRequest)]
     pub enum QueryMsg {
         #[returns(String)]
         Foo { bar: u64 },

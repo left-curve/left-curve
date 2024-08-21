@@ -50,7 +50,7 @@ pub fn index_list(attr: TokenStream, input: TokenStream) -> TokenStream {
     index_list::process(attr, input)
 }
 
-#[proc_macro_derive(Query, attributes(returns))]
+#[proc_macro_derive(QueryRequest, attributes(returns))]
 pub fn derive_query(input: TokenStream) -> TokenStream {
     query::process(input)
 }

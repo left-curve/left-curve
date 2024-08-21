@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
 }
 
 #[grug::derive(serde)]
-#[derive(grug::Query)]
+#[derive(grug::QueryRequest)]
 pub enum QueryMsg {
     /// Run a loop of the given number of iterations. Within each iteration, a
     /// set of math operations (addition, subtraction, multiplication, division)
