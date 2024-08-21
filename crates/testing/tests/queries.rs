@@ -7,18 +7,18 @@ use {
 mod query_maker {
     use {
         anyhow::ensure,
-        grug_types::{Empty, MutableCtx, Number, QueryRequest, Response, Uint256},
+        grug_types::{Empty, MutableCtx, Number, Query, Response, Uint256},
     };
 
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> anyhow::Result<Response> {
         // Attempt to make a multi query.
         let [res1, res2, res3] = ctx.querier.query_multi([
-            QueryRequest::Info {},
-            QueryRequest::Balance {
+            Query::Info {},
+            Query::Balance {
                 address: ctx.contract,
                 denom: "uusdc".to_string(),
             },
-            QueryRequest::Supply {
+            Query::Supply {
                 denom: "uusdc".to_string(),
             },
         ])?;

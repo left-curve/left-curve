@@ -7,8 +7,7 @@ use {
     grug_types::{
         from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
         ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
-        NumberConst, Op, Outcome, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
-        UnsignedTx,
+        NumberConst, Op, Outcome, Query, StdError, Tx, TxOutcome, Uint256, Uint64, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -309,7 +308,7 @@ where
 
     pub fn query_info(&self) -> GenericResult<InfoResponse> {
         self.app
-            .do_query_app(QueryRequest::Info {}, 0, false)
+            .do_query_app(Query::Info {}, 0, false)
             .map(|val| val.as_info())
             .into()
     }
@@ -317,7 +316,7 @@ where
     pub fn query_app_config(&self, key: &str) -> GenericResult<Json> {
         self.app
             .do_query_app(
-                QueryRequest::AppConfig {
+                Query::AppConfig {
                     key: key.to_string(),
                 },
                 0,
@@ -330,7 +329,7 @@ where
     pub fn query_app_configs(&self) -> GenericResult<BTreeMap<String, Json>> {
         self.app
             .do_query_app(
-                QueryRequest::AppConfigs {
+                Query::AppConfigs {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
@@ -344,7 +343,7 @@ where
     pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> GenericResult<Uint256> {
         self.app
             .do_query_app(
-                QueryRequest::Balance {
+                Query::Balance {
                     address: account.address(),
                     denom: denom.to_string(),
                 },
@@ -358,7 +357,7 @@ where
     pub fn query_balances(&self, account: &dyn Signer) -> GenericResult<Coins> {
         self.app
             .do_query_app(
-                QueryRequest::Balances {
+                Query::Balances {
                     address: account.address(),
                     start_after: None,
                     limit: Some(u32::MAX),
@@ -373,7 +372,7 @@ where
     pub fn query_supply(&self, denom: &str) -> GenericResult<Uint256> {
         self.app
             .do_query_app(
-                QueryRequest::Supply {
+                Query::Supply {
                     denom: denom.to_string(),
                 },
                 0,
@@ -386,7 +385,7 @@ where
     pub fn query_supplies(&self) -> GenericResult<Coins> {
         self.app
             .do_query_app(
-                QueryRequest::Supplies {
+                Query::Supplies {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
@@ -399,7 +398,7 @@ where
 
     pub fn query_code(&self, hash: Hash256) -> GenericResult<Binary> {
         self.app
-            .do_query_app(QueryRequest::Code { hash }, 0, false)
+            .do_query_app(Query::Code { hash }, 0, false)
             .map(|res| res.as_code())
             .into()
     }
@@ -407,7 +406,7 @@ where
     pub fn query_codes(&self) -> GenericResult<BTreeMap<Hash256, Binary>> {
         self.app
             .do_query_app(
-                QueryRequest::Codes {
+                Query::Codes {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
@@ -421,7 +420,7 @@ where
     pub fn query_account(&self, signer: &dyn Signer) -> GenericResult<Account> {
         self.app
             .do_query_app(
-                QueryRequest::Account {
+                Query::Account {
                     address: signer.address(),
                 },
                 0,
@@ -434,7 +433,7 @@ where
     pub fn query_accounts(&self) -> GenericResult<BTreeMap<Addr, Account>> {
         self.app
             .do_query_app(
-                QueryRequest::Accounts {
+                Query::Accounts {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
@@ -451,7 +450,7 @@ where
     {
         self.app
             .do_query_app(
-                QueryRequest::WasmRaw {
+                Query::WasmRaw {
                     contract,
                     key: key.into(),
                 },
@@ -472,7 +471,7 @@ where
             let res_raw = self
                 .app
                 .do_query_app(
-                    QueryRequest::WasmSmart {
+                    Query::WasmSmart {
                         contract,
                         msg: msg_raw,
                     },

@@ -12,7 +12,7 @@
 use {
     crate::{
         from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Json, Op, Order, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Json, Op, Order, Query, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -257,7 +257,7 @@ pub trait Api {
 pub trait Querier {
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
-    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse>;
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse>;
 }
 
 /// Wraps around a `Querier` to provide some convenience methods.
@@ -274,13 +274,13 @@ impl<'a> QuerierWrapper<'a> {
         Self { inner }
     }
 
-    pub fn query(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+    pub fn query(&self, req: Query) -> StdResult<QueryResponse> {
         self.inner.query_chain(req)
     }
 
     pub fn query_info(&self) -> StdResult<InfoResponse> {
         self.inner
-            .query_chain(QueryRequest::Info {})
+            .query_chain(Query::Info {})
             .map(|res| res.as_info())
     }
 
@@ -290,7 +290,7 @@ impl<'a> QuerierWrapper<'a> {
         T: DeserializeOwned,
     {
         self.inner
-            .query_chain(QueryRequest::AppConfig { key: key.into() })
+            .query_chain(Query::AppConfig { key: key.into() })
             .and_then(|res| from_json_value(res.as_app_config()))
     }
 
@@ -300,13 +300,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<String, Json>> {
         self.inner
-            .query_chain(QueryRequest::AppConfigs { start_after, limit })
+            .query_chain(Query::AppConfigs { start_after, limit })
             .map(|res| res.as_app_configs())
     }
 
     pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint256> {
         self.inner
-            .query_chain(QueryRequest::Balance { address, denom })
+            .query_chain(Query::Balance { address, denom })
             .map(|res| res.as_balance().amount)
     }
 
@@ -317,7 +317,7 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner
-            .query_chain(QueryRequest::Balances {
+            .query_chain(Query::Balances {
                 address,
                 start_after,
                 limit,
@@ -327,7 +327,7 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_supply(&self, denom: String) -> StdResult<Uint256> {
         self.inner
-            .query_chain(QueryRequest::Supply { denom })
+            .query_chain(Query::Supply { denom })
             .map(|res| res.as_supply().amount)
     }
 
@@ -337,13 +337,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner
-            .query_chain(QueryRequest::Supplies { start_after, limit })
+            .query_chain(Query::Supplies { start_after, limit })
             .map(|res| res.as_supplies())
     }
 
     pub fn query_code(&self, hash: Hash256) -> StdResult<Binary> {
         self.inner
-            .query_chain(QueryRequest::Code { hash })
+            .query_chain(Query::Code { hash })
             .map(|res| res.as_code())
     }
 
@@ -353,13 +353,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Hash256, Binary>> {
         self.inner
-            .query_chain(QueryRequest::Codes { start_after, limit })
+            .query_chain(Query::Codes { start_after, limit })
             .map(|res| res.as_codes())
     }
 
     pub fn query_account(&self, address: Addr) -> StdResult<Account> {
         self.inner
-            .query_chain(QueryRequest::Account { address })
+            .query_chain(Query::Account { address })
             .map(|res| res.as_account())
     }
 
@@ -369,13 +369,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Addr, Account>> {
         self.inner
-            .query_chain(QueryRequest::Accounts { start_after, limit })
+            .query_chain(Query::Accounts { start_after, limit })
             .map(|res| res.as_accounts())
     }
 
     pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
         self.inner
-            .query_chain(QueryRequest::WasmRaw { contract, key })
+            .query_chain(Query::WasmRaw { contract, key })
             .map(|res| res.as_wasm_raw())
     }
 
@@ -385,7 +385,7 @@ impl<'a> QuerierWrapper<'a> {
         R: DeserializeOwned,
     {
         self.inner
-            .query_chain(QueryRequest::WasmSmart {
+            .query_chain(Query::WasmSmart {
                 contract,
                 msg: to_json_value(msg)?,
             })
@@ -394,10 +394,10 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_multi<const N: usize>(
         &self,
-        requests: [QueryRequest; N],
+        requests: [Query; N],
     ) -> StdResult<[QueryResponse; N]> {
         self.inner
-            .query_chain(QueryRequest::Multi(requests.into()))
+            .query_chain(Query::Multi(requests.into()))
             .map(|res| {
                 // We trust that the host has properly implemented the multi
                 // query method, meaning the number of responses should always

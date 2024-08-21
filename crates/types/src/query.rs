@@ -8,7 +8,7 @@ use {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryRequest {
+pub enum Query {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: `InfoResponse`
     Info {},
@@ -67,7 +67,7 @@ pub enum QueryRequest {
     WasmSmart { contract: Addr, msg: Json },
     /// Perform multiple queries at once.
     /// Returns: `Vec<QueryResponse>`.
-    Multi(Vec<QueryRequest>),
+    Multi(Vec<Query>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
