@@ -173,9 +173,8 @@ impl<'de, const N: usize> de::Visitor<'de> for HashVisitor<N> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Hash256, JsonExt},
+        crate::{json, Hash256, JsonExt},
         hex_literal::hex,
-        serde_json::json,
         std::str::FromStr,
     };
 

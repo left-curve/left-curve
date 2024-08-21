@@ -403,8 +403,7 @@ impl fmt::Debug for Coins {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Coins, Json, JsonExt},
-        serde_json::json,
+        crate::{json, Coins, Json, JsonExt},
         std::str::FromStr,
     };
 
