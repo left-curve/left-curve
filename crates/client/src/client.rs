@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, to_json_value, to_json_vec, Account, Addr, Binary, Coin,
-        Coins, ConfigUpdates, GenericResult, Hash256, HashExt, InfoResponse, Json, Message, Op,
-        Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
+        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
+        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Outcome, Query, QueryResponse,
+        StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -145,7 +145,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(from_json_slice(&proof.ops[0].data)?)
+            Some(proof.ops[0].data.deserialize_json()?)
         } else {
             ensure!(res.proof.is_none());
             None
@@ -163,17 +163,19 @@ impl Client {
         req: &Query,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
-        let res = self
-            .query("/app", to_json_vec(req)?.to_vec(), height, false)
-            .await?;
-        Ok(from_json_slice(res.value)?)
+        self.query("/app", req.to_json_vec()?.to_vec(), height, false)
+            .await?
+            .value
+            .deserialize_json()
+            .map_err(Into::into)
     }
 
     /// Query the chain-level information, including the chain ID, config, and
     /// the latest finalized block.
     pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
-        let res = self.query_app(&Query::Info {}, height).await?;
-        Ok(res.as_info())
+        self.query_app(&Query::Info {}, height)
+            .await
+            .map(|res| res.as_info())
     }
 
     /// Query an account's balance in a single denom.
@@ -183,10 +185,9 @@ impl Client {
         denom: String,
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
-        let res = self
-            .query_app(&Query::Balance { address, denom }, height)
-            .await?;
-        Ok(res.as_balance())
+        self.query_app(&Query::Balance { address, denom }, height)
+            .await
+            .map(|res| res.as_balance())
     }
 
     /// Enumerate an account's balances in all denoms
@@ -197,23 +198,23 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self
-            .query_app(
-                &Query::Balances {
-                    address,
-                    start_after,
-                    limit,
-                },
-                height,
-            )
-            .await?;
-        Ok(res.as_balances())
+        self.query_app(
+            &Query::Balances {
+                address,
+                start_after,
+                limit,
+            },
+            height,
+        )
+        .await
+        .map(|res| res.as_balances())
     }
 
     /// Query a token's total supply.
     pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
-        let res = self.query_app(&Query::Supply { denom }, height).await?;
-        Ok(res.as_supply())
+        self.query_app(&Query::Supply { denom }, height)
+            .await
+            .map(|res| res.as_supply())
     }
 
     /// Enumerate all token's total supplies.
@@ -223,16 +224,16 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        let res = self
-            .query_app(&Query::Supplies { start_after, limit }, height)
-            .await?;
-        Ok(res.as_supplies())
+        self.query_app(&Query::Supplies { start_after, limit }, height)
+            .await
+            .map(|res| res.as_supplies())
     }
 
     /// Query a single Wasm byte code by hash.
     pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
-        let res = self.query_app(&Query::Code { hash }, height).await?;
-        Ok(res.as_code())
+        self.query_app(&Query::Code { hash }, height)
+            .await
+            .map(|res| res.as_code())
     }
 
     /// Enumerate hashes of all codes.
@@ -242,10 +243,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
-        let res = self
-            .query_app(&Query::Codes { start_after, limit }, height)
-            .await?;
-        Ok(res.as_codes())
+        self.query_app(&Query::Codes { start_after, limit }, height)
+            .await
+            .map(|res| res.as_codes())
     }
 
     /// Query the metadata of a single account.
@@ -254,8 +254,9 @@ impl Client {
         address: Addr,
         height: Option<u64>,
     ) -> anyhow::Result<Account> {
-        let res = self.query_app(&Query::Account { address }, height).await?;
-        Ok(res.as_account())
+        self.query_app(&Query::Account { address }, height)
+            .await
+            .map(|res| res.as_account())
     }
 
     /// Enumerate metadata of all accounts.
@@ -265,10 +266,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Addr, Account>> {
-        let res = self
-            .query_app(&Query::Accounts { start_after, limit }, height)
-            .await?;
-        Ok(res.as_accounts())
+        self.query_app(&Query::Accounts { start_after, limit }, height)
+            .await
+            .map(|res| res.as_accounts())
     }
 
     /// Query a raw key-value pair in a contract's internal state.
@@ -278,32 +278,42 @@ impl Client {
         key: Binary,
         height: Option<u64>,
     ) -> anyhow::Result<Option<Binary>> {
-        let res = self
-            .query_app(&Query::WasmRaw { contract, key }, height)
-            .await?;
-        Ok(res.as_wasm_raw())
+        self.query_app(&Query::WasmRaw { contract, key }, height)
+            .await
+            .map(|res| res.as_wasm_raw())
     }
 
     /// Call the contract's query entry point with the given message.
-    pub async fn query_wasm_smart<M: Serialize, R: DeserializeOwned>(
+    pub async fn query_wasm_smart<M, R>(
         &self,
         contract: Addr,
         msg: &M,
         height: Option<u64>,
-    ) -> anyhow::Result<R> {
-        let msg = to_json_value(msg)?;
-        let res = self
-            .query_app(&Query::WasmSmart { contract, msg }, height)
-            .await?;
-        Ok(from_json_value(res.as_wasm_smart())?)
+    ) -> anyhow::Result<R>
+    where
+        M: Serialize,
+        R: DeserializeOwned,
+    {
+        self.query_app(
+            &Query::WasmSmart {
+                contract,
+                msg: msg.to_json_value()?,
+            },
+            height,
+        )
+        .await?
+        .as_wasm_smart()
+        .deserialize_json()
+        .map_err(Into::into)
     }
 
     /// Simulate the gas usage of a transaction.
     pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
-        let res = self
-            .query("/simulate", to_json_vec(unsigned_tx)?, None, false)
-            .await?;
-        Ok(from_json_slice(res.value)?)
+        self.query("/simulate", unsigned_tx.to_json_vec()?, None, false)
+            .await?
+            .value
+            .deserialize_json()
+            .map_err(Into::into)
     }
 
     // -------------------------- transaction methods --------------------------
@@ -424,7 +434,7 @@ impl Client {
         )?;
 
         if confirm_fn(&tx)? {
-            let tx_bytes = to_json_vec(&tx)?;
+            let tx_bytes = tx.to_json_vec()?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)

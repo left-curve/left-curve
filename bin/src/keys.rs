@@ -5,7 +5,7 @@ use {
     clap::Subcommand,
     colored::Colorize,
     grug_client::{Keystore, SigningKey},
-    grug_types::from_json_slice,
+    grug_types::JsonDeExt,
     rand::rngs::OsRng,
     std::{
         fs,
@@ -113,7 +113,7 @@ fn show(dir: &Path, name: &str) -> anyhow::Result<()> {
     ensure!(filename.exists(), "file {filename:?} not found");
 
     let keystore_str = fs::read_to_string(filename)?;
-    let keystore: Keystore = from_json_slice(keystore_str)?;
+    let keystore: Keystore = keystore_str.deserialize_json()?;
 
     print_json_pretty(keystore)
 }
