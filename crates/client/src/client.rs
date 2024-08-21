@@ -5,8 +5,8 @@ use {
     grug_jmt::Proof,
     grug_types::{
         Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
-        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Outcome, Query, QueryResponse,
-        StdError, Tx, UnsignedTx,
+        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError, Tx,
+        TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -308,7 +308,7 @@ impl Client {
     }
 
     /// Simulate the gas usage of a transaction.
-    pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
+    pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<TxOutcome> {
         self.query("/simulate", unsigned_tx.to_json_vec()?, None, false)
             .await?
             .value
@@ -407,12 +407,12 @@ impl Client {
                         msgs: msgs.clone(),
                     };
                     match self.simulate(&unsigned_tx).await? {
-                        Outcome {
+                        TxOutcome {
                             result: GenericResult::Ok(_),
                             gas_used,
                             ..
                         } => Ok((gas_used as f64 * scale).ceil() as u64 + flat_increase),
-                        Outcome {
+                        TxOutcome {
                             result: GenericResult::Err(err),
                             ..
                         } => bail!("Failed to estimate gas consumption: {err}"),
