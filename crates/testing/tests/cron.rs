@@ -1,7 +1,7 @@
 use {
     anyhow::ensure,
     grug_testing::TestBuilder,
-    grug_types::{btreemap, Coin, Coins, ConfigUpdates, Duration, NonZero, Timestamp, Uint128},
+    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, NonZero, Timestamp, Uint128},
     grug_vm_rust::ContractBuilder,
     std::collections::BTreeMap,
 };
@@ -112,7 +112,7 @@ fn cronjob_works() -> anyhow::Result<()> {
     //
     // Update the config to add the cronjobs.
     let updates = ConfigUpdates {
-        cronjobs: Some(btreemap! {
+        cronjobs: Some(btree_map! {
             // cron1 has interval of 0, meaning it's to be called every block.
             cron1 => Duration::from_seconds(0),
             cron2 => Duration::from_seconds(2),
