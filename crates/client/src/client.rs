@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, to_json_value, to_json_vec, Account, Addr, Binary, Coin,
-        Coins, ConfigUpdates, GenericResult, Hash256, HashExt, InfoResponse, Json, Message, Op,
-        Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
+        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
+        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Outcome, Query, QueryResponse,
+        StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -145,7 +145,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(from_json_slice(&proof.ops[0].data)?)
+            Some(proof.ops[0].data.deserialize_json()?)
         } else {
             ensure!(res.proof.is_none());
             None
@@ -164,9 +164,9 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
         let res = self
-            .query("/app", to_json_vec(req)?.to_vec(), height, false)
+            .query("/app", req.to_json_vec()?.to_vec(), height, false)
             .await?;
-        Ok(from_json_slice(res.value)?)
+        Ok(res.value.deserialize_json()?)
     }
 
     /// Query the chain-level information, including the chain ID, config, and
@@ -291,19 +291,20 @@ impl Client {
         msg: &M,
         height: Option<u64>,
     ) -> anyhow::Result<R> {
-        let msg = to_json_value(msg)?;
+        let msg = msg.to_json_value()?;
         let res = self
             .query_app(&Query::WasmSmart { contract, msg }, height)
             .await?;
-        Ok(from_json_value(res.as_wasm_smart())?)
+        Ok(res.as_wasm_smart().deserialize_json()?)
     }
 
     /// Simulate the gas usage of a transaction.
     pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
-        let res = self
-            .query("/simulate", to_json_vec(unsigned_tx)?, None, false)
-            .await?;
-        Ok(from_json_slice(res.value)?)
+        self.query("/simulate", unsigned_tx.to_json_vec()?, None, false)
+            .await?
+            .value
+            .deserialize_json()
+            .map_err(Into::into)
     }
 
     // -------------------------- transaction methods --------------------------
@@ -424,7 +425,7 @@ impl Client {
         )?;
 
         if confirm_fn(&tx)? {
-            let tx_bytes = to_json_vec(&tx)?;
+            let tx_bytes = tx.to_json_vec()?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)

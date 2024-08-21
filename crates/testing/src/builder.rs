@@ -3,9 +3,9 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        to_json_value, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState,
-        HashExt, Json, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128,
-        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, HashExt, Json,
+        JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
+        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -164,7 +164,7 @@ where
         V: Serialize,
     {
         let key = key.into();
-        let value = to_json_value(value)?;
+        let value = value.to_json_value()?;
 
         ensure!(
             !self.app_configs.contains_key(&key),

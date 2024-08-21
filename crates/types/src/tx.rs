@@ -1,6 +1,6 @@
 use {
     crate::{
-        to_json_value, Addr, Binary, Coins, ConfigUpdates, Hash256, Json, Op, StdError, StdResult,
+        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, StdError, StdResult,
     },
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -106,7 +106,7 @@ impl Message {
     {
         Ok(Self::Instantiate {
             code_hash,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
             salt: salt.into(),
             funds: funds.try_into()?,
             admin,
@@ -121,7 +121,7 @@ impl Message {
     {
         Ok(Self::Execute {
             contract,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
             funds: funds.try_into()?,
         })
     }
@@ -133,7 +133,7 @@ impl Message {
         Ok(Self::Migrate {
             contract,
             new_code_hash,
-            msg: to_json_value(msg)?,
+            msg: msg.to_json_value()?,
         })
     }
 }

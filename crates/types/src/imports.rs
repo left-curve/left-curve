@@ -11,8 +11,8 @@
 
 use {
     crate::{
-        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Json, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt,
+        Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -291,7 +291,7 @@ impl<'a> QuerierWrapper<'a> {
     {
         self.inner
             .query_chain(Query::AppConfig { key: key.into() })
-            .and_then(|res| from_json_value(res.as_app_config()))
+            .and_then(|res| res.as_app_config().deserialize_json())
     }
 
     pub fn query_app_configs(
@@ -390,9 +390,9 @@ impl<'a> QuerierWrapper<'a> {
         self.inner
             .query_chain(Query::WasmSmart {
                 contract,
-                msg: to_json_value(&msg)?,
+                msg: msg.to_json_value()?,
             })
-            .and_then(|res| from_json_value(res.as_wasm_smart()))
+            .and_then(|res| res.as_wasm_smart().deserialize_json())
     }
 
     pub fn query_multi<const N: usize>(

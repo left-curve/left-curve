@@ -5,7 +5,7 @@ use {
     colored::Colorize,
     grug_app::GAS_COSTS,
     grug_client::{Client, GasOption, SigningKey, SigningOption},
-    grug_types::{from_json_str, Addr, Binary, Coins, Hash256, Message, UnsignedTx},
+    grug_types::{Addr, Binary, Coins, Hash256, JsonDeExt, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -117,8 +117,8 @@ impl TxCmd {
                 updates,
                 app_updates,
             } => {
-                let updates = from_json_str(&updates)?;
-                let app_updates = from_json_str(&app_updates)?;
+                let updates = updates.deserialize_json()?;
+                let app_updates = app_updates.deserialize_json()?;
                 Message::Configure {
                     updates,
                     app_updates,
