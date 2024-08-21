@@ -1,7 +1,7 @@
 use {
     grug_account::{Credential, PublicKey},
     grug_crypto::{sha2_256, Identity256},
-    grug_types::{to_json_value, Addr, Hash256, Json, Message, StdResult, Tx, GENESIS_SENDER},
+    grug_types::{Addr, Hash256, Json, JsonSerExt, Message, StdResult, Tx, GENESIS_SENDER},
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
     std::collections::HashMap,
@@ -66,10 +66,11 @@ impl Signer for TestAccount {
 
         let signature: Signature = self.sk.sign_digest(sign_bytes);
 
-        let credential = to_json_value(&Credential {
+        let credential = Credential {
             signature: signature.to_vec().try_into()?,
             sequence,
-        })?;
+        }
+        .to_json_value()?;
 
         Ok(Tx {
             sender: self.address,

@@ -2,7 +2,7 @@ use {
     crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
+        Addr, AuthCtx, AuthMode, AuthResponse, JsonDeExt, JsonSerExt, Message, MutableCtx,
         Response, StdResult, Tx,
     },
 };
@@ -39,7 +39,7 @@ where
     let mut prehash = Vec::new();
     // That there are multiple valid ways that the messages can be serialized
     // into JSON. Here we use `grug::to_json_vec` as the source of truth.
-    prehash.extend(to_json_vec(&msgs)?);
+    prehash.extend(msgs.to_json_vec()?);
     prehash.extend(sender.as_ref());
     prehash.extend(chain_id.as_bytes());
     prehash.extend(sequence.to_be_bytes());
@@ -67,7 +67,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
 
     // Decode the credential, which should contain the sequence and signature.
-    let credential: Credential = from_json_value(tx.credential)?;
+    let credential: Credential = tx.credential.deserialize_json()?;
 
     // Incrementing the sequence. We expect the transaction to be signed by the
     // sequence _before_ the incrementing.

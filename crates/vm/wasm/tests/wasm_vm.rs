@@ -6,7 +6,7 @@ use {
     },
     grug_testing::TestBuilder,
     grug_types::{
-        to_json_value, Binary, Coins, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
+        Binary, Coins, JsonSerExt, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
         Uint256,
     },
     grug_vm_wasm::{VmError, WasmVm},
@@ -159,7 +159,7 @@ fn infinite_loop() -> anyhow::Result<()> {
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&grug_tester::ExecuteMsg::InfiniteLoop {})?,
+            msg: grug_tester::ExecuteMsg::InfiniteLoop {}.to_json_value()?,
             funds: Coins::new(),
         })?
         .result
@@ -214,10 +214,11 @@ fn immutable_state() -> anyhow::Result<()> {
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&grug_tester::ExecuteMsg::ForceWriteOnQuery {
+            msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
                 key: "larry".to_string(),
                 value: "engineer".to_string(),
-            })?,
+            }
+            .to_json_value()?,
             funds: Coins::new(),
         })?
         .result

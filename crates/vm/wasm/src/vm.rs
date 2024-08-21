@@ -7,7 +7,7 @@ use {
         write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{to_borsh_vec, Context, Hash256},
+    grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
@@ -170,7 +170,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into()])?
             .try_into()
@@ -193,7 +193,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
@@ -219,7 +219,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
         let res_ptr: u32 = env

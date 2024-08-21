@@ -259,9 +259,8 @@ mod tests {
     #[cfg(feature = "erc55")]
     use test_case::test_case;
     use {
-        crate::{from_json_value, to_json_value, Addr},
+        crate::{json, Addr, JsonDeExt, JsonSerExt},
         hex_literal::hex,
-        serde_json::json,
         std::str::FromStr,
     };
 
@@ -273,13 +272,16 @@ mod tests {
     #[test]
     fn serializing() {
         assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
-        assert_eq!(json!(MOCK_STR), to_json_value(&MOCK_ADDR).unwrap());
+        assert_eq!(json!(MOCK_STR), MOCK_ADDR.to_json_value().unwrap());
     }
 
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_ADDR, from_json_value::<Addr>(json!(MOCK_STR)).unwrap());
+        assert_eq!(
+            MOCK_ADDR,
+            json!(MOCK_STR).deserialize_json::<Addr>().unwrap()
+        );
     }
 
     // Test cases from ERC-55 spec:

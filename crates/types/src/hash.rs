@@ -179,9 +179,8 @@ impl<'de, const N: usize> de::Visitor<'de> for HashVisitor<N> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{from_json_value, to_json_value, Hash256},
+        crate::{json, Hash256, JsonDeExt, JsonSerExt},
         hex_literal::hex,
-        serde_json::json,
         std::str::FromStr,
     };
 
@@ -194,7 +193,7 @@ mod tests {
     #[test]
     fn serializing() {
         assert_eq!(MOCK_JSON, MOCK_HASH.to_string());
-        assert_eq!(json!(MOCK_JSON), to_json_value(&MOCK_HASH).unwrap());
+        assert_eq!(json!(MOCK_JSON), MOCK_HASH.to_json_value().unwrap());
     }
 
     #[test]
@@ -202,16 +201,16 @@ mod tests {
         assert_eq!(MOCK_HASH, Hash256::from_str(MOCK_JSON).unwrap());
         assert_eq!(
             MOCK_HASH,
-            from_json_value::<Hash256>(json!(MOCK_JSON)).unwrap()
+            json!(MOCK_JSON).deserialize_json::<Hash256>().unwrap()
         );
 
         // Lowercase hex strings are not accepted
         let illegal_json = json!(MOCK_JSON.to_lowercase());
-        assert!(from_json_value::<Hash256>(illegal_json).is_err());
+        assert!(illegal_json.deserialize_json::<Hash256>().is_err());
 
         // Incorrect length
         // Trim the last two characters, so the string only represents 31 bytes
         let illegal_json = json!(MOCK_JSON[..MOCK_JSON.len() - 2]);
-        assert!(from_json_value::<Hash256>(illegal_json).is_err());
+        assert!(illegal_json.deserialize_json::<Hash256>().is_err());
     }
 }

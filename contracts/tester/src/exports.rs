@@ -4,7 +4,7 @@ use {
         query_crypto_recover_secp256k1, query_crypto_verify, query_force_write, query_loop,
         ExecuteMsg, InstantiateMsg, QueryMsg,
     },
-    grug::{to_json_value, ImmutableCtx, Json, MutableCtx, Response, StdResult},
+    grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -23,8 +23,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Loop { iterations } => to_json_value(&query_loop(iterations)?),
-        QueryMsg::ForceWrite { key, value } => to_json_value(&query_force_write(&key, &value)),
+        QueryMsg::Loop { iterations } => query_loop(iterations)?.to_json_value(),
+        QueryMsg::ForceWrite { key, value } => query_force_write(&key, &value).to_json_value(),
         QueryMsg::CryptoVerify {
             ty,
             pk,

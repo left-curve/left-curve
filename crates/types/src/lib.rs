@@ -35,4 +35,4 @@ pub use {
 ///
 /// This is a re-export of `serde_json::Value`, but we rename it to "Json" to be
 /// clearer what it is.
-pub use serde_json::Value as Json;
+pub use serde_json::{json, Value as Json};

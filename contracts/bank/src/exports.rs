@@ -5,7 +5,7 @@ use {
     },
     anyhow::bail,
     grug_types::{
-        to_json_value, BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, MutableCtx,
+        BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, JsonSerExt, MutableCtx,
         Response, StdResult, SudoCtx,
     },
 };
@@ -78,7 +78,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             denom,
             start_after,
             limit,
-        } => to_json_value(&query_holders(ctx.storage, denom, start_after, limit)?),
+        } => query_holders(ctx.storage, denom, start_after, limit)?.to_json_value(),
     }
 }
 

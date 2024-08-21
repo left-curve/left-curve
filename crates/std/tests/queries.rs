@@ -5,7 +5,7 @@ use {
 
 mod super_smart_querier {
     use grug::{
-        to_json_value, Addr, Empty, Hash256, ImmutableCtx, Json, MutableCtx, Response, StdResult,
+        Addr, Empty, Hash256, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult,
     };
 
     #[grug::derive(Serde, QueryRequest)]
@@ -26,15 +26,15 @@ mod super_smart_querier {
         match msg {
             QueryMsg::Foo { bar } => {
                 let bar = bar.to_string();
-                to_json_value(&bar)
+                bar.to_json_value()
             },
             QueryMsg::Fuzz(fuzz) => {
                 let fuzz = Addr::mock(fuzz);
-                to_json_value(&fuzz)
+                fuzz.to_json_value()
             },
             QueryMsg::Buzz => {
                 let buzz = Hash256::from_array([1; 32]);
-                to_json_value(&buzz)
+                buzz.to_json_value()
             },
         }
     }

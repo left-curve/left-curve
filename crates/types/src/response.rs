@@ -1,5 +1,5 @@
 use {
-    crate::{to_json_value, Attribute, Json, Message, StdResult},
+    crate::{Attribute, Json, JsonSerExt, Message, StdResult},
     serde::{Deserialize, Serialize},
 };
 
@@ -171,7 +171,7 @@ impl SubMessage {
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Always(to_json_value(payload)?),
+            reply_on: ReplyOn::Always(payload.to_json_value()?),
         })
     }
 
@@ -181,7 +181,7 @@ impl SubMessage {
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Success(to_json_value(payload)?),
+            reply_on: ReplyOn::Success(payload.to_json_value()?),
         })
     }
 
@@ -191,7 +191,7 @@ impl SubMessage {
     {
         Ok(Self {
             msg,
-            reply_on: ReplyOn::Error(to_json_value(payload)?),
+            reply_on: ReplyOn::Error(payload.to_json_value()?),
         })
     }
 }

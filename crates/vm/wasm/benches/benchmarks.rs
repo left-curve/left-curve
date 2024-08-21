@@ -4,7 +4,7 @@ use {
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
-        to_json_vec, Addr, BlockInfo, Context, Empty, GenericResult, Hash, MockStorage, Timestamp,
+        Addr, BlockInfo, Context, Empty, GenericResult, Hash, JsonSerExt, MockStorage, Timestamp,
         Uint64,
     },
     grug_vm_wasm::WasmVm,
@@ -73,11 +73,12 @@ fn looping(c: &mut Criterion) {
                             mode: None,
                         };
 
-                        let msg = to_json_vec(&QueryMsg::Loop {
+                        let msg = QueryMsg::Loop {
                             iterations: *iterations,
-                        })?;
+                        }
+                        .to_json_vec()?;
 
-                        let ok = to_json_vec(&GenericResult::Ok(Empty {}))?;
+                        let ok = GenericResult::Ok(Empty {}).to_json_vec()?;
 
                         Ok((instance, ctx, msg, ok, gas_tracker))
                     },

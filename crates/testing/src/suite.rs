@@ -5,8 +5,8 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
-        ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
+        Account, Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, Duration,
+        GenericResult, GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message,
         NumberConst, Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
         UnsignedTx,
     },
@@ -470,7 +470,7 @@ where
     {
         (|| -> AppResult<_> {
             let msg = R::Message::from(req);
-            let msg_raw = to_json_value(&msg)?;
+            let msg_raw = msg.to_json_value()?;
             let res_raw = self
                 .app
                 .do_query_app(
@@ -482,7 +482,7 @@ where
                     false,
                 )?
                 .as_wasm_smart();
-            Ok(from_json_value(res_raw)?)
+            Ok(res_raw.deserialize_json()?)
         })()
         .into()
     }
