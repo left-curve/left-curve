@@ -8,7 +8,7 @@ mod super_smart_querier {
         to_json_value, Addr, Empty, Hash256, ImmutableCtx, Json, MutableCtx, Response, StdResult,
     };
 
-    #[grug::derive(serde, query)]
+    #[grug::derive(Serde, QueryRequest)]
     pub enum QueryMsg {
         #[returns(String)]
         Foo { bar: u64 },
