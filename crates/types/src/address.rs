@@ -259,9 +259,8 @@ mod tests {
     #[cfg(feature = "erc55")]
     use test_case::test_case;
     use {
-        crate::{Addr, JsonDeExt, JsonSerExt},
+        crate::{json, Addr, JsonDeExt, JsonSerExt},
         hex_literal::hex,
-        serde_json::json,
         std::str::FromStr,
     };
 

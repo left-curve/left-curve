@@ -16,10 +16,7 @@ pub struct Empty {}
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::{BorshDeExt, BorshSerExt, Empty, JsonDeExt, JsonSerExt},
-        serde_json::json,
-    };
+    use crate::{json, BorshDeExt, BorshSerExt, Empty, JsonDeExt, JsonSerExt};
 
     #[test]
     fn encoding_with_serde() {
