@@ -9,10 +9,13 @@ use {
     },
 };
 
+/// A 20-byte hash, in lowercase hex encoding.
 pub type Hash160 = Hash<20>;
 
+/// A 32-byte hash, in lowercase hex encoding.
 pub type Hash256 = Hash<32>;
 
+/// A hash of fixed size `N`, in lowercase hex encoding.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash<const N: usize>(pub(crate) [u8; N]);
 
@@ -34,14 +37,17 @@ impl<const N: usize> Hash<N> {
 }
 
 impl<const N: usize> Hash<N> {
-    pub const fn from_array(slice: [u8; N]) -> Self {
-        Self(slice)
+    /// Create a new hash from a byte array of the correct length.
+    pub const fn from_array(array: [u8; N]) -> Self {
+        Self(array)
     }
 
+    /// Cast the hash into a byte array.
     pub fn into_array(self) -> [u8; N] {
         self.0
     }
 
+    /// Cast the hash into a byte vector.
     pub fn into_vec(self) -> Vec<u8> {
         self.0.into()
     }

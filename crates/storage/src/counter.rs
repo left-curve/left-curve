@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Codec, Item, Key, Map},
+    crate::{Borsh, Codec, Item, Map, PrimaryKey},
     grug_types::{Number, StdResult, Storage},
 };
 
@@ -74,7 +74,7 @@ where
 }
 impl<'a, K, T, C> Counters<'a, K, T, C>
 where
-    K: Key + Copy,
+    K: PrimaryKey + Copy,
     T: Number + Copy,
     C: Codec<T>,
 {

@@ -3,9 +3,9 @@ use {
     anyhow::{bail, ensure},
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
-        from_json_slice, hash256, to_json_value, Addr, Binary, Coins, Config, Defined, Duration,
-        GenesisState, Hash256, Json, Message, Permission, Permissions, StdError, Undefined,
-        GENESIS_SENDER,
+        from_json_slice, to_json_value, Addr, Binary, Coins, Config, Defined, Duration,
+        GenesisState, Hash256, HashExt, Json, Message, Permission, Permissions, StdError,
+        Undefined, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, fs, path::Path},
@@ -185,7 +185,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         D: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
 
         self.upload_msgs.push(Message::upload(code));
 

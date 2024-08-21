@@ -173,7 +173,7 @@ fn compute_and_compare_root_hash(
 mod tests {
     use {
         super::*,
-        grug_types::{hash256, Hash256},
+        grug_types::{Hash256, HashExt},
         hex_literal::hex,
         test_case::test_case,
     };
@@ -259,8 +259,8 @@ mod tests {
     fn verifying_membership(key: &str, value: &str, proof: MembershipProof) {
         assert!(verify_membership_proof(
             HASH_ROOT,
-            hash256(key.as_bytes()),
-            hash256(value.as_bytes()),
+            key.as_bytes().hash256(),
+            value.as_bytes().hash256(),
             &proof,
         )
         .is_ok());
@@ -294,7 +294,7 @@ mod tests {
         "proving o"
     )]
     fn verifying_non_membership(key: &str, proof: NonMembershipProof) {
-        assert!(verify_non_membership_proof(HASH_ROOT, hash256(key.as_bytes()), &proof).is_ok());
+        assert!(verify_non_membership_proof(HASH_ROOT, key.as_bytes().hash256(), &proof).is_ok());
     }
 
     // TODO: add fail cases for proofs

@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        from_json_slice, from_json_value, hash256, to_json_value, to_json_vec, Account, Addr,
-        Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, InfoResponse, Json, Message,
-        Op, Outcome, QueryRequest, QueryResponse, StdError, Tx, UnsignedTx,
+        from_json_slice, from_json_value, to_json_value, to_json_vec, Account, Addr, Binary, Coin,
+        Coins, ConfigUpdates, GenericResult, Hash256, HashExt, InfoResponse, Json, Message, Op,
+        Outcome, Query, QueryResponse, StdError, Tx, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -160,7 +160,7 @@ impl Client {
     /// instead.
     pub async fn query_app(
         &self,
-        req: &QueryRequest,
+        req: &Query,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
         let res = self
@@ -172,7 +172,7 @@ impl Client {
     /// Query the chain-level information, including the chain ID, config, and
     /// the latest finalized block.
     pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
-        let res = self.query_app(&QueryRequest::Info {}, height).await?;
+        let res = self.query_app(&Query::Info {}, height).await?;
         Ok(res.as_info())
     }
 
@@ -184,7 +184,7 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
         let res = self
-            .query_app(&QueryRequest::Balance { address, denom }, height)
+            .query_app(&Query::Balance { address, denom }, height)
             .await?;
         Ok(res.as_balance())
     }
@@ -199,7 +199,7 @@ impl Client {
     ) -> anyhow::Result<Coins> {
         let res = self
             .query_app(
-                &QueryRequest::Balances {
+                &Query::Balances {
                     address,
                     start_after,
                     limit,
@@ -212,9 +212,7 @@ impl Client {
 
     /// Query a token's total supply.
     pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
-        let res = self
-            .query_app(&QueryRequest::Supply { denom }, height)
-            .await?;
+        let res = self.query_app(&Query::Supply { denom }, height).await?;
         Ok(res.as_supply())
     }
 
@@ -226,14 +224,14 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
         let res = self
-            .query_app(&QueryRequest::Supplies { start_after, limit }, height)
+            .query_app(&Query::Supplies { start_after, limit }, height)
             .await?;
         Ok(res.as_supplies())
     }
 
     /// Query a single Wasm byte code by hash.
     pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
-        let res = self.query_app(&QueryRequest::Code { hash }, height).await?;
+        let res = self.query_app(&Query::Code { hash }, height).await?;
         Ok(res.as_code())
     }
 
@@ -245,7 +243,7 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
         let res = self
-            .query_app(&QueryRequest::Codes { start_after, limit }, height)
+            .query_app(&Query::Codes { start_after, limit }, height)
             .await?;
         Ok(res.as_codes())
     }
@@ -256,9 +254,7 @@ impl Client {
         address: Addr,
         height: Option<u64>,
     ) -> anyhow::Result<Account> {
-        let res = self
-            .query_app(&QueryRequest::Account { address }, height)
-            .await?;
+        let res = self.query_app(&Query::Account { address }, height).await?;
         Ok(res.as_account())
     }
 
@@ -270,7 +266,7 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Addr, Account>> {
         let res = self
-            .query_app(&QueryRequest::Accounts { start_after, limit }, height)
+            .query_app(&Query::Accounts { start_after, limit }, height)
             .await?;
         Ok(res.as_accounts())
     }
@@ -283,7 +279,7 @@ impl Client {
         height: Option<u64>,
     ) -> anyhow::Result<Option<Binary>> {
         let res = self
-            .query_app(&QueryRequest::WasmRaw { contract, key }, height)
+            .query_app(&Query::WasmRaw { contract, key }, height)
             .await?;
         Ok(res.as_wasm_raw())
     }
@@ -297,7 +293,7 @@ impl Client {
     ) -> anyhow::Result<R> {
         let msg = to_json_value(msg)?;
         let res = self
-            .query_app(&QueryRequest::WasmSmart { contract, msg }, height)
+            .query_app(&Query::WasmSmart { contract, msg }, height)
             .await?;
         Ok(from_json_value(res.as_wasm_smart())?)
     }
@@ -528,7 +524,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
         let salt = salt.into();
         let address = Addr::compute(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);

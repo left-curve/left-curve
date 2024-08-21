@@ -5,10 +5,22 @@ use {
     std::collections::BTreeMap,
 };
 
+/// Represents a query request to a contract.
+///
+/// A contract typically exposes multiple query methods, with a `QueryMsg` as an
+/// enum with multiple variants. A `QueryRequest` represents one such variant.
+pub trait QueryRequest: Sized {
+    /// The full query message enum that contains this request.
+    type Message: From<Self>;
+
+    /// The response type for this query.
+    type Response;
+}
+
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryRequest {
+pub enum Query {
     /// The chain's global information. Corresponding to the ABCI Info method.
     /// Returns: `InfoResponse`
     Info {},
@@ -45,7 +57,7 @@ pub enum QueryRequest {
     Code { hash: Hash256 },
     /// Enumerate all Wasm byte codes.
     ///
-    /// Returns: `BTreeMap<Hash, Binary>`
+    /// Returns: `BTreeMap<Hash256, Binary>`
     Codes {
         start_after: Option<Hash256>,
         limit: Option<u32>,
@@ -67,7 +79,7 @@ pub enum QueryRequest {
     WasmSmart { contract: Addr, msg: Json },
     /// Perform multiple queries at once.
     /// Returns: `Vec<QueryResponse>`.
-    Multi(Vec<QueryRequest>),
+    Multi(Vec<Query>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

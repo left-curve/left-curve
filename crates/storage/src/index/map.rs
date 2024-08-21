@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, Map, Prefix, PrefixBound},
+    crate::{Borsh, Bound, Codec, Map, Prefix, PrefixBound, PrimaryKey},
     grug_types::{Order, Record, StdError, StdResult, Storage},
 };
 
@@ -25,7 +25,7 @@ where
 
 impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     pub const fn new(pk_namespace: &'static str, indexes: I) -> Self {
@@ -215,7 +215,7 @@ where
 
 impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
-    K: Key + Clone,
+    K: PrimaryKey + Clone,
     I: IndexList<K, T>,
     C: Codec<T>,
 {
@@ -259,7 +259,7 @@ where
 
 impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
 where
-    K: Key + Clone,
+    K: PrimaryKey + Clone,
     T: Clone,
     I: IndexList<K, T>,
     C: Codec<T>,

@@ -13,7 +13,7 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
-        Hash256, Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult,
+        Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult,
         Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
@@ -328,12 +328,7 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(
-        &self,
-        req: QueryRequest,
-        height: u64,
-        prove: bool,
-    ) -> AppResult<QueryResponse> {
+    pub fn do_query_app(&self, req: Query, height: u64, prove: bool) -> AppResult<QueryResponse> {
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
@@ -554,7 +549,7 @@ where
         gas_tracker.clone(),
         block,
         &tx,
-        mode.clone(),
+        mode,
     ) {
         Ok((new_events, request_backrun)) => {
             buffer2.write_access().commit();
@@ -765,30 +760,30 @@ pub fn process_query<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
-    req: QueryRequest,
+    req: Query,
 ) -> AppResult<QueryResponse>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match req {
-        QueryRequest::Info {} => {
+        Query::Info {} => {
             let res = query_info(&storage, gas_tracker)?;
             Ok(QueryResponse::Info(res))
         },
-        QueryRequest::AppConfig { key } => {
+        Query::AppConfig { key } => {
             let res = query_app_config(&storage, gas_tracker, &key)?;
             Ok(QueryResponse::AppConfig(res))
         },
-        QueryRequest::AppConfigs { start_after, limit } => {
+        Query::AppConfigs { start_after, limit } => {
             let res = query_app_configs(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::AppConfigs(res))
         },
-        QueryRequest::Balance { address, denom } => {
+        Query::Balance { address, denom } => {
             let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;
             Ok(QueryResponse::Balance(res))
         },
-        QueryRequest::Balances {
+        Query::Balances {
             address,
             start_after,
             limit,
@@ -796,39 +791,39 @@ where
             let res = query_balances(vm, storage, block, gas_tracker, address, start_after, limit)?;
             Ok(QueryResponse::Balances(res))
         },
-        QueryRequest::Supply { denom } => {
+        Query::Supply { denom } => {
             let res = query_supply(vm, storage, block, gas_tracker, denom)?;
             Ok(QueryResponse::Supply(res))
         },
-        QueryRequest::Supplies { start_after, limit } => {
+        Query::Supplies { start_after, limit } => {
             let res = query_supplies(vm, storage, block, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Supplies(res))
         },
-        QueryRequest::Code { hash } => {
+        Query::Code { hash } => {
             let res = query_code(&storage, gas_tracker, hash)?;
             Ok(QueryResponse::Code(res))
         },
-        QueryRequest::Codes { start_after, limit } => {
+        Query::Codes { start_after, limit } => {
             let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
-        QueryRequest::Account { address } => {
+        Query::Account { address } => {
             let res = query_account(&storage, gas_tracker, address)?;
             Ok(QueryResponse::Account(res))
         },
-        QueryRequest::Accounts { start_after, limit } => {
+        Query::Accounts { start_after, limit } => {
             let res = query_accounts(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Accounts(res))
         },
-        QueryRequest::WasmRaw { contract, key } => {
+        Query::WasmRaw { contract, key } => {
             let res = query_wasm_raw(storage, gas_tracker, contract, key)?;
             Ok(QueryResponse::WasmRaw(res))
         },
-        QueryRequest::WasmSmart { contract, msg } => {
+        Query::WasmSmart { contract, msg } => {
             let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
             Ok(QueryResponse::WasmSmart(res))
         },
-        QueryRequest::Multi(reqs) => {
+        Query::Multi(reqs) => {
             let res = reqs
                 .into_iter()
                 .map(|req| {

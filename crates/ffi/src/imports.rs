@@ -2,7 +2,7 @@ use {
     crate::Region,
     grug_types::{
         encode_sections, from_json_slice, to_json_vec, Addr, Api, CryptoError, GenericResult,
-        Order, Querier, QueryRequest, QueryResponse, Record, StdError, StdResult, Storage,
+        Order, Querier, Query, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -439,7 +439,7 @@ pub fn from_low_half(data: u64) -> u32 {
 pub struct ExternalQuerier;
 
 impl Querier for ExternalQuerier {
-    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         let req_bytes = to_json_vec(&req)?;
         let req_region = Region::build(&req_bytes);
         let req_ptr = &*req_region as *const Region;

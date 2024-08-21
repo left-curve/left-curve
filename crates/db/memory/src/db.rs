@@ -2,7 +2,7 @@ use {
     crate::{DbError, DbResult, VersionedMap},
     grug_app::{Buffer, Db},
     grug_jmt::{MerkleTree, Proof},
-    grug_types::{hash256, Batch, Hash256, Op, Order, Record, Storage},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
     std::{
         collections::HashMap,
         ops::Bound,
@@ -113,7 +113,7 @@ impl Db for MemDb {
 
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), hash256(key), version)?)
+        Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
     // Note on implementing this function: We must make sure that we don't

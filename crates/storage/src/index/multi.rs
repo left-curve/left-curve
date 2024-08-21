@@ -1,5 +1,5 @@
 use {
-    crate::{split_first_key, Borsh, Bound, Codec, Index, Key, Map, Prefix, Prefixer, Set},
+    crate::{split_first_key, Borsh, Bound, Codec, Index, Map, Prefix, Prefixer, PrimaryKey, Set},
     grug_types::{Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -10,8 +10,8 @@ use {
 /// index value.
 pub struct MultiIndex<'a, PK, IK, T, C = Borsh>
 where
-    PK: Key,
-    IK: Key + Prefixer,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Prefixer,
     C: Codec<T>,
 {
     indexer: fn(&PK, &T) -> IK,
@@ -22,8 +22,8 @@ where
 
 impl<'a, PK, IK, T, C> MultiIndex<'a, PK, IK, T, C>
 where
-    PK: Key,
-    IK: Key + Prefixer,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Prefixer,
     C: Codec<T>,
 {
     pub const fn new(
@@ -178,8 +178,8 @@ where
 
 impl<'a, PK, IK, T, C> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
 where
-    PK: Key,
-    IK: Key + Prefixer,
+    PK: PrimaryKey,
+    IK: PrimaryKey + Prefixer,
     C: Codec<T>,
 {
     fn save(&self, storage: &mut dyn Storage, pk: PK, data: &T) -> StdResult<()> {
@@ -208,7 +208,7 @@ where
 
 impl<'a, IK, PK, B, T, C> IndexPrefix<'a, IK, PK, B, T, C>
 where
-    B: Key,
+    B: PrimaryKey,
     C: Codec<T>,
 {
     pub fn append(self, prefix: B::Prefix) -> IndexPrefix<'a, IK, PK, B::Suffix, T, C> {
@@ -223,9 +223,9 @@ where
 
 impl<'a, IK, PK, B, T, C> IndexPrefix<'a, IK, PK, B, T, C>
 where
-    IK: Key,
-    PK: Key,
-    B: Key,
+    IK: PrimaryKey,
+    PK: PrimaryKey,
+    B: PrimaryKey,
     C: Codec<T>,
 {
     /// Iterate the raw primary keys and raw values under the given index value.
