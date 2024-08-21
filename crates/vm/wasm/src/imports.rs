@@ -1,9 +1,7 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
     grug_app::GAS_COSTS,
-    grug_types::{
-        decode_sections, from_json_slice, to_json_vec, Addr, QueryRequest, Record, Storage,
-    },
+    grug_types::{decode_sections, Addr, JsonDeExt, JsonSerExt, Query, Record, Storage},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -229,13 +227,13 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let (env, mut store) = fe.data_and_store_mut();
 
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
-    let req: QueryRequest = from_json_slice(req_bytes)?;
+    let req: Query = req_bytes.deserialize_json()?;
 
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
     let res = env.querier.do_query_chain(req);
-    let res_bytes = to_json_vec(&res)?;
+    let res_bytes = res.to_json_vec()?;
 
     write_to_memory(env, &mut store, &res_bytes)
 }
@@ -358,9 +356,9 @@ pub fn ed25519_batch_verify(
     }
 }
 
-macro_rules! impl_hash_method{
-    ($hasher:ident, $name:literal)=> {
-        pub fn $hasher (mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
+macro_rules! impl_hash_method {
+    ($hasher:ident, $name:literal) => {
+        pub fn $hasher(mut fe: FunctionEnvMut<Environment>, data_ptr: u32) -> VmResult<u32> {
             let (env, mut store) = fe.data_and_store_mut();
 
             let data = read_from_memory(env, &store, data_ptr)?;

@@ -2,7 +2,7 @@ use grug::Empty;
 
 pub type InstantiateMsg = Empty;
 
-#[grug::derive(serde)]
+#[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Perform an infinite loop. Test if the VM can properly halt execution
     /// when gas is exhausted.
@@ -15,7 +15,7 @@ pub enum ExecuteMsg {
     ForceWriteOnQuery { key: String, value: String },
 }
 
-#[grug::derive(serde)]
+#[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Run a loop of the given number of iterations. Within each iteration, a
     /// set of math operations (addition, subtraction, multiplication, division)
@@ -24,6 +24,7 @@ pub enum QueryMsg {
     /// This is used for deducing the relation between Wasmer gas metering
     /// points and CPU time (i.e. how many gas points roughly correspond to one
     /// second of run time).
+    #[returns(Empty)]
     Loop { iterations: u64 },
     /// Attempt to write a key-value pair to the contract storage.
     ///
@@ -34,5 +35,6 @@ pub enum QueryMsg {
     /// However, a malicious contract can attempt to directly call the `db_write`,
     /// `db_remove`, or `db_remove_range` FFI import methods directly. We need
     /// to test whether the VM can properly reject this behavior.
+    #[returns(Empty)]
     ForceWrite { key: String, value: String },
 }

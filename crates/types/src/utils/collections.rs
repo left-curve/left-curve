@@ -1,7 +1,7 @@
 /// Builds a [`BTreeMap`](std::collections::BTreeMap) with the given key-value
 /// pairs.
 #[macro_export]
-macro_rules! btreemap {
+macro_rules! btree_map {
     ($($key:expr => $value:expr),* $(,)?) => {{
         ::std::collections::BTreeMap::from([
             $(($key, $value),)*
@@ -12,7 +12,7 @@ macro_rules! btreemap {
 /// Builds a [`HashMap`](std::collections::HashMap) with the given key-value
 /// pairs.
 #[macro_export]
-macro_rules! hashmap {
+macro_rules! hash_map {
     ($($key:expr => $value:expr),* $(,)?) => {{
         ::std::collections::HashMap::from([
             $(($key, $value),)*
@@ -22,7 +22,7 @@ macro_rules! hashmap {
 
 /// Builds a [`BTreeSet`](std::collections::BTreeSet) with the given items.
 #[macro_export]
-macro_rules! btreeset {
+macro_rules! btree_set {
     ($($element:expr),* $(,)?) => {{
         ::std::collections::BTreeSet::from([
             $($element,)*
@@ -32,7 +32,7 @@ macro_rules! btreeset {
 
 /// Builds a [`HashSet`](std::collections::HashSet) with the given items.
 #[macro_export]
-macro_rules! hashset {
+macro_rules! hash_set {
     ($($element:expr),* $(,)?) => {{
         ::std::collections::HashSet::from([
             $($element,)*
@@ -44,11 +44,11 @@ macro_rules! hashset {
 
 #[cfg(test)]
 mod tests {
-    use crate::{btreemap, btreeset};
+    use crate::{btree_map, btree_set};
 
     #[test]
     fn btreemap_macro_works() {
-        let map = btreemap! {
+        let map = btree_map! {
             "larry" => "engineer",
             "jake"  => "shepherd",
         };
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn btreeset_macro_works() {
-        let set = btreeset! { "larry", "jake" };
+        let set = btree_set! { "larry", "jake" };
 
         assert_eq!(set, ["larry", "jake"].into());
     }

@@ -1,10 +1,10 @@
 use {
     crate::AdminOption,
-    anyhow::bail,
+    anyhow::{bail, ensure},
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
-        from_json_slice, hash256, to_json_value, Addr, Binary, Coins, Config, Defined, Duration,
-        GenesisState, Hash256, Json, Message, Permission, Permissions, StdError, Undefined,
+        Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, HashExt, Json,
+        JsonDeExt, JsonSerExt, Message, Permission, Permissions, StdError, Undefined,
         GENESIS_SENDER,
     },
     serde::Serialize,
@@ -13,7 +13,7 @@ use {
 
 #[derive(Default)]
 pub struct GenesisBuilder<
-    O = Undefined<Option<Addr>>,
+    O = Undefined<Addr>,
     B = Undefined<Addr>,
     T = Undefined<Addr>,
     U = Undefined<Permission>,
@@ -31,6 +31,8 @@ pub struct GenesisBuilder<
     cronjobs: BTreeMap<Addr, Duration>,
     upload_permission: U,
     instantiate_permission: I,
+    // App configs
+    app_configs: BTreeMap<String, Json>,
     // Genesis messages
     upload_msgs: Vec<Message>,
     other_msgs: Vec<Message>,
@@ -42,11 +44,8 @@ impl GenesisBuilder {
     }
 }
 
-impl<B, T, U, I> GenesisBuilder<Undefined<Option<Addr>>, B, T, U, I> {
-    pub fn set_owner(
-        self,
-        owner: Option<Addr>,
-    ) -> GenesisBuilder<Defined<Option<Addr>>, B, T, U, I> {
+impl<B, T, U, I> GenesisBuilder<Undefined<Addr>, B, T, U, I> {
+    pub fn set_owner(self, owner: Addr) -> GenesisBuilder<Defined<Addr>, B, T, U, I> {
         GenesisBuilder {
             genesis_time: self.genesis_time,
             chain_id: self.chain_id,
@@ -54,8 +53,9 @@ impl<B, T, U, I> GenesisBuilder<Undefined<Option<Addr>>, B, T, U, I> {
             bank: self.bank,
             taxman: self.taxman,
             cronjobs: self.cronjobs,
-            instantiate_permission: self.instantiate_permission,
             upload_permission: self.upload_permission,
+            instantiate_permission: self.instantiate_permission,
+            app_configs: self.app_configs,
             upload_msgs: self.upload_msgs,
             other_msgs: self.other_msgs,
         }
@@ -71,8 +71,9 @@ impl<O, T, U, I> GenesisBuilder<O, Undefined<Addr>, T, U, I> {
             bank: Defined::new(bank),
             taxman: self.taxman,
             cronjobs: self.cronjobs,
-            instantiate_permission: self.instantiate_permission,
             upload_permission: self.upload_permission,
+            instantiate_permission: self.instantiate_permission,
+            app_configs: self.app_configs,
             upload_msgs: self.upload_msgs,
             other_msgs: self.other_msgs,
         }
@@ -88,8 +89,9 @@ impl<O, B, U, I> GenesisBuilder<O, B, Undefined<Addr>, U, I> {
             bank: self.bank,
             taxman: Defined::new(taxman),
             cronjobs: self.cronjobs,
-            instantiate_permission: self.instantiate_permission,
             upload_permission: self.upload_permission,
+            instantiate_permission: self.instantiate_permission,
+            app_configs: self.app_configs,
             upload_msgs: self.upload_msgs,
             other_msgs: self.other_msgs,
         }
@@ -110,6 +112,7 @@ impl<O, B, T, I> GenesisBuilder<O, B, T, Undefined<Permission>, I> {
             cronjobs: self.cronjobs,
             upload_permission: Defined::new(upload_permission),
             instantiate_permission: self.instantiate_permission,
+            app_configs: self.app_configs,
             upload_msgs: self.upload_msgs,
             other_msgs: self.other_msgs,
         }
@@ -130,6 +133,7 @@ impl<O, B, T, U> GenesisBuilder<O, B, T, U, Undefined<Permission>> {
             cronjobs: self.cronjobs,
             upload_permission: self.upload_permission,
             instantiate_permission: Defined::new(instantiate_permission),
+            app_configs: self.app_configs,
             upload_msgs: self.upload_msgs,
             other_msgs: self.other_msgs,
         }
@@ -158,12 +162,30 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         self
     }
 
+    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
+    where
+        K: Into<String>,
+        V: Serialize,
+    {
+        let key = key.into();
+        let value = value.to_json_value()?;
+
+        ensure!(
+            !self.app_configs.contains_key(&key),
+            "app config key `{key}` is already set"
+        );
+
+        self.app_configs.insert(key, value);
+
+        Ok(self)
+    }
+
     pub fn upload<D>(&mut self, code: D) -> anyhow::Result<Hash256>
     where
         D: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
 
         self.upload_msgs.push(Message::upload(code));
 
@@ -256,7 +278,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
 
 impl
     GenesisBuilder<
-        Defined<Option<Addr>>,
+        Defined<Addr>,
         Defined<Addr>,
         Defined<Addr>,
         Defined<Permission>,
@@ -280,7 +302,11 @@ impl
         let mut msgs = self.upload_msgs;
         msgs.extend(self.other_msgs);
 
-        GenesisState { config, msgs }
+        GenesisState {
+            config,
+            msgs,
+            app_configs: self.app_configs,
+        }
     }
 
     pub fn build_and_write_to_cometbft_genesis<P>(self, path: P) -> anyhow::Result<GenesisState>
@@ -288,7 +314,7 @@ impl
         P: AsRef<Path>,
     {
         let cometbft_genesis_raw = fs::read(path.as_ref())?;
-        let mut cometbft_genesis: Json = from_json_slice(cometbft_genesis_raw)?;
+        let mut cometbft_genesis: Json = cometbft_genesis_raw.deserialize_json()?;
 
         let Some(obj) = cometbft_genesis.as_object_mut() else {
             bail!("CometBFT genesis file is not a JSON object");
@@ -304,7 +330,7 @@ impl
         }
 
         let genesis_state = self.build();
-        let genesis_state_json = to_json_value(&genesis_state)?;
+        let genesis_state_json = genesis_state.to_json_value()?;
 
         obj.insert("app_state".to_string(), genesis_state_json);
 

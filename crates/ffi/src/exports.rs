@@ -1,9 +1,9 @@
 use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
     grug_types::{
-        from_borsh_slice, from_json_slice, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
-        make_sudo_ctx, to_json_vec, unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg,
-        BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx,
+        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse,
+        BorshDeExt, Context, GenericResult, ImmutableCtx, Json, JsonDeExt, JsonSerExt, MutableCtx,
         QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
@@ -40,14 +40,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         instantiate_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -65,14 +65,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         execute_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -90,14 +90,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let immutable_ctx =
             make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         query_fn(immutable_ctx, msg).into()
     })();
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -115,14 +115,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         migrate_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -142,15 +142,15 @@ where
     let events_bytes = unsafe { Region::consume(events_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
-        let events = unwrap_into_generic_result!(from_json_slice(events_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
+        let events = unwrap_into_generic_result!(events_bytes.deserialize_json());
 
         reply_fn(ctx, msg, events).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -165,13 +165,13 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
         receive_fn(ctx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -186,13 +186,13 @@ where
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
         cron_execute_fn(ctx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -209,14 +209,14 @@ where
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
         authenticate_fn(ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -233,14 +233,14 @@ where
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
         backrun_fn(ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -257,14 +257,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         transfer_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -281,14 +281,14 @@ where
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let msg = unwrap_into_generic_result!(from_json_slice(msg_bytes));
+        let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
         query_fn(ctx, msg).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -305,14 +305,14 @@ where
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
+        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
         withhold_fee_fn(sudo_ctx, tx).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }
@@ -331,15 +331,15 @@ where
     let outcome_bytes = unsafe { Region::consume(outcome_ptr as *mut Region) };
 
     let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(from_borsh_slice(ctx_bytes));
+        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(from_json_slice(tx_bytes));
-        let outcome = unwrap_into_generic_result!(from_json_slice(outcome_bytes));
+        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
+        let outcome = unwrap_into_generic_result!(outcome_bytes.deserialize_json());
 
         finalize_fee_fn(sudo_ctx, tx, outcome).into()
     })();
 
-    let res_bytes = to_json_vec(&res).unwrap();
+    let res_bytes = res.to_json_vec().unwrap();
 
     Region::release_buffer(res_bytes) as usize
 }

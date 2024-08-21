@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Hash256, QueryRequest},
+    grug_types::{Addr, Binary, Hash256, Query},
     serde::Serialize,
 };
 
@@ -25,6 +25,13 @@ pub struct QueryCmd {
 enum SubCmd {
     /// Query the chain's global information
     Info,
+    /// Query a single application-specific configuration.
+    AppConfig { key: String },
+    /// Enumerate all application-specific configurations.
+    AppConfigs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Query an account's balance in a single denom
     Balance {
         /// Account address
@@ -103,36 +110,34 @@ impl QueryCmd {
         let client = Client::connect(&self.node)?;
 
         let req = match self.subcmd {
-            SubCmd::Info => QueryRequest::Info {},
-            SubCmd::Balance { address, denom } => QueryRequest::Balance { address, denom },
+            SubCmd::Info => Query::Info {},
+            SubCmd::AppConfig { key } => Query::AppConfig { key },
+            SubCmd::AppConfigs { start_after, limit } => Query::AppConfigs { start_after, limit },
+            SubCmd::Balance { address, denom } => Query::Balance { address, denom },
             SubCmd::Balances {
                 address,
                 start_after,
                 limit,
-            } => QueryRequest::Balances {
+            } => Query::Balances {
                 address,
                 start_after,
                 limit,
             },
-            SubCmd::Supply { denom } => QueryRequest::Supply { denom },
-            SubCmd::Supplies { start_after, limit } => {
-                QueryRequest::Supplies { start_after, limit }
-            },
-            SubCmd::Code { hash } => QueryRequest::Code { hash },
-            SubCmd::Codes { start_after, limit } => QueryRequest::Codes { start_after, limit },
-            SubCmd::Account { address } => QueryRequest::Account { address },
-            SubCmd::Accounts { start_after, limit } => {
-                QueryRequest::Accounts { start_after, limit }
-            },
+            SubCmd::Supply { denom } => Query::Supply { denom },
+            SubCmd::Supplies { start_after, limit } => Query::Supplies { start_after, limit },
+            SubCmd::Code { hash } => Query::Code { hash },
+            SubCmd::Codes { start_after, limit } => Query::Codes { start_after, limit },
+            SubCmd::Account { address } => Query::Account { address },
+            SubCmd::Accounts { start_after, limit } => Query::Accounts { start_after, limit },
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
                 let key = Binary::from(hex::decode(key_hex)?);
-                QueryRequest::WasmRaw { contract, key }
+                Query::WasmRaw { contract, key }
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
                 let msg = serde_json::from_str(&msg)?;
-                QueryRequest::WasmSmart { contract, msg }
+                Query::WasmSmart { contract, msg }
             },
             SubCmd::Store { key_hex, prove } => {
                 return query_store(&client, key_hex, self.height, prove).await;

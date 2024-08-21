@@ -4,8 +4,8 @@ use {
         StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        from_json_slice, to_json_vec, Addr, BlockInfo, Context, Event, GenericResult, Hash256,
-        Response, Storage,
+        Addr, BlockInfo, Context, Event, GenericResult, Hash256, JsonDeExt, JsonSerExt, Response,
+        Storage,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -39,7 +39,7 @@ where
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_0_out_1(name, ctx)?;
-    let out = from_json_slice(out_raw)?;
+    let out = out_raw.deserialize_json()?;
 
     Ok(out)
 }
@@ -74,11 +74,11 @@ where
     )?;
 
     // Serialize the param as JSON
-    let param_raw = to_json_vec(param)?;
+    let param_raw = param.to_json_vec()?;
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_1_out_1(name, ctx, &param_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = out_raw.deserialize_json()?;
 
     Ok(out)
 }
@@ -115,12 +115,12 @@ where
     )?;
 
     // Serialize the params as JSON
-    let param1_raw = to_json_vec(param1)?;
-    let param2_raw = to_json_vec(param2)?;
+    let param1_raw = param1.to_json_vec()?;
+    let param2_raw = param2.to_json_vec()?;
 
     // Call the function; deserialize the output as JSON
     let out_raw = instance.call_in_2_out_1(name, ctx, &param1_raw, &param2_raw)?;
-    let out = from_json_slice(out_raw)?;
+    let out = out_raw.deserialize_json()?;
 
     Ok(out)
 }

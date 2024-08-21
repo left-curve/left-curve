@@ -1,18 +1,19 @@
 #[cfg(feature = "abci")]
-use grug_types::from_json_slice;
+use grug_types::JsonDeExt;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
-        query_accounts, query_balance, query_balances, query_code, query_codes, query_info,
-        query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError, AppResult,
-        Buffer, Db, GasTracker, Shared, Vm, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_accounts, query_app_config, query_app_configs, query_balance, query_balances,
+        query_code, query_codes, query_info, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
+        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        to_json_vec, Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState,
-        Hash256, Json, Message, Order, Outcome, Permission, QueryRequest, QueryResponse, StdResult,
-        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash256, Json,
+        JsonSerExt, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult, Storage,
+        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -81,6 +82,11 @@ where
         CHAIN_ID.save(&mut buffer, &chain_id)?;
         CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+
+        // Save app configs.
+        for (key, value) in genesis_state.app_configs {
+            APP_CONFIGS.save(&mut buffer, &key, &value)?;
+        }
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
@@ -321,12 +327,7 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(
-        &self,
-        req: QueryRequest,
-        height: u64,
-        prove: bool,
-    ) -> AppResult<QueryResponse> {
+    pub fn do_query_app(&self, req: Query, height: u64, prove: bool) -> AppResult<QueryResponse> {
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
@@ -372,7 +373,7 @@ where
         };
 
         let proof = if prove {
-            Some(to_json_vec(&self.db.prove(key, version)?)?)
+            Some(self.db.prove(key, version)?.to_json_vec()?)
         } else {
             None
         };
@@ -438,7 +439,7 @@ where
         block: BlockInfo,
         raw_genesis_state: &[u8],
     ) -> AppResult<Hash256> {
-        let genesis_state = from_json_slice(raw_genesis_state)?;
+        let genesis_state = raw_genesis_state.deserialize_json()?;
 
         self.do_init_chain(chain_id, block, genesis_state)
     }
@@ -453,14 +454,14 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(from_json_slice)
+            .map(|raw_tx| raw_tx.deserialize_json())
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
-        let tx = from_json_slice(raw_tx)?;
+        let tx = raw_tx.deserialize_json()?;
 
         self.do_check_tx(tx)
     }
@@ -471,17 +472,17 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
-        let tx = from_json_slice(raw_unsigned_tx)?;
+        let tx = raw_unsigned_tx.deserialize_json()?;
         let res = self.do_simulate(tx, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(res.to_json_vec()?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = from_json_slice(raw_req)?;
+        let req = raw_req.deserialize_json()?;
         let res = self.do_query_app(req, height, prove)?;
 
-        Ok(to_json_vec(&res)?)
+        Ok(res.to_json_vec()?)
     }
 }
 
@@ -547,7 +548,7 @@ where
         gas_tracker.clone(),
         block,
         &tx,
-        mode.clone(),
+        mode,
     ) {
         Ok((new_events, request_backrun)) => {
             buffer2.write_access().commit();
@@ -696,7 +697,10 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure { new_cfg } => do_configure(&mut storage, block, sender, new_cfg),
+        Message::Configure {
+            updates,
+            app_updates,
+        } => do_configure(&mut storage, block, sender, updates, app_updates),
         Message::Transfer { to, coins } => {
             do_transfer(vm, storage, gas_tracker, block, sender, to, coins, true)
         },
@@ -755,22 +759,30 @@ pub fn process_query<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
-    req: QueryRequest,
+    req: Query,
 ) -> AppResult<QueryResponse>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match req {
-        QueryRequest::Info {} => {
+        Query::Info {} => {
             let res = query_info(&storage, gas_tracker)?;
             Ok(QueryResponse::Info(res))
         },
-        QueryRequest::Balance { address, denom } => {
+        Query::AppConfig { key } => {
+            let res = query_app_config(&storage, gas_tracker, &key)?;
+            Ok(QueryResponse::AppConfig(res))
+        },
+        Query::AppConfigs { start_after, limit } => {
+            let res = query_app_configs(&storage, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::AppConfigs(res))
+        },
+        Query::Balance { address, denom } => {
             let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;
             Ok(QueryResponse::Balance(res))
         },
-        QueryRequest::Balances {
+        Query::Balances {
             address,
             start_after,
             limit,
@@ -778,39 +790,39 @@ where
             let res = query_balances(vm, storage, block, gas_tracker, address, start_after, limit)?;
             Ok(QueryResponse::Balances(res))
         },
-        QueryRequest::Supply { denom } => {
+        Query::Supply { denom } => {
             let res = query_supply(vm, storage, block, gas_tracker, denom)?;
             Ok(QueryResponse::Supply(res))
         },
-        QueryRequest::Supplies { start_after, limit } => {
+        Query::Supplies { start_after, limit } => {
             let res = query_supplies(vm, storage, block, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Supplies(res))
         },
-        QueryRequest::Code { hash } => {
+        Query::Code { hash } => {
             let res = query_code(&storage, gas_tracker, hash)?;
             Ok(QueryResponse::Code(res))
         },
-        QueryRequest::Codes { start_after, limit } => {
+        Query::Codes { start_after, limit } => {
             let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
-        QueryRequest::Account { address } => {
+        Query::Account { address } => {
             let res = query_account(&storage, gas_tracker, address)?;
             Ok(QueryResponse::Account(res))
         },
-        QueryRequest::Accounts { start_after, limit } => {
+        Query::Accounts { start_after, limit } => {
             let res = query_accounts(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Accounts(res))
         },
-        QueryRequest::WasmRaw { contract, key } => {
+        Query::WasmRaw { contract, key } => {
             let res = query_wasm_raw(storage, gas_tracker, contract, key)?;
             Ok(QueryResponse::WasmRaw(res))
         },
-        QueryRequest::WasmSmart { contract, msg } => {
+        Query::WasmSmart { contract, msg } => {
             let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
             Ok(QueryResponse::WasmSmart(res))
         },
-        QueryRequest::Multi(reqs) => {
+        Query::Multi(reqs) => {
             let res = reqs
                 .into_iter()
                 .map(|req| {
@@ -822,17 +834,15 @@ where
     }
 }
 
-pub(crate) fn has_permission(permission: &Permission, owner: Option<Addr>, sender: Addr) -> bool {
+pub(crate) fn has_permission(permission: &Permission, owner: Addr, sender: Addr) -> bool {
     // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
     }
 
     // The owner can always do anything it wants.
-    if let Some(owner) = owner {
-        if sender == owner {
-            return true;
-        }
+    if sender == owner {
+        return true;
     }
 
     match permission {

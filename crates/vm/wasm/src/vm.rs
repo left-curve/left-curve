@@ -1,18 +1,17 @@
 use {
     crate::{
-        blake2b_512, blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
-        db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
-        query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
-        sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory, Environment, Gatekeeper, VmError, VmResult,
+        blake2b_512, blake2s_256, blake3, cache::Cacher, db_next, db_next_key, db_next_value,
+        db_read, db_remove, db_remove_range, db_scan, db_write, debug, ed25519_batch_verify,
+        ed25519_verify, keccak256, query_chain, read_then_wipe, secp256k1_pubkey_recover,
+        secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha2_512_truncated, sha3_256,
+        sha3_512, sha3_512_truncated, write_to_memory, Environment, Gatekeeper, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{to_borsh_vec, Context, Hash256},
+    grug_types::{BorshSerExt, Context, Hash256},
     std::sync::Arc,
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
-use crate::cache::Cacher;
 
 /// Gas cost per operation
 ///
@@ -28,9 +27,7 @@ pub struct WasmVm {
 
 impl WasmVm {
     pub fn new(cache: Box<dyn Cacher>) -> Self {
-        Self {
-            cache,
-        }
+        Self { cache }
     }
 }
 
@@ -50,35 +47,38 @@ impl Vm for WasmVm {
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
         let owned_code = code.to_owned();
-        let (module, engine) = self.cache.get_or_build_with(code_hash, Box::new(|| {
-            let mut compiler = Singlepass::new();
+        let (module, engine) = self.cache.get_or_build_with(
+            code_hash,
+            Box::new(|| {
+                let mut compiler = Singlepass::new();
 
-            // Set up the gas metering middleware.
-            //
-            // Set `initial_points` as zero for now, because this engine will be
-            // cached and to be used by other transactions, so it doesn't make
-            // sense to put the current tx's gas limit here.
-            //
-            // We will properly set this tx's gas limit later, once we have
-            // created the `Instance`.
-            //
-            // Also, compiling the module doesn't cost gas, so setting the limit
-            // to zero won't raise out of gas errors.
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
-            compiler.push_middleware(Arc::new(metering));
+                // Set up the gas metering middleware.
+                //
+                // Set `initial_points` as zero for now, because this engine will be
+                // cached and to be used by other transactions, so it doesn't make
+                // sense to put the current tx's gas limit here.
+                //
+                // We will properly set this tx's gas limit later, once we have
+                // created the `Instance`.
+                //
+                // Also, compiling the module doesn't cost gas, so setting the limit
+                // to zero won't raise out of gas errors.
+                let metering = Metering::new(0, |_| GAS_PER_OPERATION);
+                compiler.push_middleware(Arc::new(metering));
 
-            // Set up the `Gatekeeper`. This rejects certain Wasm operators that
-            // may cause non-determinism.
-            compiler.push_middleware(Arc::new(Gatekeeper::default()));
+                // Set up the `Gatekeeper`. This rejects certain Wasm operators that
+                // may cause non-determinism.
+                compiler.push_middleware(Arc::new(Gatekeeper::default()));
 
-            // Ensure determinism related to floating point numbers.
-            compiler.canonicalize_nans(true);
+                // Ensure determinism related to floating point numbers.
+                compiler.canonicalize_nans(true);
 
-            let engine = Engine::from(compiler);
-            let module = Module::new(&engine, owned_code)?;
+                let engine = Engine::from(compiler);
+                let module = Module::new(&engine, owned_code)?;
 
-            Ok((module, engine))
-        }))?;
+                Ok((module, engine))
+            }),
+        )?;
 
         // Compute the amount of gas left for this call. This will be used as
         // the initial points in the Wasmer gas meter.
@@ -171,7 +171,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into()])?
             .try_into()
@@ -194,7 +194,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
         let res_ptr: u32 = env
             .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
@@ -220,7 +220,7 @@ impl Instance for WasmInstance {
         let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
         let (env, mut store) = fe_mut.data_and_store_mut();
 
-        let ctx_ptr = write_to_memory(env, &mut store, &to_borsh_vec(ctx)?)?;
+        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
         let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
         let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
         let res_ptr: u32 = env

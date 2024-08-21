@@ -1,13 +1,14 @@
 use {
     crate::prompt::{confirm, print_json_pretty, read_password, read_text},
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
     grug_client::{Keystore, SigningKey},
-    grug_types::from_json_slice,
+    grug_types::JsonDeExt,
     rand::rngs::OsRng,
     std::{
+        collections::BTreeMap,
         fs,
         path::{Path, PathBuf},
     },
@@ -113,18 +114,25 @@ fn show(dir: &Path, name: &str) -> anyhow::Result<()> {
     ensure!(filename.exists(), "file {filename:?} not found");
 
     let keystore_str = fs::read_to_string(filename)?;
-    let keystore: Keystore = from_json_slice(keystore_str)?;
+    let keystore: Keystore = keystore_str.deserialize_json()?;
 
     print_json_pretty(keystore)
 }
 
 fn list(dir: &Path) -> anyhow::Result<()> {
-    let mut keystores = vec![];
+    let mut keystores = BTreeMap::new();
     for entry in dir.read_dir()? {
         let entry = entry?;
+        let name = entry
+            .path()
+            .file_stem()
+            .ok_or(anyhow!("failed to get filename of keystore file"))?
+            .to_str()
+            .ok_or(anyhow!("failed to convert keystore file path to string"))?
+            .to_owned();
         let keystore_str = fs::read_to_string(entry.path())?;
         let keystore: Keystore = serde_json::from_str(&keystore_str)?;
-        keystores.push(keystore);
+        keystores.insert(name, keystore);
     }
 
     print_json_pretty(keystores)

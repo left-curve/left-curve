@@ -1,6 +1,6 @@
 use {
     crate::{initialize_config, query_config, update_config, ExecuteMsg, InstantiateMsg, QueryMsg},
-    grug_types::{to_json_value, ImmutableCtx, Json, MutableCtx, Response, StdResult},
+    grug_types::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 
 // Need to define these manually because we can't use the `grug::export` macro in
@@ -45,6 +45,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Config {} => to_json_value(&query_config(ctx.storage)?),
+        QueryMsg::Config {} => query_config(ctx.storage)?.to_json_value(),
     }
 }

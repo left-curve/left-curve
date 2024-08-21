@@ -13,5 +13,6 @@ categories    = { workspace = true }
 borsh      = { workspace = true }
 grug-types = { path = "../types" }
 prost      = { workspace = true }
+serde      = { workspace = true }
 
 [dev-dependencies]

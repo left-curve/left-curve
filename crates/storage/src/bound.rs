@@ -1,4 +1,4 @@
-use crate::{Key, Prefixer};
+use crate::{Prefixer, PrimaryKey};
 
 // --------------------------------- raw bound ---------------------------------
 
@@ -41,7 +41,7 @@ impl<K> Bound<K> {
 
 impl<K> From<Bound<K>> for RawBound
 where
-    K: Key,
+    K: PrimaryKey,
 {
     fn from(bound: Bound<K>) -> Self {
         match bound {
@@ -55,7 +55,7 @@ where
 
 pub enum PrefixBound<K>
 where
-    K: Key,
+    K: PrimaryKey,
 {
     Inclusive(K::Prefix),
     Exclusive(K::Prefix),
@@ -63,7 +63,7 @@ where
 
 impl<K> PrefixBound<K>
 where
-    K: Key,
+    K: PrimaryKey,
 {
     pub fn inclusive<P>(p: P) -> Self
     where
@@ -82,7 +82,7 @@ where
 
 impl<K> From<PrefixBound<K>> for RawBound
 where
-    K: Key,
+    K: PrimaryKey,
 {
     fn from(bound: PrefixBound<K>) -> Self {
         match bound {

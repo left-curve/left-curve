@@ -1759,6 +1759,7 @@ dependencies = [
  "borsh",
  "grug-types",
  "prost",
+ "serde",
 ]
 
 [[package]]
@@ -1792,6 +1793,7 @@ dependencies = [
  "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-macros",
  "grug-storage",
  "grug-taxman",
  "grug-types",

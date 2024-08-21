@@ -2,7 +2,7 @@ use {
     crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
     anyhow::ensure,
     grug_types::{
-        from_json_value, to_json_vec, Addr, AuthCtx, AuthMode, AuthResponse, Message, MutableCtx,
+        Addr, AuthCtx, AuthMode, AuthResponse, JsonDeExt, JsonSerExt, Message, MutableCtx,
         Response, StdResult, Tx,
     },
 };
@@ -39,7 +39,7 @@ where
     let mut prehash = Vec::new();
     // That there are multiple valid ways that the messages can be serialized
     // into JSON. Here we use `grug::to_json_vec` as the source of truth.
-    prehash.extend(to_json_vec(&msgs)?);
+    prehash.extend(msgs.to_json_vec()?);
     prehash.extend(sender.as_ref());
     prehash.extend(chain_id.as_bytes());
     prehash.extend(sequence.to_be_bytes());
@@ -49,9 +49,6 @@ where
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
     PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
-
-    // Initialize the sequence number to zero
-    SEQUENCE.initialize(ctx.storage)?;
 
     Ok(Response::new())
 }
@@ -68,8 +65,13 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
 
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
-    let sequence = SEQUENCE.load(ctx.storage)?;
-    let credential: Credential = from_json_value(tx.credential)?;
+
+    // Decode the credential, which should contain the sequence and signature.
+    let credential: Credential = tx.credential.deserialize_json()?;
+
+    // Incrementing the sequence. We expect the transaction to be signed by the
+    // sequence _before_ the incrementing.
+    let (sequence, _) = SEQUENCE.increment(ctx.storage)?;
 
     match ctx.mode {
         // During `CheckTx`, ensure the tx's sequence is equal or greater than
@@ -115,9 +117,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         ctx.api
             .secp256k1_verify(&hash, &credential.signature, &public_key)?;
     }
-
-    // Increment the sequence number
-    SEQUENCE.increment(ctx.storage)?;
 
     Ok(AuthResponse::new()
         .add_attribute("method", "authenticate")

@@ -1,8 +1,8 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{
-        to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
-        Udec128, Uint256,
+        Binary, Coins, JsonSerExt, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
+        Uint256,
     },
     grug_vm_wasm::{new_cacher, VmError, WasmVm},
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
@@ -19,14 +19,15 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 
 #[test]
 fn bank_transfers() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(300_000_u128)))?
-        .add_account("receiver", Coins::new())?
-        .set_owner("owner")?
-        .set_fee_denom(DENOM)
-        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
-        .build()?;
+    let (mut suite, accounts) =
+        TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
+            .add_account("owner", Coins::new())?
+            .add_account("sender", Coins::one(DENOM, NonZero::new(300_000_u128)))?
+            .add_account("receiver", Coins::new())?
+            .set_owner("owner")?
+            .set_fee_denom(DENOM)
+            .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+            .build()?;
 
     // Check that sender has been given 300,000 ugrug.
     // Sender needs to have sufficient tokens to cover gas fee and the transfers.
@@ -76,14 +77,11 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // List all holders of the denom
     suite
-        .query_wasm_smart::<_, BTreeMap<Addr, Uint256>>(
-            info.config.bank,
-            &grug_bank::QueryMsg::Holders {
-                denom: DENOM.to_string(),
-                start_after: None,
-                limit: None,
-            },
-        )
+        .query_wasm_smart(info.config.bank, grug_bank::QueryHoldersRequest {
+            denom: DENOM.to_string(),
+            start_after: None,
+            limit: None,
+        })
         .should_succeed_and_equal(BTreeMap::from([
             (accounts["owner"].address, fee),
             (accounts["sender"].address, sender_balance_after),
@@ -95,13 +93,14 @@ fn bank_transfers() -> anyhow::Result<()> {
 
 #[test]
 fn gas_limit_too_low() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(200_000_u128)))?
-        .add_account("receiver", Coins::new())?
-        .set_owner("owner")?
-        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
-        .build()?;
+    let (mut suite, accounts) =
+        TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
+            .add_account("owner", Coins::new())?
+            .add_account("sender", Coins::one(DENOM, NonZero::new(200_000_u128)))?
+            .add_account("receiver", Coins::new())?
+            .set_owner("owner")?
+            .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+            .build()?;
 
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around ~1M gas.
@@ -136,12 +135,13 @@ fn gas_limit_too_low() -> anyhow::Result<()> {
 
 #[test]
 fn infinite_loop() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
-        .set_owner("owner")?
-        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
-        .build()?;
+    let (mut suite, accounts) =
+        TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
+            .add_account("owner", Coins::new())?
+            .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+            .set_owner("owner")?
+            .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+            .build()?;
 
     let (_, tester) = suite.upload_and_instantiate_with_gas(
         &accounts["sender"],
@@ -155,7 +155,7 @@ fn infinite_loop() -> anyhow::Result<()> {
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&grug_tester::ExecuteMsg::InfiniteLoop {})?,
+            msg: grug_tester::ExecuteMsg::InfiniteLoop {}.to_json_value()?,
             funds: Coins::new(),
         })?
         .result
@@ -166,12 +166,13 @@ fn infinite_loop() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
-        .set_owner("owner")?
-        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
-        .build()?;
+    let (mut suite, accounts) =
+        TestBuilder::new_with_vm(WasmVm::new(new_cacher(WASM_CACHE_CAPACITY)))
+            .add_account("owner", Coins::new())?
+            .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+            .set_owner("owner")?
+            .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+            .build()?;
 
     // Deploy the tester contract
     let (_, tester) = suite.upload_and_instantiate_with_gas(
@@ -194,7 +195,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart::<_, Empty>(tester, &grug_tester::QueryMsg::ForceWrite {
+        .query_wasm_smart(tester, grug_tester::QueryForceWriteRequest {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })
@@ -210,10 +211,11 @@ fn immutable_state() -> anyhow::Result<()> {
     suite
         .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
             contract: tester,
-            msg: to_json_value(&grug_tester::ExecuteMsg::ForceWriteOnQuery {
+            msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
                 key: "larry".to_string(),
                 value: "engineer".to_string(),
-            })?,
+            }
+            .to_json_value()?,
             funds: Coins::new(),
         })?
         .result

@@ -3,8 +3,8 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState,
-        MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, HashExt, Json,
+        JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
@@ -38,15 +38,19 @@ pub struct TestBuilder<
     M1 = grug_account::InstantiateMsg,
     M2 = grug_bank::InstantiateMsg,
     M3 = grug_taxman::InstantiateMsg,
+    OW = Undefined<Addr>,
     TA = Undefined<TestAccounts>,
 > {
     vm: VM,
-    // Basic configs
+    // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
-    owner: Option<Addr>,
+    // App configs
+    app_configs: BTreeMap<String, Json>,
+    // Owner
+    owner: OW,
     // Accounts
     account_opt: CodeOption<Box<dyn Fn(grug_account::PublicKey) -> M1>>,
     accounts: TA,
@@ -97,7 +101,8 @@ where
             chain_id: None,
             genesis_time: None,
             block_time: None,
-            owner: None,
+            app_configs: BTreeMap::new(),
+            owner: Undefined::default(),
             accounts: Undefined::default(),
             balances: BTreeMap::new(),
             fee_denom: None,
@@ -106,11 +111,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3, TA> TestBuilder<VM, M1, M2, M3, TA>
+impl<VM, M1, M2, M3, OW, TA> TestBuilder<VM, M1, M2, M3, OW, TA>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
+    OW: MaybeDefined<Inner = Addr>,
     TA: MaybeDefined<Inner = TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
@@ -152,6 +158,24 @@ where
         self
     }
 
+    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
+    where
+        K: Into<String>,
+        V: Serialize,
+    {
+        let key = key.into();
+        let value = value.to_json_value()?;
+
+        ensure!(
+            !self.app_configs.contains_key(&key),
+            "app config key `{key}` is already set"
+        );
+
+        self.app_configs.insert(key, value);
+
+        Ok(self)
+    }
+
     /// Use a custom code for the bank instead the default implementation
     /// provided by the Grug test suite.
     ///
@@ -173,6 +197,8 @@ where
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .set_bank_code(
     ///         code,
     ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
@@ -184,7 +210,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2A, M3, TA>
+    ) -> TestBuilder<VM, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -195,6 +221,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -230,6 +257,8 @@ where
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .set_taxman_code(
     ///         code,
     ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
@@ -243,7 +272,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2, M3A, TA>
+    ) -> TestBuilder<VM, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(String, Udec128) -> M3A + 'static,
@@ -254,6 +283,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -272,7 +302,7 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, OW, Defined<TestAccounts>>>
     where
         C: TryInto<Coins>,
         anyhow::Error: From<C::Error>,
@@ -284,7 +314,7 @@ where
         );
 
         // Generate a random new account
-        let account = TestAccount::new_random(hash256(&self.account_opt.code), name.as_bytes());
+        let account = TestAccount::new_random(self.account_opt.code.hash256(), name.as_bytes());
 
         // Save account and balances
         let balances = balances.try_into()?;
@@ -299,6 +329,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: Defined::new(accounts),
@@ -311,11 +342,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<TestAccounts>>
+impl<VM, M1, M2, M3, OW> TestBuilder<VM, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
+    OW: MaybeDefined<Inner = Addr>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -347,6 +379,8 @@ where
     ///     .unwrap()
     ///     .add_account("owner", Coins::new())
     ///     .unwrap()
+    ///     .set_owner("owner")
+    ///     .unwrap()
     ///     .build()
     ///     .unwrap();
     /// ```
@@ -354,7 +388,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, Undefined<TestAccounts>>>
+    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>>
     where
         T: Into<Binary>,
         F: Fn(grug_account::PublicKey) -> M1A + 'static,
@@ -365,6 +399,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            app_configs: self.app_configs,
             owner: self.owner,
             account_opt: CodeOption {
                 code: code.into(),
@@ -380,8 +415,39 @@ where
     }
 }
 
-// TSB where at least one account is set
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<TestAccounts>>
+// `set_owner` can only be called if `add_accounts` has been called at least
+// once, and `set_owner` hasn't already been called.
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
+    pub fn set_owner(
+        self,
+        name: &'static str,
+    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>> {
+        let owner =
+            self.accounts.inner().get(name).ok_or_else(|| {
+                anyhow!("failed to set owner: can't find account with name `{name}`")
+            })?;
+
+        Ok(TestBuilder {
+            vm: self.vm,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            app_configs: self.app_configs,
+            owner: Defined::new(owner.address),
+            account_opt: self.account_opt,
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+        })
+    }
+}
+
+// `build` can only be called if both `owner` and `accounts` have been set.
+impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -389,19 +455,6 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    /// **Note:** `set_owner` can only called if `add_account` has been already
-    /// called at least once.
-    pub fn set_owner(mut self, name: &'static str) -> anyhow::Result<Self> {
-        let owner =
-            self.accounts.inner().get(name).ok_or_else(|| {
-                anyhow!("failed to set owner: can't find account with name `{name}`")
-            })?;
-
-        self.owner = Some(owner.address);
-
-        Ok(self)
-    }
-
     pub fn build(self) -> anyhow::Result<(TestSuite<VM>, TestAccounts)> {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
@@ -440,14 +493,14 @@ where
             Message::upload(self.bank_opt.code.clone()),
             Message::upload(self.taxman_opt.code.clone()),
             Message::instantiate(
-                hash256(&self.bank_opt.code),
+                self.bank_opt.code.hash256(),
                 &(self.bank_opt.msg_builder)(self.balances),
                 DEFAULT_BANK_SALT,
                 Coins::new(),
                 None,
             )?,
             Message::instantiate(
-                hash256(&self.taxman_opt.code),
+                self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
                 DEFAULT_TAXMAN_SALT,
                 Coins::new(),
@@ -458,7 +511,7 @@ where
         // Instantiate accounts
         for (name, account) in self.accounts.inner() {
             msgs.push(Message::instantiate(
-                hash256(&self.account_opt.code),
+                self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
                 name.to_string(),
                 Coins::new(),
@@ -469,20 +522,20 @@ where
         // Predict bank contract address
         let bank = Addr::compute(
             GENESIS_SENDER,
-            hash256(&self.bank_opt.code),
+            self.bank_opt.code.hash256(),
             DEFAULT_BANK_SALT,
         );
 
         // Prefict taxman contract address
         let taxman = Addr::compute(
             GENESIS_SENDER,
-            hash256(&self.taxman_opt.code),
+            self.taxman_opt.code.hash256(),
             DEFAULT_TAXMAN_SALT,
         );
 
         // Create the app config
         let config = Config {
-            owner: self.owner,
+            owner: self.owner.into_inner(),
             bank,
             taxman,
             cronjobs: BTreeMap::new(),
@@ -492,7 +545,12 @@ where
             },
         };
 
-        let genesis_state = GenesisState { config, msgs };
+        let genesis_state = GenesisState {
+            config,
+            msgs,
+            app_configs: self.app_configs,
+        };
+
         let suite =
             TestSuite::new_with_vm(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
 

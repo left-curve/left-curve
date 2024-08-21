@@ -1,7 +1,7 @@
 use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, QueryRequest,
+        concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, Query,
         QueryResponse, Record, StdResult, Storage,
     },
 };
@@ -149,7 +149,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn do_query_chain(&self, req: QueryRequest) -> GenericResult<QueryResponse> {
+    pub fn do_query_chain(&self, req: Query) -> GenericResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
@@ -167,7 +167,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    fn query_chain(&self, req: QueryRequest) -> StdResult<QueryResponse> {
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.do_query_chain(req).into_std_result()
     }
 }

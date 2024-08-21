@@ -1,5 +1,5 @@
 use {
-    crate::{Bound, Codec, Key, PrefixBound, Prefixer, RawBound},
+    crate::{Bound, Codec, PrefixBound, Prefixer, PrimaryKey, RawBound},
     grug_types::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         trim, Order, Record, StdResult, Storage,
@@ -37,7 +37,7 @@ where
 
 impl<K, T, C> Prefix<K, T, C>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     pub fn append(mut self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
@@ -297,7 +297,7 @@ fn range_bounds<K>(
     max: Option<Bound<K>>,
 ) -> (Vec<u8>, Vec<u8>)
 where
-    K: Key,
+    K: PrimaryKey,
 {
     let min = match min.map(RawBound::from) {
         None => namespace.to_vec(),
@@ -319,7 +319,7 @@ fn range_prefix_bounds<K>(
     max: Option<PrefixBound<K>>,
 ) -> (Vec<u8>, Vec<u8>)
 where
-    K: Key,
+    K: PrimaryKey,
 {
     let min = match min.map(RawBound::from) {
         None => namespace.to_vec(),

@@ -7,19 +7,18 @@ use {
     wasmer::{Engine, Module},
 };
 
-pub fn new_cacher(capacity: usize) ->Box<dyn Cacher> {
+pub fn new_cacher(capacity: usize) -> Box<dyn Cacher> {
     if let Some(x) = NonZeroUsize::new(capacity) {
         return Box::new(Cache::new(x));
     }
     Box::new(NoCache::default())
 }
 
-
 pub trait Cacher: Send {
     fn get_or_build_with(
         &self,
         code_hash: Hash256,
-        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
+        builder: Box<dyn FnOnce() -> VmResult<(Module, Engine)>>,
     ) -> VmResult<(Module, Engine)>;
 
     fn clone_box(&self) -> Box<dyn Cacher>;
@@ -57,9 +56,8 @@ impl Cacher for Cache {
     fn get_or_build_with(
         &self,
         code_hash: Hash256,
-        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
-    ) -> VmResult<(Module, Engine)>
-    {
+        builder: Box<dyn FnOnce() -> VmResult<(Module, Engine)>>,
+    ) -> VmResult<(Module, Engine)> {
         // Cache hit - simply clone the module and return
         if let Some(module) = self.inner.write_access().get(&code_hash) {
             return Ok(module.clone());
@@ -88,9 +86,8 @@ pub struct NoCache {}
 impl NoCache {
     /// Create a NoCache
     pub fn new() -> Self {
-        Self{}
+        Self {}
     }
-
 }
 
 impl Default for NoCache {
@@ -99,16 +96,14 @@ impl Default for NoCache {
     }
 }
 
-
 impl Cacher for NoCache {
     fn get_or_build_with(
         &self,
         _code_hash: Hash256,
-        builder: Box< dyn FnOnce() -> VmResult<(Module, Engine)>>,
-    ) -> VmResult<(Module, Engine)>
-    {
-       let (module, engine)  = builder()?;
-       Ok((module, engine))
+        builder: Box<dyn FnOnce() -> VmResult<(Module, Engine)>>,
+    ) -> VmResult<(Module, Engine)> {
+        let (module, engine) = builder()?;
+        Ok((module, engine))
     }
 
     fn clone_box(&self) -> Box<dyn Cacher> {

@@ -4,7 +4,7 @@ use {
     sha3::{Digest, Keccak256},
 };
 use {
-    crate::{forward_ref_partial_eq, hash160, hash256, Hash, Hash160, Hash256, StdError},
+    crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, HashExt, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     core::str,
     serde::{de, ser},
@@ -62,7 +62,7 @@ impl Addr {
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());
         preimage.extend_from_slice(salt);
-        Self(hash160(hash256(preimage)))
+        Self(preimage.hash256().hash160())
     }
 
     /// Generate a mock address from use in testing.
@@ -259,9 +259,8 @@ mod tests {
     #[cfg(feature = "erc55")]
     use test_case::test_case;
     use {
-        crate::{from_json_value, to_json_value, Addr},
+        crate::{json, Addr, JsonDeExt, JsonSerExt},
         hex_literal::hex,
-        serde_json::json,
         std::str::FromStr,
     };
 
@@ -273,13 +272,16 @@ mod tests {
     #[test]
     fn serializing() {
         assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
-        assert_eq!(json!(MOCK_STR), to_json_value(&MOCK_ADDR).unwrap());
+        assert_eq!(json!(MOCK_STR), MOCK_ADDR.to_json_value().unwrap());
     }
 
     #[test]
     fn deserializing() {
         assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(MOCK_ADDR, from_json_value::<Addr>(json!(MOCK_STR)).unwrap());
+        assert_eq!(
+            MOCK_ADDR,
+            json!(MOCK_STR).deserialize_json::<Addr>().unwrap()
+        );
     }
 
     // Test cases from ERC-55 spec:

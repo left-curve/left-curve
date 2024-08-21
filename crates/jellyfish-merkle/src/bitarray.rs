@@ -1,5 +1,5 @@
 use {
-    grug_storage::Key,
+    grug_storage::PrimaryKey,
     grug_types::{split_one_key, Hash256, Order, StdResult},
     std::{borrow::Cow, fmt},
 };
@@ -164,10 +164,12 @@ impl PartialEq<Hash256> for BitArray {
     }
 }
 
-impl<'a> Key for &'a BitArray {
+impl<'a> PrimaryKey for &'a BitArray {
     type Output = BitArray;
     type Prefix = u16;
     type Suffix = &'a [u8];
+
+    const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         let num_bytes = self.num_bits.div_ceil(8);

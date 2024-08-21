@@ -26,9 +26,6 @@ pub enum AppError {
     #[error("incorrect block height! expecting: {expect}, actual: {actual}")]
     IncorrectBlockHeight { expect: u64, actual: u64 },
 
-    #[error("owner account is not set")]
-    OwnerNotSet,
-
     #[error("sender is not the owner! sender: {sender}, owner: {owner}")]
     NotOwner { sender: Addr, owner: Addr },
 

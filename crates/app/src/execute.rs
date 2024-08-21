@@ -2,13 +2,15 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, CHAIN_ID, CODES,
-        CONFIG, NEXT_CRONJOBS,
+        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, APP_CONFIGS,
+        CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config,
-        Context, Event, GenericResult, Hash256, Json, Storage, SubMsgResult, Tx, TxOutcome,
+        Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates,
+        Context, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
+        TxOutcome,
     },
+    std::collections::BTreeMap,
 };
 
 // ---------------------------------- config -----------------------------------
@@ -17,9 +19,10 @@ pub fn do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    new_cfg: Config,
+    updates: ConfigUpdates,
+    app_updates: BTreeMap<String, Op<Json>>,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, block, sender, new_cfg) {
+    match _do_configure(storage, block, sender, updates, app_updates) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -39,27 +42,58 @@ fn _do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    new_cfg: Config,
+    updates: ConfigUpdates,
+    app_updates: BTreeMap<String, Op<Json>>,
 ) -> AppResult<Event> {
+    let mut cfg = CONFIG.load(storage)?;
+
     // Make sure the sender is authorized to set the config.
-    let cfg = CONFIG.load(storage)?;
-    let Some(owner) = cfg.owner else {
-        return Err(AppError::OwnerNotSet);
-    };
-    if sender != owner {
-        return Err(AppError::NotOwner { sender, owner });
+    if sender != cfg.owner {
+        return Err(AppError::NotOwner {
+            sender,
+            owner: cfg.owner,
+        });
     }
 
-    // Save the new config.
-    CONFIG.save(storage, &new_cfg)?;
+    if let Some(new_owner) = updates.owner {
+        cfg.owner = new_owner;
+    }
 
-    // If the list of cronjobs has been changed, we have to delete the existing
-    // scheduled ones and reschedule.
-    if cfg.cronjobs != new_cfg.cronjobs {
-        NEXT_CRONJOBS.clear(storage, None, None);
+    if let Some(new_bank) = updates.bank {
+        cfg.bank = new_bank;
+    }
 
-        for (contract, interval) in new_cfg.cronjobs {
-            schedule_cronjob(storage, contract, block.timestamp, interval)?;
+    if let Some(new_taxman) = updates.taxman {
+        cfg.taxman = new_taxman;
+    }
+
+    if let Some(new_cronjobs) = updates.cronjobs {
+        // If the list of cronjobs has been changed, we have to delete the
+        // existing scheduled ones and reschedule.
+        if new_cronjobs != cfg.cronjobs {
+            NEXT_CRONJOBS.clear(storage, None, None);
+
+            for (contract, interval) in &new_cronjobs {
+                schedule_cronjob(storage, *contract, block.timestamp, *interval)?;
+            }
+        }
+
+        cfg.cronjobs = new_cronjobs;
+    }
+
+    if let Some(new_permissions) = updates.permissions {
+        cfg.permissions = new_permissions;
+    }
+
+    // Save the updated config.
+    CONFIG.save(storage, &cfg)?;
+
+    // Update app configs
+    for (key, op) in app_updates {
+        if let Op::Insert(value) = op {
+            APP_CONFIGS.save(storage, &key, &value)?;
+        } else {
+            APP_CONFIGS.remove(storage, &key);
         }
     }
 
@@ -104,7 +138,7 @@ fn _do_upload(
     }
 
     // Make sure that the same code isn't already uploaded
-    let code_hash = hash256(code);
+    let code_hash = code.hash256();
     if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
