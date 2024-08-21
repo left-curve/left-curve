@@ -11,7 +11,7 @@ mod empty;
 mod error;
 mod event;
 mod hash;
-mod hashers;
+mod hasher;
 mod imports;
 mod macros;
 mod math;
@@ -26,7 +26,7 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, context::*, db::*,
-    empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*,
+    empty::*, error::*, event::*, hash::*, hasher::*, imports::*, math::*, query::*, response::*,
     result::*, serializers::*, testing::*, time::*, tx::*, utils::*,
 };
 

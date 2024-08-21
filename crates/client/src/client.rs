@@ -4,7 +4,7 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        hash256, Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256,
+        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, Hasher,
         InfoResponse, Json, JsonExt, Message, Op, Outcome, Query, QueryResponse, StdError, Tx,
         UnsignedTx,
     },
@@ -527,7 +527,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
         let salt = salt.into();
         let address = Addr::compute(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);

@@ -4,7 +4,7 @@ use {
         ProofNode,
     },
     grug_storage::{Map, PrefixBound, Set},
-    grug_types::{hash256, Batch, Hash256, Op, Order, StdResult, Storage},
+    grug_types::{Batch, Hash256, Hasher, Op, Order, StdResult, Storage},
 };
 
 // Default storage namespaces
@@ -99,7 +99,7 @@ impl<'a> MerkleTree<'a> {
         // Hash256 the keys and values
         let mut batch: Vec<_> = batch
             .iter()
-            .map(|(k, op)| (hash256(k), op.as_ref().map(hash256)))
+            .map(|(k, op)| (k.hash256(), op.as_ref().map(|v| v.hash256())))
             .collect();
 
         // Sort by key hashes ascendingly
@@ -979,7 +979,7 @@ mod tests {
     fn proving(key: &str, proof: Proof) {
         let (storage, _) = build_test_case().unwrap();
         assert_eq!(
-            TREE.prove(&storage, hash256(key.as_bytes()), 0).unwrap(),
+            TREE.prove(&storage, key.as_bytes().hash256(), 0).unwrap(),
             proof
         );
     }

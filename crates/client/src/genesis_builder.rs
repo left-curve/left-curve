@@ -3,7 +3,7 @@ use {
     anyhow::{bail, ensure},
     chrono::{DateTime, SecondsFormat, Utc},
     grug_types::{
-        hash256, Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, Json,
+        Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, Hasher, Json,
         JsonExt, Message, Permission, Permissions, StdError, Undefined, GENESIS_SENDER,
     },
     std::{collections::BTreeMap, fs, path::Path},
@@ -183,7 +183,7 @@ impl<O, B, T, U, I> GenesisBuilder<O, B, T, U, I> {
         D: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = hash256(&code);
+        let code_hash = code.hash256();
 
         self.upload_msgs.push(Message::upload(code));
 

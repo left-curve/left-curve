@@ -2,7 +2,7 @@ use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Buffer, Db, PrunableDb},
     grug_jmt::{MerkleTree, Proof},
-    grug_types::{hash256, Batch, Hash256, Op, Order, Record, Storage},
+    grug_types::{Batch, Hash256, Hasher, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -196,7 +196,7 @@ impl Db for DiskDb {
 
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), hash256(key), version)?)
+        Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
@@ -906,8 +906,8 @@ mod tests {
                 None,
                 Proof::NonMembership(NonMembershipProof {
                     node: ProofNode::Leaf {
-                        key_hash: hash256(b"jake"),
-                        value_hash: hash256(b"shepherd"),
+                        key_hash: "jake".hash256(),
+                        value_hash: "shepherd".hash256(),
                     },
                     sibling_hashes: vec![Some(v0::HASH_0)],
                 }),
@@ -934,8 +934,8 @@ mod tests {
                 None,
                 Proof::NonMembership(NonMembershipProof {
                     node: ProofNode::Leaf {
-                        key_hash: hash256(b"donald"),
-                        value_hash: hash256(b"duck"),
+                        key_hash: "donald".hash256(),
+                        value_hash: "duck".hash256(),
                     },
                     sibling_hashes: vec![Some(v1::HASH_00), Some(v1::HASH_1)],
                 }),
@@ -967,8 +967,8 @@ mod tests {
             };
             assert!(verify_proof(
                 root_hash,
-                hash256(key.as_bytes()),
-                value.map(hash256),
+                key.as_bytes().hash256(),
+                value.map(|v| v.hash256()),
                 &found_proof,
             )
             .is_ok());

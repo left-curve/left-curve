@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        hash256, Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, Json,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, Hasher, Json,
         JsonExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
@@ -314,7 +314,7 @@ where
         );
 
         // Generate a random new account
-        let account = TestAccount::new_random(hash256(&self.account_opt.code), name.as_bytes());
+        let account = TestAccount::new_random(self.account_opt.code.hash256(), name.as_bytes());
 
         // Save account and balances
         let balances = balances.try_into()?;
@@ -493,14 +493,14 @@ where
             Message::upload(self.bank_opt.code.clone()),
             Message::upload(self.taxman_opt.code.clone()),
             Message::instantiate(
-                hash256(&self.bank_opt.code),
+                self.bank_opt.code.hash256(),
                 &(self.bank_opt.msg_builder)(self.balances),
                 DEFAULT_BANK_SALT,
                 Coins::new(),
                 None,
             )?,
             Message::instantiate(
-                hash256(&self.taxman_opt.code),
+                self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
                 DEFAULT_TAXMAN_SALT,
                 Coins::new(),
@@ -511,7 +511,7 @@ where
         // Instantiate accounts
         for (name, account) in self.accounts.inner() {
             msgs.push(Message::instantiate(
-                hash256(&self.account_opt.code),
+                self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
                 name.to_string(),
                 Coins::new(),
@@ -522,14 +522,14 @@ where
         // Predict bank contract address
         let bank = Addr::compute(
             GENESIS_SENDER,
-            hash256(&self.bank_opt.code),
+            self.bank_opt.code.hash256(),
             DEFAULT_BANK_SALT,
         );
 
         // Prefict taxman contract address
         let taxman = Addr::compute(
             GENESIS_SENDER,
-            hash256(&self.taxman_opt.code),
+            self.taxman_opt.code.hash256(),
             DEFAULT_TAXMAN_SALT,
         );
 
