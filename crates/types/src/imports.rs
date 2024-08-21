@@ -379,20 +379,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_wasm_raw())
     }
 
-    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> StdResult<R>
-    where
-        M: Serialize,
-        R: DeserializeOwned,
-    {
-        self.inner
-            .query_chain(Query::WasmSmart {
-                contract,
-                msg: to_json_value(msg)?,
-            })
-            .and_then(|res| from_json_value(res.as_wasm_smart()))
-    }
-
-    pub fn query_wasm_super_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
+    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
     where
         R: QueryRequest,
         R::Message: Serialize,

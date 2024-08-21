@@ -69,16 +69,16 @@ fn query_super_smart() {
     // Here, the compiler should be able to infer the type of the response as
     // `String` based on the request type `QueryFooRequest`.
     suite
-        .query_wasm_super_smart(contract, QueryFooRequest { bar: 12345 })
+        .query_wasm_smart(contract, QueryFooRequest { bar: 12345 })
         .should_succeed_and_equal(12345.to_string());
 
     // Similarly, for unnamed variant `Fuzz`.
     suite
-        .query_wasm_super_smart(contract, QueryFuzzRequest(123))
+        .query_wasm_smart(contract, QueryFuzzRequest(123))
         .should_succeed_and_equal(Addr::mock(123));
 
     // Similarly, for unit variant `Buzz`.
     suite
-        .query_wasm_super_smart(contract, QueryBuzzRequest)
+        .query_wasm_smart(contract, QueryBuzzRequest)
         .should_succeed_and_equal(Hash256::from_array([1; 32]));
 }

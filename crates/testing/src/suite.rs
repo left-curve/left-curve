@@ -462,30 +462,7 @@ where
             .into()
     }
 
-    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> GenericResult<R>
-    where
-        M: Serialize,
-        R: DeserializeOwned,
-    {
-        (|| -> AppResult<_> {
-            let msg_raw = to_json_value(msg)?;
-            let res_raw = self
-                .app
-                .do_query_app(
-                    Query::WasmSmart {
-                        contract,
-                        msg: msg_raw,
-                    },
-                    0, // zero means to use the latest height
-                    false,
-                )?
-                .as_wasm_smart();
-            Ok(from_json_value(res_raw)?)
-        })()
-        .into()
-    }
-
-    pub fn query_wasm_super_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
+    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
     where
         R: QueryRequest,
         R::Message: Serialize,

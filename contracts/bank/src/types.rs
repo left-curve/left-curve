@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, Coins, Uint256},
+    grug_types::{Addr, Coins, QueryRequest, Uint256},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
@@ -39,10 +39,31 @@ pub enum ExecuteMsg {
 #[serde(rename = "snake_case")]
 pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.
-    /// Returns: `BTreeMap<Addr, Uint128>`.
+    /// Returns: `BTreeMap<Addr, Uint256>`.
     Holders {
         denom: String,
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
+}
+
+pub struct QueryHoldersRequest {
+    pub denom: String,
+    pub start_after: Option<Addr>,
+    pub limit: Option<u32>,
+}
+
+impl From<QueryHoldersRequest> for QueryMsg {
+    fn from(req: QueryHoldersRequest) -> Self {
+        QueryMsg::Holders {
+            denom: req.denom,
+            start_after: req.start_after,
+            limit: req.limit,
+        }
+    }
+}
+
+impl QueryRequest for QueryHoldersRequest {
+    type Message = QueryMsg;
+    type Response = BTreeMap<Addr, Uint256>;
 }
