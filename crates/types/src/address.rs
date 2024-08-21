@@ -4,7 +4,7 @@ use {
     sha3::{Digest, Keccak256},
 };
 use {
-    crate::{forward_ref_partial_eq, hash160, hash256, Hash, Hash160, Hash256, StdError},
+    crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, HashExt, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     core::str,
     serde::{de, ser},
@@ -62,7 +62,7 @@ impl Addr {
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());
         preimage.extend_from_slice(salt);
-        Self(hash160(hash256(preimage)))
+        Self(preimage.hash256().hash160())
     }
 
     /// Generate a mock address from use in testing.

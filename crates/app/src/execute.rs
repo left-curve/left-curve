@@ -6,8 +6,8 @@ use {
         CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
     },
     grug_types::{
-        hash256, Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins,
-        ConfigUpdates, Context, Event, GenericResult, Hash256, Json, Op, Storage, SubMsgResult, Tx,
+        Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates,
+        Context, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
         TxOutcome,
     },
     std::collections::BTreeMap,
@@ -138,7 +138,7 @@ fn _do_upload(
     }
 
     // Make sure that the same code isn't already uploaded
-    let code_hash = hash256(code);
+    let code_hash = code.hash256();
     if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
