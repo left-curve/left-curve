@@ -405,6 +405,8 @@ impl Client {
                     let unsigned_tx = UnsignedTx {
                         sender: sign_opt.sender,
                         msgs: msgs.clone(),
+                        // TODO: allow user to specify this
+                        data: Json::Null,
                     };
                     match self.simulate(&unsigned_tx).await? {
                         TxOutcome {

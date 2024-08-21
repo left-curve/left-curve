@@ -411,7 +411,7 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            data: Json::Null,
+            data: unsigned_tx.data,
             credential: Json::Null,
         };
 

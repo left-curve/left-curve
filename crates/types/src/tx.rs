@@ -23,6 +23,7 @@ pub struct Tx {
 pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: Vec<Message>,
+    pub data: Json,
 }
 
 #[skip_serializing_none]
