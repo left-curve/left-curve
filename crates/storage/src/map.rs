@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Bound, Codec, Key, PathBuf, Prefix, PrefixBound, Prefixer},
+    crate::{Borsh, Bound, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
     grug_types::{Order, Record, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -32,7 +32,7 @@ where
 
 impl<'a, K, T, C> Map<'a, K, T, C>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {

@@ -1,6 +1,6 @@
 use {
     crate::{GasTracker, GAS_COSTS},
-    grug_storage::{Bound, Codec, Item, Key, Map},
+    grug_storage::{Bound, Codec, Item, Map, PrimaryKey},
     grug_types::{Order, Record, StdResult, Storage},
 };
 
@@ -53,7 +53,7 @@ where
 
 pub trait MeteredMap<K, T>
 where
-    K: Key,
+    K: PrimaryKey,
 {
     fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker, key: K)
         -> StdResult<T>;
@@ -85,7 +85,7 @@ where
 
 impl<'a, K, T, C> MeteredMap<K, T> for Map<'a, K, T, C>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     fn load_with_gas(
@@ -126,7 +126,7 @@ where
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
-    ) -> StdResult<Box<dyn Iterator<Item = StdResult<(<K as Key>::Output, T)>> + 'b>> {
+    ) -> StdResult<Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>> {
         // Gas cost for creating an iterator.
         gas_tracker.consume(GAS_COSTS.db_scan, "db_scan")?;
 
