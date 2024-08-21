@@ -13,31 +13,41 @@ use {
 struct Args {
     serde: bool,
     borsh: bool,
+    query: bool,
 }
 
 impl Parse for Args {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut serde = false;
         let mut borsh = false;
+        let mut query = false;
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
 
             match ident.to_string().as_str() {
-                "serde" if serde => {
-                    return Err(input.error("don't input `serde` attribute twice"));
+                "Serde" if serde => {
+                    return Err(input.error("don't input `Serde` attribute twice"));
                 },
-                "serde" if !serde => {
+                "Serde" if !serde => {
                     serde = true;
                 },
-                "borsh" if borsh => {
-                    return Err(input.error("don't input `borsh` attribute twice"));
+                "Borsh" if borsh => {
+                    return Err(input.error("don't input `Borsh` attribute twice"));
                 },
-                "borsh" if !borsh => {
+                "Borsh" if !borsh => {
                     borsh = true;
                 },
+                "QueryRequest" if query => {
+                    return Err(input.error("don't input `QueryRequest` attribute twice"));
+                },
+                "QueryRequest" if !query => {
+                    query = true;
+                },
                 _ => {
-                    return Err(input.error("unsupported attribute, expecting `serde` or `borsh`"));
+                    return Err(input.error(
+                        "unsupported attribute, expecting `Serde`, `Borsh` or `QueryRequest`",
+                    ));
                 },
             }
 
@@ -46,7 +56,11 @@ impl Parse for Args {
             }
         }
 
-        Ok(Args { borsh, serde })
+        Ok(Args {
+            borsh,
+            serde,
+            query,
+        })
     }
 }
 
@@ -93,14 +107,28 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
             #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::grug::__private::serde")]
             #[borsh(crate = "::grug::__private::borsh")]
         },
-        _ => {
-            panic!("unsupported attribute combination: expecting either `serde`, `borsh`, or both");
+        (false, false) => quote! {
+            #[derive(
+                ::std::clone::Clone,
+                ::std::fmt::Debug,
+                ::std::cmp::PartialEq,
+                ::std::cmp::Eq,
+            )]
         },
+    };
+
+    let query_derive = if attrs.query {
+        quote! {
+            #[derive(::grug::QueryRequest)]
+        }
+    } else {
+        quote! {}
     };
 
     match input.data {
         Data::Struct(_) | Data::Enum(_) => quote! {
             #derives
+            #query_derive
             #input
         },
         Data::Union(_) => {
