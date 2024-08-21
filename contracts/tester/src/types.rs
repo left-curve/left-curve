@@ -38,12 +38,15 @@ pub enum QueryMsg {
     #[returns(Empty)]
     ForceWrite { key: String, value: String },
 
+    #[returns(())]
     CryptoVerify {
         ty: CryptoVerifyType,
         pk: Vec<u8>,
         sig: Vec<u8>,
         msg_hash: Vec<u8>,
     },
+
+    #[returns(Vec<u8>)]
     RecoverSepc256k1 {
         sig: Vec<u8>,
         msg_hash: Vec<u8>,
@@ -51,6 +54,7 @@ pub enum QueryMsg {
         compressed: bool,
     },
 
+    #[returns(())]
     Ed25519BatchVerify {
         prehash_msgs: Vec<Vec<u8>>,
         sigs: Vec<Vec<u8>>,
@@ -58,7 +62,7 @@ pub enum QueryMsg {
     },
 }
 
-#[grug::derive(serde)]
+#[grug::derive(Serde)]
 pub enum CryptoVerifyType {
     Ed25519,
     Secp256k1,

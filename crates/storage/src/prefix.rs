@@ -75,7 +75,7 @@ where
 
 impl<K, T, C, I> Prefix<K, T, C, I>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     pub fn is_empty(&self, storage: &dyn Storage) -> bool {
@@ -172,7 +172,7 @@ where
 
 impl<K, T, C> Prefix<K, T, C, RangeIterator>
 where
-    K: Key,
+    K: PrimaryKey,
     C: Codec<T>,
 {
     pub fn range_raw<'a>(

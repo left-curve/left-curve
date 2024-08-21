@@ -324,9 +324,9 @@ where
     }
 }
 
-impl<T> Key for Signed<T>
+impl<T> PrimaryKey for Signed<T>
 where
-    T: Key<Output = T> + Sub<Output = T> + Copy,
+    T: PrimaryKey<Output = T> + Sub<Output = T> + Copy,
     T: NumberConst,
 {
     type Output = Self;
@@ -386,9 +386,9 @@ where
     }
 }
 
-impl<T, const S: u32> Key for Udec<T, S>
+impl<T, const S: u32> PrimaryKey for Udec<T, S>
 where
-    Uint<T>: Key<Output = Uint<T>>,
+    Uint<T>: PrimaryKey<Output = Uint<T>>,
 {
     type Output = Self;
     type Prefix = ();
@@ -495,7 +495,7 @@ impl_unsigned_integer_key!(u8, u16, u32, u64, u128, Uint64, Uint128, Uint256, Ui
 
 macro_rules! impl_signed_integer_key {
     ($($s:ty => $u:ty),+ ) => {
-        $(impl Key for $s {
+        $(impl PrimaryKey for $s {
             type Prefix = ();
             type Suffix = ();
             type Output = $s;
@@ -610,7 +610,7 @@ where
 
 impl<T, const S: u32> Prefixer for Udec<T, S>
 where
-    Uint<T>: Key<Output = Uint<T>>,
+    Uint<T>: PrimaryKey<Output = Uint<T>>,
 {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         self.raw_keys()
@@ -619,7 +619,7 @@ where
 
 impl<T> Prefixer for Signed<T>
 where
-    T: Key<Output = T> + Sub<Output = T> + Copy,
+    T: PrimaryKey<Output = T> + Sub<Output = T> + Copy,
     T: NumberConst,
 {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
@@ -768,8 +768,8 @@ mod tests {
     #[test_case(Dec256::from_str("20.75").unwrap(), &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes()); "dec128_20_75")]
     fn key<T>(compare: T, bytes: &[u8])
     where
-        T: Key + PartialEq<<T as Key>::Output> + Debug,
-        <T as Key>::Output: PartialEq<T> + Debug,
+        T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug,
+        <T as PrimaryKey>::Output: PartialEq<T> + Debug,
     {
         let des = T::from_slice(bytes).unwrap();
         assert_eq!(compare, des);

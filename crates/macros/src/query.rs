@@ -81,6 +81,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // }
                 // ```
                 generated_structs.push(quote! {
+                    #[grug::derive(Serde)]
                     pub struct #request_name {
                         #(#fields_struct_definition)*
                     }
@@ -116,6 +117,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // pub struct QueryFuzzRequest(u8);
                 // ```
                 generated_structs.push(quote! {
+                    #[grug::derive(Serde)]
                     pub struct #request_name(pub #unnamed);
                 });
 
@@ -143,6 +145,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // pub struct QueryBuzzRequest;
                 // ```
                 generated_structs.push(quote! {
+                    #[grug::derive(Serde)]
                     pub struct #request_name;
                 });
 
