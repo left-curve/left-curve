@@ -11,9 +11,8 @@
 
 use {
     crate::{
-        from_json_value, to_json_value, Account, Addr, AsQueryMsg, Batch, Binary, Coins, Hash256,
-        InfoResponse, Json, Op, Order, Query, QueryResponse, QueryResponseType, Record, StdResult,
-        Uint256,
+        from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
+        Json, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -393,18 +392,18 @@ impl<'a> QuerierWrapper<'a> {
             .and_then(|res| from_json_value(res.as_wasm_smart()))
     }
 
-    pub fn query_wasm_super_smart<R>(&self, contract: Addr, msg: R) -> StdResult<R::Response>
+    pub fn query_wasm_super_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
     where
-        R: AsQueryMsg + QueryResponseType,
-        <R as AsQueryMsg>::QueryMsg: Serialize,
-        <R as QueryResponseType>::Response: DeserializeOwned,
+        R: QueryRequest,
+        R::Message: Serialize,
+        R::Response: DeserializeOwned,
     {
-        let request = msg.into_query_msg();
+        let msg = R::Message::from(req);
 
         self.inner
             .query_chain(Query::WasmSmart {
                 contract,
-                msg: to_json_value(&request)?,
+                msg: to_json_value(&msg)?,
             })
             .and_then(|res| from_json_value(res.as_wasm_smart()))
     }

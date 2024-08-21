@@ -5,6 +5,18 @@ use {
     std::collections::BTreeMap,
 };
 
+/// Represents a query request to a contract.
+///
+/// A contract typically exposes multiple query methods, with a `QueryMsg` as an
+/// enum with multiple variants. A `QueryRequest` represents one such variant.
+pub trait QueryRequest: Sized {
+    /// The full query message enum that contains this request.
+    type Message: From<Self>;
+
+    /// The response type for this query.
+    type Response;
+}
+
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -194,20 +206,5 @@ impl QueryResponse {
             panic!("QueryResponse is not Multi");
         };
         resp
-    }
-}
-
-pub trait QueryResponseType {
-    type Response;
-}
-
-pub trait AsQueryMsg: Sized
-where
-    <Self as AsQueryMsg>::QueryMsg: From<Self>,
-{
-    type QueryMsg;
-
-    fn into_query_msg(self) -> Self::QueryMsg {
-        self.into()
     }
 }

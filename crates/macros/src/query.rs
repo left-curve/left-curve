@@ -30,9 +30,8 @@ pub fn process(input: TokenStream) -> TokenStream {
     };
 
     let mut generated_structs = Vec::new();
-    let mut impl_req_to_enum = Vec::new();
-    let mut impl_trait_response = Vec::new();
-    let mut impl_as_query_msg = Vec::new();
+    let mut impl_into_msg = Vec::new();
+    let mut impl_query_request = Vec::new();
 
     // Iterate through the variants of the query message.
     for variant in data.variants {
@@ -98,7 +97,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 //    }
                 // }
                 // ```
-                impl_req_to_enum.push(quote! {
+                impl_into_msg.push(quote! {
                     impl From<#request_name> for #name {
                         fn from(val: #request_name) -> Self {
                             Self::#variant_name {
@@ -129,7 +128,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 //     }
                 // }
                 // ```
-                impl_req_to_enum.push(quote! {
+                impl_into_msg.push(quote! {
                     impl From<#request_name> for #name {
                         fn from(val: #request_name) -> Self {
                             Self::#variant_name(val.0)
@@ -156,7 +155,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 //     }
                 // }
                 // ```
-                impl_req_to_enum.push(quote! {
+                impl_into_msg.push(quote! {
                     impl From<#request_name> for #name {
                         fn from(_val: #request_name) -> Self {
                             Self::#variant_name
@@ -166,24 +165,18 @@ pub fn process(input: TokenStream) -> TokenStream {
             },
         };
 
-        impl_trait_response.push(quote! {
-            impl ::grug::QueryResponseType for #request_name {
+        impl_query_request.push(quote! {
+            impl ::grug::QueryRequest for #request_name {
+                type Message = #name;
                 type Response = #return_type;
-            }
-        });
-
-        impl_as_query_msg.push(quote! {
-            impl ::grug::AsQueryMsg for #request_name {
-                type QueryMsg = #name;
             }
         });
     }
 
     quote! {
         #(#generated_structs)*
-        #(#impl_req_to_enum)*
-        #(#impl_trait_response)*
-        #(#impl_as_query_msg)*
+        #(#impl_into_msg)*
+        #(#impl_query_request)*
     }
     .into()
 }
