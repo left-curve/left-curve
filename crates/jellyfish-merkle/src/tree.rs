@@ -4,7 +4,7 @@ use {
         ProofNode,
     },
     grug_storage::{Map, PrefixBound, Set},
-    grug_types::{Batch, Hash256, Hasher, Op, Order, StdResult, Storage},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, StdResult, Storage},
 };
 
 // Default storage namespaces

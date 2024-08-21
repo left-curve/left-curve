@@ -4,7 +4,7 @@ use {
     sha3::{Digest, Keccak256},
 };
 use {
-    crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, Hasher, StdError},
+    crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, HashExt, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     core::str,
     serde::{de, ser},

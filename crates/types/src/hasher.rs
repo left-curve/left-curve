@@ -6,7 +6,7 @@ use {
 };
 
 /// Represents a data that can be hashed.
-pub trait Hasher {
+pub trait HashExt {
     /// Hash the data, producing a 20-byte hash.
     fn hash160(&self) -> Hash160;
 
@@ -16,7 +16,7 @@ pub trait Hasher {
 
 // Currently, we use RIPEMD-160 for 20-byte hashes, and SHA2-256 for 32-byte
 // hashes. However, this can change prior to v1. We may consider BLAKE3 for `hash256`.
-impl<T> Hasher for T
+impl<T> HashExt for T
 where
     T: AsRef<[u8]>,
 {

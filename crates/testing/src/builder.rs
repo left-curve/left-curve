@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, Hasher, Json,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, HashExt, Json,
         JsonExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },

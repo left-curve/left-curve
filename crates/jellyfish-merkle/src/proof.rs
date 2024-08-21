@@ -173,7 +173,7 @@ fn compute_and_compare_root_hash(
 mod tests {
     use {
         super::*,
-        grug_types::{Hash256, Hasher},
+        grug_types::{Hash256, HashExt},
         hex_literal::hex,
         test_case::test_case,
     };

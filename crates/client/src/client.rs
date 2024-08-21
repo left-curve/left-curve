@@ -2,7 +2,7 @@ use {
     crate::{AdminOption, GasOption, SigningOption},
     anyhow::{bail, ensure},
     grug::{
-        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, Hasher,
+        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
         InfoResponse, Json, JsonExt, Message, Op, Outcome, Query, QueryResponse, StdError, Tx,
         UnsignedTx,
     },

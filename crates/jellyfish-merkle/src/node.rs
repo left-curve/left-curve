@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Hash256, Hasher},
+    grug_types::{Hash256, HashExt},
 };
 
 const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];

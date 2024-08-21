@@ -7,7 +7,7 @@ use {
     },
     grug_types::{
         Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates,
-        Context, Event, GenericResult, Hash256, Hasher, Json, Op, Storage, SubMsgResult, Tx,
+        Context, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
         TxOutcome,
     },
     std::collections::BTreeMap,

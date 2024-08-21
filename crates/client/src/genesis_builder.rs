@@ -3,7 +3,7 @@ use {
     anyhow::{bail, ensure},
     chrono::{DateTime, SecondsFormat, Utc},
     grug::{
-        Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, Hasher, Json,
+        Addr, Binary, Coins, Config, Defined, Duration, GenesisState, Hash256, HashExt, Json,
         JsonExt, Message, Permission, Permissions, StdError, Undefined, GENESIS_SENDER,
     },
     std::{collections::BTreeMap, fs, path::Path},
