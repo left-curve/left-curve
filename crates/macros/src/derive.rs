@@ -13,12 +13,14 @@ use {
 struct Args {
     serde: bool,
     borsh: bool,
+    query: bool,
 }
 
 impl Parse for Args {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut serde = false;
         let mut borsh = false;
+        let mut query = false;
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
@@ -36,8 +38,16 @@ impl Parse for Args {
                 "borsh" if !borsh => {
                     borsh = true;
                 },
+                "query" if query => {
+                    return Err(input.error("don't input `query` attribute twice"));
+                },
+                "query" if !query => {
+                    query = true;
+                },
                 _ => {
-                    return Err(input.error("unsupported attribute, expecting `serde` or `borsh`"));
+                    return Err(
+                        input.error("unsupported attribute, expecting `serde`, `borsh` or `query`")
+                    );
                 },
             }
 
@@ -46,13 +56,23 @@ impl Parse for Args {
             }
         }
 
-        Ok(Args { borsh, serde })
+        Ok(Args {
+            borsh,
+            serde,
+            query,
+        })
     }
 }
 
 pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(attr as Args);
     let input = parse_macro_input!(input as DeriveInput);
+
+    let query_derive = if attrs.query {
+        quote! {#[derive(::grug::QueryRequest)]}
+    } else {
+        quote! {}
+    };
 
     let derives = match (attrs.serde, attrs.borsh) {
         (false, true) => quote! {
@@ -101,6 +121,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     match input.data {
         Data::Struct(_) | Data::Enum(_) => quote! {
             #derives
+            #query_derive
             #input
         },
         Data::Union(_) => {
