@@ -12,7 +12,7 @@
 use {
     crate::{
         from_json_value, to_json_value, Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse,
-        Json, Op, Order, Query, QueryResponse, Record, StdResult, Uint256,
+        Json, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -379,15 +379,18 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_wasm_raw())
     }
 
-    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> StdResult<R>
+    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
     where
-        M: Serialize,
-        R: DeserializeOwned,
+        R: QueryRequest,
+        R::Message: Serialize,
+        R::Response: DeserializeOwned,
     {
+        let msg = R::Message::from(req);
+
         self.inner
             .query_chain(Query::WasmSmart {
                 contract,
-                msg: to_json_value(msg)?,
+                msg: to_json_value(&msg)?,
             })
             .and_then(|res| from_json_value(res.as_wasm_smart()))
     }

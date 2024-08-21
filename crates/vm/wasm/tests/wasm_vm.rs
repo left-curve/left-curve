@@ -1,8 +1,8 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{
-        to_json_value, Addr, Binary, Coins, Empty, Message, MultiplyFraction, NonZero, NumberConst,
-        Udec128, Uint256,
+        to_json_value, Binary, Coins, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
+        Uint256,
     },
     grug_vm_wasm::{VmError, WasmVm},
     std::{collections::BTreeMap, fs, io, str::FromStr, vec},
@@ -76,14 +76,11 @@ fn bank_transfers() -> anyhow::Result<()> {
 
     // List all holders of the denom
     suite
-        .query_wasm_smart::<_, BTreeMap<Addr, Uint256>>(
-            info.config.bank,
-            &grug_bank::QueryMsg::Holders {
-                denom: DENOM.to_string(),
-                start_after: None,
-                limit: None,
-            },
-        )
+        .query_wasm_smart(info.config.bank, grug_bank::QueryHoldersRequest {
+            denom: DENOM.to_string(),
+            start_after: None,
+            limit: None,
+        })
         .should_succeed_and_equal(BTreeMap::from([
             (accounts["owner"].address, fee),
             (accounts["sender"].address, sender_balance_after),
@@ -194,7 +191,7 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart::<_, Empty>(tester, &grug_tester::QueryMsg::ForceWrite {
+        .query_wasm_smart(tester, grug_tester::QueryForceWriteRequest {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })

@@ -1,5 +1,5 @@
 use {
-    crate::QueryMsg,
+    crate::QueryForceWriteRequest,
     grug::{MutableCtx, Number, NumberConst, Response, StdResult, Uint128},
 };
 
@@ -12,7 +12,7 @@ pub fn infinite_loop() -> StdResult<Response> {
 
 pub fn force_write_on_query(ctx: MutableCtx, key: String, value: String) -> StdResult<Response> {
     ctx.querier
-        .query_wasm_smart(ctx.contract, &QueryMsg::ForceWrite { key, value })?;
+        .query_wasm_smart(ctx.contract, QueryForceWriteRequest { key, value })?;
 
     Ok(Response::new())
 }

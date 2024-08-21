@@ -7,7 +7,8 @@ use {
     grug_types::{
         from_json_value, to_json_value, Account, Addr, Binary, BlockInfo, BlockOutcome, Coins,
         ConfigUpdates, Duration, GenericResult, GenesisState, Hash256, InfoResponse, Json, Message,
-        NumberConst, Op, Outcome, Query, StdError, Tx, TxOutcome, Uint256, Uint64, UnsignedTx,
+        NumberConst, Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -461,13 +462,15 @@ where
             .into()
     }
 
-    pub fn query_wasm_smart<M, R>(&self, contract: Addr, msg: &M) -> GenericResult<R>
+    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
     where
-        M: Serialize,
-        R: DeserializeOwned,
+        R: QueryRequest,
+        R::Message: Serialize,
+        R::Response: DeserializeOwned,
     {
         (|| -> AppResult<_> {
-            let msg_raw = to_json_value(msg)?;
+            let msg = R::Message::from(req);
+            let msg_raw = to_json_value(&msg)?;
             let res_raw = self
                 .app
                 .do_query_app(
