@@ -668,8 +668,8 @@ where
             return Err(VmError::function_not_found("withhold_fee"));
         };
 
-        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let res = withhold_fee_fn(sudo_ctx, tx);
+        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
+        let res = withhold_fee_fn(auth_ctx, tx);
 
         Ok(res.into())
     }
@@ -687,8 +687,8 @@ where
             return Err(VmError::function_not_found("finalize_fee"));
         };
 
-        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let res = finalize_fee_fn(sudo_ctx, tx, outcome);
+        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
+        let res = finalize_fee_fn(auth_ctx, tx, outcome);
 
         Ok(res.into())
     }
