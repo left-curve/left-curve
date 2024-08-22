@@ -12,8 +12,8 @@ use {
 mod taxman {
     use {
         grug_types::{
-            Coins, Empty, Message, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-            Response, StdResult, SudoCtx, Tx, TxOutcome, Udec128, Uint128, Uint256,
+            AuthCtx, AuthMode, Coins, Empty, Message, MultiplyFraction, MutableCtx, NonZero,
+            Number, NumberConst, Response, StdResult, Tx, TxOutcome, Udec128, Uint128, Uint256,
         },
         std::str::FromStr,
     };
@@ -25,8 +25,13 @@ mod taxman {
         Ok(Response::new())
     }
 
-    pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
+    pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         let info = ctx.querier.query_info()?;
+
+        // In simulation mode, don't do anything.
+        if ctx.mode == AuthMode::Simulate {
+            return Ok(Response::new());
+        }
 
         let fee_rate = Udec128::from_str(FEE_RATE)?;
         let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_rate)?;
@@ -49,8 +54,13 @@ mod taxman {
         Ok(Response::new().may_add_message(withhold_msg))
     }
 
-    pub fn finalize_fee(ctx: SudoCtx, tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
+    pub fn finalize_fee(ctx: AuthCtx, tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
         let info = ctx.querier.query_info()?;
+
+        // In simulation mode, don't do anything.
+        if ctx.mode == AuthMode::Simulate {
+            return Ok(Response::new());
+        }
 
         // We pretend that the tx used a quarter of the gas limit.
         let mock_gas_used = tx.gas_limit / 4;
@@ -85,7 +95,7 @@ mod taxman {
     /// An alternative version of the `finalize_fee` function that errors on
     /// purpose. Used to test whether the `App` can correctly handle the case
     /// where `finalize_fee` errors.
-    pub fn bugged_finalize_fee(_ctx: SudoCtx, _tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
+    pub fn bugged_finalize_fee(_ctx: AuthCtx, _tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
         let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
 
         Ok(Response::new())

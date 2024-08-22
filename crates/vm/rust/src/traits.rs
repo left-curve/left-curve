@@ -154,8 +154,8 @@ pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> 
 
 pub type BankQueryFn<E> = Box<dyn Fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse, E> + Send + Sync>;
 
-pub type WithholdFeeFn<E> = Box<dyn Fn(SudoCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type WithholdFeeFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
-pub type FinalizeFeeFn<E> = Box<dyn Fn(SudoCtx, Tx, TxOutcome) -> Result<Response, E> + Send + Sync>;
+pub type FinalizeFeeFn<E> = Box<dyn Fn(AuthCtx, Tx, TxOutcome) -> Result<Response, E> + Send + Sync>;
 
 pub type CronExecuteFn<E> = Box<dyn Fn(SudoCtx) -> Result<Response, E> + Send + Sync>;

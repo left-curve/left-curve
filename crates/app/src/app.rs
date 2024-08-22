@@ -278,6 +278,7 @@ where
             GasTracker::new_limitless(),
             block,
             &tx,
+            AuthMode::Check,
         ) {
             Ok(new_events) => {
                 events.extend(new_events);
@@ -410,7 +411,7 @@ where
             sender: unsigned_tx.sender,
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
-            data: Json::Null,
+            data: unsigned_tx.data,
             credential: Json::Null,
         };
 
@@ -520,6 +521,7 @@ where
         GasTracker::new_limitless(),
         block,
         &tx,
+        mode,
     ) {
         Ok(new_events) => {
             events.extend(new_events);
@@ -557,7 +559,16 @@ where
         },
         Err(err) => {
             drop(buffer2);
-            return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
+            return process_finalize_fee(
+                vm,
+                buffer1,
+                gas_tracker,
+                block,
+                tx,
+                mode,
+                events,
+                Err(err),
+            );
         },
     };
 
@@ -584,7 +595,16 @@ where
         },
         Err(err) => {
             drop(buffer2);
-            return process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Err(err));
+            return process_finalize_fee(
+                vm,
+                buffer1,
+                gas_tracker,
+                block,
+                tx,
+                mode,
+                events,
+                Err(err),
+            );
         },
     }
 
@@ -599,7 +619,7 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, buffer1, gas_tracker, block, tx, events, Ok(()))
+    process_finalize_fee(vm, buffer1, gas_tracker, block, tx, mode, events, Ok(()))
 }
 
 #[inline]
@@ -653,6 +673,7 @@ fn process_finalize_fee<S, VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: Tx,
+    mode: AuthMode,
     mut events: Vec<Event>,
     result: AppResult<()>,
 ) -> TxOutcome
@@ -670,6 +691,7 @@ where
         block,
         &tx,
         &outcome_so_far,
+        mode,
     ) {
         Ok(new_events) => {
             events.extend(new_events);

@@ -294,7 +294,7 @@ where
 }
 
 pub fn do_withhold_fee<E>(
-    withhold_fee_fn: &dyn Fn(SudoCtx, Tx) -> Result<Response, E>,
+    withhold_fee_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
 ) -> usize
@@ -306,10 +306,10 @@ where
 
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
+        let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
-        withhold_fee_fn(sudo_ctx, tx).into()
+        withhold_fee_fn(auth_ctx, tx).into()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -318,7 +318,7 @@ where
 }
 
 pub fn do_finalize_fee<E>(
-    finalize_fee_fn: &dyn Fn(SudoCtx, Tx, TxOutcome) -> Result<Response, E>,
+    finalize_fee_fn: &dyn Fn(AuthCtx, Tx, TxOutcome) -> Result<Response, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
     outcome_ptr: usize,
@@ -332,11 +332,11 @@ where
 
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let sudo_ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
+        let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
         let outcome = unwrap_into_generic_result!(outcome_bytes.deserialize_json());
 
-        finalize_fee_fn(sudo_ctx, tx, outcome).into()
+        finalize_fee_fn(auth_ctx, tx, outcome).into()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();

@@ -2,8 +2,8 @@ use {
     crate::{Config, CONFIG},
     anyhow::ensure,
     grug_types::{
-        Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Response, StdResult,
-        Storage, SudoCtx, Tx, TxOutcome, Uint128, Uint256,
+        AuthCtx, AuthMode, Coins, Message, MultiplyFraction, MutableCtx, NonZero, Number, Response,
+        StdResult, Storage, Tx, TxOutcome, Uint128, Uint256,
     },
 };
 
@@ -27,9 +27,14 @@ pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Respon
     Ok(Response::new())
 }
 
-pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
+pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
     let info = ctx.querier.query_info()?;
+
+    // In simulation mode, don't do anything.
+    if ctx.mode == AuthMode::Simulate {
+        return Ok(Response::new());
+    }
 
     // Compute the maximum amount of fee this transaction may incur.
     //
@@ -66,9 +71,14 @@ pub fn withhold_fee(ctx: SudoCtx, tx: Tx) -> StdResult<Response> {
         .add_attribute("withhold_amount", withhold_amount))
 }
 
-pub fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
+pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
     let info = ctx.querier.query_info()?;
+
+    // In simulation mode, don't do anything.
+    if ctx.mode == AuthMode::Simulate {
+        return Ok(Response::new());
+    }
 
     // Compute the amount of fee that was withheld during `withheld fee`.
     let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(cfg.fee_rate)?;
