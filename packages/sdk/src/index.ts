@@ -1,4 +1,4 @@
-export { toAccount, createSignBytes, predictAddress } from "./accounts";
+export { toAccount, createSignBytes, computeAddress, createAccountSalt } from "./accounts";
 
 export { createBaseClient } from "./clients/baseClient";
 export { createPublicClient } from "./clients/publicClient";

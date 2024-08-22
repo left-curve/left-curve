@@ -25,9 +25,7 @@ export type {
 } from "./queries";
 
 export type {
-  Credential,
   Message,
-  Metadata,
   MsgExecute,
   MsgInstantiate,
   MsgMigrate,
@@ -35,10 +33,7 @@ export type {
   MsgTransfer,
   MsgUpdateConfig,
   Tx,
-  AdminOption,
-  AdminOptionKind,
   UnsignedTx,
-  CreateAccounTx,
 } from "./tx";
 
 export type {
@@ -68,7 +63,28 @@ export type {
 
 export type { Chain } from "./chain";
 
-export type { Account, Address } from "./account";
+export type {
+  Username,
+  Account,
+  AccountId,
+  AccountIndex,
+  AccountType,
+  AccountInfo,
+} from "./account";
+
+export { AccountTypes } from "./account";
+
+export type {
+  Key,
+  KeyId,
+  KeyHash,
+} from "./key";
+
+export { KeyTag } from "./key";
+
+export type { Credential, Metadata } from "./credential";
+
+export type { Address } from "./address";
 
 export type { ClientConfig, Client, ClientBase, ClientExtend } from "./client";
 
@@ -76,4 +92,6 @@ export type { Json, Hex, Base64 } from "./common";
 
 export type { AbstractSigner } from "./signer";
 
-export type { Coin } from "./coins";
+export type { Coin, Coins } from "./coin";
+
+export type { Prettify } from "./utils";

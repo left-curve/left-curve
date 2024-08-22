@@ -12,6 +12,14 @@ export type GetCodesParameters =
 
 export type GetCodesReturnType = Promise<Uint8Array[]>;
 
+/**
+ * Get the codes.
+ * @param parameters
+ * @param parameters.startAfter The code to start after.
+ * @param parameters.limit The number of codes to return.
+ * @param parameters.height The height at which to query the codes.
+ * @returns The codes.
+ */
 export async function getCodes<
   chain extends Chain | undefined,
   account extends Account | undefined,

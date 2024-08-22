@@ -1,8 +1,8 @@
-import type { Account, Base64, Chain, Client, Hex, Transport } from "@leftcurve/types";
+import type { Account, Address, Base64, Chain, Client, Hex, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type StoreCodeParameters = {
-  sender: string;
+  sender: Address;
   code: Base64;
 };
 

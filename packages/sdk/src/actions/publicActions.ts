@@ -53,10 +53,70 @@ import {
 import { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
 
 import {
-  type PredictAddressParameters,
-  type PredictAddressReturnType,
-  predictAddress,
-} from "./public/predictAddress";
+  type ComputeAddressParameters,
+  type ComputeAddressReturnType,
+  computeAddress,
+} from "./public/computeAddress";
+
+import {
+  type GetAppConfigParameters,
+  type GetAppConfigReturnType,
+  getAppConfig,
+} from "./public/getAppConfig";
+
+import {
+  type GetAppConfigsParameters,
+  type GetAppConfigsReturnType,
+  getAppConfigs,
+} from "./public/getAppConfigs";
+
+import {
+  type GetAccountTypeCodeHashParameters,
+  type GetAccountTypeCodeHashReturnType,
+  getAccountTypeCodeHash,
+} from "./public/getAccountTypeCodeHash";
+
+import {
+  type GetAccountTypeCodeHashesParameters,
+  type GetAccountTypeCodeHashesReturnType,
+  getAccountTypeCodeHashes,
+} from "./public/getAccountTypeCodeHashes";
+
+import {
+  type GetAccountsByKeyHashParameters,
+  type GetAccountsByKeyHashReturnType,
+  getAccountsByKeyHash,
+} from "./public/getAccountsByKeyHash";
+
+import {
+  type GetKeysByUsernameParameters,
+  type GetKeysByUsernameReturnType,
+  getKeysByUsername,
+} from "./public/getKeysByUsername";
+
+import {
+  type GetPublicKeyFromKeyIdParameters,
+  type GetPublicKeyFromKeyIdReturnType,
+  getPublicKeyFromKeyId,
+} from "./public/getPublicKeyFromKeyId";
+
+import {
+  type GetAccountIdByAddressParameters,
+  type GetAccountIdByAddressReturnType,
+  getAccountIdByAddress,
+} from "./public/getAccountIdByAddress";
+
+import {
+  type GetAccountInfoByAccountIdParameters,
+  type GetAccountInfoByAccountIdReturnType,
+  getAccountInfoByAccountId,
+} from "./public/getAccountInfoByAccountId";
+
+import {
+  type GetAccountsByUsernameParameters,
+  type GetAccountsByUsernameReturnType,
+  getAccountsByUsername,
+} from "./public/getAccountsByUsername";
 
 export type PublicActions<
   transport extends Transport = Transport,
@@ -70,18 +130,34 @@ export type PublicActions<
   getCode: (args: GetCodeParameters) => GetCodeReturnType;
   getCodes: (args?: GetCodesParameters) => GetCodesReturnType;
   getChainInfo: (args?: GetChainInfoParameters) => GetChainInfoReturnType;
+  getAppConfig: <value extends any | undefined>(
+    args: GetAppConfigParameters,
+  ) => GetAppConfigReturnType<value>;
+  getAppConfigs: (args?: GetAppConfigsParameters) => GetAppConfigsReturnType;
+  getAccountTypeCodeHash: (
+    args: GetAccountTypeCodeHashParameters,
+  ) => GetAccountTypeCodeHashReturnType;
+  getAccountTypeCodeHashes: (
+    args?: GetAccountTypeCodeHashesParameters,
+  ) => GetAccountTypeCodeHashesReturnType;
+  getAccountsByKeyHash: (args: GetAccountsByKeyHashParameters) => GetAccountsByKeyHashReturnType;
+  getPublicKeyFromKeyId: (args: GetPublicKeyFromKeyIdParameters) => GetPublicKeyFromKeyIdReturnType;
+  getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
+  getAccountInfoByAccountId: (
+    args: GetAccountInfoByAccountIdParameters,
+  ) => GetAccountInfoByAccountIdReturnType;
+  getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
+  getAccountIdByAddress: (args: GetAccountIdByAddressParameters) => GetAccountIdByAddressReturnType;
   queryApp: (args: QueryAppParameters) => QueryAppReturnType;
-  // biome-ignore lint/suspicious/noExplicitAny: It could be any time
   queryWasmRaw: <value extends any | undefined>(
     args: QueryWasmRawParameters,
   ) => QueryWasmRawReturnType<value>;
-  // biome-ignore lint/suspicious/noExplicitAny: It could be any time
   queryWasmSmart: <value extends any | undefined>(
     args: QueryWasmSmartParameters,
   ) => QueryWasmSmartReturnType<value>;
   createAccount: (args: CreateAccountParameters) => CreateAccountReturnType;
   simulate: (args: SimulateParameters) => SimulateReturnType;
-  predictAddress: (args: PredictAddressParameters) => PredictAddressReturnType;
+  computeAddress: (args: ComputeAddressParameters) => ComputeAddressReturnType;
 };
 
 export function publicActions<
@@ -90,6 +166,8 @@ export function publicActions<
   account extends Account | undefined = Account | undefined,
 >(client: Client<transport, chain, account>): PublicActions<transport, chain, account> {
   return {
+    getAppConfig: (args) => getAppConfig(client, args),
+    getAppConfigs: (args) => getAppConfigs(client, args),
     getBalance: (args) => getBalance(client, args),
     getBalances: (args) => getBalances(client, args),
     getSupply: (args) => getSupply(client, args),
@@ -97,11 +175,19 @@ export function publicActions<
     getCode: (args) => getCode(client, args),
     getCodes: (args) => getCodes(client, args),
     getChainInfo: (args) => getChainInfo(client, args),
+    getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
+    getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
+    getAccountsByKeyHash: (args) => getAccountsByKeyHash(client, args),
+    getPublicKeyFromKeyId: (args) => getPublicKeyFromKeyId(client, args),
+    getKeysByUsername: (args) => getKeysByUsername(client, args),
+    getAccountInfoByAccountId: (args) => getAccountInfoByAccountId(client, args),
+    getAccountsByUsername: (args) => getAccountsByUsername(client, args),
+    getAccountIdByAddress: (args) => getAccountIdByAddress(client, args),
     queryApp: (args) => queryApp(client, args),
     queryWasmRaw: (args) => queryWasmRaw(client, args),
     queryWasmSmart: (args) => queryWasmSmart(client, args),
     createAccount: (args) => createAccount(client, args),
     simulate: (args) => simulate(client, args),
-    predictAddress: (args) => predictAddress(args),
+    computeAddress: (args) => computeAddress(args),
   };
 }

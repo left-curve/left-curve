@@ -1,21 +1,27 @@
 import { encodeBase64 } from "@leftcurve/encoding";
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
+import type { Account, Address, Chain, Client, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type QueryWasmRawParameters = {
-  contract: string;
+  contract: Address;
   key: Uint8Array;
   height?: number;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: It could be any time
 export type QueryWasmRawReturnType<value extends any | undefined> = Promise<value>;
 
+/**
+ * Query the raw wasm data from a contract.
+ * @param parameters
+ * @param parameters.contract The contract address.
+ * @param parameters.key The key to query.
+ * @param parameters.height The height at which to query the data.
+ * @returns The raw wasm data.
+ */
 export async function queryWasmRaw<
-  // biome-ignore lint/suspicious/noExplicitAny: It could be any time
-  value extends any | undefined,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
+  value extends any | undefined = any | undefined,
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
 >(
   client: Client<Transport, chain, account>,
   parameters: QueryWasmRawParameters,

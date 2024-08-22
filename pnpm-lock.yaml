@@ -66,9 +66,18 @@ importers:
 
   examples/nodejs:
     dependencies:
+      '@leftcurve/crypto':
+        specifier: workspace:^
+        version: link:../../packages/crypto
+      '@leftcurve/encoding':
+        specifier: workspace:^
+        version: link:../../packages/encoding
       '@leftcurve/sdk':
         specifier: workspace:^
         version: link:../../packages/sdk
+      '@leftcurve/utils':
+        specifier: workspace:^
+        version: link:../../packages/utils
       tsx:
         specifier: ^4.17.0
         version: 4.17.0
@@ -76,6 +85,12 @@ importers:
       '@leftcurve/config':
         specifier: workspace:^
         version: link:../../packages/config
+      '@leftcurve/types':
+        specifier: workspace:^
+        version: link:../../packages/types
+      '@types/node':
+        specifier: ^20
+        version: 20.14.14
 
   packages/config:
     devDependencies:
@@ -120,6 +135,9 @@ importers:
       '@leftcurve/config':
         specifier: workspace:^
         version: link:../config
+      '@leftcurve/types':
+        specifier: workspace:^
+        version: link:../types
       vitest:
         specifier: ^2.0.5
         version: 2.0.5(@types/node@20.14.14)(terser@5.31.5)
@@ -162,7 +180,7 @@ importers:
         version: 8.2.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))
       '@storybook/nextjs':
         specifier: ^8.2.8
-        version: 8.2.8(esbuild@0.21.5)(next@14.2.5(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(type-fest@2.19.0)(typescript@5.5.4)(vitest@2.0.5(@types/node@20.14.14))(webpack-hot-middleware@2.26.1)(webpack@5.93.0(esbuild@0.21.5))
+        version: 8.2.8(esbuild@0.21.5)(next@14.2.5(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(type-fest@2.19.0)(typescript@5.5.4)(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))(webpack-hot-middleware@2.26.1)(webpack@5.93.0(esbuild@0.21.5))
       '@storybook/react':
         specifier: ^8.2.8
         version: 8.2.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(typescript@5.5.4)
@@ -8501,7 +8519,7 @@ snapshots:
     dependencies:
       storybook: 8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2))
 
-  '@storybook/nextjs@8.2.8(esbuild@0.21.5)(next@14.2.5(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(type-fest@2.19.0)(typescript@5.5.4)(vitest@2.0.5(@types/node@20.14.14))(webpack-hot-middleware@2.26.1)(webpack@5.93.0(esbuild@0.21.5))':
+  '@storybook/nextjs@8.2.8(esbuild@0.21.5)(next@14.2.5(@babel/core@7.25.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(type-fest@2.19.0)(typescript@5.5.4)(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))(webpack-hot-middleware@2.26.1)(webpack@5.93.0(esbuild@0.21.5))':
     dependencies:
       '@babel/core': 7.25.2
       '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.25.2)
@@ -8520,7 +8538,7 @@ snapshots:
       '@storybook/builder-webpack5': 8.2.8(esbuild@0.21.5)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(typescript@5.5.4)
       '@storybook/preset-react-webpack': 8.2.8(esbuild@0.21.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(typescript@5.5.4)
       '@storybook/react': 8.2.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(typescript@5.5.4)
-      '@storybook/test': 8.2.8(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(vitest@2.0.5(@types/node@20.14.14))
+      '@storybook/test': 8.2.8(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))
       '@types/node': 18.19.43
       '@types/semver': 7.5.8
       babel-loader: 9.1.3(@babel/core@7.25.2)(webpack@5.93.0(esbuild@0.21.5))
@@ -8654,12 +8672,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.5.4
 
-  '@storybook/test@8.2.8(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(vitest@2.0.5(@types/node@20.14.14))':
+  '@storybook/test@8.2.8(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))':
     dependencies:
       '@storybook/csf': 0.1.11
       '@storybook/instrumenter': 8.2.8(storybook@8.2.8(@babel/preset-env@7.25.3(@babel/core@7.25.2)))
       '@testing-library/dom': 10.1.0
-      '@testing-library/jest-dom': 6.4.5(vitest@2.0.5(@types/node@20.14.14))
+      '@testing-library/jest-dom': 6.4.5(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))
       '@testing-library/user-event': 14.5.2(@testing-library/dom@10.1.0)
       '@vitest/expect': 1.6.0
       '@vitest/spy': 1.6.0
@@ -8694,7 +8712,7 @@ snapshots:
       lz-string: 1.5.0
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@6.4.5(vitest@2.0.5(@types/node@20.14.14))':
+  '@testing-library/jest-dom@6.4.5(vitest@2.0.5(@types/node@20.14.14)(terser@5.31.5))':
     dependencies:
       '@adobe/css-tools': 4.4.0
       '@babel/runtime': 7.25.0

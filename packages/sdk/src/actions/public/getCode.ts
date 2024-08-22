@@ -1,14 +1,21 @@
 import { decodeBase64 } from "@leftcurve/encoding";
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
+import type { Account, Chain, Client, Hex, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetCodeParameters = {
-  hash: string;
+  hash: Hex;
   height?: number;
 };
 
 export type GetCodeReturnType = Promise<Uint8Array>;
 
+/**
+ * Get the code.
+ * @param parameters
+ * @param parameters.hash The hash of the code.
+ * @param parameters.height The height at which to query the code.
+ * @returns The code.
+ */
 export async function getCode<chain extends Chain | undefined, account extends Account | undefined>(
   client: Client<Transport, chain, account>,
   parameters: GetCodeParameters,

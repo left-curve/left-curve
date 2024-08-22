@@ -66,7 +66,6 @@ type WizardValues<T = unknown> = {
 
 const WizardContext = createContext<WizardValues | null>(null);
 
-// biome-ignore lint/suspicious/noExplicitAny: Data could be any type.
 export function useWizard<T = any>(): WizardValues<T> {
   const context = useContext(WizardContext);
   if (!context) throw Error("useWizard must be used within a WizardProvider");

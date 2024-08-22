@@ -1,8 +1,8 @@
-import type { Account, Chain, Client, Coin, Transport } from "@leftcurve/types";
+import type { Account, Address, Chain, Client, Coin, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetBalancesParameters = {
-  address: string;
+  address: Address;
   startAfter?: string;
   limit?: number;
   height?: number;
@@ -10,6 +10,15 @@ export type GetBalancesParameters = {
 
 export type GetBalancesReturnType = Promise<Coin>;
 
+/**
+ * Get the balances.
+ * @param parameters
+ * @param parameters.address The address to get the balances of.
+ * @param parameters.startAfter The token to start after.
+ * @param parameters.limit The number of tokens to return.
+ * @param parameters.height The height at which to query the balances.
+ * @returns The balances.
+ */
 export async function getBalances<
   chain extends Chain | undefined,
   account extends Account | undefined,

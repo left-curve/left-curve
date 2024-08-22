@@ -9,6 +9,14 @@ export type GetBalanceParameters = {
 
 export type GetBalanceReturnType = Promise<number>;
 
+/**
+ * Get the balance of an account.
+ * @param parameters
+ * @param parameters.address The address to get the balance of.
+ * @param parameters.denom The denomination of the token.
+ * @param parameters.height The height at which to query the balance.
+ * @returns The balance of the account.
+ */
 export async function getBalance<
   chain extends Chain | undefined,
   account extends Account | undefined,

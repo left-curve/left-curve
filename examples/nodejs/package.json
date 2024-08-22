@@ -5,9 +5,14 @@
     "x": "tsx --"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^"
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@types/node": "^20"
   },
   "dependencies": {
+    "@leftcurve/crypto": "workspace:^",
+    "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
     "@leftcurve/sdk": "workspace:^",
     "tsx": "^4.17.0"
   }

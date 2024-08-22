@@ -1,7 +1,7 @@
 import { Comet38Client, HttpBatchClient, HttpClient } from "@cosmjs/tendermint-rpc";
 import type { AbciQueryResponse } from "@cosmjs/tendermint-rpc/build/comet38";
 import { serialize } from "@leftcurve/encoding";
-import type { Hex, Json, Transport, Tx, UnsignedTx } from "@leftcurve/types";
+import type { Hex, Transport, Tx, UnsignedTx } from "@leftcurve/types";
 import { UrlRequiredError } from "../errors/transports";
 import { createTransport } from "./createTransport";
 
@@ -60,6 +60,7 @@ export function http(url?: string | undefined, config: HttpTransportConfig = {})
         height,
         prove,
       });
+
       if (res.code === 0) return res;
       throw new Error(
         `query failed! codespace: ${res.codespace}, code: ${res.code}, log: ${res.log}`,
@@ -68,7 +69,7 @@ export function http(url?: string | undefined, config: HttpTransportConfig = {})
 
     async function broadcast(tx: Tx | UnsignedTx): Promise<Hex> {
       const { code, codespace, log, hash } = await cometClient.broadcastTxSync({
-        tx: serialize(tx as Json),
+        tx: serialize(tx),
       });
       if (code === 0) return hash;
       throw new Error(

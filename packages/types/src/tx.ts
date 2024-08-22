@@ -1,54 +1,34 @@
-import type { Coin } from "./coins";
+import type { Address } from "./address";
+import type { Coins } from "./coin";
 import type { Base64, Hex, Json } from "./common";
-
-export type Credential = { secp256k1: Base64 } | { ed25519: Base64 } | { passkey: Base64 };
-
-export type Metadata = {
-  username: string;
-  keyId: Hex;
-  sequence: number;
-};
+import type { Credential, Metadata } from "./credential";
 
 export type Tx = {
-  sender: string;
+  sender: Address;
   msgs: Message[];
   gasLimit: number;
   credential: Credential;
   data: Metadata;
 };
 
-export type CreateAccounTx = Pick<Tx, "sender" | "msgs" | "gasLimit"> & {
-  credential: null;
-  data: Json;
-};
-
 export type UnsignedTx = Pick<Tx, "sender" | "msgs">;
 
-// biome-ignore format: biome's style of formatting union types is ugly
-export type Message = {
-	configure: MsgUpdateConfig;
-  } | {
-	transfer: MsgTransfer;
-  } | {
-	upload: MsgStoreCode;
-  } | {
-	instantiate: MsgInstantiate;
-  } | {
-	execute: MsgExecute;
-  } | {
-	migrate: MsgMigrate;
-  };
+export type Message =
+  | { configure: MsgUpdateConfig }
+  | { transfer: MsgTransfer }
+  | { upload: MsgStoreCode }
+  | { instantiate: MsgInstantiate }
+  | { execute: MsgExecute }
+  | { migrate: MsgMigrate };
 
 export type MsgUpdateConfig = {
-  newCfg: {
-    owner?: string;
-    bank: string;
-  };
+  updates: ConfigUpdate;
+  app_updates: Record<string, unknown>;
 };
 
 export type MsgTransfer = {
   to: string;
-  coins: Coin;
+  coins: Coins;
 };
 
 export type MsgStoreCode = {
@@ -59,29 +39,29 @@ export type MsgInstantiate = {
   codeHash: Hex;
   msg: Json;
   salt: Base64;
-  funds: Coin;
+  funds?: Coins;
   admin?: string;
 };
 
 export type MsgExecute = {
-  contract: string;
-  msg: Json;
-  funds: Coin;
+  contract: Address;
+  msg: any;
+  funds?: Coins;
 };
 
 export type MsgMigrate = {
-  contract: string;
+  contract: Address;
   newCodeHash: Hex;
   msg: Json;
 };
 
-export enum AdminOptionKind {
-  SetToSelf = 0,
-  SetToNone = 1,
-}
-
-export type AdminOption =
-  | string
-  | AdminOptionKind.SetToSelf
-  | AdminOptionKind.SetToNone
-  | undefined;
+export type ConfigUpdate = {
+  owner?: Hex;
+  bank?: Hex;
+  taxman?: Hex;
+  cronjobs?: Record<Extract<Hex, string>, number>;
+  permissions?: {
+    upload: unknown;
+    instantiate: unknown;
+  };
+};

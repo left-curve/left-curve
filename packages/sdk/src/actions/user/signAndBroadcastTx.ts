@@ -1,11 +1,12 @@
-import type { Account, Chain, Client, Hex, Message, Transport } from "@leftcurve/types";
-import { getAccountState } from "../public/getAccountState";
+import type { Account, Address, Chain, Client, Hex, Message, Transport } from "@leftcurve/types";
+import { getAccountSequence } from "../public/getAccountSequence";
 import { getChainInfo } from "../public/getChainInfo";
 import { simulate } from "../public/simulate";
 
 export type SignAndBroadcastTxParameters = {
-  sender: string;
+  sender: Address;
   msgs: Message[];
+  gasLimit?: number;
 };
 
 export type SignAndBroadcastTxReturnType = Promise<Hex>;
@@ -18,7 +19,7 @@ export async function signAndBroadcastTx<
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.account) throw new Error("client must have an account");
-  const { msgs, sender } = parameters;
+  const { msgs, sender, gasLimit: gas } = parameters;
   let chainId = client.chain?.id;
 
   if (!chainId) {
@@ -26,10 +27,19 @@ export async function signAndBroadcastTx<
     chainId = response.chainId;
   }
 
-  const { sequence } = await getAccountState(client, { address: sender });
+  const sequence = await getAccountSequence(client, { address: sender }).catch(() => 0);
 
-  const { credential, data } = await client.account.signTx(msgs, chainId, sequence || 0);
-  const { gasLimit } = await simulate(client, { simulate: { sender, msgs } });
+  const { credential, data } = await client.account.signTx(msgs, chainId, sequence);
 
-  return await client.broadcast({ sender, credential, data, msgs, gasLimit });
+  const { gasLimit } = gas
+    ? { gasLimit: gas }
+    : await simulate(client, { simulate: { sender, msgs, data } });
+
+  return await client.broadcast({
+    sender,
+    credential,
+    data,
+    msgs,
+    gasLimit,
+  });
 }

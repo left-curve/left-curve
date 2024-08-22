@@ -1,25 +1,25 @@
-import { encodeBase64, encodeHex } from "@leftcurve/encoding";
+import { encodeBase64 } from "@leftcurve/encoding";
 import type {
   Account,
   Address,
-  AdminOption,
   Chain,
   Client,
-  Coin,
+  Coins,
   Hex,
   Json,
   Transport,
 } from "@leftcurve/types";
-import { predictAddress } from "../public/predictAddress";
+import { computeAddress } from "../public/computeAddress";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type InstantiateParameters = {
   sender: Address;
-  codeHash: Uint8Array;
+  codeHash: Hex;
   msg: Json;
   salt: Uint8Array;
-  funds: Coin;
-  adminOpt?: AdminOption;
+  funds?: Coins;
+  admin?: Address;
+  gasLimit?: number;
 };
 
 export type InstantiateReturnType = Promise<[string, Hex]>;
@@ -31,20 +31,20 @@ export async function instantiate<
   client: Client<Transport, chain, account>,
   parameters: InstantiateParameters,
 ): InstantiateReturnType {
-  const { sender, msg, codeHash, funds, salt, adminOpt } = parameters;
-  const address = predictAddress({ deployer: sender, codeHash, salt });
-  // TODO: handle adminOpt
+  const { sender, msg, codeHash, salt, admin, gasLimit, funds = {} } = parameters;
+  const address = computeAddress({ deployer: sender, codeHash, salt });
+
   const instantiateMsg = {
     instantiate: {
-      codeHash: encodeHex(codeHash),
+      codeHash,
       msg,
       salt: encodeBase64(salt),
       funds,
-      admin: undefined,
+      admin,
     },
   };
 
-  const txHash = await signAndBroadcastTx(client, { sender, msgs: [instantiateMsg] });
+  const txHash = await signAndBroadcastTx(client, { sender, msgs: [instantiateMsg], gasLimit });
 
   return [address, txHash];
 }

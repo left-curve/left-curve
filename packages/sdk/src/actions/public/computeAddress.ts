@@ -1,14 +1,14 @@
 import { Sha256, ripemd160 } from "@leftcurve/crypto";
 import { decodeHex, encodeHex } from "@leftcurve/encoding";
-import type { Address } from "@leftcurve/types";
+import type { Address, Hex } from "@leftcurve/types";
 
-export type PredictAddressParameters = {
+export type ComputeAddressParameters = {
   deployer: Address;
-  codeHash: Uint8Array;
+  codeHash: Hex;
   salt: Uint8Array;
 };
 
-export type PredictAddressReturnType = Address;
+export type ComputeAddressReturnType = Address;
 
 /**
  * Given parameters used while instantiating a new contract, compute what the
@@ -22,13 +22,13 @@ export type PredictAddressReturnType = Address;
  * @param parameters.salt An arbitrary byte array chosen by the deployer.
  * @returns The address that is given to the contract being instantiated.
  */
-export function predictAddress(parameters: PredictAddressParameters): PredictAddressReturnType {
+export function computeAddress(parameters: ComputeAddressParameters): ComputeAddressReturnType {
   const { deployer, codeHash, salt } = parameters;
   const hasher = new Sha256();
 
   const bytes = hasher
     .update(decodeHex(deployer.substring(2))) // strip the 0x prefix
-    .update(codeHash)
+    .update(decodeHex(codeHash))
     .update(salt)
     .digest();
 

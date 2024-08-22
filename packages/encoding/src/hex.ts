@@ -1,7 +1,9 @@
+import type { Hex } from "@leftcurve/types";
+
 /**
  * Encode a byte array to a string using the Hex scheme, lowercase, no 0x prefix.
  */
-export function encodeHex(bytes: Uint8Array): string {
+export function encodeHex(bytes: Uint8Array): Hex {
   let hexStr = "";
   for (let i = 0; i < bytes.length; i++) {
     hexStr += bytes[i].toString(16).padStart(2, "0");
@@ -12,7 +14,7 @@ export function encodeHex(bytes: Uint8Array): string {
 /**
  * Decode a string to byte array using the Hex scheme.
  */
-export function decodeHex(hexStr: string): Uint8Array {
+export function decodeHex(hexStr: Hex): Uint8Array {
   if (hexStr.length % 2 !== 0) {
     throw new Error("hex string has an odd length");
   }

@@ -49,12 +49,60 @@ export {
 } from "./public/createAccount";
 
 export {
-  type PredictAddressParameters,
-  type PredictAddressReturnType,
-  predictAddress,
-} from "./public/predictAddress";
+  type ComputeAddressParameters,
+  type ComputeAddressReturnType,
+  computeAddress,
+} from "./public/computeAddress";
 
 export { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
+
+export {
+  type GetAccountTypeCodeHashParameters,
+  type GetAccountTypeCodeHashReturnType,
+  getAccountTypeCodeHash,
+} from "./public/getAccountTypeCodeHash";
+
+export {
+  type GetAccountTypeCodeHashesParameters,
+  type GetAccountTypeCodeHashesReturnType,
+  getAccountTypeCodeHashes,
+} from "./public/getAccountTypeCodeHashes";
+
+export {
+  type GetAccountsByKeyHashParameters,
+  type GetAccountsByKeyHashReturnType,
+  getAccountsByKeyHash,
+} from "./public/getAccountsByKeyHash";
+
+export {
+  type GetKeysByUsernameParameters,
+  type GetKeysByUsernameReturnType,
+  getKeysByUsername,
+} from "./public/getKeysByUsername";
+
+export {
+  type GetPublicKeyFromKeyIdParameters,
+  type GetPublicKeyFromKeyIdReturnType,
+  getPublicKeyFromKeyId,
+} from "./public/getPublicKeyFromKeyId";
+
+export {
+  type GetAccountIdByAddressParameters,
+  type GetAccountIdByAddressReturnType,
+  getAccountIdByAddress,
+} from "./public/getAccountIdByAddress";
+
+export {
+  type GetAccountInfoByAccountIdParameters,
+  type GetAccountInfoByAccountIdReturnType,
+  getAccountInfoByAccountId,
+} from "./public/getAccountInfoByAccountId";
+
+export {
+  type GetAccountsByUsernameParameters,
+  type GetAccountsByUsernameReturnType,
+  getAccountsByUsername,
+} from "./public/getAccountsByUsername";
 
 export { type PublicActions, publicActions } from "./publicActions";
 

@@ -1,10 +1,10 @@
-import type { Account, Chain, Client, Coin, Hex, Transport } from "@leftcurve/types";
+import type { Account, Address, Chain, Client, Coins, Hex, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type TransferParameters = {
-  sender: string;
-  to: string;
-  coins: Coin;
+  sender: Address;
+  to: Address;
+  coins: Coins;
 };
 
 export type TransferReturnType = Promise<Hex>;

@@ -8,6 +8,13 @@ export type GetSupplyParameters = {
 
 export type GetSupplyReturnType = Promise<number>;
 
+/**
+ * Get the supply of a token.
+ * @param parameters
+ * @param parameters.denom The denomination of the token.
+ * @param parameters.height The height at which to query the supply.
+ * @returns The supply of the token.
+ */
 export async function getSupply<
   chain extends Chain | undefined,
   account extends Account | undefined,

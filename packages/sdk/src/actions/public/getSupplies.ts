@@ -11,6 +11,14 @@ export type GetSuppliesParameters =
 
 export type GetSuppliesReturnType = Promise<Coin>;
 
+/**
+ * Get the supplies of all tokens.
+ * @param parameters
+ * @param parameters.startAfter The token to start after.
+ * @param parameters.limit The number of tokens to return.
+ * @param parameters.height The height at which to query the supplies.
+ * @returns The supplies of all tokens.
+ */
 export async function getSupplies<
   chain extends Chain | undefined,
   account extends Account | undefined,

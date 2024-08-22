@@ -5,11 +5,11 @@
 export type Json = { [key: string]: Json } | Json[] | string | number | boolean | undefined | null;
 
 /**
- * Represents a string or an Uint8Array encoded in hex.
+ * Represents a string in hex.
  */
-export type Hex = Uint8Array | string;
+export type Hex = string;
 
 /**
- * Represents a string or an Uint8Array encoded in base64.
+ * Represents a string in base64.
  */
-export type Base64 = Uint8Array | string;
+export type Base64 = string;

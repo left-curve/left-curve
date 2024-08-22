@@ -1,9 +1,9 @@
-import type { Account, Chain, Client, Hex, Json, Transport } from "@leftcurve/types";
+import type { Account, Address, Chain, Client, Hex, Json, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type MigrateParameters = {
-  sender: string;
-  contract: string;
+  sender: Address;
+  contract: Address;
   newCodeHash: Hex;
   msg: Json;
 };

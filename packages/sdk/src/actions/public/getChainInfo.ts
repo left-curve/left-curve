@@ -9,6 +9,12 @@ export type GetChainInfoParameters =
 
 export type GetChainInfoReturnType = Promise<InfoResponse>;
 
+/**
+ * Get the chain information.
+ * @param parameters
+ * @param parameters.height The height at which to query the chain information.
+ * @returns The chain information.
+ */
 export async function getChainInfo<
   chain extends Chain | undefined,
   account extends Account | undefined,
