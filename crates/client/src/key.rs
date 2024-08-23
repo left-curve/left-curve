@@ -2,7 +2,7 @@ use {
     aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit},
     bip32::{Mnemonic, PublicKey, XPrv},
     grug_crypto::Identity256,
-    grug_types::{Addr, Binary, ByteArray, Json, Message, Tx},
+    grug_types::{Addr, Binary, ByteArray, Json, JsonDeExt, JsonSerExt, Message, Tx},
     k256::ecdsa::Signature,
     pbkdf2::pbkdf2_hmac,
     rand::{rngs::OsRng, Rng},
@@ -58,7 +58,7 @@ impl SigningKey {
     {
         // read keystore file
         let keystore_str = fs::read_to_string(filename)?;
-        let keystore: Keystore = serde_json::from_str(&keystore_str)?;
+        let keystore: Keystore = keystore_str.deserialize_json()?;
 
         // recover encryption key from password and salt
         let mut password_hash = [0u8; PBKDF2_KEY_LEN];
@@ -108,7 +108,7 @@ impl SigningKey {
             nonce: nonce.as_slice().try_into()?,
             ciphertext: ciphertext.into(),
         };
-        let keystore_str = serde_json::to_string_pretty(&keystore)?;
+        let keystore_str = keystore.to_json_string_pretty()?;
         fs::write(filename, keystore_str.as_bytes())?;
 
         Ok(keystore)

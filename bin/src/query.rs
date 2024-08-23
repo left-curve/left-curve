@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Hash256, Query},
+    grug_types::{Addr, Binary, Hash256, JsonDeExt, Query},
     serde::Serialize,
 };
 
@@ -136,7 +136,7 @@ impl QueryCmd {
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
-                let msg = serde_json::from_str(&msg)?;
+                let msg = msg.deserialize_json()?;
                 Query::WasmSmart { contract, msg }
             },
             SubCmd::Store { key_hex, prove } => {
