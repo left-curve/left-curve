@@ -338,27 +338,27 @@ pub fn ed25519_verify(
 
 pub fn ed25519_batch_verify(
     mut fe: FunctionEnvMut<Environment>,
-    msgs_hash_ptr: u32,
+    prehash_msgs_ptr: u32,
     sigs_ptr: u32,
     pks_ptr: u32,
 ) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    let msgs_hash = read_from_memory(env, &store, msgs_hash_ptr)?;
+    let prehash_msgs = read_from_memory(env, &store, prehash_msgs_ptr)?;
     let sigs = read_from_memory(env, &store, sigs_ptr)?;
     let pks = read_from_memory(env, &store, pks_ptr)?;
 
-    let msgs_hash = decode_sections(&msgs_hash);
+    let prehash_msgs = decode_sections(&prehash_msgs);
     let sigs = decode_sections(&sigs);
     let pks = decode_sections(&pks);
 
     env.consume_external_gas(
         &mut store,
-        GAS_COSTS.ed25519_batch_verify.cost(msgs_hash.len()),
+        GAS_COSTS.ed25519_batch_verify.cost(prehash_msgs.len()),
         "ed25519_batch_verify",
     )?;
 
-    match grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks) {
+    match grug_crypto::ed25519_batch_verify(&prehash_msgs, &sigs, &pks) {
         Ok(()) => Ok(0),
         Err(err) => Ok(err.into_error_code()),
     }
