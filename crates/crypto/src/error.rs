@@ -16,12 +16,18 @@ pub enum CryptoError {
 
     #[error("invalid recovery id {recovery_id}")]
     InvalidRecoveryId { recovery_id: u8 },
+}
 
-    #[error("array exceeds maximum length, max {max_length}, found {actual_length}")]
-    ExceedsMaximumLength {
-        max_length: usize,
-        actual_length: usize,
-    },
+impl CryptoError {
+    /// Cast the `CryptoError` into a `u32`, so that it can be passed across the
+    /// WebAssembly FFI.
+    pub fn into_error_code(self) -> u32 {
+        match self {
+            Self::IncorrectLength { .. } | Self::IncorrectLengths { .. } => 1,
+            Self::InvalidRecoveryId { .. } => 2,
+            Self::Signature(_) => 3,
+        }
+    }
 }
 
 pub type CryptoResult<T> = core::result::Result<T, CryptoError>;

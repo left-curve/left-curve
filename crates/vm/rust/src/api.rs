@@ -1,4 +1,4 @@
-use grug_types::{Addr, Api, StdError, StdResult};
+use grug_types::{Addr, Api, StdResult, VerificationError};
 
 // This is named `InternalApi` to contrast with `grug_ffi::ExternalApi`, which
 // works across the FFI boundary, which this doesn't.
@@ -10,11 +10,13 @@ impl Api for InternalApi {
     }
 
     fn secp256r1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        grug_crypto::secp256r1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::secp256r1_verify(msg_hash, sig, pk)
+            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        grug_crypto::secp256k1_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::secp256k1_verify(msg_hash, sig, pk)
+            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
     fn secp256k1_pubkey_recover(
@@ -25,11 +27,12 @@ impl Api for InternalApi {
         compressed: bool,
     ) -> StdResult<Vec<u8>> {
         grug_crypto::secp256k1_pubkey_recover(msg_hash, sig, recovery_id, compressed)
-            .map_err(|_| StdError::VerificationFailed)
+            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        grug_crypto::ed25519_verify(msg_hash, sig, pk).map_err(|_| StdError::VerificationFailed)
+        grug_crypto::ed25519_verify(msg_hash, sig, pk)
+            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
     fn ed25519_batch_verify(
@@ -39,7 +42,7 @@ impl Api for InternalApi {
         pks: &[&[u8]],
     ) -> StdResult<()> {
         grug_crypto::ed25519_batch_verify(msgs_hash, sigs, pks)
-            .map_err(|_| StdError::VerificationFailed)
+            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
     fn sha2_256(&self, data: &[u8]) -> [u8; 32] {

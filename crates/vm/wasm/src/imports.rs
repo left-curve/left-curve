@@ -243,7 +243,7 @@ pub fn secp256k1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -254,7 +254,7 @@ pub fn secp256k1_verify(
 
     match grug_crypto::secp256k1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
-        Err(_) => Ok(1),
+        Err(err) => Ok(err.into_error_code()),
     }
 }
 
@@ -263,7 +263,7 @@ pub fn secp256r1_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -274,7 +274,7 @@ pub fn secp256r1_verify(
 
     match grug_crypto::secp256r1_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
-        Err(_) => Ok(1),
+        Err(err) => Ok(err.into_error_code()),
     }
 }
 
@@ -284,7 +284,7 @@ pub fn secp256k1_pubkey_recover(
     sig_ptr: u32,
     recovery_id: u8,
     compressed: u8,
-) -> VmResult<u32> {
+) -> VmResult<u64> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -302,10 +302,18 @@ pub fn secp256k1_pubkey_recover(
         "secp256k1_pubkey_recover",
     )?;
 
-    match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
-        Ok(pk) => write_to_memory(env, &mut store, &pk),
-        Err(_) => Ok(0),
-    }
+    // The return value for this function is an `u64`, of which:
+    // - The first 4 bytes are the error code.
+    //   If recovery is successful, these should be zero.
+    // - the second 4 bytes are the memory address of the recovered pk.
+    //   if recovery is unsuccessful, these should be zero.
+    let (error_code, ptr) =
+        match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
+            Ok(pk) => (0, write_to_memory(env, &mut store, &pk)?),
+            Err(err) => (err.into_error_code(), 0),
+        };
+
+    Ok((error_code as u64) << 32 | (ptr as u64))
 }
 
 pub fn ed25519_verify(
@@ -313,7 +321,7 @@ pub fn ed25519_verify(
     msg_hash_ptr: u32,
     sig_ptr: u32,
     pk_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msg_hash = read_from_memory(env, &store, msg_hash_ptr)?;
@@ -324,7 +332,7 @@ pub fn ed25519_verify(
 
     match grug_crypto::ed25519_verify(&msg_hash, &sig, &pk) {
         Ok(()) => Ok(0),
-        Err(_) => Ok(1),
+        Err(err) => Ok(err.into_error_code()),
     }
 }
 
@@ -333,7 +341,7 @@ pub fn ed25519_batch_verify(
     msgs_hash_ptr: u32,
     sigs_ptr: u32,
     pks_ptr: u32,
-) -> VmResult<i32> {
+) -> VmResult<u32> {
     let (env, mut store) = fe.data_and_store_mut();
 
     let msgs_hash = read_from_memory(env, &store, msgs_hash_ptr)?;
@@ -352,7 +360,7 @@ pub fn ed25519_batch_verify(
 
     match grug_crypto::ed25519_batch_verify(&msgs_hash, &sigs, &pks) {
         Ok(()) => Ok(0),
-        Err(_) => Ok(1),
+        Err(err) => Ok(err.into_error_code()),
     }
 }
 

@@ -2,7 +2,7 @@ use {
     crate::Region,
     grug_types::{
         encode_sections, Addr, Api, GenericResult, JsonDeExt, JsonSerExt, Order, Querier, Query,
-        QueryResponse, Record, StdError, StdResult, Storage,
+        QueryResponse, Record, StdResult, Storage, VerificationError,
     },
 };
 
@@ -26,16 +26,16 @@ extern "C" {
 
     // Signature verification
     // Return value of 0 means ok; any value other than 0 means error.
-    fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
+    fn secp256r1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> u32;
+    fn secp256k1_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> u32;
     fn secp256k1_pubkey_recover(
         msg_hash_ptr: usize,
         sig_ptr: usize,
         recovery_id: u8,
         compressed: u8,
-    ) -> usize;
-    fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> i32;
-    fn ed25519_batch_verify(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> i32;
+    ) -> u64;
+    fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> u32;
+    fn ed25519_batch_verify(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> u32;
 
     // Hashes
     fn sha2_256(data_ptr: usize) -> usize;
@@ -319,8 +319,7 @@ impl Api for ExternalApi {
         if return_value == 0 {
             Ok(())
         } else {
-            // TODO: more useful error codes
-            Err(StdError::VerificationFailed)
+            Err(VerificationError::from_error_code(return_value).into())
         }
     }
 
@@ -340,8 +339,7 @@ impl Api for ExternalApi {
         if return_value == 0 {
             Ok(())
         } else {
-            // TODO: more useful error codes
-            Err(StdError::VerificationFailed)
+            Err(VerificationError::from_error_code(return_value).into())
         }
     }
 
@@ -358,7 +356,7 @@ impl Api for ExternalApi {
         let sig_region = Region::build(sig);
         let sig_ptr = &*sig_region as *const Region;
 
-        let pk_ptr = unsafe {
+        let return_value = unsafe {
             secp256k1_pubkey_recover(
                 msg_hash_ptr as usize,
                 sig_ptr as usize,
@@ -367,13 +365,23 @@ impl Api for ExternalApi {
             )
         };
 
-        if pk_ptr == 0 {
-            // we interpret a zero pointer as meaning the key doesn't exist
-            // TODO: more useful error codes
-            return Err(StdError::VerificationFailed);
-        }
+        let error_code = (return_value >> 32) as u32;
+        let pk_ptr = return_value as u32;
 
-        unsafe { Ok(Region::consume(pk_ptr as *mut Region)) }
+        // Sanity check: if the host works correctly, then one and only one
+        // between `error_code` and `pk_ptr` is zero.
+        // Here we efficiently assert this using the XOR operator (`^`).
+        debug_assert!(
+            (error_code == 0) ^ (pk_ptr == 0),
+            "host returned invalid response for `secp256k1_pubkey_recover`! error_code: {error_code}, pk_ptr: {pk_ptr}"
+        );
+
+        if error_code == 0 {
+            let pk = unsafe { Region::consume(pk_ptr as *mut Region) };
+            Ok(pk)
+        } else {
+            Err(VerificationError::from_error_code(error_code).into())
+        }
     }
 
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
@@ -392,8 +400,7 @@ impl Api for ExternalApi {
         if return_value == 0 {
             Ok(())
         } else {
-            // TODO: more useful error codes
-            Err(StdError::VerificationFailed)
+            Err(VerificationError::from_error_code(return_value).into())
         }
     }
 
@@ -419,8 +426,7 @@ impl Api for ExternalApi {
         if return_value == 0 {
             Ok(())
         } else {
-            // TODO: more useful error codes
-            Err(StdError::VerificationFailed)
+            Err(VerificationError::from_error_code(return_value).into())
         }
     }
 }
