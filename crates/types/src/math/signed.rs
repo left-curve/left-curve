@@ -590,7 +590,7 @@ generate_signed!(
 mod test {
     use {
         super::*,
-        crate::{Dec128, Dec256, Int128, Udec128},
+        crate::{BorshDeExt, BorshSerExt, Dec128, Dec256, Int128, JsonDeExt, JsonSerExt, Udec128},
         std::str::FromStr,
         test_case::test_case,
     };
@@ -675,17 +675,17 @@ mod test {
     #[test]
     fn t4_serde() {
         let foo = Dec128::from_str("-10.5").unwrap();
-        let ser = serde_json::to_string(&foo).unwrap();
-        let des: Dec128 = serde_json::from_str(&ser).unwrap();
+        let ser = foo.to_json_string().unwrap();
+        let des: Dec128 = ser.deserialize_json().unwrap();
         assert_eq!(foo, des);
 
         let foo = Dec256::from_str("-10.5").unwrap();
-        let ser = serde_json::to_string(&foo).unwrap();
-        let des: Dec256 = serde_json::from_str(&ser).unwrap();
+        let ser = foo.to_json_string().unwrap();
+        let des: Dec256 = ser.deserialize_json().unwrap();
         assert_eq!(foo, des);
 
-        let ser = borsh::to_vec(&foo).unwrap();
-        let des: Dec256 = borsh::from_slice(&ser).unwrap();
+        let ser = foo.to_borsh_vec().unwrap();
+        let des: Dec256 = ser.deserialize_borsh().unwrap();
         assert_eq!(foo, des);
     }
 

@@ -5,8 +5,8 @@ use {
     grug_jmt::Proof,
     grug_types::{
         Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
-        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Outcome, Query, QueryResponse,
-        StdError, Tx, UnsignedTx,
+        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError, Tx,
+        TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -308,7 +308,7 @@ impl Client {
     }
 
     /// Simulate the gas usage of a transaction.
-    pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<Outcome> {
+    pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<TxOutcome> {
         self.query("/simulate", unsigned_tx.to_json_vec()?, None, false)
             .await?
             .value
@@ -317,6 +317,29 @@ impl Client {
     }
 
     // -------------------------- transaction methods --------------------------
+
+    /// Broadcast an already signed transaction, without terminal prompt for
+    /// confirmation.
+    pub async fn broadcast_tx(&self, tx: Tx) -> anyhow::Result<tx_sync::Response> {
+        self.broadcast_tx_with_confirmation(tx, no_confirmation)
+            .await
+            .map(Option::unwrap)
+    }
+
+    /// Broadcast an already signed transaction, with terminal prompt for
+    /// confirmation.
+    pub async fn broadcast_tx_with_confirmation(
+        &self,
+        tx: Tx,
+        confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
+    ) -> anyhow::Result<Option<tx_sync::Response>> {
+        if confirm_fn(&tx)? {
+            let tx_bytes = tx.to_json_vec()?;
+            Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
+        } else {
+            Ok(None)
+        }
+    }
 
     /// Create, sign, and broadcast a transaction with a single message, without
     /// terminal prompt for confirmation.
@@ -405,14 +428,16 @@ impl Client {
                     let unsigned_tx = UnsignedTx {
                         sender: sign_opt.sender,
                         msgs: msgs.clone(),
+                        // TODO: allow user to specify this
+                        data: Json::Null,
                     };
                     match self.simulate(&unsigned_tx).await? {
-                        Outcome {
+                        TxOutcome {
                             result: GenericResult::Ok(_),
                             gas_used,
                             ..
                         } => Ok((gas_used as f64 * scale).ceil() as u64 + flat_increase),
-                        Outcome {
+                        TxOutcome {
                             result: GenericResult::Err(err),
                             ..
                         } => bail!("Failed to estimate gas consumption: {err}"),
@@ -433,12 +458,7 @@ impl Client {
             gas_limit,
         )?;
 
-        if confirm_fn(&tx)? {
-            let tx_bytes = tx.to_json_vec()?;
-            Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
-        } else {
-            Ok(None)
-        }
+        self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
 
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).

@@ -782,6 +782,7 @@ pub fn do_withhold_fee<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
+    mode: AuthMode,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -798,7 +799,7 @@ where
             contract: cfg.taxman,
             sender: None,
             funds: None,
-            mode: None,
+            mode: Some(mode),
         };
 
         call_in_1_out_1_handle_response(
@@ -836,6 +837,7 @@ pub fn do_finalize_fee<VM>(
     block: BlockInfo,
     tx: &Tx,
     outcome: &TxOutcome,
+    mode: AuthMode,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -852,7 +854,7 @@ where
             contract: cfg.taxman,
             sender: None,
             funds: None,
-            mode: None,
+            mode: Some(mode),
         };
 
         call_in_2_out_1_handle_response(

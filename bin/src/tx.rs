@@ -5,7 +5,7 @@ use {
     colored::Colorize,
     grug_app::GAS_COSTS,
     grug_client::{Client, GasOption, SigningKey, SigningOption},
-    grug_types::{Addr, Binary, Coins, Hash256, JsonDeExt, Message, UnsignedTx},
+    grug_types::{Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, UnsignedTx},
     serde::Serialize,
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
     tendermint_rpc::endpoint::broadcast::tx_sync,
@@ -173,6 +173,8 @@ impl TxCmd {
             let unsigned_tx = UnsignedTx {
                 sender,
                 msgs: vec![msg],
+                // TODO: allow user to specify this
+                data: Json::Null,
             };
             let outcome = client.simulate(&unsigned_tx).await?;
             print_json_pretty(outcome)?;

@@ -9,13 +9,13 @@ use {
     },
 };
 
-/// A 20-byte hash, in lowercase hex encoding.
+/// A 20-byte hash, in uppercase hex encoding.
 pub type Hash160 = Hash<20>;
 
-/// A 32-byte hash, in lowercase hex encoding.
+/// A 32-byte hash, in uppercase hex encoding.
 pub type Hash256 = Hash<32>;
 
-/// A hash of fixed size `N`, in lowercase hex encoding.
+/// A hash of fixed size `N`, in uppercase hex encoding.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash<const N: usize>(pub(crate) [u8; N]);
 

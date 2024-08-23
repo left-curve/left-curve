@@ -1,9 +1,6 @@
-use {
-    grug::{Addr, Coins, ContractBuilder, Empty, Hash256, NonZero, TestBuilder},
-    super_smart_querier::{QueryBuzzRequest, QueryFooRequest, QueryFuzzRequest},
-};
+use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, NonZero, TestBuilder};
 
-mod super_smart_querier {
+mod query_maker {
     use grug::{
         Addr, Empty, Hash256, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult,
     };
@@ -51,8 +48,8 @@ fn query_super_smart() {
         .build()
         .unwrap();
 
-    let code = ContractBuilder::new(Box::new(super_smart_querier::instantiate))
-        .with_query(Box::new(super_smart_querier::query))
+    let code = ContractBuilder::new(Box::new(query_maker::instantiate))
+        .with_query(Box::new(query_maker::query))
         .build();
 
     let (_, contract) = suite
@@ -68,16 +65,16 @@ fn query_super_smart() {
     // Here, the compiler should be able to infer the type of the response as
     // `String` based on the request type `QueryFooRequest`.
     suite
-        .query_wasm_smart(contract, QueryFooRequest { bar: 12345 })
+        .query_wasm_smart(contract, query_maker::QueryFooRequest { bar: 12345 })
         .should_succeed_and_equal(12345.to_string());
 
     // Similarly, for unnamed variant `Fuzz`.
     suite
-        .query_wasm_smart(contract, QueryFuzzRequest(123))
+        .query_wasm_smart(contract, query_maker::QueryFuzzRequest(123))
         .should_succeed_and_equal(Addr::mock(123));
 
     // Similarly, for unit variant `Buzz`.
     suite
-        .query_wasm_smart(contract, QueryBuzzRequest)
+        .query_wasm_smart(contract, query_maker::QueryBuzzRequest)
         .should_succeed_and_equal(Hash256::from_array([1; 32]));
 }

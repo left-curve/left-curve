@@ -4,7 +4,10 @@ use {
     std::{fs::File, io::BufReader},
 };
 
-pub fn read_file<F: DeserializeOwned>(path: &str) -> F {
+pub fn read_file<F>(path: &str) -> F
+where
+    F: DeserializeOwned,
+{
     // Open the file in read-only mode with buffer.
     let file = File::open(path).unwrap();
     let reader = BufReader::new(file);

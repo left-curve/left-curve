@@ -40,7 +40,19 @@ fn reply(ctx: SudoCtx, msg: ReplyMsg, result: SubMsgResult) -> Result<Response>;
 fn query(ctx: ImmutableCtx, msg: QueryMsg) -> Result<Binary>;
 ```
 
-## Account
+## Fee
+
+In Grug, gas fees are handled by a smart contract called the **taxman**. It must implement the following two exports:
+
+```rust
+#[grug::export]
+fn withhold_fee(ctx: AuthCtx, tx: Tx) -> Result<Response>;
+
+#[grug::export]
+fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
+```
+
+## Authentication
 
 These are entry points that a contract needs in order to be able to initiate transactions.
 
@@ -50,15 +62,6 @@ fn authenticate(ctx: AuthCtx, tx: Tx) -> Result<Response>;
 
 #[grug::export]
 fn backrun(ctx: AuthCtx, tx: Tx) -> Result<Response>;
-```
-
-## Cronjobs
-
-The chain's owner can appoint a number of contracts to be automatically invoked at regular time intervals. Each such contract must implement the following entry point:
-
-```rust
-#[grug::export]
-fn cron_execute(ctx: SudoCtx) -> Result<Response>;
 ```
 
 ## Bank
@@ -73,16 +76,13 @@ fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> Result<Response>;
 fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> Result<BankQueryResponse>;
 ```
 
-## Fee
+## Cronjobs
 
-In Grug, gas fees are handled by a smart contract called the **taxman**. It must implement the following two exports:
+The chain's owner can appoint a number of contracts to be automatically invoked at regular time intervals. Each such contract must implement the following entry point:
 
 ```rust
 #[grug::export]
-fn withhold_fee(ctx: SudoCtx, tx: Tx) -> Result<Response>;
-
-#[grug::export]
-fn finalize_fee(ctx: SudoCtx, tx: Tx, outcome: Outcome) -> Result<Response>;
+fn cron_execute(ctx: SudoCtx) -> Result<Response>;
 ```
 
 ## IBC
@@ -97,12 +97,6 @@ fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -> Result<IbcClientQ
 Contracts that are to be used as IBC applications must implement the following entry points:
 
 ```rust
-#[grug::export]
-fn ibc_channel_open(ctx: MutableCtx, msg: IbcChannelOpenMsg) -> Result<Response>;
-
-#[grug::export]
-fn ibc_channel_close(ctx: MutableCtx, msg: IbcChannelCloseMsg) -> Result<Response>;
-
 #[grug::export]
 fn ibc_packet_receive(ctx: MutableCtx, msg: IbcPacketReceiveMsg) -> Result<Response>;
 
