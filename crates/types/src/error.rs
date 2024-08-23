@@ -6,6 +6,31 @@ use {
 };
 
 #[derive(Debug, Clone, Error)]
+pub enum VerificationError {
+    #[error("data is of incorrect length")]
+    IncorrectLength,
+
+    #[error("invalid recovery id; must be 0 or 1")]
+    InvalidRecoveryId,
+
+    #[error("signature is unauthentic")]
+    Unauthentic,
+}
+
+impl VerificationError {
+    /// Convert the error code received across WebAssembly FFI into a
+    /// `VerificationError`.
+    pub fn from_error_code(error_code: u32) -> Self {
+        match error_code {
+            1 => Self::IncorrectLength,
+            2 => Self::InvalidRecoveryId,
+            3 => Self::Unauthentic,
+            _ => unreachable!("unknown verification error code: {error_code}, must be 1-3"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Error)]
 pub enum StdError {
     /// This variant exists such that we can use `Coins` as the generic `C` in
     /// contructor methods `Message::{instantiate,execute}`, which has the trait
@@ -24,9 +49,8 @@ pub enum StdError {
     #[error("generic error: {0}")]
     Generic(String),
 
-    // TODO: add more details to this
-    #[error("signature verification failed")]
-    VerificationFailed,
+    #[error(transparent)]
+    Verification(#[from] VerificationError),
 
     #[error("out of gas! limit: {limit}, used: {used}, comment: {comment}")]
     OutOfGas {
