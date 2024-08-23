@@ -131,7 +131,7 @@ fn list(dir: &Path) -> anyhow::Result<()> {
             .ok_or(anyhow!("failed to convert keystore file path to string"))?
             .to_owned();
         let keystore_str = fs::read_to_string(entry.path())?;
-        let keystore: Keystore = serde_json::from_str(&keystore_str)?;
+        let keystore: Keystore = keystore_str.deserialize_json()?;
         keystores.insert(name, keystore);
     }
 

@@ -1,15 +1,13 @@
 use {
-    grug_crypto::secp256k1_pubkey_recover,
-    serde::de::DeserializeOwned,
-    std::{fs::File, io::BufReader},
+    grug_crypto::secp256k1_pubkey_recover, grug_types::JsonDeExt, serde::de::DeserializeOwned,
+    std::fs,
 };
 
-pub fn read_file<F: DeserializeOwned>(path: &str) -> F {
-    // Open the file in read-only mode with buffer.
-    let file = File::open(path).unwrap();
-    let reader = BufReader::new(file);
-
-    serde_json::from_reader(reader).unwrap()
+pub fn read_file<F>(path: &str) -> F
+where
+    F: DeserializeOwned,
+{
+    fs::read(path).unwrap().deserialize_json().unwrap()
 }
 
 pub fn validate_recover_secp256k1(

@@ -23,7 +23,6 @@ serde        = { workspace = true, features = ["derive"] }
 thiserror    = { workspace = true }
 
 [dev-dependencies]
-anyhow      = { workspace = true }
 hex-literal = { workspace = true }
 proptest    = { workspace = true }
 rand        = { workspace = true }

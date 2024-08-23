@@ -334,7 +334,7 @@ impl
 
         obj.insert("app_state".to_string(), genesis_state_json);
 
-        let cometbft_genesis_raw = serde_json::to_string_pretty(&cometbft_genesis)?;
+        let cometbft_genesis_raw = cometbft_genesis.to_json_string_pretty()?;
 
         fs::write(path, cometbft_genesis_raw)?;
 
