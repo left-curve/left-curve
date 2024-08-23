@@ -37,11 +37,11 @@ impl Api for InternalApi {
 
     fn ed25519_batch_verify(
         &self,
-        msgs_hash: &[&[u8]],
+        prehash_msgs: &[&[u8]],
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()> {
-        grug_crypto::ed25519_batch_verify(msgs_hash, sigs, pks)
+        grug_crypto::ed25519_batch_verify(prehash_msgs, sigs, pks)
             .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 

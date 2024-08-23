@@ -50,8 +50,8 @@ pub fn ed25519_batch_verify(
         .into_iter()
         .unzip();
 
-    // No need to check the three slices (`msg_hashes`, `sigs`, `pks`) are of the
-    // length; `ed25519_dalek::verify_batch` already does this.
+    // No need to check the three slices (`prehash_msgs`, `sigs`, `pks`) are of
+    // the same length; `ed25519_dalek::verify_batch` already does this.
     ed25519_dalek::verify_batch(prehash_msgs, &sigs, &vks).map_err(Into::into)
 }
 

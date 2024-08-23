@@ -35,7 +35,7 @@ extern "C" {
         compressed: u8,
     ) -> u64;
     fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> u32;
-    fn ed25519_batch_verify(msgs_hash_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> u32;
+    fn ed25519_batch_verify(prehash_msgs_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> u32;
 
     // Hashes
     fn sha2_256(data_ptr: usize) -> usize;
@@ -406,21 +406,28 @@ impl Api for ExternalApi {
 
     fn ed25519_batch_verify(
         &self,
-        msgs_hash: &[&[u8]],
+        prehash_msgs: &[&[u8]],
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()> {
-        let msgs_hash_region = Region::build(&encode_sections(msgs_hash)?);
-        let msgs_hash_ptr = &*msgs_hash_region as *const Region;
+        let prehash_msgs = encode_sections(prehash_msgs)?;
+        let prehash_msgs_region = Region::build(&prehash_msgs);
+        let prehash_msgs_ptr = &*prehash_msgs_region as *const Region;
 
-        let sigs_region = Region::build(&encode_sections(sigs)?);
+        let sigs = encode_sections(sigs)?;
+        let sigs_region = Region::build(&sigs);
         let sigs_ptr = &*sigs_region as *const Region;
 
-        let pks_region = Region::build(&encode_sections(pks)?);
+        let pks = encode_sections(pks)?;
+        let pks_region = Region::build(&pks);
         let pks_ptr = &*pks_region as *const Region;
 
         let return_value = unsafe {
-            ed25519_batch_verify(msgs_hash_ptr as usize, sigs_ptr as usize, pks_ptr as usize)
+            ed25519_batch_verify(
+                prehash_msgs_ptr as usize,
+                sigs_ptr as usize,
+                pks_ptr as usize,
+            )
         };
 
         if return_value == 0 {

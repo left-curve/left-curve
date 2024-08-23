@@ -216,7 +216,7 @@ pub trait Api {
     /// NOTE: This function takes the hash of the messages, not the prehash.
     fn ed25519_batch_verify(
         &self,
-        msgs_hash: &[&[u8]],
+        prehash_msgs: &[&[u8]],
         sigs: &[&[u8]],
         pks: &[&[u8]],
     ) -> StdResult<()>;
