@@ -15,7 +15,7 @@ pub fn sha2_512(data: &[u8]) -> [u8; 64] {
 }
 
 pub fn sha2_512_truncated(data: &[u8]) -> [u8; 32] {
-    truncate(&sha2_512(data)).unwrap()
+    truncate(&sha2_512(data))
 }
 
 pub fn sha3_256(data: &[u8]) -> [u8; 32] {
@@ -27,7 +27,7 @@ pub fn sha3_512(data: &[u8]) -> [u8; 64] {
 }
 
 pub fn sha3_512_truncated(data: &[u8]) -> [u8; 32] {
-    truncate(&sha3_512(data)).unwrap()
+    truncate(&sha3_512(data))
 }
 
 pub fn keccak256(data: &[u8]) -> [u8; 32] {

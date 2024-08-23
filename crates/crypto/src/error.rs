@@ -16,12 +16,6 @@ pub enum CryptoError {
 
     #[error("invalid recovery id {recovery_id}")]
     InvalidRecoveryId { recovery_id: u8 },
-
-    #[error("array exceeds maximum length, max {max_length}, found {actual_length}")]
-    ExceedsMaximumLength {
-        max_length: usize,
-        actual_length: usize,
-    },
 }
 
 pub type CryptoResult<T> = core::result::Result<T, CryptoError>;
