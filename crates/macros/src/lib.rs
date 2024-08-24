@@ -1,4 +1,5 @@
 mod derive;
+mod downcast;
 mod export;
 mod index_list;
 mod query;
@@ -53,4 +54,9 @@ pub fn index_list(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(QueryRequest, attributes(returns))]
 pub fn derive_query(input: TokenStream) -> TokenStream {
     query::process(input)
+}
+
+#[proc_macro_attribute]
+pub fn downcast_enum(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    downcast::process(input)
 }

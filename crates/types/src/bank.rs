@@ -49,39 +49,10 @@ pub enum BankQuery {
 /// a _privileged contract_ that must be approved by governance.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[grug_macros::downcast_enum]
 pub enum BankQueryResponse {
     Balance(Coin),
     Balances(Coins),
     Supply(Coin),
     Supplies(Coins),
-}
-
-impl BankQueryResponse {
-    pub fn as_balance(self) -> Coin {
-        let BankQueryResponse::Balance(coin) = self else {
-            panic!("BankQueryResponse is not Balance");
-        };
-        coin
-    }
-
-    pub fn as_balances(self) -> Coins {
-        let BankQueryResponse::Balances(coins) = self else {
-            panic!("BankQueryResponse is not Balances");
-        };
-        coins
-    }
-
-    pub fn as_supply(self) -> Coin {
-        let BankQueryResponse::Supply(coin) = self else {
-            panic!("BankQueryResponse is not Supply");
-        };
-        coin
-    }
-
-    pub fn as_supplies(self) -> Coins {
-        let BankQueryResponse::Supplies(coins) = self else {
-            panic!("BankQueryResponse is not Supplies");
-        };
-        coins
-    }
 }

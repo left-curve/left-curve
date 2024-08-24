@@ -23,6 +23,7 @@ hex           = { workspace = true }
 hex-literal   = { workspace = true }
 dyn-clone     = { workspace = true }
 forward_ref   = { workspace = true }
+grug-macros   = { path = "../macros" }
 prost         = { workspace = true }
 ripemd        = { workspace = true }
 serde         = { workspace = true, features = ["derive"] }

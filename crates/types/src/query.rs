@@ -91,6 +91,7 @@ pub struct InfoResponse {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[grug_macros::downcast_enum]
 pub enum QueryResponse {
     Info(InfoResponse),
     AppConfig(Json),
@@ -106,105 +107,4 @@ pub enum QueryResponse {
     WasmRaw(Option<Binary>),
     WasmSmart(Json),
     Multi(Vec<QueryResponse>),
-}
-
-// TODO: can we use a macro to implement these?
-impl QueryResponse {
-    pub fn as_info(self) -> InfoResponse {
-        let Self::Info(resp) = self else {
-            panic!("QueryResponse is not Info");
-        };
-        resp
-    }
-
-    pub fn as_app_config(self) -> Json {
-        let Self::AppConfig(value) = self else {
-            panic!("QueryResponse is not AppCofnig");
-        };
-        value
-    }
-
-    pub fn as_app_configs(self) -> BTreeMap<String, Json> {
-        let Self::AppConfigs(map) = self else {
-            panic!("QueryResponse is not AppCofnigs");
-        };
-        map
-    }
-
-    pub fn as_balance(self) -> Coin {
-        let Self::Balance(coin) = self else {
-            panic!("BankQueryResponse is not Balance");
-        };
-        coin
-    }
-
-    pub fn as_balances(self) -> Coins {
-        let Self::Balances(coins) = self else {
-            panic!("BankQueryResponse is not Balances");
-        };
-        coins
-    }
-
-    pub fn as_supply(self) -> Coin {
-        let Self::Supply(coin) = self else {
-            panic!("BankQueryResponse is not Supply");
-        };
-        coin
-    }
-
-    pub fn as_supplies(self) -> Coins {
-        let Self::Supplies(coins) = self else {
-            panic!("BankQueryResponse is not Supplies");
-        };
-        coins
-    }
-
-    pub fn as_code(self) -> Binary {
-        let Self::Code(wasm_byte_code) = self else {
-            panic!("QueryResponse is not Code");
-        };
-        wasm_byte_code
-    }
-
-    pub fn as_codes(self) -> BTreeMap<Hash256, Binary> {
-        let Self::Codes(hashes) = self else {
-            panic!("QueryResponse is not Codes");
-        };
-        hashes
-    }
-
-    pub fn as_account(self) -> Account {
-        let Self::Account(resp) = self else {
-            panic!("QueryResponse is not Account");
-        };
-        resp
-    }
-
-    pub fn as_accounts(self) -> BTreeMap<Addr, Account> {
-        let Self::Accounts(resp) = self else {
-            panic!("QueryResponse is not Accounts");
-        };
-        resp
-    }
-
-    pub fn as_wasm_raw(self) -> Option<Binary> {
-        let Self::WasmRaw(resp) = self else {
-            panic!("QueryResponse is not WasmRaw");
-        };
-        resp
-    }
-
-    pub fn as_wasm_smart(self) -> Json {
-        let Self::WasmSmart(resp) = self else {
-            panic!("QueryResponse is not WasmSmart");
-        };
-        resp
-    }
-
-    pub fn as_multi(self) -> Vec<QueryResponse> {
-        let Self::Multi(resp) = self else {
-            panic!("QueryResponse is not Multi");
-        };
-        resp
-    }
 }
