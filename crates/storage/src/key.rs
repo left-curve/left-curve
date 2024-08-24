@@ -1,9 +1,9 @@
 use {
     grug_types::{
-        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, NumberConst, Sign, Signed,
-        StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+        nested_namespaces_with_key, Addr, Bytable, Duration, Hash, Number, NumberConst, Sign,
+        Signed, StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
     },
-    std::{borrow::Cow, mem, ops::Sub},
+    std::{borrow::Cow, mem, vec},
 };
 
 // ------------------------------------ key ------------------------------------
@@ -326,63 +326,45 @@ where
 
 impl<T> PrimaryKey for Signed<T>
 where
-    T: PrimaryKey<Output = T> + Sub<Output = T> + Copy,
-    T: NumberConst,
+    T: PrimaryKey<Output = T> + NumberConst + Number + Copy,
 {
     type Output = Self;
     type Prefix = ();
     type Suffix = ();
 
-    const KEY_ELEMS: u8 = 1;
+    const KEY_ELEMS: u8 = T::KEY_ELEMS + 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        let (mut keys, sign) = match self.is_negative() {
-            true => {
-                let dif = T::MAX - *self.inner();
-
-                let keys = dif
-                    .raw_keys()
-                    .into_iter()
-                    .map(|val| Cow::Owned(val.into_owned()))
-                    .collect();
-
-                (keys, 0)
-            },
-            false => (self.inner().raw_keys(), 1),
+        // We prepend a "sign byte" to indicate the number's sign:
+        // 0 for negative, 1 for positive.
+        //
+        // For negative numbers, we use an "offset" value, which the difference
+        // between the inner value and the inner type's minimum value.
+        //
+        // Both of these ensures keys are ordered by value ascendingly.
+        let (sign, offset) = if self.is_negative() {
+            (0_u8, T::MAX.checked_sub(*self.inner()).unwrap())
+        } else {
+            (1_u8, *self.inner())
         };
 
-        if let Some(first) = keys.first_mut() {
-            match first {
-                Cow::Borrowed(borrowed) => {
-                    let mut bytes = borrowed.to_vec();
-                    bytes.insert(0, sign);
-                    *first = Cow::Owned(bytes);
-                },
-                Cow::Owned(owned) => owned.insert(0, sign),
-            }
-        }
-
-        keys
+        // `offset` is a temporary value, so we must make the raw keys owned,
+        // which can exist even if `offset` goes out of scope.
+        (sign, offset)
+            .raw_keys()
+            .into_iter()
+            .map(|cow| Cow::Owned(cow.into_owned()))
+            .collect()
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let mut inner = T::from_slice(&bytes[1..])?;
+        let (sign, offset) = <(u8, T) as PrimaryKey>::from_slice(bytes)?;
 
-        let negative = match bytes.first() {
-            Some(0) => {
-                inner = T::MAX - inner;
-                true
-            },
-            Some(1) => false,
-            _ => {
-                return Err(StdError::deserialize::<Self::Output, _>(
-                    "key",
-                    "missing sign",
-                ))
-            },
-        };
-
-        Ok(Signed::new(inner, negative))
+        if sign == 0 {
+            Ok(Self::new_negative(T::MAX.checked_sub(offset)?))
+        } else {
+            Ok(Self::new_positive(offset))
+        }
     }
 }
 
@@ -502,7 +484,7 @@ macro_rules! impl_signed_integer_key {
             const KEY_ELEMS: u8 = 1;
 
             fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-                let bytes = (*self as $u ^ <$s>::MIN as $u).to_be_bytes().to_vec();
+                let bytes = ((*self as $u) ^ (<$s>::MIN as $u)).to_be_bytes().to_vec();
                 vec![Cow::Owned(bytes)]
             }
 
@@ -517,6 +499,7 @@ macro_rules! impl_signed_integer_key {
                         )
                     ));
                 };
+
                 Ok((Self::from_be_bytes(bytes) as $u ^ <$s>::MIN as $u) as _)
             }
         })*
@@ -616,8 +599,7 @@ where
 
 impl<T> Prefixer for Signed<T>
 where
-    T: PrimaryKey<Output = T> + Sub<Output = T> + Copy,
-    T: NumberConst,
+    T: PrimaryKey<Output = T> + NumberConst + Number + Copy,
 {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         self.raw_keys()
@@ -714,6 +696,7 @@ mod tests {
 
     /// `len(u32) = 4 | 10_u32.to_be_bytes() | 265_u32.to_be_bytes()`
     const DOUBLE_TUPLE_BYTES: &[u8] = &[0, 4, 0, 0, 0, 10, 0, 0, 1, 9];
+
     /// `len(b"Hello") = 5 | b"Hello" | len(u32) = 4 | 10_u32 | b"World"`
     const DOUBLE_TRIPLE_BYTES: &[u8] = &[
         0, 5, 72, 101, 108, 108, 111, 0, 4, 0, 0, 0, 10, 87, 111, 114, 108, 100,
@@ -722,8 +705,10 @@ mod tests {
     const DEC128_SHIFT: u128 = 10_u128.pow(18);
 
     fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
-        let mut bytes = vec![s];
-        bytes.extend_from_slice(&b);
+        let mut bytes = Vec::with_capacity(N + 3);
+        bytes.extend(1_u16.to_be_bytes()); // length prefix of `s`
+        bytes.push(s);
+        bytes.extend(b);
         bytes
     }
 
@@ -798,7 +783,7 @@ mod tests {
         &[129];
         "i8_1"
     )]
-    /// ---- Unisgned integers ----
+    /// ---- Unsigned integers ----
     #[test_case(
         Uint64::new(10),
         &10_u64.to_be_bytes();
@@ -819,7 +804,7 @@ mod tests {
         &Uint512::MAX.to_be_bytes();
         "uint256_MAX"
     )]
-    /// ---- Unisgned Decimals ----
+    /// ---- Unsigned Decimals ----
     #[test_case(
         Udec128::from_str("10").unwrap(),
         &(10 * DEC128_SHIFT).to_be_bytes();
@@ -851,11 +836,13 @@ mod tests {
         &with_sign(0, (u128::MAX - 10).to_be_bytes());
         "int128_neg_10"
     )]
-    #[test_case(Int256::MIN,
+    #[test_case(
+        Int256::MIN,
         &with_sign(0, Uint256::MIN.to_be_bytes());
         "int256_MIN"
     )]
-    #[test_case(Int256::MAX,
+    #[test_case(
+        Int256::MAX,
         &with_sign(1, Uint256::MAX.to_be_bytes());
         "int256_MAX"
     )]
