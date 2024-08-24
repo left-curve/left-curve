@@ -1,14 +1,12 @@
 use {
     crate::{Borsh, Codec, Path},
-    std::{marker::PhantomData, ops::Deref},
+    std::ops::Deref,
 };
 
 pub struct Item<'a, T, C = Borsh>
 where
     C: Codec<T>,
 {
-    data: PhantomData<T>,
-    codec: PhantomData<C>,
     path: Path<'a, T, C>,
 }
 
@@ -19,8 +17,6 @@ where
     pub const fn new(storage_key: &'a str) -> Self {
         Self {
             path: Path::from_raw(storage_key.as_bytes()),
-            data: PhantomData,
-            codec: PhantomData,
         }
     }
 }
