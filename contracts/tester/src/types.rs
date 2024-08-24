@@ -1,4 +1,4 @@
-use grug::Empty;
+use grug::{Binary, ByteArray, Empty, Hash256, Hash512};
 
 pub type InstantiateMsg = Empty;
 
@@ -37,4 +37,35 @@ pub enum QueryMsg {
     /// to test whether the VM can properly reject this behavior.
     #[returns(Empty)]
     ForceWrite { key: String, value: String },
+    #[returns(())]
+    VerifySecp256k1 {
+        pk: Binary,
+        sig: ByteArray<64>,
+        msg_hash: Hash256,
+    },
+    #[returns(())]
+    VerifySecp256r1 {
+        pk: Binary,
+        sig: ByteArray<64>,
+        msg_hash: Hash256,
+    },
+    #[returns(())]
+    VerifyEd25519 {
+        pk: ByteArray<32>,
+        sig: ByteArray<64>,
+        msg_hash: Hash512,
+    },
+    #[returns(Binary)]
+    RecoverSepc256k1 {
+        sig: ByteArray<64>,
+        msg_hash: Hash256,
+        recovery_id: u8,
+        compressed: bool,
+    },
+    #[returns(())]
+    Ed25519BatchVerify {
+        pks: Vec<ByteArray<32>>,
+        sigs: Vec<ByteArray<64>>,
+        prehash_msgs: Vec<Binary>,
+    },
 }
