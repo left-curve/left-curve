@@ -397,8 +397,7 @@ where
     const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        let key = self.numerator().raw_keys();
-        key
+        self.numerator().raw_keys()
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
