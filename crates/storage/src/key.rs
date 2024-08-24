@@ -343,7 +343,7 @@ where
                 let keys = dif
                     .raw_keys()
                     .into_iter()
-                    .map(|val: Cow<[u8]>| Cow::Owned(val.into_owned()))
+                    .map(|val| Cow::Owned(val.into_owned()))
                     .collect();
 
                 (keys, 0)
