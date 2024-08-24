@@ -462,9 +462,9 @@ pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
 macro_rules! impl_unsigned_integer_key {
     ($($t:ty),+) => {
         $(impl PrimaryKey for $t {
+            type Output = $t;
             type Prefix = ();
             type Suffix = ();
-            type Output = $t;
 
             const KEY_ELEMS: u8 = 1;
 
@@ -495,9 +495,10 @@ impl_unsigned_integer_key!(u8, u16, u32, u64, u128, Uint64, Uint128, Uint256, Ui
 macro_rules! impl_signed_integer_key {
     ($($s:ty => $u:ty),+ ) => {
         $(impl PrimaryKey for $s {
+            type Output = $s;
             type Prefix = ();
             type Suffix = ();
-            type Output = $s;
+
             const KEY_ELEMS: u8 = 1;
 
             fn raw_keys(&self) -> Vec<Cow<[u8]>> {
