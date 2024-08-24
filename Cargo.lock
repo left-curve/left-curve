@@ -1756,6 +1756,7 @@ dependencies = [
  "grug-types",
  "prost",
  "serde",
+ "test-case",
 ]
 
 [[package]]
