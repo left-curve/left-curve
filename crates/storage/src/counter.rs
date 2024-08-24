@@ -101,7 +101,6 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use {
         super::Counter,
         borsh::{BorshDeserialize, BorshSerialize},
