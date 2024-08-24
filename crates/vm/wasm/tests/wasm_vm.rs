@@ -1,7 +1,7 @@
 use {
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
     grug_tester::{
-        QueryEd25519BatchVerifyRequest, QueryRecoverSepc256k1Request, QueryVerifyEd25519Request,
+        QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
     grug_testing::TestBuilder,
@@ -229,7 +229,6 @@ fn immutable_state() -> anyhow::Result<()> {
 }
 
 const MSG: &[u8] = b"finger but hole";
-
 const WRONG_MSG: &[u8] = b"precious item ahead";
 
 fn secp256k1() -> (
@@ -242,6 +241,7 @@ fn secp256k1() -> (
     let vk = VerifyingKey::from(&sk);
     let msg_hash = Identity256::from(sha2_256(MSG));
     let sig: Signature = sk.sign_digest(msg_hash.clone());
+
     (
         QueryVerifySecp256k1Request {
             pk: vk.to_sec1_bytes().to_vec().into(),
@@ -305,13 +305,12 @@ fn ed25519() -> (
 #[test_case(ed25519; "wasm_ed25519")]
 fn export_crypto_verify<R>(clos: fn() -> (R, fn(&mut R, &[u8]))) -> anyhow::Result<()>
 where
-    R: Clone + QueryRequest,
+    R: QueryRequest + Clone,
     R::Message: Serialize,
     R::Response: DeserializeOwned + Debug,
 {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .add_account("owner", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
         .set_owner("owner")?
         .set_fee_rate(Udec128::from_str(FEE_RATE)?)
         .set_tracing_level(None)
@@ -319,7 +318,7 @@ where
 
     // Deploy the tester contract
     let (_, tester) = suite.upload_and_instantiate_with_gas(
-        &accounts["sender"],
+        &accounts["owner"],
         // Currently, deploying a contract consumes an exceedingly high amount
         // of gas because of the need to allocate hundreds ok kB of contract
         // bytecode into Wasm memory and have the contract deserialize it...
@@ -356,8 +355,7 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
     use k256::ecdsa::{SigningKey, VerifyingKey};
 
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .add_account("owner", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
         .set_owner("owner")?
         .set_fee_rate(Udec128::from_str(FEE_RATE)?)
         .set_tracing_level(None)
@@ -365,7 +363,7 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
 
     // Deploy the tester contract
     let (_, tester) = suite.upload_and_instantiate_with_gas(
-        &accounts["sender"],
+        &accounts["owner"],
         // Currently, deploying a contract consumes an exceedingly high amount
         // of gas because of the need to allocate hundreds ok kB of contract
         // bytecode into Wasm memory and have the contract deserialize it...
@@ -398,9 +396,10 @@ fn wasm_secp256k1_pubkey_recover() -> anyhow::Result<()> {
         assert_eq!(pk.to_vec(), vk.to_sec1_bytes().to_vec());
     }
 
-    // Different msg, succeed but pk is different
+    // Attempt to recover with a different msg. Should succeed but pk is different.
     {
         query_msg.msg_hash = sha2_256(WRONG_MSG).into();
+
         let pk = suite
             .query_wasm_smart(tester, query_msg.clone())
             .should_succeed();
@@ -428,7 +427,6 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
 
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
         .set_owner("owner")?
         .set_fee_rate(Udec128::from_str(FEE_RATE)?)
         .set_tracing_level(None)
@@ -436,7 +434,7 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
 
     // Deploy the tester contract
     let (_, tester) = suite.upload_and_instantiate_with_gas(
-        &accounts["sender"],
+        &accounts["owner"],
         // Currently, deploying a contract consumes an exceedingly high amount
         // of gas because of the need to allocate hundreds ok kB of contract
         // bytecode into Wasm memory and have the contract deserialize it...
@@ -451,7 +449,7 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
     let (prehash_msg2, sig2, vk2) = ed25519_sign("Larry");
     let (prehash_msg3, sig3, vk3) = ed25519_sign("Rhaki");
 
-    let mut query_msg = QueryEd25519BatchVerifyRequest {
+    let mut query_msg = QueryVerifyEd25519BatchRequest {
         prehash_msgs: vec![prehash_msg1, prehash_msg2, prehash_msg3],
         sigs: vec![sig1, sig2, sig3],
         pks: vec![vk1, vk2, vk3],
@@ -464,9 +462,10 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
             .should_succeed();
     }
 
-    // Revert sign
+    // Create an invalid batch simply by shuffling the order of signatures.
     {
         query_msg.sigs.reverse();
+
         suite
             .query_wasm_smart(tester, query_msg)
             .should_fail_with_error("signature is unauthentic");

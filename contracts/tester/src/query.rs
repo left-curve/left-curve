@@ -1,6 +1,6 @@
-use grug::{Binary, ByteArray, Empty, Hash256, Hash512, ImmutableCtx, Number, StdResult, Uint128};
+use grug::{Binary, ByteArray, Hash256, Hash512, ImmutableCtx, Number, StdResult, Uint128};
 
-pub fn query_loop(iterations: u64) -> StdResult<Empty> {
+pub fn query_loop(iterations: u64) -> StdResult<()> {
     // Keep the same operation per iteration for consistency
     for _ in 0..iterations {
         let number = Uint128::new(100);
@@ -11,10 +11,10 @@ pub fn query_loop(iterations: u64) -> StdResult<Empty> {
         number.checked_pow(2)?;
     }
 
-    Ok(Empty {})
+    Ok(())
 }
 
-pub fn query_force_write(_key: &str, _value: &str) -> Empty {
+pub fn query_force_write(_key: &str, _value: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         use grug::Region;
@@ -34,17 +34,6 @@ pub fn query_force_write(_key: &str, _value: &str) -> Empty {
             db_write(key_ptr as usize, value_ptr as usize);
         }
     }
-
-    Empty {}
-}
-
-pub fn query_verify_secp256k1(
-    ctx: ImmutableCtx,
-    pk: Binary,
-    sig: ByteArray<64>,
-    msg_hash: Hash256,
-) -> StdResult<()> {
-    ctx.api.secp256k1_verify(&msg_hash, &sig, &pk)
 }
 
 pub fn query_verify_secp256r1(
@@ -56,13 +45,13 @@ pub fn query_verify_secp256r1(
     ctx.api.secp256r1_verify(&msg_hash, &sig, &pk)
 }
 
-pub fn query_verify_ed25519(
+pub fn query_verify_secp256k1(
     ctx: ImmutableCtx,
-    pk: ByteArray<32>,
+    pk: Binary,
     sig: ByteArray<64>,
-    msg_hash: Hash512,
+    msg_hash: Hash256,
 ) -> StdResult<()> {
-    ctx.api.ed25519_verify(&msg_hash, &sig, &pk)
+    ctx.api.secp256k1_verify(&msg_hash, &sig, &pk)
 }
 
 pub fn query_recover_secp256k1(
@@ -77,14 +66,22 @@ pub fn query_recover_secp256k1(
         .map(Into::into)
 }
 
+pub fn query_verify_ed25519(
+    ctx: ImmutableCtx,
+    pk: ByteArray<32>,
+    sig: ByteArray<64>,
+    msg_hash: Hash512,
+) -> StdResult<()> {
+    ctx.api.ed25519_verify(&msg_hash, &sig, &pk)
+}
+
 macro_rules! slice_of_slices {
     ($vec:expr) => {{
-        let slice_of_slices: Vec<&[u8]> = $vec.iter().map(|v| &v[..]).collect();
-        slice_of_slices
+        $vec.iter().map(|v| &v[..]).collect::<Vec<_>>()
     }};
 }
 
-pub fn query_ed25519_batch_verify(
+pub fn query_verify_ed25519_batch(
     ctx: ImmutableCtx,
     pks: Vec<ByteArray<32>>,
     sigs: Vec<ByteArray<64>>,
