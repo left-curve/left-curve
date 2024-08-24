@@ -500,7 +500,6 @@ macro_rules! impl_signed_integer_key {
             type Output = $s;
             const KEY_ELEMS: u8 = 1;
 
-
             fn raw_keys(&self) -> Vec<Cow<[u8]>> {
                 let bytes = (*self as $u ^ <$s>::MIN as $u).to_be_bytes().to_vec();
                 vec![Cow::Owned(bytes)]
@@ -517,9 +516,7 @@ macro_rules! impl_signed_integer_key {
                         )
                     ));
                 };
-
                 Ok((Self::from_be_bytes(bytes) as $u ^ <$s>::MIN as $u) as _)
-
             }
         })*
     }
