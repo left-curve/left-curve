@@ -907,7 +907,7 @@ mod tests {
         [
             Udec128::ZERO,
             Udec128::checked_from_ratio(1_u128, 2_u128).unwrap(),
-            Udec128::ONE,
+            Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),
             Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap(),
             Udec128::MAX,
         ];
@@ -917,11 +917,11 @@ mod tests {
         [
             Dec128::new_negative(Udec128::MAX),
             Dec128::new_negative(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
-            Dec128::new_negative(Udec128::ONE),
+            Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
             Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
             Dec128::new_positive(Udec128::ZERO),
             Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
-            Dec128::new_positive(Udec128::ONE),
+            Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
             Dec128::new_positive(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
             Dec128::new_positive(Udec128::MAX),
         ];
