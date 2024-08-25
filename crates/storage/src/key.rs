@@ -626,7 +626,8 @@ impl_integer_prefixer!(
 mod tests {
     use {
         super::*,
-        grug_types::{Dec128, Dec256, Int128, Int256, Int64, Udec128, Udec256},
+        crate::Set,
+        grug_types::{Dec128, Dec256, Int128, Int256, Int64, MockStorage, Order, Udec128, Udec256},
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
     };
@@ -877,5 +878,54 @@ mod tests {
 
         let ser = compare.joined_key();
         assert_eq!(bytes, ser);
+    }
+
+    /// Ensure that when serialized to raw keys, signed integers retain their
+    /// order by value.
+    #[test]
+    fn signed_integer_key_ordering() {
+        const INTEGERS: Set<Int128> = Set::new("integers");
+
+        let mut storage = MockStorage::new();
+
+        // An array of signed integers, ordered by value ascendingly.
+        let integers = [
+            Int128::new(Uint128::MAX, true),
+            Int128::new(Uint128::new(69420), true),
+            Int128::new(Uint128::new(12345), true),
+            Int128::new(Uint128::ZERO, false),
+            Int128::new(Uint128::new(12345), false),
+            Int128::new(Uint128::new(69420), false),
+            Int128::new(Uint128::MAX, false),
+        ];
+
+        // Now save these keys in the KV store.
+        for integer in integers {
+            INTEGERS.insert(&mut storage, integer).unwrap();
+        }
+
+        // Fetch the integers in ascending order. Should match the original
+        // array.
+        {
+            let recovered = INTEGERS
+                .range(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(integers, recovered.as_slice());
+        }
+
+        // Fetch the integers in descending order. Should be the original array
+        // in reverse.
+        {
+            let mut recovered = INTEGERS
+                .range(&storage, None, None, Order::Descending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            recovered.reverse();
+
+            assert_eq!(integers, recovered.as_slice());
+        }
     }
 }
