@@ -871,7 +871,7 @@ mod tests {
     fn key<T>(compare: T, bytes: &[u8])
     where
         T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug,
-        <T as PrimaryKey>::Output: PartialEq<T> + Debug,
+        <T as PrimaryKey>::Output: Debug,
     {
         let des = T::from_slice(bytes).unwrap();
         assert_eq!(compare, des);
@@ -880,52 +880,89 @@ mod tests {
         assert_eq!(bytes, ser);
     }
 
-    /// Ensure that when serialized to raw keys, signed integers retain their
-    /// order by value.
-    #[test]
-    fn signed_integer_key_ordering() {
-        const INTEGERS: Set<Int128> = Set::new("integers");
+    /// Ensure that when serialized to raw keys, signed integers and decimals
+    /// retain their order by value.
+    #[test_case(
+        [
+            Uint128::ZERO,
+            Uint128::new(12345),
+            Uint128::new(69420),
+            Uint128::MAX,
+        ];
+        "uint128"
+    )]
+    #[test_case(
+        [
+            Int128::new_negative(Uint128::MAX),
+            Int128::new_negative(Uint128::new(69420)),
+            Int128::new_negative(Uint128::new(12345)),
+            Int128::new_positive(Uint128::ZERO),
+            Int128::new_positive(Uint128::new(12345)),
+            Int128::new_positive(Uint128::new(69420)),
+            Int128::new_positive(Uint128::MAX),
+        ];
+        "int128"
+    )]
+    #[test_case(
+        [
+            Udec128::ZERO,
+            Udec128::checked_from_ratio(1_u128, 2_u128).unwrap(),
+            Udec128::ONE,
+            Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap(),
+            Udec128::MAX,
+        ];
+        "udec128"
+    )]
+    #[test_case(
+        [
+            Dec128::new_negative(Udec128::MAX),
+            Dec128::new_negative(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
+            Dec128::new_negative(Udec128::ONE),
+            Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
+            Dec128::new_positive(Udec128::ZERO),
+            Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
+            Dec128::new_positive(Udec128::ONE),
+            Dec128::new_positive(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
+            Dec128::new_positive(Udec128::MAX),
+        ];
+        "dec128"
+    )]
+    fn number_key_ordering<T, const N: usize>(numbers: [T; N])
+    where
+        T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug + Copy,
+        <T as PrimaryKey>::Output: Debug,
+    {
+        let set = Set::<T>::new("numbers");
 
         let mut storage = MockStorage::new();
 
-        // An array of signed integers, ordered by value ascendingly.
-        let integers = [
-            Int128::new(Uint128::MAX, true),
-            Int128::new(Uint128::new(69420), true),
-            Int128::new(Uint128::new(12345), true),
-            Int128::new(Uint128::ZERO, false),
-            Int128::new(Uint128::new(12345), false),
-            Int128::new(Uint128::new(69420), false),
-            Int128::new(Uint128::MAX, false),
-        ];
-
         // Now save these keys in the KV store.
-        for integer in integers {
-            INTEGERS.insert(&mut storage, integer).unwrap();
+        for number in numbers {
+            set.insert(&mut storage, number).unwrap();
         }
 
-        // Fetch the integers in ascending order. Should match the original
+        // Fetch the numbers in ascending order. Should match the original
         // array.
         {
-            let recovered = INTEGERS
+            let recovered = set
                 .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(integers, recovered.as_slice());
+            assert_eq!(numbers, recovered.as_slice());
         }
 
-        // Fetch the integers in descending order. Should be the original array
+        // Fetch the numbers in descending order. Should be the original array
         // in reverse.
         {
-            let mut recovered = INTEGERS
+            let mut recovered = set
                 .range(&storage, None, None, Order::Descending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
             recovered.reverse();
 
-            assert_eq!(integers, recovered.as_slice());
+            assert_eq!(numbers, recovered.as_slice());
         }
     }
 }
