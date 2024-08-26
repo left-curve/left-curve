@@ -138,7 +138,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
-    response_depth: usize,
+    message_depth: usize,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
@@ -161,15 +161,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        response_depth,
-        name,
-        ctx,
-        response,
-    )
+    handle_response(vm, storage, gas_tracker, message_depth, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -179,7 +171,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
-    response_depth: usize,
+    message_depth: usize,
 
     name: &'static str,
     code_hash: Hash256,
@@ -206,15 +198,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        response_depth,
-        name,
-        ctx,
-        response,
-    )
+    handle_response(vm, storage, gas_tracker, message_depth, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -224,7 +208,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
-    response_depth: usize,
+    message_depth: usize,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
@@ -253,15 +237,7 @@ where
     )?
     .into_std_result()?;
 
-    handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        response_depth,
-        name,
-        ctx,
-        response,
-    )
+    handle_response(vm, storage, gas_tracker, message_depth, name, ctx, response)
 }
 
 fn create_vm_instance<VM>(
@@ -300,7 +276,7 @@ pub(crate) fn handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
-    response_depth: usize,
+    message_depth: usize,
     name: &'static str,
     ctx: &Context,
     response: Response,
@@ -321,7 +297,7 @@ where
         storage,
         ctx.block,
         gas_tracker,
-        response_depth,
+        message_depth,
         ctx.contract,
         response.submsgs,
     )?);

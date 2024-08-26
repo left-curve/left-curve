@@ -4,7 +4,7 @@ use {
 };
 
 /// TODO: add explanation on what this is
-const MAX_RESPONSE_DEPTH: usize = 30;
+const MAX_MESSAGE_DEPTH: usize = 30;
 
 /// Recursively execute submessages emitted in a contract response using a
 /// depth-first approach.
@@ -39,7 +39,7 @@ pub fn handle_submessages<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: GasTracker,
-    mut response_depth: usize,
+    message_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
@@ -49,11 +49,9 @@ where
 {
     let mut events = vec![];
 
-    if response_depth > MAX_RESPONSE_DEPTH {
-        return Err(AppError::ExceedMaxHandleResponseDepth);
+    if message_depth > MAX_MESSAGE_DEPTH {
+        return Err(AppError::ExceedMaxMessageDepth);
     }
-
-    response_depth += 1;
 
     for submsg in submsgs {
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
@@ -61,7 +59,7 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            response_depth,
+            message_depth + 1,
             block,
             sender,
             submsg.msg,
@@ -77,7 +75,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    response_depth,
+                    message_depth,
                     block,
                     sender,
                     &payload,
@@ -91,7 +89,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    response_depth,
+                    message_depth,
                     block,
                     sender,
                     &payload,

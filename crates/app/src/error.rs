@@ -41,8 +41,8 @@ pub enum AppError {
     #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
 
-    #[error("max handle_response depth exceeded")]
-    ExceedMaxHandleResponseDepth,
+    #[error("max message depth exceeded")]
+    ExceedMaxMessageDepth,
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

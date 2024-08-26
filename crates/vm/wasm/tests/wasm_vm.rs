@@ -290,7 +290,7 @@ fn execute_stack_overflow() -> anyhow::Result<()> {
             )?,
         )?
         .result
-        .should_fail_with_error(AppError::ExceedMaxHandleResponseDepth);
+        .should_fail_with_error(AppError::ExceedMaxMessageDepth);
 
     Ok(())
 }
