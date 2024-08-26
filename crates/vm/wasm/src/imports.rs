@@ -232,7 +232,7 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
-    let res = env.querier.do_query_chain(req, env.query_depth + 1);
+    let res = env.querier.do_query_chain(req, env.query_depth + 1); // important: increase query depth
     let res_bytes = res.to_json_vec()?;
 
     write_to_memory(env, &mut store, &res_bytes)
