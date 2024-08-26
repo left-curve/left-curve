@@ -41,9 +41,6 @@ pub enum AppError {
     #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
 
-    #[error("code hash is not allowed as IBC client: `{code_hash}`")]
-    NotAllowedClient { code_hash: Hash256 },
-
     #[error("max handle_response depth exceeded")]
     ExceedMaxHandleResponseDepth,
 }
