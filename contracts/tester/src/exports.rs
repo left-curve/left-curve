@@ -24,6 +24,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Loop { iterations } => query_loop(iterations)?.to_json_value(),
         QueryMsg::ForceWrite { key, value } => query_force_write(&key, &value).to_json_value(),
-        QueryMsg::StackOverlow {} => query_stack_overflow(ctx)?.to_json_value(),
+        QueryMsg::StackOverflow {} => query_stack_overflow(ctx)?.to_json_value(),
     }
 }

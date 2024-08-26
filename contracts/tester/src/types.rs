@@ -40,5 +40,5 @@ pub enum QueryMsg {
     /// The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
     /// rasing `stack overflow` error before gas consumption.
     #[returns(Empty)]
-    StackOverlow {},
+    StackOverflow {},
 }

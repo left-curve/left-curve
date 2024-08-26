@@ -245,7 +245,7 @@ fn stack_overflow() -> anyhow::Result<()> {
     // The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
     // rasing `stack overflow` error before gas consumption.
     suite
-        .query_wasm_smart(tester, grug_tester::QueryStackOverlowRequest {})
+        .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
         .should_fail_with_error("out of gas!");
 
     Ok(())
