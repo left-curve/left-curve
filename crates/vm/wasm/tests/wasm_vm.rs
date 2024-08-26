@@ -219,3 +219,34 @@ fn immutable_state() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn stack_overflow() -> anyhow::Result<()> {
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .set_owner("owner")?
+        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+        .build()?;
+
+    // Deploy the tester contract
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
+        &accounts["sender"],
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        320_000_000,
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
+        Coins::new(),
+    )?;
+
+    // The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
+    // rasing `stack overflow` error before gas consumption.
+    suite
+        .query_wasm_smart(tester, grug_tester::QueryStackOverlowRequest {})
+        .should_fail_with_error("out of gas!");
+
+    Ok(())
+}

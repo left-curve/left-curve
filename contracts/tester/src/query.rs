@@ -1,4 +1,6 @@
-use grug::{Empty, Number, StdResult, Uint128};
+use grug::{Empty, ImmutableCtx, Number, StdResult, Uint128};
+
+use crate::QueryStackOverlowRequest;
 
 pub fn query_loop(iterations: u64) -> StdResult<Empty> {
     // Keep the same operation per iteration for consistency
@@ -36,4 +38,11 @@ pub fn query_force_write(_key: &str, _value: &str) -> Empty {
     }
 
     Empty {}
+}
+
+pub fn query_stack_overflow(ctx: ImmutableCtx) -> StdResult<Empty> {
+    ctx.querier
+        .query_wasm_smart(ctx.contract, QueryStackOverlowRequest {})?;
+
+    Ok(Empty {})
 }

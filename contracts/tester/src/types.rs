@@ -37,4 +37,8 @@ pub enum QueryMsg {
     /// to test whether the VM can properly reject this behavior.
     #[returns(Empty)]
     ForceWrite { key: String, value: String },
+    /// The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
+    /// rasing `stack overflow` error before gas consumption.
+    #[returns(Empty)]
+    StackOverlow {},
 }
