@@ -12,11 +12,14 @@ pub enum ExecuteMsg {
     /// This tests that the VM can not only reject a forced write when calling
     /// the `query` export, but also when handling the `query_chain` import call
     /// within an `execute` call.
-    ForceWriteOnQuery {
-        key: String,
-        value: String,
-    },
-
+    ForceWriteOnQuery { key: String, value: String },
+    /// The contract attempts to execute itself in a loop.
+    ///
+    /// Without proper check, this will cause a stack overflow panic, which
+    /// halts the chain.
+    ///
+    /// This is one of two ways a malicious contract can force a stack overflow;
+    /// the other is via a query message, also implemented in this contract.
     StackOverflow {},
 }
 
@@ -42,8 +45,13 @@ pub enum QueryMsg {
     /// to test whether the VM can properly reject this behavior.
     #[returns(Empty)]
     ForceWrite { key: String, value: String },
-    /// The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
-    /// rasing `stack overflow` error before gas consumption.
+    /// The contract attempts to make queries in a loop.
+    ///
+    /// Without proper check, this will cause a stack overflow panic, which
+    /// halts the chain.
+    ///
+    /// This is one of two ways a malicious contract can force a stack overflow;
+    /// the other is via an execute message, also implemented in this contract.
     #[returns(Empty)]
     StackOverflow {},
 }

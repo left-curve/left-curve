@@ -13,12 +13,15 @@ use {
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
 
-/// Gas cost per operation
-///
-/// TODO: Mocked to 1 now, need to be discussed
+/// Gas cost per Wasmer operation.
 const GAS_PER_OPERATION: u64 = 1;
 
-/// TODO: add explanation on what this is
+/// Maximum number of chained queries.
+///
+/// E.g. contract A queries contract B; when handling this query, contract B
+/// calls contract C; so on.
+///
+/// Without a limit, this can leads to stack overflow which halts the chain.
 const MAX_QUERY_DEPTH: usize = 3;
 
 // ------------------------------------ vm -------------------------------------

@@ -3,7 +3,12 @@ use {
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
-/// TODO: add explanation on what this is
+/// Maximum number of chained submessages.
+///
+/// E.g. contract A emits a message to execute contract B, which emits a message
+/// to execute C, which emits a message to execute D... so on.
+///
+/// Without a limit, this can leads to stack overflow which halts the chain.
 const MAX_MESSAGE_DEPTH: usize = 30;
 
 /// Recursively execute submessages emitted in a contract response using a
