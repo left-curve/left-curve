@@ -64,7 +64,7 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            msg_depth + 1,
+            msg_depth + 1, // important: increase message depth
             block,
             sender,
             submsg.msg,
@@ -80,7 +80,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    msg_depth,
+                    msg_depth + 1, // important: increase message depth
                     block,
                     sender,
                     &payload,
@@ -94,7 +94,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    msg_depth,
+                    msg_depth + 1, // important: increase message depth
                     block,
                     sender,
                     &payload,

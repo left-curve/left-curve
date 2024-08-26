@@ -49,7 +49,7 @@ impl Vm for WasmVm {
         code: &[u8],
         code_hash: Hash256,
         storage: StorageProvider,
-        storage_readonly: bool,
+        state_mutable: bool,
         querier: QuerierProvider<Self>,
         query_depth: usize,
         gas_tracker: GasTracker,
@@ -110,7 +110,7 @@ impl Vm for WasmVm {
             &mut store,
             Environment::new(
                 storage,
-                storage_readonly,
+                state_mutable,
                 querier,
                 query_depth,
                 gas_tracker.clone(),

@@ -123,7 +123,7 @@ pub trait Vm: Sized {
         code: &[u8],
         code_hash: Hash256,
         storage: StorageProvider,
-        storage_readonly: bool,
+        state_mutable: bool,
         querier: QuerierProvider<Self>,
         query_depth: usize,
         gas_tracker: GasTracker,
