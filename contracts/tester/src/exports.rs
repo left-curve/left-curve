@@ -1,7 +1,6 @@
 use {
     crate::{
-        force_write_on_query, infinite_loop, query_force_write, query_loop, query_stack_overflow,
-        ExecuteMsg, InstantiateMsg, QueryMsg,
+        exeucte_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop, query_stack_overflow, ExecuteMsg, InstantiateMsg, QueryMsg
     },
     grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
@@ -16,6 +15,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::InfiniteLoop {} => infinite_loop(),
         ExecuteMsg::ForceWriteOnQuery { key, value } => force_write_on_query(ctx, key, value),
+        ExecuteMsg::StackOverflow {} => exeucte_stack_overflow(ctx),
     }
 }
 

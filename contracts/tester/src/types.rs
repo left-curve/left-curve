@@ -13,6 +13,8 @@ pub enum ExecuteMsg {
     /// the `query` export, but also when handling the `query_chain` import call
     /// within an `execute` call.
     ForceWriteOnQuery { key: String, value: String },
+
+    StackOverflow {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
