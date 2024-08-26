@@ -43,6 +43,9 @@ pub enum AppError {
 
     #[error("code hash is not allowed as IBC client: `{code_hash}`")]
     NotAllowedClient { code_hash: Hash256 },
+
+    #[error("max handle_response depth exceeded")]
+    ExceedMaxHandleResponseDepth,
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

@@ -1,4 +1,5 @@
 use {
+    grug_app::AppError,
     grug_testing::TestBuilder,
     grug_types::{
         Binary, Coins, JsonSerExt, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
@@ -277,15 +278,19 @@ fn execute_stack_overflow() -> anyhow::Result<()> {
     // Theorically this shouldn't be a problem because the VM istance should be consumed after the execution
     // and the stack should be deallocated.
     // But this seems not happening and the stack overflow error is raised.
-    assert!(suite
-        .execute_with_gas(
+    // The proposed solution is to limit the depth of the response handling.
+    suite
+        .send_message_with_gas(
             &accounts["sender"],
             10_000_000,
-            tester,
-            &grug_tester::ExecuteMsg::StackOverflow {},
-            Coins::default(),
-        )
-        .is_err());
+            Message::execute(
+                tester,
+                &grug_tester::ExecuteMsg::StackOverflow {},
+                Coins::default(),
+            )?,
+        )?
+        .result
+        .should_fail_with_error(AppError::ExceedMaxHandleResponseDepth);
 
     Ok(())
 }
