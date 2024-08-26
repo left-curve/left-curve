@@ -47,6 +47,8 @@ impl Vm for RustVm {
         // (unlike Wasm VM where an FFI is involved).
         _storage_readonly: bool,
         querier: QuerierProvider<Self>,
+        // In Rust VM, we don't check for max query depth.
+        _query_depth: usize,
         // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
@@ -341,6 +343,7 @@ mod tests {
             storage_provider,
             false,
             querier_provider,
+            0,
             gas_tracker,
         )?;
 

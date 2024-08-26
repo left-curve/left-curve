@@ -125,6 +125,7 @@ pub trait Vm: Sized {
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<Self>,
+        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error>;
 }

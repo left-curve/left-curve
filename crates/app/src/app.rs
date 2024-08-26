@@ -351,7 +351,14 @@ where
         // This is set as an off-chain, per-node parameter.
         let gas_tracker = GasTracker::new_limited(self.query_gas_limit);
 
-        process_query(self.vm.clone(), Box::new(storage), gas_tracker, block, req)
+        process_query(
+            self.vm.clone(),
+            Box::new(storage),
+            gas_tracker,
+            block,
+            0,
+            req,
+        )
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -781,6 +788,7 @@ pub fn process_query<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    query_depth: usize,
     req: Query,
 ) -> AppResult<QueryResponse>
 where
@@ -801,7 +809,7 @@ where
             Ok(QueryResponse::AppConfigs(res))
         },
         Query::Balance { address, denom } => {
-            let res = query_balance(vm, storage, block, gas_tracker, address, denom)?;
+            let res = query_balance(vm, storage, block, gas_tracker, query_depth, address, denom)?;
             Ok(QueryResponse::Balance(res))
         },
         Query::Balances {
@@ -809,15 +817,32 @@ where
             start_after,
             limit,
         } => {
-            let res = query_balances(vm, storage, block, gas_tracker, address, start_after, limit)?;
+            let res = query_balances(
+                vm,
+                storage,
+                block,
+                gas_tracker,
+                query_depth,
+                address,
+                start_after,
+                limit,
+            )?;
             Ok(QueryResponse::Balances(res))
         },
         Query::Supply { denom } => {
-            let res = query_supply(vm, storage, block, gas_tracker, denom)?;
+            let res = query_supply(vm, storage, block, gas_tracker, query_depth, denom)?;
             Ok(QueryResponse::Supply(res))
         },
         Query::Supplies { start_after, limit } => {
-            let res = query_supplies(vm, storage, block, gas_tracker, start_after, limit)?;
+            let res = query_supplies(
+                vm,
+                storage,
+                block,
+                gas_tracker,
+                query_depth,
+                start_after,
+                limit,
+            )?;
             Ok(QueryResponse::Supplies(res))
         },
         Query::Code { hash } => {
@@ -841,14 +866,22 @@ where
             Ok(QueryResponse::WasmRaw(res))
         },
         Query::WasmSmart { contract, msg } => {
-            let res = query_wasm_smart(vm, storage, block, gas_tracker, contract, msg)?;
+            let res =
+                query_wasm_smart(vm, storage, block, gas_tracker, query_depth, contract, msg)?;
             Ok(QueryResponse::WasmSmart(res))
         },
         Query::Multi(reqs) => {
             let res = reqs
                 .into_iter()
                 .map(|req| {
-                    process_query(vm.clone(), storage.clone(), gas_tracker.clone(), block, req)
+                    process_query(
+                        vm.clone(),
+                        storage.clone(),
+                        gas_tracker.clone(),
+                        block,
+                        query_depth,
+                        req,
+                    )
                 })
                 .collect::<AppResult<Vec<_>>>()?;
             Ok(QueryResponse::Multi(res))

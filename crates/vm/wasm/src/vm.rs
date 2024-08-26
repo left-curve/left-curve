@@ -18,6 +18,9 @@ use {
 /// TODO: Mocked to 1 now, need to be discussed
 const GAS_PER_OPERATION: u64 = 1;
 
+/// TODO: add explanation on what this is
+const MAX_QUERY_DEPTH: usize = 3;
+
 // ------------------------------------ vm -------------------------------------
 
 #[derive(Clone)]
@@ -45,8 +48,13 @@ impl Vm for WasmVm {
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<Self>,
+        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
+        if query_depth > MAX_QUERY_DEPTH {
+            return Err(VmError::ExceedMaxQueryDepth);
+        }
+
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
@@ -101,6 +109,7 @@ impl Vm for WasmVm {
                 storage,
                 storage_readonly,
                 querier,
+                query_depth,
                 gas_tracker.clone(),
                 gas_remaining,
             ),

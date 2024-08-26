@@ -246,7 +246,7 @@ fn stack_overflow() -> anyhow::Result<()> {
     // rasing `stack overflow` error before gas consumption.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
-        .should_fail_with_error("out of gas!");
+        .should_fail_with_error(VmError::ExceedMaxQueryDepth);
 
     Ok(())
 }
