@@ -67,7 +67,7 @@ fn immutable_state() -> anyhow::Result<()> {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })
-        .should_fail_with_error(VmError::ReadOnly);
+        .should_fail_with_error(VmError::ImmutableState);
 
     // Execute the tester contract.
     //
@@ -87,7 +87,7 @@ fn immutable_state() -> anyhow::Result<()> {
             funds: Coins::new(),
         })?
         .result
-        .should_fail_with_error(VmError::ReadOnly);
+        .should_fail_with_error(VmError::ImmutableState);
 
     Ok(())
 }

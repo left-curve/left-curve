@@ -126,8 +126,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // This is the case for the `query`, `bank_query`, and `ibc_client_query`
     // calls. During these calls, the contract isn't allowed to call the imports
     // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -169,8 +169,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -187,8 +187,8 @@ pub fn db_remove_range(
 ) -> VmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let min = if min_ptr != 0 {
