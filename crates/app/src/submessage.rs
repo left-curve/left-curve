@@ -44,7 +44,7 @@ pub fn handle_submessages<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: GasTracker,
-    message_depth: usize,
+    msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
@@ -54,7 +54,7 @@ where
 {
     let mut events = vec![];
 
-    if message_depth > MAX_MESSAGE_DEPTH {
+    if msg_depth > MAX_MESSAGE_DEPTH {
         return Err(AppError::ExceedMaxMessageDepth);
     }
 
@@ -64,7 +64,7 @@ where
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
-            message_depth + 1,
+            msg_depth + 1,
             block,
             sender,
             submsg.msg,
@@ -80,7 +80,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    message_depth,
+                    msg_depth,
                     block,
                     sender,
                     &payload,
@@ -94,7 +94,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
-                    message_depth,
+                    msg_depth,
                     block,
                     sender,
                     &payload,
