@@ -63,6 +63,9 @@ pub enum VmError {
 
     #[error("db state changed detected on readonly instance")]
     ReadOnly,
+
+    #[error("max query depth exceeded")]
+    ExceedMaxQueryDepth,
 }
 
 impl From<CompileError> for VmError {

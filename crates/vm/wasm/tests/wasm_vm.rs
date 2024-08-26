@@ -1,4 +1,5 @@
 use {
+    grug_app::AppError,
     grug_testing::TestBuilder,
     grug_types::{
         Binary, Coins, JsonSerExt, Message, MultiplyFraction, NonZero, NumberConst, Udec128,
@@ -216,6 +217,80 @@ fn immutable_state() -> anyhow::Result<()> {
         })?
         .result
         .should_fail_with_error(VmError::ReadOnly);
+
+    Ok(())
+}
+
+#[test]
+fn stack_overflow() -> anyhow::Result<()> {
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .set_owner("owner")?
+        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+        .build()?;
+
+    // Deploy the tester contract
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
+        &accounts["sender"],
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        320_000_000,
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
+        Coins::new(),
+    )?;
+
+    // The contract attempts to call with `QueryMsg::StackOverflow` to itself in a loop
+    // rasing `stack overflow` error before gas consumption.
+    suite
+        .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
+        .should_fail_with_error(VmError::ExceedMaxQueryDepth);
+
+    Ok(())
+}
+
+#[test]
+fn execute_stack_overflow() -> anyhow::Result<()> {
+    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)))?
+        .set_owner("owner")?
+        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+        .build()?;
+
+    // Deploy the tester contract
+    let (_, tester) = suite.upload_and_instantiate_with_gas(
+        &accounts["sender"],
+        // Currently, deploying a contract consumes an exceedingly high amount
+        // of gas because of the need to allocate hundreds ok kB of contract
+        // bytecode into Wasm memory and have the contract deserialize it...
+        320_000_000,
+        read_wasm_file("grug_tester.wasm")?,
+        "tester",
+        &grug_tester::InstantiateMsg {},
+        Coins::new(),
+    )?;
+
+    // The contract attempts to return a Response with `Execute::StackOverflow` to itself in a loop.
+    // Theorically this shouldn't be a problem because the VM istance should be consumed after the execution
+    // and the stack should be deallocated.
+    // But this seems not happening and the stack overflow error is raised.
+    // The proposed solution is to limit the depth of the response handling.
+    suite
+        .send_message_with_gas(
+            &accounts["sender"],
+            10_000_000,
+            Message::execute(
+                tester,
+                &grug_tester::ExecuteMsg::StackOverflow {},
+                Coins::default(),
+            )?,
+        )?
+        .result
+        .should_fail_with_error(AppError::ExceedMaxMessageDepth);
 
     Ok(())
 }

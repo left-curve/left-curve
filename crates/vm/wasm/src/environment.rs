@@ -12,6 +12,7 @@ pub struct Environment {
     pub storage: StorageProvider,
     pub storage_readonly: bool,
     pub querier: QuerierProvider<WasmVm>,
+    pub query_depth: usize,
     pub gas_tracker: GasTracker,
     /// The amount of gas points remaining in the `Metering` middleware the last
     /// time we updated the `gas_tracker`.
@@ -52,6 +53,7 @@ impl Environment {
         storage: StorageProvider,
         storage_readonly: bool,
         querier: QuerierProvider<WasmVm>,
+        query_depth: usize,
         gas_tracker: GasTracker,
         gas_checkpoint: u64,
     ) -> Self {
@@ -59,6 +61,7 @@ impl Environment {
             storage,
             storage_readonly,
             querier,
+            query_depth,
             gas_tracker,
             gas_checkpoint,
             iterators: HashMap::new(),

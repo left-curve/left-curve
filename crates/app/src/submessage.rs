@@ -3,6 +3,14 @@ use {
     grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
+/// Maximum number of chained submessages.
+///
+/// E.g. contract A emits a message to execute contract B, which emits a message
+/// to execute C, which emits a message to execute D... so on.
+///
+/// Without a limit, this can leads to stack overflow which halts the chain.
+const MAX_MESSAGE_DEPTH: usize = 30;
+
 /// Recursively execute submessages emitted in a contract response using a
 /// depth-first approach.
 ///
@@ -36,6 +44,7 @@ pub fn handle_submessages<VM>(
     storage: Box<dyn Storage>,
     block: BlockInfo,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
 ) -> AppResult<Vec<Event>>
@@ -45,12 +54,17 @@ where
 {
     let mut events = vec![];
 
+    if msg_depth > MAX_MESSAGE_DEPTH {
+        return Err(AppError::ExceedMaxMessageDepth);
+    }
+
     for submsg in submsgs {
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg(
             vm.clone(),
             Box::new(buffer.clone()),
             gas_tracker.clone(),
+            msg_depth + 1,
             block,
             sender,
             submsg.msg,
@@ -66,6 +80,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
+                    msg_depth,
                     block,
                     sender,
                     &payload,
@@ -79,6 +94,7 @@ where
                     vm.clone(),
                     storage.clone(),
                     gas_tracker.clone(),
+                    msg_depth,
                     block,
                     sender,
                     &payload,

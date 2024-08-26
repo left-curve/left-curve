@@ -61,6 +61,7 @@ fn looping(c: &mut Criterion) {
                             storage,
                             true,
                             querier,
+                            0,
                             gas_tracker.clone(),
                         )?;
 
