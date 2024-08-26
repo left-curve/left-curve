@@ -12,7 +12,10 @@ pub enum ExecuteMsg {
     /// This tests that the VM can not only reject a forced write when calling
     /// the `query` export, but also when handling the `query_chain` import call
     /// within an `execute` call.
-    ForceWriteOnQuery { key: String, value: String },
+    ForceWriteOnQuery {
+        key: String,
+        value: String,
+    },
 
     StackOverflow {},
 }

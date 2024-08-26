@@ -1,6 +1,7 @@
 use {
     crate::{
-        exeucte_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop, query_stack_overflow, ExecuteMsg, InstantiateMsg, QueryMsg
+        exeucte_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop,
+        query_stack_overflow, ExecuteMsg, InstantiateMsg, QueryMsg,
     },
     grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
