@@ -96,3 +96,60 @@ where
         Ok((old_value, new_value))
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::Counter,
+        borsh::{BorshDeserialize, BorshSerialize},
+        grug_types::{Dec128, Int128, MockStorage, Number, NumberConst, Uint128, Uint512},
+        std::{fmt::Debug, str::FromStr},
+        test_case::test_case,
+    };
+
+    #[test_case(
+        0_u8,
+        1_u8;
+        "u8"
+    )]
+    #[test_case(
+        Uint128::ZERO,
+        Uint128::TEN;
+        "uint128"
+    )]
+    #[test_case(
+        Uint512::ONE,
+        Uint512::ONE;
+        "uint512"
+    )]
+    #[test_case(
+        Int128::new_negative(Uint128::ONE),
+        Int128::new_negative(Uint128::ONE);
+        "int128"
+    )]
+    #[test_case(
+        Dec128::from_str("0.5").unwrap(),
+        Dec128::from_str("1.5").unwrap();
+        "dec128"
+    )]
+    fn counter_works<T>(base: T, increment: T)
+    where
+        T: BorshSerialize + BorshDeserialize + NumberConst + Number + PartialEq + Debug + Copy,
+    {
+        let counter = Counter::<T>::new("counter", base, increment);
+
+        let mut storage = MockStorage::new();
+        let mut current = base;
+        let mut next = current.checked_add(increment).unwrap();
+
+        for _ in 0..10 {
+            assert_eq!(counter.current(&storage).unwrap(), current);
+            assert_eq!(counter.increment(&mut storage).unwrap(), (current, next));
+
+            current = next;
+            next = next.checked_add(increment).unwrap();
+        }
+    }
+}

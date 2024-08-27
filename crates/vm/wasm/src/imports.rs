@@ -126,8 +126,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // This is the case for the `query`, `bank_query`, and `ibc_client_query`
     // calls. During these calls, the contract isn't allowed to call the imports
     // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -169,8 +169,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -187,8 +187,8 @@ pub fn db_remove_range(
 ) -> VmResult<()> {
     let (env, mut store) = fe.data_and_store_mut();
 
-    if env.storage_readonly {
-        return Err(VmError::ReadOnly);
+    if !env.state_mutable {
+        return Err(VmError::ImmutableState);
     }
 
     let min = if min_ptr != 0 {
@@ -232,7 +232,7 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
-    let res = env.querier.do_query_chain(req);
+    let res = env.querier.do_query_chain(req, env.query_depth + 1); // important: increase query depth
     let res_bytes = res.to_json_vec()?;
 
     write_to_memory(env, &mut store, &res_bytes)

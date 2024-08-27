@@ -6,7 +6,7 @@ use {
 const DENOM: &str = "ugrug";
 
 #[test]
-fn bank_transfers() -> anyhow::Result<()> {
+fn transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("sender", Coins::one(DENOM, NonZero::new(100_u128)))?
         .add_account("receiver", Coins::new())?

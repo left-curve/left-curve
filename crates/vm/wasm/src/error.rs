@@ -61,8 +61,11 @@ pub enum VmError {
     #[error("unexpected return type: {0}")]
     ReturnType(&'static str),
 
-    #[error("db state changed detected on readonly instance")]
-    ReadOnly,
+    #[error("attempt to write to storage during an state immutable call")]
+    ImmutableState,
+
+    #[error("max query depth exceeded")]
+    ExceedMaxQueryDepth,
 }
 
 impl From<CompileError> for VmError {

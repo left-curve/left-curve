@@ -16,10 +16,11 @@ pub fn call_in_0_out_1<VM, R>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
 ) -> AppResult<R>
 where
     R: DeserializeOwned,
@@ -31,10 +32,11 @@ where
         vm,
         storage,
         gas_tracker,
+        query_depth,
+        state_mutable,
         ctx.block,
         ctx.contract,
         code_hash,
-        storage_readonly,
     )?;
 
     // Call the function; deserialize the output as JSON
@@ -50,10 +52,11 @@ pub fn call_in_1_out_1<VM, P, R>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
     param: &P,
 ) -> AppResult<R>
 where
@@ -67,10 +70,11 @@ where
         vm,
         storage,
         gas_tracker,
+        query_depth,
+        state_mutable,
         ctx.block,
         ctx.contract,
         code_hash,
-        storage_readonly,
     )?;
 
     // Serialize the param as JSON
@@ -89,10 +93,11 @@ pub fn call_in_2_out_1<VM, P1, P2, R>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<R>
@@ -108,10 +113,11 @@ where
         vm,
         storage,
         gas_tracker,
+        query_depth,
+        state_mutable,
         ctx.block,
         ctx.contract,
         code_hash,
-        storage_readonly,
     )?;
 
     // Serialize the params as JSON
@@ -132,10 +138,12 @@ pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -145,14 +153,15 @@ where
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
+        query_depth,
+        state_mutable,
         name,
         code_hash,
         ctx,
-        storage_readonly,
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -162,10 +171,12 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
     param: &P,
 ) -> AppResult<Vec<Event>>
 where
@@ -177,15 +188,16 @@ where
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
+        query_depth,
+        state_mutable,
         name,
         code_hash,
         ctx,
-        storage_readonly,
         param,
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -195,10 +207,12 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
+    query_depth: usize,
+    state_mutable: bool,
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-    storage_readonly: bool,
     param1: &P1,
     param2: &P2,
 ) -> AppResult<Vec<Event>>
@@ -212,26 +226,28 @@ where
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
+        query_depth,
+        state_mutable,
         name,
         code_hash,
         ctx,
-        storage_readonly,
         param1,
         param2,
     )?
     .into_std_result()?;
 
-    handle_response(vm, storage, gas_tracker, name, ctx, response)
+    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
 
 fn create_vm_instance<VM>(
     mut vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    query_depth: usize,
+    state_mutable: bool,
     block: BlockInfo,
-    address: Addr,
+    contract: Addr,
     code_hash: Hash256,
-    storage_readonly: bool,
 ) -> AppResult<VM::Instance>
 where
     VM: Vm + Clone,
@@ -242,14 +258,15 @@ where
 
     // Create the providers
     let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
-    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &address]);
+    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(vm.build_instance(
         &code,
         code_hash,
         storage,
-        storage_readonly,
+        state_mutable,
         querier,
+        query_depth,
         gas_tracker,
     )?)
 }
@@ -258,6 +275,7 @@ pub(crate) fn handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     name: &'static str,
     ctx: &Context,
     response: Response,
@@ -278,6 +296,7 @@ where
         storage,
         ctx.block,
         gas_tracker,
+        msg_depth,
         ctx.contract,
         response.submsgs,
     )?);

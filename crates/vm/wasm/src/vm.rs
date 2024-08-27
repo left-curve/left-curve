@@ -13,10 +13,16 @@ use {
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
 
-/// Gas cost per operation
-///
-/// TODO: Mocked to 1 now, need to be discussed
+/// Gas cost per Wasmer operation.
 const GAS_PER_OPERATION: u64 = 1;
+
+/// Maximum number of chained queries.
+///
+/// E.g. contract A queries contract B; when handling this query, contract B
+/// calls contract C; so on.
+///
+/// Without a limit, this can leads to stack overflow which halts the chain.
+const MAX_QUERY_DEPTH: usize = 3;
 
 // ------------------------------------ vm -------------------------------------
 
@@ -43,10 +49,15 @@ impl Vm for WasmVm {
         code: &[u8],
         code_hash: Hash256,
         storage: StorageProvider,
-        storage_readonly: bool,
+        state_mutable: bool,
         querier: QuerierProvider<Self>,
+        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
+        if query_depth > MAX_QUERY_DEPTH {
+            return Err(VmError::ExceedMaxQueryDepth);
+        }
+
         // Attempt to fetch a pre-built Wasmer module from the cache.
         // If not found, build it and insert it into the cache.
         let (module, engine) = self.cache.get_or_build_with(code_hash, || {
@@ -99,8 +110,9 @@ impl Vm for WasmVm {
             &mut store,
             Environment::new(
                 storage,
-                storage_readonly,
+                state_mutable,
                 querier,
+                query_depth,
                 gas_tracker.clone(),
                 gas_remaining,
             ),

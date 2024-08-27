@@ -149,11 +149,12 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn do_query_chain(&self, req: Query) -> GenericResult<QueryResponse> {
+    pub fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
             self.gas_tracker.clone(),
+            query_depth,
             self.block,
             req,
         )
@@ -168,6 +169,7 @@ where
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        self.do_query_chain(req).into_std_result()
+        // We don't check for max query depth in Rust VM, do simply use zero here.
+        self.do_query_chain(req, 0).into_std_result()
     }
 }

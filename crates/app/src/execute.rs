@@ -157,6 +157,7 @@ pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -171,6 +172,7 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
         block,
         from,
         to,
@@ -201,6 +203,7 @@ fn _do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     from: Addr,
     to: Addr,
@@ -233,15 +236,24 @@ where
         vm.clone(),
         storage.clone(),
         gas_tracker.clone(),
+        msg_depth,
+        0,
+        true,
         "bank_execute",
         account.code_hash,
         &ctx,
-        false,
         &msg,
     )?;
 
     if do_receive {
-        events.extend(_do_receive(vm, storage, gas_tracker, ctx.block, msg)?);
+        events.extend(_do_receive(
+            vm,
+            storage,
+            gas_tracker,
+            msg_depth,
+            ctx.block,
+            msg,
+        )?);
     }
 
     Ok(events)
@@ -251,6 +263,7 @@ fn _do_receive<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     msg: BankMsg,
 ) -> AppResult<Vec<Event>>
@@ -273,10 +286,12 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
+        0,
+        true,
         "receive",
         account.code_hash,
         &ctx,
-        false,
     )
 }
 
@@ -286,6 +301,7 @@ pub fn do_instantiate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash256,
@@ -302,6 +318,7 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
         block,
         sender,
         code_hash,
@@ -329,6 +346,7 @@ pub fn _do_instantiate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
     code_hash: Hash256,
@@ -367,6 +385,7 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            msg_depth,
             block,
             sender,
             address,
@@ -389,10 +408,12 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
+        0,
+        true,
         "instantiate",
         account.code_hash,
         &ctx,
-        false,
         msg,
     )?);
 
@@ -405,9 +426,10 @@ pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
-    contract: Addr,
     sender: Addr,
+    contract: Addr,
     msg: &Json,
     funds: Coins,
 ) -> AppResult<Vec<Event>>
@@ -419,9 +441,10 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
         block,
-        contract,
         sender,
+        contract,
         msg,
         funds,
     ) {
@@ -444,9 +467,10 @@ fn _do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
-    contract: Addr,
     sender: Addr,
+    contract: Addr,
     msg: &Json,
     funds: Coins,
 ) -> AppResult<Vec<Event>>
@@ -464,6 +488,7 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            msg_depth,
             block,
             sender,
             contract,
@@ -486,10 +511,12 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
+        0,
+        true,
         "execute",
         account.code_hash,
         &ctx,
-        false,
         msg,
     )?);
 
@@ -502,9 +529,10 @@ pub fn do_migrate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
-    contract: Addr,
     sender: Addr,
+    contract: Addr,
     new_code_hash: Hash256,
     msg: &Json,
 ) -> AppResult<Vec<Event>>
@@ -516,9 +544,10 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
         block,
-        contract,
         sender,
+        contract,
         new_code_hash,
         msg,
     ) {
@@ -541,9 +570,10 @@ fn _do_migrate<VM>(
     vm: VM,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
-    contract: Addr,
     sender: Addr,
+    contract: Addr,
     new_code_hash: Hash256,
     msg: &Json,
 ) -> AppResult<Vec<Event>>
@@ -582,10 +612,12 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
+        0,
+        true,
         "migrate",
         account.code_hash,
         &ctx,
-        false,
         msg,
     )
 }
@@ -596,6 +628,7 @@ pub fn do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -605,7 +638,16 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_reply(vm, storage, gas_tracker, block, contract, msg, result) {
+    match _do_reply(
+        vm,
+        storage,
+        gas_tracker,
+        msg_depth,
+        block,
+        contract,
+        msg,
+        result,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed reply");
@@ -625,6 +667,7 @@ fn _do_reply<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
+    msg_depth: usize,
     block: BlockInfo,
     contract: Addr,
     msg: &Json,
@@ -649,10 +692,12 @@ where
         vm,
         storage,
         gas_tracker,
+        msg_depth,
+        0,
+        true,
         "reply",
         account.code_hash,
         &ctx,
-        false,
         msg,
         result,
     )
@@ -688,10 +733,11 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            0,
+            true,
             "authenticate",
             account.code_hash,
             &ctx,
-            false,
             tx,
         )?
         .into_std_result()?;
@@ -700,6 +746,7 @@ where
             vm,
             storage,
             gas_tracker,
+            0,
             "authenticate",
             &ctx,
             auth_response.response,
@@ -753,10 +800,12 @@ where
         vm,
         storage,
         gas_tracker,
+        0,
+        0,
+        true,
         "backrun",
         account.code_hash,
         &ctx,
-        false,
         tx,
     ) {
         Ok(events) => {
@@ -806,10 +855,12 @@ where
             vm,
             storage,
             gas_tracker,
+            0,
+            0,
+            true,
             "withhold_fee",
             taxman.code_hash,
             &ctx,
-            false,
             tx,
         )
     })();
@@ -861,10 +912,12 @@ where
             vm,
             storage,
             gas_tracker,
+            0,
+            0,
+            true,
             "finalize_fee",
             taxman.code_hash,
             &ctx,
-            false,
             tx,
             outcome,
         )
@@ -947,9 +1000,11 @@ where
         vm,
         storage,
         gas_tracker,
+        0,
+        0,
+        true,
         "cron_execute",
         account.code_hash,
         &ctx,
-        false,
     )
 }

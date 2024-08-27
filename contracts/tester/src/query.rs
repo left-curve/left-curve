@@ -1,4 +1,7 @@
-use grug::{Binary, ByteArray, Hash256, Hash512, ImmutableCtx, Number, StdResult, Uint128};
+use {
+    crate::QueryStackOverflowRequest,
+    grug::{Binary, ByteArray, Hash256, Hash512, ImmutableCtx, Number, StdResult, Uint128},
+};
 
 pub fn query_loop(iterations: u64) -> StdResult<()> {
     // Keep the same operation per iteration for consistency
@@ -92,4 +95,11 @@ pub fn query_verify_ed25519_batch(
     let p = slice_of_slices!(pks);
 
     ctx.api.ed25519_batch_verify(&m, &s, &p)
+}
+
+pub fn query_stack_overflow(ctx: ImmutableCtx) -> StdResult<()> {
+    ctx.querier
+        .query_wasm_smart(ctx.contract, QueryStackOverflowRequest {})?;
+
+    Ok(())
 }
