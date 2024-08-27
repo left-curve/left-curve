@@ -1,5 +1,6 @@
 use {
     crate::{Addr, Coin, Coins},
+    paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -56,32 +57,29 @@ pub enum BankQueryResponse {
     Supplies(Coins),
 }
 
+macro_rules! generate_downcast {
+    ($id:ident => $ret:ty) => {
+        paste! {
+            pub fn [<as_$id:snake>](self) -> $ret {
+                match self {
+                    BankQueryResponse::$id(value) => value,
+                    _ => unreachable!("BankQueryResponse is not {}", stringify!($id)),
+                }
+            }
+        }
+    };
+    ($($id:ident => $ret:ty),+ $(,)?) => {
+        $(
+            generate_downcast!($id => $ret);
+        )+
+    };
+}
+
 impl BankQueryResponse {
-    pub fn as_balance(self) -> Coin {
-        let BankQueryResponse::Balance(coin) = self else {
-            panic!("BankQueryResponse is not Balance");
-        };
-        coin
-    }
-
-    pub fn as_balances(self) -> Coins {
-        let BankQueryResponse::Balances(coins) = self else {
-            panic!("BankQueryResponse is not Balances");
-        };
-        coins
-    }
-
-    pub fn as_supply(self) -> Coin {
-        let BankQueryResponse::Supply(coin) = self else {
-            panic!("BankQueryResponse is not Supply");
-        };
-        coin
-    }
-
-    pub fn as_supplies(self) -> Coins {
-        let BankQueryResponse::Supplies(coins) = self else {
-            panic!("BankQueryResponse is not Supplies");
-        };
-        coins
+    generate_downcast! {
+        Balance  => Coin,
+        Balances => Coins,
+        Supply   => Coin,
+        Supplies => Coins,
     }
 }

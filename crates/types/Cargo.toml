@@ -23,6 +23,7 @@ hex           = { workspace = true }
 hex-literal   = { workspace = true }
 dyn-clone     = { workspace = true }
 forward_ref   = { workspace = true }
+paste         = { workspace = true }
 prost         = { workspace = true }
 ripemd        = { workspace = true }
 serde         = { workspace = true, features = ["derive"] }
