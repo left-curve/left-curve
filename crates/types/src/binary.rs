@@ -32,16 +32,16 @@ impl AsMut<[u8]> for Binary {
 }
 
 impl Deref for Binary {
-    type Target = [u8];
+    type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
-        self.0.as_slice()
+        &self.0
     }
 }
 
 impl DerefMut for Binary {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.0.as_mut_slice()
+        &mut self.0
     }
 }
 

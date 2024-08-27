@@ -1,4 +1,4 @@
-use grug::Empty;
+use grug::{Binary, Empty};
 
 pub type InstantiateMsg = Empty;
 
@@ -32,7 +32,7 @@ pub enum QueryMsg {
     /// This is used for deducing the relation between Wasmer gas metering
     /// points and CPU time (i.e. how many gas points roughly correspond to one
     /// second of run time).
-    #[returns(Empty)]
+    #[returns(())]
     Loop { iterations: u64 },
     /// Attempt to write a key-value pair to the contract storage.
     ///
@@ -43,7 +43,7 @@ pub enum QueryMsg {
     /// However, a malicious contract can attempt to directly call the `db_write`,
     /// `db_remove`, or `db_remove_range` FFI import methods directly. We need
     /// to test whether the VM can properly reject this behavior.
-    #[returns(Empty)]
+    #[returns(())]
     ForceWrite { key: String, value: String },
     /// The contract attempts to make queries in a loop.
     ///
@@ -52,6 +52,49 @@ pub enum QueryMsg {
     ///
     /// This is one of two ways a malicious contract can force a stack overflow;
     /// the other is via an execute message, also implemented in this contract.
-    #[returns(Empty)]
+    #[returns(())]
     StackOverflow {},
+    /// Verify a single Secp256r1 signature.
+    #[returns(())]
+    VerifySecp256r1 {
+        // Note: For production contracts, it's better to use fixed-length types,
+        // such as:
+        // - `ByteArray<33>` for `pk`,
+        // - `ByteArray<32>` for `sig`, and
+        // - `Hash256` for `msg_hash`
+        // However, for the purpose of testing, we need this function to take
+        // input data of incorrect lengths.
+        pk: Binary,
+        sig: Binary,
+        msg_hash: Binary,
+    },
+    /// Verify a single Secp256k1 signature.
+    #[returns(())]
+    VerifySecp256k1 {
+        pk: Binary,
+        sig: Binary,
+        msg_hash: Binary,
+    },
+    /// Recover an Secp256k1 publick key from a signature.
+    #[returns(Binary)]
+    RecoverSepc256k1 {
+        sig: Binary,
+        msg_hash: Binary,
+        recovery_id: u8,
+        compressed: bool,
+    },
+    /// Verify a single Ed25519 signature.
+    #[returns(())]
+    VerifyEd25519 {
+        pk: Binary,
+        sig: Binary,
+        msg_hash: Binary,
+    },
+    /// Verify a batch of Ed25519 signatures.
+    #[returns(())]
+    VerifyEd25519Batch {
+        pks: Vec<Binary>,
+        sigs: Vec<Binary>,
+        prehash_msgs: Vec<Binary>,
+    },
 }

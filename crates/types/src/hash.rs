@@ -15,6 +15,9 @@ pub type Hash160 = Hash<20>;
 /// A 32-byte hash, in uppercase hex encoding.
 pub type Hash256 = Hash<32>;
 
+/// A 64-byte hash, in uppercase hex encoding.
+pub type Hash512 = Hash<64>;
+
 /// A hash of fixed size `N`, in uppercase hex encoding.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash<const N: usize>(pub(crate) [u8; N]);
@@ -76,6 +79,12 @@ impl<const N: usize> Deref for Hash<N> {
 impl<const N: usize> DerefMut for Hash<N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl<const N: usize> From<[u8; N]> for Hash<N> {
+    fn from(value: [u8; N]) -> Self {
+        Self(value)
     }
 }
 
