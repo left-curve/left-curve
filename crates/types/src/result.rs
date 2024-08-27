@@ -83,6 +83,18 @@ impl<T> GenericResult<T> {
         }
     }
 
+    /// Ensure the result is ok, but the value doesn't equal the given value.
+    pub fn should_succeed_but_not_equal<U>(self, expect: U)
+    where
+        T: Debug + PartialEq<U>,
+        U: Debug,
+    {
+        match self {
+            GenericResult::Ok(value) => assert_ne!(value, expect, "wrong value!"),
+            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
+        }
+    }
+
     /// Ensure the result is error, and contains the given message.
     pub fn should_fail_with_error<M>(self, msg: M)
     where
@@ -101,10 +113,35 @@ impl<T> GenericResult<T> {
                 let actual = err.to_string();
                 assert!(
                     actual.contains(&expect),
-                    "wrong error! expected: {expect}, got: {actual}"
+                    "wrong error! expecting: {expect}, got: {actual}"
                 );
             },
             GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+        }
+    }
+
+    /// Ensure the result matches the given result.
+    pub fn should_match<U>(self, expect: GenericResult<U>)
+    where
+        T: Debug + PartialEq<U>,
+        U: Debug,
+    {
+        match (self, expect) {
+            (GenericResult::Ok(actual), GenericResult::Ok(expect)) => {
+                assert_eq!(actual, expect, "wrong value!");
+            },
+            (GenericResult::Err(actual), GenericResult::Err(expect)) => {
+                assert!(
+                    actual.contains(&expect),
+                    "wrong error! expecting: {expect}, got {actual}"
+                );
+            },
+            (GenericResult::Ok(value), GenericResult::Err(_)) => {
+                panic!("expecting error, got ok: {value:?}");
+            },
+            (GenericResult::Err(err), GenericResult::Ok(_)) => {
+                panic!("expecting ok, got error: {err}");
+            },
         }
     }
 }

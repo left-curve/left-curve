@@ -1,4 +1,4 @@
-use grug::{Binary, ByteArray, Empty, Hash256, Hash512};
+use grug::{Binary, Empty};
 
 pub type InstantiateMsg = Empty;
 
@@ -57,37 +57,44 @@ pub enum QueryMsg {
     /// Verify a single Secp256r1 signature.
     #[returns(())]
     VerifySecp256r1 {
+        // Note: For production contracts, it's better to use fixed-length types,
+        // such as:
+        // - `ByteArray<33>` for `pk`,
+        // - `ByteArray<32>` for `sig`, and
+        // - `Hash256` for `msg_hash`
+        // However, for the purpose of testing, we need this function to take
+        // input data of incorrect lengths.
         pk: Binary,
-        sig: ByteArray<64>,
-        msg_hash: Hash256,
+        sig: Binary,
+        msg_hash: Binary,
     },
     /// Verify a single Secp256k1 signature.
     #[returns(())]
     VerifySecp256k1 {
         pk: Binary,
-        sig: ByteArray<64>,
-        msg_hash: Hash256,
+        sig: Binary,
+        msg_hash: Binary,
     },
     /// Recover an Secp256k1 publick key from a signature.
     #[returns(Binary)]
     RecoverSepc256k1 {
-        sig: ByteArray<64>,
-        msg_hash: Hash256,
+        sig: Binary,
+        msg_hash: Binary,
         recovery_id: u8,
         compressed: bool,
     },
     /// Verify a single Ed25519 signature.
     #[returns(())]
     VerifyEd25519 {
-        pk: ByteArray<32>,
-        sig: ByteArray<64>,
-        msg_hash: Hash512,
+        pk: Binary,
+        sig: Binary,
+        msg_hash: Binary,
     },
     /// Verify a batch of Ed25519 signatures.
     #[returns(())]
     VerifyEd25519Batch {
-        pks: Vec<ByteArray<32>>,
-        sigs: Vec<ByteArray<64>>,
+        pks: Vec<Binary>,
+        sigs: Vec<Binary>,
         prehash_msgs: Vec<Binary>,
     },
 }

@@ -1,6 +1,6 @@
 use {
     crate::QueryStackOverflowRequest,
-    grug::{Binary, ByteArray, Hash256, Hash512, ImmutableCtx, Number, StdResult, Uint128},
+    grug::{Binary, ImmutableCtx, Number, StdResult, Uint128},
 };
 
 pub fn query_loop(iterations: u64) -> StdResult<()> {
@@ -42,8 +42,8 @@ pub fn query_force_write(_key: &str, _value: &str) {
 pub fn query_verify_secp256r1(
     ctx: ImmutableCtx,
     pk: Binary,
-    sig: ByteArray<64>,
-    msg_hash: Hash256,
+    sig: Binary,
+    msg_hash: Binary,
 ) -> StdResult<()> {
     ctx.api.secp256r1_verify(&msg_hash, &sig, &pk)
 }
@@ -51,16 +51,16 @@ pub fn query_verify_secp256r1(
 pub fn query_verify_secp256k1(
     ctx: ImmutableCtx,
     pk: Binary,
-    sig: ByteArray<64>,
-    msg_hash: Hash256,
+    sig: Binary,
+    msg_hash: Binary,
 ) -> StdResult<()> {
     ctx.api.secp256k1_verify(&msg_hash, &sig, &pk)
 }
 
 pub fn query_recover_secp256k1(
     ctx: ImmutableCtx,
-    sig: ByteArray<64>,
-    msg_hash: Hash256,
+    sig: Binary,
+    msg_hash: Binary,
     recovery_id: u8,
     compressed: bool,
 ) -> StdResult<Binary> {
@@ -71,9 +71,9 @@ pub fn query_recover_secp256k1(
 
 pub fn query_verify_ed25519(
     ctx: ImmutableCtx,
-    pk: ByteArray<32>,
-    sig: ByteArray<64>,
-    msg_hash: Hash512,
+    pk: Binary,
+    sig: Binary,
+    msg_hash: Binary,
 ) -> StdResult<()> {
     ctx.api.ed25519_verify(&msg_hash, &sig, &pk)
 }
@@ -86,8 +86,8 @@ macro_rules! slice_of_slices {
 
 pub fn query_verify_ed25519_batch(
     ctx: ImmutableCtx,
-    pks: Vec<ByteArray<32>>,
-    sigs: Vec<ByteArray<64>>,
+    pks: Vec<Binary>,
+    sigs: Vec<Binary>,
     prehash_msgs: Vec<Binary>,
 ) -> StdResult<()> {
     let m = slice_of_slices!(prehash_msgs);
