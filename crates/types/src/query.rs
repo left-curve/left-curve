@@ -115,7 +115,7 @@ macro_rules! generate_downcast {
             pub fn [<as_$id:snake>](self) -> $ret {
                 match self {
                     QueryResponse::$id(value) => value,
-                    _ => unreachable!("QueryResponse is not {}", stringify!($id)),
+                    _ => panic!("QueryResponse is not {}", stringify!($id)),
                 }
             }
         }

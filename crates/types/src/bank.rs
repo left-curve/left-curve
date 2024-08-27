@@ -63,7 +63,7 @@ macro_rules! generate_downcast {
             pub fn [<as_$id:snake>](self) -> $ret {
                 match self {
                     BankQueryResponse::$id(value) => value,
-                    _ => unreachable!("BankQueryResponse is not {}", stringify!($id)),
+                    _ => panic!("BankQueryResponse is not {}", stringify!($id)),
                 }
             }
         }
