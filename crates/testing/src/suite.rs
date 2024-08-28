@@ -5,7 +5,7 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        Account, Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, Duration,
+        Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Duration,
         GenericResult, GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message,
         NumberConst, Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
         UnsignedTx,
@@ -418,30 +418,30 @@ where
             .into()
     }
 
-    pub fn query_account(&self, signer: &dyn Signer) -> GenericResult<Account> {
+    pub fn query_contract(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
         self.app
             .do_query_app(
-                Query::Account {
+                Query::Contract {
                     address: signer.address(),
                 },
                 0,
                 false,
             )
-            .map(|res| res.as_account())
+            .map(|res| res.as_contract())
             .into()
     }
 
-    pub fn query_accounts(&self) -> GenericResult<BTreeMap<Addr, Account>> {
+    pub fn query_contracts(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
         self.app
             .do_query_app(
-                Query::Accounts {
+                Query::Contracts {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
                 0,
                 false,
             )
-            .map(|res| res.as_accounts())
+            .map(|res| res.as_contracts())
             .into()
     }
 

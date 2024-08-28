@@ -1,5 +1,5 @@
 use {
-    crate::{Account, Addr, Binary, BlockInfo, Coin, Coins, Config, Hash256, Json},
+    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Hash256, Json},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -63,12 +63,12 @@ pub enum Query {
         start_after: Option<Hash256>,
         limit: Option<u32>,
     },
-    /// Metadata of a single account.
-    /// Returns: `Account`
-    Account { address: Addr },
-    /// Enumerate metadata of all accounts.
-    /// Returns: `BTreeMap<Addr, Account>`
-    Accounts {
+    /// Metadata of a single contract.
+    /// Returns: `ContractInfo`
+    Contract { address: Addr },
+    /// Enumerate metadata of all contracts.
+    /// Returns: `BTreeMap<Addr, ContractInfo>`
+    Contracts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
@@ -102,8 +102,8 @@ pub enum QueryResponse {
     Supplies(Coins),
     Code(Binary),
     Codes(BTreeMap<Hash256, Binary>),
-    Account(Account),
-    Accounts(BTreeMap<Addr, Account>),
+    Contract(ContractInfo),
+    Contracts(BTreeMap<Addr, ContractInfo>),
     WasmRaw(Option<Binary>),
     WasmSmart(Json),
     Multi(Vec<QueryResponse>),
@@ -138,8 +138,8 @@ impl QueryResponse {
         Supplies   => Coins,
         Code       => Binary,
         Codes      => BTreeMap<Hash256, Binary>,
-        Account    => Account,
-        Accounts   => BTreeMap<Addr, Account>,
+        Contract   => ContractInfo,
+        Contracts  => BTreeMap<Addr, ContractInfo>,
         WasmRaw    => Option<Binary>,
         WasmSmart  => Json,
         Multi      => Vec<QueryResponse>,

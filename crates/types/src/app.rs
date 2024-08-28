@@ -116,7 +116,7 @@ pub struct BlockInfo {
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
 )]
 #[serde(deny_unknown_fields)]
-pub struct Account {
+pub struct ContractInfo {
     pub code_hash: Hash256,
     pub admin: Option<Addr>,
 }

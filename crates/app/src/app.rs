@@ -3,9 +3,9 @@ use grug_types::JsonDeExt;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
-        do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
-        query_accounts, query_app_config, query_app_configs, query_balance, query_balances,
-        query_code, query_codes, query_info, query_supplies, query_supply, query_wasm_raw,
+        do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
+        query_app_configs, query_balance, query_balances, query_code, query_codes, query_contract,
+        query_contracts, query_info, query_supplies, query_supply, query_wasm_raw,
         query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
         CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
@@ -867,13 +867,13 @@ where
             let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
-        Query::Account { address } => {
-            let res = query_account(&storage, gas_tracker, address)?;
-            Ok(QueryResponse::Account(res))
+        Query::Contract { address } => {
+            let res = query_contract(&storage, gas_tracker, address)?;
+            Ok(QueryResponse::Contract(res))
         },
-        Query::Accounts { start_after, limit } => {
-            let res = query_accounts(&storage, gas_tracker, start_after, limit)?;
-            Ok(QueryResponse::Accounts(res))
+        Query::Contracts { start_after, limit } => {
+            let res = query_contracts(&storage, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::Contracts(res))
         },
         Query::WasmRaw { contract, key } => {
             let res = query_wasm_raw(storage, gas_tracker, contract, key)?;
