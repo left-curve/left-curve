@@ -421,27 +421,27 @@ where
     pub fn query_contract_info(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
         self.app
             .do_query_app(
-                Query::ContractInfo {
+                Query::Contract {
                     address: signer.address(),
                 },
                 0,
                 false,
             )
-            .map(|res| res.as_contract_info())
+            .map(|res| res.as_contract())
             .into()
     }
 
     pub fn query_contracts_info(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
         self.app
             .do_query_app(
-                Query::ContractInfos {
+                Query::Contracts {
                     start_after: None,
                     limit: Some(u32::MAX),
                 },
                 0,
                 false,
             )
-            .map(|res| res.as_contracts_info())
+            .map(|res| res.as_contracts())
             .into()
     }
 

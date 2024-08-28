@@ -65,10 +65,10 @@ pub enum Query {
     },
     /// Metadata of a single contract.
     /// Returns: `ContractInfo`
-    ContractInfo { address: Addr },
+    Contract { address: Addr },
     /// Enumerate metadata of all contracts.
     /// Returns: `BTreeMap<Addr, ContractInfo>`
-    ContractInfos {
+    Contracts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
@@ -102,8 +102,8 @@ pub enum QueryResponse {
     Supplies(Coins),
     Code(Binary),
     Codes(BTreeMap<Hash256, Binary>),
-    ContractInfo(ContractInfo),
-    ContractsInfo(BTreeMap<Addr, ContractInfo>),
+    Contract(ContractInfo),
+    Contracts(BTreeMap<Addr, ContractInfo>),
     WasmRaw(Option<Binary>),
     WasmSmart(Json),
     Multi(Vec<QueryResponse>),
@@ -138,8 +138,8 @@ impl QueryResponse {
         Supplies      => Coins,
         Code          => Binary,
         Codes         => BTreeMap<Hash256, Binary>,
-        ContractInfo  => ContractInfo,
-        ContractsInfo => BTreeMap<Addr, ContractInfo>,
+        Contract  => ContractInfo,
+        Contracts => BTreeMap<Addr, ContractInfo>,
         WasmRaw       => Option<Binary>,
         WasmSmart     => Json,
         Multi         => Vec<QueryResponse>,

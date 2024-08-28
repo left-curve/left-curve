@@ -867,13 +867,13 @@ where
             let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
-        Query::ContractInfo { address } => {
+        Query::Contract { address } => {
             let res = query_contract_info(&storage, gas_tracker, address)?;
-            Ok(QueryResponse::ContractInfo(res))
+            Ok(QueryResponse::Contract(res))
         },
-        Query::ContractInfos { start_after, limit } => {
+        Query::Contracts { start_after, limit } => {
             let res = query_contracts_info(&storage, gas_tracker, start_after, limit)?;
-            Ok(QueryResponse::ContractsInfo(res))
+            Ok(QueryResponse::Contracts(res))
         },
         Query::WasmRaw { contract, key } => {
             let res = query_wasm_raw(storage, gas_tracker, contract, key)?;

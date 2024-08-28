@@ -359,8 +359,8 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_contract_info(&self, address: Addr) -> StdResult<ContractInfo> {
         self.inner
-            .query_chain(Query::ContractInfo { address })
-            .map(|res| res.as_contract_info())
+            .query_chain(Query::Contract { address })
+            .map(|res| res.as_contract())
     }
 
     pub fn query_contracts_info(
@@ -369,8 +369,8 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
         self.inner
-            .query_chain(Query::ContractInfos { start_after, limit })
-            .map(|res| res.as_contracts_info())
+            .query_chain(Query::Contracts { start_after, limit })
+            .map(|res| res.as_contracts())
     }
 
     pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {

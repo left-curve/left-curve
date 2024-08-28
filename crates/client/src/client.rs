@@ -254,9 +254,9 @@ impl Client {
         address: Addr,
         height: Option<u64>,
     ) -> anyhow::Result<ContractInfo> {
-        self.query_app(&Query::ContractInfo { address }, height)
+        self.query_app(&Query::Contract { address }, height)
             .await
-            .map(|res| res.as_contract_info())
+            .map(|res| res.as_contract())
     }
 
     /// Enumerate metadata of all contracts.
@@ -266,9 +266,9 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Addr, ContractInfo>> {
-        self.query_app(&Query::ContractInfos { start_after, limit }, height)
+        self.query_app(&Query::Contracts { start_after, limit }, height)
             .await
-            .map(|res| res.as_contracts_info())
+            .map(|res| res.as_contracts())
     }
 
     /// Query a raw key-value pair in a contract's internal state.
