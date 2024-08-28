@@ -363,7 +363,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_contract())
     }
 
-    pub fn query_contract_info(
+    pub fn query_contracts(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
