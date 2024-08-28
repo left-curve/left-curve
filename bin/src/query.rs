@@ -70,12 +70,12 @@ enum SubCmd {
         limit: Option<u32>,
     },
     /// Query metadata of a single contract by address
-    ContractInfo {
+    Contract {
         /// Account address
         address: Addr,
     },
     /// Enumerate metadata of all contracts
-    ContractsInfo {
+    Contracts {
         /// Start after this address
         start_after: Option<Addr>,
         /// Maximum number of items to display
@@ -127,8 +127,8 @@ impl QueryCmd {
             SubCmd::Supplies { start_after, limit } => Query::Supplies { start_after, limit },
             SubCmd::Code { hash } => Query::Code { hash },
             SubCmd::Codes { start_after, limit } => Query::Codes { start_after, limit },
-            SubCmd::ContractInfo { address } => Query::Contract { address },
-            SubCmd::ContractsInfo { start_after, limit } => Query::Contracts { start_after, limit },
+            SubCmd::Contract { address } => Query::Contract { address },
+            SubCmd::Contracts { start_after, limit } => Query::Contracts { start_after, limit },
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
                 let key = Binary::from(hex::decode(key_hex)?);

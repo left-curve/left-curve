@@ -129,19 +129,19 @@ macro_rules! generate_downcast {
 
 impl QueryResponse {
     generate_downcast! {
-        Info          => InfoResponse,
-        AppConfig     => Json,
-        AppConfigs    => BTreeMap<String, Json>,
-        Balance       => Coin,
-        Balances      => Coins,
-        Supply        => Coin,
-        Supplies      => Coins,
-        Code          => Binary,
-        Codes         => BTreeMap<Hash256, Binary>,
-        Contract      => ContractInfo,
-        Contracts     => BTreeMap<Addr, ContractInfo>,
-        WasmRaw       => Option<Binary>,
-        WasmSmart     => Json,
-        Multi         => Vec<QueryResponse>,
+        Info       => InfoResponse,
+        AppConfig  => Json,
+        AppConfigs => BTreeMap<String, Json>,
+        Balance    => Coin,
+        Balances   => Coins,
+        Supply     => Coin,
+        Supplies   => Coins,
+        Code       => Binary,
+        Codes      => BTreeMap<Hash256, Binary>,
+        Contract   => ContractInfo,
+        Contracts  => BTreeMap<Addr, ContractInfo>,
+        WasmRaw    => Option<Binary>,
+        WasmSmart  => Json,
+        Multi      => Vec<QueryResponse>,
     }
 }
