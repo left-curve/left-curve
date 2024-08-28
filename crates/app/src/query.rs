@@ -208,7 +208,7 @@ pub fn query_codes(
         .collect()
 }
 
-pub fn query_contract_info(
+pub fn query_contract(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     address: Addr,
@@ -216,7 +216,7 @@ pub fn query_contract_info(
     CONTRACTS.load_with_gas(storage, gas_tracker, address)
 }
 
-pub fn query_contracts_info(
+pub fn query_contract_info(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     start_after: Option<Addr>,

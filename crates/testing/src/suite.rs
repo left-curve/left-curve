@@ -418,7 +418,7 @@ where
             .into()
     }
 
-    pub fn query_contract_info(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
+    pub fn query_contract(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
         self.app
             .do_query_app(
                 Query::Contract {
@@ -431,7 +431,7 @@ where
             .into()
     }
 
-    pub fn query_contracts_info(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
+    pub fn query_contract_info(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
         self.app
             .do_query_app(
                 Query::Contracts {

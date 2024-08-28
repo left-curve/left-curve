@@ -249,7 +249,7 @@ impl Client {
     }
 
     /// Query the metadata of a single contract.
-    pub async fn query_contract_info(
+    pub async fn query_contract(
         &self,
         address: Addr,
         height: Option<u64>,
@@ -260,7 +260,7 @@ impl Client {
     }
 
     /// Enumerate metadata of all contracts.
-    pub async fn query_contracts_info(
+    pub async fn query_contract_info(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,

@@ -357,13 +357,13 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_codes())
     }
 
-    pub fn query_contract_info(&self, address: Addr) -> StdResult<ContractInfo> {
+    pub fn query_contract(&self, address: Addr) -> StdResult<ContractInfo> {
         self.inner
             .query_chain(Query::Contract { address })
             .map(|res| res.as_contract())
     }
 
-    pub fn query_contracts_info(
+    pub fn query_contract_info(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
