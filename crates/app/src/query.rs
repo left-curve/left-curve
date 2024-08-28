@@ -1,12 +1,12 @@
 use {
     crate::{
         call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, ACCOUNTS, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE,
+        StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
         LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
-        Account, Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context,
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context, ContractInfo,
         GenericResult, Hash256, InfoResponse, Json, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
@@ -159,7 +159,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, cfg.bank)?;
+    let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
         chain_id,
@@ -177,7 +177,7 @@ where
         query_depth,
         false,
         "bank_query",
-        account.code_hash,
+        code_hash,
         &ctx,
         msg,
     )?
@@ -208,24 +208,24 @@ pub fn query_codes(
         .collect()
 }
 
-pub fn query_account(
+pub fn query_contract_info(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     address: Addr,
-) -> StdResult<Account> {
-    ACCOUNTS.load_with_gas(storage, gas_tracker, address)
+) -> StdResult<ContractInfo> {
+    CONTRACTS.load_with_gas(storage, gas_tracker, address)
 }
 
-pub fn query_accounts(
+pub fn query_contracts_info(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, Account>> {
+) -> StdResult<BTreeMap<Addr, ContractInfo>> {
     let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    ACCOUNTS
+    CONTRACTS
         .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
@@ -256,7 +256,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, contract)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
 
     let ctx = Context {
         chain_id,
@@ -274,7 +274,7 @@ where
         query_depth,
         false,
         "query",
-        account.code_hash,
+        code_hash,
         &ctx,
         &msg,
     )?

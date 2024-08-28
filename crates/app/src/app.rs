@@ -3,11 +3,11 @@ use grug_types::JsonDeExt;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
-        do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_account,
-        query_accounts, query_app_config, query_app_configs, query_balance, query_balances,
-        query_code, query_codes, query_info, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
+        query_app_configs, query_balance, query_balances, query_code, query_codes,
+        query_contract_info, query_contracts_info, query_info, query_supplies, query_supply,
+        query_wasm_raw, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        APP_CONFIGS, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -867,13 +867,13 @@ where
             let res = query_codes(&storage, gas_tracker, start_after, limit)?;
             Ok(QueryResponse::Codes(res))
         },
-        Query::Account { address } => {
-            let res = query_account(&storage, gas_tracker, address)?;
-            Ok(QueryResponse::Account(res))
+        Query::ContractInfo { address } => {
+            let res = query_contract_info(&storage, gas_tracker, address)?;
+            Ok(QueryResponse::ContractInfo(res))
         },
-        Query::Accounts { start_after, limit } => {
-            let res = query_accounts(&storage, gas_tracker, start_after, limit)?;
-            Ok(QueryResponse::Accounts(res))
+        Query::ContractInfos { start_after, limit } => {
+            let res = query_contracts_info(&storage, gas_tracker, start_after, limit)?;
+            Ok(QueryResponse::ContractsInfo(res))
         },
         Query::WasmRaw { contract, key } => {
             let res = query_wasm_raw(storage, gas_tracker, contract, key)?;

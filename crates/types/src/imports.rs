@@ -11,8 +11,8 @@
 
 use {
     crate::{
-        Account, Addr, Batch, Binary, Coins, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt,
-        Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        Addr, Batch, Binary, Coins, ContractInfo, Hash256, InfoResponse, Json, JsonDeExt,
+        JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -357,20 +357,20 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_codes())
     }
 
-    pub fn query_account(&self, address: Addr) -> StdResult<Account> {
+    pub fn query_contract_info(&self, address: Addr) -> StdResult<ContractInfo> {
         self.inner
-            .query_chain(Query::Account { address })
-            .map(|res| res.as_account())
+            .query_chain(Query::ContractInfo { address })
+            .map(|res| res.as_contract_info())
     }
 
-    pub fn query_accounts(
+    pub fn query_contracts_info(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
-    ) -> StdResult<BTreeMap<Addr, Account>> {
+    ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
         self.inner
-            .query_chain(Query::Accounts { start_after, limit })
-            .map(|res| res.as_accounts())
+            .query_chain(Query::ContractInfos { start_after, limit })
+            .map(|res| res.as_contracts_info())
     }
 
     pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {

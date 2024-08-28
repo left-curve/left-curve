@@ -4,7 +4,7 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        Account, Addr, Binary, Coin, Coins, ConfigUpdates, GenericResult, Hash256, HashExt,
+        Addr, Binary, Coin, Coins, ConfigUpdates, ContractInfo, GenericResult, Hash256, HashExt,
         InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError, Tx,
         TxOutcome, UnsignedTx,
     },
@@ -248,27 +248,27 @@ impl Client {
             .map(|res| res.as_codes())
     }
 
-    /// Query the metadata of a single account.
-    pub async fn query_account(
+    /// Query the metadata of a single contract.
+    pub async fn query_contract_info(
         &self,
         address: Addr,
         height: Option<u64>,
-    ) -> anyhow::Result<Account> {
-        self.query_app(&Query::Account { address }, height)
+    ) -> anyhow::Result<ContractInfo> {
+        self.query_app(&Query::ContractInfo { address }, height)
             .await
-            .map(|res| res.as_account())
+            .map(|res| res.as_contract_info())
     }
 
-    /// Enumerate metadata of all accounts.
-    pub async fn query_accounts(
+    /// Enumerate metadata of all contracts.
+    pub async fn query_contracts_info(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
         height: Option<u64>,
-    ) -> anyhow::Result<BTreeMap<Addr, Account>> {
-        self.query_app(&Query::Accounts { start_after, limit }, height)
+    ) -> anyhow::Result<BTreeMap<Addr, ContractInfo>> {
+        self.query_app(&Query::ContractInfos { start_after, limit }, height)
             .await
-            .map(|res| res.as_accounts())
+            .map(|res| res.as_contracts_info())
     }
 
     /// Query a raw key-value pair in a contract's internal state.

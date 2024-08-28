@@ -1,6 +1,6 @@
 use {
     grug_storage::{Item, Map, Serde, Set},
-    grug_types::{Account, Addr, Binary, BlockInfo, Config, Hash256, Json, Timestamp},
+    grug_types::{Addr, Binary, BlockInfo, Config, ContractInfo, Hash256, Json, Timestamp},
 };
 
 /// A string that identifies the chain
@@ -27,8 +27,8 @@ pub const NEXT_CRONJOBS: Set<(Timestamp, Addr)> = Set::new("jobs");
 /// Wasm contract byte codes: code_hash => byte_code
 pub const CODES: Map<Hash256, Binary> = Map::new("code");
 
-/// Account metadata: address => account
-pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
+/// Contract metadata: address => contract_info
+pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 
 /// Each contract has its own storage space, which we term the "substore".
 /// A key in a contract's substore is prefixed by the word "wasm" + contract address.

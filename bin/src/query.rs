@@ -69,13 +69,13 @@ enum SubCmd {
         /// Maximum number of items to display
         limit: Option<u32>,
     },
-    /// Query metadata of a single account by address
-    Account {
+    /// Query metadata of a single contract by address
+    ContractInfo {
         /// Account address
         address: Addr,
     },
-    /// Enumerate metadata of all accounts
-    Accounts {
+    /// Enumerate metadata of all contracts
+    ContractsInfo {
         /// Start after this address
         start_after: Option<Addr>,
         /// Maximum number of items to display
@@ -127,8 +127,10 @@ impl QueryCmd {
             SubCmd::Supplies { start_after, limit } => Query::Supplies { start_after, limit },
             SubCmd::Code { hash } => Query::Code { hash },
             SubCmd::Codes { start_after, limit } => Query::Codes { start_after, limit },
-            SubCmd::Account { address } => Query::Account { address },
-            SubCmd::Accounts { start_after, limit } => Query::Accounts { start_after, limit },
+            SubCmd::ContractInfo { address } => Query::ContractInfo { address },
+            SubCmd::ContractsInfo { start_after, limit } => {
+                Query::ContractInfos { start_after, limit }
+            },
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
                 let key = Binary::from(hex::decode(key_hex)?);

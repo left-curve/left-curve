@@ -2,12 +2,12 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, ACCOUNTS, APP_CONFIGS,
-        CHAIN_ID, CODES, CONFIG, NEXT_CRONJOBS,
+        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES,
+        CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_types::{
-        Account, Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates,
-        Context, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
+        Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
+        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
         TxOutcome,
     },
     std::collections::BTreeMap,
@@ -220,7 +220,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let cfg = CONFIG.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, cfg.bank)?;
+    let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
         chain_id,
@@ -240,7 +240,7 @@ where
         0,
         true,
         "bank_execute",
-        account.code_hash,
+        code_hash,
         &ctx,
         &msg,
     )?;
@@ -272,7 +272,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, msg.to)?;
+    let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
     let ctx = Context {
         chain_id,
         block,
@@ -290,7 +290,7 @@ where
         0,
         true,
         "receive",
-        account.code_hash,
+        code_hash,
         &ctx,
     )
 }
@@ -367,16 +367,16 @@ where
         return Err(AppError::Unauthorized);
     }
 
-    // Compute the contract address, and make sure there isn't already an
-    // account of the same address.
+    // Compute the contract address, and make sure there isn't already a
+    // contract of the same address.
     let address = Addr::compute(sender, code_hash, &salt);
-    if ACCOUNTS.has(&storage, address) {
+    if CONTRACTS.has(&storage, address) {
         return Err(AppError::AccountExists { address });
     }
 
-    // Save the account info
-    let account = Account { code_hash, admin };
-    ACCOUNTS.save(&mut storage, address, &account)?;
+    // Save the contract info
+    let contract = ContractInfo { code_hash, admin };
+    CONTRACTS.save(&mut storage, address, &contract)?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -412,7 +412,7 @@ where
         0,
         true,
         "instantiate",
-        account.code_hash,
+        contract.code_hash,
         &ctx,
         msg,
     )?);
@@ -479,7 +479,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, contract)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -515,7 +515,7 @@ where
         0,
         true,
         "execute",
-        account.code_hash,
+        code_hash,
         &ctx,
         msg,
     )?);
@@ -582,22 +582,22 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let mut account = ACCOUNTS.load(&storage, contract)?;
+    let mut contract_info = CONTRACTS.load(&storage, contract)?;
 
     // Only the account's admin can migrate it
-    let Some(admin) = &account.admin else {
+    let Some(admin) = &contract_info.admin else {
         return Err(AppError::AdminNotSet);
     };
     if sender != admin {
         return Err(AppError::NotAdmin {
             sender,
-            admin: account.admin.unwrap(),
+            admin: contract_info.admin.unwrap(),
         });
     }
 
     // Update account info and save
-    account.code_hash = new_code_hash;
-    ACCOUNTS.save(&mut storage, contract, &account)?;
+    contract_info.code_hash = new_code_hash;
+    CONTRACTS.save(&mut storage, contract, &contract_info)?;
 
     let ctx = Context {
         chain_id,
@@ -616,7 +616,7 @@ where
         0,
         true,
         "migrate",
-        account.code_hash,
+        contract_info.code_hash,
         &ctx,
         msg,
     )
@@ -678,7 +678,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, contract)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
     let ctx = Context {
         chain_id,
         block,
@@ -696,7 +696,7 @@ where
         0,
         true,
         "reply",
-        account.code_hash,
+        code_hash,
         &ctx,
         msg,
         result,
@@ -718,7 +718,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, tx.sender)?;
+    let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
     let ctx = Context {
         chain_id,
         block,
@@ -736,7 +736,7 @@ where
             0,
             true,
             "authenticate",
-            account.code_hash,
+            code_hash,
             &ctx,
             tx,
         )?
@@ -786,7 +786,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, tx.sender)?;
+    let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
     let ctx = Context {
         chain_id,
         block,
@@ -804,7 +804,7 @@ where
         0,
         true,
         "backrun",
-        account.code_hash,
+        code_hash,
         &ctx,
         tx,
     ) {
@@ -840,7 +840,7 @@ where
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
         let cfg = CONFIG.load(&storage)?;
-        let taxman = ACCOUNTS.load(&storage, cfg.taxman)?;
+        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
             chain_id,
@@ -897,7 +897,7 @@ where
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
         let cfg = CONFIG.load(&storage)?;
-        let taxman = ACCOUNTS.load(&storage, cfg.taxman)?;
+        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
             chain_id,
@@ -986,7 +986,7 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let account = ACCOUNTS.load(&storage, contract)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
     let ctx = Context {
         chain_id,
         block,
@@ -1004,7 +1004,7 @@ where
         0,
         true,
         "cron_execute",
-        account.code_hash,
+        code_hash,
         &ctx,
     )
 }
