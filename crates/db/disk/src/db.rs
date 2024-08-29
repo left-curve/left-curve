@@ -2,7 +2,7 @@ use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Buffer, Db, PrunableDb},
     grug_jmt::{MerkleTree, Proof, ICS23_PROOF_SPEC},
-    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, StdResult, Storage},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
     ics23::{
         commitment_proof::Proof as CommitmentProofInner, CommitmentProof, ExistenceProof,
         NonExistenceProof,
@@ -12,6 +12,7 @@ use {
         WriteBatch,
     },
     std::{
+        collections::BTreeMap,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -21,6 +22,10 @@ use {
 /// The default family is used for metadata. Currently the only metadata we have
 /// is the latest version.
 const CF_NAME_DEFAULT: &str = "default";
+
+/// The preimage column family maps key hashes to raw keys. This is necessary
+/// for generating ICS-23 compatible Merkle proofs.
+const CF_NAME_PREIMAGES: &str = "preimages";
 
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
 /// key-value pair data. We use this CF for deriving the Merkle root hash for the
@@ -91,6 +96,7 @@ pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
+    preimages: BTreeMap<Hash256, Vec<u8>>,
 }
 
 impl DiskDb {
@@ -103,8 +109,9 @@ impl DiskDb {
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
-            (CF_NAME_STATE_COMMITMENT, Options::default()),
+            (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
             (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
+            (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
         Ok(Self {
@@ -212,7 +219,7 @@ impl Db for DiskDb {
         let state_storage = self.state_storage(Some(version))?;
         let state_commitment = self.state_commitment();
 
-        let generate_existence_proof = |storage, version, key: Vec<u8>, value| -> StdResult<_> {
+        let generate_existence_proof = |storage, version, key: Vec<u8>, value| -> DbResult<_> {
             let path = MERKLE_TREE.ics23_prove_existence(storage, version, key.hash256())?;
 
             Ok(ExistenceProof {
@@ -241,19 +248,32 @@ impl Db for DiskDb {
             // We simply look up the state storage to find the left and right
             // neighbors, and generate existence proof of them.
             None => {
-                let left = state_storage
-                    .scan(None, Some(&key), Order::Descending)
+                let cf = cf_preimages(&self.inner.db);
+                let key_hash = key.hash256();
+
+                let opts = new_read_options(Some(version), None, Some(&key_hash));
+                let left = self
+                    .inner
+                    .db
+                    .iterator_cf_opt(&cf, opts, IteratorMode::End)
                     .next()
-                    .map(|(key, value)| {
-                        generate_existence_proof(&state_commitment, version, key, value)
+                    .map(|res| {
+                        let (_, key) = res?;
+                        let value = state_storage.read(&key).unwrap();
+                        generate_existence_proof(&state_commitment, version, key.to_vec(), value)
                     })
                     .transpose()?;
 
-                let right = state_storage
-                    .scan(Some(&key), None, Order::Ascending)
+                let opts = new_read_options(Some(version), Some(&key_hash), None);
+                let right = self
+                    .inner
+                    .db
+                    .iterator_cf_opt(&cf, opts, IteratorMode::Start)
                     .next()
-                    .map(|(key, value)| {
-                        generate_existence_proof(&state_commitment, version, key, value)
+                    .map(|res| {
+                        let (_, key) = res?;
+                        let value = state_storage.read(&key).unwrap();
+                        generate_existence_proof(&state_commitment, version, key.to_vec(), value)
                     })
                     .transpose()?;
 
@@ -289,10 +309,17 @@ impl Db for DiskDb {
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
+        // Compute the preimages.
+        let preimages = batch
+            .keys()
+            .map(|key| (key.hash256(), key.clone()))
+            .collect();
+
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
+            preimages,
         });
 
         Ok((new_version, root_hash))
@@ -306,10 +333,17 @@ impl Db for DiskDb {
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
+        let ts = U64Timestamp::from(pending.version);
 
         // Set the new version (note: use little endian)
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+
+        // Writes in preimages (note: don't forget timestamping)
+        let cf = cf_preimages(&self.inner.db);
+        for (key_hash, key) in pending.preimages {
+            batch.put_cf_with_ts(&cf, key_hash, ts, key);
+        }
 
         // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
@@ -323,7 +357,6 @@ impl Db for DiskDb {
 
         // Writes in state storage (note: don't forget timestamping)
         let cf = cf_state_storage(&self.inner.db);
-        let ts = U64Timestamp::from(pending.version);
         for (key, op) in pending.state_storage {
             if let Op::Insert(value) = op {
                 batch.put_cf_with_ts(&cf, key, ts, value);
@@ -356,6 +389,8 @@ impl PrunableDb for DiskDb {
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        let ts = U64Timestamp::from(up_to_version);
+
         // Prune state storage.
         //
         // We do this by increase the state storage column family's
@@ -366,7 +401,10 @@ impl PrunableDb for DiskDb {
         // performs a lazy prune. Future compactions will honor the increased
         // `full_history_ts_low` and trim history when possible.
         let cf = cf_state_storage(&self.inner.db);
-        let ts = U64Timestamp::from(up_to_version);
+        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+
+        // Same for preimages.
+        let cf = cf_preimages(&self.inner.db);
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Prune state commitment.
@@ -640,6 +678,12 @@ fn new_read_options(
 
 fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
+        panic!("failed to find default column family");
+    })
+}
+
+fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+    db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
