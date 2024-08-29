@@ -3,7 +3,10 @@ use {
     grug_app::{Buffer, Db, PrunableDb},
     grug_jmt::{MerkleTree, Proof, ICS23_PROOF_SPEC},
     grug_types::{Batch, Hash256, HashExt, Op, Order, Record, StdResult, Storage},
-    ics23::{commitment_proof::Proof as Ics23Proof, ExistenceProof, NonExistenceProof},
+    ics23::{
+        commitment_proof::Proof as CommitmentProofInner, CommitmentProof, ExistenceProof,
+        NonExistenceProof,
+    },
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -200,7 +203,11 @@ impl Db for DiskDb {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
-    fn ics23_prove(&self, key: Vec<u8>, version: Option<u64>) -> Result<Ics23Proof, Self::Error> {
+    fn ics23_prove(
+        &self,
+        key: Vec<u8>,
+        version: Option<u64>,
+    ) -> Result<CommitmentProof, Self::Error> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         let state_storage = self.state_storage(Some(version))?;
         let state_commitment = self.state_commitment();
@@ -216,14 +223,14 @@ impl Db for DiskDb {
             })
         };
 
-        match state_storage.read(&key) {
+        let proof = match state_storage.read(&key) {
             // Value is found. Generate an ICS-23 existence proof.
-            Some(value) => Ok(Ics23Proof::Exist(generate_existence_proof(
+            Some(value) => CommitmentProofInner::Exist(generate_existence_proof(
                 &state_commitment,
                 version,
                 key,
                 value,
-            )?)),
+            )?),
             // Value is not found.
             //
             // Here, unlike Diem or Penumbra's implementation, which walks the
@@ -250,9 +257,11 @@ impl Db for DiskDb {
                     })
                     .transpose()?;
 
-                Ok(Ics23Proof::Nonexist(NonExistenceProof { key, left, right }))
+                CommitmentProofInner::Nonexist(NonExistenceProof { key, left, right })
             },
-        }
+        };
+
+        Ok(CommitmentProof { proof: Some(proof) })
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {

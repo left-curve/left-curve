@@ -1,7 +1,7 @@
 use {
     crate::{GasTracker, QuerierProvider, StorageProvider},
     grug_types::{Batch, Context, Hash256, Storage},
-    ics23::commitment_proof::Proof as Ics23Proof,
+    ics23::CommitmentProof,
     serde::{de::DeserializeOwned, ser::Serialize},
 };
 
@@ -84,7 +84,11 @@ pub trait Db {
     /// because ICS-23 requires proofs to contain the prehash key and value,
     /// while grug-jmt only store hashed keys and values. Therefore we need the
     /// state storage.
-    fn ics23_prove(&self, key: Vec<u8>, version: Option<u64>) -> Result<Ics23Proof, Self::Error>;
+    fn ics23_prove(
+        &self,
+        key: Vec<u8>,
+        version: Option<u64>,
+    ) -> Result<CommitmentProof, Self::Error>;
 
     /// Accept a batch ops (an op is either a DB insertion or a deletion), keep
     /// them in the memory, but do not persist to disk yet; also, increment the
