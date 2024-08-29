@@ -219,8 +219,9 @@ impl Db for DiskDb {
         let state_storage = self.state_storage(Some(version))?;
         let state_commitment = self.state_commitment();
 
-        let generate_existence_proof = |storage, version, key: Vec<u8>, value| -> DbResult<_> {
-            let path = MERKLE_TREE.ics23_prove_existence(storage, version, key.hash256())?;
+        let generate_existence_proof = |key: Vec<u8>, value| -> DbResult<_> {
+            let key_hash = key.hash256();
+            let path = MERKLE_TREE.ics23_prove_existence(&state_commitment, version, key_hash)?;
 
             Ok(ExistenceProof {
                 key,
@@ -232,12 +233,7 @@ impl Db for DiskDb {
 
         let proof = match state_storage.read(&key) {
             // Value is found. Generate an ICS-23 existence proof.
-            Some(value) => CommitmentProofInner::Exist(generate_existence_proof(
-                &state_commitment,
-                version,
-                key,
-                value,
-            )?),
+            Some(value) => CommitmentProofInner::Exist(generate_existence_proof(key, value)?),
             // Value is not found.
             //
             // Here, unlike Diem or Penumbra's implementation, which walks the
@@ -260,7 +256,7 @@ impl Db for DiskDb {
                     .map(|res| {
                         let (_, key) = res?;
                         let value = state_storage.read(&key).unwrap();
-                        generate_existence_proof(&state_commitment, version, key.to_vec(), value)
+                        generate_existence_proof(key.to_vec(), value)
                     })
                     .transpose()?;
 
@@ -273,7 +269,7 @@ impl Db for DiskDb {
                     .map(|res| {
                         let (_, key) = res?;
                         let value = state_storage.read(&key).unwrap();
-                        generate_existence_proof(&state_commitment, version, key.to_vec(), value)
+                        generate_existence_proof(key.to_vec(), value)
                     })
                     .transpose()?;
 
