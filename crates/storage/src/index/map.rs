@@ -376,7 +376,7 @@ mod tests {
                 .map(|val| val.unwrap())
                 .collect::<Vec<_>>();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 (101, Foo::new("bar", "s_bar", 101)),
                 (102, Foo::new("bar", "s_bar", 102)),
                 (103, Foo::new("bar", "s_bar", 103)),
@@ -400,7 +400,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ("bar".to_string(), (0, 1), Foo::new("bar", "s_bar", 101)),
                 ("bar".to_string(), (0, 2), Foo::new("bar", "s_bar", 102)),
                 ("bar".to_string(), (1, 1), Foo::new("bar", "s_bar", 103)),
@@ -421,7 +421,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 1), Foo::new("bar", "s_bar", 101)),
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
                 ((1, 1), Foo::new("bar", "s_bar", 103)),
@@ -458,7 +458,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 1), Foo::new("bar", "s_bar", 101)),
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
                 ((1, 1), Foo::new("bar", "s_bar", 103)),
@@ -482,7 +482,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
                 ((1, 1), Foo::new("bar", "s_bar", 103)),
             ]);
@@ -500,7 +500,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 1), Foo::new("bar", "s_bar", 101)),
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
                 ((1, 1), Foo::new("bar", "s_bar", 103)),
@@ -526,7 +526,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
                 ((1, 1), Foo::new("bar", "s_bar", 103)),
                 ((1, 2), Foo::new("bar", "s_fooes", 104)),
@@ -547,7 +547,7 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![
+            assert_eq!(val, [
                 ((0, 1), Foo::new("bar", "s_bar", 101)),
                 ((0, 2), Foo::new("bar", "s_bar", 102)),
             ]);
@@ -566,10 +566,12 @@ mod tests {
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
-            assert_eq!(val, vec![((0, 2), Foo::new("bar", "s_bar", 102)),]);
+            assert_eq!(val, [((0, 2), Foo::new("bar", "s_bar", 102)),]);
         }
     }
 }
+
+// ---------------------- tests copied over from cosmwasm ----------------------
 
 #[cfg(test)]
 mod cosmwasm_tests {
@@ -868,8 +870,7 @@ mod cosmwasm_tests {
             .prefix("Maria".to_string())
             .range_raw(&store, None, None, Order::Descending)
             .collect();
-        let count = marias.len();
-        assert_eq!(2, count);
+        assert_eq!(marias.len(), 2);
 
         // Pks, sorted by (descending) pk
         assert_eq!(marias[0].0, b"5629");
@@ -923,8 +924,7 @@ mod cosmwasm_tests {
             .range(&store, None, None, Order::Descending)
             .collect::<StdResult<_>>()
             .unwrap();
-        let count = marias.len();
-        assert_eq!(2, count);
+        assert_eq!(marias.len(), 2);
 
         // Pks, sorted by (descending) pk
         assert_eq!(marias[0].0, "5629");
@@ -987,8 +987,7 @@ mod cosmwasm_tests {
             .sub_prefix(b"Maria".to_vec())
             .range_raw(&store, None, None, Order::Descending)
             .collect();
-        let count = marias.len();
-        assert_eq!(2, count);
+        assert_eq!(marias.len(), 2);
 
         // Pks, sorted by (descending) age
         assert_eq!(pk1, marias[0].0);
@@ -1053,8 +1052,7 @@ mod cosmwasm_tests {
             .range(&store, None, None, Order::Descending)
             .collect::<StdResult<_>>()
             .unwrap();
-        let count = marias.len();
-        assert_eq!(2, count);
+        assert_eq!(marias.len(), 2);
 
         // Pks, sorted by (descending) age
         assert_eq!(pk1.to_vec(), marias[0].0);
@@ -1243,79 +1241,6 @@ mod cosmwasm_tests {
         assert_eq!(datas[4], ages[4].2);
     }
 
-    // TODO: We dont' have prefix for unique index anymore
-
-    // #[test]
-    // fn range_raw_composite_key_by_unique_index() {
-    //     let mut store = MockStorage::new();
-
-    //     // save data
-    //     let (pks, datas) = save_data(&mut store);
-
-    //     let marias = DATA
-    //         .idx
-    //         .name_lastname
-    //         .prefix(b"Maria".to_vec())
-    //         .range_raw(&store, None, None, Order::Ascending)
-    //         .map(|(k, v)| {
-    //             (
-    //                 k,
-    //                 from_borsh_slice::<_, UniqueValue<&str, Data>>(&v).unwrap(),
-    //             )
-    //         })
-    //         .collect::<Vec<_>>();
-
-    //     // Only two people are called "Maria"
-    //     let count = marias.len();
-    //     assert_eq!(2, count);
-
-    //     // The ik::suffix
-    //     assert_eq!(datas[0].last_name.as_bytes(), marias[0].0);
-    //     assert_eq!(datas[1].last_name.as_bytes(), marias[1].0);
-
-    //     // The pks
-    //     assert_eq!(pks[0], marias[0].1.key().unwrap());
-    //     assert_eq!(pks[1], marias[1].1.key().unwrap());
-
-    //     // The associated data
-    //     assert_eq!(datas[0], marias[0].1.value);
-    //     assert_eq!(datas[1], marias[1].1.value);
-    // }
-
-    // TODO: We dont' have prefix for unique index anymore
-
-    // #[test]
-    // fn range_composite_key_by_unique_index() {
-    //     let mut store = MockStorage::new();
-
-    //     // save data
-    //     let (pks, datas) = save_data(&mut store);
-
-    //     let res: StdResult<Vec<_>> = DATA
-    //         .idx
-    //         .name_lastname
-    //         .prefix(b"Maria".to_vec())
-    //         .range(&store, None, None, Order::Ascending)
-    //         .collect();
-    //     let marias = res.unwrap();
-
-    //     // Only two people are called "Maria"
-    //     let count = marias.len();
-    //     assert_eq!(2, count);
-
-    //     // The ik::suffix
-    //     assert_eq!(datas[0].last_name.as_bytes(), marias[0].0);
-    //     assert_eq!(datas[1].last_name.as_bytes(), marias[1].0);
-
-    //     // The pks
-    //     assert_eq!(pks[0], marias[0].1.key().unwrap());
-    //     assert_eq!(pks[1], marias[1].1.key().unwrap());
-
-    //     // The associated data
-    //     assert_eq!(datas[0], marias[0].1.value);
-    //     assert_eq!(datas[1], marias[1].1.value);
-    // }
-
     #[test]
     fn range_simple_string_key() {
         let mut store = MockStorage::new();
@@ -1324,8 +1249,10 @@ mod cosmwasm_tests {
         let (pks, datas) = save_data(&mut store);
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = DATA.range(&store, None, None, Order::Ascending).collect();
-        let all = all.unwrap();
+        let all = DATA
+            .range(&store, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(
             all,
             pks.clone()
@@ -1336,10 +1263,10 @@ mod cosmwasm_tests {
         );
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = DATA
+        let all = DATA
             .range(&store, Some(Bound::inclusive("3")), None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(
             all,
             pks.into_iter()
@@ -1366,15 +1293,13 @@ mod cosmwasm_tests {
         // Grug note:
         // we changed this. This test doesn't make sense now.
         // it's like to call only range. With prefix, the IK::Prefix in this case is ().
-        let all: StdResult<Vec<_>> = DATA
+        let all = DATA
             // .prefix(())
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
+            .collect::<StdResult<Vec<_>>>().unwrap();
         assert_eq!(
             all,
-            pks.clone()
-                .into_iter()
+            pks.into_iter()
                 .map(str::to_string)
                 .zip(datas.into_iter())
                 .collect::<Vec<_>>()
@@ -1488,12 +1413,12 @@ mod cosmwasm_tests {
         map.save(&mut store, pk4, &data4).unwrap();
 
         // let's prefix and iterate
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix("1")
             .append("2")
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [("5628".to_string(), data2),]);
     }
 
@@ -1545,11 +1470,11 @@ mod cosmwasm_tests {
         map.save(&mut store, pk4, &data4).unwrap();
 
         // let's sub-prefix and iterate
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix("1")
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [
             (("1".to_string(), "5627".to_string()), data1),
             (("2".to_string(), "5628".to_string()), data2),
@@ -1604,15 +1529,15 @@ mod cosmwasm_tests {
         map.save(&mut store, pk4, &data4).unwrap();
 
         // let's prefix-range and iterate
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix_range(
                 &store,
                 Some(PrefixBound::inclusive("2")),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [
             (("2".to_string(), "5628".to_string()), data2.clone()),
             (("2".to_string(), "5629".to_string()), data3.clone()),
@@ -1620,15 +1545,15 @@ mod cosmwasm_tests {
         ]);
 
         // let's try to iterate over a more restrictive prefix-range!
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix_range(
                 &store,
                 Some(PrefixBound::inclusive("2")),
                 Some(PrefixBound::exclusive("3")),
                 Order::Ascending,
             )
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [
             (("2".to_string(), "5628".to_string()), data2),
             (("2".to_string(), "5629".to_string()), data3),
@@ -1687,15 +1612,15 @@ mod cosmwasm_tests {
         // Cosmwasm has (A, B) as prefix.
 
         // let's prefix-range and iterate
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix_range(
                 &store,
                 Some(PrefixBound::inclusive("1")),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [
             (
                 ("1".to_string(), "1".to_string(), "5627".to_string()),
@@ -1716,15 +1641,15 @@ mod cosmwasm_tests {
         ]);
 
         // let's prefix-range over inclusive bounds on both sides
-        let result: StdResult<Vec<_>> = map
+        let result = map
             .prefix_range(
                 &store,
                 Some(PrefixBound::inclusive("1")),
                 Some(PrefixBound::exclusive("2")),
                 Order::Ascending,
             )
-            .collect();
-        let result = result.unwrap();
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         assert_eq!(result, [
             (
                 ("1".to_string(), "1".to_string(), "5627".to_string()),
@@ -1777,11 +1702,7 @@ mod cosmwasm_tests {
                 .values(&store, None, Some(Bound::inclusive(1u64)), Order::Ascending)
                 .map(|val| val.unwrap().1)
                 .collect();
-
-            // Strip the index from values (for simpler comparison)
-            // let items: Vec<_> = items.into_iter().map(|(_, v)| v).collect();
-
-            assert_eq!(items, vec![1]);
+            assert_eq!(items, [1]);
 
             // Exclusive bound
             let items: Vec<_> = map
@@ -1790,8 +1711,7 @@ mod cosmwasm_tests {
                 .values(&store, Some(Bound::exclusive(2u64)), None, Order::Ascending)
                 .map(|val| val.unwrap().1)
                 .collect();
-
-            assert_eq!(items, vec![3]);
+            assert_eq!(items, [3]);
         }
     }
 
@@ -1827,26 +1747,9 @@ mod cosmwasm_tests {
             map.save(&mut store, "two2", &2).unwrap();
             map.save(&mut store, "three", &3).unwrap();
 
-            // TODO: Grug note: we don't have prefix_range_raw implemented
-            // leaving this here for future implementation
-
-            // Inclusive prefix-bound
-            // let items: Vec<_> = map
-            //     .idx
-            //     .secondary
-            //     .prefix_range_raw()
-            //     .range(&store, None, Some(Bound::inclusive(1u64)), Order::Ascending)
-            //     .collect::<Result<_, _>>()
-            //     .unwrap();
-
-            // Strip the index from values (for simpler comparison)
-            // let items: Vec<_> = items.into_iter().map(|(_, v)| v).collect();
-
-            // assert_eq!(items, vec![1]);
-
             // Exclusive bound (used for pagination)
             // Range over the index specifying a primary key (multi-index key includes the pk)
-            let items: Vec<_> = map
+            let items = map
                 .idx
                 .secondary
                 .range(
@@ -1855,10 +1758,9 @@ mod cosmwasm_tests {
                     None,
                     Order::Ascending,
                 )
-                .collect::<Result<_, _>>()
+                .collect::<StdResult<Vec<_>>>()
                 .unwrap();
-
-            assert_eq!(items, vec![
+            assert_eq!(items, [
                 (2, "two2".to_string(), 2),
                 (3, "three".to_string(), 3)
             ]);
@@ -1908,39 +1810,34 @@ mod cosmwasm_tests {
                 .unwrap();
 
             // Iterate over the main values
-            let items: Vec<_> = map
+            let items = map
                 .range_raw(&store, None, None, Order::Ascending)
-                .collect();
-
-            // Strip the index from values (for simpler comparison)
-            let items: Vec<u128> = items
-                .into_iter()
-                .map(|(_, v)| v.deserialize_borsh::<Uint128>().unwrap().into())
-                .collect();
-
-            assert_eq!(items, vec![11, 12, 21]);
+                .map(|(_, v)| {
+                    // Strip the index from values (for simpler comparison)
+                    v.deserialize_borsh::<Uint128>().unwrap().number()
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(items, [11, 12, 21]);
 
             // Iterate over the indexed values
             let items = map
                 .idx
                 .spender
                 .range(&store, None, None, Order::Ascending)
-                .map(|val| val.unwrap().2)
+                .map(|val| val.unwrap().2.number())
                 .collect::<Vec<_>>();
-
-            assert_eq!(items, vec![11_u128.into(), 21_u128.into(), 12_u128.into()]);
+            assert_eq!(items, [11, 21, 12]);
 
             // Prefix over the main values
-            let items: Vec<_> = map
+            let items = map
                 .prefix(&owner_1)
                 .range(&store, None, None, Order::Ascending)
-                .collect::<StdResult<_>>()
-                .unwrap();
-
-            // Strip the index from values (for simpler comparison)
-            let items: Vec<u128> = items.into_iter().map(|(_, v)| v.into()).collect();
-
-            assert_eq!(items, vec![11, 12]);
+                .map(|res| {
+                    // Strip the index from values (for simpler comparison)
+                    res.unwrap().1.number()
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(items, [11, 12]);
 
             // Prefix over the indexed values
             let items: Vec<_> = map
@@ -1948,24 +1845,22 @@ mod cosmwasm_tests {
                 .spender
                 .prefix(spender_1)
                 .range(&store, None, None, Order::Ascending)
-                .collect::<Result<_, _>>()
-                .unwrap();
-
-            // Strip the index from values (for simpler comparison)
-            let items: Vec<u128> = items.into_iter().map(|(_, v)| v.into()).collect();
-
-            assert_eq!(items, vec![11, 21]);
+                .map(|res| {
+                    // Strip the index from values (for simpler comparison)
+                    res.unwrap().1.number()
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(items, [11, 21]);
 
             // Prefix over the indexed values, and deserialize primary key as well
-            let items: Vec<_> = map
+            let items = map
                 .idx
                 .spender
                 .prefix(spender_2)
                 .range(&store, None, None, Order::Ascending)
-                .collect::<Result<_, _>>()
+                .collect::<StdResult<Vec<_>>>()
                 .unwrap();
-
-            assert_eq!(items, vec![((owner_1, spender_2), Uint128::new(12))]);
+            assert_eq!(items, [((owner_1, spender_2), Uint128::new(12))]);
         }
     }
 
