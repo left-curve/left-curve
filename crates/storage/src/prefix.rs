@@ -341,6 +341,8 @@ where
     (min, max)
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod test {
     use {super::*, crate::Borsh, grug_types::MockStorage};
@@ -348,6 +350,7 @@ mod test {
     #[test]
     fn ensure_proper_range_bounds() {
         let mut store = MockStorage::new();
+
         // manually create this - not testing nested prefixes here
         let prefix: Prefix<Vec<u8>, u64, Borsh> = Prefix {
             namespace: b"foo".to_vec(),
@@ -369,13 +372,14 @@ mod test {
             (b"ra".to_vec(), b"2".to_vec()),
             (b"zi".to_vec(), b"3".to_vec()),
         ];
-        let expected_reversed: Vec<(Vec<u8>, Vec<u8>)> = expected.iter().rev().cloned().collect();
+        let expected_reversed: Vec<_> = expected.iter().rev().cloned().collect();
 
         // let's do the basic sanity check
         let res: Vec<_> = prefix
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
         assert_eq!(&expected, &res);
+
         let res: Vec<_> = prefix
             .range_raw(&store, None, None, Order::Descending)
             .collect();
@@ -391,6 +395,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected[1..], res.as_slice());
+
         // skip excluded
         let res: Vec<_> = prefix
             .range_raw(
@@ -401,6 +406,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected[2..], res.as_slice());
+
         // if we exclude something a little lower, we get matched
         let res: Vec<_> = prefix
             .range_raw(
@@ -422,6 +428,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected_reversed[1..], res.as_slice());
+
         // skip excluded
         let res: Vec<_> = prefix
             .range_raw(
@@ -432,6 +439,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected_reversed[2..], res.as_slice());
+
         // if we exclude something a little higher, we get matched
         let res: Vec<_> = prefix
             .range_raw(
@@ -453,6 +461,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected[1..2], res.as_slice());
+
         // and descending
         let res: Vec<_> = prefix
             .range_raw(
@@ -463,6 +472,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected[1..2], res.as_slice());
+
         // Include both sides
         let res: Vec<_> = prefix
             .range_raw(
@@ -473,6 +483,7 @@ mod test {
             )
             .collect();
         assert_eq!(&expected_reversed[..2], res.as_slice());
+
         // Exclude both sides
         let res: Vec<_> = prefix
             .range_raw(
