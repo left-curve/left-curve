@@ -3,10 +3,11 @@ export type { AccountStateResponse } from "./account";
 export type {
   AccountResponse,
   BlockInfo,
+  ContractInfo,
   ChainConfig,
   InfoResponse,
-  QueryAccountRequest,
-  QueryAccountsRequest,
+  QueryContractRequest,
+  QueryContractsRequest,
   QueryCodesRequest,
   QueryBalanceRequest,
   QueryBalancesRequest,
@@ -22,6 +23,8 @@ export type {
   WasmSmartResponse,
   SimulateRequest,
   SimulateResponse,
+  ContractResponse,
+  ContractsResponse,
 } from "./queries";
 
 export type {

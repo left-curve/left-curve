@@ -118,6 +118,18 @@ import {
   getAccountsByUsername,
 } from "./public/getAccountsByUsername";
 
+import {
+  type GetContractInfoParameters,
+  type GetContractInfoReturnType,
+  getContractInfo,
+} from "./public/getContractInfo";
+
+import {
+  type GetContractsInfoParameters,
+  type GetContractsInfoReturnType,
+  getContractsInfo,
+} from "./public/getContractsInfo";
+
 export type PublicActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
@@ -148,6 +160,8 @@ export type PublicActions<
   ) => GetAccountInfoByAccountIdReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountIdByAddress: (args: GetAccountIdByAddressParameters) => GetAccountIdByAddressReturnType;
+  getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
+  getContractsInfo: (args?: GetContractsInfoParameters) => GetContractsInfoReturnType;
   queryApp: (args: QueryAppParameters) => QueryAppReturnType;
   queryWasmRaw: <value extends any | undefined>(
     args: QueryWasmRawParameters,
@@ -183,6 +197,8 @@ export function publicActions<
     getAccountInfoByAccountId: (args) => getAccountInfoByAccountId(client, args),
     getAccountsByUsername: (args) => getAccountsByUsername(client, args),
     getAccountIdByAddress: (args) => getAccountIdByAddress(client, args),
+    getContractInfo: (args) => getContractInfo(client, args),
+    getContractsInfo: (args) => getContractsInfo(client, args),
     queryApp: (args) => queryApp(client, args),
     queryWasmRaw: (args) => queryWasmRaw(client, args),
     queryWasmSmart: (args) => queryWasmSmart(client, args),

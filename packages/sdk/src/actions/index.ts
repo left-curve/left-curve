@@ -1,3 +1,7 @@
+/* -------------------------------------------------------------------------- */
+/*                               Public Actions                               */
+/* -------------------------------------------------------------------------- */
+
 export {
   type GetBalanceParameters,
   type GetBalanceReturnType,
@@ -10,7 +14,11 @@ export {
   getBalances,
 } from "./public/getBalances";
 
-export { type GetSupplyParameters, type GetSupplyReturnType, getSupply } from "./public/getSupply";
+export {
+  type GetSupplyParameters,
+  type GetSupplyReturnType,
+  getSupply,
+} from "./public/getSupply";
 
 export {
   type GetSuppliesParameters,
@@ -18,9 +26,17 @@ export {
   getSupplies,
 } from "./public/getSupplies";
 
-export { type GetCodeParameters, type GetCodeReturnType, getCode } from "./public/getCode";
+export {
+  type GetCodeParameters,
+  type GetCodeReturnType,
+  getCode,
+} from "./public/getCode";
 
-export { type GetCodesParameters, type GetCodesReturnType, getCodes } from "./public/getCodes";
+export {
+  type GetCodesParameters,
+  type GetCodesReturnType,
+  getCodes,
+} from "./public/getCodes";
 
 export {
   type GetChainInfoParameters,
@@ -28,7 +44,11 @@ export {
   getChainInfo,
 } from "./public/getChainInfo";
 
-export { type QueryAppParameters, type QueryAppReturnType, queryApp } from "./public/queryApp";
+export {
+  type QueryAppParameters,
+  type QueryAppReturnType,
+  queryApp,
+} from "./public/queryApp";
 
 export {
   type QueryWasmRawParameters,
@@ -54,7 +74,11 @@ export {
   computeAddress,
 } from "./public/computeAddress";
 
-export { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
+export {
+  type SimulateParameters,
+  type SimulateReturnType,
+  simulate,
+} from "./public/simulate";
 
 export {
   type GetAccountTypeCodeHashParameters,
@@ -104,15 +128,45 @@ export {
   getAccountsByUsername,
 } from "./public/getAccountsByUsername";
 
-export { type PublicActions, publicActions } from "./publicActions";
+export {
+  type GetContractInfoParameters,
+  type GetContractInfoReturnType,
+  getContractInfo,
+} from "./public/getContractInfo";
 
-export { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
+export {
+  type GetContractsInfoParameters,
+  type GetContractsInfoReturnType,
+  getContractsInfo,
+} from "./public/getContractsInfo";
 
-export { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate";
+/* -------------------------------------------------------------------------- */
+/*                                User Actions                                */
+/* -------------------------------------------------------------------------- */
 
-export { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer";
+export {
+  type ExecuteParameters,
+  type ExecuteReturnType,
+  execute,
+} from "./user/execute";
 
-export { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode";
+export {
+  type MigrateParameters,
+  type MigrateReturnType,
+  migrate,
+} from "./user/migrate";
+
+export {
+  type TransferParameters,
+  type TransferReturnType,
+  transfer,
+} from "./user/transfer";
+
+export {
+  type StoreCodeParameters,
+  type StoreCodeReturnType,
+  storeCode,
+} from "./user/storeCode";
 
 export {
   type InstantiateParameters,
@@ -132,4 +186,16 @@ export {
   signAndBroadcastTx,
 } from "./user/signAndBroadcastTx";
 
-export { type UserActions, userActions } from "./userActions";
+/* -------------------------------------------------------------------------- */
+/*                              Actions Builders                              */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type PublicActions,
+  publicActions,
+} from "./publicActions";
+
+export {
+  type UserActions,
+  userActions,
+} from "./userActions";

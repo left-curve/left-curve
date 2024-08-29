@@ -1,6 +1,6 @@
 import type { Address } from "./address";
 import type { Coin } from "./coin";
-import type { Json } from "./common";
+import type { Hex, Json } from "./common";
 import type { Metadata } from "./credential";
 import type { Message } from "./tx";
 
@@ -8,6 +8,11 @@ export type BlockInfo = {
   height: string;
   timestamp: string;
   hash: string;
+};
+
+export type ContractInfo = {
+  codeHash: Hex;
+  admin?: Address;
 };
 
 export type ChainConfig = {
@@ -36,8 +41,8 @@ export type QueryRequest =
   | { supplies: QuerySuppliesReuest }
   | { code: QueryCodeRequest }
   | { codes: QueryCodesRequest }
-  | { account: QueryAccountRequest }
-  | { accounts: QueryAccountsRequest }
+  | { contract: QueryContractRequest }
+  | { contracts: QueryContractsRequest }
   | { wasmRaw: QueryWasmRawRequest }
   | { wasmSmart: QueryWasmSmartRequest };
 
@@ -83,15 +88,6 @@ export type QueryCodesRequest = {
   limit?: number;
 };
 
-export type QueryAccountRequest = {
-  address: string;
-};
-
-export type QueryAccountsRequest = {
-  startAfter?: string;
-  limit?: number;
-};
-
 export type QueryWasmRawRequest = {
   contract: string;
   key: string;
@@ -100,6 +96,15 @@ export type QueryWasmRawRequest = {
 export type QueryWasmSmartRequest = {
   contract: string;
   msg: Json;
+};
+
+export type QueryContractsRequest = {
+  startAfter?: Address;
+  limit?: number;
+};
+
+export type QueryContractRequest = {
+  address: Address;
 };
 
 export type QueryResponse =
@@ -112,8 +117,8 @@ export type QueryResponse =
   | { supplies: Coin }
   | { code: string }
   | { codes: string[] }
-  | { account: AccountResponse }
-  | { accounts: AccountResponse[] }
+  | { contract: ContractResponse }
+  | { contracts: ContractsResponse }
   | { wasmRaw: WasmRawResponse }
   | { wasmSmart: WasmSmartResponse };
 
@@ -143,3 +148,7 @@ export type WasmSmartResponse = {
   contract: Address;
   data: string;
 };
+
+export type ContractResponse = ContractInfo;
+
+export type ContractsResponse = Record<Address, ContractInfo>;
