@@ -36,6 +36,13 @@ impl<V> Op<V> {
         }
     }
 
+    pub fn unwrap_value(self) -> V {
+        match self {
+            Op::Insert(v) => v,
+            Op::Delete => panic!("called `Op::unwrap_value()` on a `Delete` value"),
+        }
+    }
+
     pub fn into_option(self) -> Option<V> {
         match self {
             Op::Insert(v) => Some(v),

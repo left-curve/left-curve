@@ -1,13 +1,18 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Buffer, Db, PrunableDb},
-    grug_jmt::{MerkleTree, Proof},
+    grug_jmt::{MerkleTree, Proof, ICS23_PROOF_SPEC},
     grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
+    ics23::{
+        commitment_proof::Proof as CommitmentProofInner, CommitmentProof, ExistenceProof,
+        NonExistenceProof,
+    },
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
     std::{
+        collections::BTreeMap,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -17,6 +22,10 @@ use {
 /// The default family is used for metadata. Currently the only metadata we have
 /// is the latest version.
 const CF_NAME_DEFAULT: &str = "default";
+
+/// The preimage column family maps key hashes to raw keys. This is necessary
+/// for generating ICS-23 compatible Merkle proofs.
+const CF_NAME_PREIMAGES: &str = "preimages";
 
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
 /// key-value pair data. We use this CF for deriving the Merkle root hash for the
@@ -87,6 +96,7 @@ pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
+    preimages: BTreeMap<Hash256, Vec<u8>>,
 }
 
 impl DiskDb {
@@ -99,8 +109,9 @@ impl DiskDb {
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
-            (CF_NAME_STATE_COMMITMENT, Options::default()),
+            (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
             (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
+            (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
         Ok(Self {
@@ -199,6 +210,76 @@ impl Db for DiskDb {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
+    fn ics23_prove(
+        &self,
+        key: Vec<u8>,
+        version: Option<u64>,
+    ) -> Result<CommitmentProof, Self::Error> {
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
+        let state_storage = self.state_storage(Some(version))?;
+        let state_commitment = self.state_commitment();
+
+        let generate_existence_proof = |key: Vec<u8>, value| -> DbResult<_> {
+            let key_hash = key.hash256();
+            let path = MERKLE_TREE.ics23_prove_existence(&state_commitment, version, key_hash)?;
+
+            Ok(ExistenceProof {
+                key,
+                value,
+                leaf: ICS23_PROOF_SPEC.leaf_spec.clone(),
+                path,
+            })
+        };
+
+        let proof = match state_storage.read(&key) {
+            // Value is found. Generate an ICS-23 existence proof.
+            Some(value) => CommitmentProofInner::Exist(generate_existence_proof(key, value)?),
+            // Value is not found.
+            //
+            // Here, unlike Diem or Penumbra's implementation, which walks the
+            // tree to find the left and right neighbors, we use an approach
+            // similar to SeiDB's:
+            // https://github.com/sei-protocol/sei-db/blob/v0.0.43/sc/memiavl/proof.go#L41-L76
+            //
+            // We simply look up the state storage to find the left and right
+            // neighbors, and generate existence proof of them.
+            None => {
+                let cf = cf_preimages(&self.inner.db);
+                let key_hash = key.hash256();
+
+                let opts = new_read_options(Some(version), None, Some(&key_hash));
+                let left = self
+                    .inner
+                    .db
+                    .iterator_cf_opt(&cf, opts, IteratorMode::End)
+                    .next()
+                    .map(|res| {
+                        let (_, key) = res?;
+                        let value = state_storage.read(&key).unwrap();
+                        generate_existence_proof(key.to_vec(), value)
+                    })
+                    .transpose()?;
+
+                let opts = new_read_options(Some(version), Some(&key_hash), None);
+                let right = self
+                    .inner
+                    .db
+                    .iterator_cf_opt(&cf, opts, IteratorMode::Start)
+                    .next()
+                    .map(|res| {
+                        let (_, key) = res?;
+                        let value = state_storage.read(&key).unwrap();
+                        generate_existence_proof(key.to_vec(), value)
+                    })
+                    .transpose()?;
+
+                CommitmentProofInner::Nonexist(NonExistenceProof { key, left, right })
+            },
+        };
+
+        Ok(CommitmentProof { proof: Some(proof) })
+    }
+
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
@@ -224,10 +305,17 @@ impl Db for DiskDb {
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
+        // Compute the preimages.
+        let preimages = batch
+            .keys()
+            .map(|key| (key.hash256(), key.clone()))
+            .collect();
+
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
+            preimages,
         });
 
         Ok((new_version, root_hash))
@@ -241,10 +329,17 @@ impl Db for DiskDb {
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
         let mut batch = WriteBatch::default();
+        let ts = U64Timestamp::from(pending.version);
 
         // Set the new version (note: use little endian)
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+
+        // Writes in preimages (note: don't forget timestamping)
+        let cf = cf_preimages(&self.inner.db);
+        for (key_hash, key) in pending.preimages {
+            batch.put_cf_with_ts(&cf, key_hash, ts, key);
+        }
 
         // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
@@ -258,7 +353,6 @@ impl Db for DiskDb {
 
         // Writes in state storage (note: don't forget timestamping)
         let cf = cf_state_storage(&self.inner.db);
-        let ts = U64Timestamp::from(pending.version);
         for (key, op) in pending.state_storage {
             if let Op::Insert(value) = op {
                 batch.put_cf_with_ts(&cf, key, ts, value);
@@ -291,6 +385,8 @@ impl PrunableDb for DiskDb {
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        let ts = U64Timestamp::from(up_to_version);
+
         // Prune state storage.
         //
         // We do this by increase the state storage column family's
@@ -301,7 +397,10 @@ impl PrunableDb for DiskDb {
         // performs a lazy prune. Future compactions will honor the increased
         // `full_history_ts_low` and trim history when possible.
         let cf = cf_state_storage(&self.inner.db);
-        let ts = U64Timestamp::from(up_to_version);
+        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+
+        // Same for preimages.
+        let cf = cf_preimages(&self.inner.db);
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Prune state commitment.
@@ -579,6 +678,12 @@ fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
     })
 }
 
+fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+    db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
+        panic!("failed to find default column family");
+    })
+}
+
 fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
@@ -597,8 +702,11 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
 mod tests {
     use {
         super::*,
+        core::str,
         grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
         hex_literal::hex,
+        ics23::HostFunctionsManager,
+        proptest::prelude::*,
         rocksdb::{Options, DB},
         std::{
             panic,
@@ -1040,6 +1148,111 @@ mod tests {
                 err.to_string()
                     .contains("data not found! type: grug_jmt::node::Node")
             }));
+        }
+    }
+
+    #[test]
+    fn ics23_prove_works() {
+        let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
+        let db = DiskDb::open(&path).unwrap();
+
+        // Same test data as used in JMT crate.
+        let (_, maybe_root) = db
+            .flush_and_commit(Batch::from([
+                (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+                (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+                (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            ]))
+            .unwrap();
+        let root = maybe_root.unwrap().to_vec();
+
+        // Prove existing keys, and verify those proofs.
+        for (key, value) in [("r", "foo"), ("m", "bar"), ("L", "fuzz"), ("a", "buzz")] {
+            let proof = db.ics23_prove(key.as_bytes().to_vec(), None).unwrap();
+            assert!(
+                ics23::verify_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root,
+                    key.as_bytes(),
+                    value.as_bytes(),
+                ),
+                "inclusion verification failed for key `{key}` and value `{value}`"
+            );
+        }
+
+        // Prove non-existing keys, and verify those proofs.
+        for key in ["b", "o"] {
+            let proof = db.ics23_prove(key.as_bytes().to_vec(), None).unwrap();
+            assert!(
+                ics23::verify_non_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root,
+                    key.as_bytes()
+                ),
+                "exclusion verification failed for key `{key}`"
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_ics23_prove_works(
+            existing_kvs in prop::collection::hash_map("[a-z]{1,10}", "[a-z]{1,10}", 100),
+            non_existing_keys in prop::collection::vec("[a-z]{1,10}", 100),
+        ) {
+            let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
+            let db = DiskDb::open(&path).unwrap();
+
+            let existing_kvs = existing_kvs
+                .into_iter()
+                .map(|(k, v)| (k.as_bytes().to_vec(), Op::Insert(v.as_bytes().to_vec())))
+                .collect::<Batch>();
+            let non_existing_keys = non_existing_keys
+                .into_iter()
+                .map(|k| k.as_bytes().to_vec())
+                .filter(|k| !existing_kvs.contains_key(k))
+                .collect::<Vec<_>>();
+
+            let (_, maybe_root) = db.flush_and_commit(existing_kvs.clone()).unwrap();
+            let root = maybe_root.unwrap().to_vec();
+
+            // Loop through the KVs that exist in the DB. Generate and verify
+            // inclusion proofs.
+            for (key, op) in existing_kvs {
+                let value = op.unwrap_value();
+                let proof = db.ics23_prove(key.clone(), None).unwrap();
+                assert!(
+                    ics23::verify_membership::<HostFunctionsManager>(
+                        &proof,
+                        &ICS23_PROOF_SPEC,
+                        &root,
+                        &key,
+                        &value,
+                    ),
+                    "inclusion verification failed for key `{}` and value `{}`",
+                    str::from_utf8(&key).unwrap(),
+                    str::from_utf8(&value).unwrap(),
+                );
+            }
+
+            // Loop through the KVs that don't exist. Generate and verify
+            // exclusion proofs.
+            for key in non_existing_keys {
+                let proof = db.ics23_prove(key.clone(), None).unwrap();
+                assert!(
+                    ics23::verify_non_membership::<HostFunctionsManager>(
+                        &proof,
+                        &ICS23_PROOF_SPEC,
+                        &root,
+                        &key,
+                    ),
+                    "exclusion verification failed for key `{}`",
+                    str::from_utf8(&key).unwrap(),
+                );
+            }
         }
     }
 }

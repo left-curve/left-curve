@@ -42,9 +42,9 @@ enum Outcome {
 ///   <https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8>
 pub struct MerkleTree<'a> {
     // (version, bitarray) => Node
-    nodes: Map<'a, (u64, &'a BitArray), Node>,
+    pub(crate) nodes: Map<'a, (u64, &'a BitArray), Node>,
     // (orphaned_since_version, version, bitarray) => Empty
-    orphans: Set<'a, (u64, u64, &'a BitArray)>,
+    pub(crate) orphans: Set<'a, (u64, u64, &'a BitArray)>,
 }
 
 impl<'a> Default for MerkleTree<'a> {

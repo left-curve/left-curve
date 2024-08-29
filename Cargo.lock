@@ -1598,6 +1598,7 @@ dependencies = [
  "chrono",
  "grug-storage",
  "grug-types",
+ "ics23",
  "prost",
  "serde",
  "tendermint-abci",
@@ -1700,6 +1701,8 @@ dependencies = [
  "grug-jmt",
  "grug-types",
  "hex-literal",
+ "ics23",
+ "proptest",
  "rocksdb",
  "tempfile",
  "thiserror",
@@ -1712,6 +1715,7 @@ dependencies = [
  "grug-app",
  "grug-jmt",
  "grug-types",
+ "ics23",
  "thiserror",
 ]
 
@@ -1732,6 +1736,7 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "hex-literal",
+ "ics23",
  "proptest",
  "rand",
  "serde",
@@ -2060,6 +2065,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ics23"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73b17f1a5bd7d12ad30a21445cfa5f52fd7651cb3243ba866f9916b1ec112f12"
+dependencies = [
+ "anyhow",
+ "blake2",
+ "blake3",
+ "bytes",
+ "hex",
+ "informalsystems-pbjson",
+ "prost",
+ "ripemd",
+ "serde",
+ "sha2 0.10.8",
+ "sha3",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2100,6 +2124,16 @@ checksum = "de3fc2e30ba82dd1b3911c8de1ffc143c74a914a14e99514d7637e3099df5ea0"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
+ "serde",
+]
+
+[[package]]
+name = "informalsystems-pbjson"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9aa4a0980c8379295100d70854354e78df2ee1c6ca0f96ffe89afeb3140e3a3d"
+dependencies = [
+ "base64 0.21.7",
  "serde",
 ]
 
