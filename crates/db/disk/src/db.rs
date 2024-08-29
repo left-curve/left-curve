@@ -225,9 +225,14 @@ impl Db for DiskDb {
                 value,
             )?)),
             // Value is not found.
-            // Find the two keys that are adjacent to the queried key, i.e. the
-            // biggest key that's smaller than it, and the smaller key that's
-            // bigger than it. Generate existence proof for them, respectively.
+            //
+            // Here, unlike Diem or Penumbra's implementation, which walks the
+            // tree to find the left and right neighbors, we use an approach
+            // similar to SeiDB's:
+            // https://github.com/sei-protocol/sei-db/blob/v0.0.43/sc/memiavl/proof.go#L41-L76
+            //
+            // We simply look up the state storage to find the left and right
+            // neighbors, and generate existence proof of them.
             None => {
                 let left = state_storage
                     .scan(None, Some(&key), Order::Descending)
