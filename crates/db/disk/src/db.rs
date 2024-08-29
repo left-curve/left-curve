@@ -1,8 +1,9 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Buffer, Db, PrunableDb},
-    grug_jmt::{MerkleTree, Proof},
-    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
+    grug_jmt::{MerkleTree, Proof, ICS23_PROOF_SPEC},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, StdResult, Storage},
+    ics23::{commitment_proof::Proof as Ics23Proof, ExistenceProof, NonExistenceProof},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -197,6 +198,56 @@ impl Db for DiskDb {
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
+    }
+
+    fn ics23_prove(&self, key: Vec<u8>, version: Option<u64>) -> Result<Ics23Proof, Self::Error> {
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
+        let state_storage = self.state_storage(Some(version))?;
+        let state_commitment = self.state_commitment();
+
+        let generate_existence_proof = |storage, version, key: Vec<u8>, value| -> StdResult<_> {
+            let path = MERKLE_TREE.ics23_prove_existence(storage, version, key.hash256())?;
+
+            Ok(ExistenceProof {
+                key,
+                value,
+                leaf: ICS23_PROOF_SPEC.leaf_spec.clone(),
+                path,
+            })
+        };
+
+        match state_storage.read(&key) {
+            // Value is found. Generate an ICS-23 existence proof.
+            Some(value) => Ok(Ics23Proof::Exist(generate_existence_proof(
+                &state_commitment,
+                version,
+                key,
+                value,
+            )?)),
+            // Value is not found.
+            // Find the two keys that are adjacent to the queried key, i.e. the
+            // biggest key that's smaller than it, and the smaller key that's
+            // bigger than it. Generate existence proof for them, respectively.
+            None => {
+                let left = state_storage
+                    .scan(None, Some(&key), Order::Descending)
+                    .next()
+                    .map(|(key, value)| {
+                        generate_existence_proof(&state_commitment, version, key, value)
+                    })
+                    .transpose()?;
+
+                let right = state_storage
+                    .scan(Some(&key), None, Order::Ascending)
+                    .next()
+                    .map(|(key, value)| {
+                        generate_existence_proof(&state_commitment, version, key, value)
+                    })
+                    .transpose()?;
+
+                Ok(Ics23Proof::Nonexist(NonExistenceProof { key, left, right }))
+            },
+        }
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {

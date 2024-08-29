@@ -13,6 +13,7 @@ categories    = { workspace = true }
 grug-app   = { path = "../../app" }
 grug-jmt   = { path = "../../jellyfish-merkle" }
 grug-types = { path = "../../types" }
+ics23      = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]

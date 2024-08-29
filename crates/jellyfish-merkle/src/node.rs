@@ -3,8 +3,8 @@ use {
     grug_types::{Hash256, HashExt},
 };
 
-const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
-const LEAF_NODE_HASH_PERFIX: &[u8] = &[1];
+pub const INTERNAL_NODE_HASH_PREFIX: &[u8] = &[0];
+pub const LEAF_NODE_HASH_PERFIX: &[u8] = &[1];
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Child {

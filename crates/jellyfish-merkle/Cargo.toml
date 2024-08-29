@@ -11,14 +11,17 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = []
+default = ["ics23"]
 # Include fuzzing test, which can take a long time to run.
 fuzzing = []
+# Include a method to generate ICS-23 compatible proofs.
+ics23 = ["dep:ics23"]
 
 [dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-storage = { path = "../storage" }
 grug-types   = { path = "../types" }
+ics23        = { workspace = true, optional = true }
 serde        = { workspace = true, features = ["derive"] }
 thiserror    = { workspace = true }
 
