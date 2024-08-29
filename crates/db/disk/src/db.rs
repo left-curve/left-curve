@@ -664,6 +664,7 @@ mod tests {
         super::*,
         grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
         hex_literal::hex,
+        ics23::HostFunctionsManager,
         rocksdb::{Options, DB},
         std::{
             panic,
@@ -1105,6 +1106,55 @@ mod tests {
                 err.to_string()
                     .contains("data not found! type: grug_jmt::node::Node")
             }));
+        }
+    }
+
+    #[test]
+    fn ics23_prove_works() {
+        use grug_types::JsonSerExt;
+
+        let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
+        let db = DiskDb::open(&path).unwrap();
+
+        // Same test data as used in JMT crate.
+        db.flush_and_commit(Batch::from([
+            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+        ]))
+        .unwrap();
+
+        let root = db.root_hash(None).unwrap().unwrap().to_vec();
+
+        // Prove existing keys, and verify those proofs.
+        for (key, value) in [("r", "foo"), ("m", "bar"), ("L", "fuzz"), ("a", "buzz")] {
+            let proof = db.ics23_prove(key.as_bytes().to_vec(), None).unwrap();
+            assert!(
+                ics23::verify_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root,
+                    key.as_bytes(),
+                    value.as_bytes(),
+                ),
+                "verification failed for key `{key}` and value `{value}`"
+            );
+        }
+
+        // Prove non-existing keys, and verify those proofs.
+        for key in ["b", "o"] {
+            let proof = db.ics23_prove(key.as_bytes().to_vec(), None).unwrap();
+            println!("{}", proof.to_json_string_pretty().unwrap());
+            assert!(
+                ics23::verify_non_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root,
+                    key.as_bytes()
+                ),
+                "verification failed for key `{key}`"
+            );
         }
     }
 }

@@ -13,7 +13,7 @@ categories    = { workspace = true }
 grug-app   = { path = "../../app" }
 grug-jmt   = { path = "../../jellyfish-merkle", features = ["ics23"] }
 grug-types = { path = "../../types" }
-ics23      = { workspace = true }
+ics23      = { workspace = true, features = ["serde"] }
 rocksdb    = { workspace = true }
 thiserror  = { workspace = true }
 
