@@ -427,7 +427,7 @@ mod test {
 // ---------------------- tests copied over from cosmwasm ----------------------
 
 #[cfg(test)]
-mod cosmwasm_test {
+mod cosmwasm_tests {
     use {
         crate::{Bound, Map, PrefixBound, PrimaryKey},
         borsh::{BorshDeserialize, BorshSerialize},
