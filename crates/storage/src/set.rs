@@ -149,11 +149,12 @@ where
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
-        super::Set,
-        crate::{Bound, Codec, PrefixBound, Prefixer, PrimaryKey},
+        crate::{Bound, Codec, PrefixBound, Prefixer, PrimaryKey, Set},
         grug_types::{concat, Dec128, Empty, MockStorage, NumberConst, Order, StdResult, Storage},
         std::str::FromStr,
     };
@@ -162,13 +163,15 @@ mod tests {
 
     const DOUBLE: Set<(Dec128, &str)> = Set::new("double");
 
-    trait SetHelper {
+    trait SetExt {
         type T;
+
         fn all_raw(&self, storage: &mut dyn Storage) -> Vec<Vec<u8>>;
+
         fn all(&self, storage: &mut dyn Storage) -> StdResult<Vec<Self::T>>;
     }
 
-    impl<'a, T, C> SetHelper for Set<'a, T, C>
+    impl<'a, T, C> SetExt for Set<'a, T, C>
     where
         T: PrimaryKey,
         C: Codec<Empty>,
@@ -186,14 +189,14 @@ mod tests {
     }
 
     #[test]
-    fn save_has_remove() -> StdResult<()> {
+    fn save_has_remove() {
         let storage = &mut MockStorage::new();
-        SINGLE.insert(storage, b"hello")?;
+        SINGLE.insert(storage, b"hello").unwrap();
 
         assert!(SINGLE.has(storage, b"hello"));
         assert!(!SINGLE.has(storage, b"world"));
 
-        DOUBLE.insert(storage, (Dec128::ONE, "world"))?;
+        DOUBLE.insert(storage, (Dec128::ONE, "world")).unwrap();
         assert!(DOUBLE.has(storage, (Dec128::ONE, "world")));
         assert!(!DOUBLE.has(storage, (Dec128::TEN, "world")));
 
@@ -214,20 +217,20 @@ mod tests {
 
         DOUBLE.remove_raw(storage, b"foobar");
         assert!(!DOUBLE.has_raw(storage, b"foobar"));
-
-        Ok(())
     }
 
     #[test]
-    fn clear() -> StdResult<()> {
+    fn clear() {
         let storage = &mut MockStorage::new();
 
         assert!(SINGLE.is_empty(storage));
         assert!(DOUBLE.is_empty(storage));
 
         for i in 0..100_u32 {
-            SINGLE.insert(storage, &concat(b"foo", &i.joined_prefix()))?;
-            DOUBLE.insert(storage, (Dec128::ONE, "bar"))?;
+            SINGLE
+                .insert(storage, &concat(b"foo", &i.joined_prefix()))
+                .unwrap();
+            DOUBLE.insert(storage, (Dec128::ONE, "bar")).unwrap();
         }
 
         assert!(!SINGLE.is_empty(storage));
@@ -253,7 +256,7 @@ mod tests {
             )),
         );
 
-        let all = SINGLE.all(storage)?;
+        let all = SINGLE.all(storage).unwrap();
 
         assert_eq!(all.len(), 40);
         assert_eq!(all[0], concat(b"foo", &30_u32.joined_prefix()));
@@ -270,7 +273,7 @@ mod tests {
             )),
         );
 
-        let all = SINGLE.all(storage)?;
+        let all = SINGLE.all(storage).unwrap();
 
         assert_eq!(all.len(), 30);
         assert_eq!(all[0], concat(b"foo", &30_u32.joined_prefix()));
@@ -281,22 +284,22 @@ mod tests {
         // Clear all
         SINGLE.clear(storage, None, None);
 
-        assert_eq!(SINGLE.all(storage)?.len(), 0);
-
-        Ok(())
+        assert_eq!(SINGLE.all(storage).unwrap().len(), 0);
     }
 
     #[test]
-    fn range() -> StdResult<()> {
+    fn range() {
         let storage = &mut MockStorage::new();
 
         for i in 0..100_u32 {
-            SINGLE.insert(storage, &concat(b"foo", &i.joined_prefix()))?;
+            SINGLE
+                .insert(storage, &concat(b"foo", &i.joined_prefix()))
+                .unwrap();
         }
 
         // No bound
         {
-            let data = SINGLE.all(storage)?;
+            let data = SINGLE.all(storage).unwrap();
 
             assert_eq!(data.len(), 100);
             assert_eq!(data[0], concat(b"foo", &0_u32.joined_prefix()));
@@ -314,7 +317,8 @@ mod tests {
                     None,
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
             assert_eq!(data.len(), 30);
             assert_eq!(data[0], concat(b"foo", &70_u32.joined_prefix()));
@@ -332,7 +336,8 @@ mod tests {
                     )),
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
             assert_eq!(data.len(), 30);
             assert_eq!(data[0], concat(b"foo", &0_u32.joined_prefix()));
@@ -352,25 +357,29 @@ mod tests {
                     )),
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
             assert_eq!(data.len(), 10);
             assert_eq!(data[0], concat(b"foo", &40_u32.joined_prefix()));
             assert_eq!(data[9], concat(b"foo", &49_u32.joined_prefix()));
         }
-
-        Ok(())
     }
 
     #[test]
-    fn decimal_range() -> StdResult<()> {
+    fn decimal_range() {
         let storage = &mut MockStorage::new();
 
         for i in -50..50 {
-            DOUBLE.insert(storage, (Dec128::from_str(&i.to_string())?, &i.to_string()))?;
+            DOUBLE
+                .insert(
+                    storage,
+                    (Dec128::from_str(&i.to_string()).unwrap(), &i.to_string()),
+                )
+                .unwrap();
         }
 
-        let data = DOUBLE.all(storage)?;
+        let data = DOUBLE.all(storage).unwrap();
 
         assert_eq!(data.len(), 100);
 
@@ -380,120 +389,118 @@ mod tests {
                 (Dec128::from_str(&val.to_string()).unwrap(), val.to_string())
             );
         }
-
-        Ok(())
     }
 
     #[test]
-    fn prefix() -> StdResult<()> {
+    fn prefix() {
         let storage = &mut MockStorage::new();
 
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "a"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "c"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "d"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "e"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-1.5")?, "a"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-1.5")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("0")?, "abcb"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("1")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("2")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("2")?, "a"))?;
+        for (k, v) in [
+            ("-2", "a"),
+            ("-2", "b"),
+            ("-2", "c"),
+            ("-2", "d"),
+            ("-2", "e"),
+            ("-1.5", "a"),
+            ("-1.5", "b"),
+            ("0", "abab"),
+            ("1", "b"),
+            ("2", "b"),
+            ("2", "a"),
+        ] {
+            DOUBLE
+                .insert(storage, (Dec128::from_str(k).unwrap(), v))
+                .unwrap();
+        }
 
         // No bound
         {
             let val = DOUBLE
-                .prefix(Dec128::from_str("-2")?)
+                .prefix(Dec128::from_str("-2").unwrap())
                 .keys(storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<_>>>()?;
-
-            assert_eq!(val.len(), 5);
-            assert_eq!(val[0], "a".to_string());
-            assert_eq!(val[1], "b".to_string());
-            assert_eq!(val[2], "c".to_string());
-            assert_eq!(val[3], "d".to_string());
-            assert_eq!(val[4], "e".to_string());
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+            assert_eq!(val, ["a", "b", "c", "d", "e"]);
         }
 
         // Min bound
         {
             let val = DOUBLE
-                .prefix(Dec128::from_str("-2")?)
+                .prefix(Dec128::from_str("-2").unwrap())
                 .keys(storage, Some(Bound::inclusive("c")), None, Order::Ascending)
-                .collect::<StdResult<Vec<_>>>()?;
-
-            assert_eq!(val.len(), 3);
-            assert_eq!(val[0], "c".to_string());
-            assert_eq!(val[1], "d".to_string());
-            assert_eq!(val[2], "e".to_string());
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+            assert_eq!(val, ["c", "d", "e"])
         }
 
         // Max bound
         {
             let val = DOUBLE
-                .prefix(Dec128::from_str("-2")?)
+                .prefix(Dec128::from_str("-2").unwrap())
                 .keys(storage, None, Some(Bound::exclusive("d")), Order::Ascending)
-                .collect::<StdResult<Vec<_>>>()?;
-
-            assert_eq!(val.len(), 3);
-            assert_eq!(val[0], "a".to_string());
-            assert_eq!(val[1], "b".to_string());
-            assert_eq!(val[2], "c".to_string());
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+            assert_eq!(val, ["a", "b", "c"]);
         }
 
         // Max Min bound
         {
             let val = DOUBLE
-                .prefix(Dec128::from_str("-2")?)
+                .prefix(Dec128::from_str("-2").unwrap())
                 .keys(
                     storage,
                     Some(Bound::inclusive("b")),
                     Some(Bound::exclusive("d")),
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
-
-            assert_eq!(val.len(), 2);
-            assert_eq!(val[0], "b".to_string());
-            assert_eq!(val[1], "c".to_string());
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+            assert_eq!(val, ["b", "c"]);
         }
-        Ok(())
     }
 
     #[test]
-    fn prefix_range() -> StdResult<()> {
+    fn prefix_range() {
         let storage = &mut MockStorage::new();
 
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "a"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "c"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "d"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-2")?, "e"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-1.5")?, "a"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("-1.5")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("0")?, "abcb"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("1")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("2")?, "b"))?;
-        DOUBLE.insert(storage, (Dec128::from_str("2")?, "a"))?;
+        for (k, v) in [
+            ("-2", "a"),
+            ("-2", "b"),
+            ("-2", "c"),
+            ("-2", "d"),
+            ("-2", "e"),
+            ("-1.5", "a"),
+            ("-1.5", "b"),
+            ("0", "abcb"),
+            ("1", "b"),
+            ("2", "b"),
+            ("2", "a"),
+        ] {
+            DOUBLE
+                .insert(storage, (Dec128::from_str(k).unwrap(), v))
+                .unwrap();
+        }
 
         // Min
         {
             let val = DOUBLE
                 .prefix_range(
                     storage,
-                    Some(PrefixBound::inclusive(Dec128::from_str("-1.5")?)),
+                    Some(PrefixBound::inclusive(Dec128::from_str("-1.5").unwrap())),
                     None,
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-            assert_eq!(val.len(), 6);
-            assert_eq!(val[0], (Dec128::from_str("-1.5")?, "a".to_string()));
-            assert_eq!(val[1], (Dec128::from_str("-1.5")?, "b".to_string()));
-            assert_eq!(val[2], (Dec128::from_str("0")?, "abcb".to_string()));
-            assert_eq!(val[3], (Dec128::from_str("1")?, "b".to_string()));
-            assert_eq!(val[4], (Dec128::from_str("2")?, "a".to_string()));
-            assert_eq!(val[5], (Dec128::from_str("2")?, "b".to_string()));
+            assert_eq!(val, [
+                (Dec128::from_str("-1.5").unwrap(), "a".to_string()),
+                (Dec128::from_str("-1.5").unwrap(), "b".to_string()),
+                (Dec128::from_str("0").unwrap(), "abcb".to_string()),
+                (Dec128::from_str("1").unwrap(), "b".to_string()),
+                (Dec128::from_str("2").unwrap(), "a".to_string()),
+                (Dec128::from_str("2").unwrap(), "b".to_string())
+            ]);
         }
 
         // Max
@@ -502,20 +509,22 @@ mod tests {
                 .prefix_range(
                     storage,
                     None,
-                    Some(PrefixBound::exclusive(Dec128::from_str("0.5")?)),
+                    Some(PrefixBound::exclusive(Dec128::from_str("0.5").unwrap())),
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-            assert_eq!(val.len(), 8);
-            assert_eq!(val[0], (Dec128::from_str("-2")?, "a".to_string()));
-            assert_eq!(val[1], (Dec128::from_str("-2")?, "b".to_string()));
-            assert_eq!(val[2], (Dec128::from_str("-2")?, "c".to_string()));
-            assert_eq!(val[3], (Dec128::from_str("-2")?, "d".to_string()));
-            assert_eq!(val[4], (Dec128::from_str("-2")?, "e".to_string()));
-            assert_eq!(val[5], (Dec128::from_str("-1.5")?, "a".to_string()));
-            assert_eq!(val[6], (Dec128::from_str("-1.5")?, "b".to_string()));
-            assert_eq!(val[7], (Dec128::from_str("0")?, "abcb".to_string()));
+            assert_eq!(val, [
+                (Dec128::from_str("-2").unwrap(), "a".to_string()),
+                (Dec128::from_str("-2").unwrap(), "b".to_string()),
+                (Dec128::from_str("-2").unwrap(), "c".to_string()),
+                (Dec128::from_str("-2").unwrap(), "d".to_string()),
+                (Dec128::from_str("-2").unwrap(), "e".to_string()),
+                (Dec128::from_str("-1.5").unwrap(), "a".to_string()),
+                (Dec128::from_str("-1.5").unwrap(), "b".to_string()),
+                (Dec128::from_str("0").unwrap(), "abcb".to_string())
+            ]);
         }
 
         // Max Min
@@ -523,22 +532,22 @@ mod tests {
             let val = DOUBLE
                 .prefix_range(
                     storage,
-                    Some(PrefixBound::inclusive(Dec128::from_str("-2")?)),
-                    Some(PrefixBound::exclusive(Dec128::from_str("0")?)),
+                    Some(PrefixBound::inclusive(Dec128::from_str("-2").unwrap())),
+                    Some(PrefixBound::exclusive(Dec128::from_str("0").unwrap())),
                     Order::Ascending,
                 )
-                .collect::<StdResult<Vec<_>>>()?;
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-            assert_eq!(val.len(), 7);
-            assert_eq!(val[0], (Dec128::from_str("-2")?, "a".to_string()));
-            assert_eq!(val[1], (Dec128::from_str("-2")?, "b".to_string()));
-            assert_eq!(val[2], (Dec128::from_str("-2")?, "c".to_string()));
-            assert_eq!(val[3], (Dec128::from_str("-2")?, "d".to_string()));
-            assert_eq!(val[4], (Dec128::from_str("-2")?, "e".to_string()));
-            assert_eq!(val[5], (Dec128::from_str("-1.5")?, "a".to_string()));
-            assert_eq!(val[6], (Dec128::from_str("-1.5")?, "b".to_string()));
+            assert_eq!(val, [
+                (Dec128::from_str("-2").unwrap(), "a".to_string()),
+                (Dec128::from_str("-2").unwrap(), "b".to_string()),
+                (Dec128::from_str("-2").unwrap(), "c".to_string()),
+                (Dec128::from_str("-2").unwrap(), "d".to_string()),
+                (Dec128::from_str("-2").unwrap(), "e".to_string()),
+                (Dec128::from_str("-1.5").unwrap(), "a".to_string()),
+                (Dec128::from_str("-1.5").unwrap(), "b".to_string())
+            ]);
         }
-
-        Ok(())
     }
 }
