@@ -424,11 +424,12 @@ mod test {
     }
 }
 
+// ---------------------- tests copied over from cosmwasm ----------------------
+
 #[cfg(test)]
 mod cosmwasm_test {
     use {
-        super::Map,
-        crate::{Bound, PrefixBound, PrimaryKey},
+        crate::{Bound, Map, PrefixBound, PrimaryKey},
         borsh::{BorshDeserialize, BorshSerialize},
         grug_types::{BorshDeExt, BorshSerExt, MockStorage, Order, StdResult, Storage},
     };
@@ -444,15 +445,14 @@ mod cosmwasm_test {
     const PEOPLE_STR: Map<&str, Data> = Map::new(PEOPLE_STR_KEY);
     const PEOPLE_ID: Map<u32, Data> = Map::new("people_id");
     const SIGNED_ID: Map<i32, Data> = Map::new("signed_id");
-
     const ALLOWANCE: Map<(&[u8], &[u8]), u64> = Map::new("allow");
-
     const TRIPLE: Map<(&[u8], u8, &str), u64> = Map::new("triple");
 
     #[test]
     fn create_path() {
         let path = PEOPLE.path(b"john");
         let key = path.storage_key;
+
         // this should be prefixed(people) || john
         assert_eq!("people".len() + "john".len() + 2, key.len());
         assert_eq!(b"people".to_vec().as_slice(), &key[2..8]);
@@ -460,6 +460,7 @@ mod cosmwasm_test {
 
         let path = ALLOWANCE.path((b"john", b"maria"));
         let key = path.storage_key;
+
         // this should be prefixed(allow) || prefixed(john) || maria
         assert_eq!(
             "allow".len() + "john".len() + "maria".len() + 2 * 2,
@@ -471,6 +472,7 @@ mod cosmwasm_test {
 
         let path = TRIPLE.path((b"john", 8u8, "pedro"));
         let key = path.storage_key;
+
         // this should be prefixed(triple) || prefixed(john) || prefixed(8u8) || pedro
         assert_eq!(
             "triple".len() + "john".len() + 1 + "pedro".len() + 2 * 3,
@@ -494,6 +496,7 @@ mod cosmwasm_test {
             age: 32,
         };
         assert_eq!(None, john.may_load(&store).unwrap());
+
         john.save(&mut store, &data).unwrap();
         assert_eq!(data, john.load(&store).unwrap());
 
@@ -543,6 +546,7 @@ mod cosmwasm_test {
         let allow = ALLOWANCE.path((b"owner", b"spender"));
         let allow = allow.as_path();
         assert_eq!(None, allow.may_load(&store).unwrap());
+
         allow.save(&mut store, &1234).unwrap();
         assert_eq!(1234, allow.load(&store).unwrap());
 
@@ -563,6 +567,7 @@ mod cosmwasm_test {
         let triple = TRIPLE.path((b"owner", 10u8, "recipient"));
         let triple = triple.as_path();
         assert_eq!(None, triple.may_load(&store).unwrap());
+
         triple.save(&mut store, &1234).unwrap();
         assert_eq!(1234, triple.load(&store).unwrap());
 
@@ -660,43 +665,42 @@ mod cosmwasm_test {
         PEOPLE.save(&mut store, b"ada", &data3).unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = PEOPLE.range(&store, None, None, Order::Ascending).collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+        let all = PEOPLE
+            .range(&store, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             (b"ada".to_vec(), data3),
             (b"jim".to_vec(), data2.clone()),
             (b"john".to_vec(), data.clone())
         ]);
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = PEOPLE
+        let all = PEOPLE
             .range(
                 &store,
                 Some(Bound::inclusive(b"j".as_slice())),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             (b"jim".to_vec(), data2),
             (b"john".to_vec(), data.clone())
         ]);
 
         // let's try to iterate over a more restrictive range
-        let all: StdResult<Vec<_>> = PEOPLE
+        let all = PEOPLE
             .range(
                 &store,
                 Some(Bound::inclusive(b"jo".as_slice())),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(b"john".to_vec(), data)]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(b"john".to_vec(), data)]);
     }
 
     #[test]
@@ -723,12 +727,11 @@ mod cosmwasm_test {
         PEOPLE_STR.save(&mut store, "ada", &data3).unwrap();
 
         // let's iterate!
-        let all: StdResult<Vec<_>> = PEOPLE_STR
+        let all = PEOPLE_STR
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ("ada".to_string(), data3.clone()),
             ("jim".to_string(), data2.clone()),
             ("john".to_string(), data.clone())
@@ -761,9 +764,7 @@ mod cosmwasm_test {
         let all: Vec<_> = PEOPLE_STR
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-
-        assert_eq!(4, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (b"ada".to_vec(), data3.to_borsh_vec().unwrap()),
             (b"jim".to_vec(), data2.to_borsh_vec().unwrap()),
             (b"john".to_vec(), data.to_borsh_vec().unwrap()),
@@ -774,9 +775,7 @@ mod cosmwasm_test {
         let all: Vec<_> = PEOPLE_STR
             .keys_raw(&store, None, None, Order::Ascending)
             .collect();
-
-        assert_eq!(4, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             b"ada".to_vec(),
             b"jim".to_vec(),
             b"john".to_vec(),
@@ -802,38 +801,36 @@ mod cosmwasm_test {
         PEOPLE_ID.save(&mut store, 56, &data2).unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(56, data2.clone()), (1234, data.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+
+        assert_eq!(all, [(56, data2.clone()), (1234, data.clone())]);
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(
                 &store,
                 Some(Bound::inclusive(56u32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(56, data2), (1234, data.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(56, data2), (1234, data.clone())]);
 
         // let's try to iterate over a more restrictive range
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(
                 &store,
                 Some(Bound::inclusive(57u32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(1234, data)]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(1234, data)]);
     }
 
     #[test]
@@ -854,38 +851,35 @@ mod cosmwasm_test {
         PEOPLE_ID.save(&mut store, 56, &data2).unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(56, data2.clone()), (1234, data.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(56, data2.clone()), (1234, data.clone())]);
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(
                 &store,
                 Some(Bound::inclusive(56u32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(56, data2), (1234, data.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(56, data2), (1234, data.clone())]);
 
         // let's try to iterate over a more restrictive range
-        let all: StdResult<Vec<_>> = PEOPLE_ID
+        let all = PEOPLE_ID
             .range(
                 &store,
                 Some(Bound::inclusive(57u32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(1234, data)]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(1234, data)]);
     }
 
     #[test]
@@ -912,43 +906,40 @@ mod cosmwasm_test {
         SIGNED_ID.save(&mut store, 50, &data3).unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         // order is correct
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (-1234, data),
             (-56, data2.clone()),
             (50, data3.clone())
         ]);
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(
                 &store,
                 Some(Bound::inclusive(-56i32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(-56, data2), (50, data3.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(-56, data2), (50, data3.clone())]);
 
         // let's try to iterate over a more restrictive range
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(
                 &store,
                 Some(Bound::inclusive(-55i32)),
                 Some(Bound::inclusive(50i32)),
                 Order::Descending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(50, data3)]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(50, data3)]);
     }
 
     #[test]
@@ -975,43 +966,40 @@ mod cosmwasm_test {
         SIGNED_ID.save(&mut store, 50, &data3).unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
         // order is correct
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (-1234, data),
             (-56, data2.clone()),
             (50, data3.clone())
         ]);
 
         // let's try to iterate over a range
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(
                 &store,
                 Some(Bound::inclusive(-56i32)),
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![(-56, data2), (50, data3.clone())]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(-56, data2), (50, data3.clone())]);
 
         // let's try to iterate over a more restrictive range
-        let all: StdResult<Vec<_>> = SIGNED_ID
+        let all = SIGNED_ID
             .range(
                 &store,
                 Some(Bound::inclusive(-55i32)),
                 Some(Bound::inclusive(50i32)),
                 Order::Descending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(50, data3)]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(50, data3)]);
     }
 
     #[test]
@@ -1033,8 +1021,7 @@ mod cosmwasm_test {
         let all: Vec<_> = ALLOWANCE
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (
                 (b"owner".to_vec(), b"spender".to_vec()).joined_key(),
                 1000_u64.to_borsh_vec().unwrap()
@@ -1054,8 +1041,7 @@ mod cosmwasm_test {
             .prefix(b"owner")
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (b"spender".to_vec(), 1000_u64.to_borsh_vec().unwrap()),
             (b"spender2".to_vec(), 3000_u64.to_borsh_vec().unwrap())
         ]);
@@ -1077,31 +1063,29 @@ mod cosmwasm_test {
             .unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = ALLOWANCE
+        let all = ALLOWANCE
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ((b"owner".to_vec(), b"spender".to_vec()), 1000),
             ((b"owner".to_vec(), b"spender2".to_vec()), 3000),
             ((b"owner2".to_vec(), b"spender".to_vec()), 5000)
         ]);
 
         // let's try to iterate over a prefix
-        let all: StdResult<Vec<_>> = ALLOWANCE
+        let all = ALLOWANCE
             .prefix(b"owner")
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             (b"spender".to_vec(), 1000),
             (b"spender2".to_vec(), 3000),
         ]);
 
         // let's try to iterate over a prefixed restricted inclusive range
-        let all: StdResult<Vec<_>> = ALLOWANCE
+        let all = ALLOWANCE
             .prefix(b"owner")
             .range(
                 &store,
@@ -1109,16 +1093,15 @@ mod cosmwasm_test {
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             (b"spender".to_vec(), 1000),
             (b"spender2".to_vec(), 3000),
         ]);
 
         // let's try to iterate over a prefixed restricted exclusive range
-        let all: StdResult<Vec<_>> = ALLOWANCE
+        let all = ALLOWANCE
             .prefix(b"owner")
             .range(
                 &store,
@@ -1126,10 +1109,9 @@ mod cosmwasm_test {
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![(b"spender2".to_vec(), 3000),]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [(b"spender2".to_vec(), 3000)]);
     }
 
     #[test]
@@ -1154,8 +1136,7 @@ mod cosmwasm_test {
         let all: Vec<_> = TRIPLE
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(4, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (
                 (b"owner".to_vec(), 9u8, b"recipient".to_vec()).joined_key(),
                 1000_u64.to_borsh_vec().unwrap()
@@ -1179,8 +1160,7 @@ mod cosmwasm_test {
             .prefix(b"owner")
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (
                 (9u8, b"recipient".to_vec()).joined_key(),
                 1000_u64.to_borsh_vec().unwrap()
@@ -1201,9 +1181,8 @@ mod cosmwasm_test {
             .append(9)
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(2, all.len());
         // Use range() if you want key deserialization
-        assert_eq!(all, vec![
+        assert_eq!(all, [
             (
                 (b"recipient".to_vec()).joined_key(),
                 1000_u64.to_borsh_vec().unwrap()
@@ -1234,10 +1213,11 @@ mod cosmwasm_test {
             .unwrap();
 
         // let's try to iterate!
-        let all: StdResult<Vec<_>> = TRIPLE.range(&store, None, None, Order::Ascending).collect();
-        let all = all.unwrap();
-        assert_eq!(4, all.len());
-        assert_eq!(all, vec![
+        let all = TRIPLE
+            .range(&store, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ((b"owner".to_vec(), 9, "recipient".to_string()), 1000),
             ((b"owner".to_vec(), 9, "recipient2".to_string()), 3000),
             ((b"owner".to_vec(), 10, "recipient3".to_string()), 3000),
@@ -1245,33 +1225,31 @@ mod cosmwasm_test {
         ]);
 
         // let's iterate over a sub_prefix
-        let all: StdResult<Vec<_>> = TRIPLE
+        let all = TRIPLE
             .prefix(b"owner")
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(3, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ((9, "recipient".to_string()), 1000),
             ((9, "recipient2".to_string()), 3000),
             ((10, "recipient3".to_string()), 3000),
         ]);
 
         // let's iterate over a prefix
-        let all: StdResult<Vec<_>> = TRIPLE
+        let all = TRIPLE
             .prefix(b"owner")
             .append(9)
             .range(&store, None, None, Order::Ascending)
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ("recipient".to_string(), 1000),
             ("recipient2".to_string(), 3000),
         ]);
 
         // let's try to iterate over a prefixed restricted inclusive range
-        let all: StdResult<Vec<_>> = TRIPLE
+        let all = TRIPLE
             .prefix(b"owner")
             .append(9)
             .range(
@@ -1280,16 +1258,15 @@ mod cosmwasm_test {
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(2, all.len());
-        assert_eq!(all, vec![
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [
             ("recipient".to_string(), 1000),
             ("recipient2".to_string(), 3000),
         ]);
 
         // let's try to iterate over a prefixed restricted exclusive range
-        let all: StdResult<Vec<_>> = TRIPLE
+        let all = TRIPLE
             .prefix(b"owner")
             .append(9)
             .range(
@@ -1298,10 +1275,9 @@ mod cosmwasm_test {
                 None,
                 Order::Ascending,
             )
-            .collect();
-        let all = all.unwrap();
-        assert_eq!(1, all.len());
-        assert_eq!(all, vec![("recipient2".to_string(), 3000),]);
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(all, [("recipient2".to_string(), 3000),]);
     }
 
     #[test]
@@ -1313,14 +1289,16 @@ mod cosmwasm_test {
         // save and load on three keys, one under different owner
         let key: (&[u8], &[u8]) = (b"owner", b"spender");
         ALLOWANCE.update(&mut store, key, add_ten).unwrap();
+
         let twenty = ALLOWANCE.update(&mut store, key, add_ten).unwrap().unwrap();
         assert_eq!(20, twenty);
+
         let loaded = ALLOWANCE.load(&store, key).unwrap();
         assert_eq!(20, loaded);
     }
 
     #[test]
-    fn readme_works() -> StdResult<()> {
+    fn readme_works() {
         let mut store = MockStorage::new();
         let data = Data {
             name: "John".to_string(),
@@ -1328,15 +1306,13 @@ mod cosmwasm_test {
         };
 
         // load and save with extra key argument
-        let empty = PEOPLE.may_load(&store, b"john")?;
-        assert_eq!(None, empty);
-        PEOPLE.save(&mut store, b"john", &data)?;
-        let loaded = PEOPLE.load(&store, b"john")?;
-        assert_eq!(data, loaded);
+        assert!(PEOPLE.may_load(&store, b"john").unwrap().is_none());
+
+        PEOPLE.save(&mut store, b"john", &data).unwrap();
+        assert_eq!(PEOPLE.load(&store, b"john").unwrap(), data);
 
         // nothing on another key
-        let missing = PEOPLE.may_load(&store, b"jack")?;
-        assert_eq!(None, missing);
+        assert!(PEOPLE.may_load(&store, b"jack").unwrap().is_none());
 
         // update function for new or existing keys
         let birthday = |d: Option<Data>| -> StdResult<Option<Data>> {
@@ -1352,35 +1328,42 @@ mod cosmwasm_test {
             }
         };
 
-        let old_john = PEOPLE.update(&mut store, b"john", birthday)?.unwrap();
-        assert_eq!(33, old_john.age);
-        assert_eq!("John", old_john.name.as_str());
+        let old_john = PEOPLE
+            .update(&mut store, b"john", birthday)
+            .unwrap()
+            .unwrap();
+        assert_eq!(old_john.age, 33);
+        assert_eq!(old_john.name, "John");
 
-        let new_jack = PEOPLE.update(&mut store, b"jack", birthday)?.unwrap();
-        assert_eq!(0, new_jack.age);
-        assert_eq!("Newborn", new_jack.name.as_str());
+        let new_jack = PEOPLE
+            .update(&mut store, b"jack", birthday)
+            .unwrap()
+            .unwrap();
+        assert_eq!(new_jack.age, 0);
+        assert_eq!(new_jack.name, "Newborn");
 
         // update also changes the store
-        assert_eq!(old_john, PEOPLE.load(&store, b"john")?);
-        assert_eq!(new_jack, PEOPLE.load(&store, b"jack")?);
+        assert_eq!(old_john, PEOPLE.load(&store, b"john").unwrap());
+        assert_eq!(new_jack, PEOPLE.load(&store, b"jack").unwrap());
 
         // removing leaves us empty
         PEOPLE.remove(&mut store, b"john");
-        let empty = PEOPLE.may_load(&store, b"john")?;
-        assert_eq!(None, empty);
-
-        Ok(())
+        assert!(PEOPLE.may_load(&store, b"john").unwrap().is_none());
     }
 
     #[test]
-    fn readme_works_composite_keys() -> StdResult<()> {
+    fn readme_works_composite_keys() {
         let mut store = MockStorage::new();
 
         // save and load on a composite key
-        let empty = ALLOWANCE.may_load(&store, (b"owner", b"spender"))?;
+        let empty = ALLOWANCE.may_load(&store, (b"owner", b"spender")).unwrap();
         assert_eq!(None, empty);
-        ALLOWANCE.save(&mut store, (b"owner", b"spender"), &777)?;
-        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
+
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender"), &777)
+            .unwrap();
+
+        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender")).unwrap();
         assert_eq!(777, loaded);
 
         // doesn't appear under other key (even if a concat would be the same)
@@ -1388,19 +1371,20 @@ mod cosmwasm_test {
         assert_eq!(None, different);
 
         // simple update
-        ALLOWANCE.update(
-            &mut store,
-            (b"owner", b"spender"),
-            |v| -> StdResult<Option<u64>> { Ok(Some(v.unwrap_or_default() + 222)) },
-        )?;
-        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender"))?;
-        assert_eq!(999, loaded);
+        ALLOWANCE
+            .update(
+                &mut store,
+                (b"owner", b"spender"),
+                |v| -> StdResult<Option<u64>> { Ok(Some(v.unwrap_or_default() + 222)) },
+            )
+            .unwrap();
 
-        Ok(())
+        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender")).unwrap();
+        assert_eq!(999, loaded);
     }
 
     #[test]
-    fn readme_works_with_path() -> StdResult<()> {
+    fn readme_works_with_path() {
         let mut store = MockStorage::new();
         let data = Data {
             name: "John".to_string(),
@@ -1408,36 +1392,39 @@ mod cosmwasm_test {
         };
 
         // create a Path one time to use below
-        let john = PEOPLE.path(b"john");
-        let john = john.as_path();
+        {
+            let john = PEOPLE.path(b"john");
+            let john = john.as_path();
 
-        // Use this just like an Item above
-        let empty = john.may_load(&store)?;
-        assert_eq!(None, empty);
-        john.save(&mut store, &data)?;
-        let loaded = john.load(&store)?;
-        assert_eq!(data, loaded);
-        john.remove(&mut store);
-        let empty = john.may_load(&store)?;
-        assert_eq!(None, empty);
+            // Use this just like an Item above
+            assert!(john.may_load(&store).unwrap().is_none());
+
+            john.save(&mut store, &data).unwrap();
+            assert_eq!(john.load(&store).unwrap(), data);
+
+            john.remove(&mut store);
+            assert!(john.may_load(&store).unwrap().is_none());
+        }
 
         // same for composite keys, just use both parts in key()
-        let allow = ALLOWANCE.path((b"owner", b"spender"));
-        let allow = allow.as_path();
-        allow.save(&mut store, &1234)?;
-        let loaded = allow.load(&store)?;
-        assert_eq!(1234, loaded);
-        allow.update(&mut store, |x| -> StdResult<Option<u64>> {
-            Ok(Some(x.unwrap_or_default() * 2))
-        })?;
-        let loaded = allow.load(&store)?;
-        assert_eq!(2468, loaded);
+        {
+            let allow = ALLOWANCE.path((b"owner", b"spender"));
+            let allow = allow.as_path();
 
-        Ok(())
+            allow.save(&mut store, &1234).unwrap();
+            assert_eq!(allow.load(&store).unwrap(), 1234);
+
+            allow
+                .update(&mut store, |x| -> StdResult<Option<u64>> {
+                    Ok(Some(x.unwrap_or_default() * 2))
+                })
+                .unwrap();
+            assert_eq!(allow.load(&store).unwrap(), 2468);
+        }
     }
 
     #[test]
-    fn readme_with_range_raw() -> StdResult<()> {
+    fn readme_with_range_raw() {
         let mut store = MockStorage::new();
 
         // save and load on two keys
@@ -1445,20 +1432,21 @@ mod cosmwasm_test {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE.save(&mut store, b"john", &data)?;
+        PEOPLE.save(&mut store, b"john", &data).unwrap();
+
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE.save(&mut store, b"jim", &data2)?;
+        PEOPLE.save(&mut store, b"jim", &data2).unwrap();
 
         // iterate over them all
         let all: Vec<_> = PEOPLE
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(all, vec![
-            (b"jim".to_vec(), data2.to_borsh_vec()?),
-            (b"john".to_vec(), data.to_borsh_vec()?)
+        assert_eq!(all, [
+            (b"jim".to_vec(), data2.to_borsh_vec().unwrap()),
+            (b"john".to_vec(), data.to_borsh_vec().unwrap())
         ]);
 
         // or just show what is after jim
@@ -1470,21 +1458,27 @@ mod cosmwasm_test {
                 Order::Ascending,
             )
             .collect();
-        assert_eq!(all, vec![(b"john".to_vec(), data.to_borsh_vec()?)]);
+        assert_eq!(all, [(b"john".to_vec(), data.to_borsh_vec().unwrap())]);
 
         // save and load on three keys, one under different owner
-        ALLOWANCE.save(&mut store, (b"owner", b"spender"), &1000)?;
-        ALLOWANCE.save(&mut store, (b"owner", b"spender2"), &3000)?;
-        ALLOWANCE.save(&mut store, (b"owner2", b"spender"), &5000)?;
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender"), &1000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .unwrap();
+        ALLOWANCE
+            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .unwrap();
 
         // get all under one key
         let all: Vec<_> = ALLOWANCE
             .prefix(b"owner")
             .range_raw(&store, None, None, Order::Ascending)
             .collect();
-        assert_eq!(all, vec![
-            (b"spender".to_vec(), 1000_u64.to_borsh_vec()?),
-            (b"spender2".to_vec(), 3000_u64.to_borsh_vec()?)
+        assert_eq!(all, [
+            (b"spender".to_vec(), 1000_u64.to_borsh_vec().unwrap()),
+            (b"spender2".to_vec(), 3000_u64.to_borsh_vec().unwrap())
         ]);
 
         // Or ranges between two items (even reverse)
@@ -1497,9 +1491,10 @@ mod cosmwasm_test {
                 Order::Descending,
             )
             .collect();
-        assert_eq!(all, vec![(b"spender2".to_vec(), 3000_u64.to_borsh_vec()?)]);
-
-        Ok(())
+        assert_eq!(all, [(
+            b"spender2".to_vec(),
+            3000_u64.to_borsh_vec().unwrap()
+        )]);
     }
 
     #[test]
@@ -1521,16 +1516,10 @@ mod cosmwasm_test {
             .prefix(5)
             .range_raw(&store, None, None, Order::Ascending)
             .collect::<Vec<_>>();
-
-        assert_eq!(fives.len(), 2);
-        assert_eq!(fives, vec![
+        assert_eq!(fives, [
             (vec![7, 8, 9], 789_u64.to_borsh_vec().unwrap()),
             (vec![9, 8, 7], 987_u64.to_borsh_vec().unwrap())
         ]);
-
-        let _: Vec<_> = AGES
-            .keys_raw(&store, None, None, Order::Ascending)
-            .collect();
 
         // using inclusive bounds both sides
         let include = AGES
@@ -1542,8 +1531,7 @@ mod cosmwasm_test {
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
             .collect::<Vec<u64>>();
-        assert_eq!(include.len(), 4);
-        assert_eq!(include, vec![456, 789, 987, 2002]);
+        assert_eq!(include, [456, 789, 987, 2002]);
 
         // using exclusive bounds both sides
         let exclude = AGES
@@ -1555,9 +1543,7 @@ mod cosmwasm_test {
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
             .collect::<Vec<u64>>();
-
-        assert_eq!(exclude.len(), 2);
-        assert_eq!(exclude, vec![789, 987]);
+        assert_eq!(exclude, [789, 987]);
 
         // using inclusive in descending
         let include = AGES
@@ -1569,8 +1555,7 @@ mod cosmwasm_test {
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
             .collect::<Vec<u64>>();
-        assert_eq!(include.len(), 3);
-        assert_eq!(include, vec![987, 789, 456]);
+        assert_eq!(include, [987, 789, 456]);
 
         // using exclusive in descending
         let include = AGES
@@ -1582,8 +1567,7 @@ mod cosmwasm_test {
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
             .collect::<Vec<u64>>();
-        assert_eq!(include.len(), 1);
-        assert_eq!(include, vec![456]);
+        assert_eq!(include, [456]);
     }
 
     #[test]
@@ -1606,13 +1590,7 @@ mod cosmwasm_test {
             .range(&store, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(fives.len(), 2);
-        assert_eq!(fives, vec![
-            ("789".to_string(), 789),
-            ("987".to_string(), 987)
-        ]);
-
-        let _: Vec<_> = AGES.keys(&store, None, None, Order::Ascending).collect();
+        assert_eq!(fives, [("789".to_string(), 789), ("987".to_string(), 987)]);
 
         // using inclusive bounds both sides
         let include = AGES
@@ -1625,8 +1603,7 @@ mod cosmwasm_test {
             .map(|r| r.map(|(_, v)| v))
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(include.len(), 4);
-        assert_eq!(include, vec![456, 789, 987, 2002]);
+        assert_eq!(include, [456, 789, 987, 2002]);
 
         // using exclusive bounds both sides
         let exclude = AGES
@@ -1639,8 +1616,7 @@ mod cosmwasm_test {
             .map(|r| r.map(|(_, v)| v))
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(exclude.len(), 2);
-        assert_eq!(exclude, vec![789, 987]);
+        assert_eq!(exclude, [789, 987]);
 
         // using inclusive in descending
         let include = AGES
@@ -1653,8 +1629,7 @@ mod cosmwasm_test {
             .map(|r| r.map(|(_, v)| v))
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(include.len(), 3);
-        assert_eq!(include, vec![987, 789, 456]);
+        assert_eq!(include, [987, 789, 456]);
 
         // using exclusive in descending
         let include = AGES
@@ -1667,8 +1642,7 @@ mod cosmwasm_test {
             .map(|r| r.map(|(_, v)| v))
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(include.len(), 1);
-        assert_eq!(include, vec![456]);
+        assert_eq!(include, [456]);
     }
 
     #[test]
