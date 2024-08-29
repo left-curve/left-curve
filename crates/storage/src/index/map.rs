@@ -8,9 +8,9 @@ pub trait IndexList<K, T> {
 }
 
 pub trait Index<K, T> {
-    fn save(&self, store: &mut dyn Storage, pk: K, data: &T) -> StdResult<()>;
+    fn save(&self, storage: &mut dyn Storage, pk: K, data: &T) -> StdResult<()>;
 
-    fn remove(&self, store: &mut dyn Storage, pk: K, old_data: &T);
+    fn remove(&self, storage: &mut dyn Storage, pk: K, old_data: &T);
 }
 
 pub struct IndexedMap<'a, K, T, I, C = Borsh>
@@ -73,7 +73,7 @@ where
 
     pub fn range_raw<'b>(
         &self,
-        store: &'b dyn Storage,
+        storage: &'b dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
@@ -81,7 +81,7 @@ where
     where
         T: 'b,
     {
-        self.primary.range_raw(store, min, max, order)
+        self.primary.range_raw(storage, min, max, order)
     }
 
     pub fn range<'b>(
@@ -96,7 +96,7 @@ where
 
     pub fn keys_raw<'b>(
         &self,
-        store: &'b dyn Storage,
+        storage: &'b dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
@@ -104,7 +104,7 @@ where
     where
         T: 'b,
     {
-        self.primary.keys_raw(store, min, max, order)
+        self.primary.keys_raw(storage, min, max, order)
     }
 
     pub fn keys<'b>(
@@ -243,7 +243,7 @@ where
             }
         }
 
-        // Write new data to the primary store, and write its indexes.
+        // Write new data to the primary storage, and write its indexes.
         if let Some(updated) = data {
             for index in self.idx.get_indexes() {
                 index.save(storage, key.clone(), updated)?;
@@ -648,7 +648,7 @@ mod cosmwasm_tests {
         (index_string(data1), index_string(data2))
     }
 
-    fn save_data<'a>(store: &mut MockStorage) -> (Vec<&'a str>, Vec<Data>) {
+    fn save_data<'a>(storage: &mut MockStorage) -> (Vec<&'a str>, Vec<Data>) {
         let mut pks = vec![];
         let mut datas = vec![];
         let data = Data {
@@ -657,7 +657,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk = "1";
-        DATA.save(store, pk, &data).unwrap();
+        DATA.save(storage, pk, &data).unwrap();
         pks.push(pk);
         datas.push(data);
 
@@ -668,7 +668,7 @@ mod cosmwasm_tests {
             age: 23,
         };
         let pk = "2";
-        DATA.save(store, pk, &data).unwrap();
+        DATA.save(storage, pk, &data).unwrap();
         pks.push(pk);
         datas.push(data);
 
@@ -679,7 +679,7 @@ mod cosmwasm_tests {
             age: 32,
         };
         let pk = "3";
-        DATA.save(store, pk, &data).unwrap();
+        DATA.save(storage, pk, &data).unwrap();
         pks.push(pk);
         datas.push(data);
 
@@ -689,7 +689,7 @@ mod cosmwasm_tests {
             age: 12,
         };
         let pk = "4";
-        DATA.save(store, pk, &data).unwrap();
+        DATA.save(storage, pk, &data).unwrap();
         pks.push(pk);
         datas.push(data);
 
@@ -699,7 +699,7 @@ mod cosmwasm_tests {
             age: 90,
         };
         let pk = "5";
-        DATA.save(store, pk, &data).unwrap();
+        DATA.save(storage, pk, &data).unwrap();
         pks.push(pk);
         datas.push(data);
 
@@ -708,22 +708,22 @@ mod cosmwasm_tests {
 
     #[test]
     fn store_and_load_by_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
         let pk = pks[0];
         let data = &datas[0];
 
         // load it properly
-        let loaded = DATA.load(&store, pk).unwrap();
+        let loaded = DATA.load(&storage, pk).unwrap();
         assert_eq!(*data, loaded);
 
         let count = DATA
             .idx
             .name
             .prefix("Maria".to_string())
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .count();
         assert_eq!(2, count);
 
@@ -732,7 +732,7 @@ mod cosmwasm_tests {
             .idx
             .name
             .prefix("Maria".to_string())
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(2, marias.len());
         let (k, v) = &marias[0];
@@ -744,7 +744,7 @@ mod cosmwasm_tests {
             .idx
             .name
             .prefix("Marib".to_string())
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .count();
         assert_eq!(0, count);
 
@@ -753,7 +753,7 @@ mod cosmwasm_tests {
             .idx
             .name
             .prefix("Mari`".to_string())
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .count();
         assert_eq!(0, count);
 
@@ -762,7 +762,7 @@ mod cosmwasm_tests {
             .idx
             .name
             .prefix("Maria5".to_string())
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .count();
         assert_eq!(0, count);
 
@@ -773,7 +773,12 @@ mod cosmwasm_tests {
         let marias = DATA
             .idx
             .name
-            .range_raw(&store, Some(Bound::inclusive(key)), None, Order::Ascending)
+            .range_raw(
+                &storage,
+                Some(Bound::inclusive(key)),
+                None,
+                Order::Ascending,
+            )
             .collect::<Vec<_>>();
         // gets from the first "Maria" until the end
         assert_eq!(4, marias.len());
@@ -785,7 +790,12 @@ mod cosmwasm_tests {
         let count = DATA
             .idx
             .name
-            .range_raw(&store, Some(Bound::exclusive(key)), None, Order::Ascending)
+            .range_raw(
+                &storage,
+                Some(Bound::exclusive(key)),
+                None,
+                Order::Ascending,
+            )
             .count();
         // gets from the 2nd "Maria" until the end
         assert_eq!(3, count);
@@ -797,7 +807,7 @@ mod cosmwasm_tests {
             .idx
             .age
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(age_key)),
                 None,
                 Order::Ascending,
@@ -808,28 +818,28 @@ mod cosmwasm_tests {
 
         // match on proper age
         let proper = 42u32;
-        let (k, v) = DATA.idx.age.load(&store, proper).unwrap();
+        let (k, v) = DATA.idx.age.load(&storage, proper).unwrap();
 
         assert_eq!(pk, k);
         assert_eq!(data, &v);
 
         // no match on wrong age
         let too_old = 43u32;
-        DATA.idx.age.load(&store, too_old).unwrap_err();
+        DATA.idx.age.load(&storage, too_old).unwrap_err();
     }
 
     #[test]
     fn existence() {
-        let mut store = MockStorage::new();
-        let (pks, _) = save_data(&mut store);
+        let mut storage = MockStorage::new();
+        let (pks, _) = save_data(&mut storage);
 
-        assert!(DATA.has(&store, pks[0]));
-        assert!(!DATA.has(&store, "6"));
+        assert!(DATA.has(&storage, pks[0]));
+        assert!(!DATA.has(&storage, "6"));
     }
 
     #[test]
     fn range_raw_simple_key_by_multi_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
         let data1 = Data {
@@ -838,7 +848,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk = "5627";
-        DATA.save(&mut store, pk, &data1).unwrap();
+        DATA.save(&mut storage, pk, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -846,7 +856,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk = "5628";
-        DATA.save(&mut store, pk, &data2).unwrap();
+        DATA.save(&mut storage, pk, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -854,7 +864,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk = "5629";
-        DATA.save(&mut store, pk, &data3).unwrap();
+        DATA.save(&mut storage, pk, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -862,13 +872,13 @@ mod cosmwasm_tests {
             age: 12,
         };
         let pk = "5630";
-        DATA.save(&mut store, pk, &data4).unwrap();
+        DATA.save(&mut storage, pk, &data4).unwrap();
 
         let marias: Vec<_> = DATA
             .idx
             .name
             .prefix("Maria".to_string())
-            .range_raw(&store, None, None, Order::Descending)
+            .range_raw(&storage, None, None, Order::Descending)
             .collect();
         assert_eq!(marias.len(), 2);
 
@@ -882,7 +892,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_key_by_multi_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
         let data1 = Data {
@@ -891,7 +901,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk = "5627";
-        DATA.save(&mut store, pk, &data1).unwrap();
+        DATA.save(&mut storage, pk, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -899,7 +909,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk = "5628";
-        DATA.save(&mut store, pk, &data2).unwrap();
+        DATA.save(&mut storage, pk, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -907,7 +917,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk = "5629";
-        DATA.save(&mut store, pk, &data3).unwrap();
+        DATA.save(&mut storage, pk, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -915,13 +925,13 @@ mod cosmwasm_tests {
             age: 12,
         };
         let pk = "5630";
-        DATA.save(&mut store, pk, &data4).unwrap();
+        DATA.save(&mut storage, pk, &data4).unwrap();
 
         let marias: Vec<_> = DATA
             .idx
             .name
             .prefix("Maria".to_string())
-            .range(&store, None, None, Order::Descending)
+            .range(&storage, None, None, Order::Descending)
             .collect::<StdResult<_>>()
             .unwrap();
         assert_eq!(marias.len(), 2);
@@ -936,7 +946,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_raw_composite_key_by_multi_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -955,7 +965,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1: &[u8] = b"5627";
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -963,7 +973,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2: &[u8] = b"5628";
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -971,7 +981,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3: &[u8] = b"5629";
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -979,13 +989,13 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4: &[u8] = b"5630";
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         let marias: Vec<_> = map
             .idx
             .name_age
             .sub_prefix(b"Maria".to_vec())
-            .range_raw(&store, None, None, Order::Descending)
+            .range_raw(&storage, None, None, Order::Descending)
             .collect();
         assert_eq!(marias.len(), 2);
 
@@ -1000,7 +1010,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_composite_key_by_multi_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -1019,7 +1029,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = b"5627";
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1027,7 +1037,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = b"5628";
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1035,7 +1045,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = b"5629";
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1043,13 +1053,13 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = b"5630";
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         let marias: Vec<_> = map
             .idx
             .name_age
             .sub_prefix(b"Maria".to_vec())
-            .range(&store, None, None, Order::Descending)
+            .range(&storage, None, None, Order::Descending)
             .collect::<StdResult<_>>()
             .unwrap();
         assert_eq!(marias.len(), 2);
@@ -1065,10 +1075,10 @@ mod cosmwasm_tests {
 
     #[test]
     fn unique_index_enforced() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
 
         // different name, different last name, same age => error
         let data5 = Data {
@@ -1079,28 +1089,28 @@ mod cosmwasm_tests {
         let pk5 = "4";
 
         // enforce this returns some error
-        DATA.save(&mut store, pk5, &data5).unwrap_err();
+        DATA.save(&mut storage, pk5, &data5).unwrap_err();
 
         // query by unique key
         // match on proper age
         let age42 = 42u32;
-        let (k, v) = DATA.idx.age.load(&store, age42).unwrap();
+        let (k, v) = DATA.idx.age.load(&storage, age42).unwrap();
         assert_eq!(k, pks[0]);
         assert_eq!(v.name, datas[0].name);
         assert_eq!(v.age, datas[0].age);
 
         // match on other age
         let age23 = 23u32;
-        let (k, v) = DATA.idx.age.load(&store, age23).unwrap();
+        let (k, v) = DATA.idx.age.load(&storage, age23).unwrap();
         assert_eq!(k, pks[1]);
         assert_eq!(v.name, datas[1].name);
         assert_eq!(v.age, datas[1].age);
 
         // if we delete the first one, we can add the blocked one
-        DATA.remove(&mut store, pks[0]).unwrap();
-        DATA.save(&mut store, pk5, &data5).unwrap();
+        DATA.remove(&mut storage, pks[0]).unwrap();
+        DATA.save(&mut storage, pk5, &data5).unwrap();
         // now 42 is the new owner
-        let (k, v) = DATA.idx.age.load(&store, age42).unwrap();
+        let (k, v) = DATA.idx.age.load(&storage, age42).unwrap();
         assert_eq!(k, pk5);
         assert_eq!(v.name, data5.name);
         assert_eq!(v.age, data5.age);
@@ -1108,10 +1118,10 @@ mod cosmwasm_tests {
 
     #[test]
     fn unique_index_enforced_composite_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        save_data(&mut store);
+        save_data(&mut storage);
 
         // same name, same lastname => error
         let data5 = Data {
@@ -1121,35 +1131,35 @@ mod cosmwasm_tests {
         };
         let pk5 = "5";
         // enforce this returns some error
-        DATA.save(&mut store, pk5, &data5).unwrap_err();
+        DATA.save(&mut storage, pk5, &data5).unwrap_err();
     }
 
     #[test]
     fn remove_and_update_reflected_on_indexes() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
-        let name_count = |store: &MockStorage, name: &str| -> usize {
+        let name_count = |storage: &MockStorage, name: &str| -> usize {
             DATA.idx
                 .name
                 .prefix(name.to_string())
-                .keys_raw(store, None, None, Order::Ascending)
+                .keys_raw(storage, None, None, Order::Ascending)
                 .count()
         };
 
         // save data
-        let (pks, _) = save_data(&mut store);
+        let (pks, _) = save_data(&mut storage);
 
         // find 2 Marias, 1 John, and no Mary
-        assert_eq!(name_count(&store, "Maria"), 2);
-        assert_eq!(name_count(&store, "John"), 1);
-        assert_eq!(name_count(&store, "Maria Luisa"), 1);
-        assert_eq!(name_count(&store, "Mary"), 0);
+        assert_eq!(name_count(&storage, "Maria"), 2);
+        assert_eq!(name_count(&storage, "John"), 1);
+        assert_eq!(name_count(&storage, "Maria Luisa"), 1);
+        assert_eq!(name_count(&storage, "Mary"), 0);
 
         // remove maria 2
-        DATA.remove(&mut store, pks[1]).unwrap();
+        DATA.remove(&mut storage, pks[1]).unwrap();
 
         // change john to mary
-        DATA.update(&mut store, pks[2], |d| -> StdResult<_> {
+        DATA.update(&mut storage, pks[2], |d| -> StdResult<_> {
             let mut x = d.unwrap();
             assert_eq!(&x.name, "John");
             x.name = "Mary".to_string();
@@ -1158,23 +1168,23 @@ mod cosmwasm_tests {
         .unwrap();
 
         // find 1 maria, 1 maria luisa, no john, and 1 mary
-        assert_eq!(name_count(&store, "Maria"), 1);
-        assert_eq!(name_count(&store, "Maria Luisa"), 1);
-        assert_eq!(name_count(&store, "John"), 0);
-        assert_eq!(name_count(&store, "Mary"), 1);
+        assert_eq!(name_count(&storage, "Maria"), 1);
+        assert_eq!(name_count(&storage, "Maria Luisa"), 1);
+        assert_eq!(name_count(&storage, "John"), 0);
+        assert_eq!(name_count(&storage, "Mary"), 1);
     }
 
     #[test]
     fn range_raw_simple_key_by_unique_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
 
         let ages: Vec<_> = DATA
             .idx
             .age
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .map(|(ik, pk, v)| {
                 (
                     ik,
@@ -1211,15 +1221,15 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_key_by_unique_index() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
 
         let res: StdResult<Vec<_>> = DATA
             .idx
             .age
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect();
         let ages = res.unwrap();
 
@@ -1243,14 +1253,14 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_string_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
 
         // let's try to iterate!
         let all = DATA
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(
@@ -1264,7 +1274,12 @@ mod cosmwasm_tests {
 
         // let's try to iterate over a range
         let all = DATA
-            .range(&store, Some(Bound::inclusive("3")), None, Order::Ascending)
+            .range(
+                &storage,
+                Some(Bound::inclusive("3")),
+                None,
+                Order::Ascending,
+            )
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(
@@ -1281,10 +1296,10 @@ mod cosmwasm_tests {
 
     #[test]
     fn prefix_simple_string_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save data
-        let (pks, datas) = save_data(&mut store);
+        let (pks, datas) = save_data(&mut storage);
 
         // Let's prefix and iterate.
         // This is similar to calling range() directly, but added here for completeness / prefix
@@ -1295,7 +1310,7 @@ mod cosmwasm_tests {
         // it's like to call only range. With prefix, the IK::Prefix in this case is ().
         let all = DATA
             // .prefix(())
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>().unwrap();
         assert_eq!(
             all,
@@ -1308,7 +1323,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn prefix_composite_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex::<(&str, &str)> {
             name_age: MultiIndex::new(
@@ -1327,7 +1342,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = ("1", "5627");
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1335,7 +1350,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = ("2", "5628");
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1343,7 +1358,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = ("2", "5629");
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1351,12 +1366,12 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = ("3", "5630");
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         // let's prefix and iterate
         let result: StdResult<Vec<_>> = map
             .prefix("2")
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect();
         let result = result.unwrap();
         assert_eq!(result, [
@@ -1367,7 +1382,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn prefix_triple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -1386,7 +1401,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = ("1", "1", "5627");
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1394,7 +1409,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = ("1", "2", "5628");
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1402,7 +1417,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = ("2", "1", "5629");
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1410,13 +1425,13 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = ("2", "2", "5630");
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         // let's prefix and iterate
         let result = map
             .prefix("1")
             .append("2")
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(result, [("5628".to_string(), data2),]);
@@ -1424,7 +1439,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn sub_prefix_triple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -1443,7 +1458,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = ("1", "1", "5627");
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1451,7 +1466,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = ("1", "2", "5628");
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1459,7 +1474,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = ("2", "1", "5629");
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1467,12 +1482,12 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = ("2", "2", "5630");
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         // let's sub-prefix and iterate
         let result = map
             .prefix("1")
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(result, [
@@ -1483,7 +1498,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn prefix_range_simple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -1502,7 +1517,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = ("1", "5627");
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1510,7 +1525,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = ("2", "5628");
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1518,7 +1533,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = ("2", "5629");
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1526,12 +1541,12 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = ("3", "5630");
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         // let's prefix-range and iterate
         let result = map
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive("2")),
                 None,
                 Order::Ascending,
@@ -1547,7 +1562,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive prefix-range!
         let result = map
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive("2")),
                 Some(PrefixBound::exclusive("3")),
                 Order::Ascending,
@@ -1562,7 +1577,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn prefix_range_triple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let indexes = DataCompositeMultiIndex {
             name_age: MultiIndex::new(
@@ -1581,7 +1596,7 @@ mod cosmwasm_tests {
             age: 42,
         };
         let pk1 = ("1", "1", "5627");
-        map.save(&mut store, pk1, &data1).unwrap();
+        map.save(&mut storage, pk1, &data1).unwrap();
 
         let data2 = Data {
             name: "Juan".to_string(),
@@ -1589,7 +1604,7 @@ mod cosmwasm_tests {
             age: 13,
         };
         let pk2 = ("1", "2", "5628");
-        map.save(&mut store, pk2, &data2).unwrap();
+        map.save(&mut storage, pk2, &data2).unwrap();
 
         let data3 = Data {
             name: "Maria".to_string(),
@@ -1597,7 +1612,7 @@ mod cosmwasm_tests {
             age: 24,
         };
         let pk3 = ("2", "1", "5629");
-        map.save(&mut store, pk3, &data3).unwrap();
+        map.save(&mut storage, pk3, &data3).unwrap();
 
         let data4 = Data {
             name: "Maria Luisa".to_string(),
@@ -1605,7 +1620,7 @@ mod cosmwasm_tests {
             age: 43,
         };
         let pk4 = ("2", "2", "5630");
-        map.save(&mut store, pk4, &data4).unwrap();
+        map.save(&mut storage, pk4, &data4).unwrap();
 
         // Grug implementation:
         // on grug the prefix for (A, B, C) is A.
@@ -1614,7 +1629,7 @@ mod cosmwasm_tests {
         // let's prefix-range and iterate
         let result = map
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive("1")),
                 None,
                 Order::Ascending,
@@ -1643,7 +1658,7 @@ mod cosmwasm_tests {
         // let's prefix-range over inclusive bounds on both sides
         let result = map
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive("1")),
                 Some(PrefixBound::exclusive("2")),
                 Order::Ascending,
@@ -1689,17 +1704,22 @@ mod cosmwasm_tests {
                 ),
             };
             let map = IndexedMap::<&str, u64, Indexes<&str>>::new("test_map", indexes);
-            let mut store = MockStorage::new();
+            let mut storage = MockStorage::new();
 
-            map.save(&mut store, "one", &1).unwrap();
-            map.save(&mut store, "two", &2).unwrap();
-            map.save(&mut store, "three", &3).unwrap();
+            map.save(&mut storage, "one", &1).unwrap();
+            map.save(&mut storage, "two", &2).unwrap();
+            map.save(&mut storage, "three", &3).unwrap();
 
             // Inclusive bound
             let items: Vec<_> = map
                 .idx
                 .secondary
-                .values(&store, None, Some(Bound::inclusive(1u64)), Order::Ascending)
+                .values(
+                    &storage,
+                    None,
+                    Some(Bound::inclusive(1u64)),
+                    Order::Ascending,
+                )
                 .map(|val| val.unwrap().1)
                 .collect();
             assert_eq!(items, [1]);
@@ -1708,7 +1728,12 @@ mod cosmwasm_tests {
             let items: Vec<_> = map
                 .idx
                 .secondary
-                .values(&store, Some(Bound::exclusive(2u64)), None, Order::Ascending)
+                .values(
+                    &storage,
+                    Some(Bound::exclusive(2u64)),
+                    None,
+                    Order::Ascending,
+                )
                 .map(|val| val.unwrap().1)
                 .collect();
             assert_eq!(items, [3]);
@@ -1740,12 +1765,12 @@ mod cosmwasm_tests {
                 ),
             };
             let map = IndexedMap::<&str, u64, Indexes>::new("test_map", indexes);
-            let mut store = MockStorage::new();
+            let mut storage = MockStorage::new();
 
-            map.save(&mut store, "one", &1).unwrap();
-            map.save(&mut store, "two", &2).unwrap();
-            map.save(&mut store, "two2", &2).unwrap();
-            map.save(&mut store, "three", &3).unwrap();
+            map.save(&mut storage, "one", &1).unwrap();
+            map.save(&mut storage, "two", &2).unwrap();
+            map.save(&mut storage, "two2", &2).unwrap();
+            map.save(&mut storage, "three", &3).unwrap();
 
             // Exclusive bound (used for pagination)
             // Range over the index specifying a primary key (multi-index key includes the pk)
@@ -1753,7 +1778,7 @@ mod cosmwasm_tests {
                 .idx
                 .secondary
                 .range(
-                    &store,
+                    &storage,
                     Some(Bound::exclusive((2u64, "two"))),
                     None,
                     Order::Ascending,
@@ -1795,23 +1820,23 @@ mod cosmwasm_tests {
             };
             let map: IndexedMap<(&Addr, &Addr), grug_types::Uint<u128>, Indexes> =
                 IndexedMap::new("allowances", indexes);
-            let mut store = MockStorage::new();
+            let mut storage = MockStorage::new();
 
             let owner_1 = Addr::mock(1);
             let owner_2 = Addr::mock(2);
             let spender_1 = Addr::mock(3);
             let spender_2 = Addr::mock(4);
 
-            map.save(&mut store, (&owner_1, &spender_1), &Uint128::new(11))
+            map.save(&mut storage, (&owner_1, &spender_1), &Uint128::new(11))
                 .unwrap();
-            map.save(&mut store, (&owner_1, &spender_2), &Uint128::new(12))
+            map.save(&mut storage, (&owner_1, &spender_2), &Uint128::new(12))
                 .unwrap();
-            map.save(&mut store, (&owner_2, &spender_1), &Uint128::new(21))
+            map.save(&mut storage, (&owner_2, &spender_1), &Uint128::new(21))
                 .unwrap();
 
             // Iterate over the main values
             let items = map
-                .range_raw(&store, None, None, Order::Ascending)
+                .range_raw(&storage, None, None, Order::Ascending)
                 .map(|(_, v)| {
                     // Strip the index from values (for simpler comparison)
                     v.deserialize_borsh::<Uint128>().unwrap().number()
@@ -1823,7 +1848,7 @@ mod cosmwasm_tests {
             let items = map
                 .idx
                 .spender
-                .range(&store, None, None, Order::Ascending)
+                .range(&storage, None, None, Order::Ascending)
                 .map(|val| val.unwrap().2.number())
                 .collect::<Vec<_>>();
             assert_eq!(items, [11, 21, 12]);
@@ -1831,7 +1856,7 @@ mod cosmwasm_tests {
             // Prefix over the main values
             let items = map
                 .prefix(&owner_1)
-                .range(&store, None, None, Order::Ascending)
+                .range(&storage, None, None, Order::Ascending)
                 .map(|res| {
                     // Strip the index from values (for simpler comparison)
                     res.unwrap().1.number()
@@ -1844,7 +1869,7 @@ mod cosmwasm_tests {
                 .idx
                 .spender
                 .prefix(spender_1)
-                .range(&store, None, None, Order::Ascending)
+                .range(&storage, None, None, Order::Ascending)
                 .map(|res| {
                     // Strip the index from values (for simpler comparison)
                     res.unwrap().1.number()
@@ -1857,7 +1882,7 @@ mod cosmwasm_tests {
                 .idx
                 .spender
                 .prefix(spender_2)
-                .range(&store, None, None, Order::Ascending)
+                .range(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
             assert_eq!(items, [((owner_1, spender_2), Uint128::new(12))]);

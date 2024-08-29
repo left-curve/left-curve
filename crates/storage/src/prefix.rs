@@ -70,7 +70,7 @@ where
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // Compute start and end bounds.
-        // Note that the store considers the start bounds as inclusive, and end
+        // Note that the storage considers the start bounds as inclusive, and end
         // bound as exclusive (see the Storage trait).
         let (min, max) = range_bounds(&self.namespace, min, max);
 
@@ -349,7 +349,7 @@ mod test {
 
     #[test]
     fn ensure_proper_range_bounds() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // manually create this - not testing nested prefixes here
         let prefix: Prefix<Vec<u8>, u64, Borsh> = Prefix {
@@ -360,12 +360,12 @@ mod test {
         };
 
         // set some data, we care about "foo" prefix
-        store.write(b"foobar", b"1");
-        store.write(b"foora", b"2");
-        store.write(b"foozi", b"3");
+        storage.write(b"foobar", b"1");
+        storage.write(b"foora", b"2");
+        storage.write(b"foozi", b"3");
         // these shouldn't match
-        store.write(b"foply", b"100");
-        store.write(b"font", b"200");
+        storage.write(b"foply", b"100");
+        storage.write(b"font", b"200");
 
         let expected = vec![
             (b"bar".to_vec(), b"1".to_vec()),
@@ -376,19 +376,19 @@ mod test {
 
         // let's do the basic sanity check
         let res: Vec<_> = prefix
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(&expected, &res);
 
         let res: Vec<_> = prefix
-            .range_raw(&store, None, None, Order::Descending)
+            .range_raw(&storage, None, None, Order::Descending)
             .collect();
         assert_eq!(&expected_reversed, &res);
 
         // now let's check some ascending ranges
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"ra".to_vec())),
                 None,
                 Order::Ascending,
@@ -399,7 +399,7 @@ mod test {
         // skip excluded
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"ra".to_vec())),
                 None,
                 Order::Ascending,
@@ -410,7 +410,7 @@ mod test {
         // if we exclude something a little lower, we get matched
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"r".to_vec())),
                 None,
                 Order::Ascending,
@@ -421,7 +421,7 @@ mod test {
         // now let's check some descending ranges
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 None,
                 Some(Bound::inclusive(b"ra".to_vec())),
                 Order::Descending,
@@ -432,7 +432,7 @@ mod test {
         // skip excluded
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 None,
                 Some(Bound::exclusive(b"ra".to_vec())),
                 Order::Descending,
@@ -443,7 +443,7 @@ mod test {
         // if we exclude something a little higher, we get matched
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 None,
                 Some(Bound::exclusive(b"rb".to_vec())),
                 Order::Descending,
@@ -454,7 +454,7 @@ mod test {
         // now test when both sides are set
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"ra".to_vec())),
                 Some(Bound::exclusive(b"zi".to_vec())),
                 Order::Ascending,
@@ -465,7 +465,7 @@ mod test {
         // and descending
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"ra".to_vec())),
                 Some(Bound::exclusive(b"zi".to_vec())),
                 Order::Descending,
@@ -476,7 +476,7 @@ mod test {
         // Include both sides
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"ra".to_vec())),
                 Some(Bound::inclusive(b"zi".to_vec())),
                 Order::Descending,
@@ -487,7 +487,7 @@ mod test {
         // Exclude both sides
         let res: Vec<_> = prefix
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"ra".to_vec())),
                 Some(Bound::exclusive(b"zi".to_vec())),
                 Order::Ascending,
@@ -498,7 +498,7 @@ mod test {
 
     #[test]
     fn prefix_clear_limited() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
         // manually create this - not testing nested prefixes here
         let prefix: Prefix<i32, u64, Borsh> = Prefix {
             namespace: b"foo".to_vec(),
@@ -511,72 +511,72 @@ mod test {
         for i in 0..100i32 {
             let mut buf = "foo".joined_key();
             buf.extend_from_slice(&i.joined_key());
-            store.write(&buf, b"1");
+            storage.write(&buf, b"1");
         }
 
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             100
         );
 
         // clear with min bound
-        prefix.clear(&mut store, None, Some(Bound::inclusive(20i32)));
+        prefix.clear(&mut storage, None, Some(Bound::inclusive(20i32)));
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             100 - 21
         );
 
         // clear with max bound
-        prefix.clear(&mut store, Some(Bound::inclusive(50)), None);
+        prefix.clear(&mut storage, Some(Bound::inclusive(50)), None);
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             100 - 21 - 50
         );
 
         // clearing more than available should work
-        prefix.clear(&mut store, None, Some(Bound::inclusive(200)));
+        prefix.clear(&mut storage, None, Some(Bound::inclusive(200)));
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             0
         );
     }
 
     #[test]
     fn prefix_clear_unlimited() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
         let prefix: Prefix<Vec<u8>, u64, Borsh> = Prefix::new(b"foo", &[]);
 
         // set some data, we care about "foo" prefix
         for i in 0..1000u32 {
-            store.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
+            storage.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
         }
 
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             1000
         );
 
         // clearing all should work
-        prefix.clear(&mut store, None, None);
+        prefix.clear(&mut storage, None, None);
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             0
         );
 
         // set less data
         for i in 0..5u32 {
-            store.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
+            storage.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
         }
 
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             5
         );
 
         // clearing all should work
-        prefix.clear(&mut store, None, None);
+        prefix.clear(&mut storage, None, None);
         assert_eq!(
-            prefix.range(&store, None, None, Order::Ascending).count(),
+            prefix.range(&storage, None, None, Order::Ascending).count(),
             0
         );
     }

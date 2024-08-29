@@ -486,7 +486,7 @@ mod cosmwasm_tests {
 
     #[test]
     fn save_and_load() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on one key
         let john = PEOPLE.path(b"john");
@@ -495,116 +495,120 @@ mod cosmwasm_tests {
             name: "John".to_string(),
             age: 32,
         };
-        assert_eq!(None, john.may_load(&store).unwrap());
+        assert_eq!(None, john.may_load(&storage).unwrap());
 
-        john.save(&mut store, &data).unwrap();
-        assert_eq!(data, john.load(&store).unwrap());
+        john.save(&mut storage, &data).unwrap();
+        assert_eq!(data, john.load(&storage).unwrap());
 
         // nothing on another key
-        assert_eq!(None, PEOPLE.may_load(&store, b"jack").unwrap());
+        assert_eq!(None, PEOPLE.may_load(&storage, b"jack").unwrap());
 
         // same named path gets the data
-        assert_eq!(data, PEOPLE.load(&store, b"john").unwrap());
+        assert_eq!(data, PEOPLE.load(&storage, b"john").unwrap());
 
         // removing leaves us empty
-        john.remove(&mut store);
-        assert_eq!(None, john.may_load(&store).unwrap());
+        john.remove(&mut storage);
+        assert_eq!(None, john.may_load(&storage).unwrap());
     }
 
     #[test]
     fn existence() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // set data in proper format
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE.save(&mut store, b"john", &data).unwrap();
+        PEOPLE.save(&mut storage, b"john", &data).unwrap();
 
         // set and remove it
-        PEOPLE.save(&mut store, b"removed", &data).unwrap();
-        PEOPLE.remove(&mut store, b"removed");
+        PEOPLE.save(&mut storage, b"removed", &data).unwrap();
+        PEOPLE.remove(&mut storage, b"removed");
 
         // invalid, but non-empty data
-        store.write(&PEOPLE.path(b"random").storage_key, b"random-data");
+        storage.write(&PEOPLE.path(b"random").storage_key, b"random-data");
 
         // any data, including invalid or empty is returned as "has"
-        assert!(PEOPLE.has(&store, b"john"));
-        assert!(PEOPLE.has(&store, b"random"));
+        assert!(PEOPLE.has(&storage, b"john"));
+        assert!(PEOPLE.has(&storage, b"random"));
 
         // if nothing was written, it is false
-        assert!(!PEOPLE.has(&store, b"never-writen"));
-        assert!(!PEOPLE.has(&store, b"removed"));
+        assert!(!PEOPLE.has(&storage, b"never-writen"));
+        assert!(!PEOPLE.has(&storage, b"removed"));
     }
 
     #[test]
     fn composite_keys() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on a composite key
         let allow = ALLOWANCE.path((b"owner", b"spender"));
         let allow = allow.as_path();
-        assert_eq!(None, allow.may_load(&store).unwrap());
+        assert_eq!(None, allow.may_load(&storage).unwrap());
 
-        allow.save(&mut store, &1234).unwrap();
-        assert_eq!(1234, allow.load(&store).unwrap());
+        allow.save(&mut storage, &1234).unwrap();
+        assert_eq!(1234, allow.load(&storage).unwrap());
 
         // not under other key
-        let different = ALLOWANCE.may_load(&store, (b"owners", b"pender")).unwrap();
+        let different = ALLOWANCE
+            .may_load(&storage, (b"owners", b"pender"))
+            .unwrap();
         assert_eq!(None, different);
 
         // matches under a proper copy
-        let same = ALLOWANCE.load(&store, (b"owner", b"spender")).unwrap();
+        let same = ALLOWANCE.load(&storage, (b"owner", b"spender")).unwrap();
         assert_eq!(1234, same);
     }
 
     #[test]
     fn triple_keys() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on a triple composite key
         let triple = TRIPLE.path((b"owner", 10u8, "recipient"));
         let triple = triple.as_path();
-        assert_eq!(None, triple.may_load(&store).unwrap());
+        assert_eq!(None, triple.may_load(&storage).unwrap());
 
-        triple.save(&mut store, &1234).unwrap();
-        assert_eq!(1234, triple.load(&store).unwrap());
+        triple.save(&mut storage, &1234).unwrap();
+        assert_eq!(1234, triple.load(&storage).unwrap());
 
         // not under other key
         let different = TRIPLE
-            .may_load(&store, (b"owners", 10u8, "ecipient"))
+            .may_load(&storage, (b"owners", 10u8, "ecipient"))
             .unwrap();
         assert_eq!(None, different);
 
         // matches under a proper copy
-        let same = TRIPLE.load(&store, (b"owner", 10u8, "recipient")).unwrap();
+        let same = TRIPLE
+            .load(&storage, (b"owner", 10u8, "recipient"))
+            .unwrap();
         assert_eq!(1234, same);
     }
 
     #[test]
     fn range_raw_simple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on two keys
         let data1 = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE.save(&mut store, b"john", &data1).unwrap();
+        PEOPLE.save(&mut storage, b"john", &data1).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE.save(&mut store, b"jim", &data2).unwrap();
+        PEOPLE.save(&mut storage, b"jim", &data2).unwrap();
 
         let data_1_raw = data1.to_borsh_vec().unwrap();
         let data_2_raw = data2.to_borsh_vec().unwrap();
 
         // let's try to iterate!
         let all: Vec<_> = PEOPLE
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
 
         assert_eq!(2, all.len());
@@ -616,7 +620,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all: Vec<_> = PEOPLE
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"j" as &[u8])),
                 None,
                 Order::Ascending,
@@ -631,7 +635,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all: Vec<_> = PEOPLE
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"jo" as &[u8])),
                 None,
                 Order::Ascending,
@@ -643,30 +647,30 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_string_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE.save(&mut store, b"john", &data).unwrap();
+        PEOPLE.save(&mut storage, b"john", &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE.save(&mut store, b"jim", &data2).unwrap();
+        PEOPLE.save(&mut storage, b"jim", &data2).unwrap();
 
         let data3 = Data {
             name: "Ada".to_string(),
             age: 23,
         };
-        PEOPLE.save(&mut store, b"ada", &data3).unwrap();
+        PEOPLE.save(&mut storage, b"ada", &data3).unwrap();
 
         // let's try to iterate!
         let all = PEOPLE
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -678,7 +682,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all = PEOPLE
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"j".as_slice())),
                 None,
                 Order::Ascending,
@@ -693,7 +697,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all = PEOPLE
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"jo".as_slice())),
                 None,
                 Order::Ascending,
@@ -705,30 +709,30 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_key_broken_deserialization_errors() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE_STR.save(&mut store, "john", &data).unwrap();
+        PEOPLE_STR.save(&mut storage, "john", &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE_STR.save(&mut store, "jim", &data2).unwrap();
+        PEOPLE_STR.save(&mut storage, "jim", &data2).unwrap();
 
         let data3 = Data {
             name: "Ada".to_string(),
             age: 23,
         };
-        PEOPLE_STR.save(&mut store, "ada", &data3).unwrap();
+        PEOPLE_STR.save(&mut storage, "ada", &data3).unwrap();
 
         // let's iterate!
         let all = PEOPLE_STR
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -738,7 +742,7 @@ mod cosmwasm_tests {
         ]);
 
         // Manually add a broken key (invalid utf-8)
-        store.write(
+        storage.write(
             &[
                 [0u8, PEOPLE_STR_KEY.len() as u8].as_slice(),
                 PEOPLE_STR_KEY.as_bytes(),
@@ -750,19 +754,19 @@ mod cosmwasm_tests {
 
         // Let's try to iterate again!
         let all: StdResult<Vec<_>> = PEOPLE_STR
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect();
         assert!(all.is_err());
 
         // And the same with keys()
         let all: StdResult<Vec<_>> = PEOPLE_STR
-            .keys(&store, None, None, Order::Ascending)
+            .keys(&storage, None, None, Order::Ascending)
             .collect();
         assert!(all.is_err());
 
         // But range_raw still works
         let all: Vec<_> = PEOPLE_STR
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (b"ada".to_vec(), data3.to_borsh_vec().unwrap()),
@@ -773,7 +777,7 @@ mod cosmwasm_tests {
 
         // And the same with keys_raw
         let all: Vec<_> = PEOPLE_STR
-            .keys_raw(&store, None, None, Order::Ascending)
+            .keys_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             b"ada".to_vec(),
@@ -785,24 +789,24 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_integer_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on two keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE_ID.save(&mut store, 1234, &data).unwrap();
+        PEOPLE_ID.save(&mut storage, 1234, &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE_ID.save(&mut store, 56, &data2).unwrap();
+        PEOPLE_ID.save(&mut storage, 56, &data2).unwrap();
 
         // let's try to iterate!
         let all = PEOPLE_ID
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
 
@@ -811,7 +815,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all = PEOPLE_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(56u32)),
                 None,
                 Order::Ascending,
@@ -823,7 +827,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all = PEOPLE_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(57u32)),
                 None,
                 Order::Ascending,
@@ -835,24 +839,24 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_integer_key_with_bounder_trait() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on two keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE_ID.save(&mut store, 1234, &data).unwrap();
+        PEOPLE_ID.save(&mut storage, 1234, &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE_ID.save(&mut store, 56, &data2).unwrap();
+        PEOPLE_ID.save(&mut storage, 56, &data2).unwrap();
 
         // let's try to iterate!
         let all = PEOPLE_ID
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [(56, data2.clone()), (1234, data.clone())]);
@@ -860,7 +864,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all = PEOPLE_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(56u32)),
                 None,
                 Order::Ascending,
@@ -872,7 +876,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all = PEOPLE_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(57u32)),
                 None,
                 Order::Ascending,
@@ -884,30 +888,30 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_signed_integer_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        SIGNED_ID.save(&mut store, -1234, &data).unwrap();
+        SIGNED_ID.save(&mut storage, -1234, &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        SIGNED_ID.save(&mut store, -56, &data2).unwrap();
+        SIGNED_ID.save(&mut storage, -56, &data2).unwrap();
 
         let data3 = Data {
             name: "Jules".to_string(),
             age: 55,
         };
-        SIGNED_ID.save(&mut store, 50, &data3).unwrap();
+        SIGNED_ID.save(&mut storage, 50, &data3).unwrap();
 
         // let's try to iterate!
         let all = SIGNED_ID
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         // order is correct
@@ -920,7 +924,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all = SIGNED_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(-56i32)),
                 None,
                 Order::Ascending,
@@ -932,7 +936,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all = SIGNED_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(-55i32)),
                 Some(Bound::inclusive(50i32)),
                 Order::Descending,
@@ -944,30 +948,30 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_simple_signed_integer_key_with_bounder_trait() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        SIGNED_ID.save(&mut store, -1234, &data).unwrap();
+        SIGNED_ID.save(&mut storage, -1234, &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        SIGNED_ID.save(&mut store, -56, &data2).unwrap();
+        SIGNED_ID.save(&mut storage, -56, &data2).unwrap();
 
         let data3 = Data {
             name: "Jules".to_string(),
             age: 55,
         };
-        SIGNED_ID.save(&mut store, 50, &data3).unwrap();
+        SIGNED_ID.save(&mut storage, 50, &data3).unwrap();
 
         // let's try to iterate!
         let all = SIGNED_ID
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         // order is correct
@@ -980,7 +984,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a range
         let all = SIGNED_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(-56i32)),
                 None,
                 Order::Ascending,
@@ -992,7 +996,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a more restrictive range
         let all = SIGNED_ID
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(-55i32)),
                 Some(Bound::inclusive(50i32)),
                 Order::Descending,
@@ -1004,22 +1008,22 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_raw_composite_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys, one under different owner
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender"), &1000)
+            .save(&mut storage, (b"owner", b"spender"), &1000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .save(&mut storage, (b"owner", b"spender2"), &3000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .save(&mut storage, (b"owner2", b"spender"), &5000)
             .unwrap();
 
         // let's try to iterate!
         let all: Vec<_> = ALLOWANCE
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (
@@ -1039,7 +1043,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a prefix
         let all: Vec<_> = ALLOWANCE
             .prefix(b"owner")
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (b"spender".to_vec(), 1000_u64.to_borsh_vec().unwrap()),
@@ -1049,22 +1053,22 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_composite_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys, one under different owner
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender"), &1000)
+            .save(&mut storage, (b"owner", b"spender"), &1000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .save(&mut storage, (b"owner", b"spender2"), &3000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .save(&mut storage, (b"owner2", b"spender"), &5000)
             .unwrap();
 
         // let's try to iterate!
         let all = ALLOWANCE
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -1076,7 +1080,7 @@ mod cosmwasm_tests {
         // let's try to iterate over a prefix
         let all = ALLOWANCE
             .prefix(b"owner")
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -1088,7 +1092,7 @@ mod cosmwasm_tests {
         let all = ALLOWANCE
             .prefix(b"owner")
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive(b"spender".as_slice())),
                 None,
                 Order::Ascending,
@@ -1104,7 +1108,7 @@ mod cosmwasm_tests {
         let all = ALLOWANCE
             .prefix(b"owner")
             .range(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"spender".as_slice())),
                 None,
                 Order::Ascending,
@@ -1116,25 +1120,25 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_raw_triple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys, one under different owner
         TRIPLE
-            .save(&mut store, (b"owner", 9, "recipient"), &1000)
+            .save(&mut storage, (b"owner", 9, "recipient"), &1000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner", 9, "recipient2"), &3000)
+            .save(&mut storage, (b"owner", 9, "recipient2"), &3000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner", 10, "recipient3"), &3000)
+            .save(&mut storage, (b"owner", 10, "recipient3"), &3000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner2", 9, "recipient"), &5000)
+            .save(&mut storage, (b"owner2", 9, "recipient"), &5000)
             .unwrap();
 
         // let's try to iterate!
         let all: Vec<_> = TRIPLE
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (
@@ -1158,7 +1162,7 @@ mod cosmwasm_tests {
         // let's iterate over a prefix
         let all: Vec<_> = TRIPLE
             .prefix(b"owner")
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (
@@ -1179,7 +1183,7 @@ mod cosmwasm_tests {
         let all: Vec<_> = TRIPLE
             .prefix(b"owner")
             .append(9)
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         // Use range() if you want key deserialization
         assert_eq!(all, [
@@ -1196,25 +1200,25 @@ mod cosmwasm_tests {
 
     #[test]
     fn range_triple_key() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on three keys, one under different owner
         TRIPLE
-            .save(&mut store, (b"owner", 9u8, "recipient"), &1000)
+            .save(&mut storage, (b"owner", 9u8, "recipient"), &1000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner", 9u8, "recipient2"), &3000)
+            .save(&mut storage, (b"owner", 9u8, "recipient2"), &3000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner", 10u8, "recipient3"), &3000)
+            .save(&mut storage, (b"owner", 10u8, "recipient3"), &3000)
             .unwrap();
         TRIPLE
-            .save(&mut store, (b"owner2", 9u8, "recipient"), &5000)
+            .save(&mut storage, (b"owner2", 9u8, "recipient"), &5000)
             .unwrap();
 
         // let's try to iterate!
         let all = TRIPLE
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -1227,7 +1231,7 @@ mod cosmwasm_tests {
         // let's iterate over a sub_prefix
         let all = TRIPLE
             .prefix(b"owner")
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -1240,7 +1244,7 @@ mod cosmwasm_tests {
         let all = TRIPLE
             .prefix(b"owner")
             .append(9)
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(all, [
@@ -1253,7 +1257,7 @@ mod cosmwasm_tests {
             .prefix(b"owner")
             .append(9)
             .range(
-                &store,
+                &storage,
                 Some(Bound::inclusive("recipient")),
                 None,
                 Order::Ascending,
@@ -1270,7 +1274,7 @@ mod cosmwasm_tests {
             .prefix(b"owner")
             .append(9)
             .range(
-                &store,
+                &storage,
                 Some(Bound::exclusive("recipient")),
                 None,
                 Order::Ascending,
@@ -1282,37 +1286,40 @@ mod cosmwasm_tests {
 
     #[test]
     fn basic_update() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let add_ten = |a: Option<u64>| -> StdResult<_> { Ok(Some(a.unwrap_or_default() + 10)) };
 
         // save and load on three keys, one under different owner
         let key: (&[u8], &[u8]) = (b"owner", b"spender");
-        ALLOWANCE.update(&mut store, key, add_ten).unwrap();
+        ALLOWANCE.update(&mut storage, key, add_ten).unwrap();
 
-        let twenty = ALLOWANCE.update(&mut store, key, add_ten).unwrap().unwrap();
+        let twenty = ALLOWANCE
+            .update(&mut storage, key, add_ten)
+            .unwrap()
+            .unwrap();
         assert_eq!(20, twenty);
 
-        let loaded = ALLOWANCE.load(&store, key).unwrap();
+        let loaded = ALLOWANCE.load(&storage, key).unwrap();
         assert_eq!(20, loaded);
     }
 
     #[test]
     fn readme_works() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
 
         // load and save with extra key argument
-        assert!(PEOPLE.may_load(&store, b"john").unwrap().is_none());
+        assert!(PEOPLE.may_load(&storage, b"john").unwrap().is_none());
 
-        PEOPLE.save(&mut store, b"john", &data).unwrap();
-        assert_eq!(PEOPLE.load(&store, b"john").unwrap(), data);
+        PEOPLE.save(&mut storage, b"john", &data).unwrap();
+        assert_eq!(PEOPLE.load(&storage, b"john").unwrap(), data);
 
         // nothing on another key
-        assert!(PEOPLE.may_load(&store, b"jack").unwrap().is_none());
+        assert!(PEOPLE.may_load(&storage, b"jack").unwrap().is_none());
 
         // update function for new or existing keys
         let birthday = |d: Option<Data>| -> StdResult<Option<Data>> {
@@ -1329,63 +1336,67 @@ mod cosmwasm_tests {
         };
 
         let old_john = PEOPLE
-            .update(&mut store, b"john", birthday)
+            .update(&mut storage, b"john", birthday)
             .unwrap()
             .unwrap();
         assert_eq!(old_john.age, 33);
         assert_eq!(old_john.name, "John");
 
         let new_jack = PEOPLE
-            .update(&mut store, b"jack", birthday)
+            .update(&mut storage, b"jack", birthday)
             .unwrap()
             .unwrap();
         assert_eq!(new_jack.age, 0);
         assert_eq!(new_jack.name, "Newborn");
 
-        // update also changes the store
-        assert_eq!(old_john, PEOPLE.load(&store, b"john").unwrap());
-        assert_eq!(new_jack, PEOPLE.load(&store, b"jack").unwrap());
+        // update also changes the storage
+        assert_eq!(old_john, PEOPLE.load(&storage, b"john").unwrap());
+        assert_eq!(new_jack, PEOPLE.load(&storage, b"jack").unwrap());
 
         // removing leaves us empty
-        PEOPLE.remove(&mut store, b"john");
-        assert!(PEOPLE.may_load(&store, b"john").unwrap().is_none());
+        PEOPLE.remove(&mut storage, b"john");
+        assert!(PEOPLE.may_load(&storage, b"john").unwrap().is_none());
     }
 
     #[test]
     fn readme_works_composite_keys() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on a composite key
-        let empty = ALLOWANCE.may_load(&store, (b"owner", b"spender")).unwrap();
+        let empty = ALLOWANCE
+            .may_load(&storage, (b"owner", b"spender"))
+            .unwrap();
         assert_eq!(None, empty);
 
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender"), &777)
+            .save(&mut storage, (b"owner", b"spender"), &777)
             .unwrap();
 
-        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender")).unwrap();
+        let loaded = ALLOWANCE.load(&storage, (b"owner", b"spender")).unwrap();
         assert_eq!(777, loaded);
 
         // doesn't appear under other key (even if a concat would be the same)
-        let different = ALLOWANCE.may_load(&store, (b"owners", b"pender")).unwrap();
+        let different = ALLOWANCE
+            .may_load(&storage, (b"owners", b"pender"))
+            .unwrap();
         assert_eq!(None, different);
 
         // simple update
         ALLOWANCE
             .update(
-                &mut store,
+                &mut storage,
                 (b"owner", b"spender"),
                 |v| -> StdResult<Option<u64>> { Ok(Some(v.unwrap_or_default() + 222)) },
             )
             .unwrap();
 
-        let loaded = ALLOWANCE.load(&store, (b"owner", b"spender")).unwrap();
+        let loaded = ALLOWANCE.load(&storage, (b"owner", b"spender")).unwrap();
         assert_eq!(999, loaded);
     }
 
     #[test]
     fn readme_works_with_path() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
         let data = Data {
             name: "John".to_string(),
             age: 32,
@@ -1397,13 +1408,13 @@ mod cosmwasm_tests {
             let john = john.as_path();
 
             // Use this just like an Item above
-            assert!(john.may_load(&store).unwrap().is_none());
+            assert!(john.may_load(&storage).unwrap().is_none());
 
-            john.save(&mut store, &data).unwrap();
-            assert_eq!(john.load(&store).unwrap(), data);
+            john.save(&mut storage, &data).unwrap();
+            assert_eq!(john.load(&storage).unwrap(), data);
 
-            john.remove(&mut store);
-            assert!(john.may_load(&store).unwrap().is_none());
+            john.remove(&mut storage);
+            assert!(john.may_load(&storage).unwrap().is_none());
         }
 
         // same for composite keys, just use both parts in key()
@@ -1411,38 +1422,38 @@ mod cosmwasm_tests {
             let allow = ALLOWANCE.path((b"owner", b"spender"));
             let allow = allow.as_path();
 
-            allow.save(&mut store, &1234).unwrap();
-            assert_eq!(allow.load(&store).unwrap(), 1234);
+            allow.save(&mut storage, &1234).unwrap();
+            assert_eq!(allow.load(&storage).unwrap(), 1234);
 
             allow
-                .update(&mut store, |x| -> StdResult<Option<u64>> {
+                .update(&mut storage, |x| -> StdResult<Option<u64>> {
                     Ok(Some(x.unwrap_or_default() * 2))
                 })
                 .unwrap();
-            assert_eq!(allow.load(&store).unwrap(), 2468);
+            assert_eq!(allow.load(&storage).unwrap(), 2468);
         }
     }
 
     #[test]
     fn readme_with_range_raw() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         // save and load on two keys
         let data = Data {
             name: "John".to_string(),
             age: 32,
         };
-        PEOPLE.save(&mut store, b"john", &data).unwrap();
+        PEOPLE.save(&mut storage, b"john", &data).unwrap();
 
         let data2 = Data {
             name: "Jim".to_string(),
             age: 44,
         };
-        PEOPLE.save(&mut store, b"jim", &data2).unwrap();
+        PEOPLE.save(&mut storage, b"jim", &data2).unwrap();
 
         // iterate over them all
         let all: Vec<_> = PEOPLE
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (b"jim".to_vec(), data2.to_borsh_vec().unwrap()),
@@ -1452,7 +1463,7 @@ mod cosmwasm_tests {
         // or just show what is after jim
         let all: Vec<_> = PEOPLE
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"jim" as &[u8])),
                 None,
                 Order::Ascending,
@@ -1462,19 +1473,19 @@ mod cosmwasm_tests {
 
         // save and load on three keys, one under different owner
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender"), &1000)
+            .save(&mut storage, (b"owner", b"spender"), &1000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner", b"spender2"), &3000)
+            .save(&mut storage, (b"owner", b"spender2"), &3000)
             .unwrap();
         ALLOWANCE
-            .save(&mut store, (b"owner2", b"spender"), &5000)
+            .save(&mut storage, (b"owner2", b"spender"), &5000)
             .unwrap();
 
         // get all under one key
         let all: Vec<_> = ALLOWANCE
             .prefix(b"owner")
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect();
         assert_eq!(all, [
             (b"spender".to_vec(), 1000_u64.to_borsh_vec().unwrap()),
@@ -1485,7 +1496,7 @@ mod cosmwasm_tests {
         let all: Vec<_> = ALLOWANCE
             .prefix(b"owner")
             .range_raw(
-                &store,
+                &storage,
                 Some(Bound::exclusive(b"spender1" as &[u8])),
                 Some(Bound::inclusive(b"spender2" as &[u8])),
                 Order::Descending,
@@ -1503,18 +1514,20 @@ mod cosmwasm_tests {
         // we want to query over a range of u32 for the first key and all subkeys
         const AGES: Map<(u32, Vec<u8>), u64> = Map::new("ages");
 
-        let mut store = MockStorage::new();
-        AGES.save(&mut store, (2, vec![1, 2, 3]), &123).unwrap();
-        AGES.save(&mut store, (3, vec![4, 5, 6]), &456).unwrap();
-        AGES.save(&mut store, (5, vec![7, 8, 9]), &789).unwrap();
-        AGES.save(&mut store, (5, vec![9, 8, 7]), &987).unwrap();
-        AGES.save(&mut store, (7, vec![20, 21, 22]), &2002).unwrap();
-        AGES.save(&mut store, (8, vec![23, 24, 25]), &2332).unwrap();
+        let mut storage = MockStorage::new();
+        AGES.save(&mut storage, (2, vec![1, 2, 3]), &123).unwrap();
+        AGES.save(&mut storage, (3, vec![4, 5, 6]), &456).unwrap();
+        AGES.save(&mut storage, (5, vec![7, 8, 9]), &789).unwrap();
+        AGES.save(&mut storage, (5, vec![9, 8, 7]), &987).unwrap();
+        AGES.save(&mut storage, (7, vec![20, 21, 22]), &2002)
+            .unwrap();
+        AGES.save(&mut storage, (8, vec![23, 24, 25]), &2332)
+            .unwrap();
 
         // typical range under one prefix as a control
         let fives = AGES
             .prefix(5)
-            .range_raw(&store, None, None, Order::Ascending)
+            .range_raw(&storage, None, None, Order::Ascending)
             .collect::<Vec<_>>();
         assert_eq!(fives, [
             (vec![7, 8, 9], 789_u64.to_borsh_vec().unwrap()),
@@ -1524,7 +1537,7 @@ mod cosmwasm_tests {
         // using inclusive bounds both sides
         let include = AGES
             .prefix_range_raw(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive(3u32)),
                 Some(PrefixBound::inclusive(7u32)),
                 Order::Ascending,
@@ -1536,7 +1549,7 @@ mod cosmwasm_tests {
         // using exclusive bounds both sides
         let exclude = AGES
             .prefix_range_raw(
-                &store,
+                &storage,
                 Some(PrefixBound::exclusive(3u32)),
                 Some(PrefixBound::exclusive(7u32)),
                 Order::Ascending,
@@ -1548,7 +1561,7 @@ mod cosmwasm_tests {
         // using inclusive in descending
         let include = AGES
             .prefix_range_raw(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive(3u32)),
                 Some(PrefixBound::inclusive(5u32)),
                 Order::Descending,
@@ -1560,7 +1573,7 @@ mod cosmwasm_tests {
         // using exclusive in descending
         let include = AGES
             .prefix_range_raw(
-                &store,
+                &storage,
                 Some(PrefixBound::exclusive(2u32)),
                 Some(PrefixBound::exclusive(5u32)),
                 Order::Descending,
@@ -1576,18 +1589,18 @@ mod cosmwasm_tests {
         // we want to query over a range of u32 for the first key and all subkeys
         const AGES: Map<(u32, &str), u64> = Map::new("ages");
 
-        let mut store = MockStorage::new();
-        AGES.save(&mut store, (2, "123"), &123).unwrap();
-        AGES.save(&mut store, (3, "456"), &456).unwrap();
-        AGES.save(&mut store, (5, "789"), &789).unwrap();
-        AGES.save(&mut store, (5, "987"), &987).unwrap();
-        AGES.save(&mut store, (7, "202122"), &2002).unwrap();
-        AGES.save(&mut store, (8, "232425"), &2332).unwrap();
+        let mut storage = MockStorage::new();
+        AGES.save(&mut storage, (2, "123"), &123).unwrap();
+        AGES.save(&mut storage, (3, "456"), &456).unwrap();
+        AGES.save(&mut storage, (5, "789"), &789).unwrap();
+        AGES.save(&mut storage, (5, "987"), &987).unwrap();
+        AGES.save(&mut storage, (7, "202122"), &2002).unwrap();
+        AGES.save(&mut storage, (8, "232425"), &2332).unwrap();
 
         // typical range under one prefix as a control
         let fives = AGES
             .prefix(5)
-            .range(&store, None, None, Order::Ascending)
+            .range(&storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
         assert_eq!(fives, [("789".to_string(), 789), ("987".to_string(), 987)]);
@@ -1595,7 +1608,7 @@ mod cosmwasm_tests {
         // using inclusive bounds both sides
         let include = AGES
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive(3u32)),
                 Some(PrefixBound::inclusive(7u32)),
                 Order::Ascending,
@@ -1608,7 +1621,7 @@ mod cosmwasm_tests {
         // using exclusive bounds both sides
         let exclude = AGES
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::exclusive(3u32)),
                 Some(PrefixBound::exclusive(7u32)),
                 Order::Ascending,
@@ -1621,7 +1634,7 @@ mod cosmwasm_tests {
         // using inclusive in descending
         let include = AGES
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::inclusive(3u32)),
                 Some(PrefixBound::inclusive(5u32)),
                 Order::Descending,
@@ -1634,7 +1647,7 @@ mod cosmwasm_tests {
         // using exclusive in descending
         let include = AGES
             .prefix_range(
-                &store,
+                &storage,
                 Some(PrefixBound::exclusive(2u32)),
                 Some(PrefixBound::exclusive(5u32)),
                 Order::Descending,
