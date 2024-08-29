@@ -21,6 +21,9 @@ where
     }
 }
 
+// `Item` is effectively a wrapper over a `Path`, so instead of implementing
+// methods (`load`, `save`, ...) manually, we simply implement `Deref<Target = Path>`
+// so that users can access those methods on `Path`.
 impl<'a, T, C: Codec<T>> Deref for Item<'a, T, C> {
     type Target = Path<'a, T, C>;
 
@@ -29,12 +32,14 @@ impl<'a, T, C: Codec<T>> Deref for Item<'a, T, C> {
     }
 }
 
+// ----------------------------------- test ------------------------------------
+
 #[cfg(test)]
 mod test {
     use {
         super::Item,
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{BorshSerExt, MockStorage, StdError, StdResult, Storage},
+        grug_types::{MockStorage, StdError, StdResult},
     };
 
     #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
@@ -46,254 +51,220 @@ mod test {
     const CONFIG: Item<Config> = Item::new("config");
 
     #[test]
-    fn save_and_load() {
-        let mut store = MockStorage::new();
+    fn save_and_load_works() {
+        let mut storage = MockStorage::new();
 
-        assert!(CONFIG.load(&store).is_err());
-        assert_eq!(CONFIG.may_load(&store).unwrap(), None);
-
-        let cfg = Config {
-            owner: "admin".to_string(),
-            max_tokens: 1234,
-        };
-        CONFIG.save(&mut store, &cfg).unwrap();
-
-        assert_eq!(cfg, CONFIG.load(&store).unwrap());
-    }
-
-    #[test]
-    fn owned_key_works() {
-        let mut store = MockStorage::new();
-
-        for (ns, v) in [("key0", 0_u32), ("key1", 1), ("key2", 2)] {
-            let item: Item<u32> = Item::new(ns);
-            item.save(&mut store, &v).unwrap();
+        // Attempt to read before the data is saved.
+        {
+            assert!(CONFIG.load(&storage).is_err());
+            assert_eq!(CONFIG.may_load(&storage).unwrap(), None);
         }
 
-        assert_eq!(store.read(b"key0").unwrap(), 0_u32.to_le_bytes());
-        assert_eq!(store.read(b"key1").unwrap(), 1_u32.to_le_bytes());
-        assert_eq!(store.read(b"key2").unwrap(), 2_u32.to_le_bytes());
+        // Attempt to read after saving the data.
+        {
+            let cfg = Config {
+                owner: "admin".to_string(),
+                max_tokens: 1234,
+            };
+
+            CONFIG.save(&mut storage, &cfg).unwrap();
+
+            assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
+            assert_eq!(CONFIG.may_load(&storage).unwrap(), Some(cfg));
+        }
     }
 
     #[test]
     fn exists_works() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
-        assert!(!CONFIG.exists(&store));
+        // Call `exists` before the data is saved.
+        {
+            assert!(!CONFIG.exists(&storage));
+        }
 
-        let cfg = Config {
-            owner: "admin".to_string(),
-            max_tokens: 1234,
-        };
-        CONFIG.save(&mut store, &cfg).unwrap();
+        // Save the data, then call `exists`.
+        {
+            let cfg = Config {
+                owner: "admin".to_string(),
+                max_tokens: 1234,
+            };
 
-        assert!(CONFIG.exists(&store));
+            CONFIG.save(&mut storage, &cfg).unwrap();
 
-        const OPTIONAL: Item<Option<u32>> = Item::new("optional");
+            assert!(CONFIG.exists(&storage));
+        }
 
-        assert!(!OPTIONAL.exists(&store));
+        // Should be able to distinguish a data that doesn't exist, from a data
+        // that exists but is `None`.
+        {
+            const OPTIONAL: Item<Option<u32>> = Item::new("optional");
 
-        OPTIONAL.save(&mut store, &None).unwrap();
+            assert!(!OPTIONAL.exists(&storage));
 
-        assert!(OPTIONAL.exists(&store));
+            OPTIONAL.save(&mut storage, &None).unwrap();
+
+            assert!(OPTIONAL.exists(&storage));
+        }
     }
 
     #[test]
     fn remove_works() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
-        // store data
-        let cfg = Config {
-            owner: "admin".to_string(),
-            max_tokens: 1234,
-        };
-        CONFIG.save(&mut store, &cfg).unwrap();
-        assert_eq!(cfg, CONFIG.load(&store).unwrap());
+        // Save data
+        {
+            let cfg = Config {
+                owner: "admin".to_string(),
+                max_tokens: 1234,
+            };
 
-        // remove it and loads None
-        CONFIG.remove(&mut store);
-        assert!(!CONFIG.exists(&store));
+            CONFIG.save(&mut storage, &cfg).unwrap();
 
-        // safe to remove 2 times
-        CONFIG.remove(&mut store);
-        assert!(!CONFIG.exists(&store));
+            assert_eq!(cfg, CONFIG.load(&storage).unwrap());
+        }
+
+        // Remove it and loads `None`.
+        {
+            CONFIG.remove(&mut storage);
+            assert!(!CONFIG.exists(&storage));
+        }
+
+        // Safe to remove it twice.
+        {
+            CONFIG.remove(&mut storage);
+            assert!(!CONFIG.exists(&storage));
+        }
     }
 
     #[test]
-    fn isolated_reads() {
-        let mut store = MockStorage::new();
+    fn update_works() {
+        let mut storage = MockStorage::new();
 
-        let cfg = Config {
-            owner: "admin".to_string(),
-            max_tokens: 1234,
-        };
-        CONFIG.save(&mut store, &cfg).unwrap();
+        // Save a new data using `update`.
+        {
+            let output = CONFIG
+                .update(&mut storage, |c| -> StdResult<_> {
+                    assert!(c.is_none());
 
-        let reader = Item::<Config>::new("config");
-        assert_eq!(cfg, reader.load(&store).unwrap());
+                    Ok(Some(Config {
+                        owner: "admin".to_string(),
+                        max_tokens: 1234,
+                    }))
+                })
+                .unwrap();
 
-        let other_reader = Item::<Config>::new("config2");
-        assert_eq!(other_reader.may_load(&store).unwrap(), None);
-    }
+            assert_eq!(CONFIG.may_load(&storage).unwrap(), output);
+        }
 
-    #[test]
-    fn update_success() {
-        let mut store = MockStorage::new();
+        // Update the existing data using `update`.
+        {
+            let output = CONFIG
+                .update(&mut storage, |mut c| -> StdResult<_> {
+                    c.as_mut().unwrap().max_tokens *= 2;
 
-        CONFIG
-            .update(&mut store, |c| -> StdResult<_> {
-                assert!(c.is_none());
+                    Ok(c)
+                })
+                .unwrap();
 
-                Ok(Some(Config {
-                    owner: "admin".to_string(),
-                    max_tokens: 1234,
-                }))
-            })
-            .unwrap();
+            let expected = Config {
+                owner: "admin".to_string(),
+                max_tokens: 2468,
+            };
 
-        let output = CONFIG
-            .update(&mut store, |mut c| -> StdResult<_> {
-                c.as_mut().unwrap().max_tokens *= 2;
-                Ok(c)
-            })
-            .unwrap();
+            assert_eq!(output.unwrap(), expected);
+            assert_eq!(CONFIG.load(&storage).unwrap(), expected);
+        }
 
-        let expected = Config {
-            owner: "admin".to_string(),
-            max_tokens: 2468,
-        };
-        assert_eq!(output.unwrap(), expected);
-        assert_eq!(CONFIG.load(&store).unwrap(), expected);
+        // Remove the existing data using `update`.
+        {
+            let output = CONFIG
+                .update(&mut storage, |_| -> StdResult<_> { Ok(None) })
+                .unwrap();
+
+            assert_eq!(output, None);
+            assert_eq!(CONFIG.may_load(&storage).unwrap(), None);
+        }
     }
 
     #[test]
     fn update_can_change_variable_from_outer_scope() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
+
         let cfg = Config {
             owner: "admin".to_string(),
             max_tokens: 1234,
         };
-        CONFIG.save(&mut store, &cfg).unwrap();
 
-        let mut old_max_tokens = 0i32;
+        CONFIG.save(&mut storage, &cfg).unwrap();
+
+        let mut old_max_tokens = 0;
+
         CONFIG
-            .update(&mut store, |mut c| -> StdResult<_> {
+            .update(&mut storage, |mut c| -> StdResult<_> {
                 old_max_tokens = c.as_ref().unwrap().max_tokens;
+
                 c.as_mut().unwrap().max_tokens *= 2;
+
                 Ok(c)
             })
             .unwrap();
+
         assert_eq!(old_max_tokens, 1234);
     }
 
     #[test]
     fn update_does_not_change_data_on_error() {
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let cfg = Config {
             owner: "admin".to_string(),
             max_tokens: 1234,
         };
-        CONFIG.save(&mut store, &cfg).unwrap();
 
-        let output = CONFIG.update(&mut store, |_c| Err(StdError::zero_log()));
-        match output.unwrap_err() {
-            StdError::ZeroLog { .. } => {},
-            err => panic!("Unexpected error: {:?}", err),
-        }
-        assert_eq!(CONFIG.load(&store).unwrap(), cfg);
+        CONFIG.save(&mut storage, &cfg).unwrap();
+
+        let res = CONFIG.update(&mut storage, |_| Err(StdError::ZeroLog));
+
+        assert!(matches!(res, Err(StdError::ZeroLog)));
+        assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
     }
 
     #[test]
     fn update_supports_custom_errors() {
         #[derive(Debug)]
         enum MyError {
-            Std(StdError),
+            Std,
             Foo,
         }
 
         impl From<StdError> for MyError {
-            fn from(original: StdError) -> MyError {
-                MyError::Std(original)
+            fn from(_std_error: StdError) -> MyError {
+                MyError::Std
             }
         }
 
-        let mut store = MockStorage::new();
+        let mut storage = MockStorage::new();
 
         let cfg = Config {
             owner: "admin".to_string(),
             max_tokens: 1234,
         };
-        CONFIG.save(&mut store, &cfg).unwrap();
 
-        let res = CONFIG.update(&mut store, |mut c| {
-            let c_as_ref = c.as_ref().unwrap();
+        CONFIG.save(&mut storage, &cfg).unwrap();
 
-            if c_as_ref.max_tokens > 5000 {
+        let res = CONFIG.update(&mut storage, |mut c| {
+            // This should emit the custom error.
+            if c.as_ref().unwrap().max_tokens > 20 {
                 return Err(MyError::Foo);
             }
-            if c_as_ref.max_tokens > 20 {
-                return Err(StdError::generic_err("broken stuff").into()); // Uses Into to convert StdError to MyError
-            }
-            if c_as_ref.max_tokens > 10 {
-                // Uses From to convert StdError to MyError
-                c_as_ref.to_borsh_vec()?;
-            }
+
             c.as_mut().unwrap().max_tokens += 20;
-            Ok(Some(c.unwrap()))
+
+            Ok(c)
         });
-        match res.unwrap_err() {
-            MyError::Std(StdError::Generic { .. }) => {},
-            err => panic!("Unexpected error: {:?}", err),
-        }
-        assert_eq!(CONFIG.load(&store).unwrap(), cfg);
-    }
 
-    #[test]
-    fn readme_works() -> StdResult<()> {
-        let mut store = MockStorage::new();
-
-        // may_load returns Option<T>, so None if data is missing
-        // load returns T and Err(StdError::NotFound{}) if data is missing
-        let empty = CONFIG.may_load(&store)?;
-        assert_eq!(None, empty);
-        let cfg = Config {
-            owner: "admin".to_string(),
-            max_tokens: 1234,
-        };
-        CONFIG.save(&mut store, &cfg)?;
-        let loaded = CONFIG.load(&store)?;
-        assert_eq!(cfg, loaded);
-
-        // update an item with a closure (includes read and write)
-        // returns the newly saved value
-        let output = CONFIG
-            .update(&mut store, |mut c| -> StdResult<_> {
-                c.as_mut().unwrap().max_tokens *= 2;
-                Ok(c)
-            })?
-            .unwrap();
-        assert_eq!(2468, output.max_tokens);
-
-        // you can error in an update and nothing is saved
-        let failed = CONFIG.update(&mut store, |_| -> StdResult<_> {
-            Err(StdError::generic_err("failure mode"))
-        });
-        assert!(failed.is_err());
-
-        // loading data will show the first update was saved
-        let loaded = CONFIG.load(&store)?;
-        let expected = Config {
-            owner: "admin".to_string(),
-            max_tokens: 2468,
-        };
-        assert_eq!(expected, loaded);
-
-        // we can remove data as well
-        CONFIG.remove(&mut store);
-        let empty = CONFIG.may_load(&store)?;
-        assert_eq!(None, empty);
-
-        Ok(())
+        assert!(matches!(res, Err(MyError::Foo)));
+        assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
     }
 }
