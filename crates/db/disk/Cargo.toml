@@ -13,10 +13,11 @@ categories    = { workspace = true }
 grug-app   = { path = "../../app" }
 grug-jmt   = { path = "../../jellyfish-merkle", features = ["ics23"] }
 grug-types = { path = "../../types" }
-ics23      = { workspace = true, features = ["serde"] }
+ics23      = { workspace = true }
 rocksdb    = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]
 hex-literal = { workspace = true }
+proptest    = { workspace = true }
 tempfile    = { workspace = true }

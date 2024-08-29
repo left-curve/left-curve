@@ -702,9 +702,11 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
 mod tests {
     use {
         super::*,
+        core::str,
         grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
         hex_literal::hex,
         ics23::HostFunctionsManager,
+        proptest::prelude::*,
         rocksdb::{Options, DB},
         std::{
             panic,
@@ -1151,21 +1153,19 @@ mod tests {
 
     #[test]
     fn ics23_prove_works() {
-        use grug_types::JsonSerExt;
-
         let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
         let db = DiskDb::open(&path).unwrap();
 
         // Same test data as used in JMT crate.
-        db.flush_and_commit(Batch::from([
-            (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
-            (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
-            (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
-            (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
-        ]))
-        .unwrap();
-
-        let root = db.root_hash(None).unwrap().unwrap().to_vec();
+        let (_, maybe_root) = db
+            .flush_and_commit(Batch::from([
+                (b"r".to_vec(), Op::Insert(b"foo".to_vec())),
+                (b"m".to_vec(), Op::Insert(b"bar".to_vec())),
+                (b"L".to_vec(), Op::Insert(b"fuzz".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"buzz".to_vec())),
+            ]))
+            .unwrap();
+        let root = maybe_root.unwrap().to_vec();
 
         // Prove existing keys, and verify those proofs.
         for (key, value) in [("r", "foo"), ("m", "bar"), ("L", "fuzz"), ("a", "buzz")] {
@@ -1178,14 +1178,13 @@ mod tests {
                     key.as_bytes(),
                     value.as_bytes(),
                 ),
-                "verification failed for key `{key}` and value `{value}`"
+                "inclusion verification failed for key `{key}` and value `{value}`"
             );
         }
 
         // Prove non-existing keys, and verify those proofs.
         for key in ["b", "o"] {
             let proof = db.ics23_prove(key.as_bytes().to_vec(), None).unwrap();
-            println!("{}", proof.to_json_string_pretty().unwrap());
             assert!(
                 ics23::verify_non_membership::<HostFunctionsManager>(
                     &proof,
@@ -1193,8 +1192,67 @@ mod tests {
                     &root,
                     key.as_bytes()
                 ),
-                "verification failed for key `{key}`"
+                "exclusion verification failed for key `{key}`"
             );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_ics23_prove_works(
+            existing_kvs in prop::collection::hash_map("[a-z]{1,10}", "[a-z]{1,10}", 100),
+            non_existing_keys in prop::collection::vec("[a-z]{1,10}", 100),
+        ) {
+            let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
+            let db = DiskDb::open(&path).unwrap();
+
+            let existing_kvs = existing_kvs
+                .into_iter()
+                .map(|(k, v)| (k.as_bytes().to_vec(), Op::Insert(v.as_bytes().to_vec())))
+                .collect::<Batch>();
+            let non_existing_keys = non_existing_keys
+                .into_iter()
+                .map(|k| k.as_bytes().to_vec())
+                .filter(|k| !existing_kvs.contains_key(k))
+                .collect::<Vec<_>>();
+
+            let (_, maybe_root) = db.flush_and_commit(existing_kvs.clone()).unwrap();
+            let root = maybe_root.unwrap().to_vec();
+
+            // Loop through the KVs that exist in the DB. Generate and verify
+            // inclusion proofs.
+            for (key, op) in existing_kvs {
+                let value = op.unwrap_value();
+                let proof = db.ics23_prove(key.clone(), None).unwrap();
+                assert!(
+                    ics23::verify_membership::<HostFunctionsManager>(
+                        &proof,
+                        &ICS23_PROOF_SPEC,
+                        &root,
+                        &key,
+                        &value,
+                    ),
+                    "inclusion verification failed for key `{}` and value `{}`",
+                    str::from_utf8(&key).unwrap(),
+                    str::from_utf8(&value).unwrap(),
+                );
+            }
+
+            // Loop through the KVs that don't exist. Generate and verify
+            // exclusion proofs.
+            for key in non_existing_keys {
+                let proof = db.ics23_prove(key.clone(), None).unwrap();
+                assert!(
+                    ics23::verify_non_membership::<HostFunctionsManager>(
+                        &proof,
+                        &ICS23_PROOF_SPEC,
+                        &root,
+                        &key,
+                    ),
+                    "exclusion verification failed for key `{}`",
+                    str::from_utf8(&key).unwrap(),
+                );
+            }
         }
     }
 }

@@ -1702,6 +1702,7 @@ dependencies = [
  "grug-types",
  "hex-literal",
  "ics23",
+ "proptest",
  "rocksdb",
  "tempfile",
  "thiserror",
