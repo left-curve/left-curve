@@ -8,7 +8,7 @@ pub struct PathBuf<T, C>
 where
     C: Codec<T>,
 {
-    storage_key: Vec<u8>,
+    pub(crate) storage_key: Vec<u8>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
 }
