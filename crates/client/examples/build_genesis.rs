@@ -47,11 +47,11 @@ fn main() -> anyhow::Result<()> {
             initial_balances: [
                 (
                     account1,
-                    Coins::one("uatom", NonZero::new(Uint128::new(1_000_000))),
+                    Coins::one("uatom", NonZero::new(Uint128::new(1_000_000))?),
                 ),
                 (
                     account2,
-                    Coins::one("uosmo", NonZero::new(Uint128::new(1_000_000))),
+                    Coins::one("uosmo", NonZero::new(Uint128::new(1_000_000))?),
                 ),
             ]
             .into(),

@@ -79,9 +79,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron1",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("uatom", NonZero::new(Uint128::new(1))),
+            coin: Coin::new("uatom", NonZero::new(Uint128::new(1))?),
         },
-        Coin::new("uatom", NonZero::new(Uint128::new(3))),
+        Coin::new("uatom", NonZero::new(Uint128::new(3))?),
     )?;
 
     // Block time: 3
@@ -91,9 +91,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron2",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("uosmo", NonZero::new(Uint128::new(1))),
+            coin: Coin::new("uosmo", NonZero::new(Uint128::new(1))?),
         },
-        Coin::new("uosmo", NonZero::new(Uint128::new(3))),
+        Coin::new("uosmo", NonZero::new(Uint128::new(3))?),
     )?;
 
     // Block time: 4
@@ -103,9 +103,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron3",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("umars", NonZero::new(Uint128::new(1))),
+            coin: Coin::new("umars", NonZero::new(Uint128::new(1))?),
         },
-        Coin::new("umars", NonZero::new(Uint128::new(3))),
+        Coin::new("umars", NonZero::new(Uint128::new(3))?),
     )?;
 
     // Block time: 5

@@ -96,7 +96,7 @@ impl<const N: usize> ser::Serialize for ByteArray<N> {
     where
         S: ser::Serializer,
     {
-        serializer.serialize_some(&BASE64.encode(&self.0))
+        serializer.serialize_str(&BASE64.encode(&self.0))
     }
 }
 

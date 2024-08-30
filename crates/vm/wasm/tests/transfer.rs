@@ -13,7 +13,7 @@ const FEE_RATE: &str = "0.1";
 fn transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(300_000_u128)))?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(300_000_u128)?))?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
         .set_fee_denom(DENOM)
@@ -33,19 +33,19 @@ fn transfers() -> anyhow::Result<()> {
     let outcome = suite.send_messages_with_gas(&accounts["sender"], 2_500_000, vec![
         Message::Transfer {
             to: accounts["receiver"].address,
-            coins: Coins::one(DENOM, NonZero::new(10_u128)),
+            coins: Coins::one(DENOM, NonZero::new(10_u128)?),
         },
         Message::Transfer {
             to: accounts["receiver"].address,
-            coins: Coins::one(DENOM, NonZero::new(15_u128)),
+            coins: Coins::one(DENOM, NonZero::new(15_u128)?),
         },
         Message::Transfer {
             to: accounts["receiver"].address,
-            coins: Coins::one(DENOM, NonZero::new(20_u128)),
+            coins: Coins::one(DENOM, NonZero::new(20_u128)?),
         },
         Message::Transfer {
             to: accounts["receiver"].address,
-            coins: Coins::one(DENOM, NonZero::new(25_u128)),
+            coins: Coins::one(DENOM, NonZero::new(25_u128)?),
         },
     ])?;
 
@@ -86,7 +86,7 @@ fn transfers() -> anyhow::Result<()> {
 fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(200_000_u128)))?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(200_000_u128)?))?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
         .set_fee_rate(Udec128::from_str(FEE_RATE)?)
@@ -102,7 +102,7 @@ fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
     // the error message contains the word "gas".
     let outcome = suite.send_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
         to: accounts["receiver"].address,
-        coins: Coins::one(DENOM, NonZero::new(10_u128)),
+        coins: Coins::one(DENOM, NonZero::new(10_u128)?),
     })?;
 
     outcome.result.should_fail();

@@ -262,7 +262,9 @@ where
     }
 
     fn denominator() -> NonZero<Uint<U>> {
-        NonZero::new(Self::decimal_fraction())
+        // We know the decimal fraction is non-zero, because it's defined as a
+        // power (10^S), so we can safely wrap it in `NonZero` without checking.
+        NonZero(Self::decimal_fraction())
     }
 }
 

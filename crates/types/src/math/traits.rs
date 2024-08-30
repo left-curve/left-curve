@@ -1,41 +1,10 @@
 use {
     crate::{
         grow_be_uint, grow_le_uint, impl_bytable_bnum, impl_bytable_std, impl_integer_number,
-        impl_number_const, StdError, StdResult, Uint,
+        impl_number_const, NonZero, StdError, StdResult, Uint,
     },
     bnum::types::{U256, U512},
-    std::any::type_name,
 };
-
-// ----------------------------------- types -----------------------------------
-
-/// A wrapper over a number that ensures it is non-zero.
-pub struct NonZero<T>(T);
-
-impl<T> NonZero<T>
-where
-    T: Number,
-{
-    /// Create a new non-zero wrapper. Panic if a zero is provided.
-    pub fn new(inner: T) -> Self {
-        if inner.is_zero() {
-            panic!(
-                "expecting a non-zero number, got {}::ZERO",
-                type_name::<T>()
-            );
-        }
-        Self(inner)
-    }
-}
-
-impl<T> NonZero<T> {
-    /// Consume the wrapper, return the wrapped number.
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
-
-// ---------------------------------- traits -----------------------------------
 
 /// Describes a type that wraps another type.
 ///

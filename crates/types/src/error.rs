@@ -151,6 +151,9 @@ pub enum StdError {
     #[error("logarithm of zero")]
     ZeroLog,
 
+    #[error("expecting a non-zero value of type {ty}, got zero")]
+    ZeroValue { ty: &'static str },
+
     #[error("failed to serialize into json! codec: {codec}, type: {ty}, reason: {reason}")]
     Serialize {
         codec: &'static str,
@@ -297,6 +300,12 @@ impl StdError {
 
     pub fn zero_log() -> Self {
         Self::ZeroLog
+    }
+
+    pub fn zero_value<T>() -> Self {
+        Self::ZeroValue {
+            ty: type_name::<T>(),
+        }
     }
 
     pub fn negative_mul<A, B>(a: A, b: B) -> Self

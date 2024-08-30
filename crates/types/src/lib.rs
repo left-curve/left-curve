@@ -15,6 +15,7 @@ mod hashers;
 mod imports;
 mod macros;
 mod math;
+mod non_zero;
 mod query;
 mod response;
 mod result;
@@ -26,8 +27,8 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, context::*, db::*,
-    empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, query::*, response::*,
-    result::*, serializers::*, testing::*, time::*, tx::*, utils::*,
+    empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, non_zero::*, query::*,
+    response::*, result::*, serializers::*, testing::*, time::*, tx::*, utils::*,
 };
 
 /// Represents any valid JSON value, including numbers, booleans, strings,
