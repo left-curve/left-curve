@@ -18,7 +18,7 @@ impl<T> NonZero<T>
 where
     T: Number,
 {
-    /// Create a new non-zero wrapper. Panic if a zero is provided.
+    /// Attempt to create a new non-zero wrapper. Error if a zero is provided.
     pub fn new(inner: T) -> StdResult<Self> {
         if inner.is_zero() {
             return Err(StdError::zero_value::<Self>());
