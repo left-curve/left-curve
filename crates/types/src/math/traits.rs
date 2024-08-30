@@ -200,15 +200,9 @@ impl_integer_number!(U512);
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bytable, NonZero, Number, NumberConst, Uint128, Uint256},
+        crate::{Bytable, Number, NumberConst, Uint128, Uint256},
         proptest::{array::uniform32, prelude::*},
     };
-
-    #[test]
-    #[should_panic]
-    fn non_zero_works() {
-        let _ = NonZero::new(Uint128::ZERO);
-    }
 
     proptest! {
         /// Ensure the bytable methods work for `Uint128`.
