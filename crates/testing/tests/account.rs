@@ -20,7 +20,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     let transfer_msg = Message::transfer(
         accounts["larry"].address,
-        Coins::one("uatom", NonZero::new(Uint256::from(10_u128))),
+        Coins::one("uatom", NonZero::new(Uint256::from(10_u128))?),
     )?;
 
     // Create a tx to set sequence to 1.
@@ -164,7 +164,7 @@ fn backrunning_works() -> anyhow::Result<()> {
         })?
         .add_account(
             "sender",
-            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))),
+            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))?),
         )?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
@@ -174,7 +174,7 @@ fn backrunning_works() -> anyhow::Result<()> {
     suite.transfer(
         &accounts["sender"],
         accounts["receiver"].address,
-        Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
+        Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))?),
     )?;
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
@@ -205,7 +205,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         })?
         .add_account(
             "sender",
-            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))),
+            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))?),
         )?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
@@ -217,7 +217,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
             &accounts["sender"],
             Message::transfer(
                 accounts["receiver"].address,
-                Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))),
+                Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))?),
             )?,
         )?
         .result

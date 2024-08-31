@@ -72,7 +72,7 @@ mod taxman {
         let charge_msg = if !charge_amount.is_zero() {
             Some(Message::transfer(
                 info.config.owner,
-                Coins::one(FEE_DENOM, NonZero::new(charge_amount)),
+                Coins::one(FEE_DENOM, NonZero::new(charge_amount)?),
             )?)
         } else {
             None
@@ -81,7 +81,7 @@ mod taxman {
         let refund_msg = if !refund_amount.is_zero() {
             Some(Message::transfer(
                 tx.sender,
-                Coins::one(FEE_DENOM, NonZero::new(refund_amount)),
+                Coins::one(FEE_DENOM, NonZero::new(refund_amount)?),
             )?)
         } else {
             None
@@ -171,7 +171,10 @@ fn withholding_and_finalizing_fee_works(
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(taxman::FEE_DENOM, NonZero::new(sender_balance_before)),
+            Coins::one(
+                taxman::FEE_DENOM,
+                NonZero::new(sender_balance_before).unwrap(),
+            ),
         )
         .unwrap()
         .add_account("receiver", Coins::new())
@@ -187,7 +190,7 @@ fn withholding_and_finalizing_fee_works(
             gas_limit,
             Message::transfer(
                 accounts["receiver"].address,
-                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount)),
+                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount).unwrap()),
             )
             .unwrap(),
         )
@@ -234,7 +237,7 @@ fn finalizing_fee_erroring() {
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(taxman::FEE_DENOM, NonZero::new(30_000_u128)),
+            Coins::one(taxman::FEE_DENOM, NonZero::new(30_000_u128).unwrap()),
         )
         .unwrap()
         .set_owner("owner")

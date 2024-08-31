@@ -8,7 +8,7 @@ const DENOM: &str = "ugrug";
 #[test]
 fn transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account("sender", Coins::one(DENOM, NonZero::new(100_u128)))?
+        .add_account("sender", Coins::one(DENOM, NonZero::new(100_u128)?))?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -26,19 +26,19 @@ fn transfers() -> anyhow::Result<()> {
         .send_messages(&accounts["sender"], vec![
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(10_u128)),
+                coins: Coins::one(DENOM, NonZero::new(10_u128)?),
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(15_u128)),
+                coins: Coins::one(DENOM, NonZero::new(15_u128)?),
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(20_u128)),
+                coins: Coins::one(DENOM, NonZero::new(20_u128)?),
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(25_u128)),
+                coins: Coins::one(DENOM, NonZero::new(25_u128)?),
             },
         ])?
         .result

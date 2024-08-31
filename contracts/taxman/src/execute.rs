@@ -99,7 +99,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let charge_msg = if !charge_amount.is_zero() {
         Some(Message::Transfer {
             to: info.config.owner,
-            coins: Coins::one(cfg.fee_denom.clone(), NonZero::new(charge_amount)),
+            coins: Coins::one(cfg.fee_denom.clone(), NonZero::new(charge_amount)?),
         })
     } else {
         None
@@ -108,7 +108,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let refund_msg = if !refund_amount.is_zero() {
         Some(Message::Transfer {
             to: tx.sender,
-            coins: Coins::one(cfg.fee_denom, NonZero::new(refund_amount)),
+            coins: Coins::one(cfg.fee_denom, NonZero::new(refund_amount)?),
         })
     } else {
         None
