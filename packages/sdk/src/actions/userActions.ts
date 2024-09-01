@@ -1,4 +1,4 @@
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
+import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
 
 import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
 
@@ -28,8 +28,8 @@ import {
 
 export type UserActions<
   transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
+  chain extends Chain | undefined = Chain,
+  signer extends Signer | undefined = Signer,
 > = {
   execute: (args: ExecuteParameters) => ExecuteReturnType;
   migrate: (args: MigrateParameters) => MigrateReturnType;
@@ -44,18 +44,18 @@ export type UserActions<
 
 export function userActions<
   transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
->(client: Client<transport, chain, account>): UserActions<transport, chain, account> {
+  chain extends Chain | undefined = Chain,
+  signer extends Signer = Signer,
+>(client: Client<transport, chain, signer>): UserActions<transport, chain, signer> {
   return {
-    execute: (args: ExecuteParameters) => execute<chain, account>(client, args),
-    migrate: (args: MigrateParameters) => migrate<chain, account>(client, args),
-    transfer: (args: TransferParameters) => transfer<chain, account>(client, args),
-    storeCode: (args: StoreCodeParameters) => storeCode<chain, account>(client, args),
-    instantiate: (args: InstantiateParameters) => instantiate<chain, account>(client, args),
+    execute: (args: ExecuteParameters) => execute<chain, signer>(client, args),
+    migrate: (args: MigrateParameters) => migrate<chain, signer>(client, args),
+    transfer: (args: TransferParameters) => transfer<chain, signer>(client, args),
+    storeCode: (args: StoreCodeParameters) => storeCode<chain, signer>(client, args),
+    instantiate: (args: InstantiateParameters) => instantiate<chain, signer>(client, args),
     storeCodeAndInstantiate: (args: StoreCodeAndInstantiateParameters) =>
-      storeCodeAndInstantiate<chain, account>(client, args),
+      storeCodeAndInstantiate<chain, signer>(client, args),
     signAndBroadcastTx: (args: SignAndBroadcastTxParameters) =>
-      signAndBroadcastTx<chain, account>(client, args),
+      signAndBroadcastTx<chain, signer>(client, args),
   };
 }

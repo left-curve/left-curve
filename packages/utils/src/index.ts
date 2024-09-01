@@ -4,3 +4,4 @@ export { recursiveTransform } from "./mappers";
 export { arrayContentEquals } from "./arrays";
 export { uid } from "./uid";
 export { sleep } from "./sleep";
+export { deepEqual } from "./deepEqual";

@@ -63,6 +63,18 @@ export {
 } from "./public/queryWasmSmart";
 
 export {
+  type GetAppConfigParameters,
+  type GetAppConfigReturnType,
+  getAppConfig,
+} from "./public/getAppConfig";
+
+export {
+  type GetAppConfigsParameters,
+  type GetAppConfigsReturnType,
+  getAppConfigs,
+} from "./public/getAppConfigs";
+
+export {
   type CreateAccountParameters,
   type CreateAccountReturnType,
   createAccount,

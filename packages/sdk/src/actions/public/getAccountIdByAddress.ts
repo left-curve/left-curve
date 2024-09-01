@@ -1,4 +1,4 @@
-import type { Account, AccountId, Address, Chain, Client, Transport } from "@leftcurve/types";
+import type { AccountId, Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
@@ -18,15 +18,17 @@ export type GetAccountIdByAddressReturnType = Promise<AccountId>;
  */
 export async function getAccountIdByAddress<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetAccountIdByAddressParameters,
 ): GetAccountIdByAddressReturnType {
   const { address, height = 0 } = parameters;
   const msg = { accountId: { address } };
 
-  const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
+  const accountFactory = await getAppConfig<Address>(client, {
+    key: "account_factory",
+  });
 
   return await queryWasmSmart(client, { contract: accountFactory, msg, height });
 }

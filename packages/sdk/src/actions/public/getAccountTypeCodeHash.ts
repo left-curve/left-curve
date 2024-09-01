@@ -1,12 +1,4 @@
-import type {
-  Account,
-  AccountType,
-  Address,
-  Chain,
-  Client,
-  Hex,
-  Transport,
-} from "@leftcurve/types";
+import type { AccountType, Address, Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
@@ -26,9 +18,9 @@ export type GetAccountTypeCodeHashReturnType = Promise<Hex>;
  */
 export async function getAccountTypeCodeHash<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetAccountTypeCodeHashParameters,
 ): GetAccountTypeCodeHashReturnType {
   const { accountType, height = 0 } = parameters;

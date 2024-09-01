@@ -1,4 +1,4 @@
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
+import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetBalanceParameters = {
@@ -19,16 +19,16 @@ export type GetBalanceReturnType = Promise<number>;
  */
 export async function getBalance<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetBalanceParameters,
 ): GetBalanceReturnType {
   const { address, denom, height = 0 } = parameters;
   const query = {
     balance: { address, denom },
   };
-  const res = await queryApp<chain, account>(client, { query, height });
+  const res = await queryApp<chain, signer>(client, { query, height });
 
   if (!("balance" in res)) {
     throw new Error(`expecting balance response, got ${JSON.stringify(res)}`);

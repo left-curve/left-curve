@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "main": "./build/index.js",
+  "module": "./build/index.mjs",
   "types": "./build/index.d.ts",
-  "files": ["build", "src"],
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
   "scripts": {
     "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write ./src",
@@ -19,6 +22,7 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@leftcurve/utils": "workspace:^"
+    "@leftcurve/utils": "workspace:^",
+    "superjson": "^2.2.1"
   }
 }

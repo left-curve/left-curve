@@ -13,6 +13,9 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "performance": {
+        "noDelete": "off"
+      },
       "recommended": true,
       "style": {
         "noNonNullAssertion": "off",
@@ -20,11 +23,22 @@
         "useTemplate": "off"
       },
       "suspicious": {
+        "noConfusingVoidType": "off",
         "noExplicitAny": "off"
       }
     }
   },
   "files": {
     "ignore": ["**/build/**"]
-  }
+  },
+  "overrides": [{
+    "include": ["examples/vite/**", "packages/react/**"],
+    "linter": {
+      "rules": {
+        "a11y": {
+          "useKeyWithClickEvents": "off"
+        }
+      }
+    }
+  }]
 }

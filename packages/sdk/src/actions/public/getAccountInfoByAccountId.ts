@@ -1,10 +1,10 @@
 import type {
-  Account,
   AccountId,
   AccountInfo,
   Address,
   Chain,
   Client,
+  Signer,
   Transport,
 } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
@@ -26,9 +26,9 @@ export type GetAccountInfoByAccountIdReturnType = Promise<AccountInfo>;
  */
 export async function getAccountInfoByAccountId<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetAccountInfoByAccountIdParameters,
 ): GetAccountInfoByAccountIdReturnType {
   const { accountId, height = 0 } = parameters;

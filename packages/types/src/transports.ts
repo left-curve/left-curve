@@ -21,11 +21,9 @@ export type CometQueryFn = (
 
 export type CometBroadcastFn = (tx: Tx | UnsignedTx) => Promise<Hex>;
 
-export type Transport<type extends string = string> = <chain extends Chain | undefined = Chain>({
-  chain,
-}: {
-  chain?: chain | undefined;
-}) => {
+export type Transport<type extends string = string> = <chain extends Chain | undefined = Chain>(
+  parameters: { chain?: chain | undefined } | undefined,
+) => {
   config: TransportConfig<type>;
   query: CometQueryFn;
   broadcast: CometBroadcastFn;

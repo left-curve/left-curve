@@ -7,7 +7,7 @@ import { createBaseClient } from "./baseClient";
 export type PublicClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-> = Omit<ClientConfig<transport, chain, undefined>, "account">;
+> = ClientConfig<transport, chain, undefined>;
 
 export type PublicClient<
   transport extends Transport = Transport,
@@ -22,7 +22,7 @@ export type PublicClient<
   | "name"
   | "key"
   | "chain"
-  | "account"
+  | "signer"
   | "broadcast"
   | "query"
 >;
@@ -36,7 +36,6 @@ export function createPublicClient<
     ...parameters,
     key,
     name,
-    account: undefined,
     type: "publicClient",
   });
   return client.extend(publicActions);

@@ -1,4 +1,4 @@
-import type { Account, Address, Chain, Client, Key, KeyId, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Key, KeyId, Signer, Transport } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
@@ -18,9 +18,9 @@ export type GetPublicKeyFromKeyIdReturnType = Promise<Key>;
  */
 export async function getPublicKeyFromKeyId<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetPublicKeyFromKeyIdParameters,
 ): GetPublicKeyFromKeyIdReturnType {
   const { keyId, height = 0 } = parameters;

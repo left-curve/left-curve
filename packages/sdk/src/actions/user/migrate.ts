@@ -1,4 +1,4 @@
-import type { Account, Address, Chain, Client, Hex, Json, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Hex, Json, Signer, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type MigrateParameters = {
@@ -10,8 +10,8 @@ export type MigrateParameters = {
 
 export type MigrateReturnType = Promise<Hex>;
 
-export async function migrate<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<Transport, chain, account>,
+export async function migrate<chain extends Chain | undefined, signer extends Signer>(
+  client: Client<Transport, chain, signer>,
   parameters: MigrateParameters,
 ): MigrateReturnType {
   const { sender, contract, msg, newCodeHash } = parameters;

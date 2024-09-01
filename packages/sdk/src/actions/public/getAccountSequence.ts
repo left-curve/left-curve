@@ -1,4 +1,4 @@
-import type { Account, Address, Chain, Client, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
 import { queryWasmSmart } from "./queryWasmSmart";
 
 export type GetAccountSequenceParameters = {
@@ -17,14 +17,14 @@ export type GetAccountSequenceReturnType = Promise<number>;
  */
 export async function getAccountSequence<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetAccountSequenceParameters,
 ): GetAccountSequenceReturnType {
   const { address, height = 0 } = parameters;
   const msg = { sequence: {} };
-  return await queryWasmSmart<number, chain, account>(client, {
+  return await queryWasmSmart<number, chain, signer>(client, {
     contract: address,
     msg,
     height,

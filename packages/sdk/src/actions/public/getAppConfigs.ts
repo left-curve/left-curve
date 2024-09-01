@@ -1,5 +1,5 @@
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
-import type { AppConfigsResponse } from "@leftcurve/types/build/queries";
+import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { AppConfigsResponse } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetAppConfigsParameters =
@@ -21,17 +21,17 @@ export type GetAppConfigsReturnType = Promise<AppConfigsResponse>;
  * @returns The app configs.
  */
 export async function getAppConfigs<
-  chain extends Chain | undefined,
-  account extends Account | undefined,
+  chain extends Chain | undefined = Chain,
+  signer extends Signer | undefined = undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetAppConfigsParameters,
 ): GetAppConfigsReturnType {
   const { startAfter, limit, height = 0 } = parameters || {};
   const query = {
     appConfigs: { startAfter, limit },
   };
-  const res = await queryApp<chain, account>(client, { query, height });
+  const res = await queryApp<chain, signer>(client, { query, height });
 
   if ("appConfigs" in res) return res.appConfigs;
 

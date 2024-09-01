@@ -34,7 +34,7 @@ export type HttpTransport = Transport<"http">;
  */
 export function http(url?: string | undefined, config: HttpTransportConfig = {}): HttpTransport {
   const { batch, key = "http", name = "HTTP JSON-RPC" } = config;
-  return ({ chain }) => {
+  return ({ chain } = {}) => {
     const url_ = url || chain?.rpcUrls.default.http[0];
     if (!url_) throw new UrlRequiredError();
 

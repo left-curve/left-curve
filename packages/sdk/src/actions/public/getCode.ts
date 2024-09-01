@@ -1,5 +1,5 @@
 import { decodeBase64 } from "@leftcurve/encoding";
-import type { Account, Chain, Client, Hex, Transport } from "@leftcurve/types";
+import type { Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetCodeParameters = {
@@ -16,15 +16,15 @@ export type GetCodeReturnType = Promise<Uint8Array>;
  * @param parameters.height The height at which to query the code.
  * @returns The code.
  */
-export async function getCode<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<Transport, chain, account>,
+export async function getCode<chain extends Chain | undefined, signer extends Signer | undefined>(
+  client: Client<Transport, chain, signer>,
   parameters: GetCodeParameters,
 ): GetCodeReturnType {
   const { hash, height = 0 } = parameters;
   const query = {
     code: { hash },
   };
-  const res = await queryApp<chain, account>(client, { query, height });
+  const res = await queryApp<chain, signer>(client, { query, height });
   if ("code" in res) return decodeBase64(res.code);
   throw new Error(`expecting code response, got ${JSON.stringify(res)}`);
 }

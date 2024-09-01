@@ -1,9 +1,9 @@
 import type {
-  Account,
   Address,
   Chain,
   Client,
   ContractsResponse,
+  Signer,
   Transport,
 } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
@@ -26,16 +26,16 @@ export type GetContractsInfoReturnType = Promise<ContractsResponse>;
  */
 export async function getContractsInfo<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters?: GetContractsInfoParameters,
 ): GetContractsInfoReturnType {
   const { startAfter, limit, height = 0 } = parameters || {};
   const query = {
     contracts: { startAfter, limit },
   };
-  const res = await queryApp<chain, account>(client, { query, height });
+  const res = await queryApp<chain, signer>(client, { query, height });
 
   if (!("contracts" in res)) {
     throw new Error(`expecting contracts response, got ${JSON.stringify(res)}`);

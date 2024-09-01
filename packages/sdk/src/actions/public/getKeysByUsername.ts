@@ -1,11 +1,11 @@
 import type {
-  Account,
   Address,
   Chain,
   Client,
   Hex,
   Key,
   KeyId,
+  Signer,
   Transport,
   Username,
 } from "@leftcurve/types";
@@ -32,9 +32,9 @@ export type GetKeysByUsernameReturnType = Promise<Record<KeyId, Key>[]>;
  */
 export async function getKeysByUsername<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: GetKeysByUsernameParameters,
 ): GetKeysByUsernameReturnType {
   const { username, startAfter, limit, height = 0 } = parameters;

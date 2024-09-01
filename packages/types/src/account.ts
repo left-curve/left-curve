@@ -1,7 +1,5 @@
 import type { Address } from "./address";
-import type { Hex } from "./common";
-import type { Credential, Metadata } from "./credential";
-import type { Message } from "./tx";
+import type { Prettify } from "./utils";
 
 export type Username = string;
 
@@ -21,15 +19,13 @@ export type AccountInfo = {
   address: Address;
 };
 
-export type Account = {
-  username: Username;
-  getKeyId: () => Promise<Hex>;
-  signTx: (
-    msgs: Message[],
-    chainId: string,
-    sequence: number,
-  ) => Promise<{ credential: Credential; data: Metadata }>;
-};
+export type Account = Prettify<
+  {
+    id: AccountId;
+    index: AccountIndex;
+    username: Username;
+  } & AccountInfo
+>;
 
 export type AccountStateResponse = {
   sequence: number;

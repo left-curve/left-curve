@@ -1,0 +1,66 @@
+{
+  "name": "@leftcurve/connect-kit",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "lint": "pnpm biome check --write src",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "ci": "pnpm biome ci ./src",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs",
+      "default": "./build/index.js"
+    },
+    "./chains": {
+      "types": "./build/chains.d.ts",
+      "import": "./build/chains.mjs",
+      "default": "./build/chains.js"
+    },
+    "./handlers": {
+      "types": "./build/handlers/index.d.ts",
+      "import": "./build/handlers/index.mjs",
+      "default": "./build/handlers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "chains": [
+        "./build/chains.d.ts"
+      ],
+      "handlers": [
+        "./build/handlers/index.d.ts"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@cosmjs/tendermint-rpc": "^0.32.4",
+    "@leftcurve/crypto": "workspace:^",
+    "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/sdk": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
+    "@tanstack/query-core": "^5.53.1",
+    "eventemitter3": "^5.0.1",
+    "zustand": "^4.5.5"
+  }
+}

@@ -1,4 +1,4 @@
-import type { Account, Chain, Client, Transport } from "@leftcurve/types";
+import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
 
 import {
   type GetBalanceParameters,
@@ -133,7 +133,7 @@ import {
 export type PublicActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
+  signer extends Signer | undefined = undefined,
 > = {
   getBalance: (args: GetBalanceParameters) => GetBalanceReturnType;
   getBalances: (args: GetBalancesParameters) => GetBalancesReturnType;
@@ -177,8 +177,8 @@ export type PublicActions<
 export function publicActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
->(client: Client<transport, chain, account>): PublicActions<transport, chain, account> {
+  signer extends Signer | undefined = undefined,
+>(client: Client<transport, chain, signer>): PublicActions<transport, chain, signer> {
   return {
     getAppConfig: (args) => getAppConfig(client, args),
     getAppConfigs: (args) => getAppConfigs(client, args),

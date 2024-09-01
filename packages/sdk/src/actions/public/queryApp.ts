@@ -1,11 +1,11 @@
 import { deserialize, serialize } from "@leftcurve/encoding";
 
 import type {
-  Account,
   Chain,
   Client,
   QueryRequest,
   QueryResponse,
+  Signer,
   Transport,
 } from "@leftcurve/types";
 
@@ -24,9 +24,9 @@ export type QueryAppReturnType = Promise<QueryResponse>;
  * @returns The query response.
  */
 export async function queryApp<
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(client: Client<Transport, chain, account>, parameters: QueryAppParameters): QueryAppReturnType {
+  chain extends Chain | undefined = Chain,
+  signer extends Signer | undefined = undefined,
+>(client: Client<Transport, chain, signer>, parameters: QueryAppParameters): QueryAppReturnType {
   const { query, height = 0 } = parameters;
   const res = await client.query("/app", serialize(query), height, false);
   return deserialize<QueryResponse>(res.value);

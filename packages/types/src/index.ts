@@ -1,5 +1,3 @@
-export type { AccountStateResponse } from "./account";
-
 export type {
   AccountResponse,
   BlockInfo,
@@ -25,6 +23,8 @@ export type {
   SimulateResponse,
   ContractResponse,
   ContractsResponse,
+  AppConfigsResponse,
+  AppConfigResponse,
 } from "./queries";
 
 export type {
@@ -73,9 +73,8 @@ export type {
   AccountIndex,
   AccountType,
   AccountInfo,
+  AccountStateResponse,
 } from "./account";
-
-export { AccountTypes } from "./account";
 
 export type {
   Key,
@@ -83,18 +82,74 @@ export type {
   KeyHash,
 } from "./key";
 
-export { KeyTag } from "./key";
+export type {
+  EventMap,
+  EventKey,
+  EventFn,
+  EventData,
+  Emitter,
+} from "./emitter";
 
-export type { Credential, Metadata } from "./credential";
+export type {
+  Coin,
+  Coins,
+} from "./coin";
+
+export type {
+  ClientConfig,
+  Client,
+  ClientBase,
+  ClientExtend,
+} from "./client";
+
+export type {
+  Credential,
+  Metadata,
+} from "./credential";
+
+export type {
+  Connection,
+  Connector,
+  ConnectorEventMap,
+  CreateConnectorFn,
+} from "./connector";
+
+export type {
+  AbstractStorage,
+  CreateStorageParameters,
+  Storage,
+  StorageItemMap,
+} from "./storage";
+
+export type {
+  State,
+  Config,
+  CreateConfigParameters,
+  ConfigParameter,
+} from "./config";
 
 export type { Address } from "./address";
 
-export type { ClientConfig, Client, ClientBase, ClientExtend } from "./client";
+export type { Signer } from "./signer";
 
-export type { Json, Hex, Base64 } from "./common";
+export type { EIP1193Provider } from "./eip1193";
 
-export type { AbstractSigner } from "./signer";
+export type {
+  Json,
+  Hex,
+  Base64,
+} from "./common";
 
-export type { Coin, Coins } from "./coin";
+export type {
+  Prettify,
+  OneOf,
+  RequiredBy,
+  ExactPartial,
+  ExactRequired,
+  RemoveUndefined,
+  StrictOmit,
+  UnionStrictOmit,
+} from "./utils";
 
-export type { Prettify } from "./utils";
+export { AccountTypes } from "./account";
+export { KeyTag } from "./key";

@@ -1,14 +1,5 @@
 import { encodeBase64 } from "@leftcurve/encoding";
-import type {
-  Account,
-  Address,
-  Chain,
-  Client,
-  Coins,
-  Hex,
-  Json,
-  Transport,
-} from "@leftcurve/types";
+import type { Address, Chain, Client, Coins, Hex, Json, Signer, Transport } from "@leftcurve/types";
 import { computeAddress } from "../public/computeAddress";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
@@ -24,11 +15,8 @@ export type InstantiateParameters = {
 
 export type InstantiateReturnType = Promise<[string, Hex]>;
 
-export async function instantiate<
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<Transport, chain, account>,
+export async function instantiate<chain extends Chain | undefined, signer extends Signer>(
+  client: Client<Transport, chain, signer>,
   parameters: InstantiateParameters,
 ): InstantiateReturnType {
   const { sender, msg, codeHash, salt, admin, gasLimit, funds = {} } = parameters;

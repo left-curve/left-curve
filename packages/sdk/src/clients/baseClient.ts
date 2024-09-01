@@ -1,24 +1,24 @@
 import type {
-  Account,
   Chain,
   Client,
   ClientConfig,
   ClientExtend,
+  Signer,
   Transport,
 } from "@leftcurve/types";
 import { uid } from "@leftcurve/utils";
 
 export function createBaseClient<
-  transport extends Transport,
+  transport extends Transport = Transport,
   chain extends Chain | undefined = undefined,
-  account extends Account | undefined = undefined,
->(parameters: ClientConfig<transport, chain, account>): Client<transport, chain, account> {
-  const { batch, chain, account, key = "base", name = "Base Client", type = "base" } = parameters;
+  signer extends Signer | undefined = undefined,
+>(parameters: ClientConfig<transport, chain, signer>): Client<transport, chain, signer> {
+  const { batch, chain, signer, key = "base", name = "Base Client", type = "base" } = parameters;
 
   const { config: transport, query, broadcast } = parameters.transport({ chain });
 
   const client = {
-    account,
+    signer,
     batch,
     chain,
     key,
@@ -43,6 +43,6 @@ export function createBaseClient<
   return Object.assign(client, { extend: extendClient(client) }) as Client<
     transport,
     chain,
-    account
+    signer
   >;
 }

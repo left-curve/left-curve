@@ -1,5 +1,4 @@
 import type {
-  Account,
   AccountType,
   Address,
   Chain,
@@ -8,6 +7,7 @@ import type {
   Hex,
   Key,
   KeyHash,
+  Signer,
   Transport,
   Username,
 } from "@leftcurve/types";
@@ -34,14 +34,16 @@ export type MsgRegisterUser = {
 
 export async function createAccount<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: CreateAccountParameters,
 ): CreateAccountReturnType {
   const { username, keyHash, key, accountType } = parameters;
 
-  const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
+  const accountFactory = await getAppConfig<Address, chain, signer>(client, {
+    key: "account_factory",
+  });
 
   const registerMsg = {
     registerUser: {

@@ -1,20 +1,19 @@
-import type { Account } from "./account";
 import type { Chain } from "./chain";
+import type { Signer } from "./signer";
 import type { Transport } from "./transports";
 
 /**
  * Client configuration options.
  *
- * @template chain - The type of chain.
  */
 export type ClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = undefined,
+  signer extends Signer | undefined = undefined,
 > = {
-  /** The account associated with the client. */
-  account: account;
-  /** * Indicates whether to batch requests. */
+  /** The signer used for sign the txs. */
+  signer?: signer;
+  /** Indicates whether to batch requests. */
   batch?: boolean;
   /** The chain to connect to. */
   chain?: Chain | undefined | chain;
@@ -31,9 +30,9 @@ export type ClientConfig<
 export type ClientBase<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = undefined,
+  signer extends Signer | undefined = undefined,
 > = {
-  account: account;
+  signer: signer;
   batch?: boolean | undefined;
   chain: chain;
   key: string;
@@ -49,16 +48,16 @@ export type ClientBase<
 export type Client<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = undefined,
+  signer extends Signer | undefined = undefined,
   extended extends ClientExtend | undefined = ClientExtend | undefined,
-> = ClientBase<transport, chain, account> &
+> = ClientBase<transport, chain, signer> &
   (extended extends ClientExtend ? extended : unknown) & {
     extend: <const client extends ClientExtend = ClientExtend>(
-      fn: (client: Client<transport, chain, account, extended>) => client,
+      fn: (client: Client<transport, chain, signer, extended>) => client,
     ) => Client<
       transport,
       chain,
-      account,
+      signer,
       client & (extended extends ClientExtend ? extended : unknown)
     >;
   };

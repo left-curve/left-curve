@@ -1,4 +1,4 @@
-import type { Account, Address, Base64, Chain, Client, Hex, Transport } from "@leftcurve/types";
+import type { Address, Base64, Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type StoreCodeParameters = {
@@ -8,10 +8,10 @@ export type StoreCodeParameters = {
 
 export type StoreCodeReturnType = Promise<Hex>;
 
-export async function storeCode<
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(client: Client<Transport, chain, account>, parameters: StoreCodeParameters): StoreCodeReturnType {
+export async function storeCode<chain extends Chain | undefined, signer extends Signer>(
+  client: Client<Transport, chain, signer>,
+  parameters: StoreCodeParameters,
+): StoreCodeReturnType {
   const { sender, code } = parameters;
   const storeCodeMsg = { upload: { code } };
   return await signAndBroadcastTx(client, { sender, msgs: [storeCodeMsg] });

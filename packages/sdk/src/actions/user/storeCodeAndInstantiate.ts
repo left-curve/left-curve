@@ -1,6 +1,5 @@
 import { encodeBase64 } from "@leftcurve/encoding";
 import type {
-  Account,
   Address,
   Base64,
   Chain,
@@ -8,6 +7,7 @@ import type {
   Coins,
   Hex,
   Json,
+  Signer,
   Transport,
 } from "@leftcurve/types";
 
@@ -28,9 +28,9 @@ export type StoreCodeAndInstantiateReturnType = Promise<[string, Hex]>;
 
 export async function storeCodeAndInstantiate<
   chain extends Chain | undefined,
-  account extends Account | undefined,
+  signer extends Signer,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: StoreCodeAndInstantiateParameters,
 ): StoreCodeAndInstantiateReturnType {
   const { sender, msg, codeHash, funds = {}, salt, code, admin } = parameters;

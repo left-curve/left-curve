@@ -1,26 +1,15 @@
 import { Secp256k1 } from "@leftcurve/crypto";
-import {
-  http,
-  computeAddress,
-  createAccountSalt,
-  createUserClient,
-  toAccount,
-} from "@leftcurve/sdk";
-import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import { encodeBase64 } from "@leftcurve/encoding";
+import { http, computeAddress, createAccountSalt, createUserClient } from "@leftcurve/sdk";
+import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import { AccountTypes, type Address } from "@leftcurve/types";
 
 async function createAccount() {
   if (!process.env.MNEMONIC) throw new Error("Please set the MNEMONIC environment variable");
 
-  const signer = PrivateKeySigner.fromMnemonic(process.env.MNEMONIC);
-
   // Instantiate the user client
   const userClient = createUserClient({
-    account: toAccount({
-      username: "j0nl1",
-      signer: signer,
-    }),
+    signer: PrivateKeySigner.fromMnemonic(process.env.MNEMONIC),
     transport: http("http://localhost:26657"),
   });
 

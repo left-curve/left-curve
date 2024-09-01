@@ -1,13 +1,4 @@
-import type {
-  Account,
-  Address,
-  Chain,
-  Client,
-  Coins,
-  Hex,
-  Json,
-  Transport,
-} from "@leftcurve/types";
+import type { Address, Chain, Client, Coins, Hex, Json, Signer, Transport } from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type ExecuteParameters = {
@@ -20,8 +11,8 @@ export type ExecuteParameters = {
 
 export type ExecuteReturnType = Promise<Hex>;
 
-export async function execute<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<Transport, chain, account>,
+export async function execute<chain extends Chain | undefined, signer extends Signer>(
+  client: Client<Transport, chain, signer>,
   parameters: ExecuteParameters,
 ): ExecuteReturnType {
   const { sender, contract, msg, gasLimit, funds = {} } = parameters;

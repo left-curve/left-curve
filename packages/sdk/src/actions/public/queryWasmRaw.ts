@@ -1,5 +1,5 @@
 import { encodeBase64 } from "@leftcurve/encoding";
-import type { Account, Address, Chain, Client, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type QueryWasmRawParameters = {
@@ -19,18 +19,18 @@ export type QueryWasmRawReturnType<value extends any | undefined> = Promise<valu
  * @returns The raw wasm data.
  */
 export async function queryWasmRaw<
-  value extends any | undefined = any | undefined,
-  chain extends Chain | undefined = Chain | undefined,
-  account extends Account | undefined = Account | undefined,
+  value extends any | undefined,
+  chain extends Chain | undefined,
+  signer extends Signer | undefined,
 >(
-  client: Client<Transport, chain, account>,
+  client: Client<Transport, chain, signer>,
   parameters: QueryWasmRawParameters,
 ): QueryWasmRawReturnType<value> {
   const { contract, key, height = 0 } = parameters;
   const query = {
     wasmRaw: { contract, key: encodeBase64(key) },
   };
-  const res = await queryApp<chain, account>(client, { query, height });
+  const res = await queryApp<chain, signer>(client, { query, height });
 
   if (!("wasmRaw" in res)) {
     throw new Error(`expecting wasm raw response, got ${JSON.stringify(res)}`);
