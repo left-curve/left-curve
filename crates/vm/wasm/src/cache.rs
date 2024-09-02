@@ -58,3 +58,48 @@ impl Cache {
         Ok((module, engine))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{Cache, VmResult},
+        grug_types::HashExt,
+        wasmer::{Engine, Module, Singlepass},
+    };
+
+    const CONTRACT: &[u8] = br#"(module)"#;
+
+    fn build_contract() -> VmResult<(Module, Engine)> {
+        let engine = Engine::from(Singlepass::new());
+        let module = Module::new(&engine, CONTRACT)?;
+        Ok((module, engine))
+    }
+
+    #[test]
+    fn zero_capacity() {
+        let cache = Cache::new(0);
+        assert!(cache.inner.is_none());
+        let hash = CONTRACT.hash256();
+        cache.get_or_build_with(hash, build_contract).unwrap();
+        assert!(cache.inner.is_none());
+    }
+
+    #[test]
+    fn capacity_overflow() {
+        let cache = Cache::new(1);
+        let hash = CONTRACT.hash256();
+        cache.get_or_build_with(hash, build_contract).unwrap();
+        let hash2 = b"jake".hash256();
+        cache.get_or_build_with(hash2, build_contract).unwrap();
+        assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
+    }
+
+    #[test]
+    fn get_cached() {
+        let cache = Cache::new(2);
+        let hash = CONTRACT.hash256();
+        cache.get_or_build_with(hash, build_contract).unwrap();
+        cache.get_or_build_with(hash, build_contract).unwrap();
+        assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
+    }
+}
