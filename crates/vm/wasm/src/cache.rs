@@ -69,7 +69,7 @@ mod tests {
 
     const CONTRACT: &[u8] = br#"(module)"#;
 
-    fn build_contract() -> VmResult<(Module, Engine)> {
+    fn builder() -> VmResult<(Module, Engine)> {
         let engine = Engine::from(Singlepass::new());
         let module = Module::new(&engine, CONTRACT)?;
         Ok((module, engine))
@@ -80,7 +80,7 @@ mod tests {
         let cache = Cache::new(0);
         assert!(cache.inner.is_none());
         let hash = CONTRACT.hash256();
-        cache.get_or_build_with(hash, build_contract).unwrap();
+        cache.get_or_build_with(hash, builder).unwrap();
         assert!(cache.inner.is_none());
     }
 
@@ -88,9 +88,9 @@ mod tests {
     fn capacity_overflow() {
         let cache = Cache::new(1);
         let hash = CONTRACT.hash256();
-        cache.get_or_build_with(hash, build_contract).unwrap();
+        cache.get_or_build_with(hash, builder).unwrap();
         let hash2 = b"jake".hash256();
-        cache.get_or_build_with(hash2, build_contract).unwrap();
+        cache.get_or_build_with(hash2, builder).unwrap();
         assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
     }
 
@@ -98,8 +98,8 @@ mod tests {
     fn get_cached() {
         let cache = Cache::new(2);
         let hash = CONTRACT.hash256();
-        cache.get_or_build_with(hash, build_contract).unwrap();
-        cache.get_or_build_with(hash, build_contract).unwrap();
+        cache.get_or_build_with(hash, builder).unwrap();
+        cache.get_or_build_with(hash, builder).unwrap();
         assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
     }
 }
