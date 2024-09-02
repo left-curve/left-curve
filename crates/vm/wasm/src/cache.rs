@@ -14,14 +14,17 @@ pub struct Cache {
     // Must cache the module together with the engine that was used to built it.
     // There may be runtime errors if calling a wasm function using a different
     // engine from that was used to build the module.
-    inner: Shared<CLruCache<Hash256, (Module, Engine)>>,
+    /// If `None`, the cache is disabled.
+    inner: Option<Shared<CLruCache<Hash256, (Module, Engine)>>>,
 }
 
 impl Cache {
     /// Create an empty cache with the given capacity.
-    pub fn new(capacity: NonZeroUsize) -> Self {
+    /// If the capacity is `zero`, the cache is disabled.
+    pub fn new(capacity: usize) -> Self {
         Self {
-            inner: Shared::new(CLruCache::new(capacity)),
+            inner: NonZeroUsize::new(capacity)
+                .map(|non_zero| Shared::new(CLruCache::new(non_zero))),
         }
     }
 
@@ -33,16 +36,24 @@ impl Cache {
         B: FnOnce() -> VmResult<(Module, Engine)>,
     {
         // Cache hit - simply clone the module and return
-        if let Some(module) = self.inner.write_access().get(&code_hash) {
-            return Ok(module.clone());
+        if let Some(Some(module)) = self
+            .inner
+            .as_ref()
+            .map(|val| val.write_access().get(&code_hash).cloned())
+        {
+            return Ok(module);
         }
 
         // Cache miss - build the module using the given builder method; insert
         // both the module and engine to the cache.
         let (module, engine) = builder()?;
-        self.inner
-            .write_access()
-            .put(code_hash, (module.clone(), engine.clone()));
+
+        // Insert the module into the cache if the cache is enabled.
+        if let Some(inner) = &self.inner {
+            inner
+                .write_access()
+                .put(code_hash, (module.clone(), engine.clone()));
+        }
 
         Ok((module, engine))
     }

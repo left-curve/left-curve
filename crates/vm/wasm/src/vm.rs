@@ -8,7 +8,7 @@ use {
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{BorshSerExt, Context, Hash256},
-    std::{num::NonZeroUsize, sync::Arc},
+    std::sync::Arc,
     wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
@@ -33,9 +33,8 @@ pub struct WasmVm {
 
 impl WasmVm {
     pub fn new(cache_capacity: usize) -> Self {
-        // TODO: handle the case where cache capacity is zero (which means not to use a cache)
         Self {
-            cache: Cache::new(NonZeroUsize::new(cache_capacity).unwrap()),
+            cache: Cache::new(cache_capacity),
         }
     }
 }
