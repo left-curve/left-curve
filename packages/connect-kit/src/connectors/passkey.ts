@@ -6,7 +6,7 @@ import { createConnector } from "./createConnector";
 
 import type { Account, Client, Transport } from "@leftcurve/types";
 
-export function passkey() {
+export function passkey({ icon }: { icon?: string }) {
   let _transport: Transport;
   let _username: string;
   let _client: Client;
@@ -17,6 +17,7 @@ export function passkey() {
       id: "passkey",
       name: "Passkey",
       type: "passkey",
+      icon,
       async connect({ username, chainId, challenge }) {
         _username = username;
         _transport = transports[chainId];
@@ -34,7 +35,7 @@ export function passkey() {
           _isAuthorized = true;
         }
         const accounts = await this.getAccounts();
-        emitter.emit("connect", { accounts, chainId });
+        emitter.emit("connect", { accounts, chainId, username });
       },
       async disconnect() {
         _isAuthorized = false;

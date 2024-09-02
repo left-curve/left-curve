@@ -28,11 +28,10 @@ export type Config<
   subscribe<state>(
     selector: (state: State<chains>) => state,
     listener: (state: state, previousState: state) => void,
-    options?:
-      | {
-          emitImmediately?: boolean | undefined;
-        }
-      | undefined,
+    options?: {
+      emitImmediately?: boolean;
+      equalityFn?: (a: state, b: state) => boolean;
+    },
   ): () => void;
 
   getClient<chainId extends chains[number]["id"]>(parameters?: {

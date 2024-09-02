@@ -2,7 +2,6 @@ import type {
   Chain,
   Client,
   Config,
-  Connection,
   Connector,
   ConnectorEventMap,
   CreateConfigParameters,
@@ -133,6 +132,7 @@ export function createConfig<
         connections: new Map(x.connections).set(uid, {
           accounts: data.accounts ?? connection.accounts,
           connector: connection.connector,
+          username: data.username,
           chainId: chainId ?? connection.chainId,
         }),
       };
@@ -159,6 +159,7 @@ export function createConfig<
         connections: new Map(x.connections).set(data.uid, {
           accounts: data.accounts,
           chainId: data.chainId,
+          username: data.username,
           connector: connector,
         }),
         chainId: data.chainId,
@@ -236,6 +237,7 @@ export function createConfig<
         listener,
         options
           ? {
+              ...options,
               fireImmediately: options.emitImmediately,
             }
           : undefined,

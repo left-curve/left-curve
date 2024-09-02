@@ -1,5 +1,5 @@
-import type { Account } from "./account";
-import type { Chain } from "./chain";
+import type { Account, Username } from "./account";
+import type { Chain, ChainId } from "./chain";
 import type { Client } from "./client";
 import type { Credential } from "./credential";
 import type { Emitter } from "./emitter";
@@ -9,7 +9,8 @@ import type { Transport } from "./transports";
 export type ConnectorId = string;
 
 export type Connection = {
-  chainId: string;
+  chainId: ChainId;
+  username: Username;
   accounts: readonly Account[];
   connector: Connector;
 };
@@ -25,13 +26,23 @@ export type ConnectorParameter = {
 
 export type ConnectorEventMap = {
   change: {
+    username: Username;
     accounts?: readonly Account[] | undefined;
     chainId?: string;
   };
-  connect: { accounts: readonly Account[]; chainId: string };
+  connect: {
+    username: Username;
+    accounts: readonly Account[];
+    chainId: string;
+  };
   disconnect: never;
-  error: { error: Error };
-  message: { type: string; data?: unknown | undefined };
+  error: {
+    error: Error;
+  };
+  message: {
+    type: string;
+    data?: unknown | undefined;
+  };
 };
 
 export type CreateConnectorFn<

@@ -30,3 +30,9 @@ export {
   type UseConnectorsReturnType,
   useConnectors,
 } from "./hooks/useConnectors";
+
+export {
+  type UseAccountParameters,
+  type UseAccountReturnType,
+  useAccount,
+} from "./hooks/useAccount";

@@ -12,7 +12,7 @@ export { Label } from "./atoms/Label";
 /*                                  Molecules                                 */
 /* -------------------------------------------------------------------------- */
 
-//
+export { Modal, ModalRoot, type ModalProps } from "./molecules/Modal";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

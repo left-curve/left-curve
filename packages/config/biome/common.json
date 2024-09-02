@@ -36,6 +36,7 @@
     "linter": {
       "rules": {
         "a11y": {
+          "noSvgWithoutTitle": "off",
           "useKeyWithClickEvents": "off"
         }
       }

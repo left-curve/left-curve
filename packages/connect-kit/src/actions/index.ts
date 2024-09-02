@@ -31,3 +31,14 @@ export {
   type GetConnectorsReturnType,
   getConnectors,
 } from "./getConnectors";
+
+export {
+  type GetAccountReturnType,
+  getAccount,
+} from "./getAccount";
+
+export {
+  type WatchAccountParameters,
+  type WatchAccountReturnType,
+  watchAccount,
+} from "./watchAccount";

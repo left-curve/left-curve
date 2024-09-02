@@ -6,5 +6,5 @@ export const config = createConfig({
   transports: {
     [localhost.id]: http("http://localhost:26657"),
   },
-  connectors: [passkey()],
+  connectors: [passkey({ icon: "/passkey-white.svg" })],
 });
