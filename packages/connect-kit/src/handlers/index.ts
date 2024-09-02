@@ -6,3 +6,12 @@ export {
   type ConnectErrorType,
   connectMutationOptions,
 } from "./connect";
+
+export {
+  type DisconnectData,
+  type DisconnectVariables,
+  type DisconnectMutate,
+  type DisconnectMutateAsync,
+  type DisconnectErrorType,
+  disconnectMutationOptions,
+} from "./disconnect";

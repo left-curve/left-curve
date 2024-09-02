@@ -64,7 +64,10 @@ export type {
   CometQueryFn,
 } from "./transports";
 
-export type { Chain } from "./chain";
+export type {
+  ChainId,
+  Chain,
+} from "./chain";
 
 export type {
   Username,
@@ -110,6 +113,8 @@ export type {
 export type {
   Connection,
   Connector,
+  ConnectorId,
+  ConnectorParameter,
   ConnectorEventMap,
   CreateConnectorFn,
 } from "./connector";
@@ -143,6 +148,7 @@ export type {
 export type {
   Prettify,
   OneOf,
+  OneRequired,
   RequiredBy,
   ExactPartial,
   ExactRequired,

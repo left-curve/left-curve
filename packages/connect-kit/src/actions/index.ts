@@ -21,6 +21,13 @@ export {
 } from "./connect";
 
 export {
+  type DisconnectParameters,
+  type DisconnectReturnType,
+  type DisconnectErrorType,
+  disconnect,
+} from "./disconnect";
+
+export {
   type GetConnectorsReturnType,
   getConnectors,
 } from "./getConnectors";

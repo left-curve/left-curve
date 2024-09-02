@@ -1,6 +1,8 @@
 import type { Json } from "./common";
 import type { NativeCurrency } from "./currency";
 
+export type ChainId = string;
+
 /**
  * Represents a blockchain network.
  *
@@ -27,7 +29,7 @@ export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
    * The ID of the chain.
    */
-  id: string;
+  id: ChainId;
 
   /**
    * The name of the chain.

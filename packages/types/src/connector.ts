@@ -6,6 +6,8 @@ import type { Emitter } from "./emitter";
 import type { Storage } from "./storage";
 import type { Transport } from "./transports";
 
+export type ConnectorId = string;
+
 export type Connection = {
   chainId: string;
   accounts: readonly Account[];
@@ -14,7 +16,11 @@ export type Connection = {
 
 export type Connector = ReturnType<CreateConnectorFn> & {
   emitter: Emitter<ConnectorEventMap>;
-  uid: string;
+  uid: ConnectorId;
+};
+
+export type ConnectorParameter = {
+  connector?: Connector;
 };
 
 export type ConnectorEventMap = {

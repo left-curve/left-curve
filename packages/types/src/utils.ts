@@ -6,6 +6,7 @@ export type OneOf<
   union extends object,
   keys extends KeyofUnion<union> = KeyofUnion<union>,
 > = union extends infer Item ? Item & { [K in Exclude<keys, keyof Item>]?: undefined } : never;
+
 type KeyofUnion<type> = type extends type ? keyof type : never;
 
 export type RemoveUndefined<type> = {
@@ -34,3 +35,10 @@ export type StrictOmit<type, keys extends keyof type> = Pick<type, Exclude<keyof
 export type UnionStrictOmit<type, keys extends keyof type> = type extends any
   ? StrictOmit<type, keys>
   : never;
+
+/**
+ * @description Creates a type that is T with the optional keys K.
+ */
+export type OneRequired<T, K1 extends keyof T, K2 extends keyof T> =
+  | (Required<Pick<T, K1>> & Partial<Pick<T, K2>>)
+  | (Required<Pick<T, K2>> & Partial<Pick<T, K1>>);

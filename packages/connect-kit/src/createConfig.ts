@@ -109,8 +109,8 @@ export function createConfig<
   function getInitialState(): State {
     return {
       chainId: chains.getState()[0].id,
-      connections: new Map<string, Connection>(),
-      authorizations: new Map(),
+      connections: new Map(),
+      connectors: new Map(),
       status: "disconnected",
     };
   }
@@ -126,7 +126,7 @@ export function createConfig<
       const connection = x.connections.get(data.uid);
       if (!connection) return x;
       const { chainId, uid } = data;
-      if (chainId) x.authorizations.set(chainId, uid);
+      if (chainId) x.connectors.set(chainId, uid);
 
       return {
         ...x,
@@ -162,7 +162,7 @@ export function createConfig<
           connector: connector,
         }),
         chainId: data.chainId,
-        authorizations: new Map(x.authorizations).set(data.chainId, data.uid),
+        connectors: new Map(x.connectors).set(data.chainId, data.uid),
         status: "connected",
       };
     });
@@ -185,8 +185,8 @@ export function createConfig<
 
       x.connections.delete(data.uid);
 
-      for (const [chainId, uid] of x.authorizations.entries()) {
-        if (uid === data.uid) x.authorizations.delete(chainId);
+      for (const [chainId, uid] of x.connectors.entries()) {
+        if (uid === data.uid) x.connectors.delete(chainId);
       }
 
       if (x.connections.size === 0) {
