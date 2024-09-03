@@ -749,3 +749,73 @@ impl FunctionMiddleware for FunctionGatekeeper {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        std::sync::Arc,
+        wasmer::{CompilerConfig, Module, Singlepass, Store},
+    };
+
+    #[test]
+    fn valid_wasm_instance_sanity() {
+        let wasm = br#"
+            (module
+                (func (export "sum") (param i32 i32) (result i32)
+                    local.get 0
+                    local.get 1
+                    i32.add
+                ))
+            "#;
+
+        let deterministic = Arc::new(Gatekeeper::default());
+        let mut compiler = Singlepass::new();
+        compiler.push_middleware(deterministic);
+        let store = Store::new(compiler);
+        let result = Module::new(&store, wasm);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parser_floats_are_supported() {
+        let wasm = br#"
+            (module
+                (func $to_float (param i32) (result f32)
+                    local.get 0
+                    f32.convert_i32_u
+                ))
+            "#;
+
+        let deterministic = Arc::new(Gatekeeper::default());
+        let mut compiler = Singlepass::new();
+        compiler.push_middleware(deterministic);
+        let store = Store::new(compiler);
+        let result = Module::new(&store, wasm);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn bulk_operations_not_supported() {
+        let wasm = br#"
+            (module
+              (memory (export "memory") 1)
+              (func (param $dst i32) (param $src i32) (param $size i32) (result i32)
+                local.get $dst
+                local.get $src
+                local.get $size
+                memory.copy
+                local.get $dst))
+            "#;
+
+        let deterministic = Arc::new(Gatekeeper::default());
+        let mut compiler = Singlepass::new();
+        compiler.push_middleware(deterministic);
+        let store = Store::new(compiler);
+        let result = Module::new(&store, wasm);
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Bulk memory operation"));
+    }
+}
