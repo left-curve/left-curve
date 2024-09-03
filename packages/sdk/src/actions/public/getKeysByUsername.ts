@@ -4,7 +4,7 @@ import type {
   Client,
   Hex,
   Key,
-  KeyId,
+  KeyHash,
   Signer,
   Transport,
   Username,
@@ -19,7 +19,7 @@ export type GetKeysByUsernameParameters = {
   height?: number;
 };
 
-export type GetKeysByUsernameReturnType = Promise<Record<KeyId, Key>[]>;
+export type GetKeysByUsernameReturnType = Promise<Record<KeyHash, Key>>;
 
 /**
  * Get the keys associated with a username.

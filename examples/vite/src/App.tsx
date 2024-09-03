@@ -41,7 +41,13 @@ function App() {
                     <Button
                       key={connector.name}
                       className="bg-neutral-600 hover:bg-neutral-500 py-6"
-                      onClick={() => connector.connect({ username: "owner", chainId })}
+                      onClick={() =>
+                        connector.connect({
+                          username: "owner",
+                          chainId,
+                          challenge: "Please sign this message to confirm your identity.",
+                        })
+                      }
                     >
                       <span className="flex w-full items-center justify-between">
                         <span className="text-lg">{connector.name}</span>

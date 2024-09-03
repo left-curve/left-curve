@@ -105,10 +105,10 @@ export {
 } from "./public/getAccountTypeCodeHashes";
 
 export {
-  type GetAccountsByKeyHashParameters,
-  type GetAccountsByKeyHashReturnType,
-  getAccountsByKeyHash,
-} from "./public/getAccountsByKeyHash";
+  type GetKeyIdByKeyHashParameters,
+  type GetKeyIdByKeyHashReturnType,
+  getKeyIdByKeyHash,
+} from "./public/getKeyIdByKeyHash";
 
 export {
   type GetKeysByUsernameParameters,

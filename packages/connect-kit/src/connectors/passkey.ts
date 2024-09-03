@@ -1,7 +1,7 @@
 import { requestWebAuthnSignature, ripemd160 } from "@leftcurve/crypto";
 import { encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
 import { createBaseClient } from "@leftcurve/sdk";
-import { getAccountsByKeyHash, getAccountsByUsername } from "@leftcurve/sdk/actions";
+import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
 import type { Client, Transport } from "@leftcurve/types";
@@ -35,9 +35,8 @@ export function passkey(parameters: PasskeyConnectorParameters) {
             userVerification: "preferred",
           });
           const keyHash = encodeHex(ripemd160(encodeUtf8(credentialId))).toUpperCase();
-
-          const usernames = await getAccountsByKeyHash(_client, { hash: keyHash });
-          if (!usernames.includes(username)) throw new Error("Not authorized");
+          const keys = await getKeysByUsername(_client, { username });
+          if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
           _isAuthorized = true;
         }
         const accounts = await this.getAccounts();

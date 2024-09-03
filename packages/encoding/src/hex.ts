@@ -1,20 +1,26 @@
 import type { Hex } from "@leftcurve/types";
 
 /**
- * Encode a byte array to a string using the Hex scheme, lowercase, no 0x prefix.
+ * Encode a byte array to a string using the Hex scheme, lowercase
+ * @param bytes - The byte array to encode
+ * @param prefixed - Whether to prefix the hex string with "0x"
+ * @returns The hex string
  */
-export function encodeHex(bytes: Uint8Array): Hex {
+export function encodeHex(bytes: Uint8Array, prefixed = false): Hex {
   let hexStr = "";
   for (let i = 0; i < bytes.length; i++) {
     hexStr += bytes[i].toString(16).padStart(2, "0");
   }
-  return hexStr;
+  return prefixed ? `0x${hexStr}` : hexStr;
 }
 
 /**
  * Decode a string to byte array using the Hex scheme.
+ * @param hex - The hex string to decode, with or without the "0x" prefix
+ * @returns The byte array
  */
-export function decodeHex(hexStr: Hex): Uint8Array {
+export function decodeHex(hex: Hex): Uint8Array {
+  const hexStr = hex.startsWith("0x") ? hex.substring(2) : hex;
   if (hexStr.length % 2 !== 0) {
     throw new Error("hex string has an odd length");
   }
@@ -29,12 +35,22 @@ export function decodeHex(hexStr: Hex): Uint8Array {
   return bytes;
 }
 
+/**
+ * Check if a value is a hex string.
+ * @param value - The value to check
+ * @returns Whether the value is a hex string
+ */
 export function isHex(value: unknown): value is Hex {
   if (!value) return false;
   if (typeof value !== "string") return false;
   return value.startsWith("0x") || /^[0-9a-fA-F]*$/.test(value);
 }
 
+/**
+ * Convert a hex string to a BigInt.
+ * @param hex - The hex string to convert
+ * @returns The BigInt
+ */
 export function hexToBigInt(hex: Hex): bigint {
   const hexStr = hex.startsWith("0x") ? hex : `0x${hex}`;
   return BigInt(hexStr);

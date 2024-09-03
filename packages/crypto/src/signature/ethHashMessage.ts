@@ -12,7 +12,7 @@ export function ethHashMessage(_message_: EthPersonalMessage): Hex {
 
   const messageHash = new Uint8Array([
     ...encodeUtf8(presignMessagePrefix),
-    ...encodeUtf8(String(presignMessagePrefix.length)),
+    ...encodeUtf8(String(message.length)),
     ...message,
   ]);
 

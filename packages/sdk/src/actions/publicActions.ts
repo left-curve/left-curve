@@ -83,10 +83,10 @@ import {
 } from "./public/getAccountTypeCodeHashes";
 
 import {
-  type GetAccountsByKeyHashParameters,
-  type GetAccountsByKeyHashReturnType,
-  getAccountsByKeyHash,
-} from "./public/getAccountsByKeyHash";
+  type GetKeyIdByKeyHashParameters,
+  type GetKeyIdByKeyHashReturnType,
+  getKeyIdByKeyHash,
+} from "./public/getKeyIdByKeyHash";
 
 import {
   type GetKeysByUsernameParameters,
@@ -152,7 +152,7 @@ export type PublicActions<
   getAccountTypeCodeHashes: (
     args?: GetAccountTypeCodeHashesParameters,
   ) => GetAccountTypeCodeHashesReturnType;
-  getAccountsByKeyHash: (args: GetAccountsByKeyHashParameters) => GetAccountsByKeyHashReturnType;
+  getKeyIdByKeyHash: (args: GetKeyIdByKeyHashParameters) => GetKeyIdByKeyHashReturnType;
   getPublicKeyFromKeyId: (args: GetPublicKeyFromKeyIdParameters) => GetPublicKeyFromKeyIdReturnType;
   getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
   getAccountInfoByAccountId: (
@@ -191,7 +191,7 @@ export function publicActions<
     getChainInfo: (args) => getChainInfo(client, args),
     getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
     getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
-    getAccountsByKeyHash: (args) => getAccountsByKeyHash(client, args),
+    getKeyIdByKeyHash: (args) => getKeyIdByKeyHash(client, args),
     getPublicKeyFromKeyId: (args) => getPublicKeyFromKeyId(client, args),
     getKeysByUsername: (args) => getKeysByUsername(client, args),
     getAccountInfoByAccountId: (args) => getAccountInfoByAccountId(client, args),

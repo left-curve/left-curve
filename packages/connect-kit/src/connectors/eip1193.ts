@@ -1,10 +1,10 @@
 import { ethHashMessage, recoverPublicKey, ripemd160 } from "@leftcurve/crypto";
 import { encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
 import { createBaseClient } from "@leftcurve/sdk";
-import { getAccountsByKeyHash, getAccountsByUsername } from "@leftcurve/sdk/actions";
+import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
-import type { Client, EIP1193Provider, Transport } from "@leftcurve/types";
+import type { Client, EIP1193Provider, KeyHash, Transport } from "@leftcurve/types";
 
 import "@leftcurve/types/window";
 
@@ -47,11 +47,13 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
             params: [challenge, controllerAddress],
           });
           const hashMessage = ethHashMessage(challenge);
-          const publicKey = await recoverPublicKey(hashMessage, signature);
 
-          const keyHash = encodeHex(ripemd160(publicKey)).toUpperCase();
-          const usernames = await getAccountsByKeyHash(_client, { hash: keyHash });
-          if (!usernames.includes(username)) throw new Error("Not authorized");
+          const publicKey = await recoverPublicKey(hashMessage, signature, true);
+
+          const keyHash: KeyHash = encodeHex(ripemd160(publicKey)).toUpperCase();
+          const keys = await getKeysByUsername(_client, { username });
+
+          if (!keys[keyHash]) throw new Error("Not authorized");
           _isAuthorized = true;
         }
         emitter.emit("connect", { accounts, chainId, username });

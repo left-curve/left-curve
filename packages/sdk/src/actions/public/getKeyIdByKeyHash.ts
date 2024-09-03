@@ -2,26 +2,26 @@ import type { Address, Chain, Client, Hex, Signer, Transport, Username } from "@
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
-export type GetAccountsByKeyHashParameters = {
+export type GetKeyIdByKeyHashParameters = {
   hash: Hex;
   height?: number;
 };
 
-export type GetAccountsByKeyHashReturnType = Promise<Username[]>;
+export type GetKeyIdByKeyHashReturnType = Promise<Username[]>;
 
 /**
- * Given a key id, look up the usernames associated with this account.
+ * Given a key hash, get the key id.
  * @param parameters
  * @param parameters.hash The key hash of the account.
- * @returns The usernames associated with the key id.
+ * @returns keyId associated with the key hash.
  */
-export async function getAccountsByKeyHash<
+export async function getKeyIdByKeyHash<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetAccountsByKeyHashParameters,
-): GetAccountsByKeyHashReturnType {
+  parameters: GetKeyIdByKeyHashParameters,
+): GetKeyIdByKeyHashReturnType {
   const { hash, height = 0 } = parameters;
   const msg = { keyId: { hash } };
 

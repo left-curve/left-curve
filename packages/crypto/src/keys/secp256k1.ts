@@ -10,11 +10,13 @@ import type { KeyPair } from "./keypair";
  * Recover the public key from a message hash and signature.
  * @param hash - The hash of the message that was signed.
  * @param signature - The signature to recover the public key from.
+ * @param compressed - Whether to return the public key in compressed form.
  * @returns The public key that signed the message hash.
  */
 export async function recoverPublicKey(
   hash: Hex | Uint8Array,
   _signature_: Hex | Uint8Array | Signature,
+  compressed = false,
 ): Promise<Uint8Array> {
   const hashHex = isHex(hash) ? hash.replace("0x", "") : encodeHex(hash);
   const { secp256k1 } = await import("@noble/curves/secp256k1");
@@ -25,15 +27,19 @@ export async function recoverPublicKey(
       const recoveryBit = toRecoveryBit(v);
       return new secp256k1.Signature(hexToBigInt(r), hexToBigInt(s)).addRecoveryBit(recoveryBit);
     }
-    const signatureHex = isHex(_signature_) ? _signature_ : encodeHex(_signature_);
-    const v = Number.parseInt(signatureHex.substring(130), 16);
+    const signatureHex = isHex(_signature_)
+      ? _signature_.replace("0x", "")
+      : encodeHex(_signature_);
+
+    const v = Number.parseInt(signatureHex.substring(128), 16);
     const recoveryBit = toRecoveryBit(v);
-    return secp256k1.Signature.fromCompact(signatureHex.substring(2, 130)).addRecoveryBit(
+
+    return secp256k1.Signature.fromCompact(signatureHex.substring(0, 128)).addRecoveryBit(
       recoveryBit,
     );
   })();
 
-  return signature.recoverPublicKey(hashHex).toRawBytes(false);
+  return signature.recoverPublicKey(hashHex).toRawBytes(compressed);
 }
 
 function toRecoveryBit(v: number) {
