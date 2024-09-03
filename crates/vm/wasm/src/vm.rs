@@ -9,7 +9,9 @@ use {
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
-    wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
+    wasmer::{
+        imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store, StoreMut,
+    },
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
 
@@ -28,14 +30,13 @@ const MAX_QUERY_DEPTH: usize = 3;
 
 #[derive(Clone)]
 pub struct WasmVm {
-    cache: Cache,
+    cache: Option<Cache>,
 }
 
 impl WasmVm {
     pub fn new(cache_capacity: usize) -> Self {
-        // TODO: handle the case where cache capacity is zero (which means not to use a cache)
         Self {
-            cache: Cache::new(NonZeroUsize::new(cache_capacity).unwrap()),
+            cache: NonZeroUsize::new(cache_capacity).map(Cache::new),
         }
     }
 }
@@ -58,37 +59,13 @@ impl Vm for WasmVm {
             return Err(VmError::ExceedMaxQueryDepth);
         }
 
-        // Attempt to fetch a pre-built Wasmer module from the cache.
-        // If not found, build it and insert it into the cache.
-        let (module, engine) = self.cache.get_or_build_with(code_hash, || {
-            let mut compiler = Singlepass::new();
-
-            // Set up the gas metering middleware.
-            //
-            // Set `initial_points` as zero for now, because this engine will be
-            // cached and to be used by other transactions, so it doesn't make
-            // sense to put the current tx's gas limit here.
-            //
-            // We will properly set this tx's gas limit later, once we have
-            // created the `Instance`.
-            //
-            // Also, compiling the module doesn't cost gas, so setting the limit
-            // to zero won't raise out of gas errors.
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
-            compiler.push_middleware(Arc::new(metering));
-
-            // Set up the `Gatekeeper`. This rejects certain Wasm operators that
-            // may cause non-determinism.
-            compiler.push_middleware(Arc::new(Gatekeeper::default()));
-
-            // Ensure determinism related to floating point numbers.
-            compiler.canonicalize_nans(true);
-
-            let engine = Engine::from(compiler);
-            let module = Module::new(&engine, code)?;
-
-            Ok((module, engine))
-        })?;
+        let (module, engine) = if let Some(cache) = &self.cache {
+            // Attempt to fetch a pre-built Wasmer module from the cache.
+            // If not found, build it and insert it into the cache.
+            cache.get_or_build_with(code_hash, || compile_wasmer(code))?
+        } else {
+            compile_wasmer(code)?
+        };
 
         // Compute the amount of gas left for this call. This will be used as
         // the initial points in the Wasmer gas meter.
@@ -167,6 +144,36 @@ impl Vm for WasmVm {
     }
 }
 
+fn compile_wasmer(code: &[u8]) -> VmResult<(Module, Engine)> {
+    let mut compiler = Singlepass::new();
+
+    // Set up the gas metering middleware.
+    //
+    // Set `initial_points` as zero for now, because this engine will be
+    // cached and to be used by other transactions, so it doesn't make
+    // sense to put the current tx's gas limit here.
+    //
+    // We will properly set this tx's gas limit later, once we have
+    // created the `Instance`.
+    //
+    // Also, compiling the module doesn't cost gas, so setting the limit
+    // to zero won't raise out of gas errors.
+    let metering = Metering::new(0, |_| GAS_PER_OPERATION);
+    compiler.push_middleware(Arc::new(metering));
+
+    // Set up the `Gatekeeper`. This rejects certain Wasm operators that
+    // may cause non-determinism.
+    compiler.push_middleware(Arc::new(Gatekeeper::default()));
+
+    // Ensure determinism related to floating point numbers.
+    compiler.canonicalize_nans(true);
+
+    let engine = Engine::from(compiler);
+    let module = Module::new(&engine, code)?;
+
+    Ok((module, engine))
+}
+
 // --------------------------------- instance ----------------------------------
 
 pub struct WasmInstance {
@@ -175,22 +182,29 @@ pub struct WasmInstance {
     fe: FunctionEnv<Environment>,
 }
 
+impl WasmInstance {
+    fn use_env_mut<T>(&mut self, callback: impl FnOnce(&mut Environment, &mut StoreMut) -> T) -> T {
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
+        let (env, mut store) = fe_mut.data_and_store_mut();
+        callback(env, &mut store)
+    }
+}
+
 impl Instance for WasmInstance {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[ctx_ptr.into()])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[ctx_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 
     fn call_in_1_out_1<P>(
@@ -202,19 +216,18 @@ impl Instance for WasmInstance {
     where
         P: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let param1_ptr = write_to_memory(env, store, param.as_ref())?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[ctx_ptr.into(), param1_ptr.into()])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 
     fn call_in_2_out_1<P1, P2>(
@@ -228,22 +241,21 @@ impl Instance for WasmInstance {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let param1_ptr = write_to_memory(env, store, param1.as_ref())?;
+            let param2_ptr = write_to_memory(env, store, param2.as_ref())?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[
+                    ctx_ptr.into(),
+                    param1_ptr.into(),
+                    param2_ptr.into(),
+                ])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
-        let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[
-                ctx_ptr.into(),
-                param1_ptr.into(),
-                param2_ptr.into(),
-            ])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 }
