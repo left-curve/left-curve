@@ -14,17 +14,14 @@ pub struct Cache {
     // Must cache the module together with the engine that was used to built it.
     // There may be runtime errors if calling a wasm function using a different
     // engine from that was used to build the module.
-    /// If `None`, the cache is disabled.
-    inner: Option<Shared<CLruCache<Hash256, (Module, Engine)>>>,
+    inner: Shared<CLruCache<Hash256, (Module, Engine)>>,
 }
 
 impl Cache {
     /// Create an empty cache with the given capacity.
-    /// If the capacity is `zero`, the cache is disabled.
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(capacity: NonZeroUsize) -> Self {
         Self {
-            inner: NonZeroUsize::new(capacity)
-                .map(|non_zero| Shared::new(CLruCache::new(non_zero))),
+            inner: Shared::new(CLruCache::new(capacity)),
         }
     }
 
@@ -36,34 +33,26 @@ impl Cache {
         B: FnOnce() -> VmResult<(Module, Engine)>,
     {
         // Cache hit - simply clone the module and return
-        if let Some(Some(module)) = self
-            .inner
-            .as_ref()
-            .map(|val| val.write_access().get(&code_hash).cloned())
-        {
-            return Ok(module);
+        if let Some(module) = self.inner.write_access().get(&code_hash) {
+            return Ok(module.clone());
         }
 
         // Cache miss - build the module using the given builder method; insert
         // both the module and engine to the cache.
         let (module, engine) = builder()?;
-
-        // Insert the module into the cache if the cache is enabled.
-        if let Some(inner) = &self.inner {
-            inner
-                .write_access()
-                .put(code_hash, (module.clone(), engine.clone()));
-        }
+        self.inner
+            .write_access()
+            .put(code_hash, (module.clone(), engine.clone()));
 
         Ok((module, engine))
     }
 }
-
 #[cfg(test)]
 mod tests {
     use {
         crate::{Cache, VmResult},
         grug_types::HashExt,
+        std::num::NonZeroUsize,
         wasmer::{Engine, Module, Singlepass},
     };
 
@@ -76,30 +65,21 @@ mod tests {
     }
 
     #[test]
-    fn zero_capacity() {
-        let cache = Cache::new(0);
-        assert!(cache.inner.is_none());
-        let hash = CONTRACT.hash256();
-        cache.get_or_build_with(hash, builder).unwrap();
-        assert!(cache.inner.is_none());
-    }
-
-    #[test]
     fn capacity_overflow() {
-        let cache = Cache::new(1);
+        let cache = Cache::new(NonZeroUsize::new(1).unwrap());
         let hash = CONTRACT.hash256();
         cache.get_or_build_with(hash, builder).unwrap();
         let hash2 = b"jake".hash256();
         cache.get_or_build_with(hash2, builder).unwrap();
-        assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
+        assert_eq!(cache.inner.read_access().len(), 1);
     }
 
     #[test]
     fn get_cached() {
-        let cache = Cache::new(2);
+        let cache = Cache::new(NonZeroUsize::new(2).unwrap());
         let hash = CONTRACT.hash256();
         cache.get_or_build_with(hash, builder).unwrap();
         cache.get_or_build_with(hash, builder).unwrap();
-        assert_eq!(cache.inner.as_ref().unwrap().read_access().len(), 1);
+        assert_eq!(cache.inner.read_access().len(), 1);
     }
 }
