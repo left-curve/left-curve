@@ -34,8 +34,7 @@ pub struct WasmVm {
 impl WasmVm {
     pub fn new(cache_capacity: usize) -> Self {
         Self {
-            cache: NonZeroUsize::new(cache_capacity)
-                .map(|cache_capacity| Cache::new(cache_capacity)),
+            cache: NonZeroUsize::new(cache_capacity).map(Cache::new),
         }
     }
 }
