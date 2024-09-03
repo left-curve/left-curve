@@ -1,5 +1,4 @@
 import type {
-  AccountType,
   Address,
   Chain,
   Client,
@@ -18,7 +17,6 @@ export type CreateAccountParameters = {
   username: Username;
   key: Key;
   keyHash: KeyHash;
-  accountType: AccountType;
 };
 
 export type CreateAccountReturnType = Promise<Hex>;
@@ -28,7 +26,6 @@ export type MsgRegisterUser = {
     username: string;
     KeyHash: Hex;
     key: Credential;
-    accountType: "spot" | "margin";
   };
 };
 
@@ -39,7 +36,7 @@ export async function createAccount<
   client: Client<Transport, chain, signer>,
   parameters: CreateAccountParameters,
 ): CreateAccountReturnType {
-  const { username, keyHash, key, accountType } = parameters;
+  const { username, keyHash, key } = parameters;
 
   const accountFactory = await getAppConfig<Address, chain, signer>(client, {
     key: "account_factory",
@@ -50,7 +47,6 @@ export async function createAccount<
       username,
       keyHash,
       key,
-      accountType,
     },
   };
 

@@ -51,7 +51,6 @@ async function createAccount() {
 
   // Create account
   await userClient.createAccount({
-    accountType: AccountTypes.Spot,
     keyHash: await userSigner.getKeyId(),
     key: userKey,
     username: username,
