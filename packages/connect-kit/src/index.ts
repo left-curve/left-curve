@@ -7,6 +7,7 @@ export { http } from "@leftcurve/sdk";
 
 export { createConnector } from "./connectors/createConnector";
 export { passkey } from "./connectors/passkey";
+export { eip1193 } from "./connectors/eip1193";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

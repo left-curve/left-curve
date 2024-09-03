@@ -140,6 +140,11 @@ export type { Signer } from "./signer";
 export type { EIP1193Provider } from "./eip1193";
 
 export type {
+  Signature,
+  EthPersonalMessage,
+} from "./signature";
+
+export type {
   Json,
   Hex,
   Base64,

@@ -4,15 +4,21 @@ import { createBaseClient } from "@leftcurve/sdk";
 import { getAccountsByKeyHash, getAccountsByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
-import type { Account, Client, Transport } from "@leftcurve/types";
+import type { Client, Transport } from "@leftcurve/types";
 
-export function passkey({ icon }: { icon?: string }) {
+type PasskeyConnectorParameters = {
+  icon?: string;
+};
+
+export function passkey(parameters: PasskeyConnectorParameters) {
   let _transport: Transport;
   let _username: string;
   let _client: Client;
   let _isAuthorized = false;
 
-  return createConnector(({ transports, emitter }) => {
+  const { icon } = parameters;
+
+  return createConnector<undefined, { bytes: Uint8Array }>(({ transports, emitter }) => {
     return {
       id: "passkey",
       name: "Passkey",
@@ -48,10 +54,11 @@ export function passkey({ icon }: { icon?: string }) {
       async getAccounts() {
         const accounts = await getAccountsByUsername(_client, { username: _username });
         return Object.entries(accounts).map(([index, info]) => ({
-          id: `${_username}/account/${index}`,
-          index,
+          id: `${_username}/account/${Number(index)}`,
+          index: Number(index),
+          username: _username,
           ...info,
-        })) as unknown as Account[];
+        }));
       },
       async isAuthorized() {
         return _isAuthorized;

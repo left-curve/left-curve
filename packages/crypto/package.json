@@ -19,6 +19,7 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/types": "workspace:^",
     "vitest": "^2.0.5"
   },
   "dependencies": {

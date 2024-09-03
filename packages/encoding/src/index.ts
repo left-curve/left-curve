@@ -8,7 +8,7 @@ export {
 } from "./base64";
 
 export { decodeEndian32, encodeEndian32 } from "./endian32";
-export { decodeHex, encodeHex } from "./hex";
+export { decodeHex, encodeHex, isHex, hexToBigInt } from "./hex";
 export { decodeUtf8, encodeUtf8 } from "./utf8";
 export { deserialize, serialize } from "./binary";
 

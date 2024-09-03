@@ -28,3 +28,14 @@ export function decodeHex(hexStr: Hex): Uint8Array {
   }
   return bytes;
 }
+
+export function isHex(value: unknown): value is Hex {
+  if (!value) return false;
+  if (typeof value !== "string") return false;
+  return value.startsWith("0x") || /^[0-9a-fA-F]*$/.test(value);
+}
+
+export function hexToBigInt(hex: Hex): bigint {
+  const hexStr = hex.startsWith("0x") ? hex : `0x${hex}`;
+  return BigInt(hexStr);
+}

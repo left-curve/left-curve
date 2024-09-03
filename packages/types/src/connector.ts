@@ -47,6 +47,7 @@ export type ConnectorEventMap = {
 
 export type CreateConnectorFn<
   provider = unknown,
+  signDoc = unknown,
   properties extends Record<string, unknown> = Record<string, unknown>,
   storageItem extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
@@ -54,7 +55,7 @@ export type CreateConnectorFn<
   emitter: Emitter<ConnectorEventMap>;
   transports: Record<string, Transport>;
   storage?: Storage<storageItem> | null | undefined;
-}) => {
+}) => properties & {
   readonly id: string;
   readonly icon?: string | undefined;
   readonly name: string;
@@ -69,13 +70,15 @@ export type CreateConnectorFn<
   getAccounts(): Promise<readonly Account[]>;
   getClient(): Promise<Client>;
   isAuthorized(): Promise<boolean>;
-  requestSignature(parameters: { bytes: Uint8Array }): Promise<Credential>;
-  getProvider?(parameters?: { chainId?: string | undefined } | undefined): Promise<provider>;
+  requestSignature(signDoc: signDoc): Promise<Credential>;
   switchChain?(parameters: { chainId: string }): Promise<Chain>;
-
   onAccountsChanged?(accounts: string[]): void;
   onChainChanged?(chainId: string): void;
   onConnect?(connectInfo: { chainId: string }): void;
   onDisconnect?(error?: Error | undefined): void;
   onMessage?(message: { type: string; data?: unknown }): void;
-} & properties;
+} & (provider extends undefined
+    ? object
+    : {
+        getProvider(parameters?: { chainId?: string | undefined } | undefined): Promise<provider>;
+      });

@@ -1,8 +1,47 @@
+import { encodeHex, hexToBigInt, isHex } from "@leftcurve/encoding";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 
+import type { Hex, Signature } from "@leftcurve/types";
 import type { KeyPair } from "./keypair";
+
+/**
+ * Recover the public key from a message hash and signature.
+ * @param hash - The hash of the message that was signed.
+ * @param signature - The signature to recover the public key from.
+ * @returns The public key that signed the message hash.
+ */
+export async function recoverPublicKey(
+  hash: Hex | Uint8Array,
+  _signature_: Hex | Uint8Array | Signature,
+): Promise<Uint8Array> {
+  const hashHex = isHex(hash) ? hash.replace("0x", "") : encodeHex(hash);
+  const { secp256k1 } = await import("@noble/curves/secp256k1");
+
+  const signature = (() => {
+    if (typeof _signature_ === "object" && "r" in _signature_ && "s" in _signature_) {
+      const { r, s, v } = _signature_;
+      const recoveryBit = toRecoveryBit(v);
+      return new secp256k1.Signature(hexToBigInt(r), hexToBigInt(s)).addRecoveryBit(recoveryBit);
+    }
+    const signatureHex = isHex(_signature_) ? _signature_ : encodeHex(_signature_);
+    const v = Number.parseInt(signatureHex.substring(130), 16);
+    const recoveryBit = toRecoveryBit(v);
+    return secp256k1.Signature.fromCompact(signatureHex.substring(2, 130)).addRecoveryBit(
+      recoveryBit,
+    );
+  })();
+
+  return signature.recoverPublicKey(hashHex).toRawBytes(false);
+}
+
+function toRecoveryBit(v: number) {
+  if (v === 0 || v === 1) return v;
+  if (v === 27) return 0;
+  if (v === 28) return 1;
+  throw new Error("Invalid recovery value");
+}
 
 export class Secp256k1 implements KeyPair {
   #privateKey: Uint8Array;
