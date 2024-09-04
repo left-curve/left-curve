@@ -28,14 +28,13 @@ const MAX_QUERY_DEPTH: usize = 3;
 
 #[derive(Clone)]
 pub struct WasmVm {
-    cache: Cache,
+    cache: Option<Cache>,
 }
 
 impl WasmVm {
     pub fn new(cache_capacity: usize) -> Self {
-        // TODO: handle the case where cache capacity is zero (which means not to use a cache)
         Self {
-            cache: Cache::new(NonZeroUsize::new(cache_capacity).unwrap()),
+            cache: NonZeroUsize::new(cache_capacity).map(Cache::new),
         }
     }
 }
@@ -58,37 +57,13 @@ impl Vm for WasmVm {
             return Err(VmError::ExceedMaxQueryDepth);
         }
 
-        // Attempt to fetch a pre-built Wasmer module from the cache.
-        // If not found, build it and insert it into the cache.
-        let (module, engine) = self.cache.get_or_build_with(code_hash, || {
-            let mut compiler = Singlepass::new();
-
-            // Set up the gas metering middleware.
-            //
-            // Set `initial_points` as zero for now, because this engine will be
-            // cached and to be used by other transactions, so it doesn't make
-            // sense to put the current tx's gas limit here.
-            //
-            // We will properly set this tx's gas limit later, once we have
-            // created the `Instance`.
-            //
-            // Also, compiling the module doesn't cost gas, so setting the limit
-            // to zero won't raise out of gas errors.
-            let metering = Metering::new(0, |_| GAS_PER_OPERATION);
-            compiler.push_middleware(Arc::new(metering));
-
-            // Set up the `Gatekeeper`. This rejects certain Wasm operators that
-            // may cause non-determinism.
-            compiler.push_middleware(Arc::new(Gatekeeper::default()));
-
-            // Ensure determinism related to floating point numbers.
-            compiler.canonicalize_nans(true);
-
-            let engine = Engine::from(compiler);
-            let module = Module::new(&engine, code)?;
-
-            Ok((module, engine))
-        })?;
+        let (module, engine) = if let Some(cache) = &self.cache {
+            // Attempt to fetch a pre-built Wasmer module from the cache.
+            // If not found, build it and insert it into the cache.
+            cache.get_or_build_with(code_hash, || compile_wasmer(code))?
+        } else {
+            compile_wasmer(code)?
+        };
 
         // Compute the amount of gas left for this call. This will be used as
         // the initial points in the Wasmer gas meter.
@@ -165,6 +140,36 @@ impl Vm for WasmVm {
             fe,
         })
     }
+}
+
+fn compile_wasmer(code: &[u8]) -> VmResult<(Module, Engine)> {
+    let mut compiler = Singlepass::new();
+
+    // Set up the gas metering middleware.
+    //
+    // Set `initial_points` as zero for now, because this engine will be
+    // cached and to be used by other transactions, so it doesn't make
+    // sense to put the current tx's gas limit here.
+    //
+    // We will properly set this tx's gas limit later, once we have
+    // created the `Instance`.
+    //
+    // Also, compiling the module doesn't cost gas, so setting the limit
+    // to zero won't raise out of gas errors.
+    let metering = Metering::new(0, |_| GAS_PER_OPERATION);
+    compiler.push_middleware(Arc::new(metering));
+
+    // Set up the `Gatekeeper`. This rejects certain Wasm operators that
+    // may cause non-determinism.
+    compiler.push_middleware(Arc::new(Gatekeeper::default()));
+
+    // Ensure determinism related to floating point numbers.
+    compiler.canonicalize_nans(true);
+
+    let engine = Engine::from(compiler);
+    let module = Module::new(&engine, code)?;
+
+    Ok((module, engine))
 }
 
 // --------------------------------- instance ----------------------------------
