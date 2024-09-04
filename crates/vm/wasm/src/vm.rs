@@ -9,7 +9,9 @@ use {
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
-    wasmer::{imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store},
+    wasmer::{
+        imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store, StoreMut,
+    },
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
 
@@ -180,22 +182,32 @@ pub struct WasmInstance {
     fe: FunctionEnv<Environment>,
 }
 
+impl WasmInstance {
+    fn use_env_mut<T, F>(&mut self, callback: F) -> T
+    where
+        F: FnOnce(&mut Environment, &mut StoreMut) -> T,
+    {
+        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
+        let (env, mut store) = fe_mut.data_and_store_mut();
+        callback(env, &mut store)
+    }
+}
+
 impl Instance for WasmInstance {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[ctx_ptr.into()])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[ctx_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 
     fn call_in_1_out_1<P>(
@@ -207,19 +219,18 @@ impl Instance for WasmInstance {
     where
         P: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let param1_ptr = write_to_memory(env, store, param.as_ref())?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[ctx_ptr.into(), param1_ptr.into()])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let param1_ptr = write_to_memory(env, &mut store, param.as_ref())?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[ctx_ptr.into(), param1_ptr.into()])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 
     fn call_in_2_out_1<P1, P2>(
@@ -233,22 +244,21 @@ impl Instance for WasmInstance {
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>,
     {
-        let mut fe_mut = self.fe.clone().into_mut(&mut self.store);
-        let (env, mut store) = fe_mut.data_and_store_mut();
+        self.use_env_mut(|env, store| {
+            let ctx_ptr = write_to_memory(env, store, &ctx.to_borsh_vec()?)?;
+            let param1_ptr = write_to_memory(env, store, param1.as_ref())?;
+            let param2_ptr = write_to_memory(env, store, param2.as_ref())?;
+            let res_ptr: u32 = env
+                .call_function1(store, name, &[
+                    ctx_ptr.into(),
+                    param1_ptr.into(),
+                    param2_ptr.into(),
+                ])?
+                .try_into()
+                .map_err(VmError::ReturnType)?;
+            let data = read_then_wipe(env, store, res_ptr)?;
 
-        let ctx_ptr = write_to_memory(env, &mut store, &ctx.to_borsh_vec()?)?;
-        let param1_ptr = write_to_memory(env, &mut store, param1.as_ref())?;
-        let param2_ptr = write_to_memory(env, &mut store, param2.as_ref())?;
-        let res_ptr: u32 = env
-            .call_function1(&mut store, name, &[
-                ctx_ptr.into(),
-                param1_ptr.into(),
-                param2_ptr.into(),
-            ])?
-            .try_into()
-            .map_err(VmError::ReturnType)?;
-        let data = read_then_wipe(env, &mut store, res_ptr)?;
-
-        Ok(data)
+            Ok(data)
+        })
     }
 }
