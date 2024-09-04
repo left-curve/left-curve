@@ -749,3 +749,74 @@ impl FunctionMiddleware for FunctionGatekeeper {
         }
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        std::sync::Arc,
+        test_case::test_case,
+        wasmer::{CompileError, CompilerConfig, Module, Singlepass, Store},
+    };
+
+    #[test_case(
+        br#"
+          (module
+            (func (export "sum") (param i32 i32) (result i32)
+              local.get 0
+              local.get 1
+              i32.add
+            ))
+        "#,
+        |result| {
+            assert!(result.is_ok());
+        };
+        "valid wasm instance sanity"
+    )]
+    #[test_case(
+        br#"
+          (module
+            (func $to_float (param i32) (result f32)
+              local.get 0
+              f32.convert_i32_u
+            ))
+        "#,
+        |result| {
+            assert!(result.is_ok());
+        };
+        "parser floats unallowed"
+    )]
+    #[test_case(
+        br#"
+          (module
+            (memory (export "memory") 1)
+            (func (param $dst i32) (param $src i32) (param $size i32) (result i32)
+              local.get $dst
+              local.get $src
+              local.get $size
+              memory.copy
+              local.get $dst))
+        "#,
+        |result| {
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Bulk memory operation"));
+        };
+        "bulk operations unallowed"
+    )]
+    fn gatekeeper<T>(wat: &[u8], callback: T)
+    where
+        T: Fn(Result<Module, CompileError>),
+    {
+        let mut compiler = Singlepass::new();
+        compiler.push_middleware(Arc::new(Gatekeeper::default()));
+
+        let store = Store::new(compiler);
+        let result = Module::new(&store, wat);
+
+        callback(result);
+    }
+}
