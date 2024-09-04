@@ -27,7 +27,7 @@ impl Metrics {
     }
 
     pub fn increment_hits(&mut self) {
-        // In practice, it's unlikely a cache is hit `usize::MAX` time, but we
+        // In practice, it's unlikely a cache is hit `usize::MAX` times, but we
         // still use saturating add to avoid panicking on overflow.
         self.hits = self.hits.saturating_add(1);
     }
