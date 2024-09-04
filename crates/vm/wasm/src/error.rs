@@ -44,13 +44,6 @@ pub enum VmError {
     #[error("iterator with ID `{iterator_id}` not found")]
     IteratorNotFound { iterator_id: i32 },
 
-    #[error("region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
-    RegionTooSmall {
-        offset: u32,
-        capacity: u32,
-        data: String,
-    },
-
     #[error("region has a 0 offset")]
     RegionZeroOffset,
 
@@ -59,6 +52,13 @@ pub enum VmError {
 
     #[error("region exceeds address space! offset: {offset}, capacity: {capacity}")]
     RegionOutOfRange { offset: u32, capacity: u32 },
+
+    #[error("region is too small! offset: {offset}, capacity: {capacity}, data: {data}")]
+    RegionTooSmall {
+        offset: u32,
+        capacity: u32,
+        data: String,
+    },
 
     #[error("unexpected return value count! name: {name}, expect: {expect}, actual: {actual}")]
     ReturnCount {
