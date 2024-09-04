@@ -292,6 +292,8 @@ mod test {
         wasmer_middlewares::{metering::set_remaining_points, Metering},
     };
 
+    const EMPTY_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;
+
     fn compile(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
         let mut compiler = Singlepass::new();
 
@@ -488,7 +490,6 @@ mod test {
             for _ in 0..i {
                 env.call_function0(store, "consume_gas", &[])?;
             }
-
             Ok(())
         };
 
@@ -509,6 +510,30 @@ mod test {
                 limit: 100,
                 used: 100,
                 comment: "consume_gas",
+            })
+        ));
+    }
+
+    #[test]
+    fn external_gas_consumption() {
+        let (mut env, mut store, _instance) = compile(EMPTY_WAT, Some(100));
+
+        env.consume_external_gas(&mut store, 10, "comment").unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(90));
+
+        env.consume_external_gas(&mut store, 90, "comment").unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(0));
+
+        let err = env
+            .consume_external_gas(&mut store, 1, "comment")
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            VmError::Std(StdError::OutOfGas {
+                limit: 100,
+                used: 101,
+                comment: "comment",
             })
         ));
     }
