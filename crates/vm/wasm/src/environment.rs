@@ -273,3 +273,243 @@ impl Environment {
         }
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod test {
+    use {
+        super::Environment,
+        crate::{VmError, VmResult, WasmVm},
+        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
+        grug_types::{BlockInfo, Duration, HashExt, MockStorage, StdError},
+        std::sync::Arc,
+        test_case::test_case,
+        wasmer::{
+            imports, CompilerConfig, Engine, Instance, Module, RuntimeError, Singlepass, Store,
+            Value,
+        },
+        wasmer_middlewares::{metering::set_remaining_points, Metering},
+    };
+
+    fn compile(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
+        let mut compiler = Singlepass::new();
+
+        let gas_checkpoint = if let Some(max_gas) = max_gas {
+            compiler.push_middleware(Arc::new(Metering::new(0, |_| 1)));
+            max_gas
+        } else {
+            compiler.push_middleware(Arc::new(Metering::new(0, |_| 0)));
+            u64::MAX
+        };
+
+        let engine = Engine::from(compiler);
+        let module = Module::new(&engine, wat).unwrap();
+
+        let storage = Shared::new(MockStorage::new());
+        let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
+
+        let gas_tracker = max_gas
+            .map(GasTracker::new_limited)
+            .unwrap_or(GasTracker::new_limitless());
+
+        let block_info = BlockInfo {
+            height: 1_u64.into(),
+            timestamp: Duration::from_nanos(100),
+            hash: b"hash".hash256(),
+        };
+
+        let wasm_vm = WasmVm::new(100);
+
+        let mut wasmer_store = Store::new(engine);
+        let instance = Box::new(Instance::new(&mut wasmer_store, &module, &imports! {}).unwrap());
+        set_remaining_points(&mut wasmer_store, &instance, gas_checkpoint);
+
+        let mut env = Environment::new(
+            storage_provider,
+            true,
+            QuerierProvider::new(
+                wasm_vm,
+                Box::new(storage.clone()),
+                gas_tracker.clone(),
+                block_info,
+            ),
+            10,
+            gas_tracker,
+            gas_checkpoint,
+        );
+
+        env.set_wasmer_memory(&instance).unwrap();
+        env.set_wasmer_instance(instance.as_ref()).unwrap();
+
+        (env, wasmer_store, instance)
+    }
+
+    // 0 in - 1 out
+    #[test_case(
+        "0_1",
+        vec![],
+        Ok(vec![42]),
+        1;
+        "0 in 1 out: ok"
+    )]
+    #[test_case(
+        "0_1",
+        vec![],
+        Err(VmError::ReturnCount { name: "0_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "0 in - 1 out: fails return count"
+    )]
+    #[test_case(
+        "0_1",
+        vec![1],
+        Err(VmError::Runtime(RuntimeError::new("Parameters of type [I32] did not match signature [] -> [I32]"))),
+        1;
+        "0 in - 1 out: fails invalid signature"
+    )]
+    // 1 in - 0 out
+    #[test_case(
+        "1_0",
+        vec![20],
+        Ok(vec![]),
+        0;
+        "1 in - 0 out: ok"
+    )]
+    #[test_case(
+        "1_0",
+        vec![20],
+        Err(VmError::ReturnCount { name: "1_0".to_string(), expect: 1, actual: 0 }),
+        1;
+        "1 in - 0 out: fails return count"
+    )]
+    // 1 in - 1 out
+    #[test_case(
+        "1_1",
+        vec![20],
+        Ok(vec![40]),
+        1;
+        "1 in - 1 out: ok"
+    )]
+    #[test_case(
+        "1_1",
+        vec![20],
+        Err(VmError::ReturnCount { name: "1_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "1 in - 1 out: fails return count"
+    )]
+    // 2 in 1 out
+    #[test_case(
+        "2_1",
+        vec![20, 22],
+        Ok(vec![42]),
+        1;
+        "2 in 1 out: ok"
+    )]
+    #[test_case(
+        "2_1",
+        vec![20, 22],
+        Err(VmError::ReturnCount { name: "2_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "2 in 1 out: fails return count"
+    )]
+    fn call_functions(
+        name: &'static str,
+        args: Vec<i32>,
+        output: VmResult<Vec<i32>>,
+        output_args: i8,
+    ) {
+        let args: Vec<Value> = args.into_iter().map(Into::into).collect();
+
+        let wat = br#"
+        (module
+            (memory (export "memory") 1)
+            ;; 0 in - 1 out
+            (func $0_1 (result i32)
+              i32.const 42)
+            ;; 1 in - 1 out
+            (func $1_1 (param i32) (result i32)
+              local.get 0
+              i32.const 2
+              i32.mul)
+            ;; 1 in - 0 out
+            (func $1_0 (param i32)
+              local.get 0
+              drop)
+            ;; 2 in - 1 out
+            (func $2_1 (param i32) (param i32) (result i32)
+              local.get 0
+              local.get 1
+              i32.add)
+            ;; Exports
+            (export "0_1" (func $0_1))
+            (export "1_1" (func $1_1))
+            (export "1_0" (func $1_0))
+            (export "2_1" (func $2_1))
+        )
+        "#;
+
+        let (mut env, mut store, _instance) = compile(wat, None);
+
+        let result = match output_args {
+            0 => env.call_function0(&mut store, name, &args).map(|_| vec![]),
+            1 => env
+                .call_function1(&mut store, name, &args)
+                .map(|val| vec![val.i32().unwrap()]),
+            _ => panic!("Invalid number of arguments"),
+        };
+
+        match (&result, &output) {
+            (Ok(result), Ok(output)) => {
+                assert_eq!(result, output);
+            },
+            (Err(result), Err(output)) => {
+                assert_eq!(result.to_string(), output.to_string());
+            },
+            _ => panic!("Mismatched results: \n{:?}, \n{:?}", result, output),
+        }
+    }
+
+    #[test]
+    fn wasmer_gas_consumption() {
+        let wat = br#"
+        (module
+            (memory (export "memory") 1)
+            ;; Consume 5 gas, 4 gas per nop + 1 gas for end
+            (func $consume_gas
+                (nop)
+                (nop)
+                (nop)
+                (nop)
+            )
+            (export "consume_gas" (func $consume_gas))
+        )"#;
+
+        let consume = |i, env: &mut Environment, store: &mut Store| -> VmResult<()> {
+            for _ in 0..i {
+                env.call_function0(store, "consume_gas", &[])?;
+            }
+
+            Ok(())
+        };
+
+        let (mut env, mut store, _instance) = compile(wat, Some(100));
+
+        consume(1, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(95));
+
+        consume(10, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(45));
+
+        consume(9, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(0));
+
+        assert!(matches!(
+            consume(1, &mut env, &mut store).unwrap_err(),
+            VmError::Std(StdError::OutOfGas {
+                limit: 100,
+                used: 100,
+                comment: "consume_gas",
+            })
+        ));
+    }
+}
