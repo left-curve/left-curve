@@ -297,13 +297,13 @@ mod test {
     fn compile(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
         let mut compiler = Singlepass::new();
 
-        let gas_checkpoint = if let Some(max_gas) = max_gas {
-            compiler.push_middleware(Arc::new(Metering::new(0, |_| 1)));
-            max_gas
+        let (gas_checkpoint, gas_tracker) = if let Some(max_gas) = max_gas {
+            (max_gas, GasTracker::new_limited(max_gas))
         } else {
-            compiler.push_middleware(Arc::new(Metering::new(0, |_| 0)));
-            u64::MAX
+            (u64::MAX, GasTracker::new_limitless())
         };
+
+        compiler.push_middleware(Arc::new(Metering::new(0, |_| 1)));
 
         let engine = Engine::from(compiler);
         let module = Module::new(&engine, wat).unwrap();
@@ -311,17 +311,11 @@ mod test {
         let storage = Shared::new(MockStorage::new());
         let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
 
-        let gas_tracker = max_gas
-            .map(GasTracker::new_limited)
-            .unwrap_or(GasTracker::new_limitless());
-
         let block_info = BlockInfo {
             height: 1_u64.into(),
             timestamp: Duration::from_nanos(100),
             hash: b"hash".hash256(),
         };
-
-        let wasm_vm = WasmVm::new(100);
 
         let mut wasmer_store = Store::new(engine);
         let instance = Box::new(Instance::new(&mut wasmer_store, &module, &imports! {}).unwrap());
@@ -331,8 +325,8 @@ mod test {
             storage_provider,
             true,
             QuerierProvider::new(
-                wasm_vm,
-                Box::new(storage.clone()),
+                WasmVm::new(0),
+                Box::new(storage),
                 gas_tracker.clone(),
                 block_info,
             ),
