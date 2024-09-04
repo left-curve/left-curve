@@ -125,7 +125,7 @@ mod tests {
         let hash2 = b"jake".hash256();
         cache.get_or_build_with(hash2, builder).unwrap();
 
-        // Cache should have had two misses, with hash1 cached but cache2 not.
+        // Cache should have had 2 misses, with hash2 cached but hash1 not.
         cache.inner.read_with(|inner| {
             assert!(!inner.lru_cache.contains(&hash1));
             assert!(inner.lru_cache.contains(&hash2));
