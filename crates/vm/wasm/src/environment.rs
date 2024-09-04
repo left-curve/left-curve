@@ -280,9 +280,9 @@ impl Environment {
 mod test {
     use {
         super::Environment,
-        crate::{VmError, VmResult, WasmVm},
+        crate::{Iterator, VmError, VmResult, WasmVm},
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
-        grug_types::{BlockInfo, Duration, HashExt, MockStorage, StdError},
+        grug_types::{BlockInfo, Duration, HashExt, MockStorage, Order, StdError, Storage},
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -536,5 +536,141 @@ mod test {
                 comment: "comment",
             })
         ));
+    }
+
+    // --- Ascending ---
+    #[test_case(
+        Iterator::new(None, None, Order::Ascending),
+        &[
+            Some((b"foo1", b"bar1")),
+            Some((b"foo2", b"bar2")),
+            Some((b"foo3", b"bar3")),
+            None
+        ];
+        "no bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), None, Order::Ascending),
+        &[
+            Some((b"foo2", b"bar2")),
+            Some((b"foo3", b"bar3")),
+            None
+        ];
+        "min bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(None, Some(b"foo3".to_vec()), Order::Ascending),
+        &[
+            Some((b"foo1", b"bar1")),
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "max bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), Some(b"foo3".to_vec()), Order::Ascending),
+        &[
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min max bound ascending"
+    )]
+    // --- Descending ---
+    #[test_case(
+        Iterator::new(None, None, Order::Descending),
+        &[
+            Some((b"foo3", b"bar3")),
+            Some((b"foo2", b"bar2")),
+            Some((b"foo1", b"bar1")),
+            None
+        ];
+        "no bound descending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), None, Order::Descending),
+        &[
+            Some((b"foo3", b"bar3")),
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min bound descending"
+    )]
+    #[test_case(
+        Iterator::new(None, Some(b"foo3".to_vec()), Order::Descending),
+        &[
+            Some((b"foo2", b"bar2")),
+            Some((b"foo1", b"bar1")),
+            None
+        ];
+        "max bound descending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), Some(b"foo3".to_vec()), Order::Descending),
+        &[
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min max bound descending"
+    )]
+    fn iterator(iterator: Iterator, read: &[Option<(&[u8], &[u8])>]) {
+        let (mut env, ..) = compile(EMPTY_WAT, None);
+
+        env.storage.write(b"foo1", b"bar1");
+        env.storage.write(b"foo2", b"bar2");
+        env.storage.write(b"foo3", b"bar3");
+
+        env.add_iterator(iterator);
+
+        for assert in read {
+            let result = env.advance_iterator(0).unwrap();
+            assert_eq!(result, assert.map(|(k, v)| { (k.to_vec(), v.to_vec()) }));
+        }
+    }
+
+    #[test]
+    fn multiple_iterator() {
+        let (mut env, ..) = compile(EMPTY_WAT, None);
+
+        let advance_and_assert =
+            |env: &mut Environment, id: i32, assert: Option<(&[u8], &[u8])>| {
+                let record = env.advance_iterator(id).unwrap();
+                assert_eq!(record, assert.map(|(k, v)| { (k.to_vec(), v.to_vec()) }));
+            };
+
+        env.storage.write(b"foo1", b"bar1");
+        env.storage.write(b"foo2", b"bar2");
+        env.storage.write(b"foo3", b"bar3");
+
+        let iterator = Iterator::new(None, None, Order::Ascending);
+        let iter_id_0 = env.add_iterator(iterator);
+        assert_eq!(iter_id_0, 0);
+
+        advance_and_assert(&mut env, 0, Some((b"foo1", b"bar1")));
+
+        let iterator = Iterator::new(Some(b"foo1".to_vec()), None, Order::Ascending);
+        let iter_id_1 = env.add_iterator(iterator);
+        assert_eq!(iter_id_1, 1);
+
+        advance_and_assert(&mut env, 0, Some((b"foo2", b"bar2")));
+        advance_and_assert(&mut env, 1, Some((b"foo1", b"bar1")));
+        advance_and_assert(&mut env, 0, Some((b"foo3", b"bar3")));
+        advance_and_assert(&mut env, 0, None);
+        advance_and_assert(&mut env, 0, None);
+
+        // Add another key-value pair to the storage
+        env.storage.write(b"foo4", b"bar4");
+
+        advance_and_assert(&mut env, 0, Some((b"foo4", b"bar4")));
+
+        advance_and_assert(&mut env, 1, Some((b"foo2", b"bar2")));
+
+        // Clear iterators
+        env.clear_iterators();
+
+        env.advance_iterator(0).unwrap_err();
+
+        let iterator = Iterator::new(None, None, Order::Ascending);
+        let iter_id_2 = env.add_iterator(iterator);
+        assert_eq!(iter_id_2, 2);
     }
 }
