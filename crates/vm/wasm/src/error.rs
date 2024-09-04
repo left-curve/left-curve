@@ -52,16 +52,12 @@ pub enum VmError {
     },
 
     #[error("region has a 0 offset")]
-    RegionZeroOffset {},
+    RegionZeroOffset,
 
     #[error("region length exceeds capacity! length: {length}, capacity: {capacity}")]
     RegionLengthExceedsCapacity { length: u32, capacity: u32 },
 
-    #[error(
-        "region exceeds address space! offset: {}, capacity: {}",
-        offset,
-        capacity
-    )]
+    #[error("region exceeds address space! offset: {offset}, capacity: {capacity}")]
     RegionOutOfRange { offset: u32, capacity: u32 },
 
     #[error("unexpected return value count! name: {name}, expect: {expect}, actual: {actual}")]
