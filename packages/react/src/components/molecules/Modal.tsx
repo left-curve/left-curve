@@ -1,3 +1,5 @@
+"use client";
+
 import type React from "react";
 import { type PropsWithChildren, useRef } from "react";
 import ReactDOM from "react-dom";

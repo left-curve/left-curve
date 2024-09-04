@@ -1,2 +1,10 @@
-export { useWizard, WizardContainer } from "./useWizard";
-export { GrugContext, GrugProvider, type GrugProviderProps } from "./GrugProvider";
+export {
+  WizardContainer,
+  useWizard,
+} from "./WizardProvider";
+
+export {
+  type GrugProviderProps,
+  GrugProvider,
+  useGrugContext,
+} from "./GrugProvider";

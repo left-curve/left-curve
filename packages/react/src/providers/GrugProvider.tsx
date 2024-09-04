@@ -1,7 +1,7 @@
 "use client";
 
 import type { Config } from "@leftcurve/types";
-import { type PropsWithChildren, createContext, createElement } from "react";
+import { type PropsWithChildren, createContext, createElement, useContext } from "react";
 
 export const GrugContext = createContext<Config | undefined>(undefined);
 
@@ -16,3 +16,9 @@ export const GrugProvider: React.FC<React.PropsWithChildren<GrugProviderProps>> 
 
   return createElement(GrugContext.Provider, { value: config }, children);
 };
+
+export function useGrugContext() {
+  const context = useContext(GrugContext);
+  if (!context) throw new Error("GrugProvider not found");
+  return context;
+}

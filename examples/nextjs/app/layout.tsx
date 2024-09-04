@@ -33,7 +33,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${grotesk.variable} flex flex-col min-h-screen w-full`}>
         <Providers>
-          {/* This is an example components and will be removed in the near future */}
           <ExampleHeader />
           <main className="flex flex-1 bg-stone-200">{children}</main>
           <ModalRoot />

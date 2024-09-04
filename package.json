@@ -6,7 +6,7 @@
     "dev": "turbo dev",
     "doc": "typedoc",
     "lerna": "lerna",
-    "storybook": "pnpm -F react sb:dev",
+    "storybook": "pnpm react sb:dev",
     "lint:pkg": "turbo lint --filter=\"{./packages/**}...\"",
     "lint:app": "turbo lint --filter=\"{./apps/superapp}...\"",
     "dev:app": "turbo dev --filter=\"{./apps/superapp}...\"",
@@ -16,7 +16,18 @@
     "test:app": "turbo test --filter=\"{./apps/superapp}...\"",
     "build": "turbo build",
     "build:app": "pnpm build:pkg && pnpm -F superapp build:cf",
-    "build:pkg": "turbo build --filter=\"{./packages/**}...\""
+    "build:pkg": "turbo build --filter=\"{./packages/**}...\"",
+    "example:vite": "pnpm -F example-vite",
+    "example:next": "pnpm -F example-nextjs",
+    "example:node": "pnpm -F example-nodejs",
+    "config": "pnpm -F config",
+    "kit": "pnpm -F connect-kit",
+    "crypto": "pnpm -F crypto",
+    "encoding": "pnpm -F encoding",
+    "react": "pnpm -F react",
+    "sdk": "pnpm -F sdk",
+    "types": "pnpm -F types",
+    "utils": "pnpm -F utils"
   },
   "engines": {
     "pnpm": ">=9.0.0",

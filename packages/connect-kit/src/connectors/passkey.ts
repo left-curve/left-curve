@@ -10,7 +10,7 @@ type PasskeyConnectorParameters = {
   icon?: string;
 };
 
-export function passkey(parameters: PasskeyConnectorParameters) {
+export function passkey(parameters: PasskeyConnectorParameters = {}) {
   let _transport: Transport;
   let _username: string;
   let _client: Client;

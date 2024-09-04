@@ -1,5 +1,7 @@
-/** @type {import('tailwindcss').Config} */
-export default {
+import { tailwindConfig } from "@leftcurve/config/tailwind/config";
+import type { Config } from "tailwindcss";
+
+const config: Config = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -9,4 +11,7 @@ export default {
     extend: {},
   },
   plugins: [],
+  presets: [tailwindConfig],
 };
+
+export default config;

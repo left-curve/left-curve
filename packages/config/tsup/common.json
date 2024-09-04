@@ -1,10 +1,9 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/tsup/schema.json",
   "dts": true,
   "shims": true,
   "bundle": true,
   "outDir": "build",
-  "platform": "node",
+  "platform": "neutral",
   "target": "esnext",
   "format": ["esm", "cjs"],
   "treeshake": "recommended"
