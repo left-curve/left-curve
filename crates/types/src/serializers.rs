@@ -107,7 +107,7 @@ where
     where
         D: BorshDeserialize,
     {
-        borsh::from_slice(self.as_ref()).map_err(|err| StdError::deserialize::<T, _>("borsh", err))
+        borsh::from_slice(self.as_ref()).map_err(|err| StdError::deserialize::<D, _>("borsh", err))
     }
 }
 
@@ -145,6 +145,6 @@ where
     where
         D: Message + Default,
     {
-        D::decode(self.as_ref()).map_err(|err| StdError::deserialize::<T, _>("protobuf", err))
+        D::decode(self.as_ref()).map_err(|err| StdError::deserialize::<D, _>("protobuf", err))
     }
 }
