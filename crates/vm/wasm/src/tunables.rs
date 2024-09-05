@@ -5,38 +5,41 @@ use {
             MemoryError, MemoryStyle, TableStyle, VMMemory, VMMemoryDefinition, VMTable,
             VMTableDefinition,
         },
-        MemoryType, Pages, TableType, Tunables, WASM_PAGE_SIZE,
+        MemoryType, Pages, TableType, Tunables,
     },
 };
 
-/// Wasm memory limit in `MiB`.
-pub const WASM_MEMORY_LIMIT: usize = 32;
-/// Wasm memory limit in `Pages`.
-pub const WASM_PAGES_LIMIT: Pages =
-    Pages((WASM_MEMORY_LIMIT * 1024 * 1024 / WASM_PAGE_SIZE) as u32);
+const ERR_MIN_EXCEEDS_ALLOWED: &str = "minimum exceeds the allowed memory limit";
+
+const ERR_MAX_EXCEEDS_ALLOWED: &str = "maximum exceeds the allowed memory limit";
+
+const ERR_MAX_UNSET: &str = "maximum unset";
 
 /// A custom tunables that allows to set a memory limit.
 ///
-/// After adjusting the memory limits, it delegates all other logic
-/// to the base tunables.
-pub struct LimitingTunables<T: Tunables> {
-    /// The maxium a linear memory is allowed to be (in Wasm pages, 65 KiB each).
+/// After adjusting the memory limits, it delegates all other logic to the base
+/// tunables.
+pub struct LimitingTunables<T> {
+    /// The base implementation we delegate all the logic to.
+    base: T,
+    /// The maximum a linear memory is allowed to be (in Wasm pages, 65 KiB each).
     /// Since Wasmer ensures there is only none or one memory, this is practically
     /// an upper limit for the guest memory.
     limit: Pages,
-    /// The base implementation we delegate all the logic to
-    base: T,
 }
 
-impl<T: Tunables> LimitingTunables<T> {
-    pub fn new(base: T, limit: Pages) -> Self {
-        Self { limit, base }
+impl<T> LimitingTunables<T> {
+    pub fn new(base: T, limit: u32) -> Self {
+        Self {
+            base,
+            limit: Pages(limit),
+        }
     }
 
-    /// Takes in input memory type as requested by the guest and sets
-    /// a maximum if missing. The resulting memory type is final if
-    /// valid. However, this can produce invalid types, such that
-    /// validate_memory must be called before creating the memory.
+    /// Takes in input memory type as requested by the guest and sets a maximum
+    /// if missing. The resulting memory type is final if valid. However, this
+    /// can produce invalid types, such that `validate_memory` must be called
+    /// before creating the memory.
     fn adjust_memory(&self, requested: &MemoryType) -> MemoryType {
         let mut adjusted = *requested;
         if requested.maximum.is_none() {
@@ -49,26 +52,25 @@ impl<T: Tunables> LimitingTunables<T> {
     /// Call this after adjusting the memory.
     fn validate_memory(&self, ty: &MemoryType) -> Result<(), MemoryError> {
         if ty.minimum > self.limit {
-            return Err(MemoryError::Generic(
-                "Minimum exceeds the allowed memory limit".to_string(),
-            ));
+            return Err(MemoryError::Generic(ERR_MIN_EXCEEDS_ALLOWED.to_string()));
         }
 
-        if let Some(max) = ty.maximum {
-            if max > self.limit {
-                return Err(MemoryError::Generic(
-                    "Maximum exceeds the allowed memory limit".to_string(),
-                ));
-            }
-        } else {
-            return Err(MemoryError::Generic("Maximum unset".to_string()));
+        let Some(max) = ty.maximum else {
+            return Err(MemoryError::Generic(ERR_MAX_UNSET.to_string()));
+        };
+
+        if max > self.limit {
+            return Err(MemoryError::Generic(ERR_MAX_EXCEEDS_ALLOWED.to_string()));
         }
 
         Ok(())
     }
 }
 
-impl<T: Tunables> Tunables for LimitingTunables<T> {
+impl<T> Tunables for LimitingTunables<T>
+where
+    T: Tunables,
+{
     /// Construct a `MemoryStyle` for the provided `MemoryType`
     ///
     /// Delegated to base.
@@ -86,7 +88,8 @@ impl<T: Tunables> Tunables for LimitingTunables<T> {
 
     /// Create a memory owned by the host given a [`MemoryType`] and a [`MemoryStyle`].
     ///
-    /// The requested memory type is validated, adjusted to the limited and then passed to base.
+    /// The requested memory type is validated, adjusted to the limited and then
+    /// passed to base.
     fn create_host_memory(
         &self,
         ty: &MemoryType,
@@ -142,6 +145,8 @@ mod tests {
         wasmer::{sys::BaseTunables, Target},
     };
 
+    const MOCK_LIMIT: u32 = 12;
+
     #[test_case(
         MemoryType::new(3, None, true),
         Some(MemoryType::new(3, Some(12), true));
@@ -173,10 +178,10 @@ mod tests {
         "minimum greater than limit"
     )]
     fn adjust_memory(requested: MemoryType, compare: Option<MemoryType>) {
-        let limit = Pages(12);
-        let limiting = LimitingTunables::new(BaseTunables::for_target(&Target::default()), limit);
+        let base = BaseTunables::for_target(&Target::default());
+        let tunables = LimitingTunables::new(base, MOCK_LIMIT);
         assert_eq!(
-            limiting.adjust_memory(&requested),
+            tunables.adjust_memory(&requested),
             compare.unwrap_or(requested)
         );
     }
@@ -193,12 +198,12 @@ mod tests {
     )]
     #[test_case(
         MemoryType::new(3, Some(20), true),
-        Err(MemoryError::Generic("Maximum exceeds the allowed memory limit".to_string()));
+        Err(MemoryError::Generic(ERR_MAX_EXCEEDS_ALLOWED.to_string()));
         "maximum greater than limit"
     )]
     #[test_case(
         MemoryType::new(3, None, true),
-        Err(MemoryError::Generic("Maximum unset".to_string()));
+        Err(MemoryError::Generic(ERR_MAX_UNSET.to_string()));
         "maximum not set"
     )]
     #[test_case(
@@ -208,12 +213,12 @@ mod tests {
     )]
     #[test_case(
         MemoryType::new(20, Some(20), true),
-        Err(MemoryError::Generic("Minimum exceeds the allowed memory limit".to_string()));
+        Err(MemoryError::Generic(ERR_MIN_EXCEEDS_ALLOWED.to_string()));
         "minimum greater than limit"
     )]
     fn validate_memory(request: MemoryType, result: Result<(), MemoryError>) {
-        let limit = Pages(12);
-        let limiting = LimitingTunables::new(BaseTunables::for_target(&Target::default()), limit);
-        assert_eq!(result, limiting.validate_memory(&request));
+        let base = BaseTunables::for_target(&Target::default());
+        let tunables = LimitingTunables::new(base, MOCK_LIMIT);
+        assert_eq!(tunables.validate_memory(&request), result);
     }
 }

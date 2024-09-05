@@ -2,17 +2,16 @@ use {
     crate::{
         blake2b_512, blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
         db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
-        limiting_tunables::{LimitingTunables, WASM_PAGES_LIMIT},
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
+        write_to_memory, Cache, Environment, Gatekeeper, LimitingTunables, VmError, VmResult,
     },
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{
         imports, sys::BaseTunables, CompilerConfig, Engine, Function, FunctionEnv, Module,
-        NativeEngineExt, Singlepass, Store, StoreMut, Target,
+        NativeEngineExt, Singlepass, Store, StoreMut, Target, WASM_PAGE_SIZE,
     },
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
@@ -27,6 +26,29 @@ pub const GAS_PER_OPERATION: u64 = 1;
 ///
 /// Without a limit, this can leads to stack overflow which halts the chain.
 pub const MAX_QUERY_DEPTH: usize = 3;
+
+/// Wasm memory size limit in MiB.
+///
+/// ## Note
+///
+/// Do not confuse MiB (mebibyte) with MB (megabyte):
+///
+/// - 1 MiB = 1,024 KiB = 1,024 * 1,024 bytes
+/// - 1 MB  = 1,000 KB  = 1,000 * 1,000 bytes
+pub const MAX_MEMORY_MEBI: usize = 32;
+
+/// Wasm memory size limit in pages.
+///
+/// In WebAssembly, a memory page is 64 KiB. There can be a maximum of 65,536
+/// pages.
+///
+/// In Grug, we limit each contract instance's memory to 32 MiB or 512 pages,
+/// consistent with [CosmWasm](https://github.com/CosmWasm/wasmd/blob/v0.53.0/x/wasm/keeper/keeper.go#L38-L40).
+pub const MAX_MEMORY_PAGES: u32 = (MAX_MEMORY_MEBI * 1024 * 1024 / WASM_PAGE_SIZE) as u32;
+
+// Assert at compile time that our instance memory is always smaller than the
+// max memory that Wasmer can support.
+const _: () = assert!(MAX_MEMORY_PAGES < wasmer::WASM_MAX_PAGES);
 
 // ------------------------------------ vm -------------------------------------
 
@@ -172,8 +194,9 @@ fn compile_wasmer(code: &[u8]) -> VmResult<(Module, Engine)> {
 
     let mut engine = Engine::from(compiler);
 
+    // Set memory limit for Wasm instances.
     let base = BaseTunables::for_target(&Target::default());
-    let tunables = LimitingTunables::new(base, WASM_PAGES_LIMIT);
+    let tunables = LimitingTunables::new(base, MAX_MEMORY_PAGES);
     engine.set_tunables(tunables);
 
     let module = Module::new(&engine, code)?;
