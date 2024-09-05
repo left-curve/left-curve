@@ -211,7 +211,7 @@ mod tests {
         };
         "exceeding address space 2"
     )]
-    fn unvalid_regions<F>(region: UncheckedRegion, callback: F)
+    fn validating_region<F>(region: UncheckedRegion, callback: F)
     where
         F: FnOnce(VmResult<Region>),
     {
