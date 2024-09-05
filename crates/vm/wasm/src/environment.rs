@@ -273,3 +273,415 @@ impl Environment {
         }
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod test {
+    use {
+        crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
+        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
+        grug_types::{
+            BlockInfo, Hash256, MockStorage, NumberConst, Order, StdError, Storage, Timestamp,
+            Uint64,
+        },
+        std::sync::Arc,
+        test_case::test_case,
+        wasmer::{
+            imports, CompilerConfig, Engine, Instance, Module, RuntimeError, Singlepass, Store,
+            Value,
+        },
+        wasmer_middlewares::{metering::set_remaining_points, Metering},
+    };
+
+    const MOCK_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;
+
+    const MOCK_BLOCK: BlockInfo = BlockInfo {
+        height: Uint64::ONE,
+        timestamp: Timestamp::from_nanos(100),
+        hash: Hash256::ZERO,
+    };
+
+    fn setup_test(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
+        let (gas_checkpoint, gas_tracker) = if let Some(max_gas) = max_gas {
+            (max_gas, GasTracker::new_limited(max_gas))
+        } else {
+            (u64::MAX, GasTracker::new_limitless())
+        };
+
+        // Compile the contract; create Wasmer store and instance.
+        let (store, instance) = {
+            let mut compiler = Singlepass::new();
+            compiler.push_middleware(Arc::new(Metering::new(0, |_| GAS_PER_OPERATION)));
+
+            let engine = Engine::from(compiler);
+            let module = Module::new(&engine, wat).unwrap();
+
+            let mut store = Store::new(engine);
+
+            let instance = Instance::new(&mut store, &module, &imports! {}).unwrap();
+            let instance = Box::new(instance);
+
+            set_remaining_points(&mut store, &instance, gas_checkpoint);
+
+            (store, instance)
+        };
+
+        // Create the function environment.
+        //
+        // For production (in `WasmVm::build_instance`) this needs to be done
+        // before creating the instance, but here for testing purpose, we don't
+        // need any import function, so this can be done later, which is simpler.
+        let env = {
+            let storage = Shared::new(MockStorage::new());
+            let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
+
+            let querier_provider = QuerierProvider::new(
+                WasmVm::new(0),
+                Box::new(storage),
+                gas_tracker.clone(),
+                MOCK_BLOCK,
+            );
+
+            let mut env = Environment::new(
+                storage_provider,
+                true,
+                querier_provider,
+                10,
+                gas_tracker,
+                gas_checkpoint,
+            );
+
+            env.set_wasmer_memory(&instance).unwrap();
+            env.set_wasmer_instance(&instance).unwrap();
+            env
+        };
+
+        (env, store, instance)
+    }
+
+    // 0 in - 1 out
+    #[test_case(
+        "0_1",
+        vec![],
+        Ok(vec![42]),
+        1;
+        "0 in 1 out: ok"
+    )]
+    #[test_case(
+        "0_1",
+        vec![],
+        Err(VmError::ReturnCount { name: "0_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "0 in - 1 out: fails return count"
+    )]
+    #[test_case(
+        "0_1",
+        vec![1],
+        Err(VmError::Runtime(RuntimeError::new("Parameters of type [I32] did not match signature [] -> [I32]"))),
+        1;
+        "0 in - 1 out: fails invalid signature"
+    )]
+    // 1 in - 0 out
+    #[test_case(
+        "1_0",
+        vec![20],
+        Ok(vec![]),
+        0;
+        "1 in - 0 out: ok"
+    )]
+    #[test_case(
+        "1_0",
+        vec![20],
+        Err(VmError::ReturnCount { name: "1_0".to_string(), expect: 1, actual: 0 }),
+        1;
+        "1 in - 0 out: fails return count"
+    )]
+    // 1 in - 1 out
+    #[test_case(
+        "1_1",
+        vec![20],
+        Ok(vec![40]),
+        1;
+        "1 in - 1 out: ok"
+    )]
+    #[test_case(
+        "1_1",
+        vec![20],
+        Err(VmError::ReturnCount { name: "1_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "1 in - 1 out: fails return count"
+    )]
+    // 2 in 1 out
+    #[test_case(
+        "2_1",
+        vec![20, 22],
+        Ok(vec![42]),
+        1;
+        "2 in 1 out: ok"
+    )]
+    #[test_case(
+        "2_1",
+        vec![20, 22],
+        Err(VmError::ReturnCount { name: "2_1".to_string(), expect: 0, actual: 1 }),
+        0;
+        "2 in 1 out: fails return count"
+    )]
+    fn call_functions(
+        name: &'static str,
+        args: Vec<i32>,
+        output: VmResult<Vec<i32>>,
+        output_args: i8,
+    ) {
+        let args: Vec<Value> = args.into_iter().map(Into::into).collect();
+
+        let wat = br#"
+          (module
+            (memory (export "memory") 1)
+            ;; 0 in - 1 out
+            (func $0_1 (result i32)
+              i32.const 42)
+            ;; 1 in - 1 out
+            (func $1_1 (param i32) (result i32)
+              local.get 0
+              i32.const 2
+              i32.mul)
+            ;; 1 in - 0 out
+            (func $1_0 (param i32)
+              local.get 0
+              drop)
+            ;; 2 in - 1 out
+            (func $2_1 (param i32) (param i32) (result i32)
+              local.get 0
+              local.get 1
+              i32.add)
+            ;; Exports
+            (export "0_1" (func $0_1))
+            (export "1_1" (func $1_1))
+            (export "1_0" (func $1_0))
+            (export "2_1" (func $2_1))
+        )
+        "#;
+
+        let (mut env, mut store, _instance) = setup_test(wat, None);
+
+        let result = match output_args {
+            0 => env.call_function0(&mut store, name, &args).map(|_| vec![]),
+            1 => env
+                .call_function1(&mut store, name, &args)
+                .map(|val| vec![val.i32().unwrap()]),
+            _ => panic!("Invalid number of arguments"),
+        };
+
+        match (&result, &output) {
+            (Ok(result), Ok(output)) => {
+                assert_eq!(result, output);
+            },
+            (Err(result), Err(output)) => {
+                assert_eq!(result.to_string(), output.to_string());
+            },
+            _ => panic!("Mismatched results: \n{:?}, \n{:?}", result, output),
+        }
+    }
+
+    #[test]
+    fn wasmer_gas_consumption() {
+        let wat = br#"
+        (module
+          (memory (export "memory") 1)
+          ;; Consume 5 gas, 4 gas per nop + 1 gas for end
+          (func $consume_gas
+            (nop)
+            (nop)
+            (nop)
+            (nop)
+          )
+          (export "consume_gas" (func $consume_gas))
+        )"#;
+
+        let consume = |i, env: &mut Environment, store: &mut Store| -> VmResult<()> {
+            for _ in 0..i {
+                env.call_function0(store, "consume_gas", &[])?;
+            }
+            Ok(())
+        };
+
+        let (mut env, mut store, _instance) = setup_test(wat, Some(100));
+
+        consume(1, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(95));
+
+        consume(10, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(45));
+
+        consume(9, &mut env, &mut store).unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(0));
+
+        assert!(matches!(
+            consume(1, &mut env, &mut store).unwrap_err(),
+            VmError::Std(StdError::OutOfGas {
+                limit: 100,
+                used: 100,
+                comment: "consume_gas",
+            })
+        ));
+    }
+
+    #[test]
+    fn external_gas_consumption() {
+        let (mut env, mut store, _instance) = setup_test(MOCK_WAT, Some(100));
+
+        env.consume_external_gas(&mut store, 10, "comment").unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(90));
+
+        env.consume_external_gas(&mut store, 90, "comment").unwrap();
+        assert_eq!(env.gas_tracker.remaining(), Some(0));
+
+        let err = env
+            .consume_external_gas(&mut store, 1, "comment")
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            VmError::Std(StdError::OutOfGas {
+                limit: 100,
+                used: 101,
+                comment: "comment",
+            })
+        ));
+    }
+
+    // --- Ascending ---
+    #[test_case(
+        Iterator::new(None, None, Order::Ascending),
+        &[
+            Some((b"foo1", b"bar1")),
+            Some((b"foo2", b"bar2")),
+            Some((b"foo3", b"bar3")),
+            None
+        ];
+        "no bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), None, Order::Ascending),
+        &[
+            Some((b"foo2", b"bar2")),
+            Some((b"foo3", b"bar3")),
+            None
+        ];
+        "min bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(None, Some(b"foo3".to_vec()), Order::Ascending),
+        &[
+            Some((b"foo1", b"bar1")),
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "max bound ascending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), Some(b"foo3".to_vec()), Order::Ascending),
+        &[
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min max bound ascending"
+    )]
+    // --- Descending ---
+    #[test_case(
+        Iterator::new(None, None, Order::Descending),
+        &[
+            Some((b"foo3", b"bar3")),
+            Some((b"foo2", b"bar2")),
+            Some((b"foo1", b"bar1")),
+            None
+        ];
+        "no bound descending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), None, Order::Descending),
+        &[
+            Some((b"foo3", b"bar3")),
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min bound descending"
+    )]
+    #[test_case(
+        Iterator::new(None, Some(b"foo3".to_vec()), Order::Descending),
+        &[
+            Some((b"foo2", b"bar2")),
+            Some((b"foo1", b"bar1")),
+            None
+        ];
+        "max bound descending"
+    )]
+    #[test_case(
+        Iterator::new(Some(b"foo2".to_vec()), Some(b"foo3".to_vec()), Order::Descending),
+        &[
+            Some((b"foo2", b"bar2")),
+            None
+        ];
+        "min max bound descending"
+    )]
+    fn iterator(iterator: Iterator, read: &[Option<(&[u8], &[u8])>]) {
+        let (mut env, ..) = setup_test(MOCK_WAT, None);
+
+        env.storage.write(b"foo1", b"bar1");
+        env.storage.write(b"foo2", b"bar2");
+        env.storage.write(b"foo3", b"bar3");
+
+        env.add_iterator(iterator);
+
+        for assert in read {
+            let result = env.advance_iterator(0).unwrap();
+            assert_eq!(result, assert.map(|(k, v)| { (k.to_vec(), v.to_vec()) }));
+        }
+    }
+
+    #[test]
+    fn multiple_iterators() {
+        let (mut env, ..) = setup_test(MOCK_WAT, None);
+
+        let advance_and_assert = |env: &mut Environment, id, expect: Option<(&[u8], &[u8])>| {
+            let record = env.advance_iterator(id).unwrap();
+            assert_eq!(record, expect.map(|(k, v)| (k.to_vec(), v.to_vec())));
+        };
+
+        env.storage.write(b"foo1", b"bar1");
+        env.storage.write(b"foo2", b"bar2");
+        env.storage.write(b"foo3", b"bar3");
+
+        let iterator = Iterator::new(None, None, Order::Ascending);
+        let iter_id_0 = env.add_iterator(iterator);
+        assert_eq!(iter_id_0, 0);
+
+        advance_and_assert(&mut env, 0, Some((b"foo1", b"bar1")));
+
+        let iterator = Iterator::new(Some(b"foo1".to_vec()), None, Order::Ascending);
+        let iter_id_1 = env.add_iterator(iterator);
+        assert_eq!(iter_id_1, 1);
+
+        advance_and_assert(&mut env, 0, Some((b"foo2", b"bar2")));
+        advance_and_assert(&mut env, 1, Some((b"foo1", b"bar1")));
+        advance_and_assert(&mut env, 0, Some((b"foo3", b"bar3")));
+        advance_and_assert(&mut env, 0, None);
+        advance_and_assert(&mut env, 0, None);
+
+        // Add another key-value pair to the storage
+        env.storage.write(b"foo4", b"bar4");
+
+        advance_and_assert(&mut env, 0, Some((b"foo4", b"bar4")));
+        advance_and_assert(&mut env, 1, Some((b"foo2", b"bar2")));
+
+        // Clear iterators
+        env.clear_iterators();
+
+        env.advance_iterator(0).unwrap_err();
+
+        let iterator = Iterator::new(None, None, Order::Ascending);
+        let iter_id_2 = env.add_iterator(iterator);
+        assert_eq!(iter_id_2, 2);
+    }
+}
