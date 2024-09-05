@@ -1,5 +1,5 @@
 use {
-    crate::{Environment, Region, VmError, VmResult},
+    crate::{Environment, Region, UncheckedRegion, VmError, VmResult},
     data_encoding::BASE64,
     wasmer::{AsStoreMut, AsStoreRef, MemoryView, WasmPtr},
 };
@@ -62,9 +62,8 @@ where
 }
 
 fn read_region(memory: &MemoryView, offset: u32) -> VmResult<Region> {
-    let wptr = <WasmPtr<Region>>::new(offset);
-    wptr.deref(memory).read().map_err(Into::into)
-    // TODO: do some sanity checks on the Region?
+    let wptr = <WasmPtr<UncheckedRegion>>::new(offset);
+    wptr.deref(memory).read()?.try_into()
 }
 
 fn write_region(memory: &MemoryView, offset: u32, region: Region) -> VmResult<()> {
