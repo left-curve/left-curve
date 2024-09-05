@@ -279,10 +279,12 @@ impl Environment {
 #[cfg(test)]
 mod test {
     use {
-        super::Environment,
-        crate::{Iterator, VmError, VmResult, WasmVm},
+        crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
-        grug_types::{BlockInfo, Duration, HashExt, MockStorage, Order, StdError, Storage},
+        grug_types::{
+            BlockInfo, Hash256, MockStorage, NumberConst, Order, StdError, Storage, Timestamp,
+            Uint64,
+        },
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -292,53 +294,70 @@ mod test {
         wasmer_middlewares::{metering::set_remaining_points, Metering},
     };
 
-    const EMPTY_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;
+    const MOCK_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;
 
-    fn compile(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
-        let mut compiler = Singlepass::new();
+    const MOCK_BLOCK: BlockInfo = BlockInfo {
+        height: Uint64::ONE,
+        timestamp: Timestamp::from_nanos(100),
+        hash: Hash256::ZERO,
+    };
 
+    fn setup_test(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
         let (gas_checkpoint, gas_tracker) = if let Some(max_gas) = max_gas {
             (max_gas, GasTracker::new_limited(max_gas))
         } else {
             (u64::MAX, GasTracker::new_limitless())
         };
 
-        compiler.push_middleware(Arc::new(Metering::new(0, |_| 1)));
+        // Compile the contract; create Wasmer store and instance.
+        let (store, instance) = {
+            let mut compiler = Singlepass::new();
+            compiler.push_middleware(Arc::new(Metering::new(0, |_| GAS_PER_OPERATION)));
 
-        let engine = Engine::from(compiler);
-        let module = Module::new(&engine, wat).unwrap();
+            let engine = Engine::from(compiler);
+            let module = Module::new(&engine, wat).unwrap();
 
-        let storage = Shared::new(MockStorage::new());
-        let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
+            let mut store = Store::new(engine);
 
-        let block_info = BlockInfo {
-            height: 1_u64.into(),
-            timestamp: Duration::from_nanos(100),
-            hash: b"hash".hash256(),
+            let instance = Instance::new(&mut store, &module, &imports! {}).unwrap();
+            let instance = Box::new(instance);
+
+            set_remaining_points(&mut store, &instance, gas_checkpoint);
+
+            (store, instance)
         };
 
-        let mut wasmer_store = Store::new(engine);
-        let instance = Box::new(Instance::new(&mut wasmer_store, &module, &imports! {}).unwrap());
-        set_remaining_points(&mut wasmer_store, &instance, gas_checkpoint);
+        // Create the function environment.
+        //
+        // For production (in `WasmVm::build_instance`) this needs to be done
+        // before creating the instance, but here for testing purpose, we don't
+        // need any import function, so this can be done later, which is simpler.
+        let env = {
+            let storage = Shared::new(MockStorage::new());
+            let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
 
-        let mut env = Environment::new(
-            storage_provider,
-            true,
-            QuerierProvider::new(
+            let querier_provider = QuerierProvider::new(
                 WasmVm::new(0),
                 Box::new(storage),
                 gas_tracker.clone(),
-                block_info,
-            ),
-            10,
-            gas_tracker,
-            gas_checkpoint,
-        );
+                MOCK_BLOCK,
+            );
 
-        env.set_wasmer_memory(&instance).unwrap();
-        env.set_wasmer_instance(instance.as_ref()).unwrap();
+            let mut env = Environment::new(
+                storage_provider,
+                true,
+                querier_provider,
+                10,
+                gas_tracker,
+                gas_checkpoint,
+            );
 
-        (env, wasmer_store, instance)
+            env.set_wasmer_memory(&instance).unwrap();
+            env.set_wasmer_instance(&instance).unwrap();
+            env
+        };
+
+        (env, store, instance)
     }
 
     // 0 in - 1 out
@@ -417,7 +436,7 @@ mod test {
         let args: Vec<Value> = args.into_iter().map(Into::into).collect();
 
         let wat = br#"
-        (module
+          (module
             (memory (export "memory") 1)
             ;; 0 in - 1 out
             (func $0_1 (result i32)
@@ -444,7 +463,7 @@ mod test {
         )
         "#;
 
-        let (mut env, mut store, _instance) = compile(wat, None);
+        let (mut env, mut store, _instance) = setup_test(wat, None);
 
         let result = match output_args {
             0 => env.call_function0(&mut store, name, &args).map(|_| vec![]),
@@ -469,15 +488,15 @@ mod test {
     fn wasmer_gas_consumption() {
         let wat = br#"
         (module
-            (memory (export "memory") 1)
-            ;; Consume 5 gas, 4 gas per nop + 1 gas for end
-            (func $consume_gas
-                (nop)
-                (nop)
-                (nop)
-                (nop)
-            )
-            (export "consume_gas" (func $consume_gas))
+          (memory (export "memory") 1)
+          ;; Consume 5 gas, 4 gas per nop + 1 gas for end
+          (func $consume_gas
+            (nop)
+            (nop)
+            (nop)
+            (nop)
+          )
+          (export "consume_gas" (func $consume_gas))
         )"#;
 
         let consume = |i, env: &mut Environment, store: &mut Store| -> VmResult<()> {
@@ -487,7 +506,7 @@ mod test {
             Ok(())
         };
 
-        let (mut env, mut store, _instance) = compile(wat, Some(100));
+        let (mut env, mut store, _instance) = setup_test(wat, Some(100));
 
         consume(1, &mut env, &mut store).unwrap();
         assert_eq!(env.gas_tracker.remaining(), Some(95));
@@ -510,7 +529,7 @@ mod test {
 
     #[test]
     fn external_gas_consumption() {
-        let (mut env, mut store, _instance) = compile(EMPTY_WAT, Some(100));
+        let (mut env, mut store, _instance) = setup_test(MOCK_WAT, Some(100));
 
         env.consume_external_gas(&mut store, 10, "comment").unwrap();
         assert_eq!(env.gas_tracker.remaining(), Some(90));
@@ -607,7 +626,7 @@ mod test {
         "min max bound descending"
     )]
     fn iterator(iterator: Iterator, read: &[Option<(&[u8], &[u8])>]) {
-        let (mut env, ..) = compile(EMPTY_WAT, None);
+        let (mut env, ..) = setup_test(MOCK_WAT, None);
 
         env.storage.write(b"foo1", b"bar1");
         env.storage.write(b"foo2", b"bar2");
@@ -622,14 +641,13 @@ mod test {
     }
 
     #[test]
-    fn multiple_iterator() {
-        let (mut env, ..) = compile(EMPTY_WAT, None);
+    fn multiple_iterators() {
+        let (mut env, ..) = setup_test(MOCK_WAT, None);
 
-        let advance_and_assert =
-            |env: &mut Environment, id: i32, assert: Option<(&[u8], &[u8])>| {
-                let record = env.advance_iterator(id).unwrap();
-                assert_eq!(record, assert.map(|(k, v)| { (k.to_vec(), v.to_vec()) }));
-            };
+        let advance_and_assert = |env: &mut Environment, id, expect: Option<(&[u8], &[u8])>| {
+            let record = env.advance_iterator(id).unwrap();
+            assert_eq!(record, expect.map(|(k, v)| (k.to_vec(), v.to_vec())));
+        };
 
         env.storage.write(b"foo1", b"bar1");
         env.storage.write(b"foo2", b"bar2");
@@ -655,7 +673,6 @@ mod test {
         env.storage.write(b"foo4", b"bar4");
 
         advance_and_assert(&mut env, 0, Some((b"foo4", b"bar4")));
-
         advance_and_assert(&mut env, 1, Some((b"foo2", b"bar2")));
 
         // Clear iterators
