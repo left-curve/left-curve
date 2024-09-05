@@ -18,7 +18,7 @@ use {
 };
 
 /// Gas cost per Wasmer operation.
-const GAS_PER_OPERATION: u64 = 1;
+pub const GAS_PER_OPERATION: u64 = 1;
 
 /// Maximum number of chained queries.
 ///
@@ -26,7 +26,7 @@ const GAS_PER_OPERATION: u64 = 1;
 /// calls contract C; so on.
 ///
 /// Without a limit, this can leads to stack overflow which halts the chain.
-const MAX_QUERY_DEPTH: usize = 3;
+pub const MAX_QUERY_DEPTH: usize = 3;
 
 // ------------------------------------ vm -------------------------------------
 
