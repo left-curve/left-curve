@@ -3,7 +3,7 @@ import { Secp256k1 } from "@leftcurve/crypto";
 import { encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
 
 import type { KeyPair } from "@leftcurve/crypto";
-import type { Credential, Signer } from "@leftcurve/types";
+import type { Signer } from "@leftcurve/types";
 import type { Message } from "@leftcurve/types";
 
 export class PrivateKeySigner implements Signer {
@@ -25,7 +25,7 @@ export class PrivateKeySigner implements Signer {
     this.#keyPair = keyPair;
   }
 
-  async getKeyId(): Promise<string> {
+  async getKeyHash(): Promise<string> {
     return encodeHex(ripemd160(this.#keyPair.publicKey)).toUpperCase();
   }
 
@@ -34,9 +34,9 @@ export class PrivateKeySigner implements Signer {
     const signature = await this.signBytes(tx);
 
     const credential = { secp256k1: encodeBase64(signature) };
-    const data = { keyHash: await this.getKeyId(), sequence };
+    const keyHash = await this.getKeyHash();
 
-    return { credential, data };
+    return { credential, keyHash };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {

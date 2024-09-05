@@ -17,15 +17,15 @@ export class WalletEvmSigner implements Signer {
     this.#wallet = wallet;
   }
 
-  async getKeyId(): Promise<string> {
+  async getKeyHash(): Promise<string> {
     const publicKey = await this.#wallet.getPublicKey();
-    const keyId = ripemd160(publicKey);
-    const signature = await this.#wallet.signMessage(keyId);
-    const verified = Secp256k1.verifySignature(keyId, signature, publicKey);
+    const keyHash = ripemd160(publicKey);
+    const signature = await this.#wallet.signMessage(keyHash);
+    const verified = Secp256k1.verifySignature(keyHash, signature, publicKey);
     if (!verified) {
       throw new Error("invalid signature");
     }
-    return encodeHex(keyId);
+    return encodeHex(keyHash);
   }
 
   async signTx(msgs: Message[], chainId: string, sequence: number) {
@@ -33,8 +33,8 @@ export class WalletEvmSigner implements Signer {
     const signature = await this.#wallet.signBytes(tx);
 
     const credential = { secp256k1: encodeBase64(signature) };
-    const data = { keyHash: await this.getKeyId(), sequence };
+    const keyHash = await this.getKeyHash();
 
-    return { credential, data };
+    return { credential, keyHash };
   }
 }

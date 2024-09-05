@@ -5,6 +5,7 @@ import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 async function execute() {
   const client = createUserClient({
     chain: localhost, // Its optional
+    username: "owner",
     signer: PrivateKeySigner.fromRandomKey(),
     transport: http("http://localhost:26657"),
   });

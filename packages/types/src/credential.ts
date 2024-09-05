@@ -1,3 +1,4 @@
+import type { Username } from "./account";
 import type { Base64 } from "./common";
 import type { KeyHash } from "./key";
 
@@ -6,6 +7,8 @@ export type Metadata = {
   keyHash: KeyHash;
   /** The sequence number this transaction was signed with. */
   sequence: number;
+  /** The username of the account that signed this transaction */
+  username: Username;
 };
 
 export type Credential =

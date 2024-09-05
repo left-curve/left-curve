@@ -1,6 +1,5 @@
 import type {
-  AccountIndex,
-  AccountInfo,
+  AccountType,
   Address,
   Chain,
   Client,
@@ -13,18 +12,18 @@ import { queryWasmSmart } from "./queryWasmSmart";
 
 export type GetAccountsByUsernameParameters = {
   username: Username;
-  startAfter?: number;
+  startAfter?: Address;
   limit?: number;
   height?: number;
 };
 
-export type GetAccountsByUsernameReturnType = Promise<Record<AccountIndex, AccountInfo>>;
+export type GetAccountsByUsernameReturnType = Promise<Record<Address, AccountType>>;
 
 /**
  * Enumerate all accounts associated with a username.
  * @param parameters
  * @param parameters.username The username to get accounts for.
- * @param parameters.startAfter The account index to start after.
+ * @param parameters.startAfter The address to start after.
  * @param parameters.limit The maximum number of accounts to return.
  * @param parameters.height The height at which to get the accounts.
  * @returns The accounts.

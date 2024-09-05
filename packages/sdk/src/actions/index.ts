@@ -105,10 +105,10 @@ export {
 } from "./public/getAccountTypeCodeHashes";
 
 export {
-  type GetKeyIdByKeyHashParameters,
-  type GetKeyIdByKeyHashReturnType,
-  getKeyIdByKeyHash,
-} from "./public/getKeyIdByKeyHash";
+  type GetUsersByKeyhashParameters,
+  type GetUsersByKeyHashReturnType,
+  getUsersByKeyHash,
+} from "./public/getUsersByKeyHash";
 
 export {
   type GetKeysByUsernameParameters,
@@ -117,22 +117,22 @@ export {
 } from "./public/getKeysByUsername";
 
 export {
-  type GetPublicKeyFromKeyIdParameters,
-  type GetPublicKeyFromKeyIdReturnType,
-  getPublicKeyFromKeyId,
-} from "./public/getPublicKeyFromKeyId";
+  type GetKeyParameters,
+  type GetKeyReturnType,
+  getKey,
+} from "./public/getKey";
 
 export {
-  type GetAccountIdByAddressParameters,
-  type GetAccountIdByAddressReturnType,
-  getAccountIdByAddress,
-} from "./public/getAccountIdByAddress";
+  type GetUsernameByAddressParameters,
+  type GetUsernameByAddressreturnType,
+  getUsernameByAddress,
+} from "./public/getUsernameByAddress";
 
 export {
-  type GetAccountInfoByAccountIdParameters,
-  type GetAccountInfoByAccountIdReturnType,
-  getAccountInfoByAccountId,
-} from "./public/getAccountInfoByAccountId";
+  type GetAccountTypeParameters,
+  type GetAccountTypeReturnType,
+  getAccountType,
+} from "./public/getAccountType";
 
 export {
   type GetAccountsByUsernameParameters,
@@ -151,6 +151,18 @@ export {
   type GetContractsInfoReturnType,
   getContractsInfo,
 } from "./public/getContractsInfo";
+
+export {
+  type GetNextAccountIndexParameters,
+  type GetNextAccountIndexReturnType,
+  getNextAccountIndex,
+} from "./public/getNextAccountIndex";
+
+export {
+  type GetNextAccountAddressParameters,
+  type GetNextAccountAddressReturnType,
+  getNextAccountAddress,
+} from "./public/getNextAccountAddress";
 
 /* -------------------------------------------------------------------------- */
 /*                                User Actions                                */

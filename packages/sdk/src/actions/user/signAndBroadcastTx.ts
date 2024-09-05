@@ -1,4 +1,13 @@
-import type { Address, Chain, Client, Hex, Message, Signer, Transport } from "@leftcurve/types";
+import type {
+  Address,
+  Chain,
+  Client,
+  Hex,
+  Message,
+  Metadata,
+  Signer,
+  Transport,
+} from "@leftcurve/types";
 import { getAccountSequence } from "../public/getAccountSequence";
 import { getChainInfo } from "../public/getChainInfo";
 import { simulate } from "../public/simulate";
@@ -24,9 +33,16 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     chainId = response.chainId;
   }
 
+  const { username } = client;
+
+  if (!username) {
+    throw new Error("client must have a username");
+  }
+
   const sequence = await getAccountSequence(client, { address: sender }).catch(() => 0);
 
-  const { credential, data } = await client.signer.signTx(msgs, chainId, sequence);
+  const { credential, keyHash } = await client.signer.signTx(msgs, chainId, sequence);
+  const data: Metadata = { keyHash, username, sequence };
 
   const { gasLimit } = gas
     ? { gasLimit: gas }

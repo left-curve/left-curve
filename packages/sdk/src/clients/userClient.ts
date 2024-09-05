@@ -16,7 +16,7 @@ export type UserClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer = Signer,
-> = RequiredBy<ClientConfig<transport, chain, signer>, "signer">;
+> = RequiredBy<ClientConfig<transport, chain, signer>, "signer" | "username">;
 
 export type UserClient<
   transport extends Transport = Transport,

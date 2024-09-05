@@ -1,11 +1,11 @@
 import { requestWebAuthnSignature, ripemd160, sha256 } from "@leftcurve/crypto";
 import { encodeBase64, encodeHex, encodeUtf8, serialize } from "@leftcurve/encoding";
 
-import type { Signer } from "@leftcurve/types";
+import type { KeyHash, Signer } from "@leftcurve/types";
 import type { Message } from "@leftcurve/types";
 
 export class WebauthnSigner implements Signer {
-  async getKeyId(): Promise<string> {
+  async getKeyHash(): Promise<KeyHash> {
     const { credentialId } = await requestWebAuthnSignature({
       challenge: crypto.getRandomValues(new Uint8Array(32)),
       rpId: window.location.hostname,
@@ -31,8 +31,8 @@ export class WebauthnSigner implements Signer {
     );
 
     const credential = { passkey: encodeBase64(webAuthnSignature) };
-    const data = { keyHash: await this.getKeyId(), sequence };
+    const keyHash = await this.getKeyHash();
 
-    return { credential, data };
+    return { credential, keyHash };
   }
 }

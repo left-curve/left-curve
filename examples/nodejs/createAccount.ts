@@ -9,6 +9,7 @@ async function createAccount() {
 
   // Instantiate the user client
   const userClient = createUserClient({
+    username: "owner",
     signer: PrivateKeySigner.fromMnemonic(process.env.MNEMONIC),
     transport: http("http://localhost:26657"),
   });
@@ -51,7 +52,7 @@ async function createAccount() {
 
   // Create account
   await userClient.createAccount({
-    keyHash: await userSigner.getKeyId(),
+    keyHash: await userSigner.getKeyHash(),
     key: userKey,
     username: username,
   });

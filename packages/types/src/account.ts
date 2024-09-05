@@ -1,5 +1,4 @@
 import type { Address } from "./address";
-import type { Prettify } from "./utils";
 
 export type Username = string;
 
@@ -12,20 +11,11 @@ export const AccountTypes = {
 
 export type AccountIndex = number;
 
-export type AccountId = `${Username}/account/${AccountIndex}`;
-
-export type AccountInfo = {
-  type: AccountType;
+export type Account = {
+  username: Username;
   address: Address;
+  type: AccountType;
 };
-
-export type Account = Prettify<
-  {
-    id: AccountId;
-    index: AccountIndex;
-    username: Username;
-  } & AccountInfo
->;
 
 export type AccountStateResponse = {
   sequence: number;

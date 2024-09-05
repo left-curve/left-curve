@@ -1,30 +1,30 @@
-import type { AccountId, Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Signer, Transport, Username } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
-export type GetAccountIdByAddressParameters = {
+export type GetUsernameByAddressParameters = {
   address: Address;
   height?: number;
 };
 
-export type GetAccountIdByAddressReturnType = Promise<AccountId>;
+export type GetUsernameByAddressreturnType = Promise<Username>;
 
 /**
- * Get the account id by address.
+ * Given an account address, look up the usernames associated with it.
  * @param parameters
- * @param parameters.address The address of the account to get information for.
+ * @param parameters.address The address of the account.
  * @param parameters.height The height at which to get the account id.
- * @returns The account id.
+ * @returns username
  */
-export async function getAccountIdByAddress<
+export async function getUsernameByAddress<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetAccountIdByAddressParameters,
-): GetAccountIdByAddressReturnType {
+  parameters: GetUsernameByAddressParameters,
+): GetUsernameByAddressreturnType {
   const { address, height = 0 } = parameters;
-  const msg = { accountId: { address } };
+  const msg = { usersByAddress: { address } };
 
   const accountFactory = await getAppConfig<Address>(client, {
     key: "account_factory",

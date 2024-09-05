@@ -72,16 +72,13 @@ export type {
 export type {
   Username,
   Account,
-  AccountId,
   AccountIndex,
   AccountType,
-  AccountInfo,
   AccountStateResponse,
 } from "./account";
 
 export type {
   Key,
-  KeyId,
   KeyHash,
 } from "./key";
 

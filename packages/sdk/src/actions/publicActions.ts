@@ -83,10 +83,10 @@ import {
 } from "./public/getAccountTypeCodeHashes";
 
 import {
-  type GetKeyIdByKeyHashParameters,
-  type GetKeyIdByKeyHashReturnType,
-  getKeyIdByKeyHash,
-} from "./public/getKeyIdByKeyHash";
+  type GetUsersByKeyHashReturnType,
+  type GetUsersByKeyhashParameters,
+  getUsersByKeyHash,
+} from "./public/getUsersByKeyHash";
 
 import {
   type GetKeysByUsernameParameters,
@@ -94,29 +94,37 @@ import {
   getKeysByUsername,
 } from "./public/getKeysByUsername";
 
-import {
-  type GetPublicKeyFromKeyIdParameters,
-  type GetPublicKeyFromKeyIdReturnType,
-  getPublicKeyFromKeyId,
-} from "./public/getPublicKeyFromKeyId";
+import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./public/getKey";
 
 import {
-  type GetAccountIdByAddressParameters,
-  type GetAccountIdByAddressReturnType,
-  getAccountIdByAddress,
-} from "./public/getAccountIdByAddress";
+  type GetUsernameByAddressParameters,
+  type GetUsernameByAddressreturnType,
+  getUsernameByAddress,
+} from "./public/getUsernameByAddress";
 
 import {
-  type GetAccountInfoByAccountIdParameters,
-  type GetAccountInfoByAccountIdReturnType,
-  getAccountInfoByAccountId,
-} from "./public/getAccountInfoByAccountId";
+  type GetAccountTypeParameters,
+  type GetAccountTypeReturnType,
+  getAccountType,
+} from "./public/getAccountType";
 
 import {
   type GetAccountsByUsernameParameters,
   type GetAccountsByUsernameReturnType,
   getAccountsByUsername,
 } from "./public/getAccountsByUsername";
+
+import {
+  type GetNextAccountIndexParameters,
+  type GetNextAccountIndexReturnType,
+  getNextAccountIndex,
+} from "./public/getNextAccountIndex";
+
+import {
+  type GetNextAccountAddressParameters,
+  type GetNextAccountAddressReturnType,
+  getNextAccountAddress,
+} from "./public/getNextAccountAddress";
 
 import {
   type GetContractInfoParameters,
@@ -152,14 +160,14 @@ export type PublicActions<
   getAccountTypeCodeHashes: (
     args?: GetAccountTypeCodeHashesParameters,
   ) => GetAccountTypeCodeHashesReturnType;
-  getKeyIdByKeyHash: (args: GetKeyIdByKeyHashParameters) => GetKeyIdByKeyHashReturnType;
-  getPublicKeyFromKeyId: (args: GetPublicKeyFromKeyIdParameters) => GetPublicKeyFromKeyIdReturnType;
+  getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
+  getKey: (args: GetKeyParameters) => GetKeyReturnType;
   getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
-  getAccountInfoByAccountId: (
-    args: GetAccountInfoByAccountIdParameters,
-  ) => GetAccountInfoByAccountIdReturnType;
+  getAccountType: (args: GetAccountTypeParameters) => GetAccountTypeReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
-  getAccountIdByAddress: (args: GetAccountIdByAddressParameters) => GetAccountIdByAddressReturnType;
+  getUsernameByAddress: (args: GetUsernameByAddressParameters) => GetUsernameByAddressreturnType;
+  getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
+  getNextAccountAddress: (args: GetNextAccountAddressParameters) => GetNextAccountAddressReturnType;
   getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
   getContractsInfo: (args?: GetContractsInfoParameters) => GetContractsInfoReturnType;
   queryApp: (args: QueryAppParameters) => QueryAppReturnType;
@@ -191,12 +199,14 @@ export function publicActions<
     getChainInfo: (args) => getChainInfo(client, args),
     getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
     getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
-    getKeyIdByKeyHash: (args) => getKeyIdByKeyHash(client, args),
-    getPublicKeyFromKeyId: (args) => getPublicKeyFromKeyId(client, args),
+    getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
+    getKey: (args) => getKey(client, args),
     getKeysByUsername: (args) => getKeysByUsername(client, args),
-    getAccountInfoByAccountId: (args) => getAccountInfoByAccountId(client, args),
+    getAccountType: (args) => getAccountType(client, args),
     getAccountsByUsername: (args) => getAccountsByUsername(client, args),
-    getAccountIdByAddress: (args) => getAccountIdByAddress(client, args),
+    getUsernameByAddress: (args) => getUsernameByAddress(client, args),
+    getNextAccountIndex: (args) => getNextAccountIndex(client, args),
+    getNextAccountAddress: (args) => getNextAccountAddress(client, args),
     getContractInfo: (args) => getContractInfo(client, args),
     getContractsInfo: (args) => getContractsInfo(client, args),
     queryApp: (args) => queryApp(client, args),

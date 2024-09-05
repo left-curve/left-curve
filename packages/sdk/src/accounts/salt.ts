@@ -12,9 +12,16 @@ import { type AccountIndex, type Key, KeyTag, type Username } from "@leftcurve/t
  * @returns The salt to be used in the creation of a new account.
  */
 export function createAccountSalt(username: Username, accountIndex: AccountIndex, key: Key) {
-  if (accountIndex > 1) return encodeUtf8(`${username}/account/${accountIndex}`);
-
   if (username.length > 255) throw new Error("Username is too long");
+
+  if (accountIndex > 1) {
+    const bytes: number[] = [];
+    bytes.push(username.length);
+    bytes.push(...encodeUtf8(username));
+    bytes.push(accountIndex);
+    return new Uint8Array(bytes);
+  }
+
   const [keyTag, publicKey] = Object.entries(key)[0];
   const publicKeyBytes = decodeBase64(publicKey);
   const bytes: number[] = [];

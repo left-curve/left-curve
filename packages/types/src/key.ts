@@ -1,4 +1,3 @@
-import type { Username } from "./account";
 import type { Base64, Hex } from "./common";
 
 export type KeyHash = Hex;
@@ -8,8 +7,6 @@ export const KeyTag = {
   secp256k1: 1,
   ed25519: 2,
 } as const;
-
-export type KeyId = `${Username}/key/${KeyHash}`;
 
 /** A public key that can be associated with an Account */
 export type Key =

@@ -4,7 +4,7 @@ import { createBaseClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
-import type { Client, EIP1193Provider, KeyHash, Transport } from "@leftcurve/types";
+import type { Address, Client, EIP1193Provider, KeyHash, Transport } from "@leftcurve/types";
 
 import "@leftcurve/types/window";
 
@@ -73,11 +73,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
       },
       async getAccounts() {
         const accounts = await getAccountsByUsername(_client, { username: _username });
-        return Object.entries(accounts).map(([index, info]) => ({
-          id: `${_username}/account/${Number(index)}`,
-          index: Number(index),
+        return Object.entries(accounts).map(([address, type]) => ({
+          address: address as Address,
           username: _username,
-          ...info,
+          type,
         }));
       },
       async isAuthorized() {

@@ -12,7 +12,7 @@ export const ExampleAccountList: React.FC = () => {
             <p className="text-2xl text-center font-bold">Accounts</p>
             <ul className="flex flex-col gap-4">
               {accounts.map((account) => (
-                <li key={account.id} className="flex flex-col gap-2">
+                <li key={account.address} className="flex flex-col gap-2">
                   <p className="text-lg text-center">{account.username}</p>
                   <p className="text-sm text-center">{account.address}</p>
                 </li>

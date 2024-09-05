@@ -1,3 +1,4 @@
+import type { Username } from "./account";
 import type { Chain } from "./chain";
 import type { Signer } from "./signer";
 import type { Transport } from "./transports";
@@ -13,6 +14,8 @@ export type ClientConfig<
 > = {
   /** The signer used for sign the txs. */
   signer?: signer;
+  /** The username of the signer. */
+  username?: Username;
   /** Indicates whether to batch requests. */
   batch?: boolean;
   /** The chain to connect to. */
@@ -33,6 +36,7 @@ export type ClientBase<
   signer extends Signer | undefined = undefined,
 > = {
   signer: signer;
+  username?: Username;
   batch?: boolean | undefined;
   chain: chain;
   key: string;
