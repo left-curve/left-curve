@@ -2,6 +2,7 @@ use {
     crate::{
         blake2b_512, blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
         db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
+        limiting_tunables::{LimitingTunables, WASM_PAGES_LIMIT},
         query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
         sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
         write_to_memory, Cache, Environment, Gatekeeper, VmError, VmResult,
@@ -10,7 +11,8 @@ use {
     grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{
-        imports, CompilerConfig, Engine, Function, FunctionEnv, Module, Singlepass, Store, StoreMut,
+        imports, sys::BaseTunables, CompilerConfig, Engine, Function, FunctionEnv, Module,
+        NativeEngineExt, Singlepass, Store, StoreMut, Target,
     },
     wasmer_middlewares::{metering::set_remaining_points, Metering},
 };
@@ -168,7 +170,12 @@ fn compile_wasmer(code: &[u8]) -> VmResult<(Module, Engine)> {
     // Ensure determinism related to floating point numbers.
     compiler.canonicalize_nans(true);
 
-    let engine = Engine::from(compiler);
+    let mut engine = Engine::from(compiler);
+
+    let base = BaseTunables::for_target(&Target::default());
+    let tunables = LimitingTunables::new(base, WASM_PAGES_LIMIT);
+    engine.set_tunables(tunables);
+
     let module = Module::new(&engine, code)?;
 
     Ok((module, engine))

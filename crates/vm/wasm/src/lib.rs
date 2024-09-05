@@ -4,6 +4,7 @@ mod error;
 mod gatekeeper;
 mod imports;
 mod iterator;
+mod limiting_tunables;
 mod memory;
 mod region;
 #[cfg(feature = "testing")]
