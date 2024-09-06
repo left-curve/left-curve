@@ -104,7 +104,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{BorshDeExt, BorshSerExt, JsonDeExt, NonZero, NumberConst, StdError, Uint128};
+    use {
+        crate::{BorshDeExt, BorshSerExt, JsonDeExt, NonZero, NumberConst, StdError, Uint128},
+        borsh::{BorshDeserialize, BorshSerialize},
+    };
 
     // The expect error is a `StdError::Deserialize` where the `reason` is a
     // `StdError::ZeroValue`.
@@ -141,5 +144,24 @@ mod tests {
         let bad = NonZero(Uint128::ZERO).to_borsh_vec().unwrap();
         let err = bad.deserialize_borsh::<NonZero<Uint128>>().unwrap_err();
         assert_is_non_zero_err::<NonZero<Uint128>>(err);
+    }
+
+    #[test]
+    fn deserializing_from_borsh_as_part_of_struct() {
+        #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq)]
+        struct Data {
+            number: NonZero<u32>,
+            duration: u128,
+        }
+
+        let data = Data {
+            number: NonZero::new(123).unwrap(),
+            duration: 123,
+        };
+
+        let ser = data.to_borsh_vec().unwrap();
+        let de: Data = ser.deserialize_borsh().unwrap();
+
+        assert_eq!(de, data);
     }
 }
