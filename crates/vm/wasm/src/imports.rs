@@ -493,9 +493,9 @@ mod tests {
                     "db_next"                  => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "db_next_key"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "db_next_value"            => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
-                    "db_write"                 => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
-                    "db_remove"                => Function::new_typed(&mut store, |_: u32|                       -> () { () }),
-                    "db_remove_range"          => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
+                    "db_write"                 => Function::new_typed(&mut store, |_: u32, _: u32|                      {   }),
+                    "db_remove"                => Function::new_typed(&mut store, |_: u32|                              {   }),
+                    "db_remove_range"          => Function::new_typed(&mut store, |_: u32, _: u32|                      {   }),
                     "secp256k1_verify"         => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
                     "secp256r1_verify"         => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
                     "secp256k1_pubkey_recover" => Function::new_typed(&mut store, |_: u32, _: u32, _: u8, _: u8| -> u64 { 0 }),
@@ -511,7 +511,7 @@ mod tests {
                     "blake2s_256"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "blake2b_512"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "blake3"                   => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
-                    "debug"                    => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
+                    "debug"                    => Function::new_typed(&mut store, |_: u32, _: u32|                      {   }),
                     "query_chain"              => Function::new_typed(&mut store, |_: u32,|                      -> u32 { 0 }),
                 },
             };
@@ -933,8 +933,8 @@ mod tests {
         let sig: Signature = sk.sign_digest(msg_hash.clone());
 
         VerifyTest {
-            pk: vk.to_sec1_bytes().to_vec().into(),
-            sig: sig.to_bytes().to_vec().into(),
+            pk: vk.to_sec1_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
             msg_hash: msg_hash.into_bytes().into(),
             wrong_msg: grug_crypto::sha2_256(WRONG_MSG).to_vec(),
         }
@@ -949,8 +949,8 @@ mod tests {
         let sig: Signature = sk.sign_digest(msg_hash.clone());
 
         VerifyTest {
-            pk: vk.to_sec1_bytes().to_vec().into(),
-            sig: sig.to_bytes().to_vec().into(),
+            pk: vk.to_sec1_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
             msg_hash: msg_hash.into_bytes().into(),
             wrong_msg: grug_crypto::sha2_256(WRONG_MSG).to_vec(),
         }
@@ -965,8 +965,8 @@ mod tests {
         let sig = sk.sign_digest(msg_hash.clone());
 
         VerifyTest {
-            pk: vk.to_bytes().to_vec().into(),
-            sig: sig.to_bytes().to_vec().into(),
+            pk: vk.to_bytes().to_vec(),
+            sig: sig.to_bytes().to_vec(),
             msg_hash: msg_hash.into_bytes().into(),
             wrong_msg: grug_crypto::sha2_512(WRONG_MSG).to_vec(),
         }
@@ -1101,7 +1101,7 @@ mod tests {
             let sig = sk.sign(msg.as_bytes());
 
             (
-                msg.as_bytes().to_vec().into(),
+                msg.as_bytes().to_vec(),
                 sig.to_bytes().into(),
                 vk.to_bytes().into(),
             )
@@ -1224,7 +1224,7 @@ mod tests {
     {
         let mut suite = setup_test();
 
-        let ptr_data = suite.write(&MSG).unwrap();
+        let ptr_data = suite.write(MSG).unwrap();
 
         let result = hash(suite.fe_mut(), ptr_data).unwrap();
 
