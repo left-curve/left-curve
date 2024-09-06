@@ -404,3 +404,464 @@ fn encode_record((mut k, v): Record) -> Vec<u8> {
     k.extend_from_slice(&(key_len as u16).to_be_bytes());
     k
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{db_scan, debug},
+        crate::{
+            db_read, db_remove, db_remove_range, db_write, Environment, VmResult, WasmVm,
+            GAS_PER_OPERATION,
+        },
+        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, GAS_COSTS},
+        grug_types::{
+            Addr, BlockInfo, Hash256, MockStorage, NumberConst, Order, Storage, Timestamp, Uint64,
+        },
+        std::{fmt::Debug, sync::Arc},
+        test_case::test_case,
+        wasmer::{
+            imports, CompilerConfig, Engine, Function, FunctionEnv, FunctionEnvMut, Instance,
+            Module, Singlepass, Store,
+        },
+        wasmer_middlewares::{metering::set_remaining_points, Metering},
+    };
+
+    const TESTER_CONTRACT: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
+
+    const MOCK_BLOCK: BlockInfo = BlockInfo {
+        height: Uint64::ONE,
+        timestamp: Timestamp::from_nanos(100),
+        hash: Hash256::ZERO,
+    };
+
+    const NAMESPACE_CONTRACT: &[u8] = b"contract";
+
+    /// Helper struct to hold the necessary data for testing.
+    pub struct Suite {
+        fe: FunctionEnv<Environment>,
+        storage_provider: StorageProvider,
+        store: Store,
+        _instance: Box<Instance>,
+    }
+
+    impl Suite {
+        fn write(&mut self, data: &[u8]) -> VmResult<u32> {
+            let mut fe_mut = self.fe_mut();
+            let (env, mut store) = fe_mut.data_and_store_mut();
+            crate::write_to_memory(env, &mut store, data)
+        }
+
+        fn fe_mut(&mut self) -> FunctionEnvMut<Environment> {
+            self.fe.clone().into_mut(&mut self.store)
+        }
+
+        fn read(&mut self, ptr: u32) -> VmResult<Vec<u8>> {
+            let mut fe_mut = self.fe_mut();
+            let (env, store) = fe_mut.data_and_store_mut();
+            crate::read_from_memory(env, &store, ptr)
+        }
+
+        fn env_mut(&mut self) -> &mut Environment {
+            self.fe.as_mut(&mut self.store)
+        }
+    }
+
+    fn setup_test() -> Suite {
+        let gas_checkpoint = u64::MAX;
+        let gas_tracker = GasTracker::new_limitless();
+        // Compile the contract; create Wasmer store and instance.
+        let (mut store, instance) = {
+            let mut compiler = Singlepass::new();
+            compiler.push_middleware(Arc::new(Metering::new(0, |_| GAS_PER_OPERATION)));
+
+            let engine = Engine::from(compiler);
+            let module = Module::new(&engine, TESTER_CONTRACT).unwrap();
+
+            let mut store = Store::new(engine);
+
+            // Import functions are not used but need to be defined.
+            let import_obj = imports! {
+                "env" => {
+                    "db_read"                  => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "db_scan"                  => Function::new_typed(&mut store, |_: u32, _: u32, _: i32|       -> u32 { 0 }),
+                    "db_next"                  => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "db_next_key"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "db_next_value"            => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "db_write"                 => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
+                    "db_remove"                => Function::new_typed(&mut store, |_: u32|                       -> () { () }),
+                    "db_remove_range"          => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
+                    "secp256k1_verify"         => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
+                    "secp256r1_verify"         => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
+                    "secp256k1_pubkey_recover" => Function::new_typed(&mut store, |_: u32, _: u32, _: u8, _: u8| -> u64 { 0 }),
+                    "ed25519_verify"           => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
+                    "ed25519_batch_verify"     => Function::new_typed(&mut store, |_: u32, _: u32, _: u32|       -> u32 { 0 }),
+                    "sha2_256"                 => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "sha2_512"                 => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "sha2_512_truncated"       => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "sha3_256"                 => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "sha3_512"                 => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "sha3_512_truncated"       => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "keccak256"                => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "blake2s_256"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "blake2b_512"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "blake3"                   => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
+                    "debug"                    => Function::new_typed(&mut store, |_: u32, _: u32|               -> () { () }),
+                    "query_chain"              => Function::new_typed(&mut store, |_: u32,|                      -> u32 { 0 }),
+                },
+            };
+
+            let instance = Instance::new(&mut store, &module, &import_obj).unwrap();
+            let instance = Box::new(instance);
+
+            set_remaining_points(&mut store, &instance, gas_checkpoint);
+
+            (store, instance)
+        };
+
+        // Create the function environment.
+        //
+        // For production (in `WasmVm::build_instance`) this needs to be done
+        // before creating the instance, but here for testing purpose, we don't
+        // need any import function, so this can be done later, which is simpler.
+        let (fe, storage_provider) = {
+            let storage = Shared::new(MockStorage::new());
+            let storage_provider =
+                StorageProvider::new(Box::new(storage.clone()), &[NAMESPACE_CONTRACT]);
+
+            let querier_provider = QuerierProvider::new(
+                WasmVm::new(0),
+                Box::new(storage),
+                gas_tracker.clone(),
+                MOCK_BLOCK,
+            );
+
+            let env = Environment::new(
+                storage_provider.clone(),
+                true,
+                querier_provider,
+                10,
+                gas_tracker,
+                gas_checkpoint,
+            );
+
+            let fe = FunctionEnv::new(&mut store, env);
+
+            let env = fe.as_mut(&mut store);
+
+            env.set_wasmer_memory(&instance).unwrap();
+            env.set_wasmer_instance(&instance).unwrap();
+            (fe, storage_provider)
+        };
+
+        Suite {
+            store,
+            _instance: instance,
+            fe,
+            storage_provider,
+        }
+    }
+
+    // ----------------------------------- db_read -----------------------------------
+
+    #[test]
+    fn db_read_works() {
+        let mut suite = setup_test();
+
+        let (k, v) = (b"key", b"value");
+
+        suite.storage_provider.write(k, v);
+
+        let ptr_key = suite.write(k).unwrap();
+
+        let ptr_result = db_read(suite.fe_mut(), ptr_key).unwrap();
+
+        let result = suite.read(ptr_result).unwrap();
+
+        assert_eq!(result, v);
+    }
+
+    // ----------------------------------- db_scan -----------------------------------
+
+    #[test_case(
+        Some(b"key1"), Some(b"key3"), Order::Ascending,
+        &[
+            Some((b"key1", b"value1")),
+            Some((b"key2", b"value2")),
+            None,
+        ];
+        "ascending"
+    )]
+    #[test_case(
+        Some(b"key1"), Some(b"key3"), Order::Descending,
+        &[
+            Some((b"key2", b"value2")),
+            Some((b"key1", b"value1")),
+            None,
+        ];
+        "descending"
+    )]
+    #[test_case(
+        None, None, Order::Ascending,
+        &[
+            Some((b"key1", b"value1")),
+            Some((b"key2", b"value2")),
+            Some((b"key3", b"value3")),
+            None,
+        ];
+        "no bound"
+    )]
+    fn db_scan_works(
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+        expected: &[Option<(&[u8], &[u8])>],
+    ) {
+        let mut suite = setup_test();
+        suite.storage_provider.write(b"key1", b"value1");
+        suite.storage_provider.write(b"key2", b"value2");
+        suite.storage_provider.write(b"key3", b"value3");
+
+        let min_ptr = if let Some(min) = min {
+            suite.write(min).unwrap()
+        } else {
+            0
+        };
+
+        let max_ptr = if let Some(max) = max {
+            suite.write(max).unwrap()
+        } else {
+            0
+        };
+
+        let iterator_id = db_scan(suite.fe_mut(), min_ptr, max_ptr, order as i32).unwrap();
+
+        let env = suite.env_mut();
+
+        for expected in expected {
+            let maybe = env.advance_iterator(iterator_id).unwrap();
+            assert_eq!(maybe, expected.map(|(k, v)| (k.to_vec(), v.to_vec())));
+        }
+    }
+
+    // -------------------- db_next / db_next_key / db_next_value --------------------
+
+    // db_next
+    #[test_case(
+        crate::db_next,
+        // Copied from ffi
+        |mut data| {
+            let (Some(byte1), Some(byte2)) = (data.pop(), data.pop()) else {
+                panic!("[ExternalIterator]: can't read length suffix");
+            };
+
+            // Note the order here between the two bytes
+            let key_len = u16::from_be_bytes([byte2, byte1]);
+            let value = data.split_off(key_len.into());
+
+            (data, value)
+        },
+        &[
+            Some((b"key1".to_vec(), b"value1".to_vec())),
+            Some((b"key2".to_vec(), b"value2".to_vec())),
+            None,
+        ];
+        "db_next"
+    )]
+    // db_next_key
+    #[test_case(
+        crate::db_next_key,
+        |data| data,
+        &[
+            Some(b"key1".to_vec()),
+            Some(b"key2".to_vec()),
+            None,
+        ];
+        "db_next_key"
+    )]
+    // db_next_value
+    #[test_case(
+        crate::db_next_value,
+        |data| data,
+        &[
+            Some(b"value1".to_vec()),
+            Some(b"value2".to_vec()),
+            None,
+        ];
+        "db_next_value"
+    )]
+    fn db_nexts_works<F, P, R>(next: F, parse: P, expected: &[Option<R>])
+    where
+        F: Fn(FunctionEnvMut<Environment>, i32) -> VmResult<u32>,
+        P: Fn(Vec<u8>) -> R,
+        R: PartialEq + Debug,
+    {
+        let mut suite = setup_test();
+        suite.storage_provider.write(b"key1", b"value1");
+        suite.storage_provider.write(b"key2", b"value2");
+        suite.storage_provider.write(b"key3", b"value3");
+
+        // For create iterator use db_scan function.
+        // It also possible to create iterator directly on env
+        // but why not more tests?
+
+        let min_ptr = suite.write(b"key1").unwrap();
+        let max_ptr = suite.write(b"key3").unwrap();
+
+        let iterator_id =
+            db_scan(suite.fe_mut(), min_ptr, max_ptr, Order::Ascending as i32).unwrap();
+
+        for expected in expected {
+            let next_ptr = next(suite.fe_mut(), iterator_id).unwrap();
+
+            if next_ptr == 0 {
+                assert_eq!(expected, &None);
+                break;
+            } else {
+                let next_ptr = suite.read(next_ptr).unwrap();
+
+                let next = parse(next_ptr);
+
+                assert_eq!(expected, &Some(next));
+            }
+        }
+    }
+
+    // ----------------------------------- db_write -----------------------------------
+
+    #[test]
+    fn db_write_works() {
+        let mut suite = setup_test();
+
+        let (k, v) = (b"key", b"value");
+
+        let ptr_key = suite.write(k).unwrap();
+        let ptr_value = suite.write(v).unwrap();
+
+        let gas_pre = suite.env_mut().gas_tracker.used();
+
+        db_write(suite.fe_mut(), ptr_key, ptr_value).unwrap();
+
+        let result = suite.storage_provider.read(k).unwrap();
+
+        assert_eq!(result, v);
+
+        // Check gas consumption
+
+        let gas_consumed = suite.env_mut().gas_tracker.used() - gas_pre;
+
+        let cost = GAS_COSTS
+            .db_write
+            .cost(NAMESPACE_CONTRACT.len() + k.len() + v.len());
+
+        assert_eq!(gas_consumed, cost);
+    }
+
+    // ----------------------------------- db_remove -----------------------------------
+
+    #[test]
+    fn db_remove_works() {
+        let mut suite = setup_test();
+
+        let (k, v) = (b"key", b"value");
+
+        suite.storage_provider.write(k, v);
+
+        let ptr_key = suite.write(k).unwrap();
+
+        let gas_pre = suite.env_mut().gas_tracker.used();
+
+        db_remove(suite.fe_mut(), ptr_key).unwrap();
+
+        let result = suite.storage_provider.read(k);
+
+        assert_eq!(result, None);
+
+        // Check gas consumption
+
+        let gas_consumed = suite.env_mut().gas_tracker.used() - gas_pre;
+
+        assert_eq!(gas_consumed, GAS_COSTS.db_remove);
+    }
+
+    // --------------------------------- db_remove_range ---------------------------------
+
+    #[test_case(
+        Some(b"key1"), None,
+        &[
+            (b"key2", None),
+            (b"key3", None),
+        ];
+        "min"
+    )]
+    #[test_case(
+        None, Some(b"key3"),
+        &[
+            (b"key1", None),
+            (b"key2", None),
+        ];
+        "max"
+    )]
+    fn db_remove_range_works(
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        expected: &[(&[u8], Option<&[u8]>)],
+    ) {
+        let mut suite = setup_test();
+
+        let (k1, v1) = (b"key1", b"value1");
+        let (k2, v2) = (b"key2", b"value2");
+        let (k3, v3) = (b"key3", b"value3");
+
+        suite.storage_provider.write(k1, v1);
+        suite.storage_provider.write(k2, v2);
+        suite.storage_provider.write(k3, v3);
+
+        let min_ptr = if let Some(min) = min {
+            suite.write(min).unwrap()
+        } else {
+            0
+        };
+
+        let max_ptr = if let Some(max) = max {
+            suite.write(max).unwrap()
+        } else {
+            0
+        };
+
+        let gas_pre = suite.env_mut().gas_tracker.used();
+
+        db_remove_range(suite.fe_mut(), min_ptr, max_ptr).unwrap();
+
+        for (k, expected) in expected {
+            let result = suite.storage_provider.read(k);
+
+            assert_eq!(result, expected.map(|v| v.to_vec()));
+        }
+
+        // Check gas consumption
+
+        let gas_consumed = suite.env_mut().gas_tracker.used() - gas_pre;
+
+        assert_eq!(gas_consumed, GAS_COSTS.db_remove);
+    }
+
+    // -------------------------------------- debug --------------------------------------
+
+    #[test]
+    fn debug_works() {
+        let mut suite = setup_test();
+
+        let addr = Addr::mock(1);
+        let msg = b"msg";
+
+        let ptr_addr = suite.write(addr.as_ref()).unwrap();
+        let ptr_msg = suite.write(msg).unwrap();
+
+        // Just call the function
+        // It could be possible to check logs but it could create conflicts
+        // with other tests
+        debug(suite.fe_mut(), ptr_addr, ptr_msg).unwrap();
+    }
+}
