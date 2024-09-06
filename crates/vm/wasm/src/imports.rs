@@ -415,10 +415,13 @@ mod tests {
             db_read, db_remove, db_remove_range, db_write, Environment, VmResult, WasmVm,
             GAS_PER_OPERATION,
         },
-        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, GAS_COSTS},
+        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS},
+        grug_crypto::{Identity256, Identity512},
         grug_types::{
-            Addr, BlockInfo, Hash256, MockStorage, NumberConst, Order, Storage, Timestamp, Uint64,
+            json, Addr, BlockInfo, GenericResult, Hash256, JsonDeExt, JsonSerExt, MockStorage,
+            NumberConst, Order, Query, QueryResponse, Storage, Timestamp, Uint64,
         },
+        rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,
         wasmer::{
@@ -439,8 +442,9 @@ mod tests {
     const NAMESPACE_CONTRACT: &[u8] = b"contract";
 
     /// Helper struct to hold the necessary data for testing.
-    pub struct Suite {
+    struct Suite {
         fe: FunctionEnv<Environment>,
+        storage: Box<dyn Storage>,
         storage_provider: StorageProvider,
         store: Store,
         _instance: Box<Instance>,
@@ -525,14 +529,14 @@ mod tests {
         // For production (in `WasmVm::build_instance`) this needs to be done
         // before creating the instance, but here for testing purpose, we don't
         // need any import function, so this can be done later, which is simpler.
-        let (fe, storage_provider) = {
+        let (fe, storage, storage_provider) = {
             let storage = Shared::new(MockStorage::new());
             let storage_provider =
                 StorageProvider::new(Box::new(storage.clone()), &[NAMESPACE_CONTRACT]);
 
             let querier_provider = QuerierProvider::new(
                 WasmVm::new(0),
-                Box::new(storage),
+                Box::new(storage.clone()),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
             );
@@ -552,13 +556,14 @@ mod tests {
 
             env.set_wasmer_memory(&instance).unwrap();
             env.set_wasmer_instance(&instance).unwrap();
-            (fe, storage_provider)
+            (fe, storage, storage_provider)
         };
 
         Suite {
             store,
             _instance: instance,
             fe,
+            storage: Box::new(storage),
             storage_provider,
         }
     }
@@ -785,7 +790,7 @@ mod tests {
         assert_eq!(gas_consumed, GAS_COSTS.db_remove);
     }
 
-    // --------------------------------- db_remove_range ---------------------------------
+    // --------------------------------- db_remove_range --------------------------------
 
     #[test_case(
         Some(b"key1"), None,
@@ -847,7 +852,7 @@ mod tests {
         assert_eq!(gas_consumed, GAS_COSTS.db_remove);
     }
 
-    // -------------------------------------- debug --------------------------------------
+    // ------------------------------------- debug --------------------------------------
 
     #[test]
     fn debug_works() {
@@ -863,5 +868,223 @@ mod tests {
         // It could be possible to check logs but it could create conflicts
         // with other tests
         debug(suite.fe_mut(), ptr_addr, ptr_msg).unwrap();
+    }
+
+    // ---------------------------------- query_chain -----------------------------------
+
+    #[test_case(
+        "foo",
+        GenericResult::Ok(QueryResponse::AppConfig(json!({"bar": {}})));
+        "ok"
+    )]
+    #[test_case(
+        "bar",
+        GenericResult::Err("data not found! type: serde_json::value::Value, storage key: AAphcHBfY29uZmlnYmFy".to_string());
+        "fails"
+    )]
+    fn query_chain_works(key: &str, value: GenericResult<QueryResponse>) {
+        let mut suite = setup_test();
+
+        // Use AppConfig query as example
+        // We don't want to test the query itself, just the query_chain function
+        let request = Query::AppConfig {
+            key: key.to_string(),
+        };
+
+        APP_CONFIGS
+            .save(
+                &mut suite.storage,
+                "foo",
+                &json!({
+                    "bar": {}
+                }),
+            )
+            .unwrap();
+
+        let ptr_key = suite.write(&request.to_json_vec().unwrap()).unwrap();
+
+        let ptr_result = crate::query_chain(suite.fe_mut(), ptr_key).unwrap();
+
+        let result: GenericResult<QueryResponse> =
+            suite.read(ptr_result).unwrap().deserialize_json().unwrap();
+
+        assert_eq!(result, value);
+    }
+
+    // -------------------------------- Crypto Verify --------------------------------
+
+    const MSG: &[u8] = b"msg";
+
+    const WRONG_MSG: &[u8] = b"wrong_msg";
+
+    struct VerifyTest {
+        pub msg_hash: Vec<u8>,
+        pub sig: Vec<u8>,
+        pub pk: Vec<u8>,
+        pub wrong_msg: Vec<u8>,
+    }
+
+    fn generate_secp256r1_verify_request() -> VerifyTest {
+        use p256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+
+        let sk = SigningKey::random(&mut OsRng);
+        let vk = VerifyingKey::from(&sk);
+        let msg_hash = Identity256::from(grug_crypto::sha2_256(MSG));
+        let sig: Signature = sk.sign_digest(msg_hash.clone());
+
+        VerifyTest {
+            pk: vk.to_sec1_bytes().to_vec().into(),
+            sig: sig.to_bytes().to_vec().into(),
+            msg_hash: msg_hash.into_bytes().into(),
+            wrong_msg: grug_crypto::sha2_256(WRONG_MSG).to_vec(),
+        }
+    }
+
+    fn generate_secp256k1_verify_request() -> VerifyTest {
+        use k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+
+        let sk = SigningKey::random(&mut OsRng);
+        let vk = VerifyingKey::from(&sk);
+        let msg_hash = Identity256::from(grug_crypto::sha2_256(MSG));
+        let sig: Signature = sk.sign_digest(msg_hash.clone());
+
+        VerifyTest {
+            pk: vk.to_sec1_bytes().to_vec().into(),
+            sig: sig.to_bytes().to_vec().into(),
+            msg_hash: msg_hash.into_bytes().into(),
+            wrong_msg: grug_crypto::sha2_256(WRONG_MSG).to_vec(),
+        }
+    }
+
+    fn generate_ed25519_verify_request() -> VerifyTest {
+        use ed25519_dalek::{DigestSigner, SigningKey, VerifyingKey};
+
+        let sk = SigningKey::generate(&mut OsRng);
+        let vk = VerifyingKey::from(&sk);
+        let msg_hash = Identity512::from(grug_crypto::sha2_512(MSG));
+        let sig = sk.sign_digest(msg_hash.clone());
+
+        VerifyTest {
+            pk: vk.to_bytes().to_vec().into(),
+            sig: sig.to_bytes().to_vec().into(),
+            msg_hash: msg_hash.into_bytes().into(),
+            wrong_msg: grug_crypto::sha2_512(WRONG_MSG).to_vec(),
+        }
+    }
+
+    // secp256k1_verify
+    #[test_case(
+        crate::secp256k1_verify,
+        generate_secp256k1_verify_request;
+        "secp256k1_verify"
+    )]
+    // secp256r1_verify
+    #[test_case(
+        crate::secp256r1_verify,
+        generate_secp256r1_verify_request;
+        "secp256kr_verify"
+    )]
+    // ed25519_verify
+    #[test_case(
+        crate::ed25519_verify,
+        generate_ed25519_verify_request;
+        "ed25519_verify"
+    )]
+    fn verify_works<V, G>(verify: V, generate: G)
+    where
+        V: Fn(FunctionEnvMut<Environment>, u32, u32, u32) -> VmResult<u32>,
+        G: Fn() -> VerifyTest,
+    {
+        let mut suite = setup_test();
+
+        let test_data = generate();
+
+        // Ok
+        {
+            let ptr_msg = suite.write(&test_data.msg_hash).unwrap();
+            let ptr_sig = suite.write(&test_data.sig).unwrap();
+            let ptr_pk = suite.write(&test_data.pk).unwrap();
+
+            let result = verify(suite.fe_mut(), ptr_msg, ptr_sig, ptr_pk).unwrap();
+
+            assert_eq!(result, 0);
+        }
+
+        // Fail
+        {
+            let ptr_msg = suite.write(&test_data.wrong_msg).unwrap();
+            let ptr_sig = suite.write(&test_data.sig).unwrap();
+            let ptr_pk = suite.write(&test_data.pk).unwrap();
+
+            let result = verify(suite.fe_mut(), ptr_msg, ptr_sig, ptr_pk).unwrap();
+
+            assert_eq!(result, 3);
+        }
+    }
+
+    // -------------------------- secp256k1_pubkey_recover ----------------------------
+
+    #[test]
+    fn secp256k1_pubkey_recover_works() {
+        let mut suite = setup_test();
+
+        let (pk, sig, msg_hash, recovery_id, compressed) = {
+            use k256::ecdsa::{SigningKey, VerifyingKey};
+
+            let sk = SigningKey::random(&mut OsRng);
+            let vk = VerifyingKey::from(&sk);
+            let msg_hash = Identity256::from(grug_crypto::sha2_256(MSG));
+            let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
+
+            (
+                vk.to_sec1_bytes().to_vec(),
+                sig.to_vec(),
+                msg_hash.into_bytes().to_vec(),
+                recovery_id.to_byte(),
+                1,
+            )
+        };
+
+        // OK
+        {
+            let ptr_msg = suite.write(&msg_hash).unwrap();
+            let ptr_sig = suite.write(&sig).unwrap();
+
+            let result = crate::secp256k1_pubkey_recover(
+                suite.fe_mut(),
+                ptr_msg,
+                ptr_sig,
+                recovery_id,
+                compressed,
+            )
+            .unwrap();
+
+            let error_code = (result >> 32) as u32;
+            let pk_ptr = result as u32;
+
+            assert_eq!(error_code, 0);
+            assert_eq!(suite.read(pk_ptr).unwrap(), pk);
+        }
+
+        // Fail
+        {
+            let ptr_msg = suite.write(WRONG_MSG).unwrap();
+            let ptr_sig = suite.write(&sig).unwrap();
+
+            let result = crate::secp256k1_pubkey_recover(
+                suite.fe_mut(),
+                ptr_msg,
+                ptr_sig,
+                recovery_id,
+                compressed,
+            )
+            .unwrap();
+
+            let error_code = (result >> 32) as u32;
+            let pk_ptr = result as u32;
+
+            assert_eq!(error_code, 1);
+            assert_eq!(pk_ptr, 0);
+        }
     }
 }
