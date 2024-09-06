@@ -8,6 +8,7 @@ import type {
   CreateConnectorFn,
   EventData,
   State,
+  StoreApi,
   Transport,
 } from "@leftcurve/types";
 
@@ -16,7 +17,7 @@ import { createStorage } from "./storages/createStorage";
 
 import { createBaseClient } from "@leftcurve/sdk";
 import { uid } from "@leftcurve/utils";
-import { subscribeWithSelector } from "zustand/middleware";
+import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 export function createConfig<
@@ -114,7 +115,42 @@ export function createConfig<
     };
   }
 
-  const store = createStore(subscribeWithSelector(getInitialState));
+  const stateCreator = storage
+    ? persist(getInitialState, {
+        version: 0,
+        name: "store",
+        storage,
+        partialize(state) {
+          const { chainId, connections, connectors, status } = state;
+          return {
+            chainId,
+            status,
+            connectors,
+            connections: new Map(
+              Array.from(connections.entries()).map(([key, connection]) => {
+                const { id, name, type, uid } = connection.connector;
+                const connector = { id, name, type, uid };
+                return [key, { ...connection, connector }];
+              }),
+            ),
+          };
+        },
+        merge(persistedState, currentState) {
+          if (!persistedState) return currentState;
+
+          if (typeof persistedState === "object" && "status" in persistedState) {
+            delete persistedState.status;
+          }
+
+          return {
+            ...currentState,
+            ...persistedState,
+          };
+        },
+      })
+    : getInitialState;
+
+  const store = createStore(subscribeWithSelector(stateCreator));
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
@@ -207,6 +243,10 @@ export function createConfig<
   }
 
   return {
+    ssr: rest.ssr ?? false,
+    get store() {
+      return store as StoreApi;
+    },
     get chains() {
       return chains.getState();
     },

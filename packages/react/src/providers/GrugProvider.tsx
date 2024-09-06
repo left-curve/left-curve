@@ -1,12 +1,15 @@
 "use client";
 
-import type { Config } from "@leftcurve/types";
+import type { Config, State } from "@leftcurve/types";
 import { type PropsWithChildren, createContext, createElement, useContext } from "react";
+import { Hydrate } from "~/utils/hydrate";
 
 export const GrugContext = createContext<Config | undefined>(undefined);
 
 export type GrugProviderProps = {
   config: Config;
+  initialState?: State;
+  reconnectOnMount?: boolean;
 };
 
 export const GrugProvider: React.FC<React.PropsWithChildren<GrugProviderProps>> = (
@@ -14,7 +17,11 @@ export const GrugProvider: React.FC<React.PropsWithChildren<GrugProviderProps>> 
 ) => {
   const { children, config } = parameters;
 
-  return createElement(GrugContext.Provider, { value: config }, children);
+  return createElement(
+    Hydrate,
+    parameters,
+    createElement(GrugContext.Provider, { value: config }, children),
+  );
 };
 
 export function useGrugContext() {

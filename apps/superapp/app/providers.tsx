@@ -7,6 +7,7 @@ import type React from "react";
 import "@leftcurve/types/window";
 
 export const config = createConfig({
+  ssr: true,
   chains: [localhost],
   transports: {
     [localhost.id]: http("http://localhost:26657"),

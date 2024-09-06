@@ -6,3 +6,5 @@ export {
   type UseQueryReturnType,
   useQuery,
 } from "./query";
+
+export { Hydrate } from "./hydrate";

@@ -1,5 +1,6 @@
 export { createConfig } from "./createConfig";
 export { http } from "@leftcurve/sdk";
+export { hydrate } from "./hydrate";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */

@@ -21,6 +21,12 @@ export {
 } from "./connect";
 
 export {
+  type ReconnectReturnType,
+  type ReconnectErrorType,
+  reconnect,
+} from "./reconnect";
+
+export {
   type DisconnectParameters,
   type DisconnectReturnType,
   type DisconnectErrorType,

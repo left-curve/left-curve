@@ -18,10 +18,12 @@ export type Config<
     Transport
   >,
 > = {
+  readonly ssr: boolean;
   readonly chains: chains;
   readonly connectors: readonly Connector[];
   readonly storage: Storage | null;
   readonly state: State<chains>;
+  readonly store: StoreApi;
   setState<tchains extends readonly [Chain, ...Chain[]] = chains>(
     value: State<tchains> | ((state: State<tchains>) => State<tchains>),
   ): void;
@@ -47,12 +49,24 @@ export type CreateConfigParameters<
   >,
 > = {
   chains: chains;
-  connectors?: CreateConnectorFn[] | undefined;
-  storage?: Storage | null | undefined;
   transports: transports;
-  batch?: boolean | undefined;
+  ssr?: boolean;
+  batch?: boolean;
+  storage?: Storage | null;
+  connectors?: CreateConnectorFn[];
 };
 
 export type ConfigParameter<config extends Config = Config> = {
-  config?: Config | config | undefined;
+  config?: Config | config;
+};
+
+export type StoreApi = {
+  setState: (partial: State | Partial<State>, replace?: boolean) => void;
+  getState: () => State;
+  getInitialState: () => State;
+  subscribe: (listener: (state: State, prevState: State) => void) => () => void;
+  persist: {
+    rehydrate: () => Promise<void> | void;
+    hasHydrated: () => boolean;
+  };
 };

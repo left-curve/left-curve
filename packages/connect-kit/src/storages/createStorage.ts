@@ -8,7 +8,7 @@ export function createStorage<
 >(parameters: CreateStorageParameters): Storage<storageItemMap> {
   const {
     deserialize = deserializeJson,
-    key: prefix = "dango",
+    key: prefix = "grunnect",
     serialize = serializeJson,
     storage = createMemoryStorage(),
   } = parameters;

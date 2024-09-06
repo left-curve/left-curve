@@ -96,7 +96,7 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
         chain,
         chainId,
         connector,
-        isConnected: !!accounts.length,
+        isConnected: false,
         isConnecting: false,
         isDisconnected: false,
         isReconnecting: true,

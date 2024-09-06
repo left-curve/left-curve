@@ -126,6 +126,7 @@ export type {
 export type {
   State,
   Config,
+  StoreApi,
   CreateConfigParameters,
   ConfigParameter,
 } from "./config";
