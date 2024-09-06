@@ -418,8 +418,8 @@ mod tests {
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS},
         grug_crypto::{Identity256, Identity512},
         grug_types::{
-            json, Addr, BlockInfo, GenericResult, Hash256, JsonDeExt, JsonSerExt, MockStorage,
-            NumberConst, Order, Query, QueryResponse, Storage, Timestamp, Uint64,
+            encode_sections, json, Addr, BlockInfo, GenericResult, Hash256, JsonDeExt, JsonSerExt,
+            MockStorage, NumberConst, Order, Query, QueryResponse, Storage, Timestamp, Uint64,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
@@ -1086,5 +1086,150 @@ mod tests {
             assert_eq!(error_code, 1);
             assert_eq!(pk_ptr, 0);
         }
+    }
+
+    // ----------------------------- ed25519_batch_verify -----------------------------
+    #[test]
+    fn ed25519_batch_verify_works() {
+        let mut suite = setup_test();
+
+        fn ed25519_sign(msg: &str) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+            use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
+
+            let sk = SigningKey::generate(&mut OsRng);
+            let vk = VerifyingKey::from(&sk);
+            let sig = sk.sign(msg.as_bytes());
+
+            (
+                msg.as_bytes().to_vec().into(),
+                sig.to_bytes().into(),
+                vk.to_bytes().into(),
+            )
+        }
+
+        let (msg_hash1, sig1, pk1) = ed25519_sign("msg1");
+        let (msg_hash2, sig2, pk2) = ed25519_sign("msg2");
+        let (msg_hash3, sig3, pk3) = ed25519_sign("msg3");
+
+        let prehash_msgs = [
+            msg_hash1.as_slice(),
+            msg_hash2.as_slice(),
+            msg_hash3.as_slice(),
+        ];
+
+        let sigs = [sig1.as_slice(), sig2.as_slice(), sig3.as_slice()];
+        let pks = [pk1.as_slice(), pk2.as_slice(), pk3.as_slice()];
+
+        // Ok
+        {
+            let prehash_msgs = encode_sections(&prehash_msgs).unwrap();
+            let sigs = encode_sections(&sigs).unwrap();
+            let pks = encode_sections(&pks).unwrap();
+
+            let ptr_prehash_msgs = suite.write(&prehash_msgs).unwrap();
+            let ptr_sigs = suite.write(&sigs).unwrap();
+            let ptr_pks = suite.write(&pks).unwrap();
+
+            let result =
+                crate::ed25519_batch_verify(suite.fe_mut(), ptr_prehash_msgs, ptr_sigs, ptr_pks)
+                    .unwrap();
+
+            assert_eq!(result, 0);
+        }
+
+        // Fail
+        {
+            let prehash_msgs = encode_sections(&[msg_hash1.as_slice()]).unwrap();
+            let sigs = encode_sections(&sigs).unwrap();
+            let pks = encode_sections(&pks).unwrap();
+
+            let ptr_prehash_msgs = suite.write(&prehash_msgs).unwrap();
+            let ptr_sigs = suite.write(&sigs).unwrap();
+            let ptr_pks = suite.write(&pks).unwrap();
+
+            let result =
+                crate::ed25519_batch_verify(suite.fe_mut(), ptr_prehash_msgs, ptr_sigs, ptr_pks)
+                    .unwrap();
+
+            assert_eq!(result, 3);
+        }
+    }
+
+    // ------------------------------------ Hash -------------------------------------
+
+    // sha2_256
+    #[test_case(
+        crate::sha2_256,
+        grug_crypto::sha2_256;
+        "sha2_256"
+    )]
+    // sha2_512
+    #[test_case(
+        crate::sha2_512,
+        grug_crypto::sha2_512;
+        "sha2_512"
+    )]
+    // sha2_512_truncated
+    #[test_case(
+        crate::sha2_512_truncated,
+        grug_crypto::sha2_512_truncated;
+        "sha2_512_truncated"
+    )]
+    // sha3_256
+    #[test_case(
+        crate::sha3_256,
+        grug_crypto::sha3_256;
+        "sha3_256"
+    )]
+    // sha3_512
+    #[test_case(
+        crate::sha3_512,
+        grug_crypto::sha3_512;
+        "sha3_512"
+    )]
+    // sha3_512_truncated
+    #[test_case(
+        crate::sha3_512_truncated,
+        grug_crypto::sha3_512_truncated;
+        "sha3_512_truncated"
+    )]
+    // keccak256
+    #[test_case(
+        crate::keccak256,
+        grug_crypto::keccak256;
+        "keccak256"
+    )]
+    // blake2s_256
+    #[test_case(
+        crate::blake2s_256,
+        grug_crypto::blake2s_256;
+        "blake2s_256"
+    )]
+    // blake2b_512
+    #[test_case(
+        crate::blake2b_512,
+        grug_crypto::blake2b_512;
+        "blake2b_512"
+    )]
+    // blake3
+    #[test_case(
+        crate::blake3,
+        grug_crypto::blake3;
+        "blake3"
+    )]
+    fn hash_works<H, G, const S: usize>(hash: H, generate: G)
+    where
+        H: Fn(FunctionEnvMut<Environment>, u32) -> VmResult<u32>,
+        G: Fn(&[u8]) -> [u8; S],
+    {
+        let mut suite = setup_test();
+
+        let ptr_data = suite.write(&MSG).unwrap();
+
+        let result = hash(suite.fe_mut(), ptr_data).unwrap();
+
+        let result = suite.read(result).unwrap();
+
+        assert_eq!(result, generate(MSG));
     }
 }
