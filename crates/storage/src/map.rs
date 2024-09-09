@@ -35,7 +35,8 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+    #[doc(hidden)]
+    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
@@ -46,7 +47,8 @@ where
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, C> {
+    #[doc(hidden)]
+    pub fn no_prefix(&self) -> Prefix<K, T, C> {
         Prefix::new(self.namespace, &[])
     }
 

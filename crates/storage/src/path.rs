@@ -32,6 +32,10 @@ where
             codec: self.codec,
         }
     }
+
+    pub fn storage_key(self) -> Vec<u8> {
+        self.storage_key
+    }
 }
 
 pub struct Path<'a, T, C> {

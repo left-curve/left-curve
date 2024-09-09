@@ -37,17 +37,20 @@ where
     T: PrimaryKey,
     C: Codec<Empty>,
 {
-    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<Empty, Borsh> {
+    #[doc(hidden)]
+    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<Empty, Borsh> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
-    fn path(&self, item: T) -> PathBuf<Empty, Borsh> {
+    #[doc(hidden)]
+    pub fn path(&self, item: T) -> PathBuf<Empty, Borsh> {
         let mut raw_keys = item.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<T, Empty, C> {
+    #[doc(hidden)]
+    pub fn no_prefix(&self) -> Prefix<T, Empty, C> {
         Prefix::new(self.namespace, &[])
     }
 
