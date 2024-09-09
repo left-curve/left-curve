@@ -1,4 +1,4 @@
-import type { Base64, Hex } from "./common";
+import type { Base64, Hex } from "./encoding";
 
 export type KeyHash = Hex;
 

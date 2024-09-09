@@ -2,7 +2,7 @@ import { Secp256k1 } from "@leftcurve/crypto";
 import { encodeBase64 } from "@leftcurve/encoding";
 import { http, computeAddress, createAccountSalt, createUserClient } from "@leftcurve/sdk";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
-import { AccountTypes, type Address } from "@leftcurve/types";
+import { AccountType, type Address } from "@leftcurve/types";
 
 async function createAccount() {
   if (!process.env.MNEMONIC) throw new Error("Please set the MNEMONIC environment variable");
@@ -17,7 +17,7 @@ async function createAccount() {
   const factoryAddr = await userClient.getAppConfig<Address>({ key: "account_factory" });
   const ibcTransferAddr = await userClient.getAppConfig<Address>({ key: "ibc_transfer" });
   const accountCodeHash = await userClient.getAccountTypeCodeHash({
-    accountType: AccountTypes.Spot,
+    accountType: AccountType.Spot,
   });
 
   // User key pair

@@ -1,5 +1,5 @@
-import type { Json } from "./common";
 import type { NativeCurrency } from "./currency";
+import type { Json } from "./encoding";
 
 export type ChainId = string;
 

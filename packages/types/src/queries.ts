@@ -1,7 +1,7 @@
 import type { Address } from "./address";
 import type { Coin } from "./coin";
-import type { Hex, Json } from "./common";
 import type { Metadata } from "./credential";
+import type { Hex, Json } from "./encoding";
 import type { Message } from "./tx";
 
 export type BlockInfo = {

@@ -1,7 +1,12 @@
 import type { Address } from "./address";
 import type { Coins } from "./coin";
-import type { Base64, Hex, Json } from "./common";
 import type { Credential, Metadata } from "./credential";
+import type { Base64, Hex, Json } from "./encoding";
+
+export type TxParameters = {
+  funds?: Coins;
+  gasLimit?: number;
+};
 
 export type Tx = {
   sender: Address;

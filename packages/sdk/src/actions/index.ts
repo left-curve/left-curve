@@ -211,6 +211,52 @@ export {
 } from "./user/signAndBroadcastTx";
 
 /* -------------------------------------------------------------------------- */
+/*                                Safe Actions                                */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type SafeAccountGetProposalParameters,
+  type SafeAccountGetProposalReturnType,
+  safeAccountGetProposal,
+} from "./safe/queries/getProposal";
+
+export {
+  type SafeAccountGetProposalsParameters,
+  type SafeAccountGetProposalsReturnType,
+  safeAccountGetProposals,
+} from "./safe/queries/getProposals";
+
+export {
+  type SafeAccountGetVoteParameters,
+  type SafeAccountGetVoteReturnType,
+  safeAccountGetVote,
+} from "./safe/queries/getVote";
+
+export {
+  type SafeAccountGetVotesParameters,
+  type SafeAccountGetVotesReturnType,
+  safeAccountGetVotes,
+} from "./safe/queries/getVotes";
+
+export {
+  type SafeAccountProposeParameters,
+  type SafeAccountProposeReturnType,
+  safeAccountPropose,
+} from "./safe/mutations/propose";
+
+export {
+  type SafeAccountExecuteParameters,
+  type SafeAccountExecuteReturnType,
+  safeAccountExecute,
+} from "./safe/mutations/execute";
+
+export {
+  type SafeAccountVoteParameters,
+  type SafeAccountVoteReturnType,
+  safeAccountVote,
+} from "./safe/mutations/vote";
+
+/* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
 
@@ -223,3 +269,8 @@ export {
   type UserActions,
   userActions,
 } from "./userActions";
+
+export {
+  type SafeActions,
+  safeActions,
+} from "./safe/safeActions";

@@ -1,6 +1,6 @@
 import type { AbciQueryResponse } from "./abci";
 import type { Chain } from "./chain";
-import type { Hex } from "./common";
+import type { Hex } from "./encoding";
 import type { Tx, UnsignedTx } from "./tx";
 
 export type TransportConfig<type extends string = string> = {

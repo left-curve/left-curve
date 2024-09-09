@@ -1,5 +1,5 @@
 import type { Username } from "./account";
-import type { Base64 } from "./common";
+import type { Base64 } from "./encoding";
 import type { KeyHash } from "./key";
 
 export type Metadata = {

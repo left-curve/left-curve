@@ -2,9 +2,9 @@ import type { Address } from "./address";
 
 export type Username = string;
 
-export type AccountType = (typeof AccountTypes)[keyof typeof AccountTypes];
+export type AccountType = (typeof AccountType)[keyof typeof AccountType];
 
-export const AccountTypes = {
+export const AccountType = {
   Spot: "spot",
   Margin: "margin",
 } as const;

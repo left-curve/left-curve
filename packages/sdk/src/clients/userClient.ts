@@ -26,7 +26,6 @@ export type UserClient<
   Client<transport, chain, signer, PublicActions<transport, chain> & UserActions<transport, chain>>,
   | "batch"
   | "uid"
-  | "extend"
   | "transport"
   | "type"
   | "name"

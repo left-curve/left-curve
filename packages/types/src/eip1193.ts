@@ -1,6 +1,6 @@
 // This file type is partially forked from viem types in the following repository: https://github.com/wevm/viem/tree/main/src/types
 import type { Address } from "./address";
-import type { Hex } from "./common";
+import type { Hex } from "./encoding";
 import type { ExactPartial, OneOf, Prettify, RequiredBy } from "./utils";
 
 type Index = `0x${string}`;

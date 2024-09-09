@@ -36,6 +36,7 @@ export type {
   MsgTransfer,
   MsgUpdateConfig,
   Tx,
+  TxParameters,
   UnsignedTx,
 } from "./tx";
 
@@ -73,7 +74,6 @@ export type {
   Username,
   Account,
   AccountIndex,
-  AccountType,
   AccountStateResponse,
 } from "./account";
 
@@ -146,7 +146,7 @@ export type {
   Json,
   Hex,
   Base64,
-} from "./common";
+} from "./encoding";
 
 export type {
   Prettify,
@@ -160,5 +160,14 @@ export type {
   UnionStrictOmit,
 } from "./utils";
 
-export { AccountTypes } from "./account";
+export type {
+  ProposalId,
+  Proposal,
+  ProposalStatus,
+  Power,
+  Safe,
+} from "./safe";
+
+export { AccountType } from "./account";
 export { KeyTag } from "./key";
+export { Vote } from "./safe";
