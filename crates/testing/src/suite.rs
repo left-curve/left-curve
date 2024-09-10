@@ -19,17 +19,17 @@ pub struct TestSuite<VM = RustVm>
 where
     VM: Vm,
 {
-    app: App<MemDb, VM>,
+    pub app: App<MemDb, VM>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
-    chain_id: String,
+    pub chain_id: String,
     /// Interally track the last finalized block.
-    block: BlockInfo,
+    pub block: BlockInfo,
     /// Each time we make a new block, we set the new block's time as the
     /// previous block's time plus this value.
-    block_time: Duration,
+    pub block_time: Duration,
     /// Internally track each account's sequence number.
-    sequences: HashMap<Addr, u32>,
+    pub sequences: HashMap<Addr, u32>,
 }
 
 impl<VM> TestSuite<VM>
