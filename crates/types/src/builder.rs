@@ -3,9 +3,10 @@
 //!
 //! See [this video](https://youtu.be/pwmIQzLuYl0) for context.
 
-use std::marker::PhantomData;
+use std::{fmt::Debug, marker::PhantomData};
 
 /// Represents a builder parameter that has not yet been provided.
+#[derive(Debug)]
 pub struct Undefined<T>(PhantomData<T>);
 
 impl<T> Default for Undefined<T> {
@@ -15,6 +16,7 @@ impl<T> Default for Undefined<T> {
 }
 
 /// Represents a builder parameter that has already been provided.
+#[derive(Debug)]
 pub struct Defined<T>(T);
 
 impl<T> Defined<T> {
