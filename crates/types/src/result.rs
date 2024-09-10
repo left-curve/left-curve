@@ -60,14 +60,16 @@ impl<T> GenericResult<T> {
         }
     }
 
-    /// Ensure the result is error; return the error message;
-    pub fn should_fail(self) -> String
+    /// Ensure the result is ok, and the value satisfies the given predicate.
+    pub fn should_succeed_and<F>(self, predicate: F)
     where
-        T: Debug,
+        F: FnOnce(T) -> bool,
     {
         match self {
-            GenericResult::Err(err) => err,
-            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+            GenericResult::Ok(value) => {
+                assert!(predicate(value), "value does not satisfy predicate!")
+            },
+            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
         }
     }
 
@@ -92,6 +94,17 @@ impl<T> GenericResult<T> {
         match self {
             GenericResult::Ok(value) => assert_ne!(value, expect, "wrong value!"),
             GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
+        }
+    }
+
+    /// Ensure the result is error; return the error message;
+    pub fn should_fail(self) -> String
+    where
+        T: Debug,
+    {
+        match self {
+            GenericResult::Err(err) => err,
+            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
         }
     }
 
