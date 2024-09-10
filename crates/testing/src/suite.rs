@@ -139,7 +139,7 @@ where
 
         // Compose and sign a single message
         let sequence = self.sequences.entry(signer.address()).or_insert(0);
-        let tx = signer.sign_transaction(msgs.clone(), gas_limit, &self.chain_id, *sequence)?;
+        let tx = signer.sign_transaction(msgs, gas_limit, &self.chain_id, *sequence, None)?;
         *sequence += 1;
 
         self.send_transaction(tx)
