@@ -1,10 +1,10 @@
 import { ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
+import { encodeBase64, serialize } from "@leftcurve/encoding";
 import { createBaseClient, createKeyHash } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
-import type { Address, Client, EIP1193Provider, KeyHash, Transport } from "@leftcurve/types";
+import type { Address, Client, EIP1193Provider, Json, Transport } from "@leftcurve/types";
 
 import "@leftcurve/types/window";
 
@@ -95,7 +95,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
           params: [controllerAddress, JSON.stringify(typedData)],
         });
 
-        const credential = serialize({ signature, typedData });
+        const typedDataJson = typedData as Json;
+
+        const credential = serialize({ signature, typedData: typedDataJson });
         return { walletEvm: encodeBase64(credential) };
       },
     };
