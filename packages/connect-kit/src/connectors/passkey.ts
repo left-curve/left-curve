@@ -1,6 +1,6 @@
-import { requestWebAuthnSignature, ripemd160 } from "@leftcurve/crypto";
-import { encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
-import { createBaseClient } from "@leftcurve/sdk";
+import { requestWebAuthnSignature } from "@leftcurve/crypto";
+import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
+import { createBaseClient, createKeyHash } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
@@ -27,18 +27,23 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async connect({ username, chainId, challenge }) {
         _username = username;
         _transport = transports[chainId];
-        await this.getClient();
+
+        const client = await this.getClient();
+
         if (challenge) {
           const { credentialId } = await requestWebAuthnSignature({
             challenge: encodeUtf8(challenge),
             rpId: window.location.hostname,
             userVerification: "preferred",
           });
-          const keyHash = encodeHex(ripemd160(encodeUtf8(credentialId))).toUpperCase();
-          const keys = await getKeysByUsername(_client, { username });
+
+          const keyHash = createKeyHash({ credentialId });
+          const keys = await getKeysByUsername(client, { username });
+
           if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
           _isAuthorized = true;
         }
+
         const accounts = await this.getAccounts();
         emitter.emit("connect", { accounts, chainId, username });
       },
@@ -51,7 +56,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         return _client;
       },
       async getAccounts() {
-        const accounts = await getAccountsByUsername(_client, { username: _username });
+        const client = await this.getClient();
+        const accounts = await getAccountsByUsername(client, { username: _username });
         return Object.entries(accounts).map(([address, type]) => ({
           address: address as Address,
           username: _username,

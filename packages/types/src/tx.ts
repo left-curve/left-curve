@@ -1,5 +1,6 @@
 import type { Address } from "./address";
 import type { Coins } from "./coin";
+import type { Duration } from "./common";
 import type { Credential, Metadata } from "./credential";
 import type { Base64, Hex, Json } from "./encoding";
 
@@ -28,7 +29,7 @@ export type Message =
 
 export type MsgUpdateConfig = {
   updates: ConfigUpdate;
-  app_updates: Record<string, unknown>;
+  appUpdates: Record<string, Json>;
 };
 
 export type MsgTransfer = {
@@ -50,7 +51,7 @@ export type MsgInstantiate = {
 
 export type MsgExecute = {
   contract: Address;
-  msg: any;
+  msg: Json;
   funds?: Coins;
 };
 
@@ -64,9 +65,28 @@ export type ConfigUpdate = {
   owner?: Hex;
   bank?: Hex;
   taxman?: Hex;
-  cronjobs?: Record<Extract<Hex, string>, number>;
+  cronjobs?: Record<Address, Duration>;
   permissions?: {
-    upload: unknown;
-    instantiate: unknown;
+    upload: Permission;
+    instantiate: Permission;
   };
 };
+
+/**
+ * Only the owner can perform the action. Note, the owner is always able to
+ * upload code or instantiate contracts.
+ */
+export type NobodyPermission = "nobody";
+/**
+ * Any account is allowed to perform the action
+ */
+export type EverybodyPermission = "everybody";
+/**
+ * Some whitelisted accounts or the owner can perform the action.
+ */
+export type SomebodiesPermission = { somebodies: Address[] };
+
+/**
+ * Permissions for uploading code or instantiating contracts.
+ */
+export type Permission = NobodyPermission | EverybodyPermission | SomebodiesPermission;

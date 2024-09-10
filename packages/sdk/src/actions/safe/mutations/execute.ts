@@ -3,7 +3,6 @@ import type {
   Chain,
   Client,
   Hex,
-  Json,
   ProposalId,
   Signer,
   Transport,
@@ -43,7 +42,7 @@ export async function safeAccountExecute<chain extends Chain | undefined, signer
   return await execute(client, {
     sender,
     contract: account,
-    msg: executeMsg as Json,
+    msg: executeMsg,
     funds,
     gasLimit,
   });

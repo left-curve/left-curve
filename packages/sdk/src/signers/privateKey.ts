@@ -1,9 +1,10 @@
-import { ripemd160, sha256 } from "@leftcurve/crypto";
+import { sha256 } from "@leftcurve/crypto";
 import { Secp256k1 } from "@leftcurve/crypto";
-import { encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
+import { encodeBase64, serialize } from "@leftcurve/encoding";
+import { createKeyHash } from "../accounts";
 
 import type { KeyPair } from "@leftcurve/crypto";
-import type { Signer } from "@leftcurve/types";
+import type { KeyHash, SignDoc, Signer } from "@leftcurve/types";
 import type { Message } from "@leftcurve/types";
 
 export class PrivateKeySigner implements Signer {
@@ -25,11 +26,12 @@ export class PrivateKeySigner implements Signer {
     this.#keyPair = keyPair;
   }
 
-  async getKeyHash(): Promise<string> {
-    return encodeHex(ripemd160(this.#keyPair.publicKey)).toUpperCase();
+  async getKeyHash(): Promise<KeyHash> {
+    return createKeyHash({ pubKey: this.#keyPair.publicKey });
   }
 
-  async signTx(msgs: Message[], chainId: string, sequence: number) {
+  async signTx(signDoc: SignDoc) {
+    const { msgs, chainId, sequence } = signDoc;
     const tx = sha256(serialize({ messages: msgs, chainId, sequence }));
     const signature = await this.signBytes(tx);
 

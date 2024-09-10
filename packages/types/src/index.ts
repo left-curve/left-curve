@@ -139,6 +139,7 @@ export type { EIP1193Provider } from "./eip1193";
 
 export type {
   Signature,
+  SignDoc,
   EthPersonalMessage,
 } from "./signature";
 
@@ -146,6 +147,8 @@ export type {
   Json,
   Hex,
   Base64,
+  Binary,
+  JsonValue,
 } from "./encoding";
 
 export type {

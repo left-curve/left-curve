@@ -3,7 +3,6 @@ import type {
   Chain,
   Client,
   Hex,
-  Json,
   Signer,
   Transport,
   TxParameters,
@@ -45,7 +44,7 @@ export async function safeAccountVote<chain extends Chain | undefined, signer ex
   return await execute(client, {
     sender,
     contract: account,
-    msg: voteMsg as Json,
+    msg: voteMsg,
     funds,
     gasLimit,
   });

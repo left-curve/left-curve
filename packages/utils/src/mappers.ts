@@ -1,4 +1,4 @@
-import type { Json } from "@leftcurve/types";
+import type { Json, JsonValue } from "@leftcurve/types";
 /**
  * Given a payload, recursively transform the case of the keys.
  *
@@ -14,7 +14,10 @@ import type { Json } from "@leftcurve/types";
  * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
  * ```
  */
-export function recursiveTransform(payload: Json, transformFn: (str: string) => string): Json {
+export function recursiveTransform(
+  payload: Json | JsonValue,
+  transformFn: (str: string) => string,
+): Json | JsonValue {
   // for strings, numbers, and nulls, there's no key to be transformed
   if (typeof payload !== "object" || payload === null) {
     return payload;

@@ -19,7 +19,6 @@ export async function recoverPublicKey(
   compressed = false,
 ): Promise<Uint8Array> {
   const hashHex = isHex(hash) ? hash.replace("0x", "") : encodeHex(hash);
-  const { secp256k1 } = await import("@noble/curves/secp256k1");
 
   const signature = (() => {
     if (typeof _signature_ === "object" && "r" in _signature_ && "s" in _signature_) {
@@ -42,6 +41,36 @@ export async function recoverPublicKey(
   return signature.recoverPublicKey(hashHex).toRawBytes(compressed);
 }
 
+/**
+ * Compress or uncompress a secp256k1 public key.
+ * @param pubKey - The public key to compress or uncompress.
+ * @param compress - True to compress the public key, false to uncompress it.
+ * @returns The compressed or uncompressed public key.
+ */
+export function compressPubKey(pubKey: Uint8Array, compress: boolean): Uint8Array {
+  if (compress && pubKey.length === 33) return pubKey;
+  if (!compress && pubKey.length === 65) return pubKey;
+  return secp256k1.ProjectivePoint.fromHex(pubKey).toRawBytes(compress);
+}
+
+/**
+ * Verify a secp256k1 signature
+ * @param messageHash - The hash of the message that was signed.
+ * @param signature - The signature to verify.
+ * @param publicKey - The public key to verify the signature with.
+ * @returns True if the signature is valid, false otherwise.
+ */
+export function verifySignature(
+  messageHash: Uint8Array,
+  signature: Uint8Array,
+  publicKey: Uint8Array,
+): boolean {
+  if (messageHash.length !== 32) {
+    throw new Error(`Message hash length must not exceed 32 bytes: ${messageHash.length}`);
+  }
+  return secp256k1.verify(secp256k1.Signature.fromCompact(signature), messageHash, publicKey);
+}
+
 function toRecoveryBit(v: number) {
   if (v === 0 || v === 1) return v;
   if (v === 27) return 0;
@@ -53,31 +82,11 @@ export class Secp256k1 implements KeyPair {
   #privateKey: Uint8Array;
   /**
    * Generate a new secp256k1 key pair.
-   * @param optinalPrivateKey - Optional private key to use.
-   *  If not provided, a random private key will be generated.
    * @returns A new secp256k1 key pair.
    */
-  static makeKeyPair(optinalPrivateKey?: Uint8Array): Secp256k1 {
-    const privateKey = optinalPrivateKey ?? secp256k1.utils.randomPrivateKey();
+  static makeKeyPair(): Secp256k1 {
+    const privateKey = secp256k1.utils.randomPrivateKey();
     return new Secp256k1(privateKey);
-  }
-
-  /**
-   * Verify a secp256k1 signature
-   * @param messageHash - The hash of the message that was signed.
-   * @param signature - The signature to verify.
-   * @param publicKey - The public key to verify the signature with.
-   * @returns True if the signature is valid, false otherwise.
-   */
-  static verifySignature(
-    messageHash: Uint8Array,
-    signature: Uint8Array,
-    publicKey: Uint8Array,
-  ): boolean {
-    if (messageHash.length !== 32) {
-      throw new Error(`Message hash length must not exceed 32 bytes: ${messageHash.length}`);
-    }
-    return secp256k1.verify(secp256k1.Signature.fromCompact(signature), messageHash, publicKey);
   }
 
   /**
@@ -92,18 +101,6 @@ export class Secp256k1 implements KeyPair {
     const { privateKey } = hdKey.derive(`m/44'/${coinType}'/0'/0/0`);
     if (!privateKey) throw new Error("Failed to derive private key from mnemonic");
     return new Secp256k1(privateKey);
-  }
-
-  /**
-   * Compress or uncompress a secp256k1 public key.
-   * @param pubKey - The public key to compress or uncompress.
-   * @param compress - True to compress the public key, false to uncompress it.
-   * @returns The compressed or uncompressed public key.
-   */
-  static compressPubKey(pubKey: Uint8Array, compress: boolean): Uint8Array {
-    if (compress && pubKey.length === 33) return pubKey;
-    if (!compress && pubKey.length === 65) return pubKey;
-    return secp256k1.ProjectivePoint.fromHex(pubKey).toRawBytes(compress);
   }
 
   constructor(privateKey: Uint8Array) {
@@ -146,6 +143,6 @@ export class Secp256k1 implements KeyPair {
    * @returns True if the signature is valid, false otherwise.
    */
   verifySignature(messageHash: Uint8Array, signature: Uint8Array): boolean {
-    return Secp256k1.verifySignature(messageHash, signature, this.publicKey);
+    return verifySignature(messageHash, signature, this.publicKey);
   }
 }

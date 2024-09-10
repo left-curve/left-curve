@@ -1,8 +1,8 @@
-import { requestWebAuthnSignature, ripemd160, sha256 } from "@leftcurve/crypto";
-import { encodeBase64, encodeHex, encodeUtf8, serialize } from "@leftcurve/encoding";
+import { requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
+import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
 
-import type { KeyHash, Signer } from "@leftcurve/types";
-import type { Message } from "@leftcurve/types";
+import type { KeyHash, SignDoc, Signer } from "@leftcurve/types";
+import { createKeyHash } from "../accounts";
 
 export class WebauthnSigner implements Signer {
   async getKeyHash(): Promise<KeyHash> {
@@ -11,10 +11,11 @@ export class WebauthnSigner implements Signer {
       rpId: window.location.hostname,
       userVerification: "preferred",
     });
-    return encodeHex(ripemd160(encodeUtf8(credentialId))).toUpperCase();
+    return createKeyHash({ credentialId });
   }
 
-  async signTx(msgs: Message[], chainId: string, sequence: number) {
+  async signTx(signDoc: SignDoc) {
+    const { msgs, chainId, sequence } = signDoc;
     const tx = sha256(serialize({ messages: msgs, chainId, sequence }));
 
     const { signature, webauthn } = await requestWebAuthnSignature({

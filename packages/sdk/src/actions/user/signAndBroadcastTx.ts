@@ -41,7 +41,12 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
 
   const sequence = await getAccountSequence(client, { address: sender }).catch(() => 0);
 
-  const { credential, keyHash } = await client.signer.signTx(msgs, chainId, sequence);
+  const { credential, keyHash } = await client.signer.signTx({
+    chainId,
+    msgs,
+    sequence,
+  });
+
   const data: Metadata = { keyHash, username, sequence };
 
   const { gasLimit } = gas

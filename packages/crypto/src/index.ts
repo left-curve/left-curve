@@ -16,8 +16,10 @@ export {
 
 export {
   recoverPublicKey,
-  KeyPair,
+  compressPubKey,
+  verifySignature,
   Secp256k1,
+  type KeyPair,
 } from "./keys";
 
 export { ethHashMessage } from "./signature";

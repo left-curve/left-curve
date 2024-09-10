@@ -1,6 +1,6 @@
-import { ethHashMessage, recoverPublicKey, ripemd160 } from "@leftcurve/crypto";
-import { encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
-import { createBaseClient } from "@leftcurve/sdk";
+import { ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
+import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
+import { createBaseClient, createKeyHash } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
 
@@ -37,25 +37,28 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
       async connect({ username, chainId, challenge }) {
         _username = username;
         _transport = transports[chainId];
-        await this.getClient();
-        const accounts = await this.getAccounts();
+
+        const client = await this.getClient();
         const provider = await this.getProvider();
+        const accounts = await this.getAccounts();
+
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+
         if (challenge) {
           const signature = await provider.request({
             method: "personal_sign",
             params: [challenge, controllerAddress],
           });
-          const hashMessage = ethHashMessage(challenge);
 
-          const publicKey = await recoverPublicKey(hashMessage, signature, true);
+          const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
 
-          const keyHash: KeyHash = encodeHex(ripemd160(publicKey)).toUpperCase();
-          const keys = await getKeysByUsername(_client, { username });
+          const keyHash = createKeyHash({ pubKey });
+          const keys = await getKeysByUsername(client, { username });
 
           if (!keys[keyHash]) throw new Error("Not authorized");
           _isAuthorized = true;
         }
+
         emitter.emit("connect", { accounts, chainId, username });
       },
       async disconnect() {
@@ -72,7 +75,8 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
         return provider;
       },
       async getAccounts() {
-        const accounts = await getAccountsByUsername(_client, { username: _username });
+        const client = await this.getClient();
+        const accounts = await getAccountsByUsername(client, { username: _username });
         return Object.entries(accounts).map(([address, type]) => ({
           address: address as Address,
           username: _username,
@@ -85,11 +89,13 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
       async requestSignature(typedData) {
         const provider = await this.getProvider();
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+
         const signature = await provider.request({
           method: "eth_signTypedData_v4",
           params: [controllerAddress, JSON.stringify(typedData)],
         });
-        const credential = encodeUtf8(JSON.stringify({ signature, typed_data: typedData }));
+
+        const credential = serialize({ signature, typedData });
         return { walletEvm: encodeBase64(credential) };
       },
     };
