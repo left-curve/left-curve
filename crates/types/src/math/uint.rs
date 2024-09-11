@@ -494,48 +494,77 @@ mod tests {
 #[cfg(test)]
 mod tests2 {
 
+    use fmt::Debug;
+
     use super::*;
 
-    macro_rules! inner_test {
-        ([$($p:expr),*], $expr:expr) => {
-            fn test<U, const B: usize>() where
-                U: FromStr<Err: ToString> + NumberConst + Bytable<B>,
-                {
-                    ($expr)($($p),*);
-                }
-        };
+    /// This fn is used for the compiler to derive the type of a variable,
+    /// which is necessary for the test functions.
+    fn derive_type<T>(_: T, _: T) {}
+
+    /// Derived the types of multiple variables
+    macro_rules! derive_types{
+        ($u: expr, $($p:expr),* ) =>
+         {
+            $(derive_type($u, $p);)*
+         }
+    }
+
+    /// Combines `assert_eq` and `derive_type` to derive the type and assert
+    fn smart_assert<T: Debug + PartialEq>(left: T, right: T) {
+        assert_eq!(left, right);
     }
 
     macro_rules! utest {
         // Multiple args
-        ($name:ident, [$($p64:expr),*], [$($p128:expr),*], [$($p256:expr),*], [$($p512:expr),*] => $expr:expr) => {
+        ($name:ident, [$($p64:expr),*], [$($p128:expr),*], [$($p256:expr),*], [$($p512:expr),*] => $test_fn:expr) => {
             paste::paste! {
                 #[test]
                 fn [<$name _u64 >]() {
-                    inner_test!([$($p64),*], $expr);
-                    test::<u64, 8>();
+                    // the first argument is used to derive the type of the variable
+                    ($test_fn)(Uint64::ZERO, $($p64),*);
                 }
 
                 #[test]
                 fn [<$name _u128 >]() {
-                    inner_test!([$($p128),*], $expr);
-                    test::<u128, 16>();
+                    ($test_fn)(Uint128::ZERO, $($p128),*);
                 }
 
                 #[test]
                 fn [<$name _u256 >]() {
-                    inner_test!([$($p256),*], $expr);
-                    test::<U256, 32>();
+                    ($test_fn)(Uint256::ZERO, $($p256),*);
                 }
 
                 #[test]
                 fn [<$name _u512 >]() {
-                    inner_test!([$($p512),*], $expr);
-                    test::<U512, 64>();
+                    ($test_fn)(Uint512::ZERO, $($p512),*);
+                }
+            }
+        };
+        // Same args
+        ($name:ident, [$($p:expr),*] => $test_fn:expr) => {
+            paste::paste! {
+                #[test]
+                fn [<$name _u64 >]() {
+                    // the first argument is used to derive the type of the variable
+                    ($test_fn)(Uint64::ZERO, $($p),*);
                 }
 
-            }
+                #[test]
+                fn [<$name _u128 >]() {
+                    ($test_fn)(Uint128::ZERO, $($p),*);
+                }
 
+                #[test]
+                fn [<$name _u256 >]() {
+                    ($test_fn)(Uint256::ZERO, $($p),*);
+                }
+
+                #[test]
+                fn [<$name _u512 >]() {
+                    ($test_fn)(Uint512::ZERO, $($p),*);
+                }
+            }
         };
     }
 
@@ -544,8 +573,11 @@ mod tests2 {
         [16],
         [32],
         [64]
-        => |size| {
-            assert_eq!(core::mem::size_of::<Uint<U>>(), size);
+        => |u, size| {
+            fn t<T>(_: T, size: usize) {
+                assert_eq!(core::mem::size_of::<T>(), size);
+            }
+            t(u, size)
         }
     );
 
@@ -554,11 +586,15 @@ mod tests2 {
         [&[0u8; 16]],
         [&[0u8; 32]],
         [&[0u8; 64]]
-        => |zero_as_byte: &[u8]| {
-            let zero = Uint::<U>::ZERO;
+        => |u, zero_as_byte: &[u8]| {
+            let zero = Uint::<_>::ZERO;
+            derive_type(u, zero);
+
             assert_eq!(zero.to_be_bytes().to_vec(), zero_as_byte);
 
-            let one = Uint::<U>::ONE;
+            let one = Uint::<_>::ONE;
+            derive_type(u, one);
+
             let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
             if let Some(last) = one_as_bytes.last_mut() {
                 *last = 1u8;
@@ -568,50 +604,41 @@ mod tests2 {
         }
     );
 
-    utest!( convert_into,
-        [12345u128],
-        [12345u128],
-        [12345u128],
-        [12345u128]
-        => |val| {
-        //    let val: Uint::<U> = val.into();
+    utest!( converts_works,
+        [64_u64,                "64"],
+        [128_u128,             "128"],
+        [U256::from(256_u128), "256"],
+        [U512::from(512_u128), "512"]
+        => |_, val, str| {
+           let original = Uint::new(val);
+           assert_eq!(original.0, val);
+
+           let from_str = Uint::from_str(str).unwrap();
+           assert_eq!(from_str, original);
+
+           let as_into = original.into();
+           derive_type(as_into, val);
+
+           assert_eq!(as_into, val);
         }
     );
 
-    #[test]
-    fn uint128_convert_into() {
-        let original = Uint128(12345);
-        let a = u128::from(original);
-        assert_eq!(a, 12345);
+    utest!( from_works,
+        [8_u8, 16_u16, 32_u32, 64_u64]
+        => |u, a, b, c, d| {
+            let a1 = Uint::from(a);
+            let b1 = Uint::from(b);
+            let c1 = Uint::from(c);
+            let d1 = Uint::from(d);
 
-        let original = Uint128(12345);
-        let a = String::from(original);
-        assert_eq!(a, "12345");
-    }
+            derive_types!(u, a1, b1, c1, d1);
 
-    // #[test]
-    // fn uint128_convert_from() {
-    //     let a = Uint128::from(5u128);
-    //     assert_eq!(a.0, 5);
-
-    //     let a = Uint128::from(5u64);
-    //     assert_eq!(a.0, 5);
-
-    //     let a = Uint128::from(5u32);
-    //     assert_eq!(a.0, 5);
-
-    //     let a = Uint128::from(5u16);
-    //     assert_eq!(a.0, 5);
-
-    //     let a = Uint128::from(5u8);
-    //     assert_eq!(a.0, 5);
-
-    //     let result = Uint128::try_from("34567");
-    //     assert_eq!(result.unwrap().0, 34567);
-
-    //     let result = Uint128::try_from("1.23");
-    //     assert!(result.is_err());
-    // }
+            smart_assert(a, a1.try_into().unwrap());
+            smart_assert(b, b1.try_into().unwrap());
+            smart_assert(c, c1.try_into().unwrap());
+            smart_assert(d, d1.try_into().unwrap());
+        }
+    );
 
     // #[test]
     // fn uint128_try_from_signed_works() {
