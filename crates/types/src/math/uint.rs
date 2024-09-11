@@ -961,6 +961,7 @@ mod tests2 {
     );
 
     utest!( sub,
+        attrs = #[allow(clippy::op_ref)]
         => |u| {
             assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(1_u64)), bt(u, Uint::from(1_u64)));
             assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(0_u64)), bt(u, Uint::from(2_u64)));
@@ -1218,65 +1219,62 @@ mod tests2 {
         }
     );
 
-    // #[test]
-    // fn sum_works() {
-    //     let nums = vec![Uint128(17), Uint128(123), Uint128(540), Uint128(82)];
-    //     let expected = Uint128(762);
+    utest!( methods,
+        => |zero| {
+            let max = Uint::MAX;
+            let one = Uint::ONE;
+            let two = Uint::from(2_u64);
+            dts!(zero, max, one, two);
 
-    //     let sum_as_ref: Uint128 = nums.iter().sum();
-    //     assert_eq!(expected, sum_as_ref);
 
-    //     let sum_as_owned: Uint128 = nums.into_iter().sum();
-    //     assert_eq!(expected, sum_as_owned);
-    // }
+            // checked_*
+            assert!(matches!(
+                max.checked_add(one),
+                Err(StdError::OverflowAdd { .. })
+            ));
 
-    // #[test]
-    // fn uint128_methods() {
-    //     // checked_*
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_add(Uint128(1)),
-    //         Err(OverflowError { .. })
-    //     ));
-    //     assert!(matches!(Uint128(1).checked_add(Uint128(1)), Ok(Uint128(2))));
-    //     assert!(matches!(
-    //         Uint128(0).checked_sub(Uint128(1)),
-    //         Err(OverflowError { .. })
-    //     ));
-    //     assert!(matches!(Uint128(2).checked_sub(Uint128(1)), Ok(Uint128(1))));
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_mul(Uint128(2)),
-    //         Err(OverflowError { .. })
-    //     ));
-    //     assert!(matches!(Uint128(2).checked_mul(Uint128(2)), Ok(Uint128(4))));
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_pow(2u32),
-    //         Err(OverflowError { .. })
-    //     ));
-    //     assert!(matches!(Uint128(2).checked_pow(3), Ok(Uint128(8))));
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_div(Uint128(0)),
-    //         Err(DivideByZeroError { .. })
-    //     ));
-    //     assert!(matches!(Uint128(6).checked_div(Uint128(2)), Ok(Uint128(3))));
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_div_euclid(Uint128(0)),
-    //         Err(DivideByZeroError { .. })
-    //     ));
-    //     assert!(matches!(
-    //         Uint128(6).checked_div_euclid(Uint128(2)),
-    //         Ok(Uint128(3)),
-    //     ));
-    //     assert!(matches!(
-    //         Uint128::MAX.checked_rem(Uint128(0)),
-    //         Err(DivideByZeroError { .. })
-    //     ));
+            assert_eq!(one.checked_add(Uint::from(1_u64)).unwrap(), Uint::from(2_u64));
+            assert!(matches!(
+                zero.checked_sub(one),
+                Err(StdError::OverflowSub { .. })
+            ));
 
-    //     // saturating_*
-    //     assert_eq!(Uint128::MAX.saturating_add(Uint128(1)), Uint128::MAX);
-    //     assert_eq!(Uint128(0).saturating_sub(Uint128(1)), Uint128(0));
-    //     assert_eq!(Uint128::MAX.saturating_mul(Uint128(2)), Uint128::MAX);
-    //     assert_eq!(Uint128::MAX.saturating_pow(2), Uint128::MAX);
-    // }
+            assert_eq!(Uint::from(2_u64).checked_sub(one).unwrap(), one);
+
+            assert!(matches!(
+                max.checked_mul(Uint::from(2_u64)),
+                Err(StdError::OverflowMul { .. })
+            ));
+
+            assert_eq!(two.checked_mul(two).unwrap(), Uint::from(4_u64));
+
+            assert!(matches!(
+                max.checked_pow(2u32),
+                Err(StdError::OverflowPow { .. })
+            ));
+
+            assert_eq!(two.checked_pow(3).unwrap(), Uint::from(8_u64));
+
+            assert!(matches!(
+                max.checked_div(zero),
+                Err(StdError::DivisionByZero { .. })
+            ));
+
+            assert_eq!(Uint::from(6_u64).checked_div(two).unwrap(), Uint::from(3_u64));
+
+            assert!(matches!(
+                max.checked_rem(zero),
+                Err(StdError::DivisionByZero { .. })
+            ));
+
+            // saturating_*
+
+            assert_eq!(max.saturating_add(Uint::from(1_u64)), max);
+            assert_eq!(zero.saturating_sub(Uint::from(1_u64)), zero);
+            assert_eq!(max.saturating_mul(Uint::from(2_u64)), max);
+            assert_eq!(max.saturating_pow(2), max);
+        }
+    );
 
     // #[test]
     // fn uint128_wrapping_methods() {
