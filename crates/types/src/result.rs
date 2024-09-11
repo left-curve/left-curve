@@ -59,7 +59,12 @@ where
 
 /// Addition methods for result types.
 /// Useful for testing, improving code readability.
-pub trait ResultExt<T, E> {
+pub trait ResultExt<T, E>: Sized {
+    /// Ensure the result satisfies the given predicate.
+    fn should<F>(self, predicate: F)
+    where
+        F: FnOnce(Self) -> bool;
+
     /// Ensure the result is ok; return the value.
     fn should_succeed(self) -> T;
 
@@ -102,6 +107,13 @@ pub trait ResultExt<T, E> {
 
 macro_rules! impl_result_ext {
     ($t:tt, $e:ty) => {
+        fn should<F>(self, predicate: F)
+        where
+            F: FnOnce(Self) -> bool,
+        {
+            assert!(predicate(self), "result does not satisfy predicte!");
+        }
+
         fn should_succeed(self) -> T {
             match self {
                 $t::Ok(value) => value,
