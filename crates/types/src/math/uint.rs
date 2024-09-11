@@ -11,6 +11,7 @@ use {
     serde::{de, ser},
     std::{
         fmt::{self, Display},
+        iter::Sum,
         marker::PhantomData,
         ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
         str::FromStr,
@@ -312,6 +313,16 @@ where
         }
 
         self.checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
+    }
+}
+
+impl<U, A> Sum<A> for Uint<U>
+where
+    Self: Add<A, Output = Self>,
+    U: Number + NumberConst,
+{
+    fn sum<I: Iterator<Item = A>>(iter: I) -> Self {
+        iter.fold(Self::ZERO, Add::add)
     }
 }
 
@@ -944,197 +955,268 @@ mod tests2 {
     utest!( add_overflow_panics,
         attrs = #[should_panic(expected = "addition overflow")]
         => |u| {
-            // #[should_panic(expected = "attempt to add with overflow")]
-            {
-                let max = bt(u, Uint::MAX);
-               let _ = max + bt(u, Uint::from(12_u64));
-            }
+            let max = bt(u, Uint::MAX);
+            let _ = max + bt(u, Uint::from(12_u64));
         }
     );
 
-    // #[test]
-    // #[should_panic(expected = "attempt to add with overflow")]
-    // fn uint128_add_overflow_panics() {
-    //     let max = Uint128::MAX;
-    //     let _ = max + Uint128(12);
-    // }
+    utest!( sub,
+        => |u| {
+            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(1_u64)), bt(u, Uint::from(1_u64)));
+            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(0_u64)), bt(u, Uint::from(2_u64)));
+            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(2_u64)), bt(u, Uint::from(0_u64)));
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_sub_works() {
-    //     assert_eq!(Uint128(2) - Uint128(1), Uint128(1));
-    //     assert_eq!(Uint128(2) - Uint128(0), Uint128(2));
-    //     assert_eq!(Uint128(2) - Uint128(2), Uint128(0));
+            // works for refs
+            let a = Uint::from(10_u64);
+            let b = Uint::from(3_u64);
+            let expected = Uint::from(7_u64);
+            dts!(u, a, b, expected);
+            assert_eq!(a - b, expected);
+            assert_eq!(a - &b, expected);
+            assert_eq!(&a - b, expected);
+            assert_eq!(&a - &b, expected);
+        }
+    );
 
-    //     // works for refs
-    //     let a = Uint128::new(10);
-    //     let b = Uint128::new(3);
-    //     let expected = Uint128::new(7);
-    //     assert_eq!(a - b, expected);
-    //     assert_eq!(a - &b, expected);
-    //     assert_eq!(&a - b, expected);
-    //     assert_eq!(&a - &b, expected);
-    // }
+    utest!( sub_overflow_panics,
+        attrs = #[should_panic(expected = "subtraction overflow")]
+        => |u| {
+            let _ = bt(u, Uint::from(1_u64)) - bt(u, Uint::from(2_u64));
+        }
+    );
 
-    // #[test]
-    // #[should_panic]
-    // fn uint128_sub_overflow_panics() {
-    //     let _ = Uint128(1) - Uint128(2);
-    // }
+    utest!( sub_assign_works,
+        attrs = #[allow(clippy::op_ref)]
+        => |u| {
+            let mut a = bt(u, Uint::from(14_u64));
+            a -= bt(u, Uint::from(2_u64));
+            assert_eq!(a, bt(u, Uint::from(12_u64)));
 
-    // #[test]
-    // fn uint128_sub_assign_works() {
-    //     let mut a = Uint128(14);
-    //     a -= Uint128(2);
-    //     assert_eq!(a, Uint128(12));
+            // works for refs
+            let mut a = bt(u, Uint::from(10_u64));
+            let b = bt(u, Uint::from(3_u64));
+            let expected = bt(u, Uint::from(7_u64));
+            a -= &b;
+            assert_eq!(a, expected);
+        }
+    );
 
-    //     // works for refs
-    //     let mut a = Uint128::new(10);
-    //     let b = Uint128::new(3);
-    //     let expected = Uint128::new(7);
-    //     a -= &b;
-    //     assert_eq!(a, expected);
-    // }
+    utest!( mul,
+        attrs = #[allow(clippy::op_ref)]
+        => |u| {
+            assert_eq!(bt(u, Uint::from(2_u32)) * bt(u, Uint::from(3_u32)), bt(u, Uint::from(6_u32)));
+            assert_eq!(bt(u, Uint::from(2_u32)) * bt(u, Uint::ZERO), bt(u, Uint::ZERO));
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_mul_works() {
-    //     assert_eq!(
-    //         Uint128::from(2u32) * Uint128::from(3u32),
-    //         Uint128::from(6u32)
-    //     );
-    //     assert_eq!(Uint128::from(2u32) * Uint128::zero(), Uint128::zero());
+            // works for refs
+            let a = bt(u, Uint::from(11_u32));
+            let b = bt(u, Uint::from(3_u32));
+            let expected = bt(u, Uint::from(33_u32));
+            assert_eq!(a * b, expected);
+            assert_eq!(a * &b, expected);
+            assert_eq!(&a * b, expected);
+            assert_eq!(&a * &b, expected);
+        }
+    );
 
-    //     // works for refs
-    //     let a = Uint128::from(11u32);
-    //     let b = Uint128::from(3u32);
-    //     let expected = Uint128::from(33u32);
-    //     assert_eq!(a * b, expected);
-    //     assert_eq!(a * &b, expected);
-    //     assert_eq!(&a * b, expected);
-    //     assert_eq!(&a * &b, expected);
-    // }
+    utest!( mul_overflow_panics,
+        attrs = #[should_panic(expected = "multiplication overflow")]
+        => |u| {
+            let max = bt(u, Uint::MAX);
+            let _ = max * bt(u, Uint::from(2_u64));
+        }
+    );
 
-    // #[test]
-    // fn uint128_mul_assign_works() {
-    //     let mut a = Uint128::from(14u32);
-    //     a *= Uint128::from(2u32);
-    //     assert_eq!(a, Uint128::from(28u32));
+    utest!( mul_assign_works,
+        attrs = #[allow(clippy::op_ref)]
+        => |u| {
+            let mut a = bt(u, Uint::from(14_u32));
+            a *= bt(u, Uint::from(2_u32));
+            assert_eq!(a, bt(u, Uint::from(28_u32)));
 
-    //     // works for refs
-    //     let mut a = Uint128::from(10u32);
-    //     let b = Uint128::from(3u32);
-    //     a *= &b;
-    //     assert_eq!(a, Uint128::from(30u32));
-    // }
+            // works for refs
+            let mut a = bt(u, Uint::from(10_u32));
+            let b = bt(u, Uint::from(3_u32));
+            a *= &b;
+            assert_eq!(a, bt(u, Uint::from(30_u32)));
+        }
+    );
 
-    // #[test]
-    // fn uint128_pow_works() {
-    //     assert_eq!(Uint128::from(2u32).pow(2), Uint128::from(4u32));
-    //     assert_eq!(Uint128::from(2u32).pow(10), Uint128::from(1024u32));
-    // }
+    utest! (pow_works,
+        => |u| {
+            assert_eq!(bt(u, Uint::from(2_u32)).checked_pow(2).unwrap(), bt(u, Uint::from(4_u32)));
+            assert_eq!(bt(u, Uint::from(2_u32)).checked_pow(10).unwrap(), bt(u, Uint::from(1024_u32)));
 
-    // #[test]
-    // #[should_panic]
-    // fn uint128_pow_overflow_panics() {
-    //     _ = Uint128::MAX.pow(2u32);
-    // }
+            // overflow
+            let max = bt(u, Uint::MAX);
+            let result = max.checked_pow(2);
+            let StdError::OverflowPow { .. } = result.unwrap_err() else {
+                panic!("Expected OverflowPow error");
+            };
 
-    // #[test]
-    // fn uint128_multiply_ratio_works() {
-    //     let base = Uint128(500);
+        }
+    );
 
-    //     // factor 1/1
-    //     assert_eq!(base.multiply_ratio(1u128, 1u128), base);
-    //     assert_eq!(base.multiply_ratio(3u128, 3u128), base);
-    //     assert_eq!(base.multiply_ratio(654321u128, 654321u128), base);
-    //     assert_eq!(base.multiply_ratio(u128::MAX, u128::MAX), base);
+    utest!( multiply_ratio,
+        64 = []
+        128 = []
+        256 = []
+        // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
+        => |u| {
+            let base = Uint::from(500_u64);
+            let min = Uint::MIN;
+            let max = Uint::MAX;
+            dts!(u, base, min, max);
 
-    //     // factor 3/2
-    //     assert_eq!(base.multiply_ratio(3u128, 2u128), Uint128(750));
-    //     assert_eq!(base.multiply_ratio(333333u128, 222222u128), Uint128(750));
+            // factor 1/1
+            assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 3_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_ceil(654321_u64, 654321_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_ceil(max, max).unwrap(), base);
 
-    //     // factor 2/3 (integer devision always floors the result)
-    //     assert_eq!(base.multiply_ratio(2u128, 3u128), Uint128(333));
-    //     assert_eq!(base.multiply_ratio(222222u128, 333333u128), Uint128(333));
+            assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_floor(3_u64, 3_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_floor(654321_u64, 654321_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_floor(max, max).unwrap(), base);
 
-    //     // factor 5/6 (integer devision always floors the result)
-    //     assert_eq!(base.multiply_ratio(5u128, 6u128), Uint128(416));
-    //     assert_eq!(base.multiply_ratio(100u128, 120u128), Uint128(416));
-    // }
+            // factor 3/2
+            assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 2_u64).unwrap(), Uint::from(750_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(3_u64, 2_u64).unwrap(), Uint::from(750_u64));
+            assert_eq!(base.checked_multiply_ratio_ceil(333333_u64, 222222_u64).unwrap(), Uint::from(750_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(333333_u64, 222222_u64).unwrap(), Uint::from(750_u64));
 
-    // #[test]
-    // fn uint128_multiply_ratio_does_not_overflow_when_result_fits() {
-    //     // Almost max value for Uint128.
-    //     let base = Uint128(u128::MAX - 9);
+            // factor 2/3
+            assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 3_u64).unwrap(), Uint::from(334_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(2_u64, 3_u64).unwrap(), Uint::from(333_u64));
+            assert_eq!(base.checked_multiply_ratio_ceil(222222_u64, 333333_u64).unwrap(), Uint::from(334_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(222222_u64, 333333_u64).unwrap(), Uint::from(333_u64));
 
-    //     assert_eq!(base.multiply_ratio(2u128, 2u128), base);
-    // }
+            // factor 5/6
+            assert_eq!(base.checked_multiply_ratio_ceil(5_u64, 6_u64).unwrap(), Uint::from(417_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(5_u64, 6_u64).unwrap(), Uint::from(416_u64));
+            assert_eq!(base.checked_multiply_ratio_ceil(100_u64, 120_u64).unwrap(), Uint::from(417_u64));
+            assert_eq!(base.checked_multiply_ratio_floor(100_u64, 120_u64).unwrap(), Uint::from(416_u64));
+        }
+    );
 
-    // #[test]
-    // #[should_panic]
-    // fn uint128_multiply_ratio_panicks_on_overflow() {
-    //     // Almost max value for Uint128.
-    //     let base = Uint128(u128::MAX - 9);
+    utest!( multiply_ratio_does_not_overflow_when_result_fits,
+        64 = []
+        128 = []
+        256 = []
+        // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
+         => |u| {
+            // Almost max value for Uint128.
+            let max = Uint::MAX;
+            let reduce = Uint::from(9_u64);
+            let base = max - reduce;
+            dts!(u, base, max, reduce);
 
-    //     assert_eq!(base.multiply_ratio(2u128, 1u128), base);
-    // }
+            assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 2_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_floor(2_u64, 2_u64).unwrap(), base);
+        }
+    );
 
-    // #[test]
-    // #[should_panic(expected = "Denominator must not be zero")]
-    // fn uint128_multiply_ratio_panics_for_zero_denominator() {
-    //     _ = Uint128(500).multiply_ratio(1u128, 0u128);
-    // }
+    utest!( multiply_ratio_overflow,
+        64 = []
+        128 = []
+        256 = []
+        // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
+        => |u| {
+            // Almost max value for Uint128.
+            let max = Uint::MAX;
+            let reduce = Uint::from(9_u64);
+            let base = max - reduce;
+            dts!(u, base, max, reduce);
 
-    // #[test]
-    // fn uint128_checked_multiply_ratio_does_not_panic() {
-    //     assert_eq!(
-    //         Uint128(500u128).checked_multiply_ratio(1u128, 0u128),
-    //         Err(CheckedMultiplyRatioError::DivideByZero),
-    //     );
-    //     assert_eq!(
-    //         Uint128(500u128).checked_multiply_ratio(u128::MAX, 1u128),
-    //         Err(CheckedMultiplyRatioError::Overflow),
-    //     );
-    // }
+            let result = base.checked_multiply_ratio_ceil(2_u64, 1_u64);
+            let StdError::OverflowConversion { .. } = result.unwrap_err() else {
+                panic!("Expected OverflowConversion error");
+            };
 
-    // #[test]
-    // fn uint128_shr_works() {
-    //     let original = Uint128::new(u128::from_be_bytes([
-    //         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 2u8, 0u8, 4u8, 2u8,
-    //     ]));
+            let result = base.checked_multiply_ratio_floor(2_u64, 1_u64);
+            let StdError::OverflowConversion { .. } = result.unwrap_err() else {
+                panic!("Expected OverflowConversion error");
+            };
+        }
+    );
 
-    //     let shifted = Uint128::new(u128::from_be_bytes([
-    //         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 128u8, 1u8, 0u8,
-    //     ]));
+    utest!( multiply_ratio_divide_by_zero,
+        64 = []
+        128 = []
+        256 = []
+        // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
+        => |u| {
+            let base = bt(u, Uint::from(500_u64));
 
-    //     assert_eq!(original >> 2u32, shifted);
-    // }
+            let result = base.checked_multiply_ratio_ceil(1_u64, 0_u64);
+            let StdError::DivisionByZero { .. } = result.unwrap_err() else {
+                panic!("Expected DivisionByZero error");
+            };
 
-    // #[test]
-    // #[should_panic]
-    // fn uint128_shr_overflow_panics() {
-    //     let _ = Uint128::from(1u32) >> 128u32;
-    // }
+            let result = base.checked_multiply_ratio_floor(1_u64, 0_u64);
+            let StdError::DivisionByZero { .. } = result.unwrap_err() else {
+                panic!("Expected DivisionByZero error");
+            };
+        }
+    );
 
-    // #[test]
-    // fn uint128_shl_works() {
-    //     let original = Uint128::new(u128::from_be_bytes([
-    //         64u8, 128u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-    //     ]));
+    utest! (shr,
+        => |u| {
+            let original = bt(u, Uint::from(160_u64));
+            assert_eq!(original >> 1, bt(u, Uint::from(80_u64)));
+            assert_eq!(original >> 3, bt(u, Uint::from(20_u64)));
+            assert_eq!(original >> 2, bt(u, Uint::from(40_u64)));
+        }
+    );
 
-    //     let shifted = Uint128::new(u128::from_be_bytes([
-    //         2u8, 0u8, 4u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-    //     ]));
+    utest!( shr_overflow_panics,
+        [64],
+        [128],
+        [256],
+        [512]
+        attrs = #[should_panic(expected = "shift overflow")]
+        => |u, shift| {
+            let original = bt(u, Uint::from(1_u64));
+            let _ = original >> shift;
+        }
+    );
 
-    //     assert_eq!(original << 2u32, shifted);
-    // }
+    utest! (shl,
+        => |u| {
+            let original = bt(u, Uint::from(160_u64));
+            assert_eq!(original << 1, bt(u, Uint::from(320_u64)));
+            assert_eq!(original << 2, bt(u, Uint::from(640_u64)));
+            assert_eq!(original << 3, bt(u, Uint::from(1280_u64)));
+        }
+    );
 
-    // #[test]
-    // #[should_panic]
-    // fn uint128_shl_overflow_panics() {
-    //     let _ = Uint128::from(1u32) << 128u32;
-    // }
+    utest!( shl_overflow_panics,
+        [64],
+        [128],
+        [256],
+        [512]
+        attrs = #[should_panic(expected = "shift overflow")]
+        => |u, shift| {
+            let original = bt(u, Uint::from(1_u64));
+            let _ = original << shift;
+        }
+    );
+
+    utest!( sum,
+        => |u| {
+            let nums = vec![Uint::from(17_u64), Uint::from(123_u64), Uint::from(540_u64), Uint::from(82_u64)];
+            let expected = Uint::from(762_u64);
+
+            dt(&vec![u], &nums);
+            dt(u, expected);
+
+            let sum_as_ref: Uint<_> = nums.iter().sum();
+            assert_eq!(expected, sum_as_ref);
+
+            let sum_as_owned = nums.into_iter().sum();
+            assert_eq!(expected, sum_as_owned);
+
+        }
+    );
 
     // #[test]
     // fn sum_works() {
