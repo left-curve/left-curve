@@ -1,10 +1,9 @@
-use grug_types::{Addr, Api, StdResult, VerificationError};
+use crate::{Addr, Api, StdResult, VerificationError};
 
-// This is named `InternalApi` to contrast with `grug_ffi::ExternalApi`, which
-// works across the FFI boundary, which this doesn't.
-pub struct InternalApi;
+/// A mock implementation of the [`Api`](crate::Api) for testing purpose.
+pub struct MockApi;
 
-impl Api for InternalApi {
+impl Api for MockApi {
     fn debug(&self, addr: Addr, msg: &str) {
         println!("Contract emitted debug message! addr = {addr}, msg = {msg}");
     }

@@ -20,7 +20,6 @@ mod query;
 mod response;
 mod result;
 mod serializers;
-mod testing;
 mod time;
 mod tx;
 mod utils;
@@ -28,12 +27,17 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, context::*, db::*,
     empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, nonzero::*, query::*,
-    response::*, result::*, serializers::*, testing::*, time::*, tx::*, utils::*,
+    response::*, result::*, serializers::*, time::*, tx::*, utils::*,
 };
 
-/// Represents any valid JSON value, including numbers, booleans, strings,
-/// objects, and arrays.
-///
-/// This is a re-export of `serde_json::Value`, but we rename it to "Json" to be
-/// clearer what it is.
+// ---------------------------------- testing ----------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
+mod testing;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use testing::*;
+
+// -------------------------------- re-exports ---------------------------------
+
 pub use serde_json::{json, Value as Json};
