@@ -12,31 +12,17 @@ export type PublicClientConfig<
 export type PublicClient<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
-> = Omit<
-  Client<transport, chain, undefined, PublicActions<transport, chain>>,
-  | "batch"
-  | "uid"
-  | "extend"
-  | "transport"
-  | "type"
-  | "name"
-  | "key"
-  | "chain"
-  | "signer"
-  | "broadcast"
-  | "query"
->;
+> = Client<transport, chain, undefined, PublicActions<transport, chain>>;
 
 export function createPublicClient<
   transport extends Transport,
   chain extends Chain | undefined = undefined,
 >(parameters: PublicClientConfig<transport, chain>): PublicClient<transport, chain> {
-  const { key = "public", name = "Public Client" } = parameters;
+  const { name = "Public Client" } = parameters;
   const client = createBaseClient({
     ...parameters,
-    key,
     name,
-    type: "publicClient",
+    type: "public",
   });
   return client.extend(publicActions);
 }

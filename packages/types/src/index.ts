@@ -98,10 +98,8 @@ export type {
 
 export type {
   ClientConfig,
-  Client,
-  ClientBase,
-  ClientWithSigner,
   ClientExtend,
+  Client,
 } from "./client";
 
 export type {

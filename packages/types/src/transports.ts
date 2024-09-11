@@ -10,6 +10,8 @@ export type TransportConfig<type extends string = string> = {
   key: string;
   /** The type of the transport. */
   type: type;
+  /** Indicates if the transport supports batch queries. */
+  batch?: boolean;
 };
 
 export type CometQueryFn = (

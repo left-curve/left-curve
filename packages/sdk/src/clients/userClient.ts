@@ -14,18 +14,11 @@ export type UserClient<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer = Signer,
-> = Omit<
-  Client<transport, chain, signer, PublicActions<transport, chain> & UserActions<transport, chain>>,
-  | "batch"
-  | "uid"
-  | "transport"
-  | "type"
-  | "name"
-  | "key"
-  | "chain"
-  | "signer"
-  | "broadcast"
-  | "query"
+> = Client<
+  transport,
+  chain,
+  signer,
+  PublicActions<transport, chain> & UserActions<transport, chain>
 >;
 
 export function createUserClient<
@@ -33,13 +26,12 @@ export function createUserClient<
   chain extends Chain | undefined = undefined,
   signer extends Signer = Signer,
 >(parameters: UserClientConfig<transport, chain, signer>): UserClient<transport, chain, signer> {
-  const { key = "wallet", name = "Wallet Client" } = parameters;
+  const { name = "Wallet Client" } = parameters;
 
   const client = createBaseClient({
     ...parameters,
-    key,
     name,
-    type: "walletClient",
+    type: "user",
   });
 
   return client.extend(publicActions).extend(userActions);

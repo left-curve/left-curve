@@ -5,7 +5,6 @@ import type { Transport } from "./transports";
 
 /**
  * Client configuration options.
- *
  */
 export type ClientConfig<
   transport extends Transport = Transport,
@@ -16,37 +15,14 @@ export type ClientConfig<
   signer?: signer;
   /** The username of the signer. */
   username?: Username;
-  /** Indicates whether to batch requests. */
-  batch?: boolean;
   /** The chain to connect to. */
-  chain?: Chain | undefined | chain;
-  /** The key used for authentication. */
-  key?: string | undefined;
+  chain?: chain;
   /** The name of the client. */
-  name?: string | undefined;
+  name?: string;
   /** The type of the client. */
-  type?: string | undefined;
+  type?: string;
   /** The RPC transport */
   transport: transport;
-};
-
-export type ClientBase<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  signer extends Signer | undefined = undefined,
-> = {
-  signer: signer;
-  username?: Username;
-  batch?: boolean | undefined;
-  chain: chain;
-  key: string;
-  name: string;
-  query: ReturnType<transport>["query"];
-  broadcast: ReturnType<transport>["broadcast"];
-  /** The RPC transport */
-  transport: ReturnType<transport>["config"];
-  type: string;
-  uid: string;
 };
 
 export type Client<
@@ -54,8 +30,17 @@ export type Client<
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer | undefined = undefined,
   extended extends ClientExtend | undefined = ClientExtend | undefined,
-> = ClientBase<transport, chain, signer> &
-  (extended extends ClientExtend ? extended : unknown) & {
+> = {
+  signer: signer;
+  username?: Username;
+  chain?: chain;
+  name: string;
+  query: ReturnType<transport>["query"];
+  broadcast: ReturnType<transport>["broadcast"];
+  transport: ReturnType<transport>["config"];
+  type: string;
+  uid: string;
+} & (extended extends ClientExtend ? extended : unknown) & {
     extend: <const client extends ClientExtend = ClientExtend>(
       fn: (client: Client<transport, chain, signer, extended>) => client,
     ) => Client<
@@ -66,11 +51,6 @@ export type Client<
     >;
   };
 
-export type ClientWithSigner<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-> = Client<transport, chain, Signer>;
-
-export type ClientExtend = { [_ in keyof ClientBase]?: undefined } & {
+export type ClientExtend = {
   [key: string]: unknown;
 };

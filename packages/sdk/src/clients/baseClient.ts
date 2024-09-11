@@ -13,15 +13,13 @@ export function createBaseClient<
   chain extends Chain | undefined = undefined,
   signer extends Signer | undefined = undefined,
 >(parameters: ClientConfig<transport, chain, signer>): Client<transport, chain, signer> {
-  const { batch, chain, signer, key = "base", name = "Base Client", type = "base" } = parameters;
+  const { chain, signer, name = "Base Client", type = "base" } = parameters;
 
   const { config: transport, query, broadcast } = parameters.transport({ chain });
 
   const client = {
     signer,
-    batch,
     chain,
-    key,
     name,
     transport,
     query,

@@ -1,9 +1,10 @@
 import type { Account, Username } from "./account";
 import type { Chain, ChainId } from "./chain";
-import type { ClientWithSigner } from "./client";
+import type { Client } from "./client";
 import type { Emitter } from "./emitter";
 import type { KeyHash } from "./key";
 import type { SignDoc, SignedDoc } from "./signature";
+import type { Signer } from "./signer";
 import type { Transport } from "./transports";
 
 export type ConnectorId = string;
@@ -54,7 +55,10 @@ export type ConnectorEventMap = {
 
 export type CreateConnectorFn<
   provider = undefined,
+  chain extends Chain = Chain,
+  signer extends Signer = Signer,
   signDoc extends SignDoc = SignDoc,
+  transport extends Transport = Transport,
   properties extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
   chains: readonly [Chain, ...Chain[]];
@@ -73,7 +77,7 @@ export type CreateConnectorFn<
   }): Promise<void>;
   disconnect(): Promise<void>;
   getAccounts(): Promise<readonly Account[]>;
-  getClient(): Promise<ClientWithSigner>;
+  getClient(): Promise<Client<transport, chain, signer>>;
   getKeyHash(): Promise<KeyHash>;
   isAuthorized(): Promise<boolean>;
   requestSignature(signDoc: signDoc): Promise<SignedDoc>;

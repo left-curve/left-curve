@@ -92,7 +92,6 @@ export function createConfig<
 
       const client = createBaseClient<Transport, chains[number]>({
         chain,
-        batch: rest.batch ?? false,
         transport: (parameters) => rest.transports[chainId]({ ...parameters }),
       });
 
