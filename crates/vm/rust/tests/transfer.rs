@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Message, NonZero, NumberConst, Uint256},
+    grug_types::{Coins, Message, NonZero, NumberConst, ResultExt, Uint256},
 };
 
 const DENOM: &str = "ugrug";

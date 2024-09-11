@@ -2,7 +2,7 @@ use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, ResultExt, StdResult, Storage,
+        QueryResponse, Record, StdResult, Storage,
     },
 };
 
@@ -158,7 +158,7 @@ where
             self.block,
             req,
         )
-        .into_generic_result()
+        .into()
     }
 }
 

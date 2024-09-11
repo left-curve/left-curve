@@ -1,7 +1,9 @@
 use {
     anyhow::ensure,
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, NonZero, Timestamp, Uint128},
+    grug_types::{
+        btree_map, Coin, Coins, ConfigUpdates, Duration, NonZero, ResultExt, Timestamp, Uint128,
+    },
     grug_vm_rust::ContractBuilder,
     std::collections::BTreeMap,
 };

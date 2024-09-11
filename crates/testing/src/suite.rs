@@ -1,18 +1,21 @@
 use {
     crate::Signer,
     anyhow::ensure,
-    grug_app::{App, AppError, AppResult, Vm},
+    grug_app::{App, AppError, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
         Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Duration,
-        GenericResult, GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message,
-        NumberConst, Op, Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256,
-        Uint64, UnsignedTx,
+        GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
+        Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256, Uint64,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::collections::{BTreeMap, HashMap},
+    std::{
+        collections::{BTreeMap, HashMap},
+        fmt::Debug,
+    },
 };
 
 pub struct TestSuite<VM = RustVm>
@@ -443,14 +446,14 @@ where
         Ok(())
     }
 
-    pub fn query_info(&self) -> GenericResult<InfoResponse> {
+    pub fn query_info(&self) -> anyhow::Result<InfoResponse> {
         self.app
             .do_query_app(Query::Info {}, 0, false)
             .map(|val| val.as_info())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_app_config(&self, key: &str) -> GenericResult<Json> {
+    pub fn query_app_config(&self, key: &str) -> anyhow::Result<Json> {
         self.app
             .do_query_app(
                 Query::AppConfig {
@@ -460,10 +463,10 @@ where
                 false,
             )
             .map(|res| res.as_app_config())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_app_configs(&self) -> GenericResult<BTreeMap<String, Json>> {
+    pub fn query_app_configs(&self) -> anyhow::Result<BTreeMap<String, Json>> {
         self.app
             .do_query_app(
                 Query::AppConfigs {
@@ -474,10 +477,10 @@ where
                 false,
             )
             .map(|res| res.as_app_configs())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> GenericResult<Uint256> {
+    pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> anyhow::Result<Uint256> {
         self.app
             .do_query_app(
                 Query::Balance {
@@ -488,10 +491,10 @@ where
                 false,
             )
             .map(|res| res.as_balance().amount)
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_balances(&self, account: &dyn Signer) -> GenericResult<Coins> {
+    pub fn query_balances(&self, account: &dyn Signer) -> anyhow::Result<Coins> {
         self.app
             .do_query_app(
                 Query::Balances {
@@ -503,10 +506,10 @@ where
                 false,
             )
             .map(|res| res.as_balances())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_supply(&self, denom: &str) -> GenericResult<Uint256> {
+    pub fn query_supply(&self, denom: &str) -> anyhow::Result<Uint256> {
         self.app
             .do_query_app(
                 Query::Supply {
@@ -516,10 +519,10 @@ where
                 false,
             )
             .map(|res| res.as_supply().amount)
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_supplies(&self) -> GenericResult<Coins> {
+    pub fn query_supplies(&self) -> anyhow::Result<Coins> {
         self.app
             .do_query_app(
                 Query::Supplies {
@@ -530,17 +533,17 @@ where
                 false,
             )
             .map(|res| res.as_supplies())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_code(&self, hash: Hash256) -> GenericResult<Binary> {
+    pub fn query_code(&self, hash: Hash256) -> anyhow::Result<Binary> {
         self.app
             .do_query_app(Query::Code { hash }, 0, false)
             .map(|res| res.as_code())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_codes(&self) -> GenericResult<BTreeMap<Hash256, Binary>> {
+    pub fn query_codes(&self) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
         self.app
             .do_query_app(
                 Query::Codes {
@@ -551,10 +554,10 @@ where
                 false,
             )
             .map(|res| res.as_codes())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_contract(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
+    pub fn query_contract(&self, signer: &dyn Signer) -> anyhow::Result<ContractInfo> {
         self.app
             .do_query_app(
                 Query::Contract {
@@ -564,10 +567,10 @@ where
                 false,
             )
             .map(|res| res.as_contract())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_contracts(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
+    pub fn query_contracts(&self) -> anyhow::Result<BTreeMap<Addr, ContractInfo>> {
         self.app
             .do_query_app(
                 Query::Contracts {
@@ -578,10 +581,10 @@ where
                 false,
             )
             .map(|res| res.as_contracts())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> GenericResult<Option<Binary>>
+    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> anyhow::Result<Option<Binary>>
     where
         B: Into<Binary>,
     {
@@ -595,31 +598,29 @@ where
                 false,
             )
             .map(|res| res.as_wasm_raw())
-            .into_generic_result()
+            .map_err(Into::into)
     }
 
-    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
+    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> anyhow::Result<R::Response>
     where
         R: QueryRequest,
         R::Message: Serialize,
-        R::Response: DeserializeOwned,
+        R::Response: DeserializeOwned + Debug,
     {
-        (|| -> AppResult<_> {
-            let msg = R::Message::from(req);
-            let msg_raw = msg.to_json_value()?;
-            let res_raw = self
-                .app
-                .do_query_app(
-                    Query::WasmSmart {
-                        contract,
-                        msg: msg_raw,
-                    },
-                    0, // zero means to use the latest height
-                    false,
-                )?
-                .as_wasm_smart();
-            Ok(res_raw.deserialize_json()?)
-        })()
-        .into_generic_result()
+        let msg = R::Message::from(req);
+        let msg_raw = msg.to_json_value()?;
+
+        self.app
+            .do_query_app(
+                Query::WasmSmart {
+                    contract,
+                    msg: msg_raw,
+                },
+                0, // zero means to use the latest height
+                false,
+            )?
+            .as_wasm_smart()
+            .deserialize_json()
+            .map_err(Into::into)
     }
 }
