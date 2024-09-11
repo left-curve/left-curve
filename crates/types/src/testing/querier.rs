@@ -1,17 +1,18 @@
 use {
+    super::MockStorage,
     crate::{
         Addr, Binary, Coin, ContractInfo, GenericResult, Hash256, HashExt, InfoResponse, Json,
-        JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Uint256,
+        JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
+        Uint256,
     },
     serde::Serialize,
     std::collections::BTreeMap,
 };
 
-/// A function that handles Wasm raw queries.
-type RawQueryHandler = Box<dyn Fn(Addr, Binary) -> Option<Binary>>;
-
 /// A function that handles Wasm smart queries.
 type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
+
+// ------------------------------- mock querier --------------------------------
 
 /// A mock implementation of the [`Querier`](crate::Querier) trait for testing
 /// purpose.
@@ -23,7 +24,7 @@ pub struct MockQuerier {
     supplies: BTreeMap<String, Uint256>,
     codes: BTreeMap<Hash256, Binary>,
     contracts: BTreeMap<Addr, ContractInfo>,
-    raw_query_handler: Option<RawQueryHandler>,
+    raw_query_handler: MockRawQueryHandler,
     smart_query_handler: Option<SmartQueryHandler>,
 }
 
@@ -84,8 +85,11 @@ impl MockQuerier {
         self
     }
 
-    pub fn with_raw_query_handler(mut self, handler: RawQueryHandler) -> Self {
-        self.raw_query_handler = Some(handler);
+    pub fn with_raw_contract_storage<F>(mut self, address: Addr, callback: F) -> Self
+    where
+        F: FnOnce(&mut dyn Storage),
+    {
+        callback(self.raw_query_handler.get_storage_mut(address));
         self
     }
 
@@ -229,11 +233,10 @@ impl Querier for MockQuerier {
                 Ok(QueryResponse::Contracts(contracts))
             },
             Query::WasmRaw { contract, key } => {
-                let handler = self
+                let maybe_value = self
                     .raw_query_handler
-                    .as_ref()
-                    .expect("[MockQuerier]: raw query handler not set");
-                let maybe_value = handler(contract, key);
+                    .get_storage(contract)
+                    .and_then(|storage| storage.read(&key).map(Binary::from));
                 Ok(QueryResponse::WasmRaw(maybe_value))
             },
             Query::WasmSmart { contract, msg } => {
@@ -252,5 +255,22 @@ impl Querier for MockQuerier {
                 Ok(QueryResponse::Multi(responses))
             },
         }
+    }
+}
+
+// ----------------------------- raw query handler -----------------------------
+
+#[derive(Default)]
+struct MockRawQueryHandler {
+    storages: BTreeMap<Addr, MockStorage>,
+}
+
+impl MockRawQueryHandler {
+    pub fn get_storage(&self, address: Addr) -> Option<&MockStorage> {
+        self.storages.get(&address)
+    }
+
+    pub fn get_storage_mut(&mut self, address: Addr) -> &mut MockStorage {
+        self.storages.entry(address).or_default()
     }
 }
