@@ -1,8 +1,7 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Hash256, ImmutableCtx, MockApi, MockQuerier,
-    MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp, Uint64,
+    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MaybeDefined, MockApi, MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp, Uint64, Undefined
 };
 
 /// Default mock chain ID used in mock context.
@@ -18,16 +17,24 @@ pub const MOCK_BLOCK: BlockInfo = BlockInfo {
 /// Default contract address used in mock context.
 pub const MOCK_CONTRACT: Addr = Addr::mock(0);
 
-pub struct MockContext<S = MockStorage, A = MockApi, Q = MockQuerier> {
+/// A mock up context for use in unit tests.
+pub struct MockContext<
+    S = MockStorage,
+    A = MockApi,
+    Q = MockQuerier,
+    E = Undefined<Addr>,
+    F = Undefined<Coins>,
+    M = Undefined<AuthMode>,
+> {
     pub storage:  S,
     pub api:      A,
     pub querier:  Q,
     pub chain_id: String,
     pub block:    BlockInfo,
     pub contract: Addr,
-    pub sender:   Option<Addr>,
-    pub funds:    Option<Coins>,
-    pub mode:     Option<AuthMode>,
+    pub sender:   E,
+    pub funds:    F,
+    pub mode:     M,
 }
 
 impl Default for MockContext {
@@ -39,9 +46,9 @@ impl Default for MockContext {
             chain_id: MOCK_CHAIN_ID.to_string(),
             block:    MOCK_BLOCK,
             contract: MOCK_CONTRACT,
-            sender:   None,
-            funds:    None,
-            mode:     None,
+            sender:   Undefined::default(),
+            funds:    Undefined::default(),
+            mode:     Undefined::default(),
         }
     }
 }
@@ -52,13 +59,8 @@ impl MockContext {
     }
 }
 
-impl<S, A, Q> MockContext<S, A, Q>
-where
-    S: Storage,
-    A: Api,
-    Q: Querier,
-{
-    pub fn with_storage<T>(self, storage: T) -> MockContext<T, A, Q> {
+impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
+    pub fn with_storage<T>(self, storage: T) -> MockContext<T, A, Q, E, F, M> {
         MockContext {
             storage,
             api:      self.api,
@@ -72,7 +74,7 @@ where
         }
     }
 
-    pub fn with_api<T>(self, api: T) -> MockContext<S, T, Q> {
+    pub fn with_api<T>(self, api: T) -> MockContext<S, T, Q, E, F, M> {
         MockContext {
             api,
             storage:  self.storage,
@@ -86,7 +88,7 @@ where
         }
     }
 
-    pub fn with_querier<T>(self, querier: T) -> MockContext<S, A, T> {
+    pub fn with_querier<T>(self, querier: T) -> MockContext<S, A, T, E, F, M> {
         MockContext {
             querier,
             storage:  self.storage,
@@ -97,6 +99,48 @@ where
             sender:   self.sender,
             funds:    self.funds,
             mode:     self.mode,
+        }
+    }
+
+    pub fn with_sender(self, sender: Addr) -> MockContext<S, A, Q, Defined<Addr>, F, M> {
+        MockContext {
+            storage:  self.storage,
+            api:      self.api,
+            querier:  self.querier,
+            chain_id: self.chain_id,
+            block:    self.block,
+            contract: self.contract,
+            sender:   Defined::new(sender),
+            funds:    self.funds,
+            mode:     self.mode,
+        }
+    }
+
+    pub fn with_funds(self, funds: Coins) -> MockContext<S, A, Q, E, Defined<Coins>, M> {
+        MockContext {
+            storage:  self.storage,
+            api:      self.api,
+            querier:  self.querier,
+            chain_id: self.chain_id,
+            block:    self.block,
+            contract: self.contract,
+            sender:   self.sender,
+            funds:    Defined::new(funds),
+            mode:     self.mode,
+        }
+    }
+
+    pub fn with_mode(self, mode: AuthMode) -> MockContext<S, A, Q, E, F, Defined<AuthMode>> {
+        MockContext {
+            storage:  self.storage,
+            api:      self.api,
+            querier:  self.querier,
+            chain_id: self.chain_id,
+            block:    self.block,
+            contract: self.contract,
+            sender:   self.sender,
+            funds:    self.funds,
+            mode:     Defined::new(mode),
         }
     }
 
@@ -136,21 +180,6 @@ where
         self
     }
 
-    pub fn with_sender(mut self, sender: Addr) -> Self {
-        self.sender = Some(sender);
-        self
-    }
-
-    pub fn with_funds(mut self, funds: Coins) -> Self {
-        self.funds = Some(funds);
-        self
-    }
-
-    pub fn with_mode(mut self, mode: AuthMode) -> Self {
-        self.mode = Some(mode);
-        self
-    }
-
     pub fn set_chain_id<T>(&mut self, chain_id: T)
     where
         T: Into<String>,
@@ -180,19 +209,17 @@ where
     pub fn set_contract(&mut self, contract: Addr) {
         self.contract = contract;
     }
+}
 
-    pub fn set_sender(&mut self, sender: Addr) {
-        self.sender = Some(sender);
-    }
-
-    pub fn set_funds(&mut self, funds: Coins) {
-        self.funds = Some(funds);
-    }
-
-    pub fn set_mode(&mut self, mode: AuthMode) {
-        self.mode = Some(mode);
-    }
-
+impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M>
+where
+    S: Storage,
+    A: Api,
+    Q: Querier,
+    E: MaybeDefined<Inner = Addr>,
+    F: MaybeDefined<Inner = Coins>,
+    M: MaybeDefined<Inner = AuthMode>,
+{
     pub fn as_immutable(&self) -> ImmutableCtx {
         ImmutableCtx {
             storage:  &self.storage,
@@ -201,19 +228,6 @@ where
             chain_id: self.chain_id.clone(),
             block:    self.block,
             contract: self.contract,
-        }
-    }
-
-    pub fn as_mutable(&mut self) -> MutableCtx {
-        MutableCtx {
-            api:      &self.api,
-            querier:  QuerierWrapper::new(&self.querier),
-            chain_id: self.chain_id.clone(),
-            block:    self.block,
-            contract: self.contract,
-            sender:   self.sender(),
-            funds:    self.funds(),
-            storage:  &mut self.storage,
         }
     }
 
@@ -227,32 +241,46 @@ where
             contract: self.contract,
         }
     }
+}
 
-    pub fn as_auth(&mut self) -> AuthCtx {
-        AuthCtx {
-
+impl<S, A, Q, M> MockContext<S, A, Q, Defined<Addr>, Defined<Coins>, M>
+where
+    S: Storage,
+    A: Api,
+    Q: Querier,
+    M: MaybeDefined<Inner = AuthMode>,
+{
+    pub fn as_mutable(&mut self) -> MutableCtx {
+        MutableCtx {
             api:      &self.api,
             querier:  QuerierWrapper::new(&self.querier),
             chain_id: self.chain_id.clone(),
             block:    self.block,
             contract: self.contract,
-            mode:     self.mode(),
+            sender:   self.sender.into_inner(),
+            funds:    self.funds.clone().into_inner(),
             storage:  &mut self.storage,
         }
     }
+}
 
-    #[inline]
-    fn mode(&self) -> AuthMode {
-        self.mode.expect("[MockContext]: mode not set")
-    }
-
-    #[inline]
-    fn sender(&self) -> Addr {
-        self.sender.expect("[MockContext]: sender not set")
-    }
-
-    #[inline]
-    fn funds(&self) -> Coins {
-        self.funds.clone().expect("[MockContext]: funds not set")
+impl<S, A, Q, E, F> MockContext<S, A, Q, E, F, Defined<AuthMode>>
+where
+    S: Storage,
+    A: Api,
+    Q: Querier,
+    E: MaybeDefined<Inner = Addr>,
+    F: MaybeDefined<Inner = Coins>,
+{
+    pub fn as_auth(&mut self) -> AuthCtx {
+        AuthCtx {
+            api:      &self.api,
+            querier:  QuerierWrapper::new(&self.querier),
+            chain_id: self.chain_id.clone(),
+            block:    self.block,
+            contract: self.contract,
+            mode:     self.mode.into_inner(),
+            storage:  &mut self.storage,
+        }
     }
 }
