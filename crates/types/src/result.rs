@@ -8,6 +8,23 @@ use {
 /// entry point.
 pub type SubMsgResult = GenericResult<Vec<Event>>;
 
+/// Representing a result that can be cast into a [`GenericResult`](crate::GenericResult).
+pub trait ResultExt<T> {
+    fn into_generic_result(self) -> GenericResult<T>;
+}
+
+impl<T, E> ResultExt<T> for Result<T, E>
+where
+    E: ToString,
+{
+    fn into_generic_result(self) -> GenericResult<T> {
+        match self {
+            Ok(value) => GenericResult::Ok(value),
+            Err(err) => GenericResult::Err(err.to_string()),
+        }
+    }
+}
+
 /// A result type that can be serialized into a string and thus passed over the
 /// FFI boundary.
 ///
@@ -19,18 +36,6 @@ pub type SubMsgResult = GenericResult<Vec<Event>>;
 pub enum GenericResult<T> {
     Ok(T),
     Err(String),
-}
-
-impl<T, E> From<Result<T, E>> for GenericResult<T>
-where
-    E: ToString,
-{
-    fn from(res: Result<T, E>) -> Self {
-        match res {
-            Result::Ok(data) => Self::Ok(data),
-            Result::Err(err) => Self::Err(err.to_string()),
-        }
-    }
 }
 
 impl<T> GenericResult<T> {

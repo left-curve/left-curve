@@ -7,8 +7,8 @@ use {
     grug_types::{
         Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Duration,
         GenericResult, GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message,
-        NumberConst, Op, Outcome, Query, QueryRequest, StdError, Tx, TxOutcome, Uint256, Uint64,
-        UnsignedTx,
+        NumberConst, Op, Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256,
+        Uint64, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -447,7 +447,7 @@ where
         self.app
             .do_query_app(Query::Info {}, 0, false)
             .map(|val| val.as_info())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_app_config(&self, key: &str) -> GenericResult<Json> {
@@ -460,7 +460,7 @@ where
                 false,
             )
             .map(|res| res.as_app_config())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_app_configs(&self) -> GenericResult<BTreeMap<String, Json>> {
@@ -474,7 +474,7 @@ where
                 false,
             )
             .map(|res| res.as_app_configs())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> GenericResult<Uint256> {
@@ -488,7 +488,7 @@ where
                 false,
             )
             .map(|res| res.as_balance().amount)
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_balances(&self, account: &dyn Signer) -> GenericResult<Coins> {
@@ -503,7 +503,7 @@ where
                 false,
             )
             .map(|res| res.as_balances())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_supply(&self, denom: &str) -> GenericResult<Uint256> {
@@ -516,7 +516,7 @@ where
                 false,
             )
             .map(|res| res.as_supply().amount)
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_supplies(&self) -> GenericResult<Coins> {
@@ -530,14 +530,14 @@ where
                 false,
             )
             .map(|res| res.as_supplies())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_code(&self, hash: Hash256) -> GenericResult<Binary> {
         self.app
             .do_query_app(Query::Code { hash }, 0, false)
             .map(|res| res.as_code())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_codes(&self) -> GenericResult<BTreeMap<Hash256, Binary>> {
@@ -551,7 +551,7 @@ where
                 false,
             )
             .map(|res| res.as_codes())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_contract(&self, signer: &dyn Signer) -> GenericResult<ContractInfo> {
@@ -564,7 +564,7 @@ where
                 false,
             )
             .map(|res| res.as_contract())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_contracts(&self) -> GenericResult<BTreeMap<Addr, ContractInfo>> {
@@ -578,7 +578,7 @@ where
                 false,
             )
             .map(|res| res.as_contracts())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> GenericResult<Option<Binary>>
@@ -595,7 +595,7 @@ where
                 false,
             )
             .map(|res| res.as_wasm_raw())
-            .into()
+            .into_generic_result()
     }
 
     pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> GenericResult<R::Response>
@@ -620,6 +620,6 @@ where
                 .as_wasm_smart();
             Ok(res_raw.deserialize_json()?)
         })()
-        .into()
+        .into_generic_result()
     }
 }

@@ -4,7 +4,7 @@ use {
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse,
         BorshDeExt, Context, GenericResult, ImmutableCtx, Json, JsonDeExt, JsonSerExt, MutableCtx,
-        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        QuerierWrapper, Response, ResultExt, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
 };
@@ -44,7 +44,7 @@ where
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        instantiate_fn(ctx, msg).into()
+        instantiate_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -69,7 +69,7 @@ where
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        execute_fn(ctx, msg).into()
+        execute_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -95,7 +95,7 @@ where
             make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        query_fn(immutable_ctx, msg).into()
+        query_fn(immutable_ctx, msg).into_generic_result()
     })();
     let res_bytes = res.to_json_vec().unwrap();
 
@@ -119,7 +119,7 @@ where
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        migrate_fn(ctx, msg).into()
+        migrate_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -147,7 +147,7 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
         let events = unwrap_into_generic_result!(events_bytes.deserialize_json());
 
-        reply_fn(ctx, msg, events).into()
+        reply_fn(ctx, msg, events).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -168,7 +168,7 @@ where
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
-        receive_fn(ctx).into()
+        receive_fn(ctx).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -189,7 +189,7 @@ where
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
-        cron_execute_fn(ctx).into()
+        cron_execute_fn(ctx).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -213,7 +213,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
-        authenticate_fn(ctx, tx).into()
+        authenticate_fn(ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -237,7 +237,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
-        backrun_fn(ctx, tx).into()
+        backrun_fn(ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -261,7 +261,7 @@ where
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        transfer_fn(ctx, msg).into()
+        transfer_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -285,7 +285,7 @@ where
         let ctx = make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_json());
 
-        query_fn(ctx, msg).into()
+        query_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -309,7 +309,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
 
-        withhold_fee_fn(auth_ctx, tx).into()
+        withhold_fee_fn(auth_ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
@@ -336,7 +336,7 @@ where
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_json());
         let outcome = unwrap_into_generic_result!(outcome_bytes.deserialize_json());
 
-        finalize_fee_fn(auth_ctx, tx, outcome).into()
+        finalize_fee_fn(auth_ctx, tx, outcome).into_generic_result()
     })();
 
     let res_bytes = res.to_json_vec().unwrap();
