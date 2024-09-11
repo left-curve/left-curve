@@ -496,9 +496,11 @@ mod tests2 {
 
     use fmt::Debug;
 
+    use crate::{Int128, Int256, Int64};
+
     use super::*;
 
-    /// This fn is used for the compiler to derive the type of a variable,
+    /// Allow compiler to derive the type of a variable,
     /// which is necessary for the test functions.
     fn derive_type<T>(_: T, _: T) {}
 
@@ -515,9 +517,21 @@ mod tests2 {
         assert_eq!(left, right);
     }
 
+    /// Macro for unit tests for Uint.
+    /// Is not possible to use [`test_case::test_case`] because the arguments types can are different.
+    /// Also `Uint<U>` is different for each test case.
+    ///
+    /// The macro set as first parameter of the callback function `Uint::ZERO`, so the compiler can derive the type
+    /// (see [`derive_type`], [`derive_types`] and [`smart_assert`] ).
     macro_rules! utest {
         // Multiple args
-        ($name:ident, [$($p64:expr),*], [$($p128:expr),*], [$($p256:expr),*], [$($p512:expr),*] => $test_fn:expr) => {
+        (
+            $name:ident,
+            [$($p64:expr),*],
+            [$($p128:expr),*],
+            [$($p256:expr),*],
+            [$($p512:expr),*]
+            => $test_fn:expr) => {
             paste::paste! {
                 #[test]
                 fn [<$name _u64 >]() {
@@ -542,7 +556,10 @@ mod tests2 {
             }
         };
         // Same args
-        ($name:ident, [$($p:expr),*] => $test_fn:expr) => {
+        (
+            $name:ident,
+            [$($p:expr),*]
+            => $test_fn:expr) => {
             paste::paste! {
                 #[test]
                 fn [<$name _u64 >]() {
@@ -566,6 +583,38 @@ mod tests2 {
                 }
             }
         };
+        // Multiple optional tests
+        (
+            $name:ident,
+            $(64 = [$($p64:expr),*])?
+            $(128 = [$($p128:expr),*])?
+            $(256 = [$($p256:expr),*])?
+            $(512 = [$($p512:expr),*])?
+            => $test_fn:expr) => {
+            paste::paste! {
+                $(#[test]
+                fn [<$name _u64 >]() {
+                    // the first argument is used to derive the type of the variable
+                    ($test_fn)(Uint64::ZERO, $($p64),*);
+                })?
+
+                $(#[test]
+                fn [<$name _u128 >]() {
+                    ($test_fn)(Uint128::ZERO, $($p128),*);
+                })?
+
+                $(#[test]
+                fn [<$name _u256 >]() {
+                    ($test_fn)(Uint256::ZERO, $($p256),*);
+                })?
+
+                $(#[test]
+                fn [<$name _u512 >]() {
+                    ($test_fn)(Uint512::ZERO, $($p512),*);
+                })?
+            }
+        };
+
     }
 
     utest!( size_of_works,
@@ -640,13 +689,20 @@ mod tests2 {
         }
     );
 
-    // #[test]
-    // fn uint128_try_from_signed_works() {
-    //     test_try_from_int_to_uint::<Int64, Uint128>("Int64", "Uint128");
-    //     test_try_from_int_to_uint::<Int128, Uint128>("Int128", "Uint128");
-    //     test_try_from_int_to_uint::<Int256, Uint128>("Int256", "Uint128");
-    //     test_try_from_int_to_uint::<Int512, Uint128>("Int512", "Uint128");
-    // }
+    utest!( try_from_signed,
+        64  = [Int64::new_positive(64_u64.into()),    Int64::new_negative(64_u64.into())]
+        128 = [Int128::new_positive(128_u128.into()), Int128::new_negative(128_u128.into())]
+        256 = [Int256::new_positive(256_u128.into()), Int256::new_negative(256_u128.into())]
+        // We don't have Int512
+        => |u, positive, negative| {
+            let uint = Uint::try_from(positive).unwrap();
+            derive_type(uint, u);
+
+            let maybe_uint = Uint::try_from(negative);
+            derive_type(&maybe_uint, &Ok(u));
+            maybe_uint.unwrap_err();
+        }
+    );
 
     // #[test]
     // fn uint128_try_into() {
