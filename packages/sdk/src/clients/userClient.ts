@@ -1,12 +1,4 @@
-import type {
-  Account,
-  Chain,
-  Client,
-  ClientConfig,
-  RequiredBy,
-  Signer,
-  Transport,
-} from "@leftcurve/types";
+import type { Chain, Client, ClientConfig, RequiredBy, Signer, Transport } from "@leftcurve/types";
 
 import { type PublicActions, publicActions } from "../actions/publicActions";
 import { type UserActions, userActions } from "../actions/userActions";

@@ -19,4 +19,4 @@ export type Credential =
   /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
   | { passkey: Base64 }
   /** An EVM signature signed by a wallet, along with its typedata. */
-  | { walletEvm: Base64 };
+  | { ethWallet: Base64 };

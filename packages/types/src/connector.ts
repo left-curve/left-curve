@@ -1,12 +1,19 @@
 import type { Account, Username } from "./account";
 import type { Chain, ChainId } from "./chain";
-import type { Client } from "./client";
-import type { Credential } from "./credential";
+import type { ClientWithSigner } from "./client";
 import type { Emitter } from "./emitter";
-import type { Storage } from "./storage";
+import type { KeyHash } from "./key";
+import type { SignDoc, SignedDoc } from "./signature";
 import type { Transport } from "./transports";
 
 export type ConnectorId = string;
+
+export type ConnectorType = (typeof ConnectorType)[keyof typeof ConnectorType];
+
+export const ConnectorType = {
+  EIP1193: "eip1193",
+  Passkey: "passkey",
+} as const;
 
 export type Connection = {
   chainId: ChainId;
@@ -46,20 +53,18 @@ export type ConnectorEventMap = {
 };
 
 export type CreateConnectorFn<
-  provider = unknown,
-  signDoc = unknown,
+  provider = undefined,
+  signDoc extends SignDoc = SignDoc,
   properties extends Record<string, unknown> = Record<string, unknown>,
-  storageItem extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
   chains: readonly [Chain, ...Chain[]];
   emitter: Emitter<ConnectorEventMap>;
   transports: Record<string, Transport>;
-  storage?: Storage<storageItem> | null | undefined;
 }) => properties & {
   readonly id: string;
   readonly icon?: string | undefined;
   readonly name: string;
-  readonly type: string;
+  readonly type: ConnectorType;
   setup?(): Promise<void>;
   connect(parameters: {
     username: string;
@@ -68,9 +73,10 @@ export type CreateConnectorFn<
   }): Promise<void>;
   disconnect(): Promise<void>;
   getAccounts(): Promise<readonly Account[]>;
-  getClient(): Promise<Client>;
+  getClient(): Promise<ClientWithSigner>;
+  getKeyHash(): Promise<KeyHash>;
   isAuthorized(): Promise<boolean>;
-  requestSignature(signDoc: signDoc): Promise<Credential>;
+  requestSignature(signDoc: signDoc): Promise<SignedDoc>;
   switchChain?(parameters: { chainId: string }): Promise<Chain>;
   onAccountsChanged?(accounts: string[]): void;
   onChainChanged?(chainId: string): void;

@@ -7,6 +7,7 @@ import type {
   Signer,
   Transport,
   TxParameters,
+  TypedDataParameter,
 } from "@leftcurve/types";
 import { execute } from "~/actions/user/execute";
 
@@ -39,11 +40,21 @@ export async function safeAccountExecute<chain extends Chain | undefined, signer
   const { sender, account, ...executeMsg } = parameters;
   const { gasLimit, funds } = txParameters;
 
+  const msg = { execute: executeMsg };
+
+  const typedData: TypedDataParameter = {
+    type: [{ name: "execute", type: "SafeExecute" }],
+    extraTypes: {
+      SafeExecute: [{ name: "proposalId", type: "uint32" }],
+    },
+  };
+
   return await execute(client, {
     sender,
     contract: account,
-    msg: executeMsg,
+    msg,
     funds,
     gasLimit,
+    typedData,
   });
 }

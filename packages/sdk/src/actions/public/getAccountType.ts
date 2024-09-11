@@ -1,5 +1,5 @@
 import type {
-  AccountType,
+  AccountTypes,
   Address,
   Chain,
   Client,
@@ -16,7 +16,7 @@ export type GetAccountTypeParameters = {
   height?: number;
 };
 
-export type GetAccountTypeReturnType = Promise<AccountType>;
+export type GetAccountTypeReturnType = Promise<AccountTypes>;
 
 /**
  * Get the account type by username and address

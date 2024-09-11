@@ -1,5 +1,17 @@
 import { encodeBase64 } from "@leftcurve/encoding";
-import type { Address, Chain, Client, Coins, Hex, Json, Signer, Transport } from "@leftcurve/types";
+import type {
+  Address,
+  Chain,
+  Client,
+  Coins,
+  Hex,
+  Json,
+  MessageTypedDataType,
+  Signer,
+  Transport,
+  TypedDataParameter,
+} from "@leftcurve/types";
+import { getCoinsTypedData } from "@leftcurve/utils";
 import { computeAddress } from "../public/computeAddress";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
@@ -11,6 +23,7 @@ export type InstantiateParameters = {
   funds?: Coins;
   admin?: Address;
   gasLimit?: number;
+  typedData?: TypedDataParameter;
 };
 
 export type InstantiateReturnType = Promise<[string, Hex]>;
@@ -32,7 +45,30 @@ export async function instantiate<chain extends Chain | undefined, signer extend
     },
   };
 
-  const txHash = await signAndBroadcastTx(client, { sender, msgs: [instantiateMsg], gasLimit });
+  const { extraTypes = {}, type = [] } = parameters.typedData || {};
+
+  const typedData: TypedDataParameter<MessageTypedDataType> = {
+    type: [{ name: "instantiate", type: "Instantiate" }],
+    extraTypes: {
+      Instantiate: [
+        { name: "codeHash", type: "string" },
+        { name: "salt", type: "string" },
+        { name: "admin", type: "address" },
+        { name: "funds", type: "Funds" },
+        { name: "msg", type: "InstantiateMessage" },
+      ],
+      Funds: [...getCoinsTypedData(funds)],
+      InstantiateMessage: type,
+      ...extraTypes,
+    },
+  };
+
+  const txHash = await signAndBroadcastTx(client, {
+    sender,
+    messages: [instantiateMsg],
+    gasLimit,
+    typedData,
+  });
 
   return [address, txHash];
 }

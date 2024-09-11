@@ -1,4 +1,14 @@
-import type { Address, Chain, Client, Hex, Json, Signer, Transport } from "@leftcurve/types";
+import type {
+  Address,
+  Chain,
+  Client,
+  Hex,
+  Json,
+  MessageTypedDataType,
+  Signer,
+  Transport,
+  TypedDataParameter,
+} from "@leftcurve/types";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type MigrateParameters = {
@@ -6,6 +16,7 @@ export type MigrateParameters = {
   contract: Address;
   newCodeHash: Hex;
   msg: Json;
+  typedData?: TypedDataParameter;
 };
 
 export type MigrateReturnType = Promise<Hex>;
@@ -23,5 +34,20 @@ export async function migrate<chain extends Chain | undefined, signer extends Si
     },
   };
 
-  return await signAndBroadcastTx(client, { sender, msgs: [migrateMsg] });
+  const { extraTypes = {}, type = [] } = parameters.typedData || {};
+
+  const typedData: TypedDataParameter<MessageTypedDataType> = {
+    type: [{ name: "migrate", type: "Migrate" }],
+    extraTypes: {
+      Migrate: [
+        { name: "contract", type: "address" },
+        { name: "newCodeHash", type: "string" },
+        { name: "msg", type: "MigrateMessage" },
+      ],
+      MigrateMessage: type,
+      ...extraTypes,
+    },
+  };
+
+  return await signAndBroadcastTx(client, { sender, messages: [migrateMsg], typedData });
 }

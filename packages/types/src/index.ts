@@ -74,6 +74,7 @@ export type {
   Username,
   Account,
   AccountIndex,
+  AccountTypes,
   AccountStateResponse,
 } from "./account";
 
@@ -99,6 +100,7 @@ export type {
   ClientConfig,
   Client,
   ClientBase,
+  ClientWithSigner,
   ClientExtend,
 } from "./client";
 
@@ -140,8 +142,19 @@ export type { EIP1193Provider } from "./eip1193";
 export type {
   Signature,
   SignDoc,
+  SignedDoc,
   EthPersonalMessage,
 } from "./signature";
+
+export type {
+  MessageTypedDataType,
+  TxTypedDataType,
+  TypedDataTypes,
+  TypedDataProperties,
+  TypedDataParameter,
+  TxMessageTypedDataType,
+  TypedData,
+} from "./typedData";
 
 export type {
   Json,
@@ -171,6 +184,12 @@ export type {
   Safe,
 } from "./safe";
 
+export type {
+  Duration,
+  Timestamp,
+} from "./common";
+
 export { AccountType } from "./account";
 export { KeyTag } from "./key";
 export { Vote } from "./safe";
+export { ConnectorType } from "./connector";

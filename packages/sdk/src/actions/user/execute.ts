@@ -1,4 +1,16 @@
-import type { Address, Chain, Client, Coins, Hex, Json, Signer, Transport } from "@leftcurve/types";
+import type {
+  Address,
+  Chain,
+  Client,
+  Coins,
+  Hex,
+  Json,
+  MessageTypedDataType,
+  Signer,
+  Transport,
+  TypedDataParameter,
+} from "@leftcurve/types";
+import { getCoinsTypedData } from "@leftcurve/utils";
 import { signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type ExecuteParameters = {
@@ -7,6 +19,7 @@ export type ExecuteParameters = {
   msg: Json;
   funds?: Coins;
   gasLimit?: number;
+  typedData?: TypedDataParameter;
 };
 
 export type ExecuteReturnType = Promise<Hex>;
@@ -24,5 +37,21 @@ export async function execute<chain extends Chain | undefined, signer extends Si
     },
   };
 
-  return await signAndBroadcastTx(client, { sender, msgs: [executeMsg], gasLimit });
+  const { extraTypes = {}, type = [] } = parameters.typedData || {};
+
+  const typedData: TypedDataParameter<MessageTypedDataType> = {
+    type: [{ name: "execute", type: "Execute" }],
+    extraTypes: {
+      Execute: [
+        { name: "contract", type: "address" },
+        { name: "msg", type: "ExecuteMessage" },
+        { name: "funds", type: "Funds" },
+      ],
+      Funds: [...getCoinsTypedData(funds)],
+      ExecuteMessage: type,
+      ...extraTypes,
+    },
+  };
+
+  return await signAndBroadcastTx(client, { sender, messages: [executeMsg], typedData, gasLimit });
 }

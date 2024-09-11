@@ -1,9 +1,17 @@
-import type { AccountType, Address, Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
+import type {
+  AccountTypes,
+  Address,
+  Chain,
+  Client,
+  Hex,
+  Signer,
+  Transport,
+} from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig";
 import { queryWasmSmart } from "./queryWasmSmart";
 
 export type GetAccountTypeCodeHashParameters = {
-  accountType: AccountType;
+  accountType: AccountTypes;
   height?: number;
 };
 

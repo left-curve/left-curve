@@ -1,3 +1,13 @@
 export { createBaseClient } from "./baseClient";
-export { createPublicClient } from "./publicClient";
-export { createUserClient } from "./userClient";
+
+export {
+  type PublicClient,
+  type PublicClientConfig,
+  createPublicClient,
+} from "./publicClient";
+
+export {
+  type UserClient,
+  type UserClientConfig,
+  createUserClient,
+} from "./userClient";

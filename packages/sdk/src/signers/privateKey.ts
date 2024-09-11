@@ -5,7 +5,6 @@ import { createKeyHash } from "../accounts";
 
 import type { KeyPair } from "@leftcurve/crypto";
 import type { KeyHash, SignDoc, Signer } from "@leftcurve/types";
-import type { Message } from "@leftcurve/types";
 
 export class PrivateKeySigner implements Signer {
   #keyPair: KeyPair;
@@ -31,8 +30,8 @@ export class PrivateKeySigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc) {
-    const { msgs, chainId, sequence } = signDoc;
-    const tx = sha256(serialize({ messages: msgs, chainId, sequence }));
+    const { typedData, ...txMessage } = signDoc;
+    const tx = sha256(serialize(txMessage));
     const signature = await this.signBytes(tx);
 
     const credential = { secp256k1: encodeBase64(signature) };

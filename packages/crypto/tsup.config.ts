@@ -7,5 +7,6 @@ import { type Options, defineConfig } from "tsup";
  */
 export default defineConfig({
   ...(config as Options),
+  platform: "node",
   entry: ["src/**"],
 });

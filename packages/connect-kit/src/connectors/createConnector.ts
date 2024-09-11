@@ -1,10 +1,9 @@
-import type { CreateConnectorFn } from "@leftcurve/types";
+import type { CreateConnectorFn, SignDoc } from "@leftcurve/types";
 
 export function createConnector<
-  provider,
-  signDoc = unknown,
+  provider = undefined,
+  signDoc extends SignDoc = SignDoc,
   properties extends Record<string, unknown> = Record<string, unknown>,
-  storageItem extends Record<string, unknown> = Record<string, unknown>,
->(createConnectorFn: CreateConnectorFn<provider, signDoc, properties, storageItem>) {
+>(createConnectorFn: CreateConnectorFn<provider, signDoc, properties>) {
   return createConnectorFn;
 }

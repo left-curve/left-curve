@@ -4,9 +4,11 @@ import type {
   Client,
   Hex,
   Message,
+  MessageTypedDataType,
   Signer,
   Transport,
   TxParameters,
+  TypedDataParameter,
 } from "@leftcurve/types";
 import { execute } from "~/actions/user/execute";
 
@@ -16,6 +18,7 @@ export type SafeAccountProposeParameters = {
   title: string;
   description?: string;
   messages: Message[];
+  typedData?: TypedDataParameter<MessageTypedDataType>;
 };
 
 export type SafeAccountProposeReturnType = Promise<Hex>;
@@ -38,14 +41,32 @@ export async function safeAccountPropose<chain extends Chain | undefined, signer
   parameters: SafeAccountProposeParameters,
   txParameters: TxParameters,
 ): SafeAccountProposeReturnType {
-  const { sender, account, ...proposeMsg } = parameters;
+  const { sender, account, typedData: providedTypedData, ...proposeMsg } = parameters;
   const { gasLimit, funds } = txParameters;
+
+  const msg = { propose: proposeMsg };
+
+  const { extraTypes = {}, type = [] } = providedTypedData || {};
+
+  const typedData: TypedDataParameter = {
+    type: [{ name: "propose", type: "SafePropose" }],
+    extraTypes: {
+      SafePropose: [
+        { name: "title", type: "string" },
+        { name: "description", type: "string" },
+        { name: "messages", type: "Message[]" },
+      ],
+      Message: type,
+      ...extraTypes,
+    },
+  };
 
   return await execute(client, {
     sender,
     contract: account,
-    msg: proposeMsg,
+    msg,
     funds,
     gasLimit,
+    typedData,
   });
 }

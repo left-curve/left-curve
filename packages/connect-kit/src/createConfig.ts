@@ -46,7 +46,6 @@ export function createConfig<
       ...connectorFn({
         emitter,
         chains: chains.getState(),
-        storage,
         transports: rest.transports,
       }),
       emitter,

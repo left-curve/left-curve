@@ -1,12 +1,15 @@
 import { ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
-import { encodeBase64, serialize } from "@leftcurve/encoding";
-import { createBaseClient, createKeyHash } from "@leftcurve/sdk";
+import { encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
+import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
+import { composeAndHashTypedData } from "@leftcurve/utils";
 import { createConnector } from "./createConnector";
 
-import type { Address, Client, EIP1193Provider, Json, Transport } from "@leftcurve/types";
+import type { AccountTypes, Address, EIP1193Provider, Transport } from "@leftcurve/types";
 
 import "@leftcurve/types/window";
+import type { UserClient } from "@leftcurve/sdk/clients";
+import { ConnectorSigner } from "@leftcurve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
   id?: string;
@@ -18,7 +21,7 @@ type EIP1193ConnectorParameters = {
 export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
   let _transport: Transport;
   let _username: string;
-  let _client: Client;
+  let _client: UserClient;
   let _isAuthorized = false;
 
   const {
@@ -66,8 +69,28 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        if (!_client) _client = createBaseClient({ transport: _transport });
+        if (!_client) {
+          _client = createUserClient({
+            transport: _transport,
+            signer: new ConnectorSigner(this),
+            username: _username,
+          });
+        }
         return _client;
+      },
+      async getKeyHash() {
+        const provider = await this.getProvider();
+        const challenge = encodeHex(crypto.getRandomValues(new Uint8Array(32)));
+        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+
+        const signature = await provider.request({
+          method: "personal_sign",
+          params: [challenge, controllerAddress],
+        });
+
+        const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
+
+        return createKeyHash({ pubKey });
       },
       async getProvider() {
         const provider = _provider_();
@@ -80,25 +103,33 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
         return Object.entries(accounts).map(([address, type]) => ({
           address: address as Address,
           username: _username,
-          type,
+          type: type as AccountTypes,
         }));
       },
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature(typedData) {
+      async requestSignature(signDoc) {
+        const { typedData, ...txMessage } = signDoc;
         const provider = await this.getProvider();
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
+        if (!typedData) throw new Error("Typed data required");
+        const hashTypedData = composeAndHashTypedData(txMessage, typedData);
+
         const signature = await provider.request({
           method: "eth_signTypedData_v4",
-          params: [controllerAddress, JSON.stringify(typedData)],
+          params: [controllerAddress, hashTypedData],
         });
 
-        const typedDataJson = typedData as Json;
+        const ethWalletCredential = serialize({ signature, typedData: hashTypedData.substring(2) });
+        const credential = { ethWallet: encodeBase64(ethWalletCredential) };
 
-        const credential = serialize({ signature, typedData: typedDataJson });
-        return { walletEvm: encodeBase64(credential) };
+        const keyHash = createKeyHash({
+          pubKey: await recoverPublicKey(hashTypedData.substring(2), signature, true),
+        });
+
+        return { credential, keyHash, signDoc };
       },
     };
   });

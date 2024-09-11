@@ -66,6 +66,11 @@ export type Client<
     >;
   };
 
+export type ClientWithSigner<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+> = Client<transport, chain, Signer>;
+
 export type ClientExtend = { [_ in keyof ClientBase]?: undefined } & {
   [key: string]: unknown;
 };

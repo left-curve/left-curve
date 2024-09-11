@@ -1,5 +1,5 @@
 import type {
-  AccountType,
+  AccountTypes,
   Address,
   Chain,
   Client,
@@ -12,7 +12,7 @@ import { queryWasmSmart } from "./queryWasmSmart";
 
 export type GetNextAccountAddressParameters = {
   username: Username;
-  accountType: AccountType;
+  accountType: AccountTypes;
   height?: number;
 };
 

@@ -3,14 +3,17 @@ import type {
   Chain,
   Client,
   Hex,
+  ProposalId,
   Signer,
   Transport,
   TxParameters,
+  TypedDataParameter,
   Vote,
 } from "@leftcurve/types";
 import { execute } from "~/actions/user/execute";
 
 export type SafeAccountVoteParameters = {
+  proposalId: ProposalId;
   sender: Address;
   account: Address;
   username: string;
@@ -40,12 +43,26 @@ export async function safeAccountVote<chain extends Chain | undefined, signer ex
 ): SafeAccountVoteReturnType {
   const { sender, account, ...voteMsg } = parameters;
   const { gasLimit, funds } = txParameters;
+  const msg = { vote: voteMsg };
+
+  const typedData: TypedDataParameter = {
+    type: [{ name: "vote", type: "SafeVote" }],
+    extraTypes: {
+      SafeVote: [
+        { name: "proposalId", type: "uint32" },
+        { name: "username", type: "string" },
+        { name: "vote", type: "string" },
+        { name: "execute", type: "bool" },
+      ],
+    },
+  };
 
   return await execute(client, {
     sender,
     contract: account,
-    msg: voteMsg,
+    msg,
     funds,
     gasLimit,
+    typedData,
   });
 }

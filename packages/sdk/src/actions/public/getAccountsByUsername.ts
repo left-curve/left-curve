@@ -1,5 +1,5 @@
 import type {
-  AccountType,
+  AccountTypes,
   Address,
   Chain,
   Client,
@@ -17,7 +17,7 @@ export type GetAccountsByUsernameParameters = {
   height?: number;
 };
 
-export type GetAccountsByUsernameReturnType = Promise<Record<Address, AccountType>>;
+export type GetAccountsByUsernameReturnType = Promise<Record<Address, AccountTypes>>;
 
 /**
  * Enumerate all accounts associated with a username.

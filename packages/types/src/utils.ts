@@ -42,3 +42,34 @@ export type UnionStrictOmit<type, keys extends keyof type> = type extends any
 export type OneRequired<T, K1 extends keyof T, K2 extends keyof T> =
   | (Required<Pick<T, K1>> & Partial<Pick<T, K2>>)
   | (Required<Pick<T, K2>> & Partial<Pick<T, K1>>);
+
+/**
+ * Creates range between two positive numbers using [tail recursion](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-5.html#tail-recursion-elimination-on-conditional-types).
+ *
+ * @param start - Number to start range
+ * @param stop - Number to end range
+ * @returns Array with inclusive range from {@link start} to {@link stop}
+ *
+ * @example
+ * type Result = Range<1, 3>
+ * //   ^? type Result = [1, 2, 3]
+ */
+// From [Type Challenges](https://github.com/type-challenges/type-challenges/issues/11625)
+export type Range<
+  start extends number,
+  stop extends number,
+  ///
+  result extends number[] = [],
+  padding extends 0[] = [],
+  current extends number = [...padding, ...result]["length"] & number,
+> = current extends stop
+  ? current extends start
+    ? [current]
+    : result extends []
+      ? []
+      : [...result, current]
+  : current extends start
+    ? Range<start, stop, [current], padding>
+    : result extends []
+      ? Range<start, stop, [], [...padding, 0]>
+      : Range<start, stop, [...result, current], padding>;

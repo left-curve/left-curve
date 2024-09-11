@@ -7,7 +7,13 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
   "scripts": {
     "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write src",
@@ -20,5 +26,8 @@
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
     "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "viem": "^2.21.5"
   }
 }

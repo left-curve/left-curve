@@ -1,3 +1,2 @@
-export { WebauthnSigner } from "./webauthn";
-export { WalletEvmSigner } from "./wallet";
+export { ConnectorSigner } from "./connector";
 export { PrivateKeySigner } from "./privateKey";
