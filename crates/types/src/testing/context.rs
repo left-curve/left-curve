@@ -1,9 +1,9 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MaybeDefined,
-    MockApi, MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx,
-    Timestamp, Uint64, Undefined,
+    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MockApi,
+    MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp,
+    Uint64, Undefined,
 };
 
 /// Default mock chain ID used in mock context.
@@ -213,14 +213,11 @@ impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
     }
 }
 
-impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M>
+impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Undefined<AuthMode>>
 where
     S: Storage,
     A: Api,
     Q: Querier,
-    E: MaybeDefined<Inner = Addr>,
-    F: MaybeDefined<Inner = Coins>,
-    M: MaybeDefined<Inner = AuthMode>,
 {
     pub fn as_immutable(&self) -> ImmutableCtx {
         ImmutableCtx {
@@ -245,12 +242,11 @@ where
     }
 }
 
-impl<S, A, Q, M> MockContext<S, A, Q, Defined<Addr>, Defined<Coins>, M>
+impl<S, A, Q> MockContext<S, A, Q, Defined<Addr>, Defined<Coins>, Undefined<AuthMode>>
 where
     S: Storage,
     A: Api,
     Q: Querier,
-    M: MaybeDefined<Inner = AuthMode>,
 {
     pub fn as_mutable(&mut self) -> MutableCtx {
         MutableCtx {
@@ -266,13 +262,11 @@ where
     }
 }
 
-impl<S, A, Q, E, F> MockContext<S, A, Q, E, F, Defined<AuthMode>>
+impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Defined<AuthMode>>
 where
     S: Storage,
     A: Api,
     Q: Querier,
-    E: MaybeDefined<Inner = Addr>,
-    F: MaybeDefined<Inner = Coins>,
 {
     pub fn as_auth(&mut self) -> AuthCtx {
         AuthCtx {
