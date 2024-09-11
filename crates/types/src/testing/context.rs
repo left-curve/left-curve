@@ -1,7 +1,9 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MaybeDefined, MockApi, MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp, Uint64, Undefined
+    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MaybeDefined,
+    MockApi, MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx,
+    Timestamp, Uint64, Undefined,
 };
 
 /// Default mock chain ID used in mock context.
