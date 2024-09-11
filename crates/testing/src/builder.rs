@@ -20,6 +20,7 @@ use {
 const DEFAULT_TRACING_LEVEL: Level = Level::INFO;
 const DEFAULT_CHAIN_ID: &str = "dev-1";
 const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
+const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;
 const DEFAULT_BANK_SALT: &[u8] = b"bank";
 const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
@@ -47,6 +48,7 @@ pub struct TestBuilder<
     chain_id: Option<String>,
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
+    default_gas_limit: Option<u64>,
     // App configs
     app_configs: BTreeMap<String, Json>,
     // Owner
@@ -101,6 +103,7 @@ where
             chain_id: None,
             genesis_time: None,
             block_time: None,
+            default_gas_limit: None,
             app_configs: BTreeMap::new(),
             owner: Undefined::default(),
             accounts: Undefined::default(),
@@ -142,6 +145,11 @@ where
 
     pub fn set_block_time(mut self, block_time: Duration) -> Self {
         self.block_time = Some(block_time);
+        self
+    }
+
+    pub fn set_default_gas_limit(mut self, gas_limit: u64) -> Self {
+        self.default_gas_limit = Some(gas_limit);
         self
     }
 
@@ -221,6 +229,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
             app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
@@ -283,6 +292,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
             app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
@@ -329,6 +339,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
             app_configs: self.app_configs,
             owner: self.owner,
             account_opt: self.account_opt,
@@ -399,6 +410,7 @@ where
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
             app_configs: self.app_configs,
             owner: self.owner,
             account_opt: CodeOption {
@@ -433,6 +445,7 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
             block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
             app_configs: self.app_configs,
             owner: Defined::new(owner.address),
             account_opt: self.account_opt,
@@ -461,6 +474,8 @@ where
         }
 
         let block_time = self.block_time.unwrap_or(DEFAULT_BLOCK_TIME);
+
+        let default_gas_limit = self.default_gas_limit.unwrap_or(DEFAULT_DEFAULT_GAS_LIMIT);
 
         let chain_id = self
             .chain_id
@@ -551,8 +566,14 @@ where
             app_configs: self.app_configs,
         };
 
-        let suite =
-            TestSuite::new_with_vm(self.vm, chain_id, block_time, genesis_block, genesis_state)?;
+        let suite = TestSuite::new_with_vm(
+            self.vm,
+            chain_id,
+            block_time,
+            default_gas_limit,
+            genesis_block,
+            genesis_state,
+        )?;
 
         Ok((suite, self.accounts.into_inner()))
     }
