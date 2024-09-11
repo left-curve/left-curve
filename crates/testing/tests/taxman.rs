@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, NonZero, NumberConst, TxOutcome, Uint256},
+    grug_types::{Coins, Empty, Message, NonZero, NumberConst, ResultExt, TxOutcome, Uint256},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };

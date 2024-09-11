@@ -1,7 +1,7 @@
 use {
-    crate::{get_contract_impl, ContractWrapper, InternalApi, VmError, VmResult},
+    crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{Context, Hash256, JsonDeExt, JsonSerExt},
+    grug_types::{Context, Hash256, JsonDeExt, JsonSerExt, MockApi},
 };
 
 /// Names of export functions supported by Grug.
@@ -74,19 +74,15 @@ impl Instance for RustInstance {
         let contract = get_contract_impl(self.wrapper)?;
         match name {
             "receive" => {
-                let res = contract.receive(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &InternalApi,
-                    &self.querier,
-                )?;
+                let res =
+                    contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
                 res.to_json_vec()
             },
             "cron_execute" => {
                 let res = contract.cron_execute(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                 )?;
                 res.to_json_vec()
@@ -116,7 +112,7 @@ impl Instance for RustInstance {
                 let res = contract.instantiate(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     param.as_ref(),
                 )?;
@@ -126,7 +122,7 @@ impl Instance for RustInstance {
                 let res = contract.execute(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     param.as_ref(),
                 )?;
@@ -136,7 +132,7 @@ impl Instance for RustInstance {
                 let res = contract.migrate(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     param.as_ref(),
                 )?;
@@ -146,7 +142,7 @@ impl Instance for RustInstance {
                 let res = contract.query(
                     ctx.clone(),
                     &self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     param.as_ref(),
                 )?;
@@ -157,7 +153,7 @@ impl Instance for RustInstance {
                 let res = contract.authenticate(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     tx,
                 )?;
@@ -168,7 +164,7 @@ impl Instance for RustInstance {
                 let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     tx,
                 )?;
@@ -179,7 +175,7 @@ impl Instance for RustInstance {
                 let res = contract.bank_execute(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     msg,
                 )?;
@@ -190,7 +186,7 @@ impl Instance for RustInstance {
                 let res = contract.bank_query(
                     ctx.clone(),
                     &self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     msg,
                 )?;
@@ -201,7 +197,7 @@ impl Instance for RustInstance {
                 let res = contract.withhold_fee(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     tx,
                 )?;
@@ -235,7 +231,7 @@ impl Instance for RustInstance {
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     param1.as_ref(),
                     result,
@@ -248,7 +244,7 @@ impl Instance for RustInstance {
                 let res = contract.finalize_fee(
                     ctx.clone(),
                     &mut self.storage,
-                    &InternalApi,
+                    &MockApi,
                     &self.querier,
                     tx,
                     outcome,

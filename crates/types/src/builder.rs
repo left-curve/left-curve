@@ -16,7 +16,7 @@ impl<T> Default for Undefined<T> {
 }
 
 /// Represents a builder parameter that has already been provided.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Defined<T>(T);
 
 impl<T> Defined<T> {

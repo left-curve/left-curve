@@ -2,7 +2,8 @@ use {
     grug_account::Credential,
     grug_testing::{Signer, TestBuilder},
     grug_types::{
-        Coins, Duration, JsonDeExt, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
+        Coins, Duration, JsonDeExt, Message, NonZero, NumberConst, ResultExt, Timestamp, Tx,
+        Uint256,
     },
     grug_vm_rust::ContractBuilder,
 };

@@ -1,12 +1,14 @@
 use {
     crate::{Event, StdError, StdResult},
     serde::{Deserialize, Serialize},
-    std::fmt::Debug,
+    std::fmt::{Debug, Display},
 };
 
 /// The result for executing a submessage, provided to the contract in the `reply`
 /// entry point.
 pub type SubMsgResult = GenericResult<Vec<Event>>;
+
+// ------------------------------ generic result -------------------------------
 
 /// A result type that can be serialized into a string and thus passed over the
 /// FFI boundary.
@@ -19,18 +21,6 @@ pub type SubMsgResult = GenericResult<Vec<Event>>;
 pub enum GenericResult<T> {
     Ok(T),
     Err(String),
-}
-
-impl<T, E> From<Result<T, E>> for GenericResult<T>
-where
-    E: ToString,
-{
-    fn from(res: Result<T, E>) -> Self {
-        match res {
-            Result::Ok(data) => Self::Ok(data),
-            Result::Err(err) => Self::Err(err.to_string()),
-        }
-    }
 }
 
 impl<T> GenericResult<T> {
@@ -51,110 +41,193 @@ impl<T> GenericResult<T> {
             GenericResult::Err(_) => None,
         }
     }
+}
+
+impl<T, E> From<Result<T, E>> for GenericResult<T>
+where
+    E: ToString,
+{
+    fn from(result: Result<T, E>) -> Self {
+        match result {
+            Ok(value) => GenericResult::Ok(value),
+            Err(err) => GenericResult::Err(err.to_string()),
+        }
+    }
+}
+
+// ------------------------------ extension trait ------------------------------
+
+/// Addition methods for result types.
+/// Useful for testing, improving code readability.
+pub trait ResultExt<T, E>: Sized {
+    /// Ensure the result satisfies the given predicate.
+    fn should<F>(self, predicate: F)
+    where
+        F: FnOnce(Self) -> bool;
 
     /// Ensure the result is ok; return the value.
-    pub fn should_succeed(self) -> T {
-        match self {
-            GenericResult::Ok(value) => value,
-            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
-        }
-    }
+    fn should_succeed(self) -> T;
 
     /// Ensure the result is ok, and the value satisfies the given predicate.
-    pub fn should_succeed_and<F>(self, predicate: F)
+    fn should_succeed_and<F>(self, predicate: F)
     where
-        F: FnOnce(T) -> bool,
-    {
-        match self {
-            GenericResult::Ok(value) => {
-                assert!(predicate(value), "value does not satisfy predicate!")
-            },
-            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
-        }
-    }
+        F: FnOnce(T) -> bool;
 
     /// Ensure the result is ok, and matches the expect value.
-    pub fn should_succeed_and_equal<U>(self, expect: U)
+    fn should_succeed_and_equal<U>(self, expect: U)
     where
-        T: Debug + PartialEq<U>,
-        U: Debug,
-    {
-        match self {
-            GenericResult::Ok(value) => assert_eq!(value, expect, "wrong value!"),
-            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
-        }
-    }
+        T: PartialEq<U>,
+        U: Debug;
 
     /// Ensure the result is ok, but the value doesn't equal the given value.
-    pub fn should_succeed_but_not_equal<U>(self, expect: U)
+    fn should_succeed_but_not_equal<U>(self, expect: U)
     where
-        T: Debug + PartialEq<U>,
-        U: Debug,
-    {
-        match self {
-            GenericResult::Ok(value) => assert_ne!(value, expect, "wrong value!"),
-            GenericResult::Err(err) => panic!("expecting ok, got error: {err}"),
-        }
-    }
+        T: PartialEq<U>,
+        U: Debug;
 
     /// Ensure the result is error; return the error message;
-    pub fn should_fail(self) -> String
-    where
-        T: Debug,
-    {
-        match self {
-            GenericResult::Err(err) => err,
-            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
-        }
-    }
+    fn should_fail(self) -> E;
 
-    /// Ensure the result is error, and contains the given message.
-    pub fn should_fail_with_error<M>(self, msg: M)
+    /// Ensure the result is error, and the error satisfies the given predicate.
+    fn should_fail_and<F>(self, predicate: F)
     where
-        T: Debug,
-        M: ToString,
-    {
-        match self {
-            GenericResult::Err(err) => {
-                // Here we stringify the error and check for the existence of
-                // the substring, instead of utilizing the Rust type system.
-                //
-                // Have to go with this approach because errors emitted by the
-                // contract are converted to strings (as `GenericResult`) when
-                // passed through the FFI, at which time they lost their types.
-                let expect = msg.to_string();
-                let actual = err.to_string();
-                assert!(
-                    actual.contains(&expect),
-                    "wrong error! expecting: {expect}, got: {actual}"
-                );
-            },
-            GenericResult::Ok(value) => panic!("expecting error, got ok: {value:?}"),
-        }
-    }
+        F: FnOnce(E) -> bool;
+
+    /// Ensure the result is error, and contains the given substring.
+    fn should_fail_with_error<M>(self, msg: M)
+    where
+        M: ToString;
 
     /// Ensure the result matches the given result.
-    pub fn should_match<U>(self, expect: GenericResult<U>)
+    fn should_match<U>(self, expect: GenericResult<U>)
     where
-        T: Debug + PartialEq<U>,
-        U: Debug,
-    {
-        match (self, expect) {
-            (GenericResult::Ok(actual), GenericResult::Ok(expect)) => {
-                assert_eq!(actual, expect, "wrong value!");
-            },
-            (GenericResult::Err(actual), GenericResult::Err(expect)) => {
-                assert!(
-                    actual.contains(&expect),
-                    "wrong error! expecting: {expect}, got {actual}"
-                );
-            },
-            (GenericResult::Ok(value), GenericResult::Err(_)) => {
-                panic!("expecting error, got ok: {value:?}");
-            },
-            (GenericResult::Err(err), GenericResult::Ok(_)) => {
-                panic!("expecting ok, got error: {err}");
-            },
+        T: PartialEq<U>,
+        U: Debug;
+}
+
+macro_rules! impl_result_ext {
+    ($t:tt, $e:ty) => {
+        fn should<F>(self, predicate: F)
+        where
+            F: FnOnce(Self) -> bool,
+        {
+            assert!(predicate(self), "result does not satisfy predicte!");
         }
-    }
+
+        fn should_succeed(self) -> T {
+            match self {
+                $t::Ok(value) => value,
+                $t::Err(err) => panic!("expecting ok, got error: {err}"),
+            }
+        }
+
+        fn should_succeed_and<F>(self, predicate: F)
+        where
+            F: FnOnce(T) -> bool,
+        {
+            match self {
+                $t::Ok(value) => {
+                    assert!(predicate(value), "value does not satisfy predicate!")
+                },
+                $t::Err(err) => panic!("expecting ok, got error: {err}"),
+            }
+        }
+
+        fn should_succeed_and_equal<U>(self, expect: U)
+        where
+            T: PartialEq<U>,
+            U: Debug,
+        {
+            match self {
+                $t::Ok(value) => assert_eq!(value, expect, "wrong value!"),
+                $t::Err(err) => panic!("expecting ok, got error: {err}"),
+            }
+        }
+
+        fn should_succeed_but_not_equal<U>(self, expect: U)
+        where
+            T: PartialEq<U>,
+            U: Debug,
+        {
+            match self {
+                $t::Ok(value) => assert_ne!(value, expect, "wrong value!"),
+                $t::Err(err) => panic!("expecting ok, got error: {err}"),
+            }
+        }
+
+        fn should_fail(self) -> $e {
+            match self {
+                $t::Err(err) => err,
+                $t::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+            }
+        }
+
+        fn should_fail_and<F>(self, predicate: F)
+        where
+            F: FnOnce($e) -> bool,
+        {
+            match self {
+                $t::Err(err) => {
+                    assert!(predicate(err), "error does not satisfy predicate!");
+                },
+                $t::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+            }
+        }
+
+        fn should_fail_with_error<M>(self, msg: M)
+        where
+            M: ToString,
+        {
+            match self {
+                $t::Err(err) => {
+                    let expect = msg.to_string();
+                    let actual = err.to_string();
+                    assert!(
+                        actual.contains(&expect),
+                        "wrong error! expecting: {expect}, got: {actual}"
+                    );
+                },
+                $t::Ok(value) => panic!("expecting error, got ok: {value:?}"),
+            }
+        }
+
+        fn should_match<U>(self, expect: GenericResult<U>)
+        where
+            T: PartialEq<U>,
+            U: Debug,
+        {
+            match (self, expect) {
+                ($t::Ok(actual), GenericResult::Ok(expect)) => {
+                    assert_eq!(actual, expect, "wrong value!");
+                },
+                ($t::Err(actual), GenericResult::Err(expect)) => {
+                    assert!(
+                        actual.to_string().contains(&expect),
+                        "wrong error! expecting: {expect}, got {actual}"
+                    );
+                },
+                ($t::Ok(value), GenericResult::Err(_)) => {
+                    panic!("expecting error, got ok: {value:?}");
+                },
+                ($t::Err(err), GenericResult::Ok(_)) => {
+                    panic!("expecting ok, got error: {err}");
+                },
+            }
+        }
+    };
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, E>
+where
+    T: Debug,
+    E: Display,
+{
+    impl_result_ext!(Result, E);
+}
+
+impl<T> ResultExt<T, String> for GenericResult<T>
+where
+    T: Debug,
+{
+    impl_result_ext!(GenericResult, String);
 }
