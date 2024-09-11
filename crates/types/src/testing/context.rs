@@ -242,17 +242,17 @@ where
     }
 
     #[inline]
-    pub fn mode(&self) -> AuthMode {
+    fn mode(&self) -> AuthMode {
         self.mode.expect("[MockContext]: mode not set")
     }
 
     #[inline]
-    pub fn sender(&self) -> Addr {
+    fn sender(&self) -> Addr {
         self.sender.expect("[MockContext]: sender not set")
     }
 
     #[inline]
-    pub fn funds(&self) -> Coins {
+    fn funds(&self) -> Coins {
         self.funds.clone().expect("[MockContext]: funds not set")
     }
 }
