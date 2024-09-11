@@ -67,7 +67,6 @@ pub struct SudoCtx<'a> {
 ///
 /// The typical use of the `simulate` parameter is to skip certain authentication
 /// steps (e.g. verifying a cryptographic signature) if it's in simulation mode.
-#[rustfmt::skip]
 pub struct AuthCtx<'a> {
     pub storage:  &'a mut dyn Storage,
     pub api:      &'a dyn Api,
