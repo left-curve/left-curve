@@ -500,15 +500,26 @@ mod tests2 {
 
     use super::*;
 
+    /// `derive_type`
+    ///
     /// Allow compiler to derive the type of a variable,
     /// which is necessary for the test functions.
-    fn derive_type<T>(_: T, _: T) {}
+    fn dt<T>(_: T, _: T) {}
 
-    /// Derived the types of multiple variables
-    macro_rules! derive_types{
+    /// `built_type`
+    ///
+    ///  Allow compiler to derive the type of a variable, and return right.
+    fn bt<T>(_: T, ret: T) -> T {
+        ret
+    }
+
+    /// `derive_types`
+    ///
+    ///  Allow compiler to derive the types of multiple variables
+    macro_rules! dts{
         ($u: expr, $($p:expr),* ) =>
          {
-            $(derive_type($u, $p);)*
+            $(dt($u, $p);)*
          }
     }
 
@@ -534,24 +545,59 @@ mod tests2 {
             => $test_fn:expr) => {
             paste::paste! {
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u64 >]() {
                     // the first argument is used to derive the type of the variable
                     ($test_fn)(Uint64::ZERO, $($p64),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u128 >]() {
                     ($test_fn)(Uint128::ZERO, $($p128),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u256 >]() {
                     ($test_fn)(Uint256::ZERO, $($p256),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u512 >]() {
                     ($test_fn)(Uint512::ZERO, $($p512),*);
+                }
+            }
+        };
+        // No args
+        (
+            $name:ident,
+            => $test_fn:expr) => {
+            paste::paste! {
+                #[test]
+                #[allow(unreachable_code)]
+                fn [<$name _u64 >]() {
+                    // the first argument is used to derive the type of the variable
+                    ($test_fn)(Uint64::ZERO);
+                }
+
+                #[test]
+                #[allow(unreachable_code)]
+                fn [<$name _u128 >]() {
+                    ($test_fn)(Uint128::ZERO);
+                }
+
+                #[test]
+                #[allow(unreachable_code)]
+                fn [<$name _u256 >]() {
+                    ($test_fn)(Uint256::ZERO);
+                }
+
+                #[test]
+                #[allow(unreachable_code)]
+                fn [<$name _u512 >]() {
+                    ($test_fn)(Uint512::ZERO);
                 }
             }
         };
@@ -562,22 +608,26 @@ mod tests2 {
             => $test_fn:expr) => {
             paste::paste! {
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u64 >]() {
                     // the first argument is used to derive the type of the variable
                     ($test_fn)(Uint64::ZERO, $($p),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u128 >]() {
                     ($test_fn)(Uint128::ZERO, $($p),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u256 >]() {
                     ($test_fn)(Uint256::ZERO, $($p),*);
                 }
 
                 #[test]
+                #[allow(unreachable_code)]
                 fn [<$name _u512 >]() {
                     ($test_fn)(Uint512::ZERO, $($p),*);
                 }
@@ -592,32 +642,44 @@ mod tests2 {
             $(512 = [$($p512:expr),*])?
             => $test_fn:expr) => {
             paste::paste! {
-                $(#[test]
-                fn [<$name _u64 >]() {
-                    // the first argument is used to derive the type of the variable
-                    ($test_fn)(Uint64::ZERO, $($p64),*);
-                })?
+                $(
+                    #[test]
+                    #[allow(unreachable_code)]
+                    fn [<$name _u64 >]() {
+                        // the first argument is used to derive the type of the variable
+                        ($test_fn)(Uint64::ZERO, $($p64),*);
+                    }
+                )?
 
-                $(#[test]
-                fn [<$name _u128 >]() {
-                    ($test_fn)(Uint128::ZERO, $($p128),*);
-                })?
+                $(
+                    #[test]
+                    #[allow(unreachable_code)]
+                    fn [<$name _u128 >]() {
+                        ($test_fn)(Uint128::ZERO, $($p128),*);
+                    }
+                )?
 
-                $(#[test]
-                fn [<$name _u256 >]() {
-                    ($test_fn)(Uint256::ZERO, $($p256),*);
-                })?
+                $(
+                    #[test]
+                    #[allow(unreachable_code)]
+                    fn [<$name _u256 >]() {
+                        ($test_fn)(Uint256::ZERO, $($p256),*);
+                    }
+                )?
 
-                $(#[test]
-                fn [<$name _u512 >]() {
-                    ($test_fn)(Uint512::ZERO, $($p512),*);
-                })?
+                $(
+                    #[test]
+                    #[allow(unreachable_code)]
+                    fn [<$name _u512 >]() {
+                        ($test_fn)(Uint512::ZERO, $($p512),*);
+                    }
+                )?
             }
         };
 
     }
 
-    utest!( size_of_works,
+    utest!( size_of,
         [8],
         [16],
         [32],
@@ -630,19 +692,19 @@ mod tests2 {
         }
     );
 
-    utest!( bytable_works,
-        [&[0u8; 8]],
-        [&[0u8; 16]],
-        [&[0u8; 32]],
-        [&[0u8; 64]]
-        => |u, zero_as_byte: &[u8]| {
+    utest!( bytable_to_be,
+        [&[0u8; 8],  &[0xff; 8]],
+        [&[0u8; 16], &[0xff; 16]],
+        [&[0u8; 32], &[0xff; 32]],
+        [&[0u8; 64], &[0xff; 64]]
+        => |u, zero_as_byte: &[u8], max_as_byte| {
             let zero = Uint::<_>::ZERO;
-            derive_type(u, zero);
+            dt(u, zero);
 
             assert_eq!(zero.to_be_bytes().to_vec(), zero_as_byte);
 
             let one = Uint::<_>::ONE;
-            derive_type(u, one);
+            dt(u, one);
 
             let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
             if let Some(last) = one_as_bytes.last_mut() {
@@ -650,10 +712,39 @@ mod tests2 {
             }
             assert_eq!(one.to_be_bytes().to_vec(), one_as_bytes);
 
+            let max = Uint::<_>::MAX;
+            dt(u, max);
+            assert_eq!(max.to_be_bytes().to_vec(), max_as_byte);
         }
     );
 
-    utest!( converts_works,
+    utest!( bytable_to_le,
+        [&[0u8; 8],  &[0xff; 8]],
+        [&[0u8; 16], &[0xff; 16]],
+        [&[0u8; 32], &[0xff; 32]],
+        [&[0u8; 64], &[0xff; 64]]
+        => |u, zero_as_byte: &[u8], max_as_byte| {
+            let zero = Uint::<_>::ZERO;
+            dt(u, zero);
+
+            assert_eq!(zero.to_le_bytes().to_vec(), zero_as_byte);
+
+            let one = Uint::<_>::ONE;
+            dt(u, one);
+
+            let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
+            if let Some(first) = one_as_bytes.first_mut() {
+                *first = 1u8;
+            }
+            assert_eq!(one.to_le_bytes().to_vec(), one_as_bytes);
+
+            let max = Uint::<_>::MAX;
+            dt(u, max);
+            assert_eq!(max.to_le_bytes().to_vec(), max_as_byte);
+        }
+    );
+
+    utest!( converts,
         [64_u64,                "64"],
         [128_u128,             "128"],
         [U256::from(256_u128), "256"],
@@ -666,26 +757,30 @@ mod tests2 {
            assert_eq!(from_str, original);
 
            let as_into = original.into();
-           derive_type(as_into, val);
+           dt(as_into, val);
 
            assert_eq!(as_into, val);
         }
     );
 
-    utest!( from_works,
+    utest!( from,
+        [8_u8, 16_u16, 32_u32, 64_u64],
+        [8_u8, 16_u16, 32_u32, 64_u64],
+        [8_u8, 16_u16, 32_u32, 64_u64],
         [8_u8, 16_u16, 32_u32, 64_u64]
-        => |u, a, b, c, d| {
-            let a1 = Uint::from(a);
-            let b1 = Uint::from(b);
-            let c1 = Uint::from(c);
-            let d1 = Uint::from(d);
+        => |u, u8, u16, u32, u64| {
+            let uint8 = Uint::from(u8);
+            let uint16 = Uint::from(u16);
+            let uint32 = Uint::from(u32);
+            let utin64 = Uint::from(u64);
 
-            derive_types!(u, a1, b1, c1, d1);
+            dts!(u, uint8, uint16, uint32, utin64);
 
-            smart_assert(a, a1.try_into().unwrap());
-            smart_assert(b, b1.try_into().unwrap());
-            smart_assert(c, c1.try_into().unwrap());
-            smart_assert(d, d1.try_into().unwrap());
+            smart_assert(u8, uint8.try_into().unwrap());
+            smart_assert(u16, uint16.try_into().unwrap());
+            smart_assert(u32, uint32.try_into().unwrap());
+            #[allow(clippy::unnecessary_fallible_conversions)]
+            smart_assert(u64, utin64.try_into().unwrap());
         }
     );
 
@@ -696,167 +791,160 @@ mod tests2 {
         // We don't have Int512
         => |u, positive, negative| {
             let uint = Uint::try_from(positive).unwrap();
-            derive_type(uint, u);
+            dt(uint, u);
 
             let maybe_uint = Uint::try_from(negative);
-            derive_type(&maybe_uint, &Ok(u));
+            dt(&maybe_uint, &Ok(u));
             maybe_uint.unwrap_err();
         }
     );
 
-    // #[test]
-    // fn uint128_try_into() {
-    //     assert!(Uint64::try_from(Uint128::MAX).is_err());
+    utest!( try_into,
+       64  = [Some(Uint128::MAX), Uint128::ZERO, Uint128::from(64_u128), Uint64::from(64_u64)]
+       128 = [Some(Uint256::MAX), Uint256::ZERO, Uint256::from(128_u128), Uint128::from(128_u128)]
+       256 = [Some(Uint512::MAX), Uint512::ZERO, Uint512::from(256_u128), Uint256::from(256_u128)]
+       => |zero, next_max, next_zero, next_valid, compare| {
 
-    //     assert_eq!(Uint64::try_from(Uint128::zero()), Ok(Uint64::zero()));
+            if let Some(next_max) = next_max {
+                let maybe_uint = Uint::try_from(next_max);
+                dt(&maybe_uint, &Ok(zero));
+                maybe_uint.unwrap_err();
+            }
 
-    //     assert_eq!(
-    //         Uint64::try_from(Uint128::from(42u64)),
-    //         Ok(Uint64::from(42u64))
-    //     );
-    // }
+            let uint_zero = Uint::try_from(next_zero).unwrap();
+            assert_eq!(zero, uint_zero);
 
-    // #[test]
-    // fn uint128_implements_display() {
-    //     let a = Uint128(12345);
-    //     assert_eq!(format!("Embedded: {a}"), "Embedded: 12345");
-    //     assert_eq!(a.to_string(), "12345");
+            let uint = Uint::try_from(next_valid).unwrap();
+            assert_eq!(uint, compare);
 
-    //     let a = Uint128(0);
-    //     assert_eq!(format!("Embedded: {a}"), "Embedded: 0");
-    //     assert_eq!(a.to_string(), "0");
-    // }
+        }
+    );
 
-    // #[test]
-    // fn uint128_display_padding_works() {
-    //     // width > natural representation
-    //     let a = Uint128::from(123u64);
-    //     assert_eq!(format!("Embedded: {a:05}"), "Embedded: 00123");
+    utest!( display,
+        [Uint64::new(64_u64), "64"],
+        [Uint128::new(128_u128), "128"],
+        [Uint256::new(U256::from(256_u128)), "256"],
+        [Uint512::new(U512::from(512_u128)), "512"]
+        => |_, uint, str| {
+            assert_eq!(format!("{}", uint), str);
+        }
+    );
 
-    //     // width < natural representation
-    //     let a = Uint128::from(123u64);
-    //     assert_eq!(format!("Embedded: {a:02}"), "Embedded: 123");
-    // }
+    utest!( display_padding_front,
+        ["064", "64"],
+        ["00128", "128"],
+        ["000256", "256"],
+        ["0000512", "512"]
+        => |u, padded_str, compare| {
+            let uint = Uint::from_str(padded_str).unwrap();
+            dt(u, uint);
+            assert_eq!(format!("{}", uint), compare);
+        }
+    );
 
-    // #[test]
-    // fn uint128_to_be_bytes_works() {
-    //     assert_eq!(Uint128::zero().to_be_bytes(), [
-    //         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    //     ]);
-    //     assert_eq!(Uint128::MAX.to_be_bytes(), [
-    //         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    //         0xff, 0xff
-    //     ]);
-    //     assert_eq!(Uint128::new(1).to_be_bytes(), [
-    //         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
-    //     ]);
-    //     // Python: `[b for b in (240282366920938463463374607431768124608).to_bytes(16, "big")]`
-    //     assert_eq!(
-    //         Uint128::new(240282366920938463463374607431768124608).to_be_bytes(),
-    //         [180, 196, 179, 87, 165, 121, 59, 133, 246, 117, 221, 191, 255, 254, 172, 192]
-    //     );
-    // }
+    utest!( is_zero,
+        => |zero: Uint<_>| {
+            assert!(zero.is_zero());
 
-    // #[test]
-    // fn uint128_to_le_bytes_works() {
-    //     assert_eq!(Uint128::zero().to_le_bytes(), [
-    //         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    //     ]);
-    //     assert_eq!(Uint128::MAX.to_le_bytes(), [
-    //         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    //         0xff, 0xff
-    //     ]);
-    //     assert_eq!(Uint128::new(1).to_le_bytes(), [
-    //         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    //     ]);
-    //     // Python: `[b for b in (240282366920938463463374607431768124608).to_bytes(16, "little")]`
-    //     assert_eq!(
-    //         Uint128::new(240282366920938463463374607431768124608).to_le_bytes(),
-    //         [192, 172, 254, 255, 191, 221, 117, 246, 133, 59, 121, 165, 87, 179, 196, 180]
-    //     );
-    // }
+            let non_zero = Uint::ONE;
+            dt(non_zero, zero);
+            assert!(!non_zero.is_zero());
+        }
+    );
 
-    // #[test]
-    // fn uint128_is_zero_works() {
-    //     assert!(Uint128::zero().is_zero());
-    //     assert!(Uint128(0).is_zero());
+    utest!( json,
+    => |u| {
+        let original = Uint::from_str("123456").unwrap();
+        dt(u, original);
 
-    //     assert!(!Uint128(1).is_zero());
-    //     assert!(!Uint128(123).is_zero());
-    // }
+        let serialized_str = serde_json::to_string(&original).unwrap();
+        assert_eq!(serialized_str, format!("\"{}\"", "123456"));
 
-    // #[test]
-    // fn uint128_json() {
-    //     let orig = Uint128(1234567890987654321);
-    //     let serialized = serde_json::to_vec(&orig).unwrap();
-    //     assert_eq!(serialized.as_slice(), b"\"1234567890987654321\"");
-    //     let parsed: Uint128 = serde_json::from_slice(&serialized).unwrap();
-    //     assert_eq!(parsed, orig);
-    // }
+        let serialized_vec = serde_json::to_vec(&original).unwrap();
+        assert_eq!(serialized_vec, format!("\"{}\"", "123456").as_bytes());
 
-    // #[test]
-    // fn uint128_compare() {
-    //     let a = Uint128(12345);
-    //     let b = Uint128(23456);
+        let parsed: Uint::<_> = serde_json::from_str(&serialized_str).unwrap();
+        assert_eq!(parsed, original);
 
-    //     assert!(a < b);
-    //     assert!(b > a);
-    //     assert_eq!(a, Uint128(12345));
-    // }
+        let parsed: Uint::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+        assert_eq!(parsed, original);
+    });
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_math() {
-    //     let a = Uint128(12345);
-    //     let b = Uint128(23456);
+    utest!( compare,
+        => |u| {
+            let a = Uint::from(10_u64);
+            let b = Uint::from(20_u64);
+            dts!(u, a, b);
 
-    //     // test - with owned and reference right hand side
-    //     assert_eq!(b - a, Uint128(11111));
-    //     assert_eq!(b - &a, Uint128(11111));
+            assert!(a < b);
+            assert!(b > a);
+            assert_eq!(a, a);
+        }
+    );
 
-    //     // test += with owned and reference right hand side
-    //     let mut c = Uint128(300000);
-    //     c += b;
-    //     assert_eq!(c, Uint128(323456));
-    //     let mut d = Uint128(300000);
-    //     d += &b;
-    //     assert_eq!(d, Uint128(323456));
+    utest!( math,
+        => |u| {
+            #[allow(clippy::op_ref)]
+            {
+                let a = Uint::from(12345_u64);
+                let b = Uint::from(23456_u64);
+                dts!(u, a, b);
 
-    //     // test -= with owned and reference right hand side
-    //     let mut c = Uint128(300000);
-    //     c -= b;
-    //     assert_eq!(c, Uint128(276544));
-    //     let mut d = Uint128(300000);
-    //     d -= &b;
-    //     assert_eq!(d, Uint128(276544));
+                // test - with owned and reference right hand side
+                let diff = bt(u, Uint::from(11111_u64));
+                assert_eq!(b - a, diff);
+                assert_eq!(b - &a, diff);
 
-    //     // error result on underflow (- would produce negative result)
-    //     let underflow_result = a.checked_sub(b);
-    //     let OverflowError { operation } = underflow_result.unwrap_err();
-    //     assert_eq!(operation, OverflowOperation::Sub);
-    // }
+                // test += with owned and reference right hand side
+                let mut c = bt(u, Uint::from(300000_u64));
+                c += b;
+                assert_eq!(c, bt(u, Uint::from(323456_u64)));
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_add_works() {
-    //     assert_eq!(
-    //         Uint128::from(2u32) + Uint128::from(1u32),
-    //         Uint128::from(3u32)
-    //     );
-    //     assert_eq!(
-    //         Uint128::from(2u32) + Uint128::from(0u32),
-    //         Uint128::from(2u32)
-    //     );
+                let mut d = bt(u, Uint::from(300000_u64));
+                d += &b;
+                assert_eq!(d,  bt(u, Uint::from(323456_u64)));
 
-    //     // works for refs
-    //     let a = Uint128::from(10u32);
-    //     let b = Uint128::from(3u32);
-    //     let expected = Uint128::from(13u32);
-    //     assert_eq!(a + b, expected);
-    //     assert_eq!(a + &b, expected);
-    //     assert_eq!(&a + b, expected);
-    //     assert_eq!(&a + &b, expected);
-    // }
+                // test -= with owned and reference right hand side
+                let mut c = bt(u, Uint::from(300000_u64));
+                c -= b;
+                assert_eq!(c, bt(u, Uint::from(276544_u64)));
+                let mut d = bt(u, Uint::from(300000_u64));
+                d -= &b;
+                assert_eq!(d, bt(u, Uint::from(276544_u64)));
+
+                // error result on underflow (- would produce negative result)
+                let underflow_result = a.checked_sub(b);
+                let StdError::OverflowSub { .. } = underflow_result.unwrap_err() else {
+                    panic!("Expected OverflowSub error");
+                };
+            }
+        }
+    );
+
+    utest!( add,
+        => |u| {
+            assert_eq!(
+                bt(u, Uint::from(2_u64)) + bt(u, Uint::from(1_u64)),
+                bt(u, Uint::from(3_u64))
+            );
+            assert_eq!(
+                bt(u, Uint::from(2_u64)) + bt(u, Uint::from(0_u64)),
+                bt(u, Uint::from(2_u64))
+            );
+
+            // works for refs
+            #[allow(clippy::op_ref)]
+            {
+                let a = bt(u, Uint::from(10_u64));
+                let b = bt(u, Uint::from(3_u64));
+                let expected = bt(u, Uint::from(13_u64));
+                assert_eq!(a + b, expected);
+                assert_eq!(a + &b, expected);
+                assert_eq!(&a + b, expected);
+                assert_eq!(&a + &b, expected);
+            }
+        }
+    );
 
     // #[test]
     // #[should_panic(expected = "attempt to add with overflow")]
