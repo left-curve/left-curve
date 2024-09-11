@@ -97,7 +97,10 @@ where
         }
     }
 
-    pub fn with_chain_id<T>(mut self, chain_id: T) -> Self where T: Into<String> {
+    pub fn with_chain_id<T>(mut self, chain_id: T) -> Self
+    where
+        T: Into<String>,
+    {
         self.chain_id = chain_id.into();
         self
     }
@@ -125,6 +128,33 @@ where
     pub fn with_mode(mut self, mode: AuthMode) -> Self {
         self.mode = Some(mode);
         self
+    }
+
+    pub fn set_chain_id<T>(&mut self, chain_id: T)
+    where
+        T: Into<String>,
+    {
+        self.chain_id = chain_id.into();
+    }
+
+    pub fn set_block(&mut self, block: BlockInfo) {
+        self.block = block;
+    }
+
+    pub fn set_contract(&mut self, contract: Addr) {
+        self.contract = contract;
+    }
+
+    pub fn set_sender(&mut self, sender: Addr) {
+        self.sender = Some(sender);
+    }
+
+    pub fn set_funds(&mut self, funds: Coins) {
+        self.funds = Some(funds);
+    }
+
+    pub fn set_mode(&mut self, mode: AuthMode) {
+        self.mode = Some(mode);
     }
 
     pub fn as_immutable(&self) -> ImmutableCtx {
