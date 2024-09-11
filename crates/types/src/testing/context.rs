@@ -1,18 +1,21 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Hash, ImmutableCtx, MockApi, MockQuerier,
+    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Hash256, ImmutableCtx, MockApi, MockQuerier,
     MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp, Uint64,
 };
 
+/// Default mock chain ID used in mock context.
 pub const MOCK_CHAIN_ID: &str = "dev-1";
 
+/// Default mock block info used in mock context.
 pub const MOCK_BLOCK: BlockInfo = BlockInfo {
     height:    Uint64::new(1),
     timestamp: Timestamp::from_seconds(100),
-    hash:      Hash::ZERO,
+    hash:      Hash256::ZERO,
 };
 
+/// Default contract address used in mock context.
 pub const MOCK_CONTRACT: Addr = Addr::mock(0);
 
 pub struct MockContext<S = MockStorage, A = MockApi, Q = MockQuerier> {
@@ -110,6 +113,24 @@ where
         self
     }
 
+    pub fn with_block_height<T>(mut self, height: T) -> Self
+    where
+        T: Into<Uint64>,
+    {
+        self.block.height = height.into();
+        self
+    }
+
+    pub fn with_block_timestamp(mut self, timestamp: Timestamp) -> Self {
+        self.block.timestamp = timestamp;
+        self
+    }
+
+    pub fn with_block_hash(mut self, hash: Hash256) -> Self {
+        self.block.hash = hash;
+        self
+    }
+
     pub fn with_contract(mut self, contract: Addr) -> Self {
         self.contract = contract;
         self
@@ -139,6 +160,21 @@ where
 
     pub fn set_block(&mut self, block: BlockInfo) {
         self.block = block;
+    }
+
+    pub fn set_block_height<T>(mut self, height: T)
+    where
+        T: Into<Uint64>,
+    {
+        self.block.height = height.into();
+    }
+
+    pub fn set_block_timestamp(mut self, timestamp: Timestamp) {
+        self.block.timestamp = timestamp;
+    }
+
+    pub fn set_block_hash(mut self, hash: Hash256) {
+        self.block.hash = hash;
     }
 
     pub fn set_contract(&mut self, contract: Addr) {
