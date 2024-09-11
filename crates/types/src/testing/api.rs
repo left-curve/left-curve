@@ -1,6 +1,6 @@
 use crate::{Addr, Api, StdResult, VerificationError};
 
-/// A mock implementation of the [`Api`](crate::Api) for testing purpose.
+/// A mock implementation of the [`Api`](crate::Api) trait for testing purpose.
 pub struct MockApi;
 
 impl Api for MockApi {

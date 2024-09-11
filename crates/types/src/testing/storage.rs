@@ -3,7 +3,8 @@ use {
     std::{collections::BTreeMap, iter, ops::Bound},
 };
 
-/// An in-memory KV store for testing purpose.
+/// An in-memory, mock implementatiion of the [`Storage`](crate::Storage) trait
+/// for testing purpose.
 #[derive(Default, Debug, Clone)]
 pub struct MockStorage {
     data: BTreeMap<Vec<u8>, Vec<u8>>,
