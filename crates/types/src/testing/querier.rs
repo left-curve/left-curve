@@ -93,9 +93,19 @@ impl MockQuerier {
         self
     }
 
-    pub fn with_smart_query_handler(mut self, handler: SmartQueryHandler) -> Self {
-        self.smart_query_handler = Some(handler);
+    pub fn with_smart_query_handler<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Addr, Json) -> GenericResult<Json> + 'static,
+    {
+        self.smart_query_handler = Some(Box::new(handler));
         self
+    }
+
+    pub fn update_smart_query_handler<F>(&mut self, handler: F)
+    where
+        F: Fn(Addr, Json) -> GenericResult<Json> + 'static,
+    {
+        self.smart_query_handler = Some(Box::new(handler));
     }
 }
 

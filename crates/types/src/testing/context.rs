@@ -104,23 +104,6 @@ impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
         }
     }
 
-    pub fn update_querier<C, T>(self, callback: C) -> MockContext<S, A, T, E, F, M>
-    where
-        C: FnOnce(Q) -> T,
-    {
-        MockContext {
-            storage:  self.storage,
-            api:      self.api,
-            querier:  callback(self.querier),
-            chain_id: self.chain_id,
-            block:    self.block,
-            contract: self.contract,
-            sender:   self.sender,
-            funds:    self.funds,
-            mode:     self.mode,
-        }
-    }
-
     pub fn with_sender(self, sender: Addr) -> MockContext<S, A, Q, Defined<Addr>, F, M> {
         MockContext {
             storage:  self.storage,
@@ -199,7 +182,12 @@ impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
         self
     }
 
-
+    pub fn update_querier<C>(&mut self, callback: C)
+    where
+        C: FnOnce(&mut Q),
+    {
+        callback(&mut self.querier);
+    }
 
     pub fn set_chain_id<T>(&mut self, chain_id: T)
     where
