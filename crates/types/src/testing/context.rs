@@ -162,18 +162,18 @@ where
         self.block = block;
     }
 
-    pub fn set_block_height<T>(mut self, height: T)
+    pub fn set_block_height<T>(&mut self, height: T)
     where
         T: Into<Uint64>,
     {
         self.block.height = height.into();
     }
 
-    pub fn set_block_timestamp(mut self, timestamp: Timestamp) {
+    pub fn set_block_timestamp(&mut self, timestamp: Timestamp) {
         self.block.timestamp = timestamp;
     }
 
-    pub fn set_block_hash(mut self, hash: Hash256) {
+    pub fn set_block_hash(&mut self, hash: Hash256) {
         self.block.hash = hash;
     }
 
