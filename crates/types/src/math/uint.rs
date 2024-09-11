@@ -494,11 +494,11 @@ mod tests {
 #[cfg(test)]
 mod tests2 {
 
-    use fmt::Debug;
-
-    use crate::{Int128, Int256, Int64};
-
-    use super::*;
+    use {
+        super::*,
+        crate::{Int128, Int256, Int64},
+        fmt::Debug,
+    };
 
     /// `derive_type`
     ///
@@ -542,29 +542,30 @@ mod tests2 {
             [$($p128:expr),*],
             [$($p256:expr),*],
             [$($p512:expr),*]
+            $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
             paste::paste! {
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u64 >]() {
                     // the first argument is used to derive the type of the variable
                     ($test_fn)(Uint64::ZERO, $($p64),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u128 >]() {
                     ($test_fn)(Uint128::ZERO, $($p128),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u256 >]() {
                     ($test_fn)(Uint256::ZERO, $($p256),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u512 >]() {
                     ($test_fn)(Uint512::ZERO, $($p512),*);
                 }
@@ -573,29 +574,30 @@ mod tests2 {
         // No args
         (
             $name:ident,
+            $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
             paste::paste! {
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u64 >]() {
                     // the first argument is used to derive the type of the variable
                     ($test_fn)(Uint64::ZERO);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u128 >]() {
                     ($test_fn)(Uint128::ZERO);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u256 >]() {
                     ($test_fn)(Uint256::ZERO);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u512 >]() {
                     ($test_fn)(Uint512::ZERO);
                 }
@@ -605,29 +607,30 @@ mod tests2 {
         (
             $name:ident,
             [$($p:expr),*]
+            $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
             paste::paste! {
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u64 >]() {
                     // the first argument is used to derive the type of the variable
                     ($test_fn)(Uint64::ZERO, $($p),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u128 >]() {
                     ($test_fn)(Uint128::ZERO, $($p),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u256 >]() {
                     ($test_fn)(Uint256::ZERO, $($p),*);
                 }
 
                 #[test]
-                #[allow(unreachable_code)]
+                $($(#[$meta])*)?
                 fn [<$name _u512 >]() {
                     ($test_fn)(Uint512::ZERO, $($p),*);
                 }
@@ -644,7 +647,6 @@ mod tests2 {
             paste::paste! {
                 $(
                     #[test]
-                    #[allow(unreachable_code)]
                     fn [<$name _u64 >]() {
                         // the first argument is used to derive the type of the variable
                         ($test_fn)(Uint64::ZERO, $($p64),*);
@@ -653,7 +655,6 @@ mod tests2 {
 
                 $(
                     #[test]
-                    #[allow(unreachable_code)]
                     fn [<$name _u128 >]() {
                         ($test_fn)(Uint128::ZERO, $($p128),*);
                     }
@@ -661,7 +662,6 @@ mod tests2 {
 
                 $(
                     #[test]
-                    #[allow(unreachable_code)]
                     fn [<$name _u256 >]() {
                         ($test_fn)(Uint256::ZERO, $($p256),*);
                     }
@@ -669,7 +669,6 @@ mod tests2 {
 
                 $(
                     #[test]
-                    #[allow(unreachable_code)]
                     fn [<$name _u512 >]() {
                         ($test_fn)(Uint512::ZERO, $($p512),*);
                     }
@@ -883,45 +882,44 @@ mod tests2 {
     );
 
     utest!( math,
+        attrs = #[allow(clippy::op_ref)]
         => |u| {
-            #[allow(clippy::op_ref)]
-            {
-                let a = Uint::from(12345_u64);
-                let b = Uint::from(23456_u64);
-                dts!(u, a, b);
+            let a = Uint::from(12345_u64);
+            let b = Uint::from(23456_u64);
+            dts!(u, a, b);
 
-                // test - with owned and reference right hand side
-                let diff = bt(u, Uint::from(11111_u64));
-                assert_eq!(b - a, diff);
-                assert_eq!(b - &a, diff);
+            // test - with owned and reference right hand side
+            let diff = bt(u, Uint::from(11111_u64));
+            assert_eq!(b - a, diff);
+            assert_eq!(b - &a, diff);
 
-                // test += with owned and reference right hand side
-                let mut c = bt(u, Uint::from(300000_u64));
-                c += b;
-                assert_eq!(c, bt(u, Uint::from(323456_u64)));
+            // test += with owned and reference right hand side
+            let mut c = bt(u, Uint::from(300000_u64));
+            c += b;
+            assert_eq!(c, bt(u, Uint::from(323456_u64)));
 
-                let mut d = bt(u, Uint::from(300000_u64));
-                d += &b;
-                assert_eq!(d,  bt(u, Uint::from(323456_u64)));
+            let mut d = bt(u, Uint::from(300000_u64));
+            d += &b;
+            assert_eq!(d,  bt(u, Uint::from(323456_u64)));
 
-                // test -= with owned and reference right hand side
-                let mut c = bt(u, Uint::from(300000_u64));
-                c -= b;
-                assert_eq!(c, bt(u, Uint::from(276544_u64)));
-                let mut d = bt(u, Uint::from(300000_u64));
-                d -= &b;
-                assert_eq!(d, bt(u, Uint::from(276544_u64)));
+            // test -= with owned and reference right hand side
+            let mut c = bt(u, Uint::from(300000_u64));
+            c -= b;
+            assert_eq!(c, bt(u, Uint::from(276544_u64)));
+            let mut d = bt(u, Uint::from(300000_u64));
+            d -= &b;
+            assert_eq!(d, bt(u, Uint::from(276544_u64)));
 
-                // error result on underflow (- would produce negative result)
-                let underflow_result = a.checked_sub(b);
-                let StdError::OverflowSub { .. } = underflow_result.unwrap_err() else {
-                    panic!("Expected OverflowSub error");
-                };
-            }
+            // error result on underflow (- would produce negative result)
+            let underflow_result = a.checked_sub(b);
+            let StdError::OverflowSub { .. } = underflow_result.unwrap_err() else {
+                panic!("Expected OverflowSub error");
+            };
         }
     );
 
     utest!( add,
+        attrs = #[allow(clippy::op_ref)]
         => |u| {
             assert_eq!(
                 bt(u, Uint::from(2_u64)) + bt(u, Uint::from(1_u64)),
@@ -932,16 +930,24 @@ mod tests2 {
                 bt(u, Uint::from(2_u64))
             );
 
-            // works for refs
-            #[allow(clippy::op_ref)]
+            let a = bt(u, Uint::from(10_u64));
+            let b = bt(u, Uint::from(3_u64));
+            let expected = bt(u, Uint::from(13_u64));
+            assert_eq!(a + b, expected);
+            assert_eq!(a + &b, expected);
+            assert_eq!(&a + b, expected);
+            assert_eq!(&a + &b, expected);
+
+        }
+    );
+
+    utest!( add_overflow_panics,
+        attrs = #[should_panic(expected = "addition overflow")]
+        => |u| {
+            // #[should_panic(expected = "attempt to add with overflow")]
             {
-                let a = bt(u, Uint::from(10_u64));
-                let b = bt(u, Uint::from(3_u64));
-                let expected = bt(u, Uint::from(13_u64));
-                assert_eq!(a + b, expected);
-                assert_eq!(a + &b, expected);
-                assert_eq!(&a + b, expected);
-                assert_eq!(&a + &b, expected);
+                let max = bt(u, Uint::MAX);
+               let _ = max + bt(u, Uint::from(12_u64));
             }
         }
     );
