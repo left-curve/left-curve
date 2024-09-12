@@ -1,9 +1,9 @@
 use {
     crate::{
-        forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
-        impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
-        impl_number, Bytable, Fraction, Inner, Integer, MultiplyFraction, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, StdError, StdResult,
+        forward_ref_binop_typed, forward_ref_op_assign_typed, forward_ref_partial_eq,
+        generate_uint, impl_all_ops_and_assign, impl_assign_integer, impl_assign_number,
+        impl_integer, impl_next, impl_number, Bytable, Fraction, Inner, Integer, MultiplyFraction,
+        MultiplyRatio, NextNumber, Number, NumberConst, Sign, StdError, StdResult,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -234,9 +234,10 @@ where
         denominator: B,
     ) -> StdResult<Self> {
         let numerator: Self = numerator.into();
+        let denominator: Self = denominator.into();
         let dividend = self.checked_full_mul(numerator)?;
         let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
-        let remained = dividend.checked_rem(floor_result.into_next())?;
+        let remained = dividend.checked_rem(denominator.into_next())?;
         if !remained.is_zero() {
             floor_result.checked_add(Self::ONE)
         } else {
@@ -405,10 +406,13 @@ where
     }
 }
 
+// forward_ref_partial_eq_typed!(impl<U> Uint<U>,  Uint<U>);
+
 impl_number!(impl<U> Add, add for Uint<U> where sub fn checked_add);
 impl_number!(impl<U> Sub, sub for Uint<U> where sub fn checked_sub);
 impl_number!(impl<U> Mul, mul for Uint<U> where sub fn checked_mul);
 impl_number!(impl<U> Div, div for Uint<U> where sub fn checked_div);
+impl_number!(impl<U> Rem, rem for Uint<U> where sub fn checked_rem);
 impl_integer!(impl<U> Shl, shl for Uint<U> where sub fn checked_shl, u32);
 impl_integer!(impl<U> Shr, shr for Uint<U> where sub fn checked_shr, u32);
 
@@ -416,6 +420,7 @@ impl_assign_number!(impl<U> AddAssign, add_assign for Uint<U> where sub fn check
 impl_assign_number!(impl<U> SubAssign, sub_assign for Uint<U> where sub fn checked_sub);
 impl_assign_number!(impl<U> MulAssign, mul_assign for Uint<U> where sub fn checked_mul);
 impl_assign_number!(impl<U> DivAssign, div_assign for Uint<U> where sub fn checked_div);
+impl_assign_number!(impl<U> RemAssign, rem_assign for Uint<U> where sub fn checked_rem);
 impl_assign_integer!(impl<U> ShrAssign, shr_assign for Uint<U> where sub fn checked_shr, u32);
 impl_assign_integer!(impl<U> ShlAssign, shl_assign for Uint<U> where sub fn checked_shl, u32);
 
@@ -431,6 +436,7 @@ forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Uint<U>, Uint<U>)
 forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Uint<U>, Uint<U>);
 forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Uint<U>, Uint<U>);
 forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Uint<U>, Uint<U>);
+forward_ref_op_assign_typed!(impl<U> RemAssign, rem_assign for Uint<U>, Uint<U>);
 forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Uint<U>, u32);
 forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Uint<U>, u32);
 
@@ -476,38 +482,12 @@ impl_next!(Uint256, Uint512);
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
+#[allow(clippy::just_underscores_and_digits)]
 mod tests {
-    use {super::*, crate::Dec128};
-
-    /// Make sure we can't multiply a positive integer by a negative decimal.
-    #[test]
-    fn multiply_fraction_by_negative() {
-        let lhs = Uint128::new(123);
-
-        // Multiplying with a negative fraction should fail
-        let rhs = Dec128::from_str("-0.1").unwrap();
-        assert!(lhs.checked_mul_dec_floor(rhs).is_err());
-        assert!(lhs.checked_mul_dec_ceil(rhs).is_err());
-        assert!(lhs.checked_div_dec_floor(rhs).is_err());
-        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
-
-        // Multiplying with negative zero is allowed though
-        let rhs = Dec128::from_str("-0").unwrap();
-        assert!(lhs.checked_mul_dec_floor(rhs).unwrap().is_zero());
-        assert!(lhs.checked_mul_dec_ceil(rhs).unwrap().is_zero());
-
-        // Dividing by zero should fail
-        assert!(lhs.checked_div_dec_floor(rhs).is_err());
-        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
-    }
-}
-
-#[cfg(test)]
-mod tests2 {
 
     use {
         super::*,
-        crate::{Int128, Int256, Int64},
+        crate::{Dec128, Dec256, Int128, Int256, Int64, Udec128, Udec256},
         fmt::Debug,
     };
 
@@ -587,32 +567,7 @@ mod tests2 {
             $name:ident,
             $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
-            paste::paste! {
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u64 >]() {
-                    // the first argument is used to derive the type of the variable
-                    ($test_fn)(Uint64::ZERO);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u128 >]() {
-                    ($test_fn)(Uint128::ZERO);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u256 >]() {
-                    ($test_fn)(Uint256::ZERO);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u512 >]() {
-                    ($test_fn)(Uint512::ZERO);
-                }
-            }
+                utest!($name, [], [], [], [] $(attrs = $(#[$meta])*)? => $test_fn);
         };
         // Same args
         (
@@ -620,34 +575,11 @@ mod tests2 {
             [$($p:expr),*]
             $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
-            paste::paste! {
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u64 >]() {
-                    // the first argument is used to derive the type of the variable
-                    ($test_fn)(Uint64::ZERO, $($p),*);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u128 >]() {
-                    ($test_fn)(Uint128::ZERO, $($p),*);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u256 >]() {
-                    ($test_fn)(Uint256::ZERO, $($p),*);
-                }
-
-                #[test]
-                $($(#[$meta])*)?
-                fn [<$name _u512 >]() {
-                    ($test_fn)(Uint512::ZERO, $($p),*);
-                }
-            }
+                utest!($name, [$($p),*], [$($p),*], [$($p),*], [$($p),*] $(attrs = $(#[$meta])*)? => $test_fn);
         };
-        // Multiple optional tests
+        // Multiple optional tests.
+        // is not possible to use `$(attrs = $(#[$meta:meta])*)?`
+        // because it seems not possible to have nested optional arguments
         (
             $name:ident,
             $(64 = [$($p64:expr),*])?
@@ -658,8 +590,7 @@ mod tests2 {
             paste::paste! {
                 $(
                     #[test]
-                    fn [<$name _u64 >]() {
-                        // the first argument is used to derive the type of the variable
+                    fn [<$name _u64>]() {
                         ($test_fn)(Uint64::ZERO, $($p64),*);
                     }
                 )?
@@ -694,11 +625,8 @@ mod tests2 {
         [16],
         [32],
         [64]
-        => |u, size| {
-            fn t<T>(_: T, size: usize) {
-                assert_eq!(core::mem::size_of::<T>(), size);
-            }
-            t(u, size)
+        => |_0, size| {
+            assert_eq!(core::mem::size_of_val(&_0), size);
         }
     );
 
@@ -707,23 +635,20 @@ mod tests2 {
         [&[0u8; 16], &[0xff; 16]],
         [&[0u8; 32], &[0xff; 32]],
         [&[0u8; 64], &[0xff; 64]]
-        => |u, zero_as_byte: &[u8], max_as_byte| {
-            let zero = Uint::<_>::ZERO;
-            dt(u, zero);
+        => |_0, zero_as_byte: &[u8], max_as_byte| {
+            let _1 = Uint::ONE;
+            let max = Uint::MAX;
+            dts!(_0, _1, max);
 
-            assert_eq!(zero.to_be_bytes().to_vec(), zero_as_byte);
-
-            let one = Uint::<_>::ONE;
-            dt(u, one);
+            assert_eq!(_0.to_be_bytes().to_vec(), zero_as_byte);
 
             let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
+
+            // change last byte to 1
             if let Some(last) = one_as_bytes.last_mut() {
                 *last = 1u8;
             }
-            assert_eq!(one.to_be_bytes().to_vec(), one_as_bytes);
-
-            let max = Uint::<_>::MAX;
-            dt(u, max);
+            assert_eq!(_1.to_be_bytes().to_vec(), one_as_bytes);
             assert_eq!(max.to_be_bytes().to_vec(), max_as_byte);
         }
     );
@@ -733,23 +658,20 @@ mod tests2 {
         [&[0u8; 16], &[0xff; 16]],
         [&[0u8; 32], &[0xff; 32]],
         [&[0u8; 64], &[0xff; 64]]
-        => |u, zero_as_byte: &[u8], max_as_byte| {
-            let zero = Uint::<_>::ZERO;
-            dt(u, zero);
+        => |_0, zero_as_byte: &[u8], max_as_byte| {
+            let _1 = Uint::ONE;
+            let max = Uint::MAX;
+            dts!(_0, _1, max);
 
-            assert_eq!(zero.to_le_bytes().to_vec(), zero_as_byte);
-
-            let one = Uint::<_>::ONE;
-            dt(u, one);
+            assert_eq!(_0.to_be_bytes().to_vec(), zero_as_byte);
 
             let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
+
+            // change first byte to 1
             if let Some(first) = one_as_bytes.first_mut() {
                 *first = 1u8;
             }
-            assert_eq!(one.to_le_bytes().to_vec(), one_as_bytes);
-
-            let max = Uint::<_>::MAX;
-            dt(u, max);
+            assert_eq!(_1.to_le_bytes().to_vec(), one_as_bytes);
             assert_eq!(max.to_le_bytes().to_vec(), max_as_byte);
         }
     );
@@ -774,23 +696,33 @@ mod tests2 {
     );
 
     utest!( from,
-        [8_u8, 16_u16, 32_u32, 64_u64],
-        [8_u8, 16_u16, 32_u32, 64_u64],
-        [8_u8, 16_u16, 32_u32, 64_u64],
-        [8_u8, 16_u16, 32_u32, 64_u64]
-        => |u, u8, u16, u32, u64| {
+        [8_u8, 16_u16, 32_u32, None::<u64> , None::<u64> , None::<u64>],
+        [8_u8, 16_u16, 32_u32, Some(64_u64), None::<u128> , None::<u128>],
+        [8_u8, 16_u16, 32_u32, Some(64_u64), Some(128_u128), None::<U256>],
+        [8_u8, 16_u16, 32_u32, Some(64_u64), Some(128_u128), Some(U256::from(256_u128))]
+        => |_0, u8, u16, u32, u64, u128, u256| {
             let uint8 = Uint::from(u8);
             let uint16 = Uint::from(u16);
             let uint32 = Uint::from(u32);
-            let utin64 = Uint::from(u64);
 
-            dts!(u, uint8, uint16, uint32, utin64);
+            dts!(_0, uint8, uint16, uint32);
 
             smart_assert(u8, uint8.try_into().unwrap());
             smart_assert(u16, uint16.try_into().unwrap());
             smart_assert(u32, uint32.try_into().unwrap());
-            #[allow(clippy::unnecessary_fallible_conversions)]
-            smart_assert(u64, utin64.try_into().unwrap());
+
+            macro_rules! maybe_from {
+                ($t:expr) => {
+                    if let Some(t) = $t {
+                        let uint = bt(_0, Uint::from(t));
+                        smart_assert(t, uint.try_into().unwrap());
+                    }
+                };
+            }
+
+            maybe_from!(u64);
+            maybe_from!(u128);
+            maybe_from!(u256);
         }
     );
 
@@ -799,12 +731,12 @@ mod tests2 {
         128 = [Int128::new_positive(128_u128.into()), Int128::new_negative(128_u128.into())]
         256 = [Int256::new_positive(256_u128.into()), Int256::new_negative(256_u128.into())]
         // We don't have Int512
-        => |u, positive, negative| {
+        => |_0, positive, negative| {
             let uint = Uint::try_from(positive).unwrap();
-            dt(uint, u);
+            dt(uint, _0);
 
             let maybe_uint = Uint::try_from(negative);
-            dt(&maybe_uint, &Ok(u));
+            dt(&maybe_uint, &Ok(_0));
             maybe_uint.unwrap_err();
         }
     );
@@ -813,16 +745,16 @@ mod tests2 {
        64  = [Some(Uint128::MAX), Uint128::ZERO, Uint128::from(64_u128), Uint64::from(64_u64)]
        128 = [Some(Uint256::MAX), Uint256::ZERO, Uint256::from(128_u128), Uint128::from(128_u128)]
        256 = [Some(Uint512::MAX), Uint512::ZERO, Uint512::from(256_u128), Uint256::from(256_u128)]
-       => |zero, next_max, next_zero, next_valid, compare| {
+       => |_0, next_max, next_zero, next_valid, compare| {
 
             if let Some(next_max) = next_max {
                 let maybe_uint = Uint::try_from(next_max);
-                dt(&maybe_uint, &Ok(zero));
+                dt(&maybe_uint, &Ok(_0));
                 maybe_uint.unwrap_err();
             }
 
             let uint_zero = Uint::try_from(next_zero).unwrap();
-            assert_eq!(zero, uint_zero);
+            assert_eq!(_0, uint_zero);
 
             let uint = Uint::try_from(next_valid).unwrap();
             assert_eq!(uint, compare);
@@ -845,9 +777,8 @@ mod tests2 {
         ["00128", "128"],
         ["000256", "256"],
         ["0000512", "512"]
-        => |u, padded_str, compare| {
-            let uint = Uint::from_str(padded_str).unwrap();
-            dt(u, uint);
+        => |_0, padded_str, compare| {
+            let uint = bt(_0, Uint::from_str(padded_str).unwrap());
             assert_eq!(format!("{}", uint), compare);
         }
     );
@@ -863,9 +794,8 @@ mod tests2 {
     );
 
     utest!( json,
-    => |u| {
-        let original = Uint::from_str("123456").unwrap();
-        dt(u, original);
+    => |_0| {
+        let original = bt(_0, Uint::from_str("123456").unwrap());
 
         let serialized_str = serde_json::to_string(&original).unwrap();
         assert_eq!(serialized_str, format!("\"{}\"", "123456"));
@@ -881,10 +811,10 @@ mod tests2 {
     });
 
     utest!( compare,
-        => |u| {
+        => |_0| {
             let a = Uint::from(10_u64);
             let b = Uint::from(20_u64);
-            dts!(u, a, b);
+            dts!(_0, a, b);
 
             assert!(a < b);
             assert!(b > a);
@@ -894,32 +824,32 @@ mod tests2 {
 
     utest!( math,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
+        => |_0| {
             let a = Uint::from(12345_u64);
             let b = Uint::from(23456_u64);
-            dts!(u, a, b);
+            dts!(_0, a, b);
 
             // test - with owned and reference right hand side
-            let diff = bt(u, Uint::from(11111_u64));
+            let diff = bt(_0, Uint::from(11111_u64));
             assert_eq!(b - a, diff);
             assert_eq!(b - &a, diff);
 
             // test += with owned and reference right hand side
-            let mut c = bt(u, Uint::from(300000_u64));
+            let mut c = bt(_0, Uint::from(300000_u64));
             c += b;
-            assert_eq!(c, bt(u, Uint::from(323456_u64)));
+            assert_eq!(c, bt(_0, Uint::from(323456_u64)));
 
-            let mut d = bt(u, Uint::from(300000_u64));
+            let mut d = bt(_0, Uint::from(300000_u64));
             d += &b;
-            assert_eq!(d,  bt(u, Uint::from(323456_u64)));
+            assert_eq!(d,  bt(_0, Uint::from(323456_u64)));
 
             // test -= with owned and reference right hand side
-            let mut c = bt(u, Uint::from(300000_u64));
+            let mut c = bt(_0, Uint::from(300000_u64));
             c -= b;
-            assert_eq!(c, bt(u, Uint::from(276544_u64)));
-            let mut d = bt(u, Uint::from(300000_u64));
+            assert_eq!(c, bt(_0, Uint::from(276544_u64)));
+            let mut d = bt(_0, Uint::from(300000_u64));
             d -= &b;
-            assert_eq!(d, bt(u, Uint::from(276544_u64)));
+            assert_eq!(d, bt(_0, Uint::from(276544_u64)));
 
             // error result on underflow (- would produce negative result)
             let underflow_result = a.checked_sub(b);
@@ -931,19 +861,19 @@ mod tests2 {
 
     utest!( add,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
+        => |_0| {
             assert_eq!(
-                bt(u, Uint::from(2_u64)) + bt(u, Uint::from(1_u64)),
-                bt(u, Uint::from(3_u64))
+                bt(_0, Uint::from(2_u64)) + bt(_0, Uint::from(1_u64)),
+                bt(_0, Uint::from(3_u64))
             );
             assert_eq!(
-                bt(u, Uint::from(2_u64)) + bt(u, Uint::from(0_u64)),
-                bt(u, Uint::from(2_u64))
+                bt(_0, Uint::from(2_u64)) + bt(_0, Uint::from(0_u64)),
+                bt(_0, Uint::from(2_u64))
             );
 
-            let a = bt(u, Uint::from(10_u64));
-            let b = bt(u, Uint::from(3_u64));
-            let expected = bt(u, Uint::from(13_u64));
+            let a = bt(_0, Uint::from(10_u64));
+            let b = bt(_0, Uint::from(3_u64));
+            let expected = bt(_0, Uint::from(13_u64));
             assert_eq!(a + b, expected);
             assert_eq!(a + &b, expected);
             assert_eq!(&a + b, expected);
@@ -954,24 +884,24 @@ mod tests2 {
 
     utest!( add_overflow_panics,
         attrs = #[should_panic(expected = "addition overflow")]
-        => |u| {
-            let max = bt(u, Uint::MAX);
-            let _ = max + bt(u, Uint::from(12_u64));
+        => |_0| {
+            let max = bt(_0, Uint::MAX);
+            let _ = max + bt(_0, Uint::from(12_u64));
         }
     );
 
     utest!( sub,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
-            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(1_u64)), bt(u, Uint::from(1_u64)));
-            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(0_u64)), bt(u, Uint::from(2_u64)));
-            assert_eq!(bt(u, Uint::from(2_u64)) - bt(u, Uint::from(2_u64)), bt(u, Uint::from(0_u64)));
+        => |_0| {
+            assert_eq!(bt(_0, Uint::from(2_u64)) - bt(_0, Uint::from(1_u64)), bt(_0, Uint::from(1_u64)));
+            assert_eq!(bt(_0, Uint::from(2_u64)) - bt(_0, Uint::from(0_u64)), bt(_0, Uint::from(2_u64)));
+            assert_eq!(bt(_0, Uint::from(2_u64)) - bt(_0, Uint::from(2_u64)), bt(_0, Uint::from(0_u64)));
 
             // works for refs
             let a = Uint::from(10_u64);
             let b = Uint::from(3_u64);
             let expected = Uint::from(7_u64);
-            dts!(u, a, b, expected);
+            dts!(_0, a, b, expected);
             assert_eq!(a - b, expected);
             assert_eq!(a - &b, expected);
             assert_eq!(&a - b, expected);
@@ -981,22 +911,22 @@ mod tests2 {
 
     utest!( sub_overflow_panics,
         attrs = #[should_panic(expected = "subtraction overflow")]
-        => |u| {
-            let _ = bt(u, Uint::from(1_u64)) - bt(u, Uint::from(2_u64));
+        => |_0| {
+            let _ = bt(_0, Uint::from(1_u64)) - bt(_0, Uint::from(2_u64));
         }
     );
 
     utest!( sub_assign_works,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
-            let mut a = bt(u, Uint::from(14_u64));
-            a -= bt(u, Uint::from(2_u64));
-            assert_eq!(a, bt(u, Uint::from(12_u64)));
+        => |_0| {
+            let mut a = bt(_0, Uint::from(14_u64));
+            a -= bt(_0, Uint::from(2_u64));
+            assert_eq!(a, bt(_0, Uint::from(12_u64)));
 
             // works for refs
-            let mut a = bt(u, Uint::from(10_u64));
-            let b = bt(u, Uint::from(3_u64));
-            let expected = bt(u, Uint::from(7_u64));
+            let mut a = bt(_0, Uint::from(10_u64));
+            let b = bt(_0, Uint::from(3_u64));
+            let expected = bt(_0, Uint::from(7_u64));
             a -= &b;
             assert_eq!(a, expected);
         }
@@ -1004,14 +934,14 @@ mod tests2 {
 
     utest!( mul,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
-            assert_eq!(bt(u, Uint::from(2_u32)) * bt(u, Uint::from(3_u32)), bt(u, Uint::from(6_u32)));
-            assert_eq!(bt(u, Uint::from(2_u32)) * bt(u, Uint::ZERO), bt(u, Uint::ZERO));
+        => |_0| {
+            assert_eq!(bt(_0, Uint::from(2_u32)) * bt(_0, Uint::from(3_u32)), bt(_0, Uint::from(6_u32)));
+            assert_eq!(bt(_0, Uint::from(2_u32)) * bt(_0, Uint::ZERO), bt(_0, Uint::ZERO));
 
             // works for refs
-            let a = bt(u, Uint::from(11_u32));
-            let b = bt(u, Uint::from(3_u32));
-            let expected = bt(u, Uint::from(33_u32));
+            let a = bt(_0, Uint::from(11_u32));
+            let b = bt(_0, Uint::from(3_u32));
+            let expected = bt(_0, Uint::from(33_u32));
             assert_eq!(a * b, expected);
             assert_eq!(a * &b, expected);
             assert_eq!(&a * b, expected);
@@ -1021,34 +951,34 @@ mod tests2 {
 
     utest!( mul_overflow_panics,
         attrs = #[should_panic(expected = "multiplication overflow")]
-        => |u| {
-            let max = bt(u, Uint::MAX);
-            let _ = max * bt(u, Uint::from(2_u64));
+        => |_0| {
+            let max = bt(_0, Uint::MAX);
+            let _ = max * bt(_0, Uint::from(2_u64));
         }
     );
 
     utest!( mul_assign_works,
         attrs = #[allow(clippy::op_ref)]
-        => |u| {
-            let mut a = bt(u, Uint::from(14_u32));
-            a *= bt(u, Uint::from(2_u32));
-            assert_eq!(a, bt(u, Uint::from(28_u32)));
+        => |_0| {
+            let mut a = bt(_0, Uint::from(14_u32));
+            a *= bt(_0, Uint::from(2_u32));
+            assert_eq!(a, bt(_0, Uint::from(28_u32)));
 
             // works for refs
-            let mut a = bt(u, Uint::from(10_u32));
-            let b = bt(u, Uint::from(3_u32));
+            let mut a = bt(_0, Uint::from(10_u32));
+            let b = bt(_0, Uint::from(3_u32));
             a *= &b;
-            assert_eq!(a, bt(u, Uint::from(30_u32)));
+            assert_eq!(a, bt(_0, Uint::from(30_u32)));
         }
     );
 
     utest! (pow_works,
-        => |u| {
-            assert_eq!(bt(u, Uint::from(2_u32)).checked_pow(2).unwrap(), bt(u, Uint::from(4_u32)));
-            assert_eq!(bt(u, Uint::from(2_u32)).checked_pow(10).unwrap(), bt(u, Uint::from(1024_u32)));
+        => |_0| {
+            assert_eq!(bt(_0, Uint::from(2_u32)).checked_pow(2).unwrap(), bt(_0, Uint::from(4_u32)));
+            assert_eq!(bt(_0, Uint::from(2_u32)).checked_pow(10).unwrap(), bt(_0, Uint::from(1024_u32)));
 
             // overflow
-            let max = bt(u, Uint::MAX);
+            let max = bt(_0, Uint::MAX);
             let result = max.checked_pow(2);
             let StdError::OverflowPow { .. } = result.unwrap_err() else {
                 panic!("Expected OverflowPow error");
@@ -1062,11 +992,11 @@ mod tests2 {
         128 = []
         256 = []
         // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
-        => |u| {
+        => |_0| {
             let base = Uint::from(500_u64);
             let min = Uint::MIN;
             let max = Uint::MAX;
-            dts!(u, base, min, max);
+            dts!(_0, base, min, max);
 
             // factor 1/1
             assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
@@ -1096,6 +1026,22 @@ mod tests2 {
             assert_eq!(base.checked_multiply_ratio_floor(5_u64, 6_u64).unwrap(), Uint::from(416_u64));
             assert_eq!(base.checked_multiply_ratio_ceil(100_u64, 120_u64).unwrap(), Uint::from(417_u64));
             assert_eq!(base.checked_multiply_ratio_floor(100_u64, 120_u64).unwrap(), Uint::from(416_u64));
+
+
+            // 0 num works
+            assert_eq!(base.checked_multiply_ratio_ceil(_0, 1_u64).unwrap(), _0);
+            assert_eq!(base.checked_multiply_ratio_floor(_0, 1_u64).unwrap(), _0);
+
+            // 1 num works
+            assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
+            assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
+
+            // not round on even divide
+            let _2 = bt(_0, Uint::from(2_u64));
+
+            assert_eq!(_2.checked_multiply_ratio_ceil(6_u64, 4_u64).unwrap(), Uint::from(3_u64));
+            assert_eq!(_2.checked_multiply_ratio_floor(6_u64, 4_u64).unwrap(), Uint::from(3_u64));
+
         }
     );
 
@@ -1104,12 +1050,12 @@ mod tests2 {
         128 = []
         256 = []
         // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
-         => |u| {
+         => |_0| {
             // Almost max value for Uint128.
             let max = Uint::MAX;
             let reduce = Uint::from(9_u64);
             let base = max - reduce;
-            dts!(u, base, max, reduce);
+            dts!(_0, base, max, reduce);
 
             assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 2_u64).unwrap(), base);
             assert_eq!(base.checked_multiply_ratio_floor(2_u64, 2_u64).unwrap(), base);
@@ -1121,12 +1067,12 @@ mod tests2 {
         128 = []
         256 = []
         // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
-        => |u| {
+        => |_0| {
             // Almost max value for Uint128.
             let max = Uint::MAX;
             let reduce = Uint::from(9_u64);
             let base = max - reduce;
-            dts!(u, base, max, reduce);
+            dts!(_0, base, max, reduce);
 
             let result = base.checked_multiply_ratio_ceil(2_u64, 1_u64);
             let StdError::OverflowConversion { .. } = result.unwrap_err() else {
@@ -1145,8 +1091,8 @@ mod tests2 {
         128 = []
         256 = []
         // Uint512 doesn't have multiply_ratio becase it doesn't implement NextNumber
-        => |u| {
-            let base = bt(u, Uint::from(500_u64));
+        => |_0| {
+            let base = bt(_0, Uint::from(500_u64));
 
             let result = base.checked_multiply_ratio_ceil(1_u64, 0_u64);
             let StdError::DivisionByZero { .. } = result.unwrap_err() else {
@@ -1161,11 +1107,11 @@ mod tests2 {
     );
 
     utest! (shr,
-        => |u| {
-            let original = bt(u, Uint::from(160_u64));
-            assert_eq!(original >> 1, bt(u, Uint::from(80_u64)));
-            assert_eq!(original >> 3, bt(u, Uint::from(20_u64)));
-            assert_eq!(original >> 2, bt(u, Uint::from(40_u64)));
+        => |_0| {
+            let original = bt(_0, Uint::from(160_u64));
+            assert_eq!(original >> 1, bt(_0, Uint::from(80_u64)));
+            assert_eq!(original >> 3, bt(_0, Uint::from(20_u64)));
+            assert_eq!(original >> 2, bt(_0, Uint::from(40_u64)));
         }
     );
 
@@ -1182,11 +1128,11 @@ mod tests2 {
     );
 
     utest! (shl,
-        => |u| {
-            let original = bt(u, Uint::from(160_u64));
-            assert_eq!(original << 1, bt(u, Uint::from(320_u64)));
-            assert_eq!(original << 2, bt(u, Uint::from(640_u64)));
-            assert_eq!(original << 3, bt(u, Uint::from(1280_u64)));
+        => |_0| {
+            let original = bt(_0, Uint::from(160_u64));
+            assert_eq!(original << 1, bt(_0, Uint::from(320_u64)));
+            assert_eq!(original << 2, bt(_0, Uint::from(640_u64)));
+            assert_eq!(original << 3, bt(_0, Uint::from(1280_u64)));
         }
     );
 
@@ -1196,518 +1142,308 @@ mod tests2 {
         [256],
         [512]
         attrs = #[should_panic(expected = "shift overflow")]
-        => |u, shift| {
-            let original = bt(u, Uint::from(1_u64));
+        => |_0, shift| {
+            let original = bt(_0, Uint::from(1_u64));
             let _ = original << shift;
         }
     );
 
     utest!( sum,
-        => |u| {
+        => |_0| {
             let nums = vec![Uint::from(17_u64), Uint::from(123_u64), Uint::from(540_u64), Uint::from(82_u64)];
             let expected = Uint::from(762_u64);
 
-            dt(&vec![u], &nums);
-            dt(u, expected);
+            dt(&vec![_0], &nums);
+            dt(_0, expected);
 
             let sum_as_ref: Uint<_> = nums.iter().sum();
             assert_eq!(expected, sum_as_ref);
 
             let sum_as_owned = nums.into_iter().sum();
-            assert_eq!(expected, sum_as_owned);
-
+            smart_assert(expected, sum_as_owned);
         }
     );
 
     utest!( methods,
-        => |zero| {
+        => |_0| {
             let max = Uint::MAX;
-            let one = Uint::ONE;
-            let two = Uint::from(2_u64);
-            dts!(zero, max, one, two);
+            let _1 = Uint::ONE;
+            let _2 = Uint::from(2_u64);
+            dts!(_0, max, _1, _2);
 
 
             // checked_*
             assert!(matches!(
-                max.checked_add(one),
+                max.checked_add(_1),
                 Err(StdError::OverflowAdd { .. })
             ));
 
-            assert_eq!(one.checked_add(Uint::from(1_u64)).unwrap(), Uint::from(2_u64));
+            assert_eq!(_1.checked_add(Uint::from(1_u64)).unwrap(), Uint::from(2_u64));
             assert!(matches!(
-                zero.checked_sub(one),
+                _0.checked_sub(_1),
                 Err(StdError::OverflowSub { .. })
             ));
 
-            assert_eq!(Uint::from(2_u64).checked_sub(one).unwrap(), one);
+            assert_eq!(Uint::from(2_u64).checked_sub(_1).unwrap(), _1);
 
             assert!(matches!(
                 max.checked_mul(Uint::from(2_u64)),
                 Err(StdError::OverflowMul { .. })
             ));
 
-            assert_eq!(two.checked_mul(two).unwrap(), Uint::from(4_u64));
+            assert_eq!(_2.checked_mul(_2).unwrap(), Uint::from(4_u64));
 
             assert!(matches!(
                 max.checked_pow(2u32),
                 Err(StdError::OverflowPow { .. })
             ));
 
-            assert_eq!(two.checked_pow(3).unwrap(), Uint::from(8_u64));
+            assert_eq!(_2.checked_pow(3).unwrap(), Uint::from(8_u64));
 
             assert!(matches!(
-                max.checked_div(zero),
+                max.checked_div(_0),
                 Err(StdError::DivisionByZero { .. })
             ));
 
-            assert_eq!(Uint::from(6_u64).checked_div(two).unwrap(), Uint::from(3_u64));
+            assert_eq!(Uint::from(6_u64).checked_div(_2).unwrap(), Uint::from(3_u64));
 
             assert!(matches!(
-                max.checked_rem(zero),
+                max.checked_rem(_0),
                 Err(StdError::DivisionByZero { .. })
             ));
 
             // saturating_*
 
             assert_eq!(max.saturating_add(Uint::from(1_u64)), max);
-            assert_eq!(zero.saturating_sub(Uint::from(1_u64)), zero);
+            assert_eq!(_0.saturating_sub(Uint::from(1_u64)), _0);
             assert_eq!(max.saturating_mul(Uint::from(2_u64)), max);
             assert_eq!(max.saturating_pow(2), max);
         }
     );
 
-    // #[test]
-    // fn uint128_wrapping_methods() {
-    //     // wrapping_add
-    //     assert_eq!(Uint128(2).wrapping_add(Uint128(2)), Uint128(4)); // non-wrapping
-    //     assert_eq!(Uint128::MAX.wrapping_add(Uint128(1)), Uint128(0)); // wrapping
+    utest!( wrapping_methods,
+        => |_0| {
+            let max = Uint::MAX;
+            let _1 = Uint::ONE;
+            let _2 = Uint::from(2_u64);
+            dts!(_0, _1, _2, max);
 
-    //     // wrapping_sub
-    //     assert_eq!(Uint128(7).wrapping_sub(Uint128(5)), Uint128(2)); // non-wrapping
-    //     assert_eq!(Uint128(0).wrapping_sub(Uint128(1)), Uint128::MAX); // wrapping
+            // wrapping_add
+            assert_eq!(_2.wrapping_add(_2), Uint::from(4_u64)); // non-wrapping
+            assert_eq!(max.wrapping_add(_1), _0); // wrapping
 
-    //     // wrapping_mul
-    //     assert_eq!(Uint128(3).wrapping_mul(Uint128(2)), Uint128(6)); // non-wrapping
-    //     assert_eq!(
-    //         Uint128::MAX.wrapping_mul(Uint128(2)),
-    //         Uint128::MAX - Uint128::one()
-    //     ); // wrapping
+            // wrapping_sub
+            assert_eq!(Uint::from(7_u64).wrapping_sub(Uint::from(5_u64)), _2); // non-wrapping
+            assert_eq!(_0.wrapping_sub(_1), max); // wrapping
 
-    //     // wrapping_pow
-    //     assert_eq!(Uint128(2).wrapping_pow(3), Uint128(8)); // non-wrapping
-    //     assert_eq!(Uint128::MAX.wrapping_pow(2), Uint128(1)); // wrapping
-    // }
+            // wrapping_mul
+            assert_eq!(_2.wrapping_mul(_2), Uint::from(4_u64)); // non-wrapping
+            assert_eq!( max.wrapping_mul(_2), max - _1); // wrapping
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_implements_rem() {
-    //     let a = Uint128::new(10);
-    //     assert_eq!(a % Uint128::new(10), Uint128::zero());
-    //     assert_eq!(a % Uint128::new(2), Uint128::zero());
-    //     assert_eq!(a % Uint128::new(1), Uint128::zero());
-    //     assert_eq!(a % Uint128::new(3), Uint128::new(1));
-    //     assert_eq!(a % Uint128::new(4), Uint128::new(2));
+            // wrapping_pow
+            assert_eq!(_2.wrapping_pow(3), Uint::from(8_u64)); // non-wrapping
+            assert_eq!(max.wrapping_pow(2), Uint::from(1_u64)); // wrapping
+        }
+    );
 
-    //     // works for refs
-    //     let a = Uint128::new(10);
-    //     let b = Uint128::new(3);
-    //     let expected = Uint128::new(1);
-    //     assert_eq!(a % b, expected);
-    //     assert_eq!(a % &b, expected);
-    //     assert_eq!(&a % b, expected);
-    //     assert_eq!(&a % &b, expected);
-    // }
+    utest!( saturating_methods,
+        => |_0| {
+            let max = Uint::MAX;
+            let _1 = Uint::ONE;
+            let _2 = Uint::from(2_u64);
+            dts!(_0, _1, _2, max);
 
-    // #[test]
-    // #[should_panic(expected = "divisor of zero")]
-    // fn uint128_rem_panics_for_zero() {
-    //     let _ = Uint128::new(10) % Uint128::zero();
-    // }
+            // saturating_add
+            assert_eq!(_2.saturating_add(_2), Uint::from(4_u64)); // non-saturating
+            assert_eq!(max.saturating_add(_1), max); // saturating
 
-    // #[test]
-    // #[allow(clippy::op_ref)]
-    // fn uint128_rem_works() {
-    //     assert_eq!(
-    //         Uint128::from(12u32) % Uint128::from(10u32),
-    //         Uint128::from(2u32)
-    //     );
-    //     assert_eq!(Uint128::from(50u32) % Uint128::from(5u32), Uint128::zero());
+            // saturating_sub
+            assert_eq!(Uint::from(7_u64).saturating_sub(Uint::from(5_u64)), _2); // non-saturating
+            assert_eq!(_0.saturating_sub(_1), _0); // saturating
 
-    //     // works for refs
-    //     let a = Uint128::from(42u32);
-    //     let b = Uint128::from(5u32);
-    //     let expected = Uint128::from(2u32);
-    //     assert_eq!(a % b, expected);
-    //     assert_eq!(a % &b, expected);
-    //     assert_eq!(&a % b, expected);
-    //     assert_eq!(&a % &b, expected);
-    // }
+            // saturating_mul
+            assert_eq!(_2.saturating_mul(_2), Uint::from(4_u64)); // non-saturating
+            assert_eq!(max.saturating_mul(_2), max); // saturating
 
-    // #[test]
-    // fn uint128_rem_assign_works() {
-    //     let mut a = Uint128::from(30u32);
-    //     a %= Uint128::from(4u32);
-    //     assert_eq!(a, Uint128::from(2u32));
+            // saturating_pow
+            assert_eq!(_2.saturating_pow(3), Uint::from(8_u64)); // non-saturating
+            assert_eq!(max.saturating_pow(2), max); // saturating
+        }
+    );
 
-    //     // works for refs
-    //     let mut a = Uint128::from(25u32);
-    //     let b = Uint128::from(6u32);
-    //     a %= &b;
-    //     assert_eq!(a, Uint128::from(1u32));
-    // }
+    utest!( rem,
+        attrs = #[allow(clippy::op_ref)]
+        => |_0| {
+            let _1 = Uint::from(1_u64);
+            let _10 = Uint::from(10_u64);
+            let _3 = Uint::from(3_u64);
+            dts!(_0, _1, _3, _3);
 
-    // #[test]
-    // fn uint128_strict_add_works() {
-    //     let a = Uint128::new(5);
-    //     let b = Uint128::new(3);
-    //     assert_eq!(a.strict_add(b), Uint128::new(8));
-    //     assert_eq!(b.strict_add(a), Uint128::new(8));
-    // }
+            assert_eq!(_10 % Uint::from(10_u64), _0);
+            assert_eq!(_10 % Uint::from(2_u64), _0);
+            assert_eq!(_10 % Uint::from(1_u64), _0);
+            assert_eq!(_10 % Uint::from(3_u64), Uint::from(1_u64));
+            assert_eq!(_10 % Uint::from(4_u64), Uint::from(2_u64));
 
-    // #[test]
-    // #[should_panic(expected = "attempt to add with overflow")]
-    // fn uint128_strict_add_panics_on_overflow() {
-    //     let a = Uint128::MAX;
-    //     let b = Uint128::ONE;
-    //     let _ = a.strict_add(b);
-    // }
+            assert_eq!(_10 % _3, _1);
+            assert_eq!(_10 % &_3, _1);
+            assert_eq!(&_10 % _3, _1);
+            assert_eq!(&_10 % &_3, _1);
 
-    // #[test]
-    // fn uint128_strict_sub_works() {
-    //     let a = Uint128::new(5);
-    //     let b = Uint128::new(3);
-    //     assert_eq!(a.strict_sub(b), Uint128::new(2));
-    // }
+            // works for assign
+            let mut _30 = bt(_0, Uint::from(30_u64));
+            _30 %=  Uint::from(4_u64);
+            assert_eq!(_30, Uint::from(2_u64));
 
-    // #[test]
-    // #[should_panic(expected = "attempt to subtract with overflow")]
-    // fn uint128_strict_sub_panics_on_overflow() {
-    //     let a = Uint128::ZERO;
-    //     let b = Uint128::ONE;
-    //     let _ = a.strict_sub(b);
-    // }
+            // works for assign refs
+            let mut _25 = bt(_0, Uint::from(25_u64));
+            let _6 = Uint::from(6_u64);
+            _25 %= &_6;
+            assert_eq!(_25, _1);
 
-    // #[test]
-    // fn uint128_abs_diff_works() {
-    //     let a = Uint128::from(42u32);
-    //     let b = Uint128::from(5u32);
-    //     let expected = Uint128::from(37u32);
-    //     assert_eq!(a.abs_diff(b), expected);
-    //     assert_eq!(b.abs_diff(a), expected);
-    // }
+        }
+    );
 
-    // #[test]
-    // fn uint128_partial_eq() {
-    //     let test_cases = [(1, 1, true), (42, 42, true), (42, 24, false), (0, 0, true)]
-    //         .into_iter()
-    //         .map(|(lhs, rhs, expected)| (Uint128::new(lhs), Uint128::new(rhs), expected));
+    utest!( rem_panics_for_zero,
+        attrs = #[should_panic(expected = "division by zero")]
+        => |_0| {
+            let _ = Uint::from(10_u64) % _0;
+        }
+    );
 
-    //     #[allow(clippy::op_ref)]
-    //     for (lhs, rhs, expected) in test_cases {
-    //         assert_eq!(lhs == rhs, expected);
-    //         assert_eq!(&lhs == rhs, expected);
-    //         assert_eq!(lhs == &rhs, expected);
-    //         assert_eq!(&lhs == &rhs, expected);
-    //     }
-    // }
+    utest!( partial_eq,
+        attrs = #[allow(clippy::op_ref)]
+        => |_0| {
+            let test_cases = [
+                    (1_u64, 1_u64, true),
+                    (42_u64, 42_u64, true),
+                    (42_u64, 24_u64, false),
+                    (0_u64, 0_u64, true)
+                ]
+                .into_iter()
+                .map(|(lhs, rhs, expected)|
+                    (
+                        bt(_0, Uint::from(lhs)),
+                        bt(_0, Uint::from(rhs)),
+                        expected
+                    )
+                );
 
-    // #[test]
-    // fn mul_floor_works_with_zero() {
-    //     let fraction = (Uint128::zero(), Uint128::new(21));
-    //     let res = Uint128::new(123456).mul_floor(fraction);
-    //     assert_eq!(Uint128::zero(), res)
-    // }
+            for (lhs, rhs, expected) in test_cases {
+                assert_eq!(lhs == rhs, expected);
+                assert_eq!(&lhs == rhs, expected);
+                assert_eq!(lhs == &rhs, expected);
+                assert_eq!(&lhs == &rhs, expected);
+            }
+        }
+    );
 
-    // #[test]
-    // fn mul_floor_does_nothing_with_one() {
-    //     let fraction = (Uint128::one(), Uint128::one());
-    //     let res = Uint128::new(123456).mul_floor(fraction);
-    //     assert_eq!(Uint128::new(123456), res)
-    // }
+    utest!( mul_floor,
+        128 = [Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
+        256 = [Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
+        => |_0, _2d, _0_5d, _1_5d| {
+            let _1 = Uint::from(1_u64);
+            let _2 = Uint::from(2_u64);
+            let _10 = Uint::from(10_u64);
+            let _11 = Uint::from(11_u64);
+            let max = Uint::MAX;
+            dts!(_0, _1, _2, _10, _11, max);
 
-    // #[test]
-    // fn mul_floor_rounds_down_with_normal_case() {
-    //     let fraction = (8u128, 21u128);
-    //     let res = Uint128::new(123456).mul_floor(fraction); // 47030.8571
-    //     assert_eq!(Uint128::new(47030), res)
-    // }
+            assert_eq!(_10.checked_mul_dec_ceil(_2d).unwrap(), Uint::from(20_u64));
+            assert_eq!(_10.checked_mul_dec_floor(_2d).unwrap(), Uint::from(20_u64));
 
-    // #[test]
-    // fn mul_floor_does_not_round_on_even_divide() {
-    //     let fraction = (2u128, 5u128);
-    //     let res = Uint128::new(25).mul_floor(fraction);
-    //     assert_eq!(Uint128::new(10), res)
-    // }
+            assert_eq!(_10.checked_mul_dec_ceil(_1_5d).unwrap(), Uint::from(15_u64));
+            assert_eq!(_10.checked_mul_dec_floor(_1_5d).unwrap(), Uint::from(15_u64));
 
-    // #[test]
-    // fn mul_floor_works_when_operation_temporarily_takes_above_max() {
-    //     let fraction = (8u128, 21u128);
-    //     let res = Uint128::MAX.mul_floor(fraction); // 129_631_377_874_643_224_176_523_659_974_006_937_697.14285
-    //     assert_eq!(
-    //         Uint128::new(129_631_377_874_643_224_176_523_659_974_006_937_697),
-    //         res
-    //     )
-    // }
+            assert_eq!(_10.checked_mul_dec_ceil(_0_5d).unwrap(), Uint::from(5_u64));
+            assert_eq!(_10.checked_mul_dec_floor(_0_5d).unwrap(), Uint::from(5_u64));
 
-    // #[test]
-    // fn mul_floor_works_with_decimal() {
-    //     let decimal = Decimal::from_ratio(8u128, 21u128);
-    //     let res = Uint128::new(123456).mul_floor(decimal); // 47030.8571
-    //     assert_eq!(Uint128::new(47030), res)
-    // }
+            // ceil works
+            assert_eq!(_11.checked_mul_dec_floor(_0_5d).unwrap(), Uint::from(5_u64));
+            assert_eq!(_11.checked_mul_dec_ceil(_0_5d).unwrap(), Uint::from(6_u64));
 
-    // #[test]
-    // #[should_panic(expected = "ConversionOverflowError")]
-    // fn mul_floor_panics_on_overflow() {
-    //     let fraction = (21u128, 8u128);
-    //     _ = Uint128::MAX.mul_floor(fraction);
-    // }
+            // overflow num but not overflow result
+            assert_eq!(max.checked_mul_dec_ceil(_0_5d).unwrap(), max / _2 + _1);
+            assert_eq!(max.checked_mul_dec_floor(_0_5d).unwrap(), max / _2);
 
-    // #[test]
-    // fn checked_mul_floor_does_not_panic_on_overflow() {
-    //     let fraction = (21u128, 8u128);
-    //     assert_eq!(
-    //         Uint128::MAX.checked_mul_floor(fraction),
-    //         Err(ConversionOverflow(ConversionOverflowError {
-    //             source_type: "Uint256",
-    //             target_type: "Uint128",
-    //         })),
-    //     );
-    // }
+            // overflow num and overflow result
+            assert!(matches!(
+                max.checked_mul_dec_ceil(_2d),
+                Err(StdError::OverflowConversion { .. })
+            ));
+            assert!(matches!(
+                max.checked_mul_dec_floor(_2d),
+                Err(StdError::OverflowConversion { .. })
+            ));
+        }
+    );
 
-    // #[test]
-    // #[should_panic(expected = "DivideByZeroError")]
-    // fn mul_floor_panics_on_zero_div() {
-    //     let fraction = (21u128, 0u128);
-    //     _ = Uint128::new(123456).mul_floor(fraction);
-    // }
+    utest!( div_floor,
+        128 = [Udec128::new(0_u128), Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
+        256 = [Udec256::new(0_u128), Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
+        => |_0, _0d, _2d, _0_5d, _1_5d| {
+            let _1 = Uint::from(1_u64);
+            let _2 = Uint::from(2_u64);
+            let _10 = Uint::from(10_u64);
+            let _11 = Uint::from(11_u64);
+            let max = Uint::MAX;
+            dts!(_0, _1, _2, _10, _11,  max);
 
-    // #[test]
-    // fn checked_mul_floor_does_not_panic_on_zero_div() {
-    //     let fraction = (21u128, 0u128);
-    //     assert_eq!(
-    //         Uint128::new(123456).checked_mul_floor(fraction),
-    //         Err(DivideByZero(DivideByZeroError)),
-    //     );
-    // }
+            assert_eq!(_11.checked_div_dec_floor(_2d).unwrap(), Uint::from(5_u64));
+            assert_eq!(_11.checked_div_dec_ceil(_2d).unwrap(), Uint::from(6_u64));
 
-    // #[test]
-    // fn mul_ceil_works_with_zero() {
-    //     let fraction = (Uint128::zero(), Uint128::new(21));
-    //     let res = Uint128::new(123456).mul_ceil(fraction);
-    //     assert_eq!(Uint128::zero(), res)
-    // }
+            assert_eq!(_10.checked_div_dec_floor(_2d).unwrap(), Uint::from(5_u64));
+            assert_eq!(_10.checked_div_dec_ceil(_2d).unwrap(), Uint::from(5_u64));
 
-    // #[test]
-    // fn mul_ceil_does_nothing_with_one() {
-    //     let fraction = (Uint128::one(), Uint128::one());
-    //     let res = Uint128::new(123456).mul_ceil(fraction);
-    //     assert_eq!(Uint128::new(123456), res)
-    // }
+            // ceil works
+            assert_eq!(_11.checked_div_dec_floor(_1_5d).unwrap(), Uint::from(7_u64));
+            assert_eq!(_11.checked_div_dec_ceil(_1_5d).unwrap(), Uint::from(8_u64));
 
-    // #[test]
-    // fn mul_ceil_rounds_up_with_normal_case() {
-    //     let fraction = (8u128, 21u128);
-    //     let res = Uint128::new(123456).mul_ceil(fraction); // 47030.8571
-    //     assert_eq!(Uint128::new(47031), res)
-    // }
+            // overflow num but not overflow result
+            assert_eq!(max.checked_div_dec_floor(_2d).unwrap(), max / _2);
+            assert_eq!(max.checked_div_dec_ceil(_2d).unwrap(), max / _2 + _1);
 
-    // #[test]
-    // fn mul_ceil_does_not_round_on_even_divide() {
-    //     let fraction = (2u128, 5u128);
-    //     let res = Uint128::new(25).mul_ceil(fraction);
-    //     assert_eq!(Uint128::new(10), res)
-    // }
+            // overflow num and overflow result
+            assert!(matches!(
+                max.checked_div_dec_floor(_0_5d),
+                Err(StdError::OverflowConversion { .. })
+            ));
+            assert!(matches!(
+                max.checked_div_dec_ceil(_0_5d),
+                Err(StdError::OverflowConversion { .. })
+            ));
 
-    // #[test]
-    // fn mul_ceil_works_when_operation_temporarily_takes_above_max() {
-    //     let fraction = (8u128, 21u128);
-    //     let res = Uint128::MAX.mul_ceil(fraction); // 129_631_377_874_643_224_176_523_659_974_006_937_697.14285
-    //     assert_eq!(
-    //         Uint128::new(129_631_377_874_643_224_176_523_659_974_006_937_698),
-    //         res
-    //     )
-    // }
+            // Divide by zero
+            assert!(matches!(
+                _10.checked_div_dec_floor(_0d),
+                Err(StdError::DivisionByZero { .. })
+            ));
+            assert!(matches!(
+                _10.checked_div_dec_ceil(_0d),
+                Err(StdError::DivisionByZero { .. })
+            ));
+        }
+    );
 
-    // #[test]
-    // fn mul_ceil_works_with_decimal() {
-    //     let decimal = Decimal::from_ratio(8u128, 21u128);
-    //     let res = Uint128::new(123456).mul_ceil(decimal); // 47030.8571
-    //     assert_eq!(Uint128::new(47031), res)
-    // }
+    utest!( multiply_fraction_by_negative,
+        128 = [Dec128::from_str("-1").unwrap(), Dec128::from_str("-0").unwrap()]
+        256 = [Dec256::from_str("-1").unwrap(), Dec128::from_str("-0").unwrap()]
+        => |_0, n1d, n0d| {
+            let lhs = bt(_0, Uint::from(123_u64));
 
-    // #[test]
-    // #[should_panic(expected = "ConversionOverflowError")]
-    // fn mul_ceil_panics_on_overflow() {
-    //     let fraction = (21u128, 8u128);
-    //     _ = Uint128::MAX.mul_ceil(fraction);
-    // }
+            // Multiplying with a negative fraction should fail
+            assert!(lhs.checked_mul_dec_floor(n1d).is_err());
+            assert!(lhs.checked_mul_dec_ceil(n1d).is_err());
+            assert!(lhs.checked_div_dec_floor(n1d).is_err());
+            assert!(lhs.checked_div_dec_ceil(n1d).is_err());
 
-    // #[test]
-    // fn checked_mul_ceil_does_not_panic_on_overflow() {
-    //     let fraction = (21u128, 8u128);
-    //     assert_eq!(
-    //         Uint128::MAX.checked_mul_ceil(fraction),
-    //         Err(ConversionOverflow(ConversionOverflowError {
-    //             source_type: "Uint256",
-    //             target_type: "Uint128",
-    //         })),
-    //     );
-    // }
+            // Multiplying with negative zero is allowed though
+            assert!(lhs.checked_mul_dec_floor(n0d).unwrap().is_zero());
+            assert!(lhs.checked_mul_dec_ceil(n0d).unwrap().is_zero());
 
-    // #[test]
-    // #[should_panic(expected = "DivideByZeroError")]
-    // fn mul_ceil_panics_on_zero_div() {
-    //     let fraction = (21u128, 0u128);
-    //     _ = Uint128::new(123456).mul_ceil(fraction);
-    // }
-
-    // #[test]
-    // fn checked_mul_ceil_does_not_panic_on_zero_div() {
-    //     let fraction = (21u128, 0u128);
-    //     assert_eq!(
-    //         Uint128::new(123456).checked_mul_ceil(fraction),
-    //         Err(DivideByZero(DivideByZeroError)),
-    //     );
-    // }
-
-    // #[test]
-    // #[should_panic(expected = "DivideByZeroError")]
-    // fn div_floor_raises_with_zero() {
-    //     let fraction = (Uint128::zero(), Uint128::new(21));
-    //     _ = Uint128::new(123456).div_floor(fraction);
-    // }
-
-    // #[test]
-    // fn div_floor_does_nothing_with_one() {
-    //     let fraction = (Uint128::one(), Uint128::one());
-    //     let res = Uint128::new(123456).div_floor(fraction);
-    //     assert_eq!(Uint128::new(123456), res)
-    // }
-
-    // #[test]
-    // fn div_floor_rounds_down_with_normal_case() {
-    //     let fraction = (5u128, 21u128);
-    //     let res = Uint128::new(123456).div_floor(fraction); // 518515.2
-    //     assert_eq!(Uint128::new(518515), res)
-    // }
-
-    // #[test]
-    // fn div_floor_does_not_round_on_even_divide() {
-    //     let fraction = (5u128, 2u128);
-    //     let res = Uint128::new(25).div_floor(fraction);
-    //     assert_eq!(Uint128::new(10), res)
-    // }
-
-    // #[test]
-    // fn div_floor_works_when_operation_temporarily_takes_above_max() {
-    //     let fraction = (21u128, 8u128);
-    //     let res = Uint128::MAX.div_floor(fraction); // 129_631_377_874_643_224_176_523_659_974_006_937_697.1428
-    //     assert_eq!(
-    //         Uint128::new(129_631_377_874_643_224_176_523_659_974_006_937_697),
-    //         res
-    //     )
-    // }
-
-    // #[test]
-    // fn div_floor_works_with_decimal() {
-    //     let decimal = Decimal::from_ratio(21u128, 8u128);
-    //     let res = Uint128::new(123456).div_floor(decimal); // 47030.8571
-    //     assert_eq!(Uint128::new(47030), res)
-    // }
-
-    // #[test]
-    // fn div_floor_works_with_decimal_evenly() {
-    //     let res = Uint128::new(60).div_floor(Decimal::from_atomics(6u128, 0).unwrap());
-    //     assert_eq!(res, Uint128::new(10));
-    // }
-
-    // #[test]
-    // #[should_panic(expected = "ConversionOverflowError")]
-    // fn div_floor_panics_on_overflow() {
-    //     let fraction = (8u128, 21u128);
-    //     _ = Uint128::MAX.div_floor(fraction);
-    // }
-
-    // #[test]
-    // fn div_floor_does_not_panic_on_overflow() {
-    //     let fraction = (8u128, 21u128);
-    //     assert_eq!(
-    //         Uint128::MAX.checked_div_floor(fraction),
-    //         Err(ConversionOverflow(ConversionOverflowError {
-    //             source_type: "Uint256",
-    //             target_type: "Uint128",
-    //         })),
-    //     );
-    // }
-
-    // #[test]
-    // #[should_panic(expected = "DivideByZeroError")]
-    // fn div_ceil_raises_with_zero() {
-    //     let fraction = (Uint128::zero(), Uint128::new(21));
-    //     _ = Uint128::new(123456).div_ceil(fraction);
-    // }
-
-    // #[test]
-    // fn div_ceil_does_nothing_with_one() {
-    //     let fraction = (Uint128::one(), Uint128::one());
-    //     let res = Uint128::new(123456).div_ceil(fraction);
-    //     assert_eq!(Uint128::new(123456), res)
-    // }
-
-    // #[test]
-    // fn div_ceil_rounds_up_with_normal_case() {
-    //     let fraction = (5u128, 21u128);
-    //     let res = Uint128::new(123456).div_ceil(fraction); // 518515.2
-    //     assert_eq!(Uint128::new(518516), res)
-    // }
-
-    // #[test]
-    // fn div_ceil_does_not_round_on_even_divide() {
-    //     let fraction = (5u128, 2u128);
-    //     let res = Uint128::new(25).div_ceil(fraction);
-    //     assert_eq!(Uint128::new(10), res)
-    // }
-
-    // #[test]
-    // fn div_ceil_works_when_operation_temporarily_takes_above_max() {
-    //     let fraction = (21u128, 8u128);
-    //     let res = Uint128::MAX.div_ceil(fraction); // 129_631_377_874_643_224_176_523_659_974_006_937_697.1428
-    //     assert_eq!(
-    //         Uint128::new(129_631_377_874_643_224_176_523_659_974_006_937_698),
-    //         res
-    //     )
-    // }
-
-    // #[test]
-    // fn div_ceil_works_with_decimal() {
-    //     let decimal = Decimal::from_ratio(21u128, 8u128);
-    //     let res = Uint128::new(123456).div_ceil(decimal); // 47030.8571
-    //     assert_eq!(Uint128::new(47031), res)
-    // }
-
-    // #[test]
-    // fn div_ceil_works_with_decimal_evenly() {
-    //     let res = Uint128::new(60).div_ceil(Decimal::from_atomics(6u128, 0).unwrap());
-    //     assert_eq!(res, Uint128::new(10));
-    // }
-
-    // #[test]
-    // #[should_panic(expected = "ConversionOverflowError")]
-    // fn div_ceil_panics_on_overflow() {
-    //     let fraction = (8u128, 21u128);
-    //     _ = Uint128::MAX.div_ceil(fraction);
-    // }
-
-    // #[test]
-    // fn div_ceil_does_not_panic_on_overflow() {
-    //     let fraction = (8u128, 21u128);
-    //     assert_eq!(
-    //         Uint128::MAX.checked_div_ceil(fraction),
-    //         Err(ConversionOverflow(ConversionOverflowError {
-    //             source_type: "Uint256",
-    //             target_type: "Uint128",
-    //         })),
-    //     );
-    // }
+            // Dividing by zero should fail
+            assert!(lhs.checked_div_dec_floor(n0d).is_err());
+            assert!(lhs.checked_div_dec_ceil(n0d).is_err());
+        }
+    );
 }

@@ -16,7 +16,7 @@ fn transfers() -> anyhow::Result<()> {
     // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM)
-        .should_succeed_and_equal(100_u128.into());
+        .should_succeed_and_equal(Uint256::from(100_u128));
     suite
         .query_balance(&accounts["receiver"], DENOM)
         .should_succeed_and_equal(Uint256::ZERO);

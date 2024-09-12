@@ -144,6 +144,8 @@ macro_rules! generate_uint {
         #[doc = $doc]
         pub type $name = Uint<$inner>;
 
+        forward_ref_partial_eq!($name, $name);
+
         // --- Impl From Uint and from inner type ---
         $(
             // Ex: From<Uint64> for Uint128

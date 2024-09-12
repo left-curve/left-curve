@@ -207,13 +207,13 @@ fn withholding_and_finalizing_fee_works(
 
     suite
         .query_balance(&accounts["owner"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(owner_balance_after.into());
+        .should_succeed_and_equal(Uint256::from(owner_balance_after));
     suite
         .query_balance(&accounts["sender"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(sender_balance_after.into());
+        .should_succeed_and_equal(Uint256::from(sender_balance_after));
     suite
         .query_balance(&accounts["receiver"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(receiver_balance_after.into());
+        .should_succeed_and_equal(Uint256::from(receiver_balance_after));
 }
 
 // In this test, we see what happens if the tx fails at the `finalize_fee` stage.
@@ -269,5 +269,5 @@ fn finalizing_fee_erroring() {
         .should_succeed_and_equal(Uint256::ZERO);
     suite
         .query_balance(&accounts["sender"], taxman::FEE_DENOM)
-        .should_succeed_and_equal(30_000_u128.into());
+        .should_succeed_and_equal(Uint256::from(30_000_u128));
 }
