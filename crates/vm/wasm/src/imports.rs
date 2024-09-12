@@ -410,10 +410,9 @@ fn encode_record((mut k, v): Record) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use {
-        super::{db_scan, debug},
         crate::{
-            db_read, db_remove, db_remove_range, db_write, Environment, VmResult, WasmVm,
-            GAS_PER_OPERATION,
+            db_read, db_remove, db_remove_range, db_scan, db_write, debug, read_from_memory,
+            write_to_memory, Environment, VmResult, WasmVm, GAS_PER_OPERATION,
         },
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS},
         grug_crypto::{Identity256, Identity512},
@@ -454,7 +453,7 @@ mod tests {
         fn write(&mut self, data: &[u8]) -> VmResult<u32> {
             let mut fe_mut = self.fe_mut();
             let (env, mut store) = fe_mut.data_and_store_mut();
-            crate::write_to_memory(env, &mut store, data)
+            write_to_memory(env, &mut store, data)
         }
 
         fn fe_mut(&mut self) -> FunctionEnvMut<Environment> {
@@ -464,7 +463,7 @@ mod tests {
         fn read(&mut self, ptr: u32) -> VmResult<Vec<u8>> {
             let mut fe_mut = self.fe_mut();
             let (env, store) = fe_mut.data_and_store_mut();
-            crate::read_from_memory(env, &store, ptr)
+            read_from_memory(env, &store, ptr)
         }
 
         fn env_mut(&mut self) -> &mut Environment {
@@ -568,7 +567,7 @@ mod tests {
         }
     }
 
-    // ----------------------------------- db_read -----------------------------------
+    // -------------------------------- db_read --------------------------------
 
     #[test]
     fn db_read_works() {
@@ -587,7 +586,7 @@ mod tests {
         assert_eq!(result, v);
     }
 
-    // ----------------------------------- db_scan -----------------------------------
+    // -------------------------------- db_scan --------------------------------
 
     #[test_case(
         Some(b"key1"), Some(b"key3"), Order::Ascending,
@@ -624,6 +623,7 @@ mod tests {
         expected: &[Option<(&[u8], &[u8])>],
     ) {
         let mut suite = setup_test();
+
         suite.storage_provider.write(b"key1", b"value1");
         suite.storage_provider.write(b"key2", b"value2");
         suite.storage_provider.write(b"key3", b"value3");
@@ -650,9 +650,8 @@ mod tests {
         }
     }
 
-    // -------------------- db_next / db_next_key / db_next_value --------------------
+    // ----------------- db_next / db_next_key / db_next_value -----------------
 
-    // db_next
     #[test_case(
         crate::db_next,
         // Copied from ffi
@@ -674,7 +673,6 @@ mod tests {
         ];
         "db_next"
     )]
-    // db_next_key
     #[test_case(
         crate::db_next_key,
         |data| data,
@@ -685,7 +683,6 @@ mod tests {
         ];
         "db_next_key"
     )]
-    // db_next_value
     #[test_case(
         crate::db_next_value,
         |data| data,
@@ -703,6 +700,7 @@ mod tests {
         R: PartialEq + Debug,
     {
         let mut suite = setup_test();
+
         suite.storage_provider.write(b"key1", b"value1");
         suite.storage_provider.write(b"key2", b"value2");
         suite.storage_provider.write(b"key3", b"value3");
@@ -733,7 +731,7 @@ mod tests {
         }
     }
 
-    // ----------------------------------- db_write -----------------------------------
+    // ------------------------------- db_write --------------------------------
 
     #[test]
     fn db_write_works() {
@@ -763,7 +761,7 @@ mod tests {
         assert_eq!(gas_consumed, cost);
     }
 
-    // ----------------------------------- db_remove -----------------------------------
+    // ------------------------------- db_remove -------------------------------
 
     #[test]
     fn db_remove_works() {
@@ -790,7 +788,7 @@ mod tests {
         assert_eq!(gas_consumed, GAS_COSTS.db_remove);
     }
 
-    // --------------------------------- db_remove_range --------------------------------
+    // ---------------------------- db_remove_range ----------------------------
 
     #[test_case(
         Some(b"key1"), None,
@@ -852,7 +850,7 @@ mod tests {
         assert_eq!(gas_consumed, GAS_COSTS.db_remove);
     }
 
-    // ------------------------------------- debug --------------------------------------
+    // -------------------------------- debug ----------------------------------
 
     #[test]
     fn debug_works() {
@@ -870,7 +868,7 @@ mod tests {
         debug(suite.fe_mut(), ptr_addr, ptr_msg).unwrap();
     }
 
-    // ---------------------------------- query_chain -----------------------------------
+    // ----------------------------- query_chain -------------------------------
 
     #[test_case(
         "foo",
@@ -911,7 +909,7 @@ mod tests {
         assert_eq!(result, value);
     }
 
-    // -------------------------------- Crypto Verify --------------------------------
+    // ----------------------------- Crypto Verify -----------------------------
 
     const MSG: &[u8] = b"msg";
 
@@ -972,19 +970,16 @@ mod tests {
         }
     }
 
-    // secp256k1_verify
     #[test_case(
         crate::secp256k1_verify,
         generate_secp256k1_verify_request;
         "secp256k1_verify"
     )]
-    // secp256r1_verify
     #[test_case(
         crate::secp256r1_verify,
         generate_secp256r1_verify_request;
         "secp256kr_verify"
     )]
-    // ed25519_verify
     #[test_case(
         crate::ed25519_verify,
         generate_ed25519_verify_request;
@@ -1022,7 +1017,7 @@ mod tests {
         }
     }
 
-    // -------------------------- secp256k1_pubkey_recover ----------------------------
+    // ---------------------- secp256k1_pubkey_recover -------------------------
 
     #[test]
     fn secp256k1_pubkey_recover_works() {
@@ -1088,7 +1083,7 @@ mod tests {
         }
     }
 
-    // ----------------------------- ed25519_batch_verify -----------------------------
+    // ------------------------- ed25519_batch_verify --------------------------
     #[test]
     fn ed25519_batch_verify_works() {
         let mut suite = setup_test();
@@ -1155,63 +1150,53 @@ mod tests {
         }
     }
 
-    // ------------------------------------ Hash -------------------------------------
+    // --------------------------------- Hash ----------------------------------
 
-    // sha2_256
     #[test_case(
         crate::sha2_256,
         grug_crypto::sha2_256;
         "sha2_256"
     )]
-    // sha2_512
     #[test_case(
         crate::sha2_512,
         grug_crypto::sha2_512;
         "sha2_512"
     )]
-    // sha2_512_truncated
     #[test_case(
         crate::sha2_512_truncated,
         grug_crypto::sha2_512_truncated;
         "sha2_512_truncated"
     )]
-    // sha3_256
     #[test_case(
         crate::sha3_256,
         grug_crypto::sha3_256;
         "sha3_256"
     )]
-    // sha3_512
     #[test_case(
         crate::sha3_512,
         grug_crypto::sha3_512;
         "sha3_512"
     )]
-    // sha3_512_truncated
     #[test_case(
         crate::sha3_512_truncated,
         grug_crypto::sha3_512_truncated;
         "sha3_512_truncated"
     )]
-    // keccak256
     #[test_case(
         crate::keccak256,
         grug_crypto::keccak256;
         "keccak256"
     )]
-    // blake2s_256
     #[test_case(
         crate::blake2s_256,
         grug_crypto::blake2s_256;
         "blake2s_256"
     )]
-    // blake2b_512
     #[test_case(
         crate::blake2b_512,
         grug_crypto::blake2b_512;
         "blake2b_512"
     )]
-    // blake3
     #[test_case(
         crate::blake3,
         grug_crypto::blake3;
