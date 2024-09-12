@@ -1,8 +1,15 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    serde::{de, de::Error, Serialize},
-    std::{io, str::FromStr},
+    serde::{
+        de::{self, Error},
+        Serialize,
+    },
+    std::{
+        fmt::{self, Display, Formatter},
+        io,
+        str::FromStr,
+    },
 };
 
 /// Denomination of a coin.
@@ -23,7 +30,12 @@ pub struct Denom(String);
 impl Denom {
     /// Create a new denom from a string.
     /// Error if the string isn't a valid denom.
-    pub fn new(inner: String) -> StdResult<Self> {
+    pub fn new<T>(inner: T) -> StdResult<Self>
+    where
+        T: Into<String>,
+    {
+        let inner = inner.into();
+
         if !(3..=128_usize).contains(&inner.len()) {
             return Err(StdError::invalid_denom(inner, "too short or too long"));
         }
@@ -62,11 +74,33 @@ impl Denom {
     }
 }
 
+impl Display for Denom {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl TryFrom<String> for Denom {
+    type Error = StdError;
+
+    fn try_from(string: String) -> StdResult<Self> {
+        Denom::new(string)
+    }
+}
+
+impl TryFrom<&str> for Denom {
+    type Error = StdError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Denom::new(s)
+    }
+}
+
 impl FromStr for Denom {
     type Err = StdError;
 
     fn from_str(s: &str) -> StdResult<Self> {
-        Denom::new(s.to_string())
+        Denom::new(s)
     }
 }
 
@@ -86,7 +120,7 @@ impl BorshDeserialize for Denom {
     where
         R: io::Read,
     {
-        let inner = BorshDeserialize::deserialize_reader(reader)?;
+        let inner = <String as BorshDeserialize>::deserialize_reader(reader)?;
 
         Denom::new(inner).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }

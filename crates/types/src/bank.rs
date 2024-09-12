@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Coin, Coins},
+    crate::{Addr, Coin, Coins, Denom},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -22,18 +22,18 @@ pub struct BankMsg {
 pub enum BankQuery {
     Balance {
         address: Addr,
-        denom: String,
+        denom: Denom,
     },
     Balances {
         address: Addr,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     },
     Supply {
-        denom: String,
+        denom: Denom,
     },
     Supplies {
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     },
 }

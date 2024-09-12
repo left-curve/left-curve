@@ -7,7 +7,7 @@ use {
     grug_storage::Bound,
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context, ContractInfo,
-        GenericResult, Hash256, InfoResponse, Json, Order, StdResult, Storage,
+        Denom, GenericResult, Hash256, InfoResponse, Json, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -52,7 +52,7 @@ pub fn query_balance<VM>(
     query_depth: usize,
     block: BlockInfo,
     address: Addr,
-    denom: String,
+    denom: Denom,
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
@@ -76,7 +76,7 @@ pub fn query_balances<VM>(
     query_depth: usize,
     block: BlockInfo,
     address: Addr,
-    start_after: Option<String>,
+    start_after: Option<Denom>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
 where
@@ -104,7 +104,7 @@ pub fn query_supply<VM>(
     gas_tracker: GasTracker,
     query_depth: usize,
     block: BlockInfo,
-    denom: String,
+    denom: Denom,
 ) -> AppResult<Coin>
 where
     VM: Vm + Clone,
@@ -127,7 +127,7 @@ pub fn query_supplies<VM>(
     gas_tracker: GasTracker,
     query_depth: usize,
     block: BlockInfo,
-    start_after: Option<String>,
+    start_after: Option<Denom>,
     limit: Option<u32>,
 ) -> AppResult<Coins>
 where

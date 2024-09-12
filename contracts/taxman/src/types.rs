@@ -1,13 +1,13 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::Udec128,
+    grug_types::{Denom, Udec128},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub fee_denom: String,
+    pub fee_denom: Denom,
     pub fee_rate: Udec128,
 }
 

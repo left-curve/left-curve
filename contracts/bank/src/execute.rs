@@ -1,7 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     anyhow::ensure,
-    grug_types::{Addr, Coins, MutableCtx, Number, Response, StdResult, Storage, Uint256},
+    grug_types::{Addr, Coins, Denom, MutableCtx, Number, Response, StdResult, Storage, Uint256},
     std::collections::HashMap,
 };
 
@@ -18,7 +18,7 @@ where
         for coin in coins {
             BALANCES_BY_ADDR.save(storage, (address, &coin.denom), &coin.amount)?;
             BALANCES_BY_DENOM.save(storage, (&coin.denom, address), &coin.amount)?;
-            accumulate_supply(&mut supplies, &coin.denom, coin.amount)?;
+            accumulate_supply(&mut supplies, coin.denom, coin.amount)?;
         }
     }
 
@@ -32,12 +32,12 @@ where
 // Just a helper function for use during instantiation.
 // Not to be confused with `increase_supply` also found in this contract
 fn accumulate_supply(
-    supplies: &mut HashMap<String, Uint256>,
-    denom: &str,
+    supplies: &mut HashMap<Denom, Uint256>,
+    denom: Denom,
     by: Uint256,
 ) -> StdResult<()> {
-    let Some(supply) = supplies.get_mut(denom) else {
-        supplies.insert(denom.into(), by);
+    let Some(supply) = supplies.get_mut(&denom) else {
+        supplies.insert(denom, by);
         return Ok(());
     };
 
@@ -52,7 +52,7 @@ fn accumulate_supply(
 /// meaning _any_ account can mint _any_ token of _any_ amount.
 ///
 /// Apparently, this is not intended for using in production.
-pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint256) -> anyhow::Result<Response> {
+pub fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint256) -> anyhow::Result<Response> {
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, to, &denom, amount)?;
 
@@ -72,7 +72,7 @@ pub fn mint(ctx: MutableCtx, to: Addr, denom: String, amount: Uint256) -> anyhow
 pub fn burn(
     ctx: MutableCtx,
     from: Addr,
-    denom: String,
+    denom: Denom,
     amount: Uint256,
 ) -> anyhow::Result<Response> {
     decrease_supply(ctx.storage, &denom, amount)?;
@@ -89,7 +89,7 @@ pub fn force_transfer(
     ctx: MutableCtx,
     from: Addr,
     to: Addr,
-    denom: String,
+    denom: Denom,
     amount: Uint256,
 ) -> anyhow::Result<Response> {
     let info = ctx.querier.query_info()?;
@@ -134,7 +134,7 @@ pub fn transfer(
 /// Return the total supply value after the increase.
 fn increase_supply(
     storage: &mut dyn Storage,
-    denom: &str,
+    denom: &Denom,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
     SUPPLIES.update(storage, denom, |supply| {
@@ -147,7 +147,7 @@ fn increase_supply(
 /// Return the total supply value after the decrease.
 fn decrease_supply(
     storage: &mut dyn Storage,
-    denom: &str,
+    denom: &Denom,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
     SUPPLIES.update(storage, denom, |supply| {
@@ -166,7 +166,7 @@ fn decrease_supply(
 fn increase_balance(
     storage: &mut dyn Storage,
     address: Addr,
-    denom: &str,
+    denom: &Denom,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
     let action = |balance: Option<Uint256>| {
@@ -182,7 +182,7 @@ fn increase_balance(
 fn decrease_balance(
     storage: &mut dyn Storage,
     address: Addr,
-    denom: &str,
+    denom: &Denom,
     amount: Uint256,
 ) -> StdResult<Option<Uint256>> {
     let action = |balance: Option<Uint256>| {

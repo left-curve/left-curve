@@ -11,7 +11,7 @@
 
 use {
     crate::{
-        Addr, Batch, Binary, Coins, ContractInfo, Hash256, InfoResponse, Json, JsonDeExt,
+        Addr, Batch, Binary, Coins, ContractInfo, Denom, Hash256, InfoResponse, Json, JsonDeExt,
         JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
@@ -304,7 +304,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_app_configs())
     }
 
-    pub fn query_balance(&self, address: Addr, denom: String) -> StdResult<Uint256> {
+    pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint256> {
         self.inner
             .query_chain(Query::Balance { address, denom })
             .map(|res| res.as_balance().amount)
@@ -313,7 +313,7 @@ impl<'a> QuerierWrapper<'a> {
     pub fn query_balances(
         &self,
         address: Addr,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner
@@ -325,7 +325,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_balances())
     }
 
-    pub fn query_supply(&self, denom: String) -> StdResult<Uint256> {
+    pub fn query_supply(&self, denom: Denom) -> StdResult<Uint256> {
         self.inner
             .query_chain(Query::Supply { denom })
             .map(|res| res.as_supply().amount)
@@ -333,7 +333,7 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_supplies(
         &self,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner

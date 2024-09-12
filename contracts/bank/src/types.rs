@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, Coins, QueryRequest, Uint256},
+    grug_types::{Addr, Coins, Denom, QueryRequest, Uint256},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
@@ -15,13 +15,13 @@ pub enum ExecuteMsg {
     /// Mint a token of the specified amount to a user.
     Mint {
         to: Addr,
-        denom: String,
+        denom: Denom,
         amount: Uint256,
     },
     /// Burn a token of the specified amount from a user.
     Burn {
         from: Addr,
-        denom: String,
+        denom: Denom,
         amount: Uint256,
     },
     /// Forcibly transfer a coin from an account to a receiver.
@@ -30,7 +30,7 @@ pub enum ExecuteMsg {
     ForceTransfer {
         from: Addr,
         to: Addr,
-        denom: String,
+        denom: Denom,
         amount: Uint256,
     },
 }
@@ -41,14 +41,14 @@ pub enum QueryMsg {
     /// Enumerate all holders of a given token and their balances.
     /// Returns: `BTreeMap<Addr, Uint256>`.
     Holders {
-        denom: String,
+        denom: Denom,
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
 }
 
 pub struct QueryHoldersRequest {
-    pub denom: String,
+    pub denom: Denom,
     pub start_after: Option<Addr>,
     pub limit: Option<u32>,
 }

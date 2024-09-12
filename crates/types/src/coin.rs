@@ -1,5 +1,5 @@
 use {
-    crate::{NonZero, Number, NumberConst, StdError, StdResult, Uint256},
+    crate::{btree_map, Denom, NonZero, Number, NumberConst, StdError, StdResult, Uint256},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::{
@@ -15,22 +15,21 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Coin {
-    pub denom: String,
+    pub denom: Denom,
     pub amount: Uint256,
 }
 
 impl Coin {
     /// Create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    pub fn new<D, A>(denom: D, amount: NonZero<A>) -> Self
+    pub fn new<A>(denom: Denom, amount: NonZero<A>) -> Self
     where
-        D: ToString,
         A: Into<Uint256>,
     {
-        let denom = denom.to_string();
-        let amount = amount.into_inner().into();
-
-        Self { denom, amount }
+        Self {
+            denom,
+            amount: amount.into_inner().into(),
+        }
     }
 }
 
@@ -65,7 +64,7 @@ impl fmt::Debug for Coin {
 /// amount.
 #[derive(Serialize)]
 pub struct CoinRef<'a> {
-    pub denom: &'a String,
+    pub denom: &'a Denom,
     pub amount: &'a Uint256,
 }
 
@@ -73,7 +72,7 @@ pub struct CoinRef<'a> {
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
-pub struct Coins(BTreeMap<String, Uint256>);
+pub struct Coins(BTreeMap<Denom, Uint256>);
 
 impl Coins {
     // There are two ways to stringify a Coins:
@@ -97,15 +96,11 @@ impl Coins {
     }
 
     /// Create a new `Coins` with exactly one coin.
-    pub fn one<D, A>(denom: D, amount: NonZero<A>) -> Self
+    pub fn one<A>(denom: Denom, amount: NonZero<A>) -> Self
     where
-        D: ToString,
         A: Into<Uint256>,
     {
-        let denom = denom.to_string();
-        let amount = amount.into_inner().into();
-
-        Self([(denom, amount)].into())
+        Self(btree_map! { denom => amount.into_inner().into() })
     }
 
     /// Return whether the `Coins` contains any coin at all.
@@ -119,13 +114,13 @@ impl Coins {
     }
 
     /// Return whether there is a non-zero amount of the given denom.
-    pub fn has(&self, denom: &str) -> bool {
+    pub fn has(&self, denom: &Denom) -> bool {
         self.0.contains_key(denom)
     }
 
     /// Get the amount of the given denom.
     /// Note, if the denom does not exist, zero is returned.
-    pub fn amount_of(&self, denom: &str) -> Uint256 {
+    pub fn amount_of(&self, denom: &Denom) -> Uint256 {
         self.0.get(denom).copied().unwrap_or(Uint256::ZERO)
     }
 
@@ -154,12 +149,10 @@ impl Coins {
 
     /// Increase the amount of a denom by the given amount. If the denom doesn't
     /// exist, a new record is created.
-    pub fn increase_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
+    pub fn increase_amount<A>(&mut self, denom: Denom, by: A) -> StdResult<()>
     where
-        D: Into<String>,
         A: Into<Uint256>,
     {
-        let denom = denom.into();
         let by = by.into();
 
         let Some(amount) = self.0.get_mut(&denom) else {
@@ -180,12 +173,10 @@ impl Coins {
     /// Decrease the amount of a denom by the given amount. Amount can't be
     /// reduced below zero. If the amount is reduced to exactly zero, the record
     /// is purged, so that only non-zero amount coins remain.
-    pub fn decrease_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
+    pub fn decrease_amount<A>(&mut self, denom: Denom, by: A) -> StdResult<()>
     where
-        D: Into<String>,
         A: Into<Uint256>,
     {
-        let denom = denom.into();
         let by = by.into();
 
         let Some(amount) = self.0.get_mut(&denom) else {
@@ -209,24 +200,25 @@ impl Coins {
     /// Check whether the iterator contains duplicates or zero amounts.
     fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
-        D: Into<String>,
+        D: TryInto<Denom>,
         A: Into<Uint256>,
         I: IntoIterator<Item = (D, A)>,
+        StdError: From<D::Error>,
     {
         let mut map = BTreeMap::new();
+
         for (denom, amount) in iter {
-            let denom = denom.into();
+            let denom = denom.try_into()?;
             let amount = amount.into();
 
             if amount.is_zero() {
                 return Err(StdError::invalid_coins(format!(
-                    "denom `{}` as zero amount",
-                    denom
+                    "denom `{denom}` as zero amount",
                 )));
             }
 
             if map.insert(denom, amount).is_some() {
-                return Err(StdError::invalid_coins("duplicate denom found"));
+                return Err(StdError::invalid_coins("duplicate denom: `{denom}`"));
             }
         }
 
@@ -253,12 +245,19 @@ impl FromStr for Coins {
         }
 
         let mut map = BTreeMap::new();
+
         for coin_str in s.split(',') {
-            let Some((denom, amount_str)) = coin_str.split_once(':') else {
+            let Some((denom_str, amount_str)) = coin_str.split_once(':') else {
                 return Err(StdError::invalid_coins(format!(
                     "invalid coin `{coin_str}`: must be in the format {{denom}}:{{amount}}"
                 )));
             };
+
+            let denom = Denom::new(denom_str)?;
+
+            if map.contains_key(&denom) {
+                return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
+            }
 
             let Ok(amount) = Uint256::from_str(amount_str) else {
                 return Err(StdError::invalid_coins(format!(
@@ -272,11 +271,7 @@ impl FromStr for Coins {
                 )));
             }
 
-            if map.contains_key(denom) {
-                return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
-            }
-
-            map.insert(denom.into(), amount);
+            map.insert(denom, amount);
         }
 
         Ok(Self(map))
@@ -301,8 +296,9 @@ impl TryFrom<Vec<Coin>> for Coins {
 
 impl<D, A, const N: usize> TryFrom<[(D, A); N]> for Coins
 where
-    D: Into<String>,
+    D: TryInto<Denom>,
     A: Into<Uint256>,
+    StdError: From<D::Error>,
 {
     type Error = StdError;
 
@@ -313,8 +309,9 @@ where
 
 impl<D, A> TryFrom<BTreeMap<D, A>> for Coins
 where
-    D: Into<String>,
+    D: TryInto<Denom>,
     A: Into<Uint256>,
+    StdError: From<D::Error>,
 {
     type Error = StdError;
 
@@ -353,7 +350,7 @@ impl IntoIterator for Coins {
     }
 }
 
-pub struct CoinsIter<'a>(btree_map::Iter<'a, String, Uint256>);
+pub struct CoinsIter<'a>(btree_map::Iter<'a, Denom, Uint256>);
 
 impl<'a> Iterator for CoinsIter<'a> {
     type Item = CoinRef<'a>;
@@ -365,7 +362,7 @@ impl<'a> Iterator for CoinsIter<'a> {
     }
 }
 
-pub struct CoinsIntoIter(btree_map::IntoIter<String, Uint256>);
+pub struct CoinsIntoIter(btree_map::IntoIter<Denom, Uint256>);
 
 impl Iterator for CoinsIntoIter {
     type Item = Coin;

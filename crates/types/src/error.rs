@@ -1,4 +1,5 @@
 use {
+    crate::Denom,
     data_encoding::BASE64,
     hex::FromHexError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
@@ -76,7 +77,7 @@ pub enum StdError {
     InvalidPayment { expect: usize, actual: usize },
 
     #[error("cannot find denom `{denom}` in coins")]
-    DenomNotFound { denom: String },
+    DenomNotFound { denom: Denom },
 
     #[error("data not found! type: {ty}, storage key: {key}")]
     DataNotFound { ty: &'static str, key: String },

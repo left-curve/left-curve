@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     chrono::DateTime,
     grug_client::{AdminOption, GenesisBuilder, SigningKey},
-    grug_types::{Coins, NonZero, Permission, Udec128, Uint128},
+    grug_types::{Coins, Denom, NonZero, Permission, Udec128, Uint128},
     home::home_dir,
     std::{path::PathBuf, str::FromStr},
 };
@@ -47,11 +47,11 @@ fn main() -> anyhow::Result<()> {
             initial_balances: [
                 (
                     account1,
-                    Coins::one("uatom", NonZero::new(Uint128::new(1_000_000))?),
+                    Coins::one(Denom::new("uatom")?, NonZero::new(Uint128::new(1_000_000))?),
                 ),
                 (
                     account2,
-                    Coins::one("uosmo", NonZero::new(Uint128::new(1_000_000))?),
+                    Coins::one(Denom::new("uosmo")?, NonZero::new(Uint128::new(1_000_000))?),
                 ),
             ]
             .into(),
@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         artifacts_dir.join("grug_taxman.wasm"),
         &grug_taxman::InstantiateMsg {
             config: grug_taxman::Config {
-                fee_denom: "uatom".to_string(),
+                fee_denom: Denom::new("uatom")?,
                 fee_rate: Udec128::from_str("0.1")?,
             },
         },
