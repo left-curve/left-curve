@@ -22,13 +22,13 @@ pub struct Coin {
 impl Coin {
     /// Create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    pub fn new<A>(denom: Denom, amount: NonZero<A>) -> Self
+    pub fn new<A>(denom: Denom, amount: A) -> Self
     where
         A: Into<Uint256>,
     {
         Self {
             denom,
-            amount: amount.into_inner().into(),
+            amount: amount.into(),
         }
     }
 }
@@ -96,11 +96,17 @@ impl Coins {
     }
 
     /// Create a new `Coins` with exactly one coin.
-    pub fn one<A>(denom: Denom, amount: NonZero<A>) -> Self
+    /// Error if the denom isn't valid, or amount is zero.
+    pub fn one<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
-        A: Into<Uint256>,
+        D: TryInto<Denom>,
+        A: TryInto<Uint256>,
+        StdError: From<D::Error> + From<A::Error>,
     {
-        Self(btree_map! { denom => amount.into_inner().into() })
+        let denom = denom.try_into()?;
+        let amount = NonZero::new(amount.try_into()?)?;
+
+        Ok(Self(btree_map! { denom => amount.into_inner() }))
     }
 
     /// Return whether the `Coins` contains any coin at all.

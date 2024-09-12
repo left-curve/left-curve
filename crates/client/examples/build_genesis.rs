@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     chrono::DateTime,
     grug_client::{AdminOption, GenesisBuilder, SigningKey},
-    grug_types::{Coins, Denom, NonZero, Permission, Udec128, Uint128},
+    grug_types::{Coins, Denom, Permission, Udec128},
     home::home_dir,
     std::{path::PathBuf, str::FromStr},
 };
@@ -45,14 +45,8 @@ fn main() -> anyhow::Result<()> {
         artifacts_dir.join("grug_bank.wasm"),
         &grug_bank::InstantiateMsg {
             initial_balances: [
-                (
-                    account1,
-                    Coins::one(Denom::new("uatom")?, NonZero::new(Uint128::new(1_000_000))?),
-                ),
-                (
-                    account2,
-                    Coins::one(Denom::new("uosmo")?, NonZero::new(Uint128::new(1_000_000))?),
-                ),
+                (account1, Coins::one("uatom", 1_000_000_u128)?),
+                (account2, Coins::one("uosmo", 1_000_000_u128)?),
             ]
             .into(),
         },
