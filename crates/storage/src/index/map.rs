@@ -69,6 +69,22 @@ where
         self.primary.load(storage, key)
     }
 
+    pub fn may_take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.primary.may_take_raw(storage, key_raw)
+    }
+
+    pub fn may_take(&self, storage: &mut dyn Storage, key: K) -> StdResult<Option<T>> {
+        self.primary.may_take(storage, key)
+    }
+
+    pub fn take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.primary.take_raw(storage, key_raw)
+    }
+
+    pub fn take(&self, storage: &mut dyn Storage, key: K) -> StdResult<T> {
+        self.primary.take(storage, key)
+    }
+
     // -------------------- iteration methods (full bound) ---------------------
 
     pub fn range_raw<'b>(

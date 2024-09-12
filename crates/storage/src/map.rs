@@ -86,6 +86,22 @@ where
         self.path(key).as_path().load(storage)
     }
 
+    pub fn may_take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.path_raw(key_raw).as_path().may_take_raw(storage)
+    }
+
+    pub fn may_take(&self, storage: &mut dyn Storage, key: K) -> StdResult<Option<T>> {
+        self.path(key).as_path().may_take(storage)
+    }
+
+    pub fn take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.path_raw(key_raw).as_path().take_raw(storage)
+    }
+
+    pub fn take(&self, storage: &mut dyn Storage, key: K) -> StdResult<T> {
+        self.path(key).as_path().take(storage)
+    }
+
     /// Using this function is not recommended. If the key or data isn't
     /// properly serialized, later when you read the data, it will fail to
     /// deserialize and error.
