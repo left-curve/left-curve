@@ -19,6 +19,8 @@ pub trait Signer {
         gas_limit: u64,
         chain_id: &str,
         sequence: u32,
+        // If a sender isn't specified, use the signer's own address.
+        sender: Option<Addr>,
     ) -> StdResult<Tx>;
 }
 
@@ -55,13 +57,12 @@ impl Signer for TestAccount {
         gas_limit: u64,
         chain_id: &str,
         sequence: u32,
+        sender: Option<Addr>,
     ) -> StdResult<Tx> {
+        let sender = sender.unwrap_or(self.address);
+
         let sign_bytes = Identity256::from(grug_account::make_sign_bytes(
-            sha2_256,
-            &msgs,
-            self.address,
-            chain_id,
-            sequence,
+            sha2_256, &msgs, sender, chain_id, sequence,
         )?);
 
         let signature: Signature = self.sk.sign_digest(sign_bytes);
@@ -73,7 +74,7 @@ impl Signer for TestAccount {
         .to_json_value()?;
 
         Ok(Tx {
-            sender: self.address,
+            sender,
             gas_limit,
             msgs,
             data: Json::Null,

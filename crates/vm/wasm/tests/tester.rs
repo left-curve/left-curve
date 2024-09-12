@@ -7,8 +7,8 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, GenericResult, JsonSerExt, Message, NonZero, QueryRequest, Udec128,
-        VerificationError,
+        Addr, Binary, Coins, GenericResult, JsonSerExt, Message, NonZero, QueryRequest, ResultExt,
+        Udec128, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,

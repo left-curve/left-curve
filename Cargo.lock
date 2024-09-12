@@ -1825,6 +1825,7 @@ dependencies = [
  "digest 0.10.7",
  "dyn-clone",
  "forward_ref",
+ "grug-crypto",
  "hex",
  "hex-literal",
  "paste",

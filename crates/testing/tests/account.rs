@@ -2,7 +2,8 @@ use {
     grug_account::Credential,
     grug_testing::{Signer, TestBuilder},
     grug_types::{
-        Coins, Duration, JsonDeExt, Message, NonZero, NumberConst, Timestamp, Tx, Uint256,
+        Coins, Duration, JsonDeExt, Message, NonZero, NumberConst, ResultExt, Timestamp, Tx,
+        Uint256,
     },
     grug_vm_rust::ContractBuilder,
 };
@@ -39,6 +40,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
                     0,
                     &info.chain_id,
                     sequence,
+                    None,
                 )?;
 
                 // Check the tx and if the result is ok, return the tx.
@@ -95,7 +97,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint256::from(30_u128));
 
     // Try create a block with a tx with sequence = 3
-    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &info.chain_id, 3)?;
+    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &info.chain_id, 3, None)?;
 
     suite.make_block(vec![tx])?.tx_outcomes[0]
         .result

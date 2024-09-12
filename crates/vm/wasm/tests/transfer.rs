@@ -1,6 +1,8 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Message, MultiplyFraction, NonZero, NumberConst, Udec128, Uint256},
+    grug_types::{
+        Coins, Message, MultiplyFraction, NonZero, NumberConst, ResultExt, Udec128, Uint256,
+    },
     grug_vm_wasm::WasmVm,
     std::{collections::BTreeMap, str::FromStr, vec},
 };

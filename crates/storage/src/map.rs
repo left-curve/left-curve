@@ -35,7 +35,8 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+    #[doc(hidden)]
+    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
@@ -46,7 +47,8 @@ where
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    fn no_prefix(&self) -> Prefix<K, T, C> {
+    #[doc(hidden)]
+    pub fn no_prefix(&self) -> Prefix<K, T, C> {
         Prefix::new(self.namespace, &[])
     }
 
@@ -82,6 +84,22 @@ where
 
     pub fn load(&self, storage: &dyn Storage, key: K) -> StdResult<T> {
         self.path(key).as_path().load(storage)
+    }
+
+    pub fn may_take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> Option<Vec<u8>> {
+        self.path_raw(key_raw).as_path().may_take_raw(storage)
+    }
+
+    pub fn may_take(&self, storage: &mut dyn Storage, key: K) -> StdResult<Option<T>> {
+        self.path(key).as_path().may_take(storage)
+    }
+
+    pub fn take_raw(&self, storage: &mut dyn Storage, key_raw: &[u8]) -> StdResult<Vec<u8>> {
+        self.path_raw(key_raw).as_path().take_raw(storage)
+    }
+
+    pub fn take(&self, storage: &mut dyn Storage, key: K) -> StdResult<T> {
+        self.path(key).as_path().take(storage)
     }
 
     /// Using this function is not recommended. If the key or data isn't
