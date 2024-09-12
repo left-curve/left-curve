@@ -4,6 +4,7 @@
   "tasks": {
     "lint": {},
     "test": {},
+    "ci": {},
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "build/**"]

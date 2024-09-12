@@ -14,7 +14,8 @@
     "test:watch": "pnpm vitest --watch",
     "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write src",
-    "ci": "pnpm biome ci ./src"
+    "lint:fix": "pnpm biome ci ./src",
+    "ci": "pnpm lint"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",

@@ -17,9 +17,10 @@
   "scripts": {
     "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "ci": "pnpm lint",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
-    "ci": "pnpm biome ci ./src",
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {

@@ -29,17 +29,19 @@
     }
   },
   "files": {
-    "ignore": ["**/build/**"]
+    "ignore": ["**/build/**", "**/package.json"]
   },
-  "overrides": [{
-    "include": ["examples/vite/**", "packages/react/**"],
-    "linter": {
-      "rules": {
-        "a11y": {
-          "noSvgWithoutTitle": "off",
-          "useKeyWithClickEvents": "off"
+  "overrides": [
+    {
+      "include": ["examples/vite/**", "packages/react/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noSvgWithoutTitle": "off",
+            "useKeyWithClickEvents": "off"
+          }
         }
       }
     }
-  }]
+  ]
 }

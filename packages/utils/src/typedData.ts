@@ -2,9 +2,9 @@ import type {
   Coins,
   MessageTypedDataType,
   TxMessageTypedDataType,
+  TypedData,
   TypedDataParameter,
   TypedDataProperties,
-  TypedData
 } from "@leftcurve/types";
 
 import {

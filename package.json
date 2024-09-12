@@ -4,6 +4,7 @@
   "author": "left-curve software",
   "scripts": {
     "dev": "turbo dev",
+    "lint": "turbo lint",
     "doc": "typedoc",
     "lerna": "lerna",
     "storybook": "pnpm react sb:dev",

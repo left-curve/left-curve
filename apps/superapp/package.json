@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build:cf": "pnpx @cloudflare/next-on-pages",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "@leftcurve/react": "workspace:^",
