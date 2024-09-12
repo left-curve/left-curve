@@ -88,6 +88,42 @@ where
             .and_then(|val| C::decode(&val))
     }
 
+    pub fn may_take_raw(&self, storage: &mut dyn Storage) -> Option<Vec<u8>> {
+        let maybe_data = self.may_load_raw(storage);
+
+        if maybe_data.is_some() {
+            self.remove(storage);
+        }
+
+        maybe_data
+    }
+
+    pub fn may_take(&self, storage: &mut dyn Storage) -> StdResult<Option<T>> {
+        let maybe_data = self.may_load(storage)?;
+
+        if maybe_data.is_some() {
+            self.remove(storage);
+        }
+
+        Ok(maybe_data)
+    }
+
+    pub fn take_raw(&self, storage: &mut dyn Storage) -> StdResult<Vec<u8>> {
+        let data = self.load_raw(storage)?;
+
+        self.remove(storage);
+
+        Ok(data)
+    }
+
+    pub fn take(&self, storage: &mut dyn Storage) -> StdResult<T> {
+        let data = self.load(storage)?;
+
+        self.remove(storage);
+
+        Ok(data)
+    }
+
     pub fn save_raw(&self, storage: &mut dyn Storage, data_raw: &[u8]) {
         storage.write(self.storage_key, data_raw)
     }
