@@ -35,3 +35,17 @@ export function recursiveTransform(
   }
   return obj;
 }
+
+/**
+ * Given a value, run a transform function if the value is defined.
+ * If the value is undefined, return undefined.
+ * @param transform The transform function to run.
+ * @param value The value to transform.
+ * @returns The transformed value or undefined.
+ */
+export function mayTransform<T, U>(
+  transform: (val: T) => U,
+  value: T | null | undefined,
+): U | undefined {
+  return value === undefined || value === null ? undefined : transform(value);
+}

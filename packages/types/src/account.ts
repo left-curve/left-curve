@@ -12,11 +12,11 @@ export const AccountType = {
 export type AccountIndex = number;
 
 export type Account = {
-  username: Username;
-  address: Address;
-  type: AccountTypes;
+  readonly username: Username;
+  readonly address: Address;
+  readonly type: AccountTypes;
 };
 
 export type AccountStateResponse = {
-  sequence: number;
+  readonly sequence: number;
 };

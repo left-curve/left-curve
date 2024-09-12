@@ -54,7 +54,7 @@ export type ConnectorEventMap = {
 };
 
 export type CreateConnectorFn<
-  provider = undefined,
+  provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
   chain extends Chain = Chain,
   signer extends Signer = Signer,
   signDoc extends SignDoc = SignDoc,

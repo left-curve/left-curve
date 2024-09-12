@@ -1,5 +1,5 @@
 /** Forked from https://github.com/wevm/wagmi/blob/main/packages/react/src/hooks/useSyncExternalStoreWithTracked.ts */
-import { deepEqual } from "@leftcurve/utils";
+import { assertDeepEqual } from "@leftcurve/utils";
 import { useRef } from "react";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector";
 
@@ -9,7 +9,7 @@ export function useSyncExternalStoreWithTracked<snapshot extends selection, sele
   subscribe: (onStoreChange: () => void) => () => void,
   getSnapshot: () => snapshot,
   getServerSnapshot: undefined | null | (() => snapshot) = getSnapshot,
-  isEqual: (a: selection, b: selection) => boolean = deepEqual,
+  isEqual: (a: selection, b: selection) => boolean = assertDeepEqual,
 ) {
   const trackedKeys = useRef<string[]>([]);
   const result = useSyncExternalStoreWithSelector(

@@ -187,6 +187,26 @@ export type {
   Timestamp,
 } from "./common";
 
+export type {
+  JsonRpcError,
+  JsonRpcErrorResponse,
+  JsonRpcResponse,
+  JsonRpcSuccessResponse,
+  JsonRpcBatchOptions,
+  JsonRpcId,
+  JsonRpcRequest,
+  RpcClient,
+} from "./rpc";
+
+export {
+  AbciQueryResponse,
+  RpcAbciQueryResponse,
+  RpcTxData,
+  RpcEventAttribute,
+  RpcEvent,
+  RpcBroadcastTxSyncResponse,
+} from "./abci";
+
 export { AccountType } from "./account";
 export { KeyTag } from "./key";
 export { Vote } from "./safe";

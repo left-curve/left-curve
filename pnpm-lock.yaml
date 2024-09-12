@@ -382,9 +382,6 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@cosmjs/tendermint-rpc':
-        specifier: ^0.32.4
-        version: 0.32.4
       '@leftcurve/crypto':
         specifier: workspace:^
         version: link:../crypto

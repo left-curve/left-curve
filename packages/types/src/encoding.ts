@@ -1,7 +1,7 @@
 /**
  * Represents a JSON object.
  */
-export type Json = { [key: string | number | symbol]: JsonValue };
+export type Json = { [key: string]: JsonValue };
 
 /**
  * Represents either an JSON object, an array, a string, a number, a null,

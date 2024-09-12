@@ -1,5 +1,5 @@
 import type { Config } from "@leftcurve/types";
-import { deepEqual } from "@leftcurve/utils";
+import { assertDeepEqual } from "@leftcurve/utils";
 import { type GetAccountReturnType, getAccount } from "./getAccount";
 
 export type WatchAccountParameters = {
@@ -19,7 +19,7 @@ export function watchAccount(
       const { connector: aConnector, ...aRest } = a;
       const { connector: bConnector, ...bRest } = b;
       return (
-        deepEqual(aRest, bRest) &&
+        assertDeepEqual(aRest, bRest) &&
         aConnector?.id === bConnector?.id &&
         aConnector?.uid === bConnector?.uid
       );
