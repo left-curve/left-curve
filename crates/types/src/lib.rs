@@ -7,6 +7,7 @@ mod bytearray;
 mod coin;
 mod context;
 mod db;
+mod denom;
 mod empty;
 mod error;
 mod event;
@@ -26,8 +27,8 @@ mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, context::*, db::*,
-    empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, nonzero::*, query::*,
-    response::*, result::*, serializers::*, time::*, tx::*, utils::*,
+    denom::*, empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, nonzero::*,
+    query::*, response::*, result::*, serializers::*, time::*, tx::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

@@ -66,6 +66,9 @@ pub enum StdError {
         reason: String,
     },
 
+    #[error("invalid denom `{denom}`: {reason}")]
+    InvalidDenom { denom: String, reason: &'static str },
+
     #[error("invalid coins: {reason}")]
     InvalidCoins { reason: String },
 
@@ -179,6 +182,16 @@ impl StdError {
             ty: type_name::<T>(),
             value: value.to_string(),
             reason: reason.to_string(),
+        }
+    }
+
+    pub fn invalid_denom<D>(denom: D, reason: &'static str) -> Self
+    where
+        D: ToString,
+    {
+        Self::InvalidDenom {
+            denom: denom.to_string(),
+            reason,
         }
     }
 
