@@ -125,3 +125,59 @@ impl BorshDeserialize for Denom {
         Denom::new(inner).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{Denom, ResultExt},
+        test_case::test_case,
+    };
+
+    #[test_case(
+        "uosmo",
+        None;
+        "valid denom with one subdenom"
+    )]
+    #[test_case(
+        "gamm/lp/123",
+        None;
+        "valid denom with multiple subdenoms"
+    )]
+    #[test_case(
+        "a",
+        Some("too short or too long");
+        "invalid denom that is too short"
+    )]
+    #[test_case(
+        "a".repeat(129),
+        Some("too short or too long");
+        "invalid denom that is too long"
+    )]
+    #[test_case(
+        "1/gamm",
+        Some("non-alphabetic lead");
+        "invalid denom starting with a number"
+    )]
+    #[test_case(
+        "gamm//lp",
+        Some("empty subdenom");
+        "invalid denom with empty subdenom"
+    )]
+    #[test_case(
+        "gamm/&/123",
+        Some("non-alphanumeric character");
+        "invalid denom with non-alphanumeric character"
+    )]
+    fn validating_denom<T>(inner: T, expect_err: Option<&str>)
+    where
+        T: Into<String>,
+    {
+        if let Some(err) = expect_err {
+            Denom::new(inner).should_fail_with_error(err);
+        } else {
+            Denom::new(inner).should_succeed();
+        }
+    }
+}
