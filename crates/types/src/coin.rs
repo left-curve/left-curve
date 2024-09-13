@@ -22,14 +22,16 @@ pub struct Coin {
 impl Coin {
     /// Create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    pub fn new<A>(denom: Denom, amount: A) -> Self
+    pub fn new<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
+        D: TryInto<Denom>,
         A: Into<Uint256>,
+        StdError: From<D::Error>,
     {
-        Self {
-            denom,
+        Ok(Self {
+            denom: denom.try_into()?,
             amount: amount.into(),
-        }
+        })
     }
 }
 
@@ -155,10 +157,13 @@ impl Coins {
 
     /// Increase the amount of a denom by the given amount. If the denom doesn't
     /// exist, a new record is created.
-    pub fn increase_amount<A>(&mut self, denom: Denom, by: A) -> StdResult<()>
+    pub fn increase_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
     where
+        D: TryInto<Denom>,
         A: Into<Uint256>,
+        StdError: From<D::Error>,
     {
+        let denom = denom.try_into()?;
         let by = by.into();
 
         let Some(amount) = self.0.get_mut(&denom) else {
@@ -179,10 +184,13 @@ impl Coins {
     /// Decrease the amount of a denom by the given amount. Amount can't be
     /// reduced below zero. If the amount is reduced to exactly zero, the record
     /// is purged, so that only non-zero amount coins remain.
-    pub fn decrease_amount<A>(&mut self, denom: Denom, by: A) -> StdResult<()>
+    pub fn decrease_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
     where
+        D: TryInto<Denom>,
         A: Into<Uint256>,
+        StdError: From<D::Error>,
     {
+        let denom = denom.try_into()?;
         let by = by.into();
 
         let Some(amount) = self.0.get_mut(&denom) else {

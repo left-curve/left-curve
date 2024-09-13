@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Hash256, JsonDeExt, Query},
+    grug_types::{Addr, Binary, Denom, Hash256, JsonDeExt, Query},
     serde::Serialize,
 };
 
@@ -113,18 +113,30 @@ impl QueryCmd {
             SubCmd::Info => Query::Info {},
             SubCmd::AppConfig { key } => Query::AppConfig { key },
             SubCmd::AppConfigs { start_after, limit } => Query::AppConfigs { start_after, limit },
-            SubCmd::Balance { address, denom } => Query::Balance { address, denom },
+            SubCmd::Balance { address, denom } => {
+                let denom = Denom::new(denom)?;
+                Query::Balance { address, denom }
+            },
             SubCmd::Balances {
                 address,
                 start_after,
                 limit,
-            } => Query::Balances {
-                address,
-                start_after,
-                limit,
+            } => {
+                let start_after = start_after.map(Denom::new).transpose()?;
+                Query::Balances {
+                    address,
+                    start_after,
+                    limit,
+                }
             },
-            SubCmd::Supply { denom } => Query::Supply { denom },
-            SubCmd::Supplies { start_after, limit } => Query::Supplies { start_after, limit },
+            SubCmd::Supply { denom } => {
+                let denom = Denom::new(denom)?;
+                Query::Supply { denom }
+            },
+            SubCmd::Supplies { start_after, limit } => {
+                let start_after = start_after.map(Denom::new).transpose()?;
+                Query::Supplies { start_after, limit }
+            },
             SubCmd::Code { hash } => Query::Code { hash },
             SubCmd::Codes { start_after, limit } => Query::Codes { start_after, limit },
             SubCmd::Contract { address } => Query::Contract { address },

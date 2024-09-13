@@ -1,13 +1,13 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, NonZero},
+    grug_types::{Coins, Empty},
     grug_vm_rust::ContractBuilder,
 };
 
 mod query_maker {
     use {
         anyhow::ensure,
-        grug_types::{Empty, MutableCtx, Number, Query, Response, Uint256},
+        grug_types::{Denom, Empty, MutableCtx, Number, Query, Response, Uint256},
     };
 
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> anyhow::Result<Response> {
@@ -16,10 +16,10 @@ mod query_maker {
             Query::Info {},
             Query::Balance {
                 address: ctx.contract,
-                denom: "uusdc".to_string(),
+                denom: Denom::new("uusdc")?,
             },
             Query::Supply {
-                denom: "uusdc".to_string(),
+                denom: Denom::new("uusdc")?,
             },
         ])?;
 
@@ -34,7 +34,7 @@ mod query_maker {
 #[test]
 fn handling_multi_query() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account("larry", Coins::one("uusdc", NonZero::new(123_u128)?))?
+        .add_account("larry", Coins::one("uusdc", 123_u128)?)?
         .set_chain_id("kebab")
         .set_owner("larry")?
         .build()?;

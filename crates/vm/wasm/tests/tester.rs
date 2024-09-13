@@ -7,19 +7,21 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, GenericResult, JsonSerExt, Message, NonZero, QueryRequest, ResultExt,
+        Addr, Binary, Coins, Denom, GenericResult, JsonSerExt, Message, QueryRequest, ResultExt,
         Udec128, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
     serde::{de::DeserializeOwned, Serialize},
-    std::{fmt::Debug, fs, io, str::FromStr, vec},
+    std::{fmt::Debug, fs, io, str::FromStr, sync::LazyLock, vec},
     test_case::test_case,
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
-const DENOM: &str = "ugrug";
-const FEE_RATE: &str = "0.1";
+
+static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
+
+static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.1").unwrap());
 
 fn read_wasm_file(filename: &str) -> io::Result<Binary> {
     let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
@@ -29,9 +31,9 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 fn setup_test() -> anyhow::Result<(TestSuite<WasmVm>, TestAccounts, Addr)> {
     let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM, NonZero::new(32_100_000_u128)?))?
+        .add_account("sender", Coins::one(DENOM.clone(), 32_100_000_u128)?)?
         .set_owner("owner")?
-        .set_fee_rate(Udec128::from_str(FEE_RATE)?)
+        .set_fee_rate(*FEE_RATE)
         .build()?;
 
     let (_, tester) = suite.upload_and_instantiate_with_gas(

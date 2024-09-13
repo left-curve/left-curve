@@ -3,9 +3,9 @@ use {
     anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_types::{
-        Addr, Binary, BlockInfo, Coins, Config, Defined, Duration, GenesisState, HashExt, Json,
-        JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128, Undefined,
-        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
+        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128,
+        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -60,8 +60,8 @@ pub struct TestBuilder<
     bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
     balances: BTreeMap<Addr, Coins>,
     // Taxman
-    taxman_opt: CodeOption<Box<dyn FnOnce(String, Udec128) -> M3>>,
-    fee_denom: Option<String>,
+    taxman_opt: CodeOption<Box<dyn FnOnce(Denom, Udec128) -> M3>>,
+    fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
 }
 
@@ -153,11 +153,8 @@ where
         self
     }
 
-    pub fn set_fee_denom<T>(mut self, fee_denom: T) -> Self
-    where
-        T: ToString,
-    {
-        self.fee_denom = Some(fee_denom.to_string());
+    pub fn set_fee_denom(mut self, fee_denom: Denom) -> Self {
+        self.fee_denom = Some(fee_denom);
         self
     }
 
@@ -284,7 +281,7 @@ where
     ) -> TestBuilder<VM, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
-        F: FnOnce(String, Udec128) -> M3A + 'static,
+        F: FnOnce(Denom, Udec128) -> M3A + 'static,
     {
         TestBuilder {
             vm: self.vm,
@@ -483,7 +480,7 @@ where
 
         let fee_denom = self
             .fee_denom
-            .unwrap_or_else(|| DEFAULT_FEE_DENOM.to_string());
+            .unwrap_or_else(|| Denom::new(DEFAULT_FEE_DENOM).unwrap());
 
         let fee_rate = self
             .fee_rate

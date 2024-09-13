@@ -5,7 +5,7 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Duration,
+        Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Denom, Duration,
         GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
         Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256, Uint64,
         UnsignedTx,
@@ -14,6 +14,7 @@ use {
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{
         collections::{BTreeMap, HashMap},
+        error::Error,
         fmt::Debug,
     },
 };
@@ -480,12 +481,18 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_balance(&self, account: &dyn Signer, denom: &str) -> anyhow::Result<Uint256> {
+    pub fn query_balance<D>(&self, account: &dyn Signer, denom: D) -> anyhow::Result<Uint256>
+    where
+        D: TryInto<Denom>,
+        D::Error: Error + Send + Sync + 'static,
+    {
+        let denom = denom.try_into()?;
+
         self.app
             .do_query_app(
                 Query::Balance {
                     address: account.address(),
-                    denom: denom.to_string(),
+                    denom,
                 },
                 0, // zero means to use the latest height
                 false,
@@ -509,15 +516,15 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_supply(&self, denom: &str) -> anyhow::Result<Uint256> {
+    pub fn query_supply<D>(&self, denom: D) -> anyhow::Result<Uint256>
+    where
+        D: TryInto<Denom>,
+        D::Error: Error + Send + Sync + 'static,
+    {
+        let denom = denom.try_into()?;
+
         self.app
-            .do_query_app(
-                Query::Supply {
-                    denom: denom.to_string(),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::Supply { denom }, 0, false)
             .map(|res| res.as_supply().amount)
             .map_err(Into::into)
     }

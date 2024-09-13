@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, NonZero, NumberConst, ResultExt, TxOutcome, Uint256},
+    grug_types::{Coins, Empty, Message, NumberConst, ResultExt, TxOutcome, Uint256},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };
@@ -12,14 +12,15 @@ use {
 mod taxman {
     use {
         grug_types::{
-            AuthCtx, AuthMode, Coins, Empty, Message, MultiplyFraction, MutableCtx, NonZero,
-            Number, NumberConst, Response, StdResult, Tx, TxOutcome, Udec128, Uint128, Uint256,
+            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MultiplyFraction, MutableCtx, Number,
+            NumberConst, Response, StdResult, Tx, TxOutcome, Udec128, Uint128, Uint256,
         },
-        std::str::FromStr,
+        std::{str::FromStr, sync::LazyLock},
     };
 
-    pub const FEE_DENOM: &str = "ugrug";
-    pub const FEE_RATE: &str = "0.25";
+    pub static FEE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
+
+    pub static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.25").unwrap());
 
     pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
         Ok(Response::new())
@@ -33,8 +34,7 @@ mod taxman {
             return Ok(Response::new());
         }
 
-        let fee_rate = Udec128::from_str(FEE_RATE)?;
-        let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_rate)?;
+        let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(*FEE_RATE)?;
 
         let withhold_msg = if !withhold_amount.is_zero() {
             Some(Message::execute(
@@ -42,7 +42,7 @@ mod taxman {
                 &grug_bank::ExecuteMsg::ForceTransfer {
                     from: tx.sender,
                     to: ctx.contract,
-                    denom: FEE_DENOM.to_string(),
+                    denom: FEE_DENOM.clone(),
                     amount: withhold_amount,
                 },
                 Coins::new(),
@@ -64,15 +64,14 @@ mod taxman {
 
         // We pretend that the tx used a quarter of the gas limit.
         let mock_gas_used = tx.gas_limit / 4;
-        let fee_rate = Udec128::from_str(FEE_RATE)?;
-        let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(fee_rate)?;
-        let charge_amount = Uint128::from(mock_gas_used).checked_mul_dec_ceil(fee_rate)?;
+        let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(*FEE_RATE)?;
+        let charge_amount = Uint128::from(mock_gas_used).checked_mul_dec_ceil(*FEE_RATE)?;
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
         let charge_msg = if !charge_amount.is_zero() {
             Some(Message::transfer(
                 info.config.owner,
-                Coins::one(FEE_DENOM, NonZero::new(charge_amount)?),
+                Coins::one(FEE_DENOM.clone(), charge_amount)?,
             )?)
         } else {
             None
@@ -81,7 +80,7 @@ mod taxman {
         let refund_msg = if !refund_amount.is_zero() {
             Some(Message::transfer(
                 tx.sender,
-                Coins::one(FEE_DENOM, NonZero::new(refund_amount)?),
+                Coins::one(FEE_DENOM.clone(), refund_amount)?,
             )?)
         } else {
             None
@@ -171,10 +170,7 @@ fn withholding_and_finalizing_fee_works(
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(
-                taxman::FEE_DENOM,
-                NonZero::new(sender_balance_before).unwrap(),
-            ),
+            Coins::one(taxman::FEE_DENOM.clone(), sender_balance_before).unwrap(),
         )
         .unwrap()
         .add_account("receiver", Coins::new())
@@ -190,7 +186,7 @@ fn withholding_and_finalizing_fee_works(
             gas_limit,
             Message::transfer(
                 accounts["receiver"].address,
-                Coins::one(taxman::FEE_DENOM, NonZero::new(send_amount).unwrap()),
+                Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
             )
             .unwrap(),
         )
@@ -206,13 +202,13 @@ fn withholding_and_finalizing_fee_works(
     }
 
     suite
-        .query_balance(&accounts["owner"], taxman::FEE_DENOM)
+        .query_balance(&accounts["owner"], taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(owner_balance_after.into());
     suite
-        .query_balance(&accounts["sender"], taxman::FEE_DENOM)
+        .query_balance(&accounts["sender"], taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(sender_balance_after.into());
     suite
-        .query_balance(&accounts["receiver"], taxman::FEE_DENOM)
+        .query_balance(&accounts["receiver"], taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(receiver_balance_after.into());
 }
 
@@ -237,7 +233,7 @@ fn finalizing_fee_erroring() {
         .unwrap()
         .add_account(
             "sender",
-            Coins::one(taxman::FEE_DENOM, NonZero::new(30_000_u128).unwrap()),
+            Coins::one(taxman::FEE_DENOM.clone(), 30_000_u128).unwrap(),
         )
         .unwrap()
         .set_owner("owner")
@@ -265,9 +261,9 @@ fn finalizing_fee_erroring() {
     // Owner and sender's balances shouldn't have changed, since state changes
     // are discarded.
     suite
-        .query_balance(&accounts["owner"], taxman::FEE_DENOM)
+        .query_balance(&accounts["owner"], taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(Uint256::ZERO);
     suite
-        .query_balance(&accounts["sender"], taxman::FEE_DENOM)
+        .query_balance(&accounts["sender"], taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(30_000_u128.into());
 }
