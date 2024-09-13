@@ -450,11 +450,11 @@ where
             // for negative numbers, we need to subtract the fractional part
             atomics = atomics
                 .checked_add(fractional_part)
-                .map_err(|_| StdError::generic_err("Value too big"))?;
+                .map_err(|_| StdError::generic_err("value too big"))?;
         }
 
         if parts_iter.next().is_some() {
-            return Err(StdError::generic_err("Unexpected number of dots"));
+            return Err(StdError::generic_err("unexpected number of dots"));
         }
 
         Ok(Udec(atomics))
@@ -673,6 +673,17 @@ mod tests2 {
         ret
     }
 
+    fn decimal_places<U, const S: u32>(_: Udec<U, S>) -> u32 {
+        S
+    }
+
+    fn decimal_fraction<U, const S: u32>(_: Udec<U, S>) -> Uint<U>
+    where
+        Uint<U>: From<u128>,
+    {
+        Udec::<U, S>::decimal_fraction()
+    }
+
     /// `derive_types`
     ///
     ///  Allow compiler to derive the types of multiple variables
@@ -781,12 +792,14 @@ mod tests2 {
     );
 
     dtest!( atomics,
-        => |_0d| {
+        ["0.340282366920938463", 39],
+        ["0.115792089237316195", 78]
+        => |_0d, max_str, max_digits| {
             let one = Udec::one();
             let two = Udec::new(2_u128);
             dts!(_0d, one, two);
 
-            fn assert<U, IU,  const S: u32>(compare: Udec<U, S>, cases: &[(IU, u32)]) where
+            fn check_atomics<U, IU,  const S: u32>(compare: Udec<U, S>, cases: &[(IU, u32)]) where
                 U: PartialEq + Debug,
                 Uint<U>: NumberConst + Number + From<u128>,
                 IU: Into<Uint<U>> + Copy
@@ -797,7 +810,7 @@ mod tests2 {
                 }
             }
 
-            assert(
+            check_atomics(
                 one,
                 &[
                     (1, 0),
@@ -808,7 +821,7 @@ mod tests2 {
                 ]
             );
 
-            assert(
+            check_atomics(
                 two,
                 &[
                     (2, 0),
@@ -819,7 +832,179 @@ mod tests2 {
                 ]
             );
 
+            // Cuts decimal digits (max 18)
 
+            fn check_atomics_with_str<U, IU,  const S: u32>(phantom: Udec<U, S>, cases: &[(IU, u32, &str)]) where
+                U: PartialEq + Debug + FromStr + Display,
+                <U as FromStr>::Err: Display,
+                Uint<U>: NumberConst + Number + From<u128>,
+                IU: Into<Uint<U>> + Copy
+            {
+                for (atomics, decimal_places, str) in cases {
+                    let dec = Udec::checked_from_atomics(*atomics, *decimal_places).unwrap();
+                    let compare = Udec::from_str(*str).unwrap();
+                    dts!(&phantom, &dec, &compare);
+                    assert_eq!(dec, compare);
+                }
+            }
+
+            let inner_max = bt(_0d.0, Uint::MAX);
+
+            check_atomics_with_str(_0d,
+                &[
+                    (4321u128.into(), 20, "0.000000000000000043"),
+                    (6789u128.into(), 20, "0.000000000000000067"),
+                    (inner_max.0, max_digits, max_str)
+                ]
+            );
+
+            // Overflow is only possible with digits < 18
+            let result = bt(Ok(_0d), Udec::checked_from_atomics(inner_max, 17));
+            assert!(matches!(result, Err(StdError::OverflowMul { .. })));
+        }
+    );
+
+    dtest!( from_ratio,
+        => |_0d| {
+            let _1d = Udec::one();
+            let _1_5d = Udec::from_str("1.5").unwrap();
+            let _0_125d = Udec::from_str("0.125").unwrap();
+            let max = Udec::MAX;
+            dts!(_0d, _0_125d, _1d, _1_5d, max);
+
+            // 1.0
+            assert_eq!(Udec::checked_from_ratio(1_u128, 1_u128).unwrap(), _1d);
+            assert_eq!(Udec::checked_from_ratio(53_u128, 53_u128).unwrap(), _1d);
+            assert_eq!(Udec::checked_from_ratio(125_u128, 125_u128).unwrap(), _1d);
+
+            // 1.5
+            assert_eq!(Udec::checked_from_ratio(3u128, 2_u128).unwrap(), _1_5d);
+            assert_eq!(Udec::checked_from_ratio(150_u128, 100_u128).unwrap(), _1_5d);
+            assert_eq!(Udec::checked_from_ratio(333_u128, 222_u128).unwrap(), _1_5d);
+            // 0.125
+
+            assert_eq!(Udec::checked_from_ratio(1_u128, 8_u128).unwrap(), _0_125d);
+            assert_eq!(Udec::checked_from_ratio(125_u128, 1000_u128).unwrap(), _0_125d);
+
+            // 1/3 (result floored)
+            assert_eq!(
+                Udec::checked_from_ratio(1u64, 3u64).unwrap(),
+                bt(_0d, Udec::from_str("0.333333333333333333").unwrap())
+            );
+
+            // 2/3 (result floored)
+            assert_eq!(
+                Udec::checked_from_ratio(2u64, 3u64).unwrap(),
+                bt(_0d, Udec::from_str("0.666666666666666666").unwrap())
+            );
+
+            // large inputs
+            let uint_max = Uint::MAX;
+            let precision = Uint::TEN.checked_pow(decimal_places(_0d)).unwrap();
+            dts!(_0d.0, uint_max, precision);
+            assert_eq!(Udec::checked_from_ratio(0_u128, uint_max).unwrap(), _0d);
+            assert_eq!(Udec::checked_from_ratio(uint_max, uint_max).unwrap(), _1d);
+            assert_eq!(
+                Udec::checked_from_ratio(uint_max / precision, 1_u128).unwrap(),
+                bt(_0d, Udec::new(uint_max / precision))
+            );
+
+            // 0 denominator
+            let result = bt(Ok(_0d), Udec::checked_from_ratio(1_u128, 0_u128));
+            assert!(matches!(result, Err(StdError::DivisionByZero { .. })));
+
+            // overflow conversion
+            let result = bt(Ok(_0d), Udec::checked_from_ratio(uint_max, 1_u128));
+            assert!(matches!(result, Err(StdError::OverflowConversion { .. })));
+        }
+    );
+
+    dtest! ( fraction,
+        => |_0d| {
+
+            let val = bt(_0d, Udec::from_str("12.34").unwrap());
+            let decimal_places = bt(_0d.0, Uint::TEN).checked_pow(decimal_places(_0d) - 2).unwrap();
+            let numerator = bt(_0d.0, Uint::from(1234_u64)) * decimal_places;
+            assert_eq!(*val.numerator(), numerator);
+
+        }
+    );
+
+    dtest!( from_str,
+        ["340282366920938463463.374607431768211455"],
+        ["115792089237316195423570985008687907853269984665640564039457.584007913129639935"]
+        => |_0d, max_str| {
+            // Integers
+            assert_eq!(Udec::from_str("0").unwrap(), _0d);
+            assert_eq!(Udec::from_str("1").unwrap(), bt(_0d, Udec::new_percent(100_u128)));
+            assert_eq!(Udec::from_str("5").unwrap(), bt(_0d, Udec::new_percent(500_u128)));
+            assert_eq!(Udec::from_str("42").unwrap(), bt(_0d, Udec::new_percent(4200_u128)));
+            assert_eq!(Udec::from_str("000").unwrap(), _0d);
+            assert_eq!(Udec::from_str("001").unwrap(), bt(_0d, Udec::new_percent(100_u128)));
+            assert_eq!(Udec::from_str("005").unwrap(), bt(_0d, Udec::new_percent(500_u128)));
+            assert_eq!(Udec::from_str("0042").unwrap(), bt(_0d, Udec::new_percent(4200_u128)));
+
+            // Decimals
+            assert_eq!(Udec::from_str("1.0").unwrap(), bt(_0d, Udec::new_percent(100_u128)));
+            assert_eq!(Udec::from_str("1.5").unwrap(), bt(_0d, Udec::new_percent(150_u128)));
+            assert_eq!(Udec::from_str("0.5").unwrap(), bt(_0d, Udec::new_percent(50_u128)));
+            assert_eq!(Udec::from_str("0.123").unwrap(), bt(_0d, Udec::new_permille(123_u128)));
+            assert_eq!(Udec::from_str("40.00").unwrap(), bt(_0d, Udec::new_percent(4000_u128)));
+            assert_eq!(Udec::from_str("04.00").unwrap(), bt(_0d, Udec::new_percent(400_u128)));
+            assert_eq!(Udec::from_str("00.40").unwrap(), bt(_0d, Udec::new_percent(40_u128)));
+            assert_eq!(Udec::from_str("00.04").unwrap(), bt(_0d, Udec::new_percent(4_u128)));
+
+             // Can handle DECIMAL_PLACES fractional digits
+            assert_eq!(
+                bt(_0d, Udec::from_str("7.123456789012345678").unwrap()),
+                Udec::raw(Uint::from(7123456789012345678u128))
+            );
+            assert_eq!(
+                bt(_0d, Udec::from_str("7.999999999999999999").unwrap()),
+                Udec::raw(Uint::from(7999999999999999999u128))
+            );
+
+            // Works for documented max value
+            assert_eq!(
+                bt(_0d, Udec::from_str(max_str).unwrap()),
+                Udec::MAX
+            );
+        }
+    );
+
+    dtest!( from_str_errors,
+        => |_0d| {
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("")), Err(StdError::Generic(err)) if err == "error parsing whole"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str(" ")), Err(StdError::Generic(err)) if err == "error parsing whole"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("-1")), Err(StdError::Generic(err)) if err == "error parsing whole"));
+
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1.")), Err(StdError::Generic(err)) if err == "error parsing fractional"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1. ")), Err(StdError::Generic(err)) if err == "error parsing fractional"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1.e")), Err(StdError::Generic(err)) if err == "error parsing fractional"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1.2e3")), Err(StdError::Generic(err)) if err == "error parsing fractional"));
+
+            let digits = decimal_places(_0d);
+            assert!( matches!(
+                bt(Ok(_0d), Udec::from_str("1.1234567890123456789")),
+                Err(StdError::Generic(err)) if err == format!("cannot parse more than {digits} fractional digits")
+            ));
+            assert!( matches!(
+                bt(Ok(_0d), Udec::from_str("1.0000000000000000000")),
+                Err(StdError::Generic(err)) if err == format!("cannot parse more than {digits} fractional digits")
+            ));
+
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1.2.3")), Err(StdError::Generic(err)) if err == "unexpected number of dots"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str("1.2.3.4")), Err(StdError::Generic(err)) if err == "unexpected number of dots"));
+
+            // Uint::MAX / decimal_fraction + 1
+            let over_max = bt(_0d.0, bt(_0d.0,Uint::MAX) / decimal_fraction(_0d) + bt(_0d.0, Uint::ONE));
+
+            // Integer
+            assert!(matches!(bt(Ok(_0d), Udec::from_str(&over_max.to_string())), Err(StdError::Generic(err)) if err == "value too big"));
+
+            // Decimal
+            assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.0"))), Err(StdError::Generic(err)) if err == "value too big"));
+            assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.123"))), Err(StdError::Generic(err)) if err == "value too big"));
         }
     );
 }
