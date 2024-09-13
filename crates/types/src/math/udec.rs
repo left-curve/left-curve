@@ -270,7 +270,7 @@ where
 
     fn inv(&self) -> StdResult<Self> {
         if self.is_zero() {
-            return Err(StdError::division_by_zero(self));
+            Err(StdError::division_by_zero(self))
         } else {
             Self::checked_from_ratio(Self::decimal_fraction(), self.0)
         }
@@ -803,6 +803,7 @@ mod tests2 {
     dtest!( atomics,
         ["0.340282366920938463", 39],
         ["0.115792089237316195", 78]
+        attrs = #[allow(clippy::useless_conversion)]
         => |_0d, max_str, max_digits| {
             let one = Udec::one();
             let two = Udec::new(2_u128);
@@ -851,7 +852,7 @@ mod tests2 {
             {
                 for (atomics, decimal_places, str) in cases {
                     let dec = Udec::checked_from_atomics(*atomics, *decimal_places).unwrap();
-                    let compare = Udec::from_str(*str).unwrap();
+                    let compare = Udec::from_str(str).unwrap();
                     dts!(&phantom, &dec, &compare);
                     assert_eq!(dec, compare);
                 }
@@ -928,7 +929,7 @@ mod tests2 {
         }
     );
 
-    dtest! ( fraction,
+    dtest!( fraction,
         => |_0d| {
 
             let val = bt(_0d, Udec::from_str("12.34").unwrap());
@@ -1052,6 +1053,43 @@ mod tests2 {
             assert_eq!(bt(_0d, Udec::new_percent(5_u128)).inv().unwrap(), Udec::from_str("20").unwrap());
             assert_eq!(bt(_0d, Udec::new_permille(5_u128)).inv().unwrap(), Udec::from_str("200").unwrap());
             assert_eq!(bt(_0d, Udec::new_bps(500_u128)).inv().unwrap(), Udec::from_str("2000").unwrap());
+        }
+    );
+
+    dtest!( add,
+        attrs = #[allow(clippy::op_ref)]
+                #[should_panic(expected = "addition overflow")]
+        => |_0d| {
+            let _1d =  Udec::one();
+            let _2d = Udec::new(2_u128);
+            let _3d = Udec::new(3_u128);
+            let _1_5d = Udec::from_str("1.5").unwrap();
+            let max = Udec::MAX;
+            dts!(_0d, _1d, _2d, _3d, _1_5d, max);
+            assert_eq!(_1_5d.0, decimal_fraction(_0d) * Uint::new(3_u128) / Uint::new(2_u128));
+
+            assert_eq!(bt(_0d, Udec::new_percent(5_u128)) + bt(_0d, Udec::new_percent(4_u128)), Udec::new_percent(9_u128));
+            assert_eq!(bt(_0d, Udec::new_percent(5_u128)) + _0d, Udec::new_percent(5_u128));
+            assert_eq!(_0d + _0d, _0d);
+
+            // works for refs
+            assert_eq!(_1d + _2d, _3d);
+            assert_eq!(&_1d + _2d, _3d);
+            assert_eq!(_1d + &_2d, _3d);
+            assert_eq!(&_1d + &_2d, _3d);
+
+            // overflow
+            let _ = max + _1d;
+
+            // assign
+            let mut a = _0d;
+            a += _1d;
+            assert_eq!(a, _1d);
+
+            // works for refs
+            let mut a = _2d;
+            a += &_3d;
+            assert_eq!(a, Udec::new(5_u128));
         }
     );
 }
