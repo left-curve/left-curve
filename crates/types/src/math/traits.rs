@@ -41,10 +41,12 @@ pub trait Sign {
 /// Note that here we only concern the fraction's absolute value. Both the
 /// numerator and denominator here are negative. This trait is intended to be
 /// used together with [`Sign`] To account for negative fractions.
-pub trait Fraction<U> {
+pub trait Fraction<U>: Sized {
     fn numerator(&self) -> Uint<U>;
 
     fn denominator() -> NonZero<Uint<U>>;
+
+    fn inv(&self) -> StdResult<Self>;
 }
 
 /// Describes a number's associated constants: minimum and maximum; zero, one,

@@ -255,7 +255,8 @@ impl<U, const S: u32> Sign for Udec<U, S> {
 
 impl<U, const S: u32> Fraction<U> for Udec<U, S>
 where
-    Uint<U>: Number + Copy + From<u128>,
+    Uint<U>: Number + MultiplyRatio + Copy + From<u128>,
+    Udec<U, S>: Number + Display,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
@@ -265,6 +266,14 @@ where
         // We know the decimal fraction is non-zero, because it's defined as a
         // power (10^S), so we can safely wrap it in `NonZero` without checking.
         NonZero(Self::decimal_fraction())
+    }
+
+    fn inv(&self) -> StdResult<Self> {
+        if self.is_zero() {
+            return Err(StdError::division_by_zero(self));
+        } else {
+            Self::checked_from_ratio(Self::decimal_fraction(), self.0)
+        }
     }
 }
 
@@ -1005,6 +1014,44 @@ mod tests2 {
             // Decimal
             assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.0"))), Err(StdError::Generic(err)) if err == "value too big"));
             assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.123"))), Err(StdError::Generic(err)) if err == "value too big"));
+        }
+    );
+
+    dtest!( is_zero,
+        => |_0d| {
+            assert!(bt(_0d, Udec::ZERO).is_zero());
+            assert!(bt(_0d, Udec::new_percent(0_u64)).is_zero());
+            assert!(bt(_0d, Udec::new_permille(0_u64)).is_zero());
+
+            assert!(!bt(_0d, Udec::one()).is_zero());
+            assert!(!bt(_0d, Udec::new_percent(1_u64)).is_zero());
+            assert!(!bt(_0d, Udec::new_permille(1_u64)).is_zero());
+        }
+    );
+
+    dtest!( inv,
+        => |_0d| {
+            // d = 1
+            assert_eq!(bt(_0d, Udec::new(1_u128)).inv().unwrap(), Udec::new(1_u128));
+
+            // d = 0
+            assert!(matches!(_0d.inv(), Err(StdError::DivisionByZero { .. })));
+
+            // d > 1 exact
+            assert_eq!(bt(_0d, Udec::new(2_u128)).inv().unwrap(), Udec::from_str("0.5").unwrap());
+            assert_eq!(bt(_0d, Udec::new(20_u128)).inv().unwrap(), Udec::from_str("0.05").unwrap());
+            assert_eq!(bt(_0d, Udec::new(200_u128)).inv().unwrap(), Udec::from_str("0.005").unwrap());
+            assert_eq!(bt(_0d, Udec::new(2000_u128)).inv().unwrap(), Udec::from_str("0.0005").unwrap());
+
+            // d > 1 rounded
+            assert_eq!(bt(_0d, Udec::new(3_u128)).inv().unwrap(), Udec::from_str("0.333333333333333333").unwrap());
+            assert_eq!(bt(_0d, Udec::new(6_u128)).inv().unwrap(), Udec::from_str("0.166666666666666666").unwrap());
+
+            // d < 1 exact
+            assert_eq!(bt(_0d, Udec::new_percent(50_u128)).inv().unwrap(), Udec::from_str("2").unwrap());
+            assert_eq!(bt(_0d, Udec::new_percent(5_u128)).inv().unwrap(), Udec::from_str("20").unwrap());
+            assert_eq!(bt(_0d, Udec::new_permille(5_u128)).inv().unwrap(), Udec::from_str("200").unwrap());
+            assert_eq!(bt(_0d, Udec::new_bps(500_u128)).inv().unwrap(), Udec::from_str("2000").unwrap());
         }
     );
 }

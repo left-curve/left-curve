@@ -80,6 +80,10 @@ where
     fn denominator() -> NonZero<Uint<AsT>> {
         T::denominator()
     }
+
+    fn inv(&self) -> StdResult<Self> {
+        self.abs.inv().map(|inner| Self::new(inner, self.negative))
+    }
 }
 
 impl<T> NumberConst for Signed<T>
