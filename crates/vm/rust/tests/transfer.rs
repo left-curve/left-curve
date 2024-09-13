@@ -1,24 +1,25 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Message, NonZero, NumberConst, ResultExt, Uint256},
+    grug_types::{Coins, Denom, Message, NumberConst, ResultExt, Uint256},
+    std::sync::LazyLock,
 };
 
-const DENOM: &str = "ugrug";
+static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
 
 #[test]
 fn transfers() -> anyhow::Result<()> {
     let (mut suite, accounts) = TestBuilder::new()
-        .add_account("sender", Coins::one(DENOM, NonZero::new(100_u128)?))?
+        .add_account("sender", Coins::one(DENOM.clone(), 100_u128)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
 
     // Check that sender has been given 100 ugrug
     suite
-        .query_balance(&accounts["sender"], DENOM)
+        .query_balance(&accounts["sender"], DENOM.clone())
         .should_succeed_and_equal(100_u128.into());
     suite
-        .query_balance(&accounts["receiver"], DENOM)
+        .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint256::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
@@ -26,19 +27,19 @@ fn transfers() -> anyhow::Result<()> {
         .send_messages(&accounts["sender"], vec![
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(10_u128)?),
+                coins: Coins::one(DENOM.clone(), 10_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(15_u128)?),
+                coins: Coins::one(DENOM.clone(), 15_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(20_u128)?),
+                coins: Coins::one(DENOM.clone(), 20_u128)?,
             },
             Message::Transfer {
                 to: accounts["receiver"].address,
-                coins: Coins::one(DENOM, NonZero::new(25_u128)?),
+                coins: Coins::one(DENOM.clone(), 25_u128)?,
             },
         ])?
         .result
@@ -46,10 +47,10 @@ fn transfers() -> anyhow::Result<()> {
 
     // Check balances again
     suite
-        .query_balance(&accounts["sender"], DENOM)
+        .query_balance(&accounts["sender"], DENOM.clone())
         .should_succeed_and_equal(Uint256::from(30_u128));
     suite
-        .query_balance(&accounts["receiver"], DENOM)
+        .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint256::from(70_u128));
 
     Ok(())

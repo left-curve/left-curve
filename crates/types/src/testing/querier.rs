@@ -1,8 +1,8 @@
 use {
     super::MockStorage,
     crate::{
-        Addr, Binary, Coin, ContractInfo, GenericResult, Hash256, HashExt, InfoResponse, Json,
-        JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
+        Addr, Binary, Coin, ContractInfo, Denom, GenericResult, Hash256, HashExt, InfoResponse,
+        Json, JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
         Uint256,
     },
     serde::Serialize,
@@ -20,8 +20,8 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 pub struct MockQuerier {
     info: Option<InfoResponse>,
     app_configs: BTreeMap<String, Json>,
-    balances: BTreeMap<Addr, BTreeMap<String, Uint256>>,
-    supplies: BTreeMap<String, Uint256>,
+    balances: BTreeMap<Addr, BTreeMap<Denom, Uint256>>,
+    supplies: BTreeMap<Denom, Uint256>,
     codes: BTreeMap<Hash256, Binary>,
     contracts: BTreeMap<Addr, ContractInfo>,
     raw_query_handler: MockRawQueryHandler,
@@ -50,23 +50,27 @@ impl MockQuerier {
         Ok(self)
     }
 
-    pub fn with_balance<T>(mut self, address: Addr, denom: &str, amount: T) -> Self
+    pub fn with_balance<D, A>(mut self, address: Addr, denom: D, amount: A) -> StdResult<Self>
     where
-        T: Into<Uint256>,
+        D: TryInto<Denom>,
+        A: Into<Uint256>,
+        StdError: From<D::Error>,
     {
         self.balances
             .entry(address)
             .or_default()
-            .insert(denom.to_string(), amount.into());
-        self
+            .insert(denom.try_into()?, amount.into());
+        Ok(self)
     }
 
-    pub fn with_supplies<T>(mut self, denom: &str, amount: T) -> Self
+    pub fn with_supplies<D, A>(mut self, denom: D, amount: A) -> StdResult<Self>
     where
-        T: Into<Uint256>,
+        D: TryInto<Denom>,
+        A: Into<Uint256>,
+        StdError: From<D::Error>,
     {
-        self.supplies.insert(denom.to_string(), amount.into());
-        self
+        self.supplies.insert(denom.try_into()?, amount.into());
+        Ok(self)
     }
 
     pub fn with_code<T>(mut self, code: T) -> Self

@@ -1,9 +1,7 @@
 use {
     anyhow::ensure,
     grug_testing::TestBuilder,
-    grug_types::{
-        btree_map, Coin, Coins, ConfigUpdates, Duration, NonZero, ResultExt, Timestamp, Uint128,
-    },
+    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Timestamp},
     grug_vm_rust::ContractBuilder,
     std::collections::BTreeMap,
 };
@@ -81,9 +79,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron1",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("uatom", NonZero::new(Uint128::new(1))?),
+            coin: Coin::new("uatom", 1_u128)?,
         },
-        Coin::new("uatom", NonZero::new(Uint128::new(3))?),
+        Coins::one("uatom", 3_u128)?,
     )?;
 
     // Block time: 3
@@ -93,9 +91,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron2",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("uosmo", NonZero::new(Uint128::new(1))?),
+            coin: Coin::new("uosmo", 1_u128)?,
         },
-        Coin::new("uosmo", NonZero::new(Uint128::new(3))?),
+        Coins::one("uosmo", 3_u128)?,
     )?;
 
     // Block time: 4
@@ -105,9 +103,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron3",
         &tester::Job {
             receiver: accounts["jake"].address,
-            coin: Coin::new("umars", NonZero::new(Uint128::new(1))?),
+            coin: Coin::new("umars", 1_u128)?,
         },
-        Coin::new("umars", NonZero::new(Uint128::new(3))?),
+        Coins::one("umars", 3_u128)?,
     )?;
 
     // Block time: 5

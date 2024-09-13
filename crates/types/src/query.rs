@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Hash256, Json},
+    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -36,21 +36,21 @@ pub enum Query {
     },
     /// An account's balance in a single denom.
     /// Returns: `Coin`
-    Balance { address: Addr, denom: String },
+    Balance { address: Addr, denom: Denom },
     /// Enumerate an account's balances in all denoms.
     /// Returns: `Coins`
     Balances {
         address: Addr,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     },
     /// A token's total supply.
     /// Returns: `Coin`
-    Supply { denom: String },
+    Supply { denom: Denom },
     /// Enumerate all token's total supplies.
     /// Returns: `Coins`
     Supplies {
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
     },
     /// A single Wasm byte code.

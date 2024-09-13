@@ -1,4 +1,5 @@
 use {
+    crate::Denom,
     data_encoding::BASE64,
     hex::FromHexError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
@@ -66,6 +67,9 @@ pub enum StdError {
         reason: String,
     },
 
+    #[error("invalid denom `{denom}`: {reason}")]
+    InvalidDenom { denom: String, reason: &'static str },
+
     #[error("invalid coins: {reason}")]
     InvalidCoins { reason: String },
 
@@ -73,7 +77,7 @@ pub enum StdError {
     InvalidPayment { expect: usize, actual: usize },
 
     #[error("cannot find denom `{denom}` in coins")]
-    DenomNotFound { denom: String },
+    DenomNotFound { denom: Denom },
 
     #[error("data not found! type: {ty}, storage key: {key}")]
     DataNotFound { ty: &'static str, key: String },
@@ -179,6 +183,16 @@ impl StdError {
             ty: type_name::<T>(),
             value: value.to_string(),
             reason: reason.to_string(),
+        }
+    }
+
+    pub fn invalid_denom<D>(denom: D, reason: &'static str) -> Self
+    where
+        D: ToString,
+    {
+        Self::InvalidDenom {
+            denom: denom.to_string(),
+            reason,
         }
     }
 

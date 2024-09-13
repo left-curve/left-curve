@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        Addr, Binary, Coin, Coins, ConfigUpdates, ContractInfo, GenericResult, Hash256, HashExt,
-        InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError, Tx,
-        TxOutcome, UnsignedTx,
+        Addr, Binary, Coin, Coins, ConfigUpdates, ContractInfo, Denom, GenericResult, Hash256,
+        HashExt, InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse,
+        StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -182,7 +182,7 @@ impl Client {
     pub async fn query_balance(
         &self,
         address: Addr,
-        denom: String,
+        denom: Denom,
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
         self.query_app(&Query::Balance { address, denom }, height)
@@ -194,7 +194,7 @@ impl Client {
     pub async fn query_balances(
         &self,
         address: Addr,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
@@ -211,7 +211,7 @@ impl Client {
     }
 
     /// Query a token's total supply.
-    pub async fn query_supply(&self, denom: String, height: Option<u64>) -> anyhow::Result<Coin> {
+    pub async fn query_supply(&self, denom: Denom, height: Option<u64>) -> anyhow::Result<Coin> {
         self.query_app(&Query::Supply { denom }, height)
             .await
             .map(|res| res.as_supply())
@@ -220,7 +220,7 @@ impl Client {
     /// Enumerate all token's total supplies.
     pub async fn query_supplies(
         &self,
-        start_after: Option<String>,
+        start_after: Option<Denom>,
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {

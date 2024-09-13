@@ -2,8 +2,7 @@ use {
     grug_account::Credential,
     grug_testing::{Signer, TestBuilder},
     grug_types::{
-        Coins, Duration, JsonDeExt, Message, NonZero, NumberConst, ResultExt, Timestamp, Tx,
-        Uint256,
+        Coins, Duration, JsonDeExt, Message, NumberConst, ResultExt, Timestamp, Tx, Uint256,
     },
     grug_vm_rust::ContractBuilder,
 };
@@ -19,10 +18,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .set_owner("owner")?
         .build()?;
 
-    let transfer_msg = Message::transfer(
-        accounts["larry"].address,
-        Coins::one("uatom", NonZero::new(Uint256::from(10_u128))?),
-    )?;
+    let transfer_msg = Message::transfer(accounts["larry"].address, Coins::one("uatom", 10_u128)?)?;
 
     // Create a tx to set sequence to 1.
     suite.send_message(&accounts["rhaki"], transfer_msg.clone())?;
@@ -116,7 +112,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
 mod backrunner {
     use grug_types::{
-        AuthCtx, AuthResponse, Coins, Message, Number, NumberConst, Response, StdResult, Tx,
+        AuthCtx, AuthResponse, Coins, Denom, Message, Number, NumberConst, Response, StdResult, Tx,
         Uint128, Uint256,
     };
 
@@ -136,7 +132,7 @@ mod backrunner {
             info.config.bank,
             &grug_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
-                denom: "nft/badkids/1".to_string(),
+                denom: Denom::new("nft/badkids/1")?,
                 amount: Uint256::ONE,
             },
             Coins::new(),
@@ -164,10 +160,7 @@ fn backrunning_works() -> anyhow::Result<()> {
         .set_account_code(account, |public_key| grug_account::InstantiateMsg {
             public_key,
         })?
-        .add_account(
-            "sender",
-            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))?),
-        )?
+        .add_account("sender", Coins::one("ugrug", 50_000_u128)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -176,7 +169,7 @@ fn backrunning_works() -> anyhow::Result<()> {
     suite.transfer(
         &accounts["sender"],
         accounts["receiver"].address,
-        Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))?),
+        Coins::one("ugrug", 123_u128)?,
     )?;
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
@@ -205,10 +198,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .set_account_code(bugged_account, |public_key| grug_account::InstantiateMsg {
             public_key,
         })?
-        .add_account(
-            "sender",
-            Coins::one("ugrug", NonZero::new(Uint256::from(50_000_u128))?),
-        )?
+        .add_account("sender", Coins::one("ugrug", 50_000_u128)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -217,10 +207,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     suite
         .send_message(
             &accounts["sender"],
-            Message::transfer(
-                accounts["receiver"].address,
-                Coins::one("ugrug", NonZero::new(Uint256::from(123_u128))?),
-            )?,
+            Message::transfer(accounts["receiver"].address, Coins::one("ugrug", 123_u128)?)?,
         )?
         .result
         .should_fail_with_error("division by zero: 1 / 0");
