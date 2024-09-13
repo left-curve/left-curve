@@ -488,5 +488,13 @@ mod tests {
         // Dividing by zero should fail
         assert!(lhs.checked_div_dec_floor(rhs).is_err());
         assert!(lhs.checked_div_dec_ceil(rhs).is_err());
+
+        let a = Uint256::from(Uint128::MAX);
+        println!("a: {}", a);
+
+        let b: Uint128 = a.try_into().unwrap();
+        println!("b: {}", b);
+
+        b.checked_mul(Uint128::ONE).unwrap();
     }
 }

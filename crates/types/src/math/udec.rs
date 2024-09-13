@@ -634,3 +634,192 @@ mod tests {
         assert_eq!(Udec128::new(10_u128), Udec128::try_from(foo).unwrap())
     }
 }
+
+#[cfg(test)]
+mod tests2 {
+
+    use {
+        super::*,
+        crate::{Signed, Uint128, Uint256},
+        fmt::Debug,
+    };
+
+    #[test]
+    fn decimal_from_decimal256_works() {
+        let too_big = Udec256::raw(Uint256::from(Uint128::MAX) + Uint256::ONE);
+
+        assert!(matches!(
+            Udec128::try_from(too_big).unwrap_err(),
+            StdError::OverflowConversion { .. }
+        ));
+
+        let just_right = Udec256::raw(Uint256::from(Uint128::MAX));
+        assert_eq!(Udec128::try_from(just_right).unwrap(), Udec128::MAX);
+
+        assert_eq!(Udec128::try_from(Udec256::ZERO).unwrap(), Udec128::ZERO);
+        assert_eq!(Udec128::try_from(Udec256::ONE).unwrap(), Udec128::ONE);
+    }
+
+    /// `derive_type`
+    ///
+    /// Allow compiler to derive the type of a variable,
+    /// which is necessary for the test functions.
+    fn dt<T>(_: T, _: T) {}
+
+    /// `built_type`
+    ///
+    ///  Allow compiler to derive the type of a variable, and return right.
+    fn bt<T>(_: T, ret: T) -> T {
+        ret
+    }
+
+    /// `derive_types`
+    ///
+    ///  Allow compiler to derive the types of multiple variables
+    macro_rules! dts{
+        ($u: expr, $($p:expr),* ) =>
+         {
+            $(dt($u, $p);)*
+         }
+    }
+
+    /// Macro for unit tests for Udec.
+    /// Is not possible to use [`test_case::test_case`] because the arguments types can are different.
+    /// Also `Udec<U>` is different for each test case.
+    ///
+    /// The macro set as first parameter of the callback function `Uint::ZERO`, so the compiler can derive the type
+    /// (see [`derive_type`], [`derive_types`] and [`smart_assert`] ).
+    macro_rules! dtest {
+        // Multiple args
+        (
+            $name:ident,
+            [$($p128:expr),*],
+            [$($p256:expr),*]
+            $(attrs = $(#[$meta:meta])*)?
+            => $test_fn:expr) => {
+            paste::paste! {
+                #[test]
+                $($(#[$meta])*)?
+                fn [<$name _udec128 >]() {
+                    ($test_fn)(Udec128::ZERO, $($p128),*);
+                }
+
+                #[test]
+                $($(#[$meta])*)?
+                fn [<$name _udec256 >]() {
+                    ($test_fn)(Udec256::ZERO, $($p256),*);
+                }
+
+            }
+        };
+        // No args
+        (
+            $name:ident,
+            $(attrs = $(#[$meta:meta])*)?
+            => $test_fn:expr) => {
+                dtest!($name, [], [] $(attrs = $(#[$meta])*)? => $test_fn);
+        };
+        // Same args
+        (
+            $name:ident,
+            [$($p:expr),*]
+            $(attrs = $(#[$meta:meta])*)?
+            => $test_fn:expr) => {
+                dtest!($name, [$($p),*], [$($p),*] $(attrs = $(#[$meta])*)? => $test_fn);
+        };
+    }
+
+    dtest!( new,
+     => |_0d| {
+        // raw
+        let raw = bt(_0d, Udec::raw(Uint::from(100_u64)));
+        assert_eq!(raw.0, Uint::from(100_u64));
+
+        // new
+        let new = bt(_0d, Udec::new(100_u128));
+        assert_eq!(new, Udec::from_str("100.0").unwrap());
+
+        // zero
+        assert_eq!(_0d, Udec::from_str("0.0").unwrap());
+
+        // one
+        let one = bt(_0d, Udec::one());
+        assert_eq!(one, Udec::from_str("1.0").unwrap());
+
+        // percent
+        let percent = bt(_0d, Udec::new_percent(1_u128));
+        assert_eq!(percent, Udec::from_str("0.01").unwrap());
+
+        // permille
+        let permille = bt(_0d, Udec::new_permille(1_u128));
+        assert_eq!(permille, Udec::from_str("0.001").unwrap());
+
+        // bps
+        let bps = bt(_0d, Udec::new_bps(1_u128));
+        assert_eq!(bps, Udec::from_str("0.000001").unwrap());
+     }
+    );
+
+    dtest!( from_signed,
+        => |_0d| {
+
+            let raw = bt(_0d, Udec::from_str("100.0").unwrap());
+            let neg = Signed::new_negative(raw);
+
+            // Invalid negative
+            let res = bt(Ok(_0d), Udec::try_from(neg));
+            assert!(matches!(res, Err(StdError::OverflowConversion { .. })));
+
+            // Valid Positive
+            let pos = Signed::new_positive(raw);
+            dt(_0d, Udec::try_from(pos).unwrap());
+
+            // -0 works
+            let neg = Signed::new_negative(_0d);
+            dt(_0d, Udec::try_from(neg).unwrap());
+        }
+    );
+
+    dtest!( atomics,
+        => |_0d| {
+            let one = Udec::one();
+            let two = Udec::new(2_u128);
+            dts!(_0d, one, two);
+
+            fn assert<U, IU,  const S: u32>(compare: Udec<U, S>, cases: &[(IU, u32)]) where
+                U: PartialEq + Debug,
+                Uint<U>: NumberConst + Number + From<u128>,
+                IU: Into<Uint<U>> + Copy
+             {
+                for (atomics, decimal_places) in cases {
+                    let dec = Udec::checked_from_atomics(*atomics, *decimal_places).unwrap();
+                    assert_eq!(dec, compare);
+                }
+            }
+
+            assert(
+                one,
+                &[
+                    (1, 0),
+                    (10, 1),
+                    (100, 2),
+                    (10_u128.pow(18), 18),
+                    (10_u128.pow(20), 20)
+                ]
+            );
+
+            assert(
+                two,
+                &[
+                    (2, 0),
+                    (20, 1),
+                    (200, 2),
+                    (2 * 10_u128.pow(18), 18),
+                    (2 * 10_u128.pow(20), 20)
+                ]
+            );
+
+
+        }
+    );
+}

@@ -352,7 +352,7 @@ macro_rules! generate_signed {
             type Error = StdError;
 
             fn try_from(value: $name) -> StdResult<Self> {
-                if value.is_negative() {
+                if value.is_negative() && value.abs != <$inner>::ZERO {
                     Err(StdError::overflow_conversion::<_, $inner>(value))
                 } else {
                     Ok(value.abs)
