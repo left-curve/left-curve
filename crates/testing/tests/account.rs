@@ -111,6 +111,8 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 }
 
 mod backrunner {
+    use std::str::FromStr;
+
     use grug_types::{
         AuthCtx, AuthResponse, Coins, Denom, Message, Number, NumberConst, Response, StdResult, Tx,
         Uint128, Uint256,
@@ -132,7 +134,7 @@ mod backrunner {
             info.config.bank,
             &grug_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
-                denom: Denom::new("nft/badkids/1")?,
+                denom: Denom::from_str("nft/badkids/1")?,
                 amount: Uint256::ONE,
             },
             Coins::new(),

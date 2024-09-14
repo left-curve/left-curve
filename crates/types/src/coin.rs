@@ -267,7 +267,7 @@ impl FromStr for Coins {
                 )));
             };
 
-            let denom = Denom::new(denom_str)?;
+            let denom = Denom::from_str(denom_str)?;
 
             if map.contains_key(&denom) {
                 return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));

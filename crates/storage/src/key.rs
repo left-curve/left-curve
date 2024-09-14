@@ -229,13 +229,13 @@ impl PrimaryKey for Denom {
     const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
+        vec![Cow::Owned(self.to_string().into_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec())
             .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
-            .and_then(Denom::new)
+            .and_then(TryInto::try_into)
     }
 }
 
@@ -582,7 +582,7 @@ impl<const N: usize> Prefixer for Hash<N> {
 
 impl Prefixer for Denom {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
+        vec![Cow::Owned(self.to_string().into_bytes())]
     }
 }
 

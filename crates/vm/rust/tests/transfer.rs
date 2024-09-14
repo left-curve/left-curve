@@ -1,10 +1,10 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message, NumberConst, ResultExt, Uint256},
-    std::sync::LazyLock,
+    std::{str::FromStr, sync::LazyLock},
 };
 
-static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
+static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
 #[test]
 fn transfers() -> anyhow::Result<()> {

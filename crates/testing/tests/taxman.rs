@@ -18,7 +18,7 @@ mod taxman {
         std::{str::FromStr, sync::LazyLock},
     };
 
-    pub static FEE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
+    pub static FEE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
     pub static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.25").unwrap());
 
