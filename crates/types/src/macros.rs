@@ -612,7 +612,7 @@ macro_rules! impl_integer_number {
 
         impl Number for $t
         where
-            $t: NumberConst,
+            $t: NumberConst + Integer,
         {
             fn is_zero(&self) -> bool {
                 *self == Self::ZERO
@@ -661,13 +661,20 @@ macro_rules! impl_integer_number {
                 if self.is_zero() {
                     return Ok(Self::ZERO);
                 }
-                let mut x = self;
-                let mut y = (x + 1) >> 1;
-                while y < x {
-                    x = y;
-                    y = (x + self / x) >> 1;
+
+                let mut x0 = Self::ONE << ((Integer::checked_ilog2(self)? / 2) + 1);
+
+                if x0 > Self::ZERO {
+                    let mut x1 = (x0 + self / x0) >> 1;
+
+                    while x1 < x0 {
+                        x0 = x1;
+                        x1 = (x0 + self / x0) >> 1;
+                    }
+
+                    return Ok(x0);
                 }
-                Ok(x)
+                Ok(self)
             }
 
             fn wrapping_add(self, other: Self) -> Self {

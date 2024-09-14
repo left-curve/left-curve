@@ -355,7 +355,7 @@ where
                     Err(err) => return Some(Err(err)),
                 };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(S / 2 - i)?;
+                    let outer_mul = Uint::TEN.checked_pow(S / 2 - i)?;
                     Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
             })
@@ -1418,6 +1418,26 @@ mod tests2 {
 
             // overflow
             let _ = max / _0_5d;
+        }
+    );
+
+    dtest!( sqrt,
+        ["18446744073.709551615"],
+        ["340282366920938463463374607431.768211455"]
+        => |_0d, max_sqrt_str| {
+
+            let _0_5d = Udec::new_percent(50_u128);
+            let _1d = Udec::one();
+            let _2d = Udec::new(2_u128);
+            let _4d = Udec::new(4_u128);
+            let max = Udec::MAX;
+            dts!( _0d, _0_5d, _1d,  _2d, _4d, max);
+
+            assert_eq!(_4d.checked_sqrt().unwrap(), _2d);
+            assert_eq!(_2d.checked_sqrt().unwrap(),dec("1.414213562373095048"));
+            assert_eq!(_0_5d.checked_sqrt().unwrap(), dec("0.707106781186547524"));
+
+            assert_eq!(max.checked_sqrt().unwrap(), dec(max_sqrt_str));
         }
     );
 }
