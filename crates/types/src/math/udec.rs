@@ -279,8 +279,8 @@ where
 
 impl<U, const S: u32> Number for Udec<U, S>
 where
-    U: NumberConst + Number + Copy + PartialEq + PartialOrd,
-    Uint<U>: NextNumber + Display + From<u128>,
+    U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
     <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
 {
     fn is_zero(&self) -> bool {
@@ -397,7 +397,8 @@ where
 
 impl<U, const S: u32> Display for Udec<U, S>
 where
-    Uint<U>: Number + Copy + Display + From<u128>,
+    U: Display,
+    Uint<U>: Number + Copy + From<u128>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION.into();
@@ -407,7 +408,7 @@ where
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
-            let fractional_string = format!("{:0>padding$}", fractional, padding = S as usize);
+            let fractional_string = format!("{:0>padding$}", fractional.0, padding = S as usize);
             f.write_str(&whole.to_string())?;
             f.write_char('.')?;
             f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
@@ -1424,7 +1425,6 @@ mod tests2 {
         ["18446744073.709551615"],
         ["340282366920938463463374607431.768211455"]
         => |_0d, max_sqrt_str| {
-
             let _0_5d = Udec::new_percent(50_u128);
             let _2d = Udec::new(2_u128);
             let _4d = Udec::new(4_u128);
@@ -1436,6 +1436,25 @@ mod tests2 {
             assert_eq!(_0_5d.checked_sqrt().unwrap(), dec("0.707106781186547524"));
 
             assert_eq!(max.checked_sqrt().unwrap(), dec(max_sqrt_str));
+
+            macro_rules! check_len  {
+                ($dec:expr) => {
+                    let sqrt = $dec.checked_sqrt().unwrap();
+                    let str_sqtr = sqrt.to_string();
+                    let mut str_sqtr_iter = str_sqtr.split(".");
+                    let (_, decimals) = (str_sqtr_iter.next(), str_sqtr_iter.next().unwrap());
+
+                    println!("sqrt: {}", sqrt);
+                    println!("base: {}", $dec);
+                    println!("len: {}", decimals.len());
+                    println!("len: {}", sqrt.0);
+                };
+            }
+
+            check_len!(bt(_0d, dec("401")));
+            check_len!(bt(_0d, dec("4001")));
+            check_len!(bt(_0d, dec("40001")));
+            check_len!(bt(_0d, dec("400001")));
         }
     );
 }
