@@ -339,7 +339,6 @@ where
         self.checked_mul(y)
     }
 
-    // TODO: Check if this is the best way to implement this
     fn checked_sqrt(self) -> StdResult<Self> {
         // With the current design, U should be only unsigned number.
         // Leave this safety check here for now.
@@ -1427,14 +1426,13 @@ mod tests2 {
         => |_0d, max_sqrt_str| {
 
             let _0_5d = Udec::new_percent(50_u128);
-            let _1d = Udec::one();
             let _2d = Udec::new(2_u128);
             let _4d = Udec::new(4_u128);
             let max = Udec::MAX;
-            dts!( _0d, _0_5d, _1d,  _2d, _4d, max);
+            dts!( _0d, _0_5d, _2d, _4d, max);
 
             assert_eq!(_4d.checked_sqrt().unwrap(), _2d);
-            assert_eq!(_2d.checked_sqrt().unwrap(),dec("1.414213562373095048"));
+            assert_eq!(_2d.checked_sqrt().unwrap(), dec("1.414213562373095048"));
             assert_eq!(_0_5d.checked_sqrt().unwrap(), dec("0.707106781186547524"));
 
             assert_eq!(max.checked_sqrt().unwrap(), dec(max_sqrt_str));
