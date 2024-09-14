@@ -1065,7 +1065,6 @@ mod tests2 {
 
     dtest!( add,
         attrs = #[allow(clippy::op_ref)]
-                #[should_panic(expected = "addition overflow")]
         => |_0d| {
             let _1d =  Udec::one();
             let _2d = Udec::new(2_u128);
@@ -1097,6 +1096,15 @@ mod tests2 {
 
             // checked_add overflow
             assert!(matches!(max.checked_add(_1d), Err(StdError::OverflowAdd { .. })));
+        }
+    );
+
+    dtest!( add_overflow_panic,
+        attrs = #[should_panic(expected = "addition overflow")]
+        => |_0d| {
+            let max = Udec::MAX;
+            let _1d = Udec::one();
+            dts!(_0d, max, _1d);
 
             // overflow
             let _ = max + _1d;
@@ -1105,7 +1113,6 @@ mod tests2 {
 
     dtest!( sub,
         attrs = #[allow(clippy::op_ref)]
-                #[should_panic(expected = "subtraction overflow")]
         => |_0d| {
             let _0_5d = Udec::new_percent(50_u128);
             let _1d =  Udec::one();
@@ -1138,6 +1145,15 @@ mod tests2 {
 
             // checked_sub overflow
             assert!(matches!(_0d.checked_sub(_1d), Err(StdError::OverflowSub { .. })));
+        }
+    );
+
+    dtest!( sub_overflow_panic,
+        attrs = #[should_panic(expected = "subtraction overflow")]
+        => |_0d| {
+            let _1d = Udec::one();
+            let _2d = Udec::new(2_u128);
+            dts!(_0d, _1d, _2d);
 
             // overflow
             let _ = _0d - _1d;
@@ -1146,7 +1162,6 @@ mod tests2 {
 
     dtest!( mul,
         attrs = #[allow(clippy::op_ref)]
-                #[should_panic(expected = "conversion overflow")]
         => |_0d| {
             let _0_5d = Udec::new_percent(50_u128);
             let _1d = Udec::one();
@@ -1242,6 +1257,15 @@ mod tests2 {
 
             // checked_mul overflow
             assert!(matches!(max.checked_mul(_2d), Err(StdError::OverflowConversion { .. })));
+        }
+    );
+
+    dtest!( mul_overflow_panic,
+        attrs = #[should_panic(expected = "conversion overflow")]
+        => |_0d| {
+            let max = Udec::MAX;
+            let _2d = Udec::new(2_u128);
+            dts!(_0d, max, _2d);
 
             // overflow
             let _ = max * _2d;
@@ -1250,7 +1274,6 @@ mod tests2 {
 
     dtest!( checked_mul,
         => |_0d| {
-
             let test_data = [
                 (_0d, _0d),
                 (_0d, Udec::one()),
@@ -1266,7 +1289,135 @@ mod tests2 {
             for (x, y) in test_data.into_iter() {
                 assert_eq!(x * y, x.checked_mul(y).unwrap());
             }
+        }
+    );
 
+    dtest!( div,
+        attrs = #[allow(clippy::op_ref)]
+        => |_0d| {
+            let _0_5d = Udec::new_percent(50_u128);
+            let _1d = Udec::one();
+            let _2d = _1d + _1d;
+            let max = Udec::MAX;
+            dts!(_0d, _0_5d, _1d, _2d, max);
+
+            // 1/x
+            assert_eq!(_1d / _1d, _1d);
+            assert_eq!(_1d / bt(_0d, Udec::new_percent(1_u64)), Udec::new_percent(10000_u64));
+            assert_eq!(_1d / bt(_0d, Udec::new_percent(10_u64)), Udec::new_percent(1000_u64));
+            assert_eq!(_1d / bt(_0d, Udec::new_percent(100_u64)), Udec::new_percent(100_u64));
+            assert_eq!(_1d / bt(_0d, Udec::new_percent(1000_u64)), Udec::new_percent(10_u64));
+            assert_eq!(_0d / _1d, _0d);
+            assert_eq!(bt(_0d, Udec::new_percent(1_u64)) / _1d, Udec::new_percent(1_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(10_u64)) / _1d, Udec::new_percent(10_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(100_u64)) / _1d, Udec::new_percent(100_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(1000_u64)) / _1d, Udec::new_percent(1000_u64));
+
+            // 2/x
+            assert_eq!(_2d / bt(_0d, Udec::new_percent(1_u64)), Udec::new_percent(20000_u64));
+            assert_eq!(_2d / bt(_0d, Udec::new_percent(10_u64)), Udec::new_percent(2000_u64));
+            assert_eq!(_2d / bt(_0d, Udec::new_percent(100_u64)), Udec::new_percent(200_u64));
+            assert_eq!(_2d / bt(_0d, Udec::new_percent(1000_u64)), Udec::new_percent(20_u64));
+            assert_eq!(_0d / _2d, _0d);
+            assert_eq!(bt(_0d, Udec::new_percent(1_u64)) / _2d, Udec::new_permille(5_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(10_u64)) / _2d, Udec::new_percent(5_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(100_u64)) / _2d, Udec::new_percent(50_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(1000_u64)) / _2d, Udec::new_percent(500_u64));
+
+            // 0.5/x
+            assert_eq!(_0_5d / bt(_0d, Udec::new_percent(1_u64)), Udec::new_percent(5000_u64));
+            assert_eq!(_0_5d / bt(_0d, Udec::new_percent(10_u64)), Udec::new_percent(500_u64));
+            assert_eq!(_0_5d / bt(_0d, Udec::new_percent(100_u64)), Udec::new_percent(50_u64));
+            assert_eq!(_0_5d / bt(_0d, Udec::new_percent(1000_u64)), Udec::new_percent(5_u64));
+            assert_eq!(_0d / _0_5d, _0d);
+            assert_eq!(bt(_0d, Udec::new_percent(1_u64)) / _0_5d, Udec::new_percent(2_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(10_u64)) / _0_5d, Udec::new_percent(20_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(100_u64)) / _0_5d, Udec::new_percent(200_u64));
+            assert_eq!(bt(_0d, Udec::new_percent(1000_u64)) / _0_5d, Udec::new_percent(2000_u64));
+
+            // Move right
+            let a = bt(_0d, dec("123127726548762582"));
+            assert_eq!(a / bt(_0d, dec("1")), dec("123127726548762582"));
+            assert_eq!(a / bt(_0d, dec("10")), dec("12312772654876258.2"));
+            assert_eq!(a / bt(_0d, dec("100")), dec("1231277265487625.82"));
+            assert_eq!(a / bt(_0d, dec("1000")), dec("123127726548762.582"));
+            assert_eq!(a / bt(_0d, dec("1000000")), dec("123127726548.762582"));
+            assert_eq!(a / bt(_0d, dec("1000000000")), dec("123127726.548762582"));
+            assert_eq!(a / bt(_0d, dec("1000000000000")), dec("123127.726548762582"));
+            assert_eq!(a / bt(_0d, dec("1000000000000000")), dec("123.127726548762582"));
+            assert_eq!(a / bt(_0d, dec("1000000000000000000")), dec("0.123127726548762582"));
+            assert_eq!(bt(_0d, dec("1")) / a, dec("0.000000000000000008"));
+            assert_eq!(bt(_0d, dec("10")) / a, dec("0.000000000000000081"));
+            assert_eq!(bt(_0d, dec("100")) / a, dec("0.000000000000000812"));
+            assert_eq!(bt(_0d, dec("1000")) / a, dec("0.000000000000008121"));
+            assert_eq!(bt(_0d, dec("1000000")) / a, dec("0.000000000008121647"));
+            assert_eq!(bt(_0d, dec("1000000000")) / a, dec("0.000000008121647560"));
+            assert_eq!(bt(_0d, dec("1000000000000")) / a, dec("0.000008121647560868"));
+            assert_eq!(bt(_0d, dec("1000000000000000")) / a, dec("0.008121647560868164"));
+            assert_eq!(bt(_0d, dec("1000000000000000000")) / a, dec("8.121647560868164773"));
+
+            // Move left
+            let a = bt(_0d, dec("0.123127726548762582"));
+            assert_eq!(a / bt(_0d, dec("1.0")), dec("0.123127726548762582"));
+            assert_eq!(a / bt(_0d, dec("0.1")), dec("1.23127726548762582"));
+            assert_eq!(a / bt(_0d, dec("0.01")), dec("12.3127726548762582"));
+            assert_eq!(a / bt(_0d, dec("0.001")), dec("123.127726548762582"));
+            assert_eq!(a / bt(_0d, dec("0.000001")), dec("123127.726548762582"));
+            assert_eq!(a / bt(_0d, dec("0.000000001")), dec("123127726.548762582"));
+            assert_eq!(a / bt(_0d, dec("0.000000000001")), dec("123127726548.762582"));
+            assert_eq!(a / bt(_0d, dec("0.000000000000001")), dec("123127726548762.582"));
+            assert_eq!(a / bt(_0d, dec("0.000000000000000001")), dec("123127726548762582"));
+
+            assert_eq!(
+                bt(_0d, Udec::new_percent(15_u64)) / bt(_0d, Udec::new_percent(60_u64)),
+                Udec::new_percent(25_u64)
+            );
+
+            // works for refs
+            let a = Udec::new_percent(100_u64);
+            let b = Udec::new_percent(20_u64);
+            let expected = Udec::new_percent(500_u64);
+            dts!(_0d, a, b, expected);
+            assert_eq!(a / b, expected);
+            assert_eq!(&a / b, expected);
+            assert_eq!(a / &b, expected);
+            assert_eq!(&a / &b, expected);
+
+            // assign
+            let mut a = _2d;
+            a /= _2d;
+            assert_eq!(a, _1d);
+
+            // works for refs
+            let mut a = _2d;
+            a /= &_2d;
+            assert_eq!(a, _1d);
+
+            // checked_div overflow
+            assert!(matches!(max.checked_div(_0_5d), Err(StdError::OverflowConversion { .. })));
+        }
+    );
+
+    dtest!( div_by_zero_panic,
+        attrs = #[should_panic(expected = "division by zero")]
+        => |_0d| {
+            let _1d = Udec::one();
+            dts!(_0d, _1d);
+
+            // panic
+            let _ = _1d / _0d;
+        }
+    );
+
+    dtest!( div_overflow_panic,
+        attrs = #[should_panic(expected = "conversion overflow")]
+        => |_0d| {
+            let max = Udec::MAX;
+            let _0_5d = Udec::new_percent(50_u128);
+            dts!(_0d, max, _0_5d);
+
+            // overflow
+            let _ = max / _0_5d;
         }
     );
 }
