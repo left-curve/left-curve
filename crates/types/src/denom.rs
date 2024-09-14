@@ -16,11 +16,10 @@ use {
 ///
 /// A valid denom must satisfy the following criteria:
 ///
-/// - be 3-128 character long (inclusive);
+/// - no longer than 128 characters;
 /// - contains only ASCII alphanumeric characters (`a-z|A-Z|0-9`) or the forward
 ///   slash (`/`);
 /// - no two consecutive forward slashes;
-/// - the first character must be a letter (`a-z|A-Z`).
 ///
 /// Note that this is more strict than [Cosmos SDK's criteria](https://github.com/cosmos/cosmos-sdk/blob/v0.50.9/types/coin.go#L838),
 /// so some valid Cosmos SDK denoms may not be valid Grug denoms.
@@ -28,6 +27,8 @@ use {
 pub struct Denom(String);
 
 impl Denom {
+    pub const MAX_LEN: usize = 128;
+
     /// Create a new denom from a string.
     /// Error if the string isn't a valid denom.
     pub fn new<T>(inner: T) -> StdResult<Self>
@@ -36,12 +37,8 @@ impl Denom {
     {
         let inner = inner.into();
 
-        if !(3..=128_usize).contains(&inner.len()) {
+        if inner.len() > Self::MAX_LEN {
             return Err(StdError::invalid_denom(inner, "too short or too long"));
-        }
-
-        if !inner.chars().next().unwrap().is_ascii_alphabetic() {
-            return Err(StdError::invalid_denom(inner, "non-alphabetic lead"));
         }
 
         for subdenom in inner.split('/') {
@@ -146,19 +143,9 @@ mod tests {
         "valid denom with multiple subdenoms"
     )]
     #[test_case(
-        "a",
-        Some("too short or too long");
-        "invalid denom that is too short"
-    )]
-    #[test_case(
         "a".repeat(129),
         Some("too short or too long");
         "invalid denom that is too long"
-    )]
-    #[test_case(
-        "1/gamm",
-        Some("non-alphabetic lead");
-        "invalid denom starting with a number"
     )]
     #[test_case(
         "gamm//lp",
