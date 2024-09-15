@@ -1,10 +1,11 @@
 use {
-    crate::prompt::print_json_pretty,
     clap::{Parser, Subcommand},
+    colored_json::ToColoredJson,
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Denom, Hash256, JsonDeExt, Query},
+    grug_types::{Addr, Binary, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query},
     serde::Serialize,
+    std::str::FromStr,
 };
 
 #[derive(Parser)]
@@ -23,11 +24,23 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 enum SubCmd {
-    /// Query the chain's global information
-    Info,
-    /// Query a single application-specific configuration.
+    /// Tendermint node status
+    Status,
+    /// Get transaction by hash
+    Tx {
+        /// Transaction hash in hex encoding
+        hash: String,
+    },
+    /// Get block results by height
+    Block {
+        /// Block height [default: latest]
+        height: Option<u64>,
+    },
+    /// Query the chain's global configuration
+    Config,
+    /// Query a single application-specific configuration
     AppConfig { key: String },
-    /// Enumerate all application-specific configurations.
+    /// Enumerate all application-specific configurations
     AppConfigs {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -110,7 +123,22 @@ impl QueryCmd {
         let client = Client::connect(&self.node)?;
 
         let req = match self.subcmd {
-            SubCmd::Info => Query::Info {},
+            SubCmd::Status {} => {
+                let res = client.query_status().await?;
+                return print_json_pretty(res);
+            },
+            SubCmd::Tx { hash } => {
+                // Cast the hex string to uppercase, so that users can use
+                // either upper or lowercase on the CLI.
+                let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
+                let res = client.query_tx(hash).await?;
+                return print_json_pretty(res);
+            },
+            SubCmd::Block { height } => {
+                let res = client.query_block_result(height).await?;
+                return print_json_pretty(res);
+            },
+            SubCmd::Config => Query::Config {},
             SubCmd::AppConfig { key } => Query::AppConfig { key },
             SubCmd::AppConfigs { start_after, limit } => Query::AppConfigs { start_after, limit },
             SubCmd::Balance { address, denom } => {
@@ -184,4 +212,16 @@ async fn query_store(
         value: value.map(hex::encode),
         proof,
     })
+}
+
+fn print_json_pretty<T>(data: T) -> anyhow::Result<()>
+where
+    T: Serialize,
+{
+    let json = data.to_json_string_pretty()?;
+    let colored = json.to_colored_json_auto()?;
+
+    println!("{colored}");
+
+    Ok(())
 }

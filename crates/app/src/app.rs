@@ -4,8 +4,8 @@ use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
-        query_app_configs, query_balance, query_balances, query_code, query_codes, query_contract,
-        query_contracts, query_info, query_supplies, query_supply, query_wasm_raw,
+        query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
+        query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
         query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
         CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
@@ -810,9 +810,9 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Info {} => {
-            let res = query_info(&storage, gas_tracker)?;
-            Ok(QueryResponse::Info(res))
+        Query::Config {} => {
+            let res = query_config(&storage, gas_tracker)?;
+            Ok(QueryResponse::Config(res))
         },
         Query::AppConfig { key } => {
             let res = query_app_config(&storage, gas_tracker, &key)?;

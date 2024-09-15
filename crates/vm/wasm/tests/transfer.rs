@@ -68,11 +68,11 @@ fn transfers() -> anyhow::Result<()> {
         .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint256::from(70_u128));
 
-    let info = suite.query_info().should_succeed();
+    let cfg = suite.query_config().should_succeed();
 
     // List all holders of the denom
     suite
-        .query_wasm_smart(info.config.bank, grug_bank::QueryHoldersRequest {
+        .query_wasm_smart(cfg.bank, grug_bank::QueryHoldersRequest {
             denom: DENOM.clone(),
             start_after: None,
             limit: None,

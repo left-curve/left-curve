@@ -14,11 +14,11 @@ pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<R
 }
 
 pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
-    let info = ctx.querier.query_info()?;
+    let cfg = ctx.querier.query_config()?;
 
     // Only the chain's owner can update fee config.
     ensure!(
-        ctx.sender == info.config.owner,
+        ctx.sender == cfg.owner,
         "you don't have the right, O you don't have the right"
     );
 
@@ -28,8 +28,8 @@ pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Respon
 }
 
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    let cfg = CONFIG.load(ctx.storage)?;
-    let info = ctx.querier.query_info()?;
+    let cfg = ctx.querier.query_config()?;
+    let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
     if ctx.mode == AuthMode::Simulate {
@@ -39,7 +39,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Compute the maximum amount of fee this transaction may incur.
     //
     // Note that we ceil the amount here, instead of flooring.
-    let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(cfg.fee_rate)?;
+    let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // If the fee amount is non-zero, we force transfer the max fee amount from
     // the sender to here (the taxman). If zero, nothing to do.
@@ -52,11 +52,11 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // coins.
     let withhold_msg = if !withhold_amount.is_zero() {
         Some(Message::execute(
-            info.config.bank,
+            cfg.bank,
             &grug_bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
-                denom: cfg.fee_denom,
+                denom: fee_cfg.fee_denom,
                 amount: withhold_amount,
             },
             Coins::new(),
@@ -72,8 +72,8 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
 }
 
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
-    let cfg = CONFIG.load(ctx.storage)?;
-    let info = ctx.querier.query_info()?;
+    let cfg = ctx.querier.query_config()?;
+    let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
     if ctx.mode == AuthMode::Simulate {
@@ -81,13 +81,13 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     }
 
     // Compute the amount of fee that was withheld during `withheld fee`.
-    let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(cfg.fee_rate)?;
+    let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // Compute the amount of fee that will actually be charged, based on actual
     // gas consumption.
     //
     // Same as withholding, we ceil here instead of flooring.
-    let charge_amount = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(cfg.fee_rate)?;
+    let charge_amount = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // The difference between the two amounts is to be refunded to the user.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
@@ -98,8 +98,8 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     // fee distributor contract that distribute to stakers so something like that.
     let charge_msg = if !charge_amount.is_zero() {
         Some(Message::Transfer {
-            to: info.config.owner,
-            coins: Coins::one(cfg.fee_denom.clone(), charge_amount)?,
+            to: cfg.owner,
+            coins: Coins::one(fee_cfg.fee_denom.clone(), charge_amount)?,
         })
     } else {
         None
@@ -108,7 +108,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let refund_msg = if !refund_amount.is_zero() {
         Some(Message::Transfer {
             to: tx.sender,
-            coins: Coins::one(cfg.fee_denom, refund_amount)?,
+            coins: Coins::one(fee_cfg.fee_denom, refund_amount)?,
         })
     } else {
         None

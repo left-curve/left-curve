@@ -1,8 +1,8 @@
 use {
     super::MockStorage,
     crate::{
-        Addr, Binary, Coin, ContractInfo, Denom, GenericResult, Hash256, HashExt, InfoResponse,
-        Json, JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
+        Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
+        JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
         Uint256,
     },
     serde::Serialize,
@@ -18,7 +18,7 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 /// purpose.
 #[derive(Default)]
 pub struct MockQuerier {
-    info: Option<InfoResponse>,
+    config: Option<Config>,
     app_configs: BTreeMap<String, Json>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint256>>,
     supplies: BTreeMap<Denom, Uint256>,
@@ -33,8 +33,8 @@ impl MockQuerier {
         Self::default()
     }
 
-    pub fn with_info(mut self, info: InfoResponse) -> Self {
-        self.info = Some(info);
+    pub fn with_config(mut self, config: Config) -> Self {
+        self.config = Some(config);
         self
     }
 
@@ -116,9 +116,12 @@ impl MockQuerier {
 impl Querier for MockQuerier {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         match req {
-            Query::Info {} => {
-                let info = self.info.clone().expect("[MockQuerier]: info is not set");
-                Ok(QueryResponse::Info(info))
+            Query::Config {} => {
+                let cfg = self
+                    .config
+                    .clone()
+                    .expect("[MockQuerier]: config is not set");
+                Ok(QueryResponse::Config(cfg))
             },
             Query::AppConfig { key } => {
                 let value = self

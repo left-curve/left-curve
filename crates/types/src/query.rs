@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json,
-        JsonSerExt, StdResult,
+        Addr, Binary, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonSerExt,
+        StdResult,
     },
     paste::paste,
     serde::{Deserialize, Serialize},
@@ -29,9 +29,9 @@ pub trait QueryRequest: Sized {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {
-    /// The chain's global information. Corresponding to the ABCI Info method.
-    /// Returns: `InfoResponse`
-    Info {},
+    /// The chain's global configuration.
+    /// Returns: `Config`
+    Config {},
     /// A single application-specific configuration.
     /// Returns: `Json`
     AppConfig { key: String },
@@ -122,16 +122,9 @@ impl Query {
 // --------------------------------- response ----------------------------------
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct InfoResponse {
-    pub chain_id: String,
-    pub config: Config,
-    pub last_finalized_block: BlockInfo,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
-    Info(InfoResponse),
+    Config(Config),
     AppConfig(Json),
     AppConfigs(BTreeMap<String, Json>),
     Balance(Coin),
@@ -167,7 +160,7 @@ macro_rules! generate_downcast {
 
 impl QueryResponse {
     generate_downcast! {
-        Info       => InfoResponse,
+        Config     => Config,
         AppConfig  => Json,
         AppConfigs => BTreeMap<String, Json>,
         Balance    => Coin,

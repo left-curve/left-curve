@@ -1,5 +1,4 @@
 use {
-    crate::prompt::confirm,
     clap::Subcommand,
     colored::Colorize,
     grug_app::PrunableDb,
@@ -39,7 +38,8 @@ impl DbCmd {
                         format!(
                             "Confirm pruning data up to version {up_to_version}? This operation is irreversible."
                         )
-                        .bold(),
+                        .bold()
+                        .to_string(),
                     )?;
                 }
 
@@ -51,7 +51,8 @@ impl DbCmd {
                         format!(
                             "Confirm deleting data directory {data_dir:?}? This operation is irreversible."
                         )
-                        .bold(),
+                        .bold()
+                        .to_string(),
                     )?;
                 }
 
@@ -59,4 +60,11 @@ impl DbCmd {
             },
         }
     }
+}
+
+fn confirm<T>(prompt: T) -> dialoguer::Result<bool>
+where
+    T: Into<String>,
+{
+    dialoguer::Confirm::new().with_prompt(prompt).interact()
 }
