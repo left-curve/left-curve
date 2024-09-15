@@ -33,6 +33,13 @@ impl Coin {
             amount: amount.into(),
         })
     }
+
+    pub fn as_ref(&self) -> CoinRef {
+        CoinRef {
+            denom: &self.denom,
+            amount: &self.amount,
+        }
+    }
 }
 
 impl fmt::Display for Coin {
