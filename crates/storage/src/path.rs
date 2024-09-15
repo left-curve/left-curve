@@ -1,6 +1,6 @@
 use {
     crate::Codec,
-    grug_types::{nested_namespaces_with_key, StdError, StdResult, Storage},
+    grug_types::{nested_namespaces_with_key, Binary, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
@@ -32,9 +32,15 @@ where
             codec: self.codec,
         }
     }
+}
 
-    pub fn storage_key(self) -> Vec<u8> {
-        self.storage_key
+// This allows `PathBuf` to be used in WasmRaw queries with a simplier syntax.
+impl<T, C> From<PathBuf<T, C>> for Binary
+where
+    C: Codec<T>,
+{
+    fn from(path: PathBuf<T, C>) -> Self {
+        path.storage_key.into()
     }
 }
 
