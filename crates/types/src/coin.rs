@@ -71,7 +71,7 @@ impl fmt::Debug for Coin {
 ///
 /// Therefore, we create this struct which holds references to the denom and
 /// amount.
-#[derive(Serialize)]
+#[derive(Serialize, BorshSerialize, Clone, Copy, PartialEq, Eq)]
 pub struct CoinRef<'a> {
     pub denom: &'a Denom,
     pub amount: &'a Uint256,
