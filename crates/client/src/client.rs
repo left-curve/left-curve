@@ -272,15 +272,24 @@ impl Client {
     }
 
     /// Query a raw key-value pair in a contract's internal state.
-    pub async fn query_wasm_raw(
+    pub async fn query_wasm_raw<B>(
         &self,
         contract: Addr,
-        key: Binary,
+        key: B,
         height: Option<u64>,
-    ) -> anyhow::Result<Option<Binary>> {
-        self.query_app(&Query::WasmRaw { contract, key }, height)
-            .await
-            .map(|res| res.as_wasm_raw())
+    ) -> anyhow::Result<Option<Binary>>
+    where
+        B: Into<Binary>,
+    {
+        self.query_app(
+            &Query::WasmRaw {
+                contract,
+                key: key.into(),
+            },
+            height,
+        )
+        .await
+        .map(|res| res.as_wasm_raw())
     }
 
     /// Call the contract's query entry point with the given message.

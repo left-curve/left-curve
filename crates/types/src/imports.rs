@@ -373,9 +373,15 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_contracts())
     }
 
-    pub fn query_wasm_raw(&self, contract: Addr, key: Binary) -> StdResult<Option<Binary>> {
+    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> StdResult<Option<Binary>>
+    where
+        B: Into<Binary>,
+    {
         self.inner
-            .query_chain(Query::WasmRaw { contract, key })
+            .query_chain(Query::WasmRaw {
+                contract,
+                key: key.into(),
+            })
             .map(|res| res.as_wasm_raw())
     }
 
