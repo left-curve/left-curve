@@ -175,6 +175,19 @@ impl Denom {
     pub fn parts_mut(&mut self) -> &mut Vec<Part> {
         &mut self.0
     }
+
+    /// Return the denom's namespace.
+    ///
+    /// A denom's namespace is its first part, if it has more than one part.
+    /// A denom consisting of only one part is considered to be under the "top-level
+    /// namespace", in which case this method returns `None`.
+    pub fn namespace(&self) -> Option<&Part> {
+        if self.0.len() > 1 {
+            Some(&self.0[0])
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for Denom {
