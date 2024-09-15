@@ -1,10 +1,15 @@
 use {
-    crate::{Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json},
+    crate::{
+        Addr, Binary, BlockInfo, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json,
+        JsonSerExt, StdResult,
+    },
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
 };
+
+// ----------------------------------- trait -----------------------------------
 
 /// Represents a query request to a contract.
 ///
@@ -17,6 +22,8 @@ pub trait QueryRequest: Sized {
     /// The response type for this query.
     type Response;
 }
+
+// ---------------------------------- request ----------------------------------
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -82,6 +89,37 @@ pub enum Query {
     /// Returns: `Vec<QueryResponse>`.
     Multi(Vec<Query>),
 }
+
+impl Query {
+    pub fn wasm_raw<B>(contract: Addr, key: B) -> Self
+    where
+        B: Into<Binary>,
+    {
+        Query::WasmRaw {
+            contract,
+            key: key.into(),
+        }
+    }
+
+    pub fn wasm_smart<M>(contract: Addr, msg: &M) -> StdResult<Self>
+    where
+        M: Serialize,
+    {
+        Ok(Query::WasmSmart {
+            contract,
+            msg: msg.to_json_value()?,
+        })
+    }
+
+    pub fn multi<I>(queries: I) -> Self
+    where
+        I: IntoIterator<Item = Query>,
+    {
+        Query::Multi(queries.into_iter().collect())
+    }
+}
+
+// --------------------------------- response ----------------------------------
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct InfoResponse {
