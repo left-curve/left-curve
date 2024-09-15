@@ -54,7 +54,7 @@ impl fmt::Debug for Coin {
     }
 }
 
-// ----------------------------------- coins -----------------------------------
+// --------------------------------- coin ref ----------------------------------
 
 /// A record in the `Coins` map.
 ///
@@ -76,6 +76,20 @@ pub struct CoinRef<'a> {
     pub denom: &'a Denom,
     pub amount: &'a Uint256,
 }
+
+impl fmt::Display for CoinRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.denom, self.amount)
+    }
+}
+
+impl fmt::Debug for CoinRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CoinRef({}:{})", self.denom, self.amount)
+    }
+}
+
+// ----------------------------------- coins -----------------------------------
 
 /// A sorted list of coins or tokens.
 #[derive(
