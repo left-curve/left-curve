@@ -24,8 +24,6 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     suite.send_message(&accounts["rhaki"], transfer_msg.clone())?;
 
     // Create a tx with sequence 0, 1, 2, 4.
-    let info = suite.query_info().should_succeed();
-
     let txs: Vec<Tx> = [0, 1, 2, 4]
         .into_iter()
         .filter_map(|sequence| {
@@ -34,7 +32,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
                 let tx = accounts["rhaki"].sign_transaction(
                     vec![transfer_msg.clone()],
                     0,
-                    &info.chain_id,
+                    &suite.chain_id,
                     sequence,
                     None,
                 )?;
@@ -93,7 +91,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint256::from(30_u128));
 
     // Try create a block with a tx with sequence = 3
-    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &info.chain_id, 3, None)?;
+    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &suite.chain_id, 3, None)?;
 
     suite.make_block(vec![tx])?.tx_outcomes[0]
         .result
@@ -126,10 +124,10 @@ mod backrunner {
     // Accounts can do any action while backrunning. In this test, the account
     // attempts to mint itself a token.
     pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-        let info = ctx.querier.query_info()?;
+        let cfg = ctx.querier.query_config()?;
 
         Ok(Response::new().add_message(Message::execute(
-            info.config.bank,
+            cfg.bank,
             &grug_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: Denom::new("nft/badkids/1")?,

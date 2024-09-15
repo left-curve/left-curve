@@ -5,8 +5,8 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        Addr, Binary, BlockInfo, BlockOutcome, Coins, ConfigUpdates, ContractInfo, Denom, Duration,
-        GenesisState, Hash256, InfoResponse, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
+        Addr, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates, ContractInfo, Denom,
+        Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
         Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256, Uint64,
         UnsignedTx,
     },
@@ -447,10 +447,10 @@ where
         Ok(())
     }
 
-    pub fn query_info(&self) -> anyhow::Result<InfoResponse> {
+    pub fn query_config(&self) -> anyhow::Result<Config> {
         self.app
-            .do_query_app(Query::Info {}, 0, false)
-            .map(|val| val.as_info())
+            .do_query_app(Query::Config {}, 0, false)
+            .map(|val| val.as_config())
             .map_err(Into::into)
     }
 

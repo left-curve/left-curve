@@ -11,7 +11,7 @@
 
 use {
     crate::{
-        Addr, Batch, Binary, Coins, ContractInfo, Denom, Hash256, InfoResponse, Json, JsonDeExt,
+        Addr, Batch, Binary, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt,
         JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
     },
     dyn_clone::DynClone,
@@ -278,10 +278,10 @@ impl<'a> QuerierWrapper<'a> {
         self.inner.query_chain(req)
     }
 
-    pub fn query_info(&self) -> StdResult<InfoResponse> {
+    pub fn query_config(&self) -> StdResult<Config> {
         self.inner
-            .query_chain(Query::Info {})
-            .map(|res| res.as_info())
+            .query_chain(Query::Config {})
+            .map(|res| res.as_config())
     }
 
     pub fn query_app_config<K, T>(&self, key: K) -> StdResult<T>
