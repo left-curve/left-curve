@@ -168,14 +168,6 @@ impl Denom {
         Self(parts.into_iter().map(Part::new_unchecked).collect())
     }
 
-    pub fn parts(&self) -> &Vec<Part> {
-        &self.0
-    }
-
-    pub fn parts_mut(&mut self) -> &mut Vec<Part> {
-        &mut self.0
-    }
-
     /// Return the denom's namespace.
     ///
     /// A denom's namespace is its first part, if it has more than one part.
@@ -187,6 +179,18 @@ impl Denom {
         } else {
             None
         }
+    }
+
+    pub fn parts(&self) -> &Vec<Part> {
+        &self.0
+    }
+
+    pub fn parts_mut(&mut self) -> &mut Vec<Part> {
+        &mut self.0
+    }
+
+    pub fn into_parts(self) -> Vec<Part> {
+        self.0
     }
 }
 
