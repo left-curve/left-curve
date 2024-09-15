@@ -27,7 +27,7 @@ mod taxman {
     }
 
     pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-        let info = ctx.querier.query_info()?;
+        let cfg = ctx.querier.query_config()?;
 
         // In simulation mode, don't do anything.
         if ctx.mode == AuthMode::Simulate {
@@ -38,7 +38,7 @@ mod taxman {
 
         let withhold_msg = if !withhold_amount.is_zero() {
             Some(Message::execute(
-                info.config.bank,
+                cfg.bank,
                 &grug_bank::ExecuteMsg::ForceTransfer {
                     from: tx.sender,
                     to: ctx.contract,
@@ -55,7 +55,7 @@ mod taxman {
     }
 
     pub fn finalize_fee(ctx: AuthCtx, tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
-        let info = ctx.querier.query_info()?;
+        let cfg = ctx.querier.query_config()?;
 
         // In simulation mode, don't do anything.
         if ctx.mode == AuthMode::Simulate {
@@ -70,7 +70,7 @@ mod taxman {
 
         let charge_msg = if !charge_amount.is_zero() {
             Some(Message::transfer(
-                info.config.owner,
+                cfg.owner,
                 Coins::one(FEE_DENOM.clone(), charge_amount)?,
             )?)
         } else {

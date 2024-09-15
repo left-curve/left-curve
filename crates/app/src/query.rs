@@ -2,24 +2,19 @@ use {
     crate::{
         call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
         StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
-        LAST_FINALIZED_BLOCK,
     },
     grug_storage::Bound,
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Context, ContractInfo,
-        Denom, GenericResult, Hash256, InfoResponse, Json, Order, StdResult, Storage,
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Config, Context,
+        ContractInfo, Denom, GenericResult, Hash256, Json, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn query_info(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<InfoResponse> {
-    Ok(InfoResponse {
-        chain_id: CHAIN_ID.load_with_gas(storage, gas_tracker.clone())?,
-        config: CONFIG.load_with_gas(storage, gas_tracker.clone())?,
-        last_finalized_block: LAST_FINALIZED_BLOCK.load_with_gas(storage, gas_tracker)?,
-    })
+pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Config> {
+    CONFIG.load_with_gas(storage, gas_tracker)
 }
 
 pub fn query_app_config(

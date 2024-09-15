@@ -1,16 +1,9 @@
 mod db;
-mod keys;
-mod prompt;
 mod query;
 mod start;
-mod tendermint;
-mod tx;
 
 use {
-    crate::{
-        db::DbCmd, keys::KeysCmd, query::QueryCmd, start::StartCmd, tendermint::TendermintCmd,
-        tx::TxCmd,
-    },
+    crate::{db::DbCmd, query::QueryCmd, start::StartCmd},
     anyhow::anyhow,
     clap::Parser,
     home::home_dir,
@@ -42,24 +35,12 @@ enum Command {
     #[command(subcommand, next_display_order = None)]
     Db(DbCmd),
 
-    /// Manage keys [alias: k]
-    #[command(subcommand, next_display_order = None, alias = "k")]
-    Keys(KeysCmd),
-
     /// Make a query [alias: q]
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
     /// Start the node
     Start(StartCmd),
-
-    /// Tendermint status and queries [alias: tm]
-    #[command(next_display_order = None, alias = "tm")]
-    Tendermint(TendermintCmd),
-
-    /// Send a transaction
-    #[command(next_display_order = None)]
-    Tx(TxCmd),
 }
 
 #[tokio::main]
@@ -77,15 +58,12 @@ async fn main() -> anyhow::Result<()> {
             .ok_or(anyhow!("Failed to find home directory"))?
             .join(DEFAULT_APP_DIR)
     };
+
     let data_dir = app_dir.join("data");
-    let keys_dir = app_dir.join("keys");
 
     match cli.command {
         Command::Db(cmd) => cmd.run(data_dir),
-        Command::Keys(cmd) => cmd.run(keys_dir),
         Command::Query(cmd) => cmd.run().await,
         Command::Start(cmd) => cmd.run(data_dir).await,
-        Command::Tendermint(cmd) => cmd.run().await,
-        Command::Tx(cmd) => cmd.run(keys_dir).await,
     }
 }

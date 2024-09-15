@@ -12,8 +12,7 @@ mod query_maker {
 
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> anyhow::Result<Response> {
         // Attempt to make a multi query.
-        let [res1, res2, res3] = ctx.querier.query_multi([
-            Query::Info {},
+        let [res1, res2] = ctx.querier.query_multi([
             Query::Balance {
                 address: ctx.contract,
                 denom: Denom::new("uusdc")?,
@@ -23,9 +22,8 @@ mod query_maker {
             },
         ])?;
 
-        ensure!(res1.as_info().chain_id == "kebab");
-        ensure!(res2.as_balance().amount.is_zero());
-        ensure!(res3.as_supply().amount == Uint256::from(123_u128));
+        ensure!(res1.as_balance().amount.is_zero());
+        ensure!(res2.as_supply().amount == Uint256::from(123_u128));
 
         Ok(Response::new())
     }

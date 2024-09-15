@@ -4,9 +4,9 @@ use {
     grug_account::{QueryMsg, StateResponse},
     grug_jmt::Proof,
     grug_types::{
-        Addr, Binary, Coin, Coins, ConfigUpdates, ContractInfo, Denom, GenericResult, Hash256,
-        HashExt, InfoResponse, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse,
-        StdError, Tx, TxOutcome, UnsignedTx,
+        Addr, Binary, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom, GenericResult,
+        Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError,
+        Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -170,12 +170,11 @@ impl Client {
             .map_err(Into::into)
     }
 
-    /// Query the chain-level information, including the chain ID, config, and
-    /// the latest finalized block.
-    pub async fn query_info(&self, height: Option<u64>) -> anyhow::Result<InfoResponse> {
-        self.query_app(&Query::Info {}, height)
+    /// Query the chain-level configuration.
+    pub async fn query_config(&self, height: Option<u64>) -> anyhow::Result<Config> {
+        self.query_app(&Query::Config {}, height)
             .await
-            .map(|res| res.as_info())
+            .map(|res| res.as_config())
     }
 
     /// Query an account's balance in a single denom.
@@ -404,14 +403,6 @@ impl Client {
         sign_opt: SigningOption<'_>,
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
-        // If chain ID is not provided, query from the chain
-        let task_chain_id = || async {
-            match sign_opt.chain_id {
-                None => self.query_info(None).await.map(|res| res.chain_id),
-                Some(id) => Ok(id),
-            }
-        };
-
         // If sequence is not provided, query from the chain
         let task_sequence = || async {
             match sign_opt.sequence {
@@ -456,13 +447,12 @@ impl Client {
             }
         };
 
-        let (chain_id, sequence, gas_limit) =
-            futures::try_join!(task_chain_id(), task_sequence(), task_gas_limit())?;
+        let (sequence, gas_limit) = futures::try_join!(task_sequence(), task_gas_limit())?;
 
         let tx = sign_opt.signing_key.create_and_sign_tx(
             msgs,
             sign_opt.sender,
-            &chain_id,
+            &sign_opt.chain_id,
             sequence,
             gas_limit,
         )?;

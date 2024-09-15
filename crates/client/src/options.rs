@@ -5,10 +5,9 @@ use {crate::SigningKey, grug_types::Addr};
 pub struct SigningOption<'a> {
     pub signing_key: &'a SigningKey,
     pub sender: Addr,
-    pub chain_id: Option<String>,
+    pub chain_id: String,
+    // If sequence number isn't provided, the client will query the node for it.
     pub sequence: Option<u32>,
-    // TODO: add options for ADR-070 unordered transactions:
-    // https://github.com/left-curve/grug/pull/54
 }
 
 /// Options on how to set a gas limit on the transaction.
