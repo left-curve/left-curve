@@ -32,7 +32,7 @@ mod query_maker {
 
 #[test]
 fn handling_multi_query() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123_u128)?)?
         .set_chain_id("kebab")
         .set_owner("larry")?
@@ -42,7 +42,7 @@ fn handling_multi_query() -> anyhow::Result<()> {
 
     // If the contract successfully deploys, the multi query must have worked.
     suite.upload_and_instantiate(
-        &accounts["larry"],
+        accounts.get_mut("larry").unwrap(),
         query_maker_code,
         "query_maker",
         &Empty {},

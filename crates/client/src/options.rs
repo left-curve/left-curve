@@ -1,9 +1,12 @@
-use {crate::SigningKey, grug_types::Addr};
+use grug_types::{Addr, AsyncSigner};
 
 /// Configurations necessary for signing a transaction, including the signing
 /// key, sender address, and so on.
-pub struct SigningOption<'a> {
-    pub signing_key: &'a SigningKey,
+pub struct SigningOption<'a, S>
+where
+    S: AsyncSigner,
+{
+    pub signing_key: &'a mut S,
     pub sender: Addr,
     pub chain_id: String,
     // If sequence number isn't provided, the client will query the node for it.

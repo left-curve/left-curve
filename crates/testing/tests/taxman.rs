@@ -164,7 +164,7 @@ fn withholding_and_finalizing_fee_works(
         .with_finalize_fee(Box::new(taxman::finalize_fee))
         .build();
 
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .set_taxman_code(taxman_code, |_fee_denom, _fee_rate| Empty {})
         .add_account("owner", Coins::new())
         .unwrap()
@@ -180,12 +180,14 @@ fn withholding_and_finalizing_fee_works(
         .build()
         .unwrap();
 
+    let to = accounts["receiver"].address;
+
     let outcome = suite
         .send_message_with_gas(
-            &accounts["sender"],
+            accounts.get_mut("sender").unwrap(),
             gas_limit,
             Message::transfer(
-                accounts["receiver"].address,
+                to,
                 Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
             )
             .unwrap(),
@@ -227,7 +229,7 @@ fn finalizing_fee_erroring() {
         .with_finalize_fee(Box::new(taxman::bugged_finalize_fee))
         .build();
 
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .set_taxman_code(bugged_taxman_code, |_fee_denom, _fee_rate| Empty {})
         .add_account("owner", Coins::new())
         .unwrap()
@@ -241,14 +243,16 @@ fn finalizing_fee_erroring() {
         .build()
         .unwrap();
 
+    let to = accounts["sender"].address;
+
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
     // zero gas limit.
     let TxOutcome { events, result, .. } = suite
         .send_message_with_gas(
-            &accounts["sender"],
+            accounts.get_mut("sender").unwrap(),
             0,
-            Message::transfer(accounts["sender"].address, Coins::new()).unwrap(),
+            Message::transfer(to, Coins::new()).unwrap(),
         )
         .unwrap();
 

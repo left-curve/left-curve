@@ -48,7 +48,7 @@ struct Balances {
 
 #[test]
 fn cronjob_works() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", [
             ("uatom", 100_u128),
             ("uosmo", 100),
@@ -64,21 +64,23 @@ fn cronjob_works() -> anyhow::Result<()> {
         .with_cron_execute(Box::new(tester::cron_execute))
         .build();
 
+    let receiver = accounts["jake"].address;
+
     // Block time: 1
     //
     // Upload the tester contract code.
-    let tester_code_hash = suite.upload(&accounts["larry"], tester_code)?;
+    let tester_code_hash = suite.upload(accounts.get_mut("larry").unwrap(), tester_code)?;
 
     // Block time: 2
     //
     // Deploy three tester contracts with different jobs.
     // Each contract is given an initial coin balance.
     let cron1 = suite.instantiate(
-        &accounts["larry"],
+        accounts.get_mut("larry").unwrap(),
         tester_code_hash,
         "cron1",
         &tester::Job {
-            receiver: accounts["jake"].address,
+            receiver,
             coin: Coin::new("uatom", 1_u128)?,
         },
         Coins::one("uatom", 3_u128)?,
@@ -86,11 +88,11 @@ fn cronjob_works() -> anyhow::Result<()> {
 
     // Block time: 3
     let cron2 = suite.instantiate(
-        &accounts["larry"],
+        accounts.get_mut("larry").unwrap(),
         tester_code_hash,
         "cron2",
         &tester::Job {
-            receiver: accounts["jake"].address,
+            receiver,
             coin: Coin::new("uosmo", 1_u128)?,
         },
         Coins::one("uosmo", 3_u128)?,
@@ -98,11 +100,11 @@ fn cronjob_works() -> anyhow::Result<()> {
 
     // Block time: 4
     let cron3 = suite.instantiate(
-        &accounts["larry"],
+        accounts.get_mut("larry").unwrap(),
         tester_code_hash,
         "cron3",
         &tester::Job {
-            receiver: accounts["jake"].address,
+            receiver,
             coin: Coin::new("umars", 1_u128)?,
         },
         Coins::one("umars", 3_u128)?,
@@ -124,7 +126,7 @@ fn cronjob_works() -> anyhow::Result<()> {
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite.configure(&accounts["larry"], updates, BTreeMap::new())?;
+    suite.configure(accounts.get_mut("larry").unwrap(), updates, BTreeMap::new())?;
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.

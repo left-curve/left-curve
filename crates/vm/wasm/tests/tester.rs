@@ -29,7 +29,7 @@ fn read_wasm_file(filename: &str) -> io::Result<Binary> {
 }
 
 fn setup_test() -> anyhow::Result<(TestSuite<WasmVm>, TestAccounts, Addr)> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM.clone(), 32_100_000_u128)?)?
         .set_owner("owner")?
@@ -37,7 +37,7 @@ fn setup_test() -> anyhow::Result<(TestSuite<WasmVm>, TestAccounts, Addr)> {
         .build()?;
 
     let (_, tester) = suite.upload_and_instantiate_with_gas(
-        &accounts["sender"],
+        accounts.get_mut("sender").unwrap(),
         320_000_000,
         read_wasm_file("grug_tester.wasm")?,
         "tester",
@@ -50,14 +50,18 @@ fn setup_test() -> anyhow::Result<(TestSuite<WasmVm>, TestAccounts, Addr)> {
 
 #[test]
 fn infinite_loop() -> anyhow::Result<()> {
-    let (mut suite, accounts, tester) = setup_test()?;
+    let (mut suite, mut accounts, tester) = setup_test()?;
 
     suite
-        .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
-            contract: tester,
-            msg: grug_tester::ExecuteMsg::InfiniteLoop {}.to_json_value()?,
-            funds: Coins::new(),
-        })?
+        .send_message_with_gas(
+            accounts.get_mut("sender").unwrap(),
+            1_000_000,
+            Message::Execute {
+                contract: tester,
+                msg: grug_tester::ExecuteMsg::InfiniteLoop {}.to_json_value()?,
+                funds: Coins::new(),
+            },
+        )?
         .result
         .should_fail_with_error("out of gas");
 
@@ -66,7 +70,7 @@ fn infinite_loop() -> anyhow::Result<()> {
 
 #[test]
 fn immutable_state() -> anyhow::Result<()> {
-    let (mut suite, accounts, tester) = setup_test()?;
+    let (mut suite, mut accounts, tester) = setup_test()?;
 
     // Query the tester contract.
     //
@@ -90,15 +94,19 @@ fn immutable_state() -> anyhow::Result<()> {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .send_message_with_gas(&accounts["sender"], 1_000_000, Message::Execute {
-            contract: tester,
-            msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
-                key: "larry".to_string(),
-                value: "engineer".to_string(),
-            }
-            .to_json_value()?,
-            funds: Coins::new(),
-        })?
+        .send_message_with_gas(
+            accounts.get_mut("sender").unwrap(),
+            1_000_000,
+            Message::Execute {
+                contract: tester,
+                msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
+                    key: "larry".to_string(),
+                    value: "engineer".to_string(),
+                }
+                .to_json_value()?,
+                funds: Coins::new(),
+            },
+        )?
         .result
         .should_fail_with_error(VmError::ImmutableState);
 
@@ -120,13 +128,13 @@ fn query_stack_overflow() -> anyhow::Result<()> {
 
 #[test]
 fn message_stack_overflow() -> anyhow::Result<()> {
-    let (mut suite, accounts, tester) = setup_test()?;
+    let (mut suite, mut accounts, tester) = setup_test()?;
 
     // The contract attempts to return a Response with `Execute::StackOverflow`
     // to itself in a loop. Should raise the "exceeded max message depth" error.
     suite
         .send_message_with_gas(
-            &accounts["sender"],
+            accounts.get_mut("sender").unwrap(),
             10_000_000,
             Message::execute(
                 tester,

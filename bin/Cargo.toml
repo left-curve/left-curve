@@ -15,7 +15,6 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow             = { workspace = true }
-bip32              = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
@@ -28,7 +27,6 @@ grug-types         = { path = "../crates/types" }
 grug-vm-wasm       = { path = "../crates/vm/wasm" }
 hex                = { workspace = true }
 home               = { workspace = true }
-rand               = { workspace = true }
 serde              = { workspace = true }
 tendermint-rpc     = { workspace = true, features = ["http-client"] }
 tokio              = { workspace = true }

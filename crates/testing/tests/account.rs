@@ -1,6 +1,6 @@
 use {
     grug_account::Credential,
-    grug_testing::{Signer, TestBuilder},
+    grug_testing::TestBuilder,
     grug_types::{
         Coins, Duration, JsonDeExt, Message, NumberConst, ResultExt, Timestamp, Tx, Uint256,
     },
@@ -9,7 +9,7 @@ use {
 
 #[test]
 fn check_tx_and_finalize() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("rhaki", [("uatom", 100_u128)])?
         .add_account("larry", Coins::new())?
         .add_account("owner", Coins::new())?
@@ -21,7 +21,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     let transfer_msg = Message::transfer(accounts["larry"].address, Coins::one("uatom", 10_u128)?)?;
 
     // Create a tx to set sequence to 1.
-    suite.send_message(&accounts["rhaki"], transfer_msg.clone())?;
+    suite.send_message(accounts.get_mut("rhaki").unwrap(), transfer_msg.clone())?;
 
     // Create a tx with sequence 0, 1, 2, 4.
     let txs: Vec<Tx> = [0, 1, 2, 4]
@@ -29,12 +29,11 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .filter_map(|sequence| {
             (|| -> anyhow::Result<_> {
                 // Sign the tx
-                let tx = accounts["rhaki"].sign_transaction(
+                let tx = accounts["rhaki"].sign_transaction_with_sequence(
                     vec![transfer_msg.clone()],
-                    0,
                     &suite.chain_id,
                     sequence,
-                    None,
+                    0,
                 )?;
 
                 // Check the tx and if the result is ok, return the tx.
@@ -91,7 +90,12 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint256::from(30_u128));
 
     // Try create a block with a tx with sequence = 3
-    let tx = accounts["rhaki"].sign_transaction(vec![transfer_msg], 0, &suite.chain_id, 3, None)?;
+    let tx = accounts["rhaki"].sign_transaction_with_sequence(
+        vec![transfer_msg],
+        &suite.chain_id,
+        3,
+        0,
+    )?;
 
     suite.make_block(vec![tx])?.tx_outcomes[0]
         .result
@@ -156,7 +160,7 @@ fn backrunning_works() -> anyhow::Result<()> {
         .with_backrun(Box::new(backrunner::backrun))
         .build();
 
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .set_account_code(account, |public_key| grug_account::InstantiateMsg {
             public_key,
         })?
@@ -165,10 +169,12 @@ fn backrunning_works() -> anyhow::Result<()> {
         .set_owner("sender")?
         .build()?;
 
+    let receiver = accounts["receiver"].address;
+
     // Attempt to send a transaction
     suite.transfer(
-        &accounts["sender"],
-        accounts["receiver"].address,
+        accounts.get_mut("sender").unwrap(),
+        receiver,
         Coins::one("ugrug", 123_u128)?,
     )?;
 
@@ -194,7 +200,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .with_backrun(Box::new(backrunner::bugged_backrun))
         .build();
 
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .set_account_code(bugged_account, |public_key| grug_account::InstantiateMsg {
             public_key,
         })?
@@ -203,11 +209,13 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .set_owner("sender")?
         .build()?;
 
+    let receiver = accounts["receiver"].address;
+
     // Attempt to make a transfer; should fail.
     suite
         .send_message(
-            &accounts["sender"],
-            Message::transfer(accounts["receiver"].address, Coins::one("ugrug", 123_u128)?)?,
+            accounts.get_mut("sender").unwrap(),
+            Message::transfer(receiver, Coins::one("ugrug", 123_u128)?)?,
         )?
         .result
         .should_fail_with_error("division by zero: 1 / 0");

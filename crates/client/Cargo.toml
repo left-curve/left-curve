@@ -11,26 +11,9 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-aes-gcm        = { workspace = true, features = ["std"] }
 anyhow         = { workspace = true }
-bip32          = { workspace = true }
-chrono         = { workspace = true }
-futures        = { workspace = true }
-grug-account   = { path = "../../contracts/account", features = ["library"] }
-grug-crypto    = { path = "../../crates/crypto" }
 grug-jmt       = { path = "../../crates/jellyfish-merkle" }
 grug-types     = { path = "../../crates/types" }
-hex            = { workspace = true }
-k256           = { workspace = true }
-pbkdf2         = { workspace = true }
-rand           = { workspace = true }
 serde          = { workspace = true }
-sha2           = { workspace = true }
-signature      = { workspace = true }
 tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
-
-[dev-dependencies]
-grug-bank   = { path = "../../contracts/bank", features = ["library"] }
-grug-taxman = { path = "../../contracts/taxman", features = ["library"] }
-home        = { workspace = true }
