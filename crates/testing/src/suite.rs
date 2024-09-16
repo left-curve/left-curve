@@ -1,5 +1,4 @@
 use {
-    crate::Signer,
     anyhow::ensure,
     grug_app::{App, AppError, Vm},
     grug_crypto::sha2_256,
@@ -7,16 +6,12 @@ use {
     grug_types::{
         Addr, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates, ContractInfo, Denom,
         Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
-        Outcome, Query, QueryRequest, ResultExt, StdError, Tx, TxOutcome, Uint256, Uint64,
+        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome, Uint256, Uint64,
         UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{
-        collections::{BTreeMap, HashMap},
-        error::Error,
-        fmt::Debug,
-    },
+    std::{collections::BTreeMap, error::Error, fmt::Debug},
 };
 
 pub struct TestSuite<VM = RustVm>
@@ -32,8 +27,6 @@ where
     /// Each time we make a new block, we set the new block's time as the
     /// previous block's time plus this value.
     pub block_time: Duration,
-    /// Internally track each account's sequence number.
-    pub sequences: HashMap<Addr, u32>,
     /// Transaction gas limit to use if user doesn't specify one.
     default_gas_limit: u64,
 }
@@ -88,7 +81,6 @@ where
             chain_id,
             block: genesis_block,
             block_time,
-            sequences: HashMap::new(),
             default_gas_limit,
         })
     }
@@ -150,14 +142,18 @@ where
     }
 
     /// Execute a single message.
-    pub fn send_message(&mut self, signer: &dyn Signer, msg: Message) -> anyhow::Result<TxOutcome> {
+    pub fn send_message(
+        &mut self,
+        signer: &mut dyn Signer,
+        msg: Message,
+    ) -> anyhow::Result<TxOutcome> {
         self.send_message_with_gas(signer, self.default_gas_limit, msg)
     }
 
     /// Execute a single message under the given gas limit.
     pub fn send_message_with_gas(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         msg: Message,
     ) -> anyhow::Result<TxOutcome> {
@@ -167,7 +163,7 @@ where
     /// Execute one or more messages.
     pub fn send_messages(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TxOutcome> {
         self.send_messages_with_gas(signer, self.default_gas_limit, msgs)
@@ -176,16 +172,14 @@ where
     /// Execute one or more messages under the given gas limit.
     pub fn send_messages_with_gas(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         msgs: Vec<Message>,
     ) -> anyhow::Result<TxOutcome> {
         ensure!(!msgs.is_empty(), "please send more than zero messages");
 
         // Compose and sign a single message
-        let sequence = self.sequences.entry(signer.address()).or_insert(0);
-        let tx = signer.sign_transaction(msgs, gas_limit, &self.chain_id, *sequence, None)?;
-        *sequence += 1;
+        let tx = signer.sign_transaction(msgs, &self.chain_id, gas_limit)?;
 
         self.send_transaction(tx)
     }
@@ -193,7 +187,7 @@ where
     /// Update the chain's config.
     pub fn configure(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         updates: ConfigUpdates,
         app_updates: BTreeMap<String, Op<Json>>,
     ) -> anyhow::Result<()> {
@@ -203,7 +197,7 @@ where
     /// Update the chain's config under the given gas limit.
     pub fn configure_with_gas(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         updates: ConfigUpdates,
         app_updates: BTreeMap<String, Op<Json>>,
@@ -216,7 +210,7 @@ where
     }
 
     /// Make a transfer of tokens.
-    pub fn transfer<C>(&mut self, signer: &dyn Signer, to: Addr, coins: C) -> anyhow::Result<()>
+    pub fn transfer<C>(&mut self, signer: &mut dyn Signer, to: Addr, coins: C) -> anyhow::Result<()>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -227,7 +221,7 @@ where
     /// Make a transfer of tokens under the given gas limit.
     pub fn transfer_with_gas<C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         to: Addr,
         coins: C,
@@ -244,7 +238,7 @@ where
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload<B>(&mut self, signer: &dyn Signer, code: B) -> anyhow::Result<Hash256>
+    pub fn upload<B>(&mut self, signer: &mut dyn Signer, code: B) -> anyhow::Result<Hash256>
     where
         B: Into<Binary>,
     {
@@ -254,7 +248,7 @@ where
     /// Upload a code under the given gas limit. Return the code's hash.
     pub fn upload_with_gas<B>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         code: B,
     ) -> anyhow::Result<Hash256>
@@ -274,7 +268,7 @@ where
     /// Instantiate a contract. Return the contract's address.
     pub fn instantiate<M, S, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         code_hash: Hash256,
         salt: S,
         msg: &M,
@@ -293,7 +287,7 @@ where
     /// address.
     pub fn instantiate_with_gas<M, S, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         code_hash: Hash256,
         salt: S,
@@ -324,7 +318,7 @@ where
     /// code hash as well as the contract's address.
     pub fn upload_and_instantiate<M, B, S, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         code: B,
         salt: S,
         msg: &M,
@@ -344,7 +338,7 @@ where
     /// given gas limit. Return the code hash as well as the contract's address.
     pub fn upload_and_instantiate_with_gas<M, B, S, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         code: B,
         salt: S,
@@ -376,7 +370,7 @@ where
     /// Execute a contrat.
     pub fn execute<M, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         contract: Addr,
         msg: &M,
         funds: C,
@@ -392,7 +386,7 @@ where
     /// Execute a contrat under the given gas limit.
     pub fn execute_with_gas<M, C>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         contract: Addr,
         msg: &M,
@@ -413,7 +407,7 @@ where
     /// Migrate a contract to a new code hash.
     pub fn migrate<M>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
@@ -427,7 +421,7 @@ where
     /// Migrate a contract to a new code hash, under the given gas limit.
     pub fn migrate_with_gas<M>(
         &mut self,
-        signer: &dyn Signer,
+        signer: &mut dyn Signer,
         gas_limit: u64,
         contract: Addr,
         new_code_hash: Hash256,

@@ -39,7 +39,7 @@ mod query_maker {
 
 #[test]
 fn query_super_smart() {
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123_u128).unwrap())
         .unwrap()
         .set_chain_id("kebab")
@@ -54,7 +54,7 @@ fn query_super_smart() {
 
     let (_, contract) = suite
         .upload_and_instantiate(
-            &accounts["larry"],
+            accounts.get_mut("larry").unwrap(),
             code,
             "contract",
             &Empty {},

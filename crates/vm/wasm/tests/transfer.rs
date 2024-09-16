@@ -15,7 +15,7 @@ static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.1").u
 
 #[test]
 fn transfers() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM.clone(), 300_000_u128)?)?
         .add_account("receiver", Coins::new())?
@@ -23,6 +23,8 @@ fn transfers() -> anyhow::Result<()> {
         .set_fee_denom(DENOM.clone())
         .set_fee_rate(*FEE_RATE)
         .build()?;
+
+    let to = accounts["receiver"].address;
 
     // Check that sender has been given 300,000 ugrug.
     // Sender needs to have sufficient tokens to cover gas fee and the transfers.
@@ -34,24 +36,25 @@ fn transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint256::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
-    let outcome = suite.send_messages_with_gas(&accounts["sender"], 2_500_000, vec![
-        Message::Transfer {
-            to: accounts["receiver"].address,
-            coins: Coins::one(DENOM.clone(), 10_u128)?,
-        },
-        Message::Transfer {
-            to: accounts["receiver"].address,
-            coins: Coins::one(DENOM.clone(), 15_u128)?,
-        },
-        Message::Transfer {
-            to: accounts["receiver"].address,
-            coins: Coins::one(DENOM.clone(), 20_u128)?,
-        },
-        Message::Transfer {
-            to: accounts["receiver"].address,
-            coins: Coins::one(DENOM.clone(), 25_u128)?,
-        },
-    ])?;
+    let outcome =
+        suite.send_messages_with_gas(accounts.get_mut("sender").unwrap(), 2_500_000, vec![
+            Message::Transfer {
+                to,
+                coins: Coins::one(DENOM.clone(), 10_u128)?,
+            },
+            Message::Transfer {
+                to,
+                coins: Coins::one(DENOM.clone(), 15_u128)?,
+            },
+            Message::Transfer {
+                to,
+                coins: Coins::one(DENOM.clone(), 20_u128)?,
+            },
+            Message::Transfer {
+                to,
+                coins: Coins::one(DENOM.clone(), 25_u128)?,
+            },
+        ])?;
 
     outcome.result.should_succeed();
 
@@ -88,13 +91,15 @@ fn transfers() -> anyhow::Result<()> {
 
 #[test]
 fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
         .add_account("sender", Coins::one(DENOM.clone(), 200_000_u128)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
         .set_fee_rate(*FEE_RATE)
         .build()?;
+
+    let to = accounts["receiver"].address;
 
     // Make a bank transfer with a small gas limit; should fail.
     // Bank transfers should take around ~1M gas.
@@ -104,10 +109,14 @@ fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
     // a host function call (in which case, a `VmError::OutOfGas`). We can only
     // say that the error has to be one of the two. Therefore, we simply ensure
     // the error message contains the word "gas".
-    let outcome = suite.send_message_with_gas(&accounts["sender"], 100_000, Message::Transfer {
-        to: accounts["receiver"].address,
-        coins: Coins::one(DENOM.clone(), 10_u128)?,
-    })?;
+    let outcome = suite.send_message_with_gas(
+        accounts.get_mut("sender").unwrap(),
+        100_000,
+        Message::Transfer {
+            to,
+            coins: Coins::one(DENOM.clone(), 10_u128)?,
+        },
+    )?;
 
     outcome.result.should_fail();
 

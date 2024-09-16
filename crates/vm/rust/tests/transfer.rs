@@ -8,11 +8,13 @@ static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap
 
 #[test]
 fn transfers() -> anyhow::Result<()> {
-    let (mut suite, accounts) = TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("sender", Coins::one(DENOM.clone(), 100_u128)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
+
+    let to = accounts["receiver"].address;
 
     // Check that sender has been given 100 ugrug
     suite
@@ -24,21 +26,21 @@ fn transfers() -> anyhow::Result<()> {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .send_messages(&accounts["sender"], vec![
+        .send_messages(accounts.get_mut("sender").unwrap(), vec![
             Message::Transfer {
-                to: accounts["receiver"].address,
+                to,
                 coins: Coins::one(DENOM.clone(), 10_u128)?,
             },
             Message::Transfer {
-                to: accounts["receiver"].address,
+                to,
                 coins: Coins::one(DENOM.clone(), 15_u128)?,
             },
             Message::Transfer {
-                to: accounts["receiver"].address,
+                to,
                 coins: Coins::one(DENOM.clone(), 20_u128)?,
             },
             Message::Transfer {
-                to: accounts["receiver"].address,
+                to,
                 coins: Coins::one(DENOM.clone(), 25_u128)?,
             },
         ])?
