@@ -142,7 +142,7 @@ impl QueryCmd {
             SubCmd::AppConfig { key } => Query::AppConfig { key },
             SubCmd::AppConfigs { start_after, limit } => Query::AppConfigs { start_after, limit },
             SubCmd::Balance { address, denom } => {
-                let denom = Denom::new(denom)?;
+                let denom = Denom::try_from(denom)?;
                 Query::Balance { address, denom }
             },
             SubCmd::Balances {
@@ -150,7 +150,7 @@ impl QueryCmd {
                 start_after,
                 limit,
             } => {
-                let start_after = start_after.map(Denom::new).transpose()?;
+                let start_after = start_after.map(Denom::try_from).transpose()?;
                 Query::Balances {
                     address,
                     start_after,
@@ -158,11 +158,11 @@ impl QueryCmd {
                 }
             },
             SubCmd::Supply { denom } => {
-                let denom = Denom::new(denom)?;
+                let denom = Denom::try_from(denom)?;
                 Query::Supply { denom }
             },
             SubCmd::Supplies { start_after, limit } => {
-                let start_after = start_after.map(Denom::new).transpose()?;
+                let start_after = start_after.map(Denom::try_from).transpose()?;
                 Query::Supplies { start_after, limit }
             },
             SubCmd::Code { hash } => Query::Code { hash },

@@ -480,7 +480,7 @@ where
 
         let fee_denom = self
             .fee_denom
-            .unwrap_or_else(|| Denom::new(DEFAULT_FEE_DENOM).unwrap());
+            .unwrap_or_else(|| Denom::from_str(DEFAULT_FEE_DENOM).unwrap());
 
         let fee_rate = self
             .fee_rate

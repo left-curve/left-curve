@@ -3,55 +3,28 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{
         de::{self, Error},
-        Serialize,
+        ser, Serialize,
     },
     std::{
-        fmt::{self, Display, Formatter},
+        fmt::{self, Display, Formatter, Write},
         io,
+        ops::{Deref, DerefMut},
         str::FromStr,
     },
 };
 
-/// Denomination of a coin.
-///
-/// A valid denom must satisfy the following criteria:
-///
-/// - no longer than 128 characters;
-/// - contains only ASCII alphanumeric characters (`a-z|A-Z|0-9`) or the forward
-///   slash (`/`);
-/// - no two consecutive forward slashes;
-///
-/// Note that this is more strict than [Cosmos SDK's criteria](https://github.com/cosmos/cosmos-sdk/blob/v0.50.9/types/coin.go#L838),
-/// so some valid Cosmos SDK denoms may not be valid Grug denoms.
+// ----------------------------------- part ------------------------------------
+
+/// A non-empty, alphanumeric string; makes up coin denoms.
 #[derive(Serialize, BorshSerialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Denom(String);
+pub struct Part(String);
 
-impl Denom {
-    pub const MAX_LEN: usize = 128;
-
-    /// Create a new denom from a string.
-    /// Error if the string isn't a valid denom.
-    pub fn new<T>(inner: T) -> StdResult<Self>
+impl Part {
+    pub fn new_unchecked<T>(s: T) -> Self
     where
         T: Into<String>,
     {
-        let inner = inner.into();
-
-        if inner.len() > Self::MAX_LEN {
-            return Err(StdError::invalid_denom(inner, "too short or too long"));
-        }
-
-        for subdenom in inner.split('/') {
-            if subdenom.is_empty() {
-                return Err(StdError::invalid_denom(inner, "empty subdenom"));
-            }
-
-            if subdenom.chars().any(|ch| !ch.is_ascii_alphanumeric()) {
-                return Err(StdError::invalid_denom(inner, "non-alphanumeric character"));
-            }
-        }
-
-        Ok(Self(inner))
+        Self(s.into())
     }
 
     pub fn as_str(&self) -> &str {
@@ -71,25 +44,164 @@ impl Denom {
     }
 }
 
+impl Deref for Part {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Part {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Display for Part {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0.as_str())
+    }
+}
+
+impl TryFrom<String> for Part {
+    type Error = StdError;
+
+    fn try_from(s: String) -> StdResult<Self> {
+        if s.is_empty() {
+            return Err(StdError::invalid_denom(s, "empty part"));
+        }
+
+        if s.chars().any(|ch| !ch.is_ascii_alphanumeric()) {
+            return Err(StdError::invalid_denom(s, "non-alphanumeric character"));
+        }
+
+        Ok(Self(s))
+    }
+}
+
+impl TryFrom<&str> for Part {
+    type Error = StdError;
+
+    fn try_from(s: &str) -> StdResult<Self> {
+        Part::try_from(s.to_string())
+    }
+}
+
+impl FromStr for Part {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> StdResult<Self> {
+        Part::try_from(s.to_string())
+    }
+}
+
+impl<'de> de::Deserialize<'de> for Part {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        <String as de::Deserialize>::deserialize(deserializer)?
+            .try_into()
+            .map_err(D::Error::custom)
+    }
+}
+
+impl BorshDeserialize for Part {
+    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
+    where
+        R: io::Read,
+    {
+        <String as BorshDeserialize>::deserialize_reader(reader)?
+            .try_into()
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+    }
+}
+
+// ----------------------------------- denom -----------------------------------
+
+/// Denomination of a coin.
+///
+/// A valid denom that is no longer than 128 characters, consisting of one or
+/// more parts, each an ASCII alphanumeric string (`a-z|A-Z|0-9`), separated by
+/// the forward slash (`/`).
+///
+/// Examples of valid denoms:
+///
+/// - `uosmo`
+/// - `gamm/pool/1234`
+///
+/// Examples of invalid denoms:
+///
+/// - `` (empty)
+/// - `aaa...aaa` (>128 `a`'s; too long)
+/// - `gamm//1234` (empty part)
+/// - `gamm/&/1234` (non-alphanumeric character)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Denom(Vec<Part>);
+
+impl Denom {
+    pub fn from_parts<T, I>(parts: I) -> StdResult<Self>
+    where
+        T: TryInto<Part>,
+        I: IntoIterator<Item = T>,
+        StdError: From<T::Error>,
+    {
+        let denom = parts
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+            .map(Denom)?;
+
+        if !(1..=128).contains(&denom.to_string().len()) {
+            return Err(StdError::invalid_denom(denom, "too short or too long"));
+        }
+
+        Ok(denom)
+    }
+
+    pub fn new_unchecked<T, I>(parts: I) -> Self
+    where
+        T: Into<String>,
+        I: IntoIterator<Item = T>,
+    {
+        Self(parts.into_iter().map(Part::new_unchecked).collect())
+    }
+
+    /// Return the denom's namespace.
+    ///
+    /// A denom's namespace is its first part, if it has more than one part.
+    /// A denom consisting of only one part is considered to be under the "top-level
+    /// namespace", in which case this method returns `None`.
+    pub fn namespace(&self) -> Option<&Part> {
+        if self.0.len() > 1 {
+            Some(&self.0[0])
+        } else {
+            None
+        }
+    }
+
+    pub fn parts(&self) -> &Vec<Part> {
+        &self.0
+    }
+
+    pub fn parts_mut(&mut self) -> &mut Vec<Part> {
+        &mut self.0
+    }
+
+    pub fn into_parts(self) -> Vec<Part> {
+        self.0
+    }
+}
+
 impl Display for Denom {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl TryFrom<String> for Denom {
-    type Error = StdError;
-
-    fn try_from(string: String) -> StdResult<Self> {
-        Denom::new(string)
-    }
-}
-
-impl TryFrom<&str> for Denom {
-    type Error = StdError;
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Denom::new(s)
+        f.write_str(self.0[0].as_str())?;
+        for part in &self.0[1..] {
+            f.write_char('/')?;
+            f.write_str(part.as_str())?;
+        }
+        Ok(())
     }
 }
 
@@ -97,7 +209,39 @@ impl FromStr for Denom {
     type Err = StdError;
 
     fn from_str(s: &str) -> StdResult<Self> {
-        Denom::new(s)
+        if !(1..=128).contains(&s.len()) {
+            return Err(StdError::invalid_denom(s, "too short or too long"));
+        }
+
+        s.split('/')
+            .map(Part::from_str)
+            .collect::<StdResult<Vec<_>>>()
+            .map(Self)
+    }
+}
+
+impl TryFrom<&str> for Denom {
+    type Error = StdError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Denom::from_str(s)
+    }
+}
+
+impl TryFrom<String> for Denom {
+    type Error = StdError;
+
+    fn try_from(s: String) -> StdResult<Self> {
+        Denom::from_str(s.as_str())
+    }
+}
+
+impl ser::Serialize for Denom {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -106,9 +250,18 @@ impl<'de> de::Deserialize<'de> for Denom {
     where
         D: de::Deserializer<'de>,
     {
-        let inner = <String as de::Deserialize>::deserialize(deserializer)?;
+        <String as de::Deserialize>::deserialize(deserializer)?
+            .try_into()
+            .map_err(D::Error::custom)
+    }
+}
 
-        Denom::new(inner).map_err(D::Error::custom)
+impl BorshSerialize for Denom {
+    fn serialize<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        BorshSerialize::serialize(&self.to_string(), writer)
     }
 }
 
@@ -117,9 +270,9 @@ impl BorshDeserialize for Denom {
     where
         R: io::Read,
     {
-        let inner = <String as BorshDeserialize>::deserialize_reader(reader)?;
-
-        Denom::new(inner).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        <String as BorshDeserialize>::deserialize_reader(reader)?
+            .try_into()
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
 }
 
@@ -128,43 +281,80 @@ impl BorshDeserialize for Denom {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Denom, ResultExt},
+        crate::{BorshDeExt, BorshSerExt, Denom, GenericResult, JsonDeExt, JsonSerExt, ResultExt},
+        std::str::FromStr,
         test_case::test_case,
     };
 
     #[test_case(
         "uosmo",
-        None;
-        "valid denom with one subdenom"
+        GenericResult::Ok(Denom::new_unchecked(["uosmo"]));
+        "valid denom with one part"
     )]
     #[test_case(
-        "gamm/lp/123",
-        None;
-        "valid denom with multiple subdenoms"
+        "gamm/pool/1234",
+        GenericResult::Ok(Denom::new_unchecked(["gamm", "pool", "1234"]));
+        "valid denom with multiple parts"
+    )]
+    #[test_case(
+        "",
+        GenericResult::Err("too short or too long".to_string());
+        "empty denom"
     )]
     #[test_case(
         "a".repeat(129),
-        Some("too short or too long");
+        GenericResult::Err("too short or too long".to_string());
         "invalid denom that is too long"
     )]
     #[test_case(
-        "gamm//lp",
-        Some("empty subdenom");
+        "gamm//1234",
+        GenericResult::Err("empty part".to_string());
         "invalid denom with empty subdenom"
     )]
     #[test_case(
-        "gamm/&/123",
-        Some("non-alphanumeric character");
+        "gamm/&/1234",
+        GenericResult::Err("non-alphanumeric character".to_string());
         "invalid denom with non-alphanumeric character"
     )]
-    fn validating_denom<T>(inner: T, expect_err: Option<&str>)
+    fn creating_denom_from_string<T>(input: T, expect: GenericResult<Denom>)
     where
-        T: Into<String>,
+        T: AsRef<str>,
     {
-        if let Some(err) = expect_err {
-            Denom::new(inner).should_fail_with_error(err);
-        } else {
-            Denom::new(inner).should_succeed();
-        }
+        Denom::from_str(input.as_ref()).should_match(expect)
+    }
+
+    #[test_case(
+        Denom::new_unchecked(["uosmo"]),
+        "\"uosmo\"";
+        "denom with one part"
+    )]
+    #[test_case(
+        Denom::new_unchecked(["gamm", "pool", "1234"]),
+        "\"gamm/pool/1234\"";
+        "denom with multiple parts"
+    )]
+    fn serializing_json(denom: Denom, string: &str) {
+        denom
+            .to_json_vec()
+            .should_succeed_and_equal(string.as_bytes());
+        string
+            .deserialize_json::<Denom>()
+            .should_succeed_and_equal(denom);
+    }
+
+    #[test_case(
+        Denom::new_unchecked(["uosmo"]);
+        "denom with one part"
+    )]
+    #[test_case(
+        Denom::new_unchecked(["gamm", "pool", "1234"]);
+        "denom with multiple parts"
+    )]
+    fn serializing_borsh(denom: Denom) {
+        denom
+            .to_borsh_vec()
+            .unwrap()
+            .deserialize_borsh::<Denom>()
+            .should_succeed_and_equal(denom);
     }
 }

@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         artifacts_dir.join("grug_taxman.wasm"),
         &grug_taxman::InstantiateMsg {
             config: grug_taxman::Config {
-                fee_denom: Denom::new("uatom")?,
+                fee_denom: Denom::from_str("uatom")?,
                 fee_rate: Udec128::from_str("0.1")?,
             },
         },

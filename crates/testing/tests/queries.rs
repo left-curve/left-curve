@@ -8,6 +8,7 @@ mod query_maker {
     use {
         anyhow::ensure,
         grug_types::{Denom, Empty, MutableCtx, Number, Query, Response, Uint256},
+        std::str::FromStr,
     };
 
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> anyhow::Result<Response> {
@@ -15,10 +16,10 @@ mod query_maker {
         let [res1, res2] = ctx.querier.query_multi([
             Query::Balance {
                 address: ctx.contract,
-                denom: Denom::new("uusdc")?,
+                denom: Denom::from_str("uusdc")?,
             },
             Query::Supply {
-                denom: Denom::new("uusdc")?,
+                denom: Denom::from_str("uusdc")?,
             },
         ])?;
 

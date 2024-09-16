@@ -9,7 +9,7 @@ use {
 
 const WASM_CACHE_CAPACITY: usize = 10;
 
-static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new("ugrug").unwrap());
+static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
 static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.1").unwrap());
 

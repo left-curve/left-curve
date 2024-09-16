@@ -2,7 +2,7 @@ use {
     core::str,
     grug_types::{
         nested_namespaces_with_key, Addr, Bytable, Denom, Duration, Hash, Number, NumberConst,
-        Sign, Signed, StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+        Part, Sign, Signed, StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
     },
     std::{borrow::Cow, mem, vec},
 };
@@ -221,8 +221,8 @@ impl<const N: usize> PrimaryKey for Hash<N> {
     }
 }
 
-impl PrimaryKey for Denom {
-    type Output = Denom;
+impl PrimaryKey for Part {
+    type Output = Part;
     type Prefix = ();
     type Suffix = ();
 
@@ -233,9 +233,27 @@ impl PrimaryKey for Denom {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        str::from_utf8(bytes)
+            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+            .and_then(TryInto::try_into)
+    }
+}
+
+impl PrimaryKey for Denom {
+    type Output = Denom;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Owned(self.to_string().into_bytes())]
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec())
             .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
-            .and_then(Denom::new)
+            .and_then(TryInto::try_into)
     }
 }
 
@@ -580,9 +598,15 @@ impl<const N: usize> Prefixer for Hash<N> {
     }
 }
 
-impl Prefixer for Denom {
+impl Prefixer for Part {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self.as_bytes())]
+    }
+}
+
+impl Prefixer for Denom {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Owned(self.to_string().into_bytes())]
     }
 }
 

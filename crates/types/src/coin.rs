@@ -33,6 +33,13 @@ impl Coin {
             amount: amount.into(),
         })
     }
+
+    pub fn as_ref(&self) -> CoinRef {
+        CoinRef {
+            denom: &self.denom,
+            amount: &self.amount,
+        }
+    }
 }
 
 impl fmt::Display for Coin {
@@ -47,7 +54,7 @@ impl fmt::Debug for Coin {
     }
 }
 
-// ----------------------------------- coins -----------------------------------
+// --------------------------------- coin ref ----------------------------------
 
 /// A record in the `Coins` map.
 ///
@@ -64,11 +71,25 @@ impl fmt::Debug for Coin {
 ///
 /// Therefore, we create this struct which holds references to the denom and
 /// amount.
-#[derive(Serialize)]
+#[derive(Serialize, BorshSerialize, Clone, Copy, PartialEq, Eq)]
 pub struct CoinRef<'a> {
     pub denom: &'a Denom,
     pub amount: &'a Uint256,
 }
+
+impl fmt::Display for CoinRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.denom, self.amount)
+    }
+}
+
+impl fmt::Debug for CoinRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CoinRef({}:{})", self.denom, self.amount)
+    }
+}
+
+// ----------------------------------- coins -----------------------------------
 
 /// A sorted list of coins or tokens.
 #[derive(
@@ -267,7 +288,7 @@ impl FromStr for Coins {
                 )));
             };
 
-            let denom = Denom::new(denom_str)?;
+            let denom = Denom::from_str(denom_str)?;
 
             if map.contains_key(&denom) {
                 return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
