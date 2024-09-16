@@ -1,10 +1,12 @@
 import type {
   Coins,
   MessageTypedDataType,
+  Power,
   TxMessageTypedDataType,
   TypedData,
   TypedDataParameter,
   TypedDataProperties,
+  Username,
 } from "@leftcurve/types";
 
 import {
@@ -74,4 +76,15 @@ export function composeTypedData(
 export function getCoinsTypedData(coins?: Coins): TypedDataProperties[] {
   if (!coins) return [];
   return Object.keys(coins).map((coin) => ({ name: coin, type: "string" }));
+}
+
+/**
+ * @description Gets the typed data for members.
+ *
+ * @param members The members to get the typed data for.
+ * @returns The typed data properties.
+ */
+export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperties[] {
+  if (!members) return [];
+  return Object.keys(members).map((member) => ({ name: member, type: "uint32" }));
 }

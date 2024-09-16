@@ -29,12 +29,12 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");
   const { messages, sender, typedData, gasLimit: gas } = parameters;
-  let chainId = client.chain?.id;
 
-  if (!chainId) {
-    const response = await getChainInfo(client, {});
-    chainId = response.chainId;
-  }
+  const chainId = await (async () => {
+    if (client.chain?.id) return client.chain.id;
+    const { chainId } = await getChainInfo(client, {});
+    return chainId;
+  })();
 
   const { username } = client;
 

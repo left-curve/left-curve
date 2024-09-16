@@ -4,7 +4,7 @@ import { http, computeAddress, createAccountSalt, createUserClient } from "@left
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import { AccountType, type Address } from "@leftcurve/types";
 
-async function createAccount() {
+async function registerUser() {
   if (!process.env.MNEMONIC) throw new Error("Please set the MNEMONIC environment variable");
 
   // Instantiate the user client
@@ -32,7 +32,7 @@ async function createAccount() {
   const userSigner = PrivateKeySigner.fromPrivateKey(userKeyPair.privateKey);
 
   const username = "random";
-  const userKey = { secp256k1: encodeBase64(userKeyPair.publicKey) };
+  const userKey = { secp256k1: encodeBase64(userKeyPair.getPublicKey()) };
 
   // create address and compute new account address
   const salt = createAccountSalt(username, 1, userKey);
@@ -50,8 +50,8 @@ async function createAccount() {
     funds: { uusdc: "100" },
   });
 
-  // Create account
-  await userClient.createAccount({
+  // Register user
+  await userClient.registerUser({
     keyHash: await userSigner.getKeyHash(),
     key: userKey,
     username: username,
@@ -61,4 +61,4 @@ async function createAccount() {
   console.log(balance);
 }
 
-createAccount().catch(console.error);
+registerUser().catch(console.error);

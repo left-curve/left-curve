@@ -45,10 +45,10 @@ import {
 } from "./public/queryWasmSmart";
 
 import {
-  type CreateAccountParameters,
-  type CreateAccountReturnType,
-  createAccount,
-} from "./public/createAccount";
+  type RegisterUserParameters,
+  type RegisterUserReturnType,
+  registerUser,
+} from "./public/registerUser";
 
 import { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
 
@@ -96,17 +96,7 @@ import {
 
 import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./public/getKey";
 
-import {
-  type GetUsernameByAddressParameters,
-  type GetUsernameByAddressreturnType,
-  getUsernameByAddress,
-} from "./public/getUsernameByAddress";
-
-import {
-  type GetAccountTypeParameters,
-  type GetAccountTypeReturnType,
-  getAccountType,
-} from "./public/getAccountType";
+import { type GetKeysParameters, type GetKeysReturnType, getKeys } from "./public/getKeys";
 
 import {
   type GetAccountsByUsernameParameters,
@@ -138,6 +128,32 @@ import {
   getContractsInfo,
 } from "./public/getContractsInfo";
 
+import {
+  type GetDepositParameters,
+  type GetDepositReturnType,
+  getDeposit,
+} from "./public/getDeposit";
+
+import {
+  type GetDepositsParameters,
+  type GetDepositsReturnType,
+  getDeposits,
+} from "./public/getDeposits";
+
+import {
+  type GetAccountInfoParameters,
+  type GetAccountInfoReturnType,
+  getAccountInfo,
+} from "./public/getAccountInfo";
+
+import {
+  type GetAllAccountInfoParameters,
+  type GetAllAccountInfoReturnType,
+  getAllAccountInfo,
+} from "./public/getAllAccountInfo";
+
+import { type GetUserParameters, type GetUserReturnType, getUser } from "./public/getUser";
+
 export type PublicActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
@@ -145,6 +161,8 @@ export type PublicActions<
 > = {
   getBalance: (args: GetBalanceParameters) => GetBalanceReturnType;
   getBalances: (args: GetBalancesParameters) => GetBalancesReturnType;
+  getDeposit: (args: GetDepositParameters) => GetDepositReturnType;
+  getDeposits: (args: GetDepositsParameters) => GetDepositsReturnType;
   getSupply: (args: GetSupplyParameters) => GetSupplyReturnType;
   getSupplies: (args?: GetSuppliesParameters) => GetSuppliesReturnType;
   getCode: (args: GetCodeParameters) => GetCodeReturnType;
@@ -160,12 +178,14 @@ export type PublicActions<
   getAccountTypeCodeHashes: (
     args?: GetAccountTypeCodeHashesParameters,
   ) => GetAccountTypeCodeHashesReturnType;
+  getUser: (args: GetUserParameters) => GetUserReturnType;
+  getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
+  getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
   getKey: (args: GetKeyParameters) => GetKeyReturnType;
+  getKeys: (args: GetKeysParameters) => GetKeysReturnType;
   getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
-  getAccountType: (args: GetAccountTypeParameters) => GetAccountTypeReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
-  getUsernameByAddress: (args: GetUsernameByAddressParameters) => GetUsernameByAddressreturnType;
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getNextAccountAddress: (args: GetNextAccountAddressParameters) => GetNextAccountAddressReturnType;
   getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
@@ -177,7 +197,7 @@ export type PublicActions<
   queryWasmSmart: <value extends any | undefined>(
     args: QueryWasmSmartParameters,
   ) => QueryWasmSmartReturnType<value>;
-  createAccount: (args: CreateAccountParameters) => CreateAccountReturnType;
+  registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
   simulate: (args: SimulateParameters) => SimulateReturnType;
   computeAddress: (args: ComputeAddressParameters) => ComputeAddressReturnType;
 };
@@ -192,19 +212,23 @@ export function publicActions<
     getAppConfigs: (args) => getAppConfigs(client, args),
     getBalance: (args) => getBalance(client, args),
     getBalances: (args) => getBalances(client, args),
+    getDeposit: (args) => getDeposit(client, args),
+    getDeposits: (args) => getDeposits(client, args),
     getSupply: (args) => getSupply(client, args),
     getSupplies: (args) => getSupplies(client, args),
     getCode: (args) => getCode(client, args),
     getCodes: (args) => getCodes(client, args),
     getChainInfo: (args) => getChainInfo(client, args),
+    getUser: (args) => getUser(client, args),
     getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
     getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
+    getAccountInfo: (args) => getAccountInfo(client, args),
+    getAllAccountInfo: (args) => getAllAccountInfo(client, args),
     getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
     getKey: (args) => getKey(client, args),
+    getKeys: (args) => getKeys(client, args),
     getKeysByUsername: (args) => getKeysByUsername(client, args),
-    getAccountType: (args) => getAccountType(client, args),
     getAccountsByUsername: (args) => getAccountsByUsername(client, args),
-    getUsernameByAddress: (args) => getUsernameByAddress(client, args),
     getNextAccountIndex: (args) => getNextAccountIndex(client, args),
     getNextAccountAddress: (args) => getNextAccountAddress(client, args),
     getContractInfo: (args) => getContractInfo(client, args),
@@ -212,7 +236,7 @@ export function publicActions<
     queryApp: (args) => queryApp(client, args),
     queryWasmRaw: (args) => queryWasmRaw(client, args),
     queryWasmSmart: (args) => queryWasmSmart(client, args),
-    createAccount: (args) => createAccount(client, args),
+    registerUser: (args) => registerUser(client, args),
     simulate: (args) => simulate(client, args),
     computeAddress: (args) => computeAddress(args),
   };

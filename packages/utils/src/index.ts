@@ -7,6 +7,7 @@ export { sleep } from "./sleep";
 
 export {
   getCoinsTypedData,
+  getMembersTypedData,
   composeTypedData,
   composeAndHashTypedData,
   hashTypedData,

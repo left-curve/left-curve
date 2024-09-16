@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, Signer, Transport, TxParameters } from "@leftcurve/types";
 
 import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
 
@@ -7,6 +7,12 @@ import { type MigrateParameters, type MigrateReturnType, migrate } from "./user/
 import { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer";
 
 import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode";
+
+import {
+  type RegisterAccountParameters,
+  type RegisterAccountReturnType,
+  registerAccount,
+} from "./user/registerAccount";
 
 import {
   type InstantiateParameters,
@@ -36,6 +42,10 @@ export type UserActions<
   transfer: (args: TransferParameters) => TransferReturnType;
   storeCode: (args: StoreCodeParameters) => StoreCodeReturnType;
   instantiate: (args: InstantiateParameters) => InstantiateReturnType;
+  registerAccount: (
+    args: RegisterAccountParameters,
+    txArgs: TxParameters,
+  ) => RegisterAccountReturnType;
   storeCodeAndInstantiate: (
     args: StoreCodeAndInstantiateParameters,
   ) => StoreCodeAndInstantiateReturnType;
@@ -53,6 +63,7 @@ export function userActions<
     transfer: (args: TransferParameters) => transfer<chain, signer>(client, args),
     storeCode: (args: StoreCodeParameters) => storeCode<chain, signer>(client, args),
     instantiate: (args: InstantiateParameters) => instantiate<chain, signer>(client, args),
+    registerAccount: (...args) => registerAccount<chain, signer>(client, ...args),
     storeCodeAndInstantiate: (args: StoreCodeAndInstantiateParameters) =>
       storeCodeAndInstantiate<chain, signer>(client, args),
     signAndBroadcastTx: (args: SignAndBroadcastTxParameters) =>

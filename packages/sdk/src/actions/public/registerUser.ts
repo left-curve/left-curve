@@ -13,13 +13,13 @@ import type {
 import { getAppConfig } from "./getAppConfig";
 import { simulate } from "./simulate";
 
-export type CreateAccountParameters = {
+export type RegisterUserParameters = {
   username: Username;
   key: Key;
   keyHash: KeyHash;
 };
 
-export type CreateAccountReturnType = Promise<Hex>;
+export type RegisterUserReturnType = Promise<Hex>;
 
 export type MsgRegisterUser = {
   registerUser: {
@@ -29,18 +29,16 @@ export type MsgRegisterUser = {
   };
 };
 
-export async function createAccount<
+export async function registerUser<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: CreateAccountParameters,
-): CreateAccountReturnType {
+  parameters: RegisterUserParameters,
+): RegisterUserReturnType {
   const { username, keyHash, key } = parameters;
 
-  const accountFactory = await getAppConfig<Address, chain, signer>(client, {
-    key: "account_factory",
-  });
+  const factoryAddr = await getAppConfig<Address>(client, { key: "account_factory" });
 
   const registerMsg = {
     registerUser: {
@@ -52,20 +50,20 @@ export async function createAccount<
 
   const executeMsg = {
     execute: {
-      contract: accountFactory,
+      contract: factoryAddr,
       msg: registerMsg,
       funds: {},
     },
   };
 
   const { gasLimit } = await simulate(client, {
-    simulate: { sender: accountFactory, msgs: [executeMsg], data: null },
+    simulate: { sender: factoryAddr, msgs: [executeMsg], data: null },
   });
 
   const tx = {
-    sender: accountFactory,
+    sender: factoryAddr,
     msgs: [executeMsg],
-    gasLimit: gasLimit,
+    gasLimit,
     data: null,
     credential: null,
   };

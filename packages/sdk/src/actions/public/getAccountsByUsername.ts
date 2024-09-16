@@ -1,4 +1,5 @@
 import type {
+  AccountInfo,
   AccountTypes,
   Address,
   Chain,
@@ -12,19 +13,15 @@ import { queryWasmSmart } from "./queryWasmSmart";
 
 export type GetAccountsByUsernameParameters = {
   username: Username;
-  startAfter?: Address;
-  limit?: number;
   height?: number;
 };
 
-export type GetAccountsByUsernameReturnType = Promise<Record<Address, AccountTypes>>;
+export type GetAccountsByUsernameReturnType = Promise<Record<Address, AccountInfo>>;
 
 /**
- * Enumerate all accounts associated with a username.
+ * Find all accounts associated with a user.
  * @param parameters
  * @param parameters.username The username to get accounts for.
- * @param parameters.startAfter The address to start after.
- * @param parameters.limit The maximum number of accounts to return.
  * @param parameters.height The height at which to get the accounts.
  * @returns The accounts.
  */
@@ -35,8 +32,8 @@ export async function getAccountsByUsername<
   client: Client<Transport, chain, signer>,
   parameters: GetAccountsByUsernameParameters,
 ): GetAccountsByUsernameReturnType {
-  const { username, startAfter, limit, height = 0 } = parameters;
-  const msg = { accounts: { username, startAfter, limit } };
+  const { username, height = 0 } = parameters;
+  const msg = { accountsByUser: { username } };
 
   const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
 

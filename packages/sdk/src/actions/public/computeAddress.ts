@@ -27,7 +27,7 @@ export function computeAddress(parameters: ComputeAddressParameters): ComputeAdd
   const hasher = new Sha256();
 
   const bytes = hasher
-    .update(decodeHex(deployer.substring(2))) // strip the 0x prefix
+    .update(decodeHex(deployer))
     .update(decodeHex(codeHash))
     .update(salt)
     .digest();

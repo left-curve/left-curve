@@ -75,10 +75,10 @@ export {
 } from "./public/getAppConfigs";
 
 export {
-  type CreateAccountParameters,
-  type CreateAccountReturnType,
-  createAccount,
-} from "./public/createAccount";
+  type RegisterUserParameters,
+  type RegisterUserReturnType,
+  registerUser,
+} from "./public/registerUser";
 
 export {
   type ComputeAddressParameters,
@@ -123,16 +123,10 @@ export {
 } from "./public/getKey";
 
 export {
-  type GetUsernameByAddressParameters,
-  type GetUsernameByAddressreturnType,
-  getUsernameByAddress,
-} from "./public/getUsernameByAddress";
-
-export {
-  type GetAccountTypeParameters,
-  type GetAccountTypeReturnType,
-  getAccountType,
-} from "./public/getAccountType";
+  type GetKeysParameters,
+  type GetKeysReturnType,
+  getKeys,
+} from "./public/getKeys";
 
 export {
   type GetAccountsByUsernameParameters,
@@ -163,6 +157,36 @@ export {
   type GetNextAccountAddressReturnType,
   getNextAccountAddress,
 } from "./public/getNextAccountAddress";
+
+export {
+  type GetDepositParameters,
+  type GetDepositReturnType,
+  getDeposit,
+} from "./public/getDeposit";
+
+export {
+  type GetDepositsParameters,
+  type GetDepositsReturnType,
+  getDeposits,
+} from "./public/getDeposits";
+
+export {
+  type GetAccountInfoParameters,
+  type GetAccountInfoReturnType,
+  getAccountInfo,
+} from "./public/getAccountInfo";
+
+export {
+  type GetAllAccountInfoParameters,
+  type GetAllAccountInfoReturnType,
+  getAllAccountInfo,
+} from "./public/getAllAccountInfo";
+
+export {
+  type GetUserParameters,
+  type GetUserReturnType,
+  getUser,
+} from "./public/getUser";
 
 /* -------------------------------------------------------------------------- */
 /*                                User Actions                                */
@@ -197,6 +221,12 @@ export {
   type InstantiateReturnType,
   instantiate,
 } from "./user/instantiate";
+
+export {
+  type RegisterAccountParameters,
+  type RegisterAccountReturnType,
+  registerAccount,
+} from "./user/registerAccount";
 
 export {
   type StoreCodeAndInstantiateParameters,

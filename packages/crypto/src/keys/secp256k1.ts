@@ -110,8 +110,8 @@ export class Secp256k1 implements KeyPair {
     this.#privateKey = privateKey;
   }
 
-  get publicKey() {
-    return secp256k1.getPublicKey(this.#privateKey);
+  getPublicKey(compressed = true): Uint8Array {
+    return secp256k1.getPublicKey(this.#privateKey, compressed);
   }
 
   get privateKey() {
@@ -143,6 +143,6 @@ export class Secp256k1 implements KeyPair {
    * @returns True if the signature is valid, false otherwise.
    */
   verifySignature(messageHash: Uint8Array, signature: Uint8Array): boolean {
-    return verifySignature(messageHash, signature, this.publicKey);
+    return verifySignature(messageHash, signature, this.getPublicKey());
   }
 }

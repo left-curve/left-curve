@@ -71,11 +71,15 @@ export type {
 } from "./chain";
 
 export type {
+  User,
   Username,
   Account,
+  AccountInfo,
   AccountIndex,
   AccountTypes,
-  AccountStateResponse,
+  AccountConfig,
+  AccountMultiConfig,
+  AccountSingleConfig,
 } from "./account";
 
 export type {

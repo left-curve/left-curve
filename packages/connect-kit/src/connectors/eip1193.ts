@@ -100,11 +100,17 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
       async getAccounts() {
         const client = await this.getClient();
         const accounts = await getAccountsByUsername(client, { username: _username });
-        return Object.entries(accounts).map(([address, type]) => ({
-          address: address as Address,
-          username: _username,
-          type: type as AccountTypes,
-        }));
+        return Object.entries(accounts).map(([address, accountInfo]) => {
+          const { index, params } = accountInfo;
+          const type = Object.keys(params)[0] as AccountTypes;
+          return {
+            index,
+            params,
+            address: address as Address,
+            username: _username,
+            type: type,
+          };
+        });
       },
       async isAuthorized() {
         return _isAuthorized;
