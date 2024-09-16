@@ -118,6 +118,11 @@ impl Coins {
         Self(BTreeMap::new())
     }
 
+    /// Create a new `Coins` from an inner map without checking for validity.
+    pub fn new_unchecked(inner: BTreeMap<Denom, Uint256>) -> Self {
+        Self(inner)
+    }
+
     /// Create a new `Coins` with exactly one coin.
     /// Error if the denom isn't valid, or amount is zero.
     pub fn one<D, A>(denom: D, amount: A) -> StdResult<Self>
