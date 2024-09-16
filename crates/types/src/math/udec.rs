@@ -649,7 +649,7 @@ mod tests2 {
 
     use {
         super::*,
-        crate::{Signed, Uint128, Uint256},
+        crate::{BorshSerExt, JsonDeExt, JsonSerExt, Signed, Uint128, Uint256},
         fmt::Debug,
     };
 
@@ -1022,6 +1022,48 @@ mod tests2 {
             // Decimal
             assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.0"))), Err(StdError::Generic(err)) if err == "value too big"));
             assert!(matches!(bt(Ok(_0d), Udec::from_str(&format!("{over_max}.123"))), Err(StdError::Generic(err)) if err == "value too big"));
+        }
+    );
+
+    dtest!( to_string,
+        => |_0d,| {
+
+            assert_eq!(bt(_0d, Udec::ZERO).to_string(), "0");
+            assert_eq!(bt(_0d, Udec::one()).to_string(), "1");
+            assert_eq!(bt(_0d, Udec::new_percent(500_u64)).to_string(), "5");
+
+            // Decimals
+            assert_eq!(bt(_0d, Udec::new_percent(125_u64)).to_string(), "1.25");
+            assert_eq!(bt(_0d, Udec::new_percent(42638_u64)).to_string(), "426.38");
+            assert_eq!(bt(_0d, Udec::new_percent(3_u64)).to_string(), "0.03");
+            assert_eq!(bt(_0d, Udec::new_permille(987_u64)).to_string(), "0.987");
+
+            for i in 0..18 {
+                let dec = bt(_0d, Udec::raw(10_u64.pow(i).into()));
+                assert_eq!(dec.to_string(), format!("0.{}1", "0".repeat(18 - 1 - i as usize)));
+
+            }
+        }
+    );
+
+    dtest!( serialize_serde,
+        => |_0d| {
+            assert_eq!(bt(_0d, Udec::ZERO).to_json_vec().unwrap(), br#""0""#);
+            assert_eq!(bt(_0d, Udec::one()).to_json_vec().unwrap(), br#""1""#);
+            assert_eq!(bt(_0d, Udec::new_percent(8_u64)).to_json_vec().unwrap(), br#""0.08""#);
+            assert_eq!(bt(_0d, Udec::new_percent(87_u64)).to_json_vec().unwrap(), br#""0.87""#);
+            assert_eq!(bt(_0d, Udec::new_percent(876_u64)).to_json_vec().unwrap(), br#""8.76""#);
+            assert_eq!(bt(_0d, Udec::new_percent(8765_u64)).to_json_vec().unwrap(), br#""87.65""#);
+    });
+
+    dtest!( deserialize_serde,
+        => |_0d| {
+            assert_eq!(bt(_0d, br#""0""#.deserialize_json().unwrap()), Udec::ZERO);
+            assert_eq!(bt(_0d, br#""1""#.deserialize_json().unwrap()),  Udec::one());
+            assert_eq!(bt(_0d, br#""0.08""#.deserialize_json().unwrap()), Udec::new_percent(8_u64));
+            assert_eq!(bt(_0d, br#""0.87""#.deserialize_json().unwrap()), Udec::new_percent(87_u64));
+            assert_eq!(bt(_0d, br#""8.76""#.deserialize_json().unwrap()), Udec::new_percent(876_u64));
+            assert_eq!(bt(_0d, br#""87.65""#.deserialize_json().unwrap()), Udec::new_percent(8765_u64));
         }
     );
 
@@ -1494,5 +1536,46 @@ mod tests2 {
             let decimals = sqrt.split(".").last().unwrap();
             assert_eq!(decimals.len(), *decimal_size, "{sqrt}");
         }
-     });
+    });
+
+    dtest!( pow,
+        => |_0d| {
+            let _1d = Udec::one();
+            let max = Udec::MAX;
+            dts!(_0d, _1d, max);
+
+            for exp in 0..10 {
+                assert_eq!(_1d.checked_pow(exp).unwrap(),_1d);
+            }
+
+            // This case is mathematically undefined but we ensure consistency with Rust standard types
+            // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=20df6716048e77087acd40194b233494
+            assert_eq!(_0d.checked_pow(0).unwrap(), _1d);
+
+            for exp in 1..10 {
+                assert_eq!(_0d.checked_pow(exp).unwrap(), _0d);
+            }
+
+            for num in &[
+                Udec::new_percent(50_u64),
+                Udec::new_percent(99_u64),
+                Udec::new_percent(200_u64),
+            ] {
+                assert_eq!(num.checked_pow(0).unwrap(), _1d)
+            }
+
+            assert_eq!(Udec::new_percent(20_u64).checked_pow(2).unwrap(), bt(_0d, Udec::new_percent(4_u64)));
+            assert_eq!(Udec::new_percent(20_u64).checked_pow(3).unwrap(), bt(_0d, Udec::new_permille(8_u64)));
+            assert_eq!(Udec::new(2_u64).checked_pow(4).unwrap(), bt(_0d, Udec::new(16_u64)));
+            assert_eq!(Udec::new(7_u64).checked_pow(5).unwrap(), bt(_0d, Udec::new(16_807_u64)));
+            assert_eq!(Udec::new(7_u64).checked_pow(8).unwrap(), bt(_0d, Udec::new(5_764_801_u64)));
+            assert_eq!(Udec::new(7_u64).checked_pow(10).unwrap(), bt(_0d, Udec::new(28_247_524_9_u64)));
+            assert_eq!(Udec::new_percent(120_u64).checked_pow(123).unwrap(), bt(_0d, Udec::raw(5_486_473_221_892_422_150_877_397_607_u128.into())));
+            assert_eq!(Udec::new_percent(10_u64).checked_pow(2).unwrap(), bt(_0d, Udec::new_percent(1_u64)));
+            assert_eq!(Udec::new_percent(10_u64).checked_pow(18).unwrap(), bt(_0d, Udec::raw(1_u64.into())));
+
+            // checked_pow overflow
+            assert!(matches!(max.checked_pow(2), Err(StdError::OverflowConversion { .. })));
+        }
+    );
 }
