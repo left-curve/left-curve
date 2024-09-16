@@ -1458,6 +1458,7 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-client",
  "grug-ffi",
  "grug-macros",
  "grug-storage",

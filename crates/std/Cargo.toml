@@ -22,8 +22,9 @@ serde_with   = { workspace = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 grug-ffi = { path = "../ffi" }
 
-# The testing crate is only included when _not_ building for WebAseembly.
+# The client and testing crates are only included when _not_ building for WebAseembly.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+grug-client  = { path = "../client" }
 grug-testing = { path = "../testing" }
 
 [dev-dependencies]
