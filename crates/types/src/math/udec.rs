@@ -530,21 +530,25 @@ impl_number!(impl Udec with Add, add for Udec<U, S> where sub fn checked_add);
 impl_number!(impl Udec with Sub, sub for Udec<U, S> where sub fn checked_sub);
 impl_number!(impl Udec with Mul, mul for Udec<U, S> where sub fn checked_mul);
 impl_number!(impl Udec with Div, div for Udec<U, S> where sub fn checked_div);
+impl_number!(impl Udec with Rem, rem for Udec<U, S> where sub fn checked_rem);
 
 impl_assign_number!(impl Udec with AddAssign, add_assign for Udec<U, S> where sub fn checked_add);
 impl_assign_number!(impl Udec with SubAssign, sub_assign for Udec<U, S> where sub fn checked_sub);
 impl_assign_number!(impl Udec with MulAssign, mul_assign for Udec<U, S> where sub fn checked_mul);
 impl_assign_number!(impl Udec with DivAssign, div_assign for Udec<U, S> where sub fn checked_div);
+impl_assign_number!(impl Udec with RemAssign, rem_assign for Udec<U, S> where sub fn checked_rem);
 
 forward_ref_binop_decimal!(impl Add, add for Udec<U, S>, Udec<U, S>);
 forward_ref_binop_decimal!(impl Sub, sub for Udec<U, S>, Udec<U, S>);
 forward_ref_binop_decimal!(impl Mul, mul for Udec<U, S>, Udec<U, S>);
 forward_ref_binop_decimal!(impl Div, div for Udec<U, S>, Udec<U, S>);
+forward_ref_binop_decimal!(impl Rem, rem for Udec<U, S>, Udec<U, S>);
 
 forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Udec<U, S>, Udec<U, S>);
 forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Udec<U, S>, Udec<U, S>);
 forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Udec<U, S>, Udec<U, S>);
 forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Udec<U, S>, Udec<U, S>);
+forward_ref_op_assign_decimal!(impl RemAssign, rem_assign for Udec<U, S>, Udec<U, S>);
 
 // ------------------------------ concrete types -------------------------------
 
@@ -649,7 +653,7 @@ mod tests2 {
 
     use {
         super::*,
-        crate::{BorshSerExt, JsonDeExt, JsonSerExt, Signed, Uint128, Uint256},
+        crate::{JsonDeExt, JsonSerExt, Signed, Uint128, Uint256},
         fmt::Debug,
     };
 
@@ -1530,13 +1534,14 @@ mod tests2 {
         ("40_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00_02", 15)
     ]]
     => |_0d, samples: &[(&str, usize)]| {
-        for (raw, decimal_size) in samples {
-            let raw = raw.replace("_", "");
-            let sqrt = bt(_0d, dec(&raw)).checked_sqrt().unwrap().to_string();
-            let decimals = sqrt.split(".").last().unwrap();
-            assert_eq!(decimals.len(), *decimal_size, "{sqrt}");
+            for (raw, decimal_size) in samples {
+                let raw = raw.replace("_", "");
+                let sqrt = bt(_0d, dec(&raw)).checked_sqrt().unwrap().to_string();
+                let decimals = sqrt.split(".").last().unwrap();
+                assert_eq!(decimals.len(), *decimal_size, "{sqrt}");
+            }
         }
-    });
+    );
 
     dtest!( pow,
         => |_0d| {
@@ -1576,6 +1581,47 @@ mod tests2 {
 
             // checked_pow overflow
             assert!(matches!(max.checked_pow(2), Err(StdError::OverflowConversion { .. })));
+        }
+    );
+
+    dtest!( rem,
+        => |_0d| {
+            // 4.02 % 1.11 = 0.69
+            assert_eq!(bt(_0d, dec("4.02")) % bt(_0d, dec("1.11")), dec("0.69"));
+
+            // 15.25 % 4 = 3.25
+            assert_eq!(bt(_0d, dec("15.25")) % bt(_0d, dec("4")), dec("3.25"));
+
+            let a = Udec::new_percent(318_u64);
+            let b = Udec::new_percent(317_u64);
+            let expected = Udec::new_percent(1_u64);
+            dts!(_0d, a, b, expected);
+
+            // works for refs
+            assert_eq!(a % b, expected);
+            assert_eq!(a % &b, expected);
+            assert_eq!(&a % b, expected);
+            assert_eq!(&a % &b, expected);
+
+            // assign works
+            let mut a = bt(_0d, Udec::new_percent(17673_u64));
+            a %=  Udec::new_percent(2362_u64);
+            assert_eq!(a, Udec::new_percent(1139_u64)); // 176.73 % 23.62 = 11.39
+
+            let mut a = bt(_0d, Udec::new_percent(4262_u64));
+            let b = Udec::new_percent(1270_u64);
+            a %= &b;
+            assert_eq!(a, Udec::new_percent(452_u64)); // 42.62 % 12.7 = 4.52
+
+            // checked_div overflow
+            assert!(matches!(bt(_0d, Udec::new(777_u64)).checked_rem(_0d), Err(StdError::DivisionByZero { .. })));
+        }
+    );
+
+    dtest!( rem_by_zero_panic,
+        attrs = #[should_panic(expected = "division by zero")]
+        => |_0d| {
+            let _ = Udec::one() % _0d;
         }
     );
 }
