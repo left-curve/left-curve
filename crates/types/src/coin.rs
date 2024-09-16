@@ -164,16 +164,74 @@ impl Coins {
 
     /// If the `Coins` is exactly one coin, return a reference to this coin;
     /// otherwise throw error.
-    pub fn one_coin(&self) -> StdResult<CoinRef> {
-        let Some((denom, amount)) = self.0.first_key_value() else {
-            return Err(StdError::invalid_payment(1, 0));
-        };
-
-        if self.0.len() > 1 {
+    pub fn as_one_coin(&self) -> StdResult<CoinRef> {
+        if self.0.len() != 1 {
             return Err(StdError::invalid_payment(1, self.len()));
         }
 
+        let (denom, amount) = self.0.iter().next().unwrap();
+
         Ok(CoinRef { denom, amount })
+    }
+
+    /// If the `Coins` is exactly one coin, consume self and return this coin as
+    /// an owned value; otherwise throw error.
+    pub fn into_one_coin(self) -> StdResult<Coin> {
+        if self.0.len() != 1 {
+            return Err(StdError::invalid_payment(1, self.len()));
+        }
+
+        let (denom, amount) = self.0.into_iter().next().unwrap();
+
+        Ok(Coin { denom, amount })
+    }
+
+    /// If the `Coins` is exactly two coins, return these two coins as a tuple,
+    /// sorted by denom; otherwise throw error.
+    pub fn as_two_coins(&self) -> StdResult<(CoinRef, CoinRef)> {
+        if self.0.len() != 2 {
+            return Err(StdError::invalid_payment(2, self.len()));
+        }
+
+        let mut iter = self.0.iter();
+
+        let (denom1, amount1) = iter.next().unwrap();
+        let (denom2, amount2) = iter.next().unwrap();
+
+        Ok((
+            CoinRef {
+                denom: denom1,
+                amount: amount1,
+            },
+            CoinRef {
+                denom: denom2,
+                amount: amount2,
+            },
+        ))
+    }
+
+    /// If the `Coins` is exactly two coins, consume self and return these two
+    /// coins as a tuple, sorted by denom; otherwise throw error.
+    pub fn into_two_coins(self) -> StdResult<(Coin, Coin)> {
+        if self.0.len() != 2 {
+            return Err(StdError::invalid_payment(2, self.len()));
+        }
+
+        let mut iter = self.0.into_iter();
+
+        let (denom1, amount1) = iter.next().unwrap();
+        let (denom2, amount2) = iter.next().unwrap();
+
+        Ok((
+            Coin {
+                denom: denom1,
+                amount: amount1,
+            },
+            Coin {
+                denom: denom2,
+                amount: amount2,
+            },
+        ))
     }
 
     /// Increase the amount of a denom by the given amount. If the denom doesn't
