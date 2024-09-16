@@ -31,8 +31,7 @@ digraph G {
   app -> storage;
   app -> types;
 
-  client -> account;
-  client -> crypto;
+  client -> jmt;
   client -> types;
 
   "db/disk" -> app;
@@ -48,6 +47,7 @@ digraph G {
   jmt -> storage;
   jmt -> types;
 
+  std -> client;
   std -> ffi;
   std -> macros;
   std -> storage;
