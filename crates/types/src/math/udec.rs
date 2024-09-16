@@ -550,6 +550,30 @@ forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Udec<U, S>, Udec<U
 forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Udec<U, S>, Udec<U, S>);
 forward_ref_op_assign_decimal!(impl RemAssign, rem_assign for Udec<U, S>, Udec<U, S>);
 
+impl<IntoUintU, U, const S: u32> Mul<IntoUintU> for Udec<U, S>
+where
+    U: Number,
+    IntoUintU: Into<Uint<U>>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: IntoUintU) -> Self::Output {
+        Self::raw(self.0 * rhs.into())
+    }
+}
+
+impl<IntoUintU, U, const S: u32> Div<IntoUintU> for Udec<U, S>
+where
+    U: Number,
+    IntoUintU: Into<Uint<U>>,
+{
+    type Output = Self;
+
+    fn div(self, rhs: IntoUintU) -> Self::Output {
+        Self::raw(self.0 / rhs.into())
+    }
+}
+
 // ------------------------------ concrete types -------------------------------
 
 generate_decimal!(
@@ -1574,7 +1598,7 @@ mod tests2 {
             assert_eq!(Udec::new(2_u64).checked_pow(4).unwrap(), bt(_0d, Udec::new(16_u64)));
             assert_eq!(Udec::new(7_u64).checked_pow(5).unwrap(), bt(_0d, Udec::new(16_807_u64)));
             assert_eq!(Udec::new(7_u64).checked_pow(8).unwrap(), bt(_0d, Udec::new(5_764_801_u64)));
-            assert_eq!(Udec::new(7_u64).checked_pow(10).unwrap(), bt(_0d, Udec::new(28_247_524_9_u64)));
+            assert_eq!(Udec::new(7_u64).checked_pow(10).unwrap(), bt(_0d, Udec::new(282_475_249_u64)));
             assert_eq!(Udec::new_percent(120_u64).checked_pow(123).unwrap(), bt(_0d, Udec::raw(5_486_473_221_892_422_150_877_397_607_u128.into())));
             assert_eq!(Udec::new_percent(10_u64).checked_pow(2).unwrap(), bt(_0d, Udec::new_percent(1_u64)));
             assert_eq!(Udec::new_percent(10_u64).checked_pow(18).unwrap(), bt(_0d, Udec::raw(1_u64.into())));
@@ -1585,6 +1609,7 @@ mod tests2 {
     );
 
     dtest!( rem,
+        attrs = #[allow(clippy::op_ref)]
         => |_0d| {
             // 4.02 % 1.11 = 0.69
             assert_eq!(bt(_0d, dec("4.02")) % bt(_0d, dec("1.11")), dec("0.69"));
@@ -1622,6 +1647,34 @@ mod tests2 {
         attrs = #[should_panic(expected = "division by zero")]
         => |_0d| {
             let _ = Udec::one() % _0d;
+        }
+    );
+
+    dtest!( mul_into_uint,
+        => |_0d| {
+            let _1_5d = bt(_0d, Udec::new_percent(150_u64));
+            assert_eq!(_1_5d * Uint128::new(2), Udec::new_percent(300_u64));
+            assert_eq!(_1_5d * 2_u128, Udec::new_percent(300_u64));
+            assert_eq!(_1_5d * 2_u8, Udec::new_percent(300_u64));
+
+            let _0_75d = bt(_0d, Udec::new_percent(75_u64));
+            assert_eq!(_0_75d * Uint128::new(2), Udec::new_percent(150_u64));
+            assert_eq!(_0_75d * 2_u128, Udec::new_percent(150_u64));
+            assert_eq!(_0_75d * 2_u8, Udec::new_percent(150_u64));
+        }
+    );
+
+    dtest!( div_into_uint,
+        => |_0d| {
+            let _1_5d = bt(_0d, Udec::new_percent(150_u64));
+            assert_eq!(_1_5d / Uint128::new(2), Udec::new_percent(75_u64));
+            assert_eq!(_1_5d / 2_u128, Udec::new_percent(75_u64));
+            assert_eq!(_1_5d / 2_u8, Udec::new_percent(75_u64));
+
+            let _0_75d = bt(_0d, Udec::new_percent(75_u64));
+            assert_eq!(_0_75d / Uint128::new(2), Udec::new_permille(375_u64));
+            assert_eq!(_0_75d / 2_u128, Udec::new_permille(375_u64));
+            assert_eq!(_0_75d / 2_u8, Udec::new_permille(375_u64));
         }
     );
 }
