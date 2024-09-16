@@ -42,12 +42,15 @@ impl<T> AsyncSigner for T
 where
     T: Signer,
 {
-    fn sign_transaction(
+    // Although we can't use the `async` keyword in trait definition, we can use
+    // it here!
+    async fn sign_transaction(
         &mut self,
         msgs: Vec<Message>,
         chain_id: &str,
         gas_limit: u64,
-    ) -> impl Future<Output = StdResult<Tx>> {
-        async move { self.sign_transaction(msgs, chain_id, gas_limit) }
+    ) -> StdResult<Tx> {
+        // Simply call the synchronous `sign_transaction` method.
+        self.sign_transaction(msgs, chain_id, gas_limit)
     }
 }
