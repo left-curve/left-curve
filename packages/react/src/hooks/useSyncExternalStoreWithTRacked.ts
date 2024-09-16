@@ -4,6 +4,20 @@ import { useRef } from "react";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector";
 
 const isPlainObject = (obj: unknown) => typeof obj === "object" && !Array.isArray(obj);
+// biome-ignore lint/complexity/noBannedTypes: Is necessary all functions types
+const isFunction = (fn: unknown): fn is Function => typeof fn === "function";
+
+const clearFunctions = (obj: any) => {
+  if (isPlainObject(obj)) {
+    const newObj = Object.create({});
+    for (const [key, value] of Object.entries(obj)) {
+      if (isFunction(value)) continue;
+      newObj[key] = value;
+    }
+    return newObj;
+  }
+  return obj;
+};
 
 export function useSyncExternalStoreWithTracked<snapshot extends selection, selection = snapshot>(
   subscribe: (onStoreChange: () => void) => () => void,
@@ -17,13 +31,15 @@ export function useSyncExternalStoreWithTracked<snapshot extends selection, sele
     getSnapshot,
     getServerSnapshot,
     (x) => x,
-    (a, b) => {
+    (_a_, _b_) => {
+      const a = clearFunctions(_a_);
+      const b = clearFunctions(_b_);
       if (isPlainObject(a) && isPlainObject(b) && trackedKeys.current.length) {
         for (const key of trackedKeys.current) {
-          const equal = isEqual(
-            (a as { [_a: string]: any })[key],
-            (b as { [_b: string]: any })[key],
-          );
+          const valueA = (a as { [_a: string]: any })[key];
+          const valueB = (b as { [_b: string]: any })[key];
+
+          const equal = isEqual(valueA, valueB);
           if (!equal) return false;
         }
         return true;

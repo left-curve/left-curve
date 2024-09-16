@@ -1,45 +1,53 @@
 "use client";
 
-import type React from "react";
-import { type PropsWithChildren, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+
+import { type PropsWithChildren, forwardRef, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { useClickAway } from "react-use";
+
+export type ModalRef = {
+  closeModal: () => void;
+  showModal: () => void;
+};
 
 export type ModalProps = {
   onClose?: () => void;
-  showModal: boolean;
 };
 
-export const Modal: React.FC<PropsWithChildren<ModalProps>> = ({
-  onClose,
-  showModal,
-  children,
-}) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+export const Modal = forwardRef<ModalRef, PropsWithChildren<ModalProps>>(
+  ({ children, onClose }, ref) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const closeModal = () => {
-    dialogRef?.current?.close();
-    onClose?.();
-  };
+    const closeModal = () => {
+      setIsModalOpen(false);
+      onClose?.();
+    };
+    const showModal = () => setIsModalOpen(true);
 
-  useClickAway(dialogRef, closeModal);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: It's okay to not include closeModal
+    useEffect(() => {
+      if (!ref) return;
+      if (typeof ref === "function") {
+        ref({ closeModal, showModal });
+      } else {
+        ref.current = { closeModal, showModal };
+      }
+    }, [ref]);
 
-  if (!showModal) return null;
+    if (!isModalOpen) return null;
 
-  return ReactDOM.createPortal(
-    <dialog
-      ref={dialogRef}
-      open
-      aria-modal="true"
-      aria-labelledby="dialog-title"
-      className="absolute flex z-[99999] top-0 left-0 right-0 bottom-0 bg-transparent"
-    >
-      <div className="relative">{children}</div>
-    </dialog>,
-    document.getElementById("modal-root")!,
-  );
-};
-
-export const ModalRoot: React.FC = () => {
-  return <div id="modal-root" />;
-};
+    return ReactDOM.createPortal(
+      <AnimatePresence>
+        <motion.div
+          ref={modalRef}
+          className="flex fixed w-screen h-screen backdrop-blur-[10px] inset-0 z-[60] overflow-x-auto justify-center items-center p-4"
+          onClick={(e) => modalRef.current === e.target && closeModal()}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>,
+      document.querySelector("body")!,
+    );
+  },
+);

@@ -111,6 +111,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         return { credential, keyHash, signDoc };
       },
+      onConnect({ chainId, username }) {
+        _username = username;
+        _transport = transports[chainId];
+      },
     };
   });
 }

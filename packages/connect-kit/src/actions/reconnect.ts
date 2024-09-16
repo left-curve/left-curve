@@ -24,13 +24,15 @@ export async function reconnect<config extends Config>(
     connector: _connector_,
     username,
     accounts,
+    account,
   } of config.state.connections.values()) {
     const connector = config.connectors.find(({ id }) => id === _connector_.id);
     if (!connector) continue;
     try {
-      await connector.connect({ chainId, username });
+      connector.onConnect({ chainId, username });
       connectors.set(chainId, connector.uid);
       connections.set(connector.uid, {
+        account,
         chainId,
         accounts,
         connector,

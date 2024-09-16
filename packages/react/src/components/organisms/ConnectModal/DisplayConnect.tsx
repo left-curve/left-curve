@@ -1,0 +1,80 @@
+"use client";
+
+import type { Connector } from "@leftcurve/types";
+import { motion } from "framer-motion";
+import { type FormEvent, useState } from "react";
+import { BackArrow, Button, Input } from "~/components";
+import { Spinner } from "~/components/atoms/Spinner";
+import { useWizard } from "~/providers";
+import { twMerge } from "~/utils";
+
+export const DisplayConnect: React.FC = () => {
+  const { nextStep, previousStep, setData, data } = useWizard<{
+    connector: Connector;
+    username: string;
+  }>();
+
+  const [userName, setUserName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { connector } = data;
+
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userName) return;
+    setIsLoading(true);
+    setData({ username: userName, connector });
+    nextStep();
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="flex items-center justify-start w-full flex-1 flex-col gap-4">
+      <Button
+        className="z-40 p-1 bg-gray-300 text-white hover:brightness- rounded-full flex items-center justify-center absolute left-4 top-4 h-fit"
+        onClick={previousStep}
+      >
+        <BackArrow className="h-5 w-5" />
+      </Button>
+      <motion.form
+        onSubmit={onSubmit}
+        className="flex  items-center justify-start w-full h-full flex-1 flex-col gap-4 max-w-[20rem] p-4 md:p-0"
+        key={connector.id}
+        initial={{ opacity: 0, translateY: 100 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        exit={{ opacity: 0, translateY: 100 }}
+      >
+        <h2 className="text-2xl font-semibold py-4">Connect with {connector.name}</h2>
+        <div className="flex items-center justify-center relative">
+          <img
+            className={twMerge(
+              "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all",
+              isLoading ? "h-14 w-14" : "h-16 w-16",
+            )}
+            src={connector.icon}
+            alt={connector.id}
+          />
+          <motion.div
+            className={twMerge(
+              "transition-all relative z-10 scale-100",
+              isLoading ? "scale-100" : "scale-0",
+            )}
+          >
+            <Spinner size="lg" isLoading={isLoading} />
+          </motion.div>
+        </div>
+
+        <Input
+          placeholder="Username"
+          onChange={({ target }) => setUserName(target.value)}
+          value={userName}
+          disabled={isLoading}
+        />
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          Connect
+        </Button>
+      </motion.form>
+    </div>
+  );
+};

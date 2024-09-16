@@ -16,7 +16,13 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -46,10 +52,18 @@
   },
   "typesVersions": {
     "*": {
-      "components": ["./build/components/index.d.ts"],
-      "components/examples": ["./build/components/examples/index.d.ts"],
-      "hooks": ["./build/hooks/index.d.ts"],
-      "providers": ["./build/providers/index.d.ts"]
+      "components": [
+        "./build/components/index.d.ts"
+      ],
+      "components/examples": [
+        "./build/components/examples/index.d.ts"
+      ],
+      "hooks": [
+        "./build/hooks/index.d.ts"
+      ],
+      "providers": [
+        "./build/providers/index.d.ts"
+      ]
     }
   },
   "dependencies": {
@@ -57,9 +71,11 @@
     "@leftcurve/connect-kit": "workspace:^",
     "@leftcurve/crypto": "workspace:^",
     "@leftcurve/utils": "workspace:^",
+    "@leftcurve/encoding": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@tanstack/react-query": "^5.53.1",
+    "clsx": "^2.1.1",
     "framer-motion": "^11.3.21",
     "react-use": "^17.5.1",
     "tailwind-variants": "^0.2.1",

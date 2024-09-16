@@ -88,7 +88,7 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
   ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, onReset, onFinish }) => {
     const [activeStep, setActiveStep] = useState(startIndex || 0);
     const [isLoading, setIsLoading] = useState(false);
-    const wizardData = useRef<unknown>(null);
+    const wizardData = useRef<unknown>({});
     const hasNextStep = useRef(true);
     const hasPreviousStep = useRef(false);
     const nextStepHandler = useRef<Handler>(() => {});
@@ -156,13 +156,14 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
 
     const doReset = useCallback(() => {
       setActiveStep(startIndex);
-      wizardData.current = null;
+      wizardData.current = {};
       onReset?.();
     }, [startIndex, onReset]);
 
     const doFinish = useCallback(() => {
       onFinish?.();
-    }, [onFinish]);
+      doReset();
+    }, [onFinish, doReset]);
 
     const wizardValue = useMemo(
       () => ({

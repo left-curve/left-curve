@@ -1,8 +1,10 @@
 import type { Account, Chain, ChainId, Config, Connector, Username } from "@leftcurve/types";
+import { changeAccount as changeAccountAction } from "./changeAccount";
 
 export type GetAccountReturnType =
   | {
       username: Username;
+      account: Account;
       accounts: readonly Account[];
       chain: Chain | undefined;
       chainId: ChainId;
@@ -12,9 +14,11 @@ export type GetAccountReturnType =
       isDisconnected: false;
       isReconnecting: false;
       status: "connected";
+      changeAccount: (account: Account) => void;
     }
   | {
       username: Username | undefined;
+      account: Account | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -24,9 +28,11 @@ export type GetAccountReturnType =
       isDisconnected: false;
       isReconnecting: true;
       status: "reconnecting";
+      changeAccount: undefined;
     }
   | {
       username: Username | undefined;
+      account: Account | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -36,9 +42,11 @@ export type GetAccountReturnType =
       isConnecting: true;
       isDisconnected: false;
       status: "connecting";
+      changeAccount: undefined;
     }
   | {
       username: undefined;
+      account: undefined;
       accounts: undefined;
       chain: undefined;
       chainId: undefined;
@@ -48,10 +56,12 @@ export type GetAccountReturnType =
       isConnecting: false;
       isDisconnected: true;
       status: "disconnected";
+      changeAccount: undefined;
     };
 
 const disconnected = {
   username: undefined,
+  account: undefined,
   accounts: undefined,
   chain: undefined,
   chainId: undefined,
@@ -61,6 +71,7 @@ const disconnected = {
   isDisconnected: true,
   isReconnecting: false,
   status: "disconnected",
+  changeAccount: undefined,
 } as const;
 
 export function getAccount<config extends Config>(config: config): GetAccountReturnType {
@@ -74,11 +85,16 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
 
   const chain = config.chains.find((chain) => chain.id === chainId);
 
-  const { accounts, connector, username } = connection;
+  const changeAccount = (account: Account) => {
+    changeAccountAction(config, { account, connectorId: connectorId! });
+  };
+
+  const { accounts, connector, username, account } = connection;
   switch (status) {
     case "connected":
       return {
         username,
+        account,
         accounts,
         chain,
         chainId,
@@ -88,10 +104,12 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
         isDisconnected: false,
         isReconnecting: false,
         status,
+        changeAccount,
       };
     case "reconnecting":
       return {
         username,
+        account,
         accounts,
         chain,
         chainId,
@@ -101,10 +119,12 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
         isDisconnected: false,
         isReconnecting: true,
         status,
+        changeAccount: undefined,
       };
     case "connecting":
       return {
         username,
+        account,
         accounts,
         chain,
         chainId,
@@ -114,6 +134,7 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
         isDisconnected: false,
         isReconnecting: false,
         status,
+        changeAccount: undefined,
       };
     case "disconnected":
       return disconnected;

@@ -33,8 +33,23 @@ export const tailwindConfig: Partial<Config> = {
           900: "#771d1d",
         },
       },
+      animation: {
+        "rotate-2": "rotate 4s linear infinite",
+        "rotate-4": "rotate 4s linear infinite",
+        "dash-4": "dash 2s ease-in-out infinite",
+      },
+      keyframes: {
+        rotate: {
+          "100%": {
+            transform: "rotate(360deg)",
+          },
+        },
+        dash: {
+          "0%": { "stroke-dasharray": "1, 200", "stroke-dashoffset": "0" },
+          "50%": { "stroke-dasharray": "90, 200", "stroke-dashoffset": "-35px" },
+          "100%": { "stroke-dashoffset": "-125px" },
+        },
+      },
     },
   },
-  darkMode: "class",
-  plugins: [],
 };

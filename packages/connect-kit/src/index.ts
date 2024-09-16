@@ -3,6 +3,13 @@ export { http } from "@leftcurve/sdk";
 export { hydrate } from "./hydrate";
 
 /* -------------------------------------------------------------------------- */
+/*                                   Storage                                  */
+/* -------------------------------------------------------------------------- */
+
+export { createMemoryStorage } from "./storages/memoryStorage";
+export { createStorage } from "./storages/createStorage";
+
+/* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */
 /* -------------------------------------------------------------------------- */
 

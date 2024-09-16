@@ -137,6 +137,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
 
         return { credential, keyHash, signDoc };
       },
+      onConnect({ chainId, username }) {
+        _username = username;
+        _transport = transports[chainId];
+      },
     };
   });
 }

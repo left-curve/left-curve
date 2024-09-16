@@ -13,6 +13,7 @@ const buttonVariants = tv({
       ghost: "hover:bg-accent hover:text-accent-foreground",
       flat: "bg-primary/20 text-primary",
       link: "font-bold text-primary-300 font-inter",
+      none: "",
     },
     size: {
       default: "h-10 px-4 py-2",

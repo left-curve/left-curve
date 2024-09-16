@@ -48,3 +48,9 @@ export {
   type WatchAccountReturnType,
   watchAccount,
 } from "./watchAccount";
+
+export {
+  type ChangeAccountParameters,
+  type ChangeAccountReturnType,
+  changeAccount,
+} from "./changeAccount";

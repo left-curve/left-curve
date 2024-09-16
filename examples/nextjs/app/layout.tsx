@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Providers } from "./providers";
 
-import { ModalRoot } from "@leftcurve/react/components";
 import { ExampleHeader } from "@leftcurve/react/components/examples";
 
 import "../public/styles/globals.css";
@@ -35,7 +34,6 @@ export default function RootLayout({
         <Providers>
           <ExampleHeader />
           <main className="flex flex-1 bg-stone-200">{children}</main>
-          <ModalRoot />
         </Providers>
       </body>
     </html>

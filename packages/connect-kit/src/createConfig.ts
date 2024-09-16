@@ -165,6 +165,7 @@ export function createConfig<
         ...x,
         connections: new Map(x.connections).set(uid, {
           accounts: data.accounts ?? connection.accounts,
+          account: connection.account,
           connector: connection.connector,
           username: data.username,
           chainId: chainId ?? connection.chainId,
@@ -191,6 +192,7 @@ export function createConfig<
       return {
         ...x,
         connections: new Map(x.connections).set(data.uid, {
+          account: data.accounts[0],
           accounts: data.accounts,
           chainId: data.chainId,
           username: data.username,
