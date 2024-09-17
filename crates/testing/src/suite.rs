@@ -4,10 +4,10 @@ use {
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_types::{
-        Addr, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates, ContractInfo, Denom,
-        Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message, NumberConst, Op,
-        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome, Uint256, Uint64,
-        UnsignedTx,
+        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
+        NumberConst, Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome,
+        Uint256, Uint64, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -475,7 +475,7 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_balance<D>(&self, account: &dyn Signer, denom: D) -> anyhow::Result<Uint256>
+    pub fn query_balance<D>(&self, account: &dyn Addressable, denom: D) -> anyhow::Result<Uint256>
     where
         D: TryInto<Denom>,
         D::Error: Error + Send + Sync + 'static,
@@ -495,7 +495,7 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_balances(&self, account: &dyn Signer) -> anyhow::Result<Coins> {
+    pub fn query_balances(&self, account: &dyn Addressable) -> anyhow::Result<Coins> {
         self.app
             .do_query_app(
                 Query::Balances {
@@ -558,11 +558,11 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_contract(&self, signer: &dyn Signer) -> anyhow::Result<ContractInfo> {
+    pub fn query_contract(&self, contract: &dyn Addressable) -> anyhow::Result<ContractInfo> {
         self.app
             .do_query_app(
                 Query::Contract {
-                    address: signer.address(),
+                    address: contract.address(),
                 },
                 0,
                 false,
