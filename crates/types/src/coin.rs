@@ -54,9 +54,9 @@ impl fmt::Debug for Coin {
     }
 }
 
-// --------------------------------- coin ref ----------------------------------
+// -------------------------------- references ---------------------------------
 
-/// A record in the `Coins` map.
+/// An immutable reference to a coin.
 ///
 /// In `Coins`, we don't store coins an a vector of `Coin`s, but rather as
 /// mapping from denoms to amounts. This ensures that there is no duplicate
@@ -87,6 +87,14 @@ impl fmt::Debug for CoinRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "CoinRef({}:{})", self.denom, self.amount)
     }
+}
+
+/// An immutable reference to a coin.
+/// Note that only the amount is mutable.
+#[derive(Debug)]
+pub struct CoinRefMut<'a> {
+    pub denom: &'a Denom,
+    pub amount: &'a mut Uint256,
 }
 
 // ----------------------------------- coins -----------------------------------
