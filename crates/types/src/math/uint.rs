@@ -462,11 +462,51 @@ impl_next!(Uint64, Uint128);
 impl_next!(Uint128, Uint256);
 impl_next!(Uint256, Uint512);
 
+// -------------- additional constructor methods for Uint256/512 ---------------
+
+impl Uint256 {
+    pub const fn new_from_u128(value: u128) -> Self {
+        let bytes = value.to_le_bytes();
+        Self(U256::from_digits([
+            u64::from_le_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            ]),
+            u64::from_le_bytes([
+                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
+                bytes[15],
+            ]),
+            0,
+            0,
+        ]))
+    }
+}
+
+impl Uint512 {
+    pub const fn new_from_u128(value: u128) -> Self {
+        let bytes = value.to_le_bytes();
+        Self(U512::from_digits([
+            u64::from_le_bytes([
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            ]),
+            u64::from_le_bytes([
+                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
+                bytes[15],
+            ]),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]))
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::Dec128};
+    use {super::*, crate::Dec128, proptest::prelude::*};
 
     /// Make sure we can't multiply a positive integer by a negative decimal.
     #[test]
@@ -488,5 +528,21 @@ mod tests {
         // Dividing by zero should fail
         assert!(lhs.checked_div_dec_floor(rhs).is_err());
         assert!(lhs.checked_div_dec_ceil(rhs).is_err());
+    }
+
+    proptest! {
+        #[test]
+        fn uint256_const_constructor(input in any::<u128>()) {
+            let uint256 = Uint256::new_from_u128(input);
+            let output = uint256.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
+
+        #[test]
+        fn uint512_const_constructor(input in any::<u128>()) {
+            let uint512 = Uint512::new_from_u128(input);
+            let output = uint512.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
     }
 }
