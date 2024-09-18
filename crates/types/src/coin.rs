@@ -40,6 +40,13 @@ impl Coin {
             amount: &self.amount,
         }
     }
+
+    pub fn as_mut(&mut self) -> CoinRefMut {
+        CoinRefMut {
+            denom: &self.denom,
+            amount: &mut self.amount,
+        }
+    }
 }
 
 impl fmt::Display for Coin {
@@ -71,27 +78,15 @@ impl fmt::Debug for Coin {
 ///
 /// Therefore, we create this struct which holds references to the denom and
 /// amount.
-#[derive(Serialize, BorshSerialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CoinRef<'a> {
     pub denom: &'a Denom,
     pub amount: &'a Uint256,
 }
 
-impl fmt::Display for CoinRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.denom, self.amount)
-    }
-}
-
-impl fmt::Debug for CoinRef<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CoinRef({}:{})", self.denom, self.amount)
-    }
-}
-
 /// An immutable reference to a coin.
 /// Note that only the amount is mutable.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CoinRefMut<'a> {
     pub denom: &'a Denom,
     pub amount: &'a mut Uint256,
