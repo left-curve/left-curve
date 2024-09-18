@@ -270,7 +270,7 @@ where
 
 impl<U, const S: u32> Number for Udec<U, S>
 where
-    U: NumberConst + Number + Copy + PartialEq + PartialOrd,
+    U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
     Uint<U>: NextNumber + Display + From<u128>,
     <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
 {
@@ -389,7 +389,8 @@ where
 
 impl<U, const S: u32> Display for Udec<U, S>
 where
-    Uint<U>: Number + Copy + Display + From<u128>,
+    U: Display,
+    Uint<U>: Number + Copy + From<u128>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION.into();
@@ -399,7 +400,7 @@ where
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
-            let fractional_string = format!("{:0>padding$}", fractional, padding = S as usize);
+            let fractional_string = format!("{:0>padding$}", fractional.0, padding = S as usize);
             f.write_str(&whole.to_string())?;
             f.write_char('.')?;
             f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
