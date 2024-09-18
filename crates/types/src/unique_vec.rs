@@ -10,6 +10,10 @@ use {
 pub struct UniqueVec<T>(Vec<T>);
 
 impl<T> UniqueVec<T> {
+    pub fn new_unchecked(inner: Vec<T>) -> Self {
+        Self(inner)
+    }
+
     pub fn into_inner(self) -> Vec<T> {
         self.0
     }
@@ -72,5 +76,23 @@ where
         <Vec<T> as BorshDeserialize>::deserialize_reader(reader)?
             .try_into()
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use crate::{JsonDeExt, ResultExt, UniqueVec};
+
+    #[test]
+    fn deserializing_unique_vec() {
+        b"[1, 2, 3, 4, 5]"
+            .deserialize_json::<UniqueVec<u32>>()
+            .should_succeed_and_equal(UniqueVec::new_unchecked(vec![1, 2, 3, 4, 5]));
+
+        b"[1, 2, 3, 1, 5]"
+            .deserialize_json::<UniqueVec<u32>>()
+            .should_fail_with_error("duplicate data found!");
     }
 }
