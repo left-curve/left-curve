@@ -25,8 +25,13 @@ impl<T> UniqueVec<T> {
     pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
         self.0.iter_mut()
     }
+}
 
-    pub fn into_iter(self) -> vec::IntoIter<T> {
+impl<T> IntoIterator for UniqueVec<T> {
+    type IntoIter = vec::IntoIter<T>;
+    type Item = T;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
