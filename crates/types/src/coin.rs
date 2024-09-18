@@ -262,6 +262,38 @@ impl Coins {
         ))
     }
 
+    /// Add a new coin to the `Coins`.
+    pub fn add(&mut self, coin: Coin) -> StdResult<()> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            // If the denom doesn't exist, and we are increasing by a non-zero
+            // amount: just create a new record, and we are done.
+            if !coin.amount.is_zero() {
+                self.0.insert(coin.denom, coin.amount);
+            }
+
+            return Ok(());
+        };
+
+        *amount = amount.checked_add(coin.amount)?;
+
+        Ok(())
+    }
+
+    /// Deduct a coin from the `Coins`.
+    pub fn deduct(&mut self, coin: Coin) -> StdResult<()> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            return Err(StdError::DenomNotFound { denom: coin.denom });
+        };
+
+        *amount = amount.checked_sub(coin.amount)?;
+
+        if amount.is_zero() {
+            self.0.remove(&coin.denom);
+        }
+
+        Ok(())
+    }
+
     /// Increase the amount of a denom by the given amount. If the denom doesn't
     /// exist, a new record is created.
     pub fn increase_amount<D, A>(&mut self, denom: D, by: A) -> StdResult<()>
@@ -271,21 +303,9 @@ impl Coins {
         StdError: From<D::Error>,
     {
         let denom = denom.try_into()?;
-        let by = by.into();
+        let amount = by.into();
 
-        let Some(amount) = self.0.get_mut(&denom) else {
-            // If the denom doesn't exist, and we are increasing by a non-zero
-            // amount: just create a new record, and we are done.
-            if !by.is_zero() {
-                self.0.insert(denom, by);
-            }
-
-            return Ok(());
-        };
-
-        *amount = amount.checked_add(by)?;
-
-        Ok(())
+        self.add(Coin { denom, amount })
     }
 
     /// Decrease the amount of a denom by the given amount. Amount can't be
@@ -298,19 +318,9 @@ impl Coins {
         StdError: From<D::Error>,
     {
         let denom = denom.try_into()?;
-        let by = by.into();
+        let amount = by.into();
 
-        let Some(amount) = self.0.get_mut(&denom) else {
-            return Err(StdError::DenomNotFound { denom });
-        };
-
-        *amount = amount.checked_sub(by)?;
-
-        if amount.is_zero() {
-            self.0.remove(&denom);
-        }
-
-        Ok(())
+        self.deduct(Coin { denom, amount })
     }
 
     /// Convert an iterator over denoms and amounts to `Coins`.
