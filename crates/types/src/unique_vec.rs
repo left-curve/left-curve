@@ -2,7 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, Serialize},
-    std::{collections::HashSet, hash::Hash, io},
+    std::{collections::HashSet, hash::Hash, io, slice, vec},
 };
 
 /// A wrapper over a vector that guarantees that no element appears twice.
@@ -12,6 +12,18 @@ pub struct UniqueVec<T>(Vec<T>);
 impl<T> UniqueVec<T> {
     pub fn into_inner(self) -> Vec<T> {
         self.0
+    }
+
+    pub fn iter(&self) -> slice::Iter<'_, T> {
+        self.0.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
+        self.0.iter_mut()
+    }
+
+    pub fn into_iter(self) -> vec::IntoIter<T> {
+        self.0.into_iter()
     }
 }
 
