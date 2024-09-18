@@ -158,14 +158,14 @@ pub enum StdError {
     #[error("expecting a non-zero value of type {ty}, got zero")]
     ZeroValue { ty: &'static str },
 
-    #[error("failed to serialize into json! codec: {codec}, type: {ty}, reason: {reason}")]
+    #[error("failed to serialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Serialize {
         codec: &'static str,
         ty: &'static str,
         reason: String,
     },
 
-    #[error("failed to deserialize from json! codec: {codec}, type: {ty}, reason: {reason}")]
+    #[error("failed to deserialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Deserialize {
         codec: &'static str,
         ty: &'static str,
