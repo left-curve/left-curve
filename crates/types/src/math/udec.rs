@@ -112,7 +112,7 @@ where
     }
 
     pub fn new_bps(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 1_000_000).into())
+        Self(x.into() * (Self::DECIMAL_FRACTION / 10_000).into())
     }
 }
 
