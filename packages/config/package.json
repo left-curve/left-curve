@@ -6,6 +6,7 @@
     "biome"
   ],
   "devDependencies": {
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "tailwind-scrollbar": "^3.1.0"
   }
 }

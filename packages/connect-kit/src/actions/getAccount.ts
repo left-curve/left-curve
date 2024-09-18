@@ -76,8 +76,8 @@ const disconnected = {
 
 export function getAccount<config extends Config>(config: config): GetAccountReturnType {
   const { chainId, connections, connectors, status } = config.state;
-  const connectorId = connectors.get(chainId);
-  const connection = connections.get(connectorId!);
+  const connectorUId = connectors.get(chainId);
+  const connection = connections.get(connectorUId!);
 
   if (!connection) {
     return disconnected;
@@ -86,7 +86,7 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
   const chain = config.chains.find((chain) => chain.id === chainId);
 
   const changeAccount = (account: Account) => {
-    changeAccountAction(config, { account, connectorId: connectorId! });
+    changeAccountAction(config, { account, connectorUId: connectorUId! });
   };
 
   const { accounts, connector, username, account } = connection;

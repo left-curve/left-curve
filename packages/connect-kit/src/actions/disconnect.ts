@@ -1,11 +1,11 @@
-import type { ChainId, Config, Connector, ConnectorId, OneRequired } from "@leftcurve/types";
+import type { ChainId, Config, Connector, ConnectorUId, OneRequired } from "@leftcurve/types";
 
 export type DisconnectParameters = OneRequired<
   {
-    connectorId?: ConnectorId;
+    connectorUId?: ConnectorUId;
     chainId?: ChainId;
   },
-  "connectorId",
+  "connectorUId",
   "chainId"
 >;
 
@@ -18,13 +18,13 @@ export async function disconnect(
   parameters: DisconnectParameters,
 ): Promise<DisconnectReturnType> {
   const { connections, connectors } = config.state;
-  const { chainId, connectorId } = parameters;
+  const { chainId, connectorUId } = parameters;
   let connector: Connector | undefined;
-  if (connectorId) connector = connections.get(connectorId)?.connector;
+  if (connectorUId) connector = connections.get(connectorUId)?.connector;
   else {
-    const connectorId = connectors.get(chainId!);
-    if (!connectorId) throw new Error("No connector found for chain");
-    connector = connections.get(connectorId)?.connector;
+    const connectorUId = connectors.get(chainId!);
+    if (!connectorUId) throw new Error("No connector found for chain");
+    connector = connections.get(connectorUId)?.connector;
   }
 
   if (connector) {

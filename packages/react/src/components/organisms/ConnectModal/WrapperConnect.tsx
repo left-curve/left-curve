@@ -3,7 +3,7 @@ import type React from "react";
 
 import { type PropsWithChildren, useState } from "react";
 
-import { Button, Close } from "~/components";
+import { Button, CloseIcon } from "~/components";
 import { useConnectors } from "~/hooks";
 import { useWizard } from "~/providers";
 import { twMerge } from "~/utils";
@@ -34,7 +34,7 @@ export const WrapperConnect: React.FC<PropsWithChildren> = ({ children }) => {
         className="p-1 bg-gray-300 text-white hover:brightness- rounded-full flex items-center justify-center absolute right-4 top-4 h-fit z-10"
         onClick={reset}
       >
-        <Close className="h-5 w-5" />
+        <CloseIcon className="h-5 w-5" />
       </Button>
       <div className="flex flex-1 w-full flex-col md:flex-row">
         <DisplayConnectors

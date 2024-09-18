@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const CloseIcon: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
+export const ProfileIcon: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -15,7 +15,8 @@ export const CloseIcon: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...
       {...props}
     >
       <path stroke="none" d="M0 0h24v24H0z" />
-      <path d="M18 6L6 18M6 6l12 12" />
+      <path d="M3 12a9 9 0 1018 0 9 9 0 10-18 0" />
+      <path d="M9 10a3 3 0 106 0 3 3 0 10-6 0M6.168 18.849A4 4 0 0110 16h4a4 4 0 013.834 2.855" />
     </svg>
   );
 };

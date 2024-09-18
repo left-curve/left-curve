@@ -7,11 +7,19 @@ import type { SignDoc, SignedDoc } from "./signature";
 import type { Signer } from "./signer";
 import type { Transport } from "./transports";
 
-export type ConnectorId = string;
+export type ConnectorUId = string;
 
-export type ConnectorType = (typeof ConnectorType)[keyof typeof ConnectorType];
+export type ConnectorId = (typeof ConnectorIdType)[keyof typeof ConnectorIdType];
 
-export const ConnectorType = {
+export const ConnectorIdType = {
+  Metamask: "metamask",
+  Keplr: "keplr",
+  Passkey: "passkey",
+} as const;
+
+export type ConnectorType = (typeof ConnectorTypes)[keyof typeof ConnectorTypes];
+
+export const ConnectorTypes = {
   EIP1193: "eip1193",
   Passkey: "passkey",
 } as const;
@@ -26,7 +34,7 @@ export type Connection = {
 
 export type Connector = ReturnType<CreateConnectorFn> & {
   emitter: Emitter<ConnectorEventMap>;
-  uid: ConnectorId;
+  uid: ConnectorUId;
 };
 
 export type ConnectorParameter = {
@@ -54,6 +62,15 @@ export type ConnectorEventMap = {
   };
 };
 
+export const ConnectorStatus = {
+  Connected: "connected",
+  Connecting: "connecting",
+  Reconnecting: "reconnecting",
+  Disconnected: "disconnected",
+} as const;
+
+export type ConnectorStatusType = (typeof ConnectorStatus)[keyof typeof ConnectorStatus];
+
 export type CreateConnectorFn<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
   chain extends Chain = Chain,
@@ -66,7 +83,7 @@ export type CreateConnectorFn<
   emitter: Emitter<ConnectorEventMap>;
   transports: Record<string, Transport>;
 }) => properties & {
-  readonly id: string;
+  readonly id: ConnectorId;
   readonly icon?: string | undefined;
   readonly name: string;
   readonly type: ConnectorType;

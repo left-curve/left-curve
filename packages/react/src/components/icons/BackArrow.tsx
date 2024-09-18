@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const BackArrow: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
+export const BackArrowIcon: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
   return (
     <svg
       aria-label="Back"

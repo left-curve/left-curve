@@ -5,27 +5,33 @@ import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions
 import { composeAndHashTypedData } from "@leftcurve/utils";
 import { createConnector } from "./createConnector";
 
-import type { AccountTypes, Address, EIP1193Provider, Transport } from "@leftcurve/types";
+import type {
+  AccountTypes,
+  Address,
+  ConnectorId,
+  EIP1193Provider,
+  Transport,
+} from "@leftcurve/types";
 
 import "@leftcurve/types/window";
 import type { UserClient } from "@leftcurve/sdk/clients";
 import { ConnectorSigner } from "@leftcurve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
-  id?: string;
+  id: ConnectorId;
   name?: string;
   icon?: string;
   provider?: () => EIP1193Provider | undefined;
 };
 
-export function eip1193(parameters: EIP1193ConnectorParameters = {}) {
+export function eip1193(parameters: EIP1193ConnectorParameters) {
   let _transport: Transport;
   let _username: string;
   let _client: UserClient;
   let _isAuthorized = false;
 
   const {
-    id = "eip1193",
+    id = "metamask",
     name = "Ethereum Provider",
     provider: _provider_ = () => window.ethereum,
     icon,

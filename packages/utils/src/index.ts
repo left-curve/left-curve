@@ -1,9 +1,15 @@
 export { getNavigatorOS } from "./browser";
-export { camelToSnake, snakeToCamel } from "./strings";
-export { recursiveTransform, mayTransform } from "./mappers";
-export { arrayContentEquals } from "./arrays";
-export { uid } from "./uid";
-export { sleep } from "./sleep";
+
+export {
+  camelToSnake,
+  snakeToCamel,
+  capitalize,
+} from "./strings";
+
+export {
+  recursiveTransform,
+  mayTransform,
+} from "./mappers";
 
 export {
   getCoinsTypedData,
@@ -24,4 +30,10 @@ export {
   assertSet,
 } from "./asserts";
 
+export { arrayContentEquals } from "./arrays";
+
+export { formatAddress } from "./address";
+
 export { httpRpc } from "./rpc";
+export { uid } from "./uid";
+export { sleep } from "./sleep";

@@ -115,9 +115,12 @@ export type {
   Connection,
   Connector,
   ConnectorId,
+  ConnectorUId,
+  ConnectorType,
   ConnectorParameter,
   ConnectorEventMap,
   CreateConnectorFn,
+  ConnectorStatusType,
 } from "./connector";
 
 export type {
@@ -214,4 +217,5 @@ export {
 export { AccountType } from "./account";
 export { KeyTag } from "./key";
 export { Vote } from "./safe";
-export { ConnectorType } from "./connector";
+
+export { ConnectorTypes, ConnectorStatus, ConnectorIdType } from "./connector";

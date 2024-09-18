@@ -1,13 +1,13 @@
 import type { Chain } from "./chain";
 import type { Client } from "./client";
-import type { Connection, Connector, ConnectorId, CreateConnectorFn } from "./connector";
+import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector";
 import type { Storage } from "./storage";
 import type { Transport } from "./transports";
 
 export type State<chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]]> = {
   chainId: chains[number]["id"];
-  connections: Map<ConnectorId, Connection>;
-  connectors: Map<chains[number]["id"], ConnectorId>;
+  connections: Map<ConnectorUId, Connection>;
+  connectors: Map<chains[number]["id"], ConnectorUId>;
   status: "connected" | "connecting" | "disconnected" | "reconnecting";
 };
 

@@ -2,7 +2,7 @@
 
 import type { Connector } from "@leftcurve/types";
 
-import { Button } from "~/components";
+import { Button, WalletIcon } from "~/components";
 import { twMerge } from "~/utils";
 
 interface Props {
@@ -29,7 +29,7 @@ export const DisplayConnectors: React.FC<Props> = ({
       {connectors.map((connector) => {
         return (
           <Button
-            variant="none"
+            variant="flat"
             key={`connector-${connector.id}`}
             className={twMerge("p-3 md:p-4 justify-start gap-2 hover:bg-gray-100 w-full", {
               "bg-gray-100": selected?.id === connector.id,
@@ -37,7 +37,11 @@ export const DisplayConnectors: React.FC<Props> = ({
             onClick={() => onSelect(connector)}
             size="none"
           >
-            <img className="h-8 w-8" src={connector.icon} alt={connector.id} />
+            {connector.icon ? (
+              <img className="h-8 w-8" src={connector.icon} alt={connector.id} />
+            ) : (
+              <WalletIcon connectorId={connector.id} className="h-8 w-8" />
+            )}
             {connector.name}
           </Button>
         );

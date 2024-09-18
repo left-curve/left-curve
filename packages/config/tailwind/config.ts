@@ -1,9 +1,66 @@
+import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 
 export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
+        green: {
+          DEFAULT: "#afb244",
+          50: "#f9f8ec",
+          100: "#f1f0d6",
+          200: "#e5e4b1",
+          300: "#d2d184",
+          400: "#bdbf5c",
+          500: "#afb244",
+          600: "#7e822e",
+          700: "#606427",
+          800: "#4d5024",
+          900: "#424522",
+          950: "#22250e",
+        },
+        sand: {
+          DEFAULT: "#F5DDB8",
+          50: "#fdf8ef",
+          100: "#faeeda",
+          200: "#f5ddb8",
+          300: "#edc184",
+          400: "#e59e52",
+          500: "#df8430",
+          600: "#d16c25",
+          700: "#ad5421",
+          800: "#8a4322",
+          900: "#70391e",
+          950: "#3c1b0e",
+        },
+        danger: {
+          DEFAULT: "#ec6b6d",
+          50: "#fdf3f3",
+          100: "#fce4e4",
+          200: "#facecf",
+          300: "#f6abac",
+          400: "#ec6b6d",
+          500: "#e25153",
+          600: "#cf3335",
+          700: "#ad282a",
+          800: "#902426",
+          900: "#782425",
+          950: "#410e0f",
+        },
+        purple: {
+          DEFAULT: "#C2C0E1",
+          50: "#f7f7fb",
+          100: "#f0f0f7",
+          200: "#e3e3f1",
+          300: "#c2c0e1",
+          400: "#b2aed7",
+          500: "#958cc6",
+          600: "#8172b5",
+          700: "#6f5fa2",
+          800: "#5d5087",
+          900: "#4e436f",
+          950: "#312b4a",
+        },
         primary: {
           DEFAULT: "#006FEE",
           foreground: "#e6f1fe",
@@ -18,20 +75,9 @@ export const tailwindConfig: Partial<Config> = {
           800: "#002e62",
           900: "#001731",
         },
-        danger: {
-          DEFAULT: "#f05252",
-          foreground: "#fdf2f2",
-          50: "#fdf2f2",
-          100: "#fde8e8",
-          200: "#fbd5d5",
-          300: "#f8b4b4",
-          400: "#f98080",
-          500: "#f05252",
-          600: "#e02424",
-          700: "#c81e1e",
-          800: "#9b1c1c",
-          900: "#771d1d",
-        },
+      },
+      fontFamily: {
+        "diatype-rounded": "var(--font-diatype-rounded)",
       },
       animation: {
         "rotate-2": "rotate 4s linear infinite",
@@ -52,4 +98,5 @@ export const tailwindConfig: Partial<Config> = {
       },
     },
   },
+  plugins: [tailwindScrollbar({ nocompatible: true })],
 };
