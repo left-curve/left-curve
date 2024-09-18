@@ -24,12 +24,14 @@ mod serializers;
 mod signer;
 mod time;
 mod tx;
+mod unique_vec;
 mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, context::*, db::*,
     denom::*, empty::*, error::*, event::*, hash::*, hashers::*, imports::*, math::*, nonzero::*,
-    query::*, response::*, result::*, serializers::*, signer::*, time::*, tx::*, utils::*,
+    query::*, response::*, result::*, serializers::*, signer::*, time::*, tx::*, unique_vec::*,
+    utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
