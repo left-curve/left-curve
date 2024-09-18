@@ -1,10 +1,9 @@
-import { ExampleAccountList, ExampleHeader } from "@leftcurve/react/components/examples";
+import { ExampleHeader } from "@leftcurve/react/components/examples";
 
 function App() {
   return (
-    <div className="flex flex-col min-h-screen w-full h-full bg-stone-200">
+    <div className="flex flex-col min-h-screen w-full h-full bg-sand-50">
       <ExampleHeader />
-      <ExampleAccountList />
     </div>
   );
 }

@@ -10,6 +10,13 @@ export const localhost = /*#__PURE__*/ defineChain({
     denom: "usdc",
     type: "native",
   },
+  blockExplorers: {
+    default: {
+      name: "Localhost Explorer",
+      txPage: "http://localhost/tx/${tx_hash}",
+      accountPage: "http://localhost/account/${address}",
+    },
+  },
   rpcUrls: {
     default: { http: ["http://127.0.0.1:26657"] },
   },

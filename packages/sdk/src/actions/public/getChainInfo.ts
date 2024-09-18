@@ -1,11 +1,9 @@
 import type { Chain, Client, InfoResponse, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
-export type GetChainInfoParameters =
-  | {
-      height?: number;
-    }
-  | undefined;
+export type GetChainInfoParameters = {
+  height?: number;
+};
 
 export type GetChainInfoReturnType = Promise<InfoResponse>;
 
@@ -20,9 +18,9 @@ export async function getChainInfo<
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetChainInfoParameters,
+  parameters: GetChainInfoParameters = {},
 ): GetChainInfoReturnType {
-  const { height = 0 } = parameters || {};
+  const { height = 0 } = parameters;
   const query = {
     info: {},
   };

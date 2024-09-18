@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 
 import { ExampleHeader } from "@leftcurve/react/components/examples";
 
+import "@leftcurve/react/fonts/ABCDiatypeRounded/index.css"
 import "../public/styles/globals.css";
 
 const inter = Inter({
@@ -33,7 +34,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${grotesk.variable} flex flex-col min-h-screen w-full`}>
         <Providers>
           <ExampleHeader />
-          <main className="flex flex-1 bg-stone-200">{children}</main>
+          <main className="flex flex-1 bg-stone-50">{children}</main>
         </Providers>
       </body>
     </html>

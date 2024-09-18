@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Providers } from "./providers";
 
-import { ExampleHeader } from "@leftcurve/react/components/examples";
+import { Header } from "@leftcurve/react/components";
 
+import "@leftcurve/react/fonts/ABCDiatypeRounded/index.css"
 import "../public/styles/globals.css";
 
 const inter = Inter({
@@ -32,9 +33,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${grotesk.variable} flex flex-col min-h-screen w-full`}>
         <Providers>
-          {/* This is an example components and will be removed in the near future */}
-          <ExampleHeader />
-          <main className="flex flex-1 bg-stone-200">{children}</main>
+          <Header />
+          <main className="flex flex-1 bg-stone-50">{children}</main>
         </Providers>
       </body>
     </html>

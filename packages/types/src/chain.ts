@@ -11,14 +11,11 @@ export type ChainId = string;
 export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
    * Block explorers for the chain.
-   * This is an optional property.
    */
-  blockExplorers?:
-    | {
-        [key: string]: string;
-        default: string;
-      }
-    | undefined;
+  blockExplorers?: {
+    [key: string]: BlockExplorer;
+    default: BlockExplorer;
+  };
 
   /**
    * Contracts for the chain.
@@ -82,4 +79,10 @@ export type ChainFees = {
 type ChainRpcUrls = {
   http: readonly string[];
   webSocket?: readonly string[] | undefined;
+};
+
+type BlockExplorer = {
+  name: string;
+  txPage: string;
+  accountPage: string;
 };

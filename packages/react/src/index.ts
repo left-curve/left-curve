@@ -7,32 +7,12 @@ export {
 /*                                    Hooks                                   */
 /* -------------------------------------------------------------------------- */
 
-export {
-  type UseConfigParameters,
-  type UseConfigReturnType,
-  useConfig,
-} from "./hooks/useConfig";
-
-export {
-  type UseChainIdParameters,
-  type UseChainIdReturnType,
-  useChainId,
-} from "./hooks/useChainId";
-
-export {
-  type UseConnectParameters,
-  type UseConnectReturnType,
-  useConnect,
-} from "./hooks/useConnect";
-
-export {
-  type UseConnectorsParameters,
-  type UseConnectorsReturnType,
-  useConnectors,
-} from "./hooks/useConnectors";
-
-export {
-  type UseAccountParameters,
-  type UseAccountReturnType,
-  useAccount,
-} from "./hooks/useAccount";
+export { useConfig } from "./hooks/useConfig";
+export { useChainId } from "./hooks/useChainId";
+export { useConnect } from "./hooks/useConnect";
+export { useConnectors } from "./hooks/useConnectors";
+export { useDisconnect } from "./hooks/useDisconnect";
+export { useAccount } from "./hooks/useAccount";
+export { useBlock } from "./hooks/useBlock";
+export { usePublicClient } from "./hooks/usePublicClient";
+export { useBlockExplorer } from "./hooks/useBlockExplorer";

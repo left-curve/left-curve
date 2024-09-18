@@ -53,6 +53,20 @@ export type UseQueryReturnType<data = unknown, error = DefaultError> = Prettify<
   }
 >;
 
+export type QueryParameter<
+  queryFnData = unknown,
+  error = DefaultError,
+  data = queryFnData,
+  queryKey extends QueryKey = QueryKey,
+> = {
+  query?:
+    | Omit<
+        UseQueryParameters<queryFnData, error, data, queryKey>,
+        "queryFn" | "queryHash" | "queryKey" | "queryKeyHashFn" | "throwOnError"
+      >
+    | undefined;
+};
+
 export function useQuery<queryFnData, error, data, queryKey extends QueryKey>(
   parameters: UseQueryParameters<queryFnData, error, data, queryKey> & {
     queryKey: QueryKey;

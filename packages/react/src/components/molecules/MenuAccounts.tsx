@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 import { useAccount } from "~/hooks";
@@ -44,7 +46,7 @@ export const MenuAccounts: React.FC = () => {
         <div
           className={twMerge("flex items-center ", expanded ? "justify-center" : "justify-between")}
         >
-          <p className="text-2xl font-bold font-diatype-rounded mx-2 tracking-widest flex-1">
+          <p className="text-2xl font-extrabold font-diatype-rounded mx-2 tracking-widest flex-1">
             Accounts
           </p>
           <div className="flex gap-2">

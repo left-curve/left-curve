@@ -77,7 +77,7 @@ export const tailwindConfig: Partial<Config> = {
         },
       },
       fontFamily: {
-        "diatype-rounded": "var(--font-diatype-rounded)",
+        "diatype-rounded": "ABCDiatypeRounded",
       },
       animation: {
         "rotate-2": "rotate 4s linear infinite",

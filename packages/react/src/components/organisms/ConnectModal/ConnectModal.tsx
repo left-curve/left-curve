@@ -35,3 +35,5 @@ export const ConnectModal = forwardRef<ModalRef, Props>(({ challenge }, ref) => 
     </Modal>
   );
 });
+
+ConnectModal.displayName = "ConnectModal";

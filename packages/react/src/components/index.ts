@@ -12,9 +12,11 @@ export { Spinner } from "./atoms/Spinner";
 /* -------------------------------------------------------------------------- */
 
 export { Modal, type ModalProps, type ModalRef } from "./molecules/Modal";
+export { Header } from "./molecules/Header";
 export { AccountCard } from "./molecules/AccountCard";
 export { MenuAccounts } from "./molecules/MenuAccounts";
 export { MenuConnections } from "./molecules/MenuConnections";
+export { MenuNotifications } from "./molecules/MenuNotifications";
 export { ConnectButton } from "./molecules/ConnectButton";
 
 /* -------------------------------------------------------------------------- */
@@ -36,3 +38,4 @@ export { ProfileIcon } from "./icons/Profile";
 export { CopyIcon } from "./icons/Copy";
 export { BellIcon } from "./icons/Bell";
 export { WalletIcon } from "./icons/Wallet";
+export { ExternalLinkIcon } from "./icons/ExternalLink";

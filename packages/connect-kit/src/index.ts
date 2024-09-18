@@ -61,3 +61,30 @@ export {
   type WatchAccountReturnType,
   watchAccount,
 } from "./actions/watchAccount";
+
+export {
+  type GetBlockExplorerParameters,
+  type GetBlockExplorerReturnType,
+  type GetBlockExplorerErrorType,
+  getBlockExplorer,
+} from "./actions/getBlockExplorer";
+
+export {
+  type GetBlockParameters,
+  type GetBlockReturnType,
+  type GetBlockErrorType,
+  getBlock,
+} from "./actions/getBlock";
+
+export {
+  type GetPublicClientParameters,
+  type GetPublicClientReturnType,
+  type GetPublicClientErrorType,
+  getPublicClient,
+} from "./actions/getPublicClient";
+
+export {
+  type WatchPublicClientParameters,
+  type WatchPublicClientReturnType,
+  watchPublicClient,
+} from "./actions/watchPublicClient";

@@ -19,6 +19,7 @@ async function onSuccess() {
 
   spawnSync("tsup", ["--dts-only", "--silent"]);
   spawnSync("pnpm", ["tw:build"]);
+  spawnSync("cp", ["-r", "src/fonts", "build"]);
 }
 
 /**

@@ -1,3 +1,5 @@
+"use client";
+
 import { useAccount } from "~/hooks";
 
 import { Button } from "~/components";

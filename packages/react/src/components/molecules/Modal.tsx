@@ -51,3 +51,5 @@ export const Modal = forwardRef<ModalRef, PropsWithChildren<ModalProps>>(
     );
   },
 );
+
+Modal.displayName = "Modal";

@@ -88,7 +88,7 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
   ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, onReset, onFinish }) => {
     const [activeStep, setActiveStep] = useState(startIndex || 0);
     const [isLoading, setIsLoading] = useState(false);
-    const wizardData = useRef<unknown>({});
+    const [data, setData] = useState<unknown>({});
     const hasNextStep = useRef(true);
     const hasPreviousStep = useRef(false);
     const nextStepHandler = useRef<Handler>(() => {});
@@ -132,11 +132,6 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
       nextStepHandler.current = handler;
     });
 
-    // Callback to update the data passed between steps
-    const setData = useCallback((data: unknown) => {
-      wizardData.current = data;
-    }, []);
-
     const doNextStep = useCallback(async () => {
       if (hasNextStep.current && nextStepHandler.current) {
         try {
@@ -156,7 +151,7 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
 
     const doReset = useCallback(() => {
       setActiveStep(startIndex);
-      wizardData.current = {};
+      setData({});
       onReset?.();
     }, [startIndex, onReset]);
 
@@ -177,7 +172,7 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
         isLoading,
         activeStep,
         stepCount,
-        data: wizardData.current,
+        data,
         isFirstStep: !hasPreviousStep.current,
         isLastStep: !hasNextStep.current,
       }),
@@ -189,8 +184,8 @@ export const WizardContainer: React.FC<React.PropsWithChildren<Props>> = memo(
         isLoading,
         activeStep,
         stepCount,
+        data,
         goToStep,
-        setData,
       ],
     );
 

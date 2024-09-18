@@ -1,3 +1,5 @@
+"use client";
+
 import type React from "react";
 import { useRef, useState } from "react";
 import { useClickAway } from "react-use";
@@ -43,7 +45,7 @@ export const MenuConnections: React.FC = () => {
         )}
       >
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-bold text-sand-900 font-diatype-rounded mx-2 tracking-widest">
+          <p className="text-sm font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest">
             CONNECTED WITH
           </p>
           {connector && (

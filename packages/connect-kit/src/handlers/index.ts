@@ -15,3 +15,13 @@ export {
   type DisconnectErrorType,
   disconnectMutationOptions,
 } from "./disconnect";
+
+export {
+  type GetBlockData,
+  type GetBlockQueryFnData,
+  type GetBlockQueryKey,
+  type GetBlockOptions,
+  type GetBlockErrorType,
+  getBlockQueryOptions,
+  getBlockQueryKey,
+} from "./getBlock";

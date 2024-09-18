@@ -1,10 +1,13 @@
 "use client";
 
-import { ConnectButton } from "~/components";
+import { ConnectorStatus } from "@leftcurve/types";
+import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "~/components";
+import { useAccount } from "~/hooks";
 
 export const ExampleHeader: React.FC = () => {
+  const { status } = useAccount();
   return (
-    <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 bg-stone-100">
+    <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 bg-white">
       <div className="flex items-center gap-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -22,7 +25,17 @@ export const ExampleHeader: React.FC = () => {
         </svg>
         <span className="text-lg font-semibold">Example App</span>
       </div>
-      <ConnectButton />
+      <div className="flex gap-2 items-center justify-between">
+        {ConnectorStatus.Connected === status ? (
+          <>
+            <MenuNotifications />
+            <MenuAccounts />
+            <MenuConnections />
+          </>
+        ) : (
+          <ConnectButton />
+        )}
+      </div>
     </header>
   );
 };

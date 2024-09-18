@@ -54,3 +54,30 @@ export {
   type ChangeAccountReturnType,
   changeAccount,
 } from "./changeAccount";
+
+export {
+  type GetBlockExplorerParameters,
+  type GetBlockExplorerReturnType,
+  type GetBlockExplorerErrorType,
+  getBlockExplorer,
+} from "./getBlockExplorer";
+
+export {
+  type GetBlockParameters,
+  type GetBlockReturnType,
+  type GetBlockErrorType,
+  getBlock,
+} from "./getBlock";
+
+export {
+  type GetPublicClientParameters,
+  type GetPublicClientReturnType,
+  type GetPublicClientErrorType,
+  getPublicClient,
+} from "./getPublicClient";
+
+export {
+  type WatchPublicClientParameters,
+  type WatchPublicClientReturnType,
+  watchPublicClient,
+} from "./watchPublicClient";
