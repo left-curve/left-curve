@@ -53,6 +53,22 @@ impl CoinPair {
         self.0[1].as_mut()
     }
 
+    /// Return a pair of immutable references to the two coins.
+    pub fn as_ref(&self) -> (CoinRef, CoinRef) {
+        let coin1 = self.0[0].as_ref();
+        let coin2 = self.0[1].as_ref();
+
+        (coin1, coin2)
+    }
+
+    /// Return a pair of immutable references to the two coins, but in reverse order.
+    pub fn as_ref_rev(&self) -> (CoinRef, CoinRef) {
+        let coin1 = self.0[0].as_ref();
+        let coin2 = self.0[1].as_ref();
+
+        (coin2, coin1)
+    }
+
     /// Return a pair of mutable references to the two coins.
     pub fn as_mut(&mut self) -> (CoinRefMut, CoinRefMut) {
         // Note: we can't do something like:
