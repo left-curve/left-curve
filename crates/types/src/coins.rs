@@ -208,7 +208,7 @@ impl Coins {
 
     /// Take a pair of coins of the given denoms out of the `Coins`.
     /// Error if the two denoms are the same.
-    pub fn take_pair(&mut self, denom1: Denom, denom2: Denom) -> StdResult<CoinPair> {
+    pub fn take_pair(&mut self, (denom1, denom2): (Denom, Denom)) -> StdResult<CoinPair> {
         let amount1 = self.0.remove(&denom1).unwrap_or(Uint256::ZERO);
         let amount2 = self.0.remove(&denom2).unwrap_or(Uint256::ZERO);
 
