@@ -1,8 +1,4 @@
-import type { State } from "./config";
-
-export type StorageItemMap = {
-  state: State;
-};
+import type { JsonValue } from "./encoding";
 
 export type AbstractStorage = {
   getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
@@ -11,31 +7,23 @@ export type AbstractStorage = {
 };
 
 export type CreateStorageParameters = {
-  deserialize?: (<type>(value: string) => type | unknown) | undefined;
-  key?: string | undefined;
-  serialize?: (<type>(value: type | any) => string) | undefined;
-  storage?: AbstractStorage | undefined;
+  key?: string;
+  storage?: AbstractStorage;
+  deserialize?: <type>(value: string) => type | unknown;
+  serialize?: <type>(value: type | any) => string;
 };
 
-export type Storage<
-  itemMap extends Record<string, unknown> = Record<string, unknown>,
-  // break line
-  storageItemMap extends StorageItemMap = StorageItemMap & itemMap,
-> = {
+export type Storage<inner extends Record<string, unknown> = Record<string, unknown>> = {
   key: string;
-  getItem<
-    key extends keyof storageItemMap,
-    value extends storageItemMap[key],
-    defaultValue extends value | null | undefined,
-  >(
+  getItem<key extends keyof inner, value extends inner[key], defaultValue extends JsonValue>(
     key: key,
-    defaultValue?: defaultValue | undefined,
+    defaultValue?: defaultValue,
   ):
     | (defaultValue extends null ? value | null : value)
     | Promise<defaultValue extends null ? value | null : value>;
-  setItem<key extends keyof storageItemMap, value extends storageItemMap[key] | null>(
+  setItem<key extends keyof inner, value extends inner[key] | null>(
     key: key,
     value: value,
   ): void | Promise<void>;
-  removeItem(key: keyof storageItemMap): void | Promise<void>;
+  removeItem(key: keyof inner): void | Promise<void>;
 };

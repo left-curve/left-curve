@@ -1,11 +1,39 @@
 import { deserializeJson, serializeJson } from "@leftcurve/encoding";
-import type { CreateStorageParameters, Storage, StorageItemMap } from "@leftcurve/types";
+import type { CreateStorageParameters, Storage } from "@leftcurve/types";
 import { createMemoryStorage } from "./memoryStorage";
 
-export function createStorage<
-  itemMap extends Record<string, unknown> = Record<string, unknown>,
-  storageItemMap extends StorageItemMap = StorageItemMap & itemMap,
->(parameters: CreateStorageParameters): Storage<storageItemMap> {
+export function createStorage<inner extends Record<string, unknown> = Record<string, unknown>>(
+  parameters: CreateStorageParameters,
+): Storage<inner> {
+  const {
+    deserialize = deserializeJson,
+    key: prefix = "grunnect",
+    serialize = serializeJson,
+    storage = createMemoryStorage(),
+  } = parameters;
+
+  return {
+    ...storage,
+    key: prefix,
+    getItem(key, defaultValue) {
+      const value = storage.getItem(`${prefix}_${key as string}`);
+      if (value) return deserialize(value as string) ?? null;
+      return (defaultValue ?? null) as any;
+    },
+    setItem(key, value) {
+      const storageKey = `${prefix}_${key as string}`;
+      if (value === null) storage.removeItem(storageKey);
+      else storage.setItem(storageKey, serialize(value));
+    },
+    removeItem(key) {
+      storage.removeItem(`${prefix}_${key as string}`);
+    },
+  };
+}
+
+export function createAsyncStorage<inner extends Record<string, unknown> = Record<string, unknown>>(
+  parameters: CreateStorageParameters,
+): Storage<inner> {
   const {
     deserialize = deserializeJson,
     key: prefix = "grunnect",

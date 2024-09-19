@@ -41,15 +41,6 @@ export type {
 } from "./tx";
 
 export type {
-  Currency,
-  BaseCurrency,
-  NativeCurrency,
-  CW20Currency,
-  IBCCurrency,
-  FeeCurrency,
-} from "./currency";
-
-export type {
   Proof,
   InternalNode,
   LeafNode,
@@ -98,6 +89,15 @@ export type {
 export type {
   Coin,
   Coins,
+  Funds,
+  Denom,
+  AnyCoin,
+  BaseCoin,
+  CoinFee,
+  IBCCoin,
+  NativeCoin,
+  ContractCoin,
+  CoinGeckoId,
 } from "./coin";
 
 export type {
@@ -127,7 +127,6 @@ export type {
   AbstractStorage,
   CreateStorageParameters,
   Storage,
-  StorageItemMap,
 } from "./storage";
 
 export type {

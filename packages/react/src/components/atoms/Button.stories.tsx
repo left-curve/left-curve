@@ -6,9 +6,14 @@ const meta: Meta<typeof Button> = {
   component: Button,
   argTypes: {
     variant: {
-      options: ["default", "flat", "danger", "outline", "secondary", "ghost", "link"],
+      options: ["solid", "outline", "light", "flat", "faded", "shadow", "dark", "ghost"],
       control: { type: "select" },
       description: "The variant of the button.",
+    },
+    color: {
+      control: { type: "select" },
+      description: "The color of the button.",
+      options: ["default", "white", "purple", "green", "danger", "sand"],
     },
     children: {
       control: { type: "text" },
@@ -27,9 +32,9 @@ const meta: Meta<typeof Button> = {
     },
   },
   args: {
-    variant: "default",
+    variant: "solid",
+    color: "default",
     size: "default",
-    isDisabled: false,
     asChild: false,
   },
   parameters: {
@@ -44,7 +49,8 @@ type Store = StoryObj<typeof Button>;
 
 export const Default: Store = {
   args: {
-    variant: "default",
+    variant: "solid",
+    color: "default",
     children: "Button",
   },
 };

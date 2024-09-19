@@ -1,5 +1,5 @@
 import type { Address } from "./address";
-import type { Coin } from "./coin";
+import type { Coin, Coins } from "./coin";
 import type { Metadata } from "./credential";
 import type { Hex, Json } from "./encoding";
 import type { Message } from "./tx";
@@ -112,9 +112,9 @@ export type QueryResponse =
   | { balance: Coin }
   | { appConfig: AppConfigResponse }
   | { appConfigs: AppConfigsResponse }
-  | { balances: Coin }
+  | { balances: Coins }
   | { supply: Coin }
-  | { supplies: Coin }
+  | { supplies: Coins }
   | { code: string }
   | { codes: string[] }
   | { contract: ContractResponse }

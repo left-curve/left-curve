@@ -51,3 +51,14 @@ export {
   type UseDisconnectReturnType,
   useDisconnect,
 } from "./useDisconnect";
+
+export {
+  type UsePricesParameters,
+  usePrices,
+} from "./usePrices";
+
+export {
+  type UseBalancesParameters,
+  type UseBalancesReturnType,
+  useBalances,
+} from "./useBalances";

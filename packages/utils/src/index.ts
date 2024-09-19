@@ -30,10 +30,12 @@ export {
   assertSet,
 } from "./asserts";
 
-export { arrayContentEquals } from "./arrays";
-
-export { formatAddress } from "./address";
+export {
+  type CurrencyFormatterOptions,
+  formatCurrency,
+  formatAddress,
+} from "./formatters";
 
 export { httpRpc } from "./rpc";
 export { uid } from "./uid";
-export { sleep } from "./sleep";
+export { sleep } from "./promises";

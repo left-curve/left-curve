@@ -1,4 +1,5 @@
 import type {
+  AnyCoin,
   Chain,
   Client,
   Config,
@@ -23,7 +24,8 @@ import { createStore } from "zustand/vanilla";
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]],
   transports extends Record<chains[number]["id"], Transport>,
->(parameters: CreateConfigParameters<chains, transports>): Config<chains, transports> {
+  coin extends AnyCoin = AnyCoin,
+>(parameters: CreateConfigParameters<chains, transports, coin>): Config<chains, transports, coin> {
   const {
     storage = createStorage({
       storage:
@@ -37,6 +39,7 @@ export function createConfig<
   //////////////////////////////////////////////////////////////////////////////
 
   const chains = createStore(() => rest.chains);
+  const coins = createStore(() => rest.coins);
   const connectors = createStore(() => [...(rest.connectors ?? [])].map(setup));
 
   function setup(connectorFn: CreateConnectorFn): Connector {
@@ -244,6 +247,9 @@ export function createConfig<
 
   return {
     ssr: rest.ssr ?? false,
+    get coins() {
+      return coins.getState() ?? {};
+    },
     get store() {
       return store as StoreApi;
     },

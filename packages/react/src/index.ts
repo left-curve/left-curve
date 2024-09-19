@@ -16,3 +16,5 @@ export { useAccount } from "./hooks/useAccount";
 export { useBlock } from "./hooks/useBlock";
 export { usePublicClient } from "./hooks/usePublicClient";
 export { useBlockExplorer } from "./hooks/useBlockExplorer";
+export { usePrices } from "./hooks/usePrices";
+export { useBalances } from "./hooks/useBalances";

@@ -12,6 +12,18 @@ export const config = createConfig({
   transports: {
     [localhost.id]: http("http://localhost:26657"),
   },
+  coins: {
+    [localhost.id]: {
+      uusdc: {
+        type: "native",
+        name: "USD Circle",
+        symbol: "USDC",
+        denom: "uusdc",
+        decimals: 6,
+        coingeckoId: "usd-coin",
+      },
+    },
+  },
   connectors: [
     eip1193({
       id: "metamask",

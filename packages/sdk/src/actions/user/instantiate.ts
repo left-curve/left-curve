@@ -3,7 +3,7 @@ import type {
   Address,
   Chain,
   Client,
-  Coins,
+  Funds,
   Hex,
   Json,
   MessageTypedDataType,
@@ -20,7 +20,7 @@ export type InstantiateParameters = {
   codeHash: Hex;
   msg: Json;
   salt: Uint8Array;
-  funds?: Coins;
+  funds?: Funds;
   admin?: Address;
   gasLimit?: number;
   typedData?: TypedDataParameter;

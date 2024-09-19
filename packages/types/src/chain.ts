@@ -1,4 +1,4 @@
-import type { NativeCurrency } from "./currency";
+import type { NativeCoin } from "./coin";
 import type { Json } from "./encoding";
 
 export type ChainId = string;
@@ -36,7 +36,7 @@ export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
    * The native currency of the chain.
    */
-  nativeCurrency: NativeCurrency;
+  nativeCoin: NativeCoin;
 
   /**
    * The RPC URLs for the chain.

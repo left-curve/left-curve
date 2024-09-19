@@ -25,3 +25,13 @@ export {
   getBlockQueryOptions,
   getBlockQueryKey,
 } from "./getBlock";
+
+export {
+  type GetBalancesData,
+  type GetBalancesQueryFnData,
+  type GetBalancesQueryKey,
+  type GetBalancesOptions,
+  type GetBalancesErrorType,
+  getBalancesQueryOptions,
+  getBalancesQueryKey,
+} from "./getBalances";

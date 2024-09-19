@@ -2,7 +2,7 @@ import type {
   Address,
   Chain,
   Client,
-  Coins,
+  Funds,
   Hex,
   Json,
   MessageTypedDataType,
@@ -17,7 +17,7 @@ export type ExecuteParameters = {
   sender: Address;
   contract: Address;
   msg: Json;
-  funds?: Coins;
+  funds?: Funds;
   gasLimit?: number;
   typedData?: TypedDataParameter;
 };

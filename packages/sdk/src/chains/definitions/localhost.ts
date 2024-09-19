@@ -3,7 +3,7 @@ import { defineChain } from "../defineChain";
 export const localhost = /*#__PURE__*/ defineChain({
   id: "grug-1",
   name: "Localhost",
-  nativeCurrency: {
+  nativeCoin: {
     decimals: 6,
     name: "USD Circle",
     symbol: "USDC",

@@ -1,4 +1,4 @@
-import type { Chain, Client, Coin, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, Coins, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetSuppliesParameters =
@@ -9,7 +9,7 @@ export type GetSuppliesParameters =
     }
   | undefined;
 
-export type GetSuppliesReturnType = Promise<Coin>;
+export type GetSuppliesReturnType = Promise<Coins>;
 
 /**
  * Get the supplies of all tokens.

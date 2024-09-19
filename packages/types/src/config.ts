@@ -1,5 +1,6 @@
-import type { Chain } from "./chain";
+import type { Chain, ChainId } from "./chain";
 import type { Client } from "./client";
+import type { AnyCoin, Denom } from "./coin";
 import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector";
 import type { Storage } from "./storage";
 import type { Transport } from "./transports";
@@ -17,9 +18,11 @@ export type Config<
     chains[number]["id"],
     Transport
   >,
+  coin extends AnyCoin = AnyCoin,
 > = {
   readonly ssr: boolean;
   readonly chains: chains;
+  readonly coins: Record<ChainId, Record<Denom, coin>>;
   readonly connectors: readonly Connector[];
   readonly storage: Storage | null;
   readonly state: State<chains>;
@@ -47,8 +50,10 @@ export type CreateConfigParameters<
     chains[number]["id"],
     Transport
   >,
+  coin extends AnyCoin = AnyCoin,
 > = {
   chains: chains;
+  coins?: Record<ChainId, Record<Denom, coin>>;
   transports: transports;
   ssr?: boolean;
   batch?: boolean;

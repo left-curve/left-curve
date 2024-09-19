@@ -8,14 +8,14 @@ export type GetBlockParameters = {
   height?: number;
 };
 
-export type GetBlockReturnType = Promise<BlockInfo>;
+export type GetBlockReturnType = BlockInfo;
 
 export type GetBlockErrorType = Error;
 
 export async function getBlock<config extends Config>(
   config: config,
   parameters: GetBlockParameters = {},
-): GetBlockReturnType {
+): Promise<GetBlockReturnType> {
   const client = getPublicClient(config, parameters);
   const { lastFinalizedBlock } = await getChainInfo(client, parameters);
   return lastFinalizedBlock;

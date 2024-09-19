@@ -9,7 +9,19 @@ import "@leftcurve/types/window";
 export const config = createConfig({
   chains: [localhost],
   transports: {
-    [localhost.id]: http("http://localhost:26657"),
+    [localhost.id]: http("http://localhost:26657", { batch: true }),
+  },
+  coins: {
+    [localhost.id]: {
+      uusdc: {
+        type: "native",
+        name: "USD Circle",
+        symbol: "USDC",
+        denom: "uusdc",
+        decimals: 6,
+        coingeckoId: "usd-coin",
+      },
+    },
   },
   connectors: [
     eip1193({

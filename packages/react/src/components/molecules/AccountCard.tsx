@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "~/hooks";
+import { useAccount, useBalances, usePrices } from "~/hooks";
 
 import { Button } from "~/components";
 
@@ -18,8 +18,10 @@ export interface CardProps extends VariantProps<typeof cardVariants> {
 }
 
 export const AccountCard: React.FC<CardProps> = ({ className, account, onClick, expanded }) => {
+  const { calculateBalance } = usePrices();
   const { account: selectedAccount } = useAccount();
-  const balance = "$0.00"; // TODO: Get balance
+  const { isLoading, data: balances = {} } = useBalances({ address: account.address });
+  const totalBalance = calculateBalance(balances, { format: true });
   const color = cardColors[account.type];
   return (
     <div
@@ -35,7 +37,7 @@ export const AccountCard: React.FC<CardProps> = ({ className, account, onClick, 
         <div className="flex items-start justify-between">
           <div className="flex gap-1 flex-col">
             <p className="font-extrabold uppercase">{`${account.type} account #${account.index}`}</p>
-            <p className="text-xs">{formatAddress(account.address)}</p>
+            <p className="text-lg">{formatAddress(account.address)}</p>
           </div>
           <img
             src="https://static.thenounproject.com/png/2616533-200.png"
@@ -49,7 +51,7 @@ export const AccountCard: React.FC<CardProps> = ({ className, account, onClick, 
           }
           <div className="flex items-center justify-between">
             <p className="uppercase text-sm">Balance:</p>
-            <p className="text-lg font">{balance}</p>
+            <p className="text-lg font">{isLoading ? "0" : totalBalance}</p>
           </div>
         </div>
       </div>

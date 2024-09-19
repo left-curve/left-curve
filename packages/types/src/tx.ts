@@ -1,11 +1,11 @@
 import type { Address } from "./address";
-import type { Coins } from "./coin";
+import type { Coins, Funds } from "./coin";
 import type { Duration } from "./common";
 import type { Credential, Metadata } from "./credential";
 import type { Base64, Hex, Json } from "./encoding";
 
 export type TxParameters = {
-  funds?: Coins;
+  funds?: Funds;
   gasLimit?: number;
 };
 
@@ -45,14 +45,14 @@ export type MsgInstantiate = {
   codeHash: Hex;
   msg: Json;
   salt: Base64;
-  funds?: Coins;
+  funds?: Funds;
   admin?: string;
 };
 
 export type MsgExecute = {
   contract: Address;
   msg: Json;
-  funds?: Coins;
+  funds?: Funds;
 };
 
 export type MsgMigrate = {

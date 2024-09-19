@@ -108,7 +108,7 @@ export function assertNotEmpty<T>(value: T): T {
   if (typeof value === "number" && value === 0) {
     throw new Error("must provide a non-zero value");
   }
-  if ((value as { length: number }).length === 0) {
+  if ((value as ArrayLike<unknown>).length === 0) {
     throw new Error("must provide a non-empty value");
   }
   return value;

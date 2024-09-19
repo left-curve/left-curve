@@ -4,7 +4,7 @@ import type {
   Base64,
   Chain,
   Client,
-  Coins,
+  Funds,
   Hex,
   Json,
   MessageTypedDataType,
@@ -22,7 +22,7 @@ export type StoreCodeAndInstantiateParameters = {
   codeHash: Hex;
   msg: Json;
   salt: Uint8Array;
-  funds?: Coins;
+  funds?: Funds;
   code: Base64;
   admin?: Address;
   typedData?: TypedDataParameter;
