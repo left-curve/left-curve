@@ -33,6 +33,8 @@ export {
 export {
   type CurrencyFormatterOptions,
   formatCurrency,
+  type NumberFormatterOptions,
+  formatNumber,
   formatAddress,
 } from "./formatters";
 

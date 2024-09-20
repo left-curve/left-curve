@@ -16,6 +16,8 @@ export const config = createConfig({
       uusdc: {
         type: "native",
         name: "USD Circle",
+        logoURI:
+          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
         symbol: "USDC",
         denom: "uusdc",
         decimals: 6,

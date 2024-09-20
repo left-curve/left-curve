@@ -80,11 +80,11 @@
     "framer-motion": "^11.3.21",
     "react-use": "^17.5.1",
     "tailwind-variants": "^0.2.1",
-    "use-sync-external-store": "^1.2.2"
+    "use-sync-external-store": "^1.2.2",
+    "@leftcurve/types": "workspace:^"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.2.9",
     "@storybook/addon-links": "^8.2.9",

@@ -191,6 +191,7 @@ export type {
 export type {
   Duration,
   Timestamp,
+  Language,
 } from "./common";
 
 export type {

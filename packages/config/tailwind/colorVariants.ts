@@ -50,10 +50,10 @@ const light = {
 
 const dark = {
   default: "bg-gray-500 text-gray-100 hover:bg-gray-200/20 hover:text-gray-900",
-  purple: "bg-purple-900 text-purple-100 hover:bg-purple-100/20 hover:text-purple-900",
-  green: "bg-green-900 text-green-100 hover:bg-green-100/20 hover:text-green-900",
-  danger: "bg-danger-900 text-danger-100 hover:bg-danger-100/20 hover:text-danger-900",
-  sand: "bg-sand-900 text-sand-100 hover:bg-sand-100/20 hover:text-sand-900",
+  purple: "bg-purple-800 text-purple-100 hover:bg-purple-100/20 hover:text-purple-900",
+  green: "bg-green-800 text-green-100 hover:bg-green-100/20 hover:text-green-900",
+  danger: "bg-danger-800 text-danger-100 hover:bg-danger-100/20 hover:text-danger-900",
+  sand: "bg-sand-800 text-sand-100 hover:bg-sand-100/20 hover:text-sand-900",
 };
 
 const ghost = {

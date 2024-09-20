@@ -306,6 +306,9 @@ importers:
       '@leftcurve/encoding':
         specifier: workspace:^
         version: link:../encoding
+      '@leftcurve/types':
+        specifier: workspace:^
+        version: link:../types
       '@leftcurve/utils':
         specifier: workspace:^
         version: link:../utils
@@ -337,9 +340,6 @@ importers:
       '@leftcurve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/types':
-        specifier: workspace:^
-        version: link:../types
       '@storybook/addon-a11y':
         specifier: ^8.3.2
         version: 8.3.2(storybook@8.2.9(@babel/preset-env@7.25.3(@babel/core@7.25.2)))

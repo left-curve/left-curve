@@ -7,7 +7,7 @@ export const localhost = /*#__PURE__*/ defineChain({
     decimals: 6,
     name: "USD Circle",
     symbol: "USDC",
-    denom: "usdc",
+    denom: "uusdc",
     type: "native",
   },
   blockExplorers: {
