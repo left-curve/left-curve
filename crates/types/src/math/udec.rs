@@ -31,7 +31,7 @@ impl<U> Udec<U> {
     /// Since we use `u128` here, whose maximum value is 3.4e+38, it's possible
     /// to have at most 37 decimal places. Going higher would cause this `pow`
     /// calculation to overflow, resulting in a compile time error.
-    pub const DECIMAL_FRACTION: u128 = 10u128.pow(Self::DECIMAL_PLACES);
+    pub const DECIMAL_FRACTION: u64 = 10u64.pow(Self::DECIMAL_PLACES);
     /// Number of decimal digits to be interpreted as decimal places.
     pub const DECIMAL_PLACES: u32 = 18;
 
@@ -71,7 +71,7 @@ where
 
 impl<U> Udec<U>
 where
-    Uint<U>: From<u128>,
+    Uint<U>: From<u64>,
 {
     // This can't be made `const` because of the `into` casting isn't constant.
     pub fn one() -> Self {
@@ -85,7 +85,7 @@ where
 
 impl<U> Udec<U>
 where
-    Uint<U>: Number + From<u128>,
+    Uint<U>: Number + From<u64>,
 {
     /// Create a new [`Udec`] adding decimal places.
     ///
@@ -118,7 +118,7 @@ where
 
 impl<U> Udec<U>
 where
-    Uint<U>: NumberConst + Number + From<u128>,
+    Uint<U>: NumberConst + Number + From<u64>,
 {
     pub fn checked_from_atomics(
         atomics: impl Into<Uint<U>>,
@@ -155,7 +155,7 @@ where
 
 impl<U> Udec<U>
 where
-    Uint<U>: MultiplyRatio + From<u128>,
+    Uint<U>: MultiplyRatio + From<u64>,
 {
     pub fn checked_from_ratio(
         numerator: impl Into<Uint<U>>,
@@ -198,7 +198,7 @@ where
 impl<U> Decimal for Udec<U>
 where
     U: Copy + PartialEq,
-    Uint<U>: Number + From<u128>,
+    Uint<U>: Number + From<u64>,
 {
     fn checked_floor(self) -> StdResult<Self> {
         // There are two ways to floor:
@@ -239,7 +239,7 @@ impl<U> Sign for Udec<U> {
 
 impl<U> Fraction<U> for Udec<U>
 where
-    Uint<U>: Number + Copy + From<u128>,
+    Uint<U>: Number + Copy + From<u64>,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
@@ -255,7 +255,7 @@ where
 impl<U> Number for Udec<U>
 where
     U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Display + From<u128>,
+    Uint<U>: NextNumber + Display + From<u64>,
     <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
 {
     fn is_zero(&self) -> bool {
@@ -374,7 +374,7 @@ where
 impl<U> Display for Udec<U>
 where
     U: Display,
-    Uint<U>: Number + Copy + From<u128>,
+    Uint<U>: Number + Copy + From<u64>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION.into();
@@ -400,7 +400,7 @@ where
 
 impl<U> FromStr for Udec<U>
 where
-    Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
+    Uint<U>: NumberConst + Number + Display + FromStr + From<u64>,
 {
     type Err = StdError;
 
