@@ -2,10 +2,11 @@ use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::{anyhow, ensure},
     grug_app::AppError,
+    grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
-        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Udec128,
-        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Undefined,
+        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,

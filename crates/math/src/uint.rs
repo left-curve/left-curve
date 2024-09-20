@@ -1,18 +1,18 @@
 use {
     crate::{
-        forward_ref_binop_typed, forward_ref_op_assign_typed, generate_uint,
-        impl_all_ops_and_assign, impl_assign_integer, impl_assign_number, impl_integer, impl_next,
-        impl_number, Bytable, Fraction, Inner, Integer, MultiplyFraction, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, StdError, StdResult,
+        Bytable, Fraction, Inner, Integer, MathError, MathResult, MultiplyFraction, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
-    forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         fmt::{self, Display},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+        ops::{
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
+            SubAssign,
+        },
         str::FromStr,
     },
 };
@@ -27,11 +27,6 @@ pub struct Uint<U>(pub(crate) U);
 impl<U> Uint<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
-    }
-
-    // TODO: this necessary?
-    pub fn new_from(value: impl Into<U>) -> Self {
-        Self(value.into())
     }
 }
 
@@ -106,37 +101,31 @@ where
         self.0.is_zero()
     }
 
-    fn abs(self) -> Self {
-        // `Uint` represents an unsigned integer, so the absolute value is
-        // sipmly itself.
-        self
-    }
-
-    fn checked_add(self, other: Self) -> StdResult<Self> {
+    fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
 
-    fn checked_sub(self, other: Self) -> StdResult<Self> {
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
         self.0.checked_sub(other.0).map(Self)
     }
 
-    fn checked_mul(self, other: Self) -> StdResult<Self> {
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
         self.0.checked_mul(other.0).map(Self)
     }
 
-    fn checked_div(self, other: Self) -> StdResult<Self> {
+    fn checked_div(self, other: Self) -> MathResult<Self> {
         self.0.checked_div(other.0).map(Self)
     }
 
-    fn checked_rem(self, other: Self) -> StdResult<Self> {
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(self, other: u32) -> StdResult<Self> {
+    fn checked_pow(self, other: u32) -> MathResult<Self> {
         self.0.checked_pow(other).map(Self)
     }
 
-    fn checked_sqrt(self) -> StdResult<Self> {
+    fn checked_sqrt(self) -> MathResult<Self> {
         self.0.checked_sqrt().map(Self)
     }
 
@@ -177,19 +166,19 @@ impl<U> Integer for Uint<U>
 where
     U: Integer,
 {
-    fn checked_ilog2(self) -> StdResult<u32> {
+    fn checked_ilog2(self) -> MathResult<u32> {
         self.0.checked_ilog2()
     }
 
-    fn checked_ilog10(self) -> StdResult<u32> {
+    fn checked_ilog10(self) -> MathResult<u32> {
         self.0.checked_ilog10()
     }
 
-    fn checked_shl(self, other: u32) -> StdResult<Self> {
+    fn checked_shl(self, other: u32) -> MathResult<Self> {
         self.0.checked_shl(other).map(Self)
     }
 
-    fn checked_shr(self, other: u32) -> StdResult<Self> {
+    fn checked_shr(self, other: u32) -> MathResult<Self> {
         self.0.checked_shr(other).map(Self)
     }
 }
@@ -202,7 +191,7 @@ where
     pub fn checked_full_mul(
         self,
         rhs: impl Into<Self>,
-    ) -> StdResult<<Uint<U> as NextNumber>::Next> {
+    ) -> MathResult<<Uint<U> as NextNumber>::Next> {
         let s = self.into_next();
         let r = rhs.into().into_next();
         s.checked_mul(r)
@@ -218,20 +207,20 @@ where
         self,
         numerator: A,
         denominator: B,
-    ) -> StdResult<Self> {
+    ) -> MathResult<Self> {
         let denominator = denominator.into().into_next();
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
         next_result
             .clone()
             .try_into()
-            .map_err(|_| StdError::overflow_conversion::<_, Self>(next_result))
+            .map_err(|_| MathError::overflow_conversion::<_, Self>(next_result))
     }
 
     fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
         self,
         numerator: A,
         denominator: B,
-    ) -> StdResult<Self> {
+    ) -> MathResult<Self> {
         let numerator: Self = numerator.into();
         let dividend = self.checked_full_mul(numerator)?;
         let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
@@ -249,7 +238,7 @@ where
     Uint<U>: NumberConst + Number + MultiplyRatio + From<Uint<AsU>> + ToString,
     F: Number + Fraction<AsU> + Sign + ToString,
 {
-    fn checked_mul_dec_floor(self, rhs: F) -> StdResult<Self> {
+    fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self> {
         // If either left or right hand side is zero, then simply return zero.
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
@@ -258,35 +247,35 @@ where
         // The left hand side is `Uint`, a non-negative type, so multiplication
         // with any non-zero negative number goes out of bound.
         if rhs.is_negative() {
-            return Err(StdError::negative_mul(self, rhs));
+            return Err(MathError::negative_mul(self, rhs));
         }
 
-        self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator().into_inner())
+        self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
     }
 
-    fn checked_mul_dec_ceil(self, rhs: F) -> StdResult<Self> {
+    fn checked_mul_dec_ceil(self, rhs: F) -> MathResult<Self> {
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
 
         if rhs.is_negative() {
-            return Err(StdError::negative_mul(self, rhs));
+            return Err(MathError::negative_mul(self, rhs));
         }
 
-        self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator().into_inner())
+        self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
     }
 
-    fn checked_div_dec_floor(self, rhs: F) -> StdResult<Self> {
+    fn checked_div_dec_floor(self, rhs: F) -> MathResult<Self> {
         // If right hand side is zero, throw error, because you can't divide any
         // number by zero.
         if rhs.is_zero() {
-            return Err(StdError::division_by_zero(self));
+            return Err(MathError::division_by_zero(self));
         }
 
         // If right hand side is negative, throw error, because you can't divide
         // and unsigned number with a negative number.
         if rhs.is_negative() {
-            return Err(StdError::negative_div(self, rhs));
+            return Err(MathError::negative_div(self, rhs));
         }
 
         // If left hand side is zero, and we know right hand size is positive,
@@ -295,23 +284,23 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_floor(F::denominator().into_inner(), rhs.numerator())
+        self.checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
     }
 
-    fn checked_div_dec_ceil(self, rhs: F) -> StdResult<Self> {
+    fn checked_div_dec_ceil(self, rhs: F) -> MathResult<Self> {
         if rhs.is_zero() {
-            return Err(StdError::division_by_zero(self));
+            return Err(MathError::division_by_zero(self));
         }
 
         if rhs.is_negative() {
-            return Err(StdError::negative_div(self, rhs));
+            return Err(MathError::negative_div(self, rhs));
         }
 
         if self.is_zero() {
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_ceil(F::denominator().into_inner(), rhs.numerator())
+        self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
     }
 }
 
@@ -320,12 +309,12 @@ where
     U: FromStr,
     <U as FromStr>::Err: ToString,
 {
-    type Err = StdError;
+    type Err = MathError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         U::from_str(s)
             .map(Self)
-            .map_err(|err| StdError::parse_number::<Self, _, _>(s, err))
+            .map_err(|err| MathError::parse_number::<Self, _, _>(s, err))
     }
 }
 
@@ -394,73 +383,241 @@ where
     }
 }
 
-impl_number!(impl<U> Add, add for Uint<U> where sub fn checked_add);
-impl_number!(impl<U> Sub, sub for Uint<U> where sub fn checked_sub);
-impl_number!(impl<U> Mul, mul for Uint<U> where sub fn checked_mul);
-impl_number!(impl<U> Div, div for Uint<U> where sub fn checked_div);
-impl_integer!(impl<U> Shl, shl for Uint<U> where sub fn checked_shl, u32);
-impl_integer!(impl<U> Shr, shr for Uint<U> where sub fn checked_shr, u32);
+impl<U> Add for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
 
-impl_assign_number!(impl<U> AddAssign, add_assign for Uint<U> where sub fn checked_add);
-impl_assign_number!(impl<U> SubAssign, sub_assign for Uint<U> where sub fn checked_sub);
-impl_assign_number!(impl<U> MulAssign, mul_assign for Uint<U> where sub fn checked_mul);
-impl_assign_number!(impl<U> DivAssign, div_assign for Uint<U> where sub fn checked_div);
-impl_assign_integer!(impl<U> ShrAssign, shr_assign for Uint<U> where sub fn checked_shr, u32);
-impl_assign_integer!(impl<U> ShlAssign, shl_assign for Uint<U> where sub fn checked_shl, u32);
+    fn add(self, rhs: Self) -> Self::Output {
+        self.checked_add(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
 
-forward_ref_binop_typed!(impl<U> Add, add for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Sub, sub for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Mul, mul for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Div, div for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Rem, rem for Uint<U>, Uint<U>);
-forward_ref_binop_typed!(impl<U> Shl, shl for Uint<U>, u32);
-forward_ref_binop_typed!(impl<U> Shr, shr for Uint<U>, u32);
+impl<U> Sub for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
 
-forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Uint<U>, Uint<U>);
-forward_ref_op_assign_typed!(impl<U> ShrAssign, shr_assign for Uint<U>, u32);
-forward_ref_op_assign_typed!(impl<U> ShlAssign, shl_assign for Uint<U>, u32);
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.checked_sub(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> Mul for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.checked_mul(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> Div for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self.checked_div(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> Shl<u32> for Uint<U>
+where
+    U: Integer,
+{
+    type Output = Self;
+
+    fn shl(self, rhs: u32) -> Self::Output {
+        self.checked_shl(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> Shr<u32> for Uint<U>
+where
+    U: Integer,
+{
+    type Output = Self;
+
+    fn shr(self, rhs: u32) -> Self::Output {
+        self.checked_shr(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> AddAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl<U> SubAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl<U> MulAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl<U> DivAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn div_assign(&mut self, rhs: Self) {
+        *self = *self / rhs;
+    }
+}
+
+impl<U> ShlAssign<u32> for Uint<U>
+where
+    U: Integer + Copy,
+{
+    fn shl_assign(&mut self, rhs: u32) {
+        *self = *self << rhs;
+    }
+}
+
+impl<U> ShrAssign<u32> for Uint<U>
+where
+    U: Integer + Copy,
+{
+    fn shr_assign(&mut self, rhs: u32) {
+        *self = *self >> rhs;
+    }
+}
 
 // ------------------------------ concrete types -------------------------------
 
-generate_uint!(
-    name = Uint64,
+macro_rules! generate_uint {
+    (
+        name       = $name:ident,
+        inner_type = $inner:ty,
+        from_int   = [$($from:ty),*],
+        from_std   = [$($from_std:ty),*],
+        doc        = $doc:literal,
+    ) => {
+        #[doc = $doc]
+        pub type $name = Uint<$inner>;
+
+        // --- Impl From Uint and from inner type ---
+        $(
+            // Ex: From<Uint64> for Uint128
+            impl From<$from> for $name {
+                fn from(value: $from) -> Self {
+                    Self(value.number().into())
+                }
+            }
+
+            // Ex: From<u64> for Uint128
+            impl From<<$from as Inner>::U> for $name {
+                fn from(value: <$from as Inner>::U) -> Self {
+                    Self(value.into())
+                }
+            }
+
+            // Ex: TryFrom<Uint128> for Uint64
+            impl TryFrom<$name> for $from {
+                type Error = MathError;
+                fn try_from(value: $name) -> MathResult<$from> {
+                    <$from as Inner>::U::try_from(value.number())
+                        .map(Self)
+                        .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
+                }
+            }
+
+            // Ex: TryFrom<Uint128> for u64
+            impl TryFrom<$name> for <$from as Inner>::U {
+                type Error = MathError;
+                fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
+                    <$from as Inner>::U::try_from(value.number())
+                        .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
+                }
+            }
+        )*
+
+        // --- Impl From std ---
+        $(
+            // Ex: From<u32> for Uint128
+            impl From<$from_std> for $name {
+                fn from(value: $from_std) -> Self {
+                    Self(value.into())
+                }
+            }
+
+            // Ex: TryFrom<Uint128> for u32
+            impl TryFrom<$name> for $from_std {
+                type Error = MathError;
+                fn try_from(value: $name) -> MathResult<$from_std> {
+                    <$from_std>::try_from(value.number())
+                    .map_err(|_| MathError::overflow_conversion::<_, $from_std>(value))
+                }
+            }
+        )*
+
+        // Ex: From<u128> for Uint128
+        impl From<$inner> for $name {
+            fn from(value: $inner) -> Self {
+                Self::new(value)
+            }
+        }
+
+        // Ex: From<Uint128> for u128
+        impl From<$name> for $inner {
+            fn from(value: $name) -> Self {
+               value.number()
+            }
+        }
+    };
+}
+
+generate_uint! {
+    name       = Uint64,
     inner_type = u64,
-    from_int = [],
-    from_std = [u32, u16, u8],
-    doc = "64-bit unsigned integer.",
-);
+    from_int   = [],
+    from_std   = [u32, u16, u8],
+    doc        = "64-bit unsigned integer.",
+}
 
-generate_uint!(
-    name = Uint128,
+generate_uint! {
+    name       = Uint128,
     inner_type = u128,
-    from_int = [Uint64],
-    from_std = [u32, u16, u8],
-    doc = "128-bit unsigned integer.",
-);
+    from_int   = [Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "128-bit unsigned integer.",
+}
 
-generate_uint!(
-    name = Uint256,
+generate_uint! {
+    name       = Uint256,
     inner_type = U256,
-    from_int = [Uint64, Uint128],
-    from_std = [u32, u16, u8],
-    doc = "256-bit unsigned integer.",
-);
+    from_int   = [Uint64, Uint128],
+    from_std   = [u32, u16, u8],
+    doc        = "256-bit unsigned integer.",
+}
 
-generate_uint!(
-    name = Uint512,
+generate_uint! {
+    name       = Uint512,
     inner_type = U512,
-    from_int = [Uint256, Uint64, Uint128],
-    from_std = [u32, u16, u8],
-    doc = "512-bit unsigned integer.",
-);
-
-// TODO: can we merge these into `generate_uint`?
-impl_next!(Uint64, Uint128);
-impl_next!(Uint128, Uint256);
-impl_next!(Uint256, Uint512);
+    from_int   = [Uint256, Uint64, Uint128],
+    from_std   = [u32, u16, u8],
+    doc        = "512-bit unsigned integer.",
+}
 
 // -------------- additional constructor methods for Uint256/512 ---------------
 
@@ -506,29 +663,7 @@ impl Uint512 {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::Dec128, proptest::prelude::*};
-
-    /// Make sure we can't multiply a positive integer by a negative decimal.
-    #[test]
-    fn multiply_fraction_by_negative() {
-        let lhs = Uint128::new(123);
-
-        // Multiplying with a negative fraction should fail
-        let rhs = Dec128::from_str("-0.1").unwrap();
-        assert!(lhs.checked_mul_dec_floor(rhs).is_err());
-        assert!(lhs.checked_mul_dec_ceil(rhs).is_err());
-        assert!(lhs.checked_div_dec_floor(rhs).is_err());
-        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
-
-        // Multiplying with negative zero is allowed though
-        let rhs = Dec128::from_str("-0").unwrap();
-        assert!(lhs.checked_mul_dec_floor(rhs).unwrap().is_zero());
-        assert!(lhs.checked_mul_dec_ceil(rhs).unwrap().is_zero());
-
-        // Dividing by zero should fail
-        assert!(lhs.checked_div_dec_floor(rhs).is_err());
-        assert!(lhs.checked_div_dec_ceil(rhs).is_err());
-    }
+    use {super::*, proptest::prelude::*};
 
     proptest! {
         #[test]

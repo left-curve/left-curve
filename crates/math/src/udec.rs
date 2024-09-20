@@ -1,12 +1,10 @@
 use {
     crate::{
-        forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
-        impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal, Fraction, Inner,
-        MultiplyRatio, NextNumber, NonZero, Number, NumberConst, Sign, StdError, StdResult, Uint,
+        Decimal, Fraction, Inner, MathError, MathResult, MultiplyRatio, NextNumber, Number,
+        NumberConst, Sign, Uint,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
-    forward_ref::{forward_ref_binop, forward_ref_op_assign},
     serde::{de, ser},
     std::{
         cmp::Ordering,
@@ -39,7 +37,7 @@ impl<U, const S: u32> Udec<U, S> {
     ///
     /// ```rust
     /// use {
-    ///     grug_types::{Udec128, Uint128},
+    ///     grug_math::{Udec128, Uint128},
     ///     std::str::FromStr,
     /// };
     ///
@@ -85,13 +83,14 @@ where
 
 impl<U, const S: u32> Udec<U, S>
 where
-    Uint<U>: Number + From<u128>,
+    U: Number,
+    Uint<U>: From<u128>,
 {
     /// Create a new [`Udec`] adding decimal places.
     ///
     /// ```rust
     /// use {
-    ///     grug_types::{Udec128, Uint128},
+    ///     grug_math::{Udec128, Uint128},
     ///     std::str::FromStr,
     /// };
     ///
@@ -123,7 +122,7 @@ where
     pub fn checked_from_atomics(
         atomics: impl Into<Uint<U>>,
         decimal_places: u32,
-    ) -> StdResult<Self> {
+    ) -> MathResult<Self> {
         let atomics = atomics.into();
 
         let inner = match decimal_places.cmp(&S) {
@@ -160,7 +159,7 @@ where
     pub fn checked_from_ratio(
         numerator: impl Into<Uint<U>>,
         denominator: impl Into<Uint<U>>,
-    ) -> StdResult<Self> {
+    ) -> MathResult<Self> {
         let numerator: Uint<U> = numerator.into();
         let denominator: Uint<U> = denominator.into();
         numerator
@@ -177,7 +176,7 @@ where
 // specify that `U != OU` or `S != OS` with stable Rust.
 impl<U, const S: u32> Udec<U, S>
 where
-    Uint<U>: NumberConst + Number,
+    U: NumberConst + Number,
 {
     pub fn from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> Self
     where
@@ -192,10 +191,10 @@ where
         }
     }
 
-    pub fn try_from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> StdResult<Self>
+    pub fn try_from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> MathResult<Self>
     where
         Uint<U>: TryFrom<Uint<OU>>,
-        StdError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
+        MathError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
     {
         if OS > S {
             let adjusted_precision = Uint::<U>::TEN.checked_pow(OS - S)?;
@@ -213,10 +212,10 @@ where
 
 impl<U, const S: u32> Decimal for Udec<U, S>
 where
-    U: Copy + PartialEq,
-    Uint<U>: Number + From<u128>,
+    U: Number + Copy + PartialEq,
+    Uint<U>: From<u128>,
 {
-    fn checked_floor(self) -> StdResult<Self> {
+    fn checked_floor(self) -> MathResult<Self> {
         // There are two ways to floor:
         // 1. inner / decimal_fraction * decimal_fraction
         // 2. inner - inner % decimal_fraction
@@ -229,7 +228,7 @@ where
         Ok(Self(self.0 - self.0.checked_rem(Self::decimal_fraction())?))
     }
 
-    fn checked_ceil(self) -> StdResult<Self> {
+    fn checked_ceil(self) -> MathResult<Self> {
         let floor = self.checked_floor()?;
         if floor == self {
             Ok(floor)
@@ -255,16 +254,15 @@ impl<U, const S: u32> Sign for Udec<U, S> {
 
 impl<U, const S: u32> Fraction<U> for Udec<U, S>
 where
-    Uint<U>: Number + Copy + From<u128>,
+    U: Number + Copy,
+    Uint<U>: From<u128>,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
     }
 
-    fn denominator() -> NonZero<Uint<U>> {
-        // We know the decimal fraction is non-zero, because it's defined as a
-        // power (10^S), so we can safely wrap it in `NonZero` without checking.
-        NonZero(Self::decimal_fraction())
+    fn denominator() -> Uint<U> {
+        Self::decimal_fraction()
     }
 }
 
@@ -278,21 +276,15 @@ where
         self.0.is_zero()
     }
 
-    fn abs(self) -> Self {
-        // `Udec` represents an unsigned decimal number, so the absolute
-        // value is sipmly itself.
-        self
-    }
-
-    fn checked_add(self, other: Self) -> StdResult<Self> {
+    fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
 
-    fn checked_sub(self, other: Self) -> StdResult<Self> {
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
         self.0.checked_sub(other.0).map(Self)
     }
 
-    fn checked_mul(self, other: Self) -> StdResult<Self> {
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
         let next_result = self
             .0
             .checked_full_mul(*other.numerator())?
@@ -300,18 +292,18 @@ where
         next_result
             .try_into()
             .map(Self)
-            .map_err(|_| StdError::overflow_conversion::<_, Uint<U>>(next_result))
+            .map_err(|_| MathError::overflow_conversion::<_, Uint<U>>(next_result))
     }
 
-    fn checked_div(self, other: Self) -> StdResult<Self> {
+    fn checked_div(self, other: Self) -> MathResult<Self> {
         Udec::checked_from_ratio(*self.numerator(), *other.numerator())
     }
 
-    fn checked_rem(self, other: Self) -> StdResult<Self> {
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(mut self, mut exp: u32) -> StdResult<Self> {
+    fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
         if exp == 0 {
             return Ok(Self::one());
         }
@@ -331,16 +323,16 @@ where
     }
 
     // TODO: Check if this is the best way to implement this
-    fn checked_sqrt(self) -> StdResult<Self> {
+    fn checked_sqrt(self) -> MathResult<Self> {
         // With the current design, U should be only unsigned number.
         // Leave this safety check here for now.
         if self.0 < Uint::ZERO {
-            return Err(StdError::negative_sqrt::<Self>(self));
+            return Err(MathError::negative_sqrt::<Self>(self));
         }
         let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
         (0..=S / 2)
             .rev()
-            .find_map(|i| -> Option<StdResult<Self>> {
+            .find_map(|i| -> Option<MathResult<Self>> {
                 let inner_mul = match hundred.checked_pow(i) {
                     Ok(val) => val,
                     Err(err) => return Some(Err(err)),
@@ -351,7 +343,7 @@ where
                 })
             })
             .transpose()?
-            .ok_or(StdError::Generic("sqrt failed".to_string())) // TODO: add a StdError variant to handle this?
+            .ok_or(MathError::SqrtFailed)
     }
 
     fn wrapping_add(self, other: Self) -> Self {
@@ -389,8 +381,8 @@ where
 
 impl<U, const S: u32> Display for Udec<U, S>
 where
-    U: Display,
-    Uint<U>: Number + Copy + From<u128>,
+    U: Number + Display,
+    Uint<U>: Copy + From<u128>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION.into();
@@ -414,7 +406,7 @@ impl<U, const S: u32> FromStr for Udec<U, S>
 where
     Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 {
-    type Err = StdError;
+    type Err = MathError;
 
     /// Converts the decimal string to a Udec
     /// Possible inputs: "1.23", "1", "000012", "1.123000000"
@@ -429,17 +421,21 @@ where
             .next()
             .unwrap() // split always returns at least one element
             .parse::<Uint<U>>()
-            .map_err(|_| StdError::generic_err("error parsing whole"))?
+            .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
             .checked_mul(Self::decimal_fraction())
-            .map_err(|_| StdError::generic_err("value too big"))?;
+            .map_err(|_| MathError::parse_number::<Self, _, _>(input, "value too big"))?;
 
         if let Some(fractional_part) = parts_iter.next() {
-            let fractional = fractional_part
-                .parse::<Uint<U>>()
-                .map_err(|_| StdError::generic_err("error parsing fractional"))?;
-            let exp = (S.checked_sub(fractional_part.len() as u32)).ok_or_else(|| {
-                StdError::generic_err(format!("cannot parse more than {} fractional digits", S))
+            let fractional = fractional_part.parse::<Uint<U>>().map_err(|_| {
+                MathError::parse_number::<Self, _, _>(input, "error parsing fractional")
             })?;
+            let exp = (S.checked_sub(fractional_part.len() as u32)).ok_or_else(|| {
+                MathError::parse_number::<Self, _, _>(
+                    input,
+                    format!("cannot parse more than {} fractional digits", S),
+                )
+            })?;
+
             debug_assert!(exp <= S);
 
             let fractional_factor = Uint::TEN.checked_pow(exp).unwrap();
@@ -451,11 +447,14 @@ where
             // for negative numbers, we need to subtract the fractional part
             atomics = atomics
                 .checked_add(fractional_part)
-                .map_err(|_| StdError::generic_err("Value too big"))?;
+                .map_err(|_| MathError::parse_number::<Self, _, _>(input, "Value too big"))?;
         }
 
         if parts_iter.next().is_some() {
-            return Err(StdError::generic_err("Unexpected number of dots"));
+            return Err(MathError::parse_number::<Self, _, _>(
+                input,
+                "Unexpected number of dots",
+            ));
         }
 
         Ok(Udec(atomics))
@@ -518,43 +517,197 @@ where
     }
 }
 
-impl_number!(impl Udec with Add, add for Udec<U, S> where sub fn checked_add);
-impl_number!(impl Udec with Sub, sub for Udec<U, S> where sub fn checked_sub);
-impl_number!(impl Udec with Mul, mul for Udec<U, S> where sub fn checked_mul);
-impl_number!(impl Udec with Div, div for Udec<U, S> where sub fn checked_div);
+impl<U, const S: u32> Add for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    type Output = Self;
 
-impl_assign_number!(impl Udec with AddAssign, add_assign for Udec<U, S> where sub fn checked_add);
-impl_assign_number!(impl Udec with SubAssign, sub_assign for Udec<U, S> where sub fn checked_sub);
-impl_assign_number!(impl Udec with MulAssign, mul_assign for Udec<U, S> where sub fn checked_mul);
-impl_assign_number!(impl Udec with DivAssign, div_assign for Udec<U, S> where sub fn checked_div);
+    fn add(self, rhs: Self) -> Self::Output {
+        self.checked_add(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
 
-forward_ref_binop_decimal!(impl Add, add for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Sub, sub for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Mul, mul for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Div, div for Udec<U, S>, Udec<U, S>);
+impl<U, const S: u32> Sub for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    type Output = Self;
 
-forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Udec<U, S>, Udec<U, S>);
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.checked_sub(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U, const S: u32> Mul for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.checked_mul(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U, const S: u32> Div for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self.checked_div(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U, const S: u32> AddAssign for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl<U, const S: u32> SubAssign for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl<U, const S: u32> MulAssign for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl<U, const S: u32> DivAssign for Udec<U, S>
+where
+    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + From<u128>,
+    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+{
+    fn div_assign(&mut self, rhs: Self) {
+        *self = *self / rhs;
+    }
+}
 
 // ------------------------------ concrete types -------------------------------
 
-generate_decimal!(
-    name = Udec128,
-    inner_type = u128,
-    decimal_places = 18,
-    from_dec = [],
-    doc = "128-bit unsigned fixed-point number with 18 decimal places.",
-);
+macro_rules! generate_decimal {
+    (
+        name           = $name:ident,
+        inner_type     = $inner:ty,
+        decimal_places = $decimal_places:expr,
+        from_dec       = [$($from:ty),*],
+        doc            = $doc:literal,
+    ) => {
+        #[doc = $doc]
+        pub type $name = Udec<$inner, $decimal_places>;
 
-generate_decimal!(
-    name = Udec256,
-    inner_type = U256,
+        // Ex: From<U256> for Udec256
+        impl From<$inner> for $name {
+            fn from(value: $inner) -> Self {
+                Self::raw(Uint::new(value))
+            }
+        }
+
+        // Ex: From<Uint<U256>> for Udec256
+        impl From<Uint<$inner>> for $name {
+            fn from(value: Uint<$inner>) -> Self {
+                Self::raw(value)
+            }
+        }
+
+        // --- From Udec ---
+        $(
+            // Ex: From<Udec128> for Udec256
+            impl From<$from> for $name {
+                fn from(value: $from) -> Self {
+                    Self::from_decimal(value)
+                }
+            }
+
+            // Ex: From<Uint128> for Udec256
+            impl From<Uint<<$from as Inner>::U>> for $name {
+                fn from(value: Uint<<$from as Inner>::U>) -> Self {
+                    Self::raw(value.into())
+                }
+            }
+
+            // Ex: From<u128> for Udec256
+            impl From<<$from as Inner>::U> for $name {
+                fn from(value: <$from as Inner>::U) -> Self {
+                    Self::raw(value.into())
+                }
+            }
+
+            // Ex: TryFrom<Udec256> for Udec128
+            impl TryFrom<$name> for $from {
+                type Error = MathError;
+
+                fn try_from(value: $name) -> MathResult<$from> {
+                    <$from>::try_from_decimal(value)
+                }
+            }
+
+            // Ex: TryFrom<Udec256> for Uint128
+            impl TryFrom<$name> for Uint<<$from as Inner>::U> {
+                type Error = MathError;
+
+                fn try_from(value: $name) -> MathResult<Uint<<$from as Inner>::U>> {
+                    value.0.try_into().map(Self)
+                }
+            }
+
+            // Ex: TryFrom<Udec256> for u128
+            impl TryFrom<$name> for <$from as Inner>::U {
+                type Error = MathError;
+
+                fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
+                    value.0.try_into()
+                }
+            }
+        )*
+    };
+}
+
+generate_decimal! {
+    name           = Udec128,
+    inner_type     = u128,
     decimal_places = 18,
-    from_dec = [Udec128],
-    doc = "256-bit unsigned fixed-point number with 18 decimal places.",
-);
+    from_dec       = [],
+    doc            = "128-bit unsigned fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    name           = Udec256,
+    inner_type     = U256,
+    decimal_places = 18,
+    from_dec       = [Udec128],
+    doc            = "256-bit unsigned fixed-point number with 18 decimal places.",
+}
 
 // ----------------------------------- tests -----------------------------------
 

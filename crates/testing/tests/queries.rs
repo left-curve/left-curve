@@ -7,7 +7,8 @@ use {
 mod query_maker {
     use {
         anyhow::ensure,
-        grug_types::{Denom, Empty, MutableCtx, Number, Query, Response, Uint256},
+        grug_math::{Number, Uint256},
+        grug_types::{Denom, Empty, MutableCtx, Query, Response},
         std::str::FromStr,
     };
 

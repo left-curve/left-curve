@@ -1,6 +1,7 @@
 use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
+    grug_math::Udec128,
     grug_tester::{
         QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
@@ -8,7 +9,7 @@ use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
         Addr, Binary, Coins, Denom, GenericResult, JsonSerExt, Message, QueryRequest, ResultExt,
-        Udec128, VerificationError,
+        VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,

@@ -1,8 +1,5 @@
 use {
-    crate::{
-        Addr, Duration, Event, GenericResult, Hash256, Json, Message, NumberConst, Timestamp,
-        Uint64,
-    },
+    crate::{Addr, Duration, Event, GenericResult, Hash256, Json, Message, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -35,7 +32,7 @@ pub const GENESIS_BLOCK_HASH: Hash256 = Hash256::from_array(hex!(
 ///
 /// This has to be zero, such as subsequent block heights are the same as the
 /// database and Merkle tree version.
-pub const GENESIS_BLOCK_HEIGHT: Uint64 = Uint64::ZERO;
+pub const GENESIS_BLOCK_HEIGHT: u64 = 0;
 
 /// The chain's genesis state. To be included in the `app_state` field of
 /// CometBFT's `genesis.json`.
@@ -106,7 +103,7 @@ pub enum Permission {
 )]
 #[serde(deny_unknown_fields)]
 pub struct BlockInfo {
-    pub height: Uint64,
+    pub height: u64,
     pub timestamp: Timestamp,
     pub hash: Hash256,
 }

@@ -418,7 +418,7 @@ mod tests {
         grug_crypto::{Identity256, Identity512},
         grug_types::{
             encode_sections, json, Addr, BlockInfo, GenericResult, Hash256, JsonDeExt, JsonSerExt,
-            MockStorage, NumberConst, Order, Query, QueryResponse, Storage, Timestamp, Uint64,
+            MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
@@ -433,7 +433,7 @@ mod tests {
     const TESTER_CONTRACT: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
 
     const MOCK_BLOCK: BlockInfo = BlockInfo {
-        height: Uint64::ONE,
+        height: 1,
         timestamp: Timestamp::from_nanos(100),
         hash: Hash256::ZERO,
     };

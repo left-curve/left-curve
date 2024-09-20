@@ -1461,6 +1461,7 @@ dependencies = [
  "grug-client",
  "grug-ffi",
  "grug-macros",
+ "grug-math",
  "grug-storage",
  "grug-testing",
  "grug-types",
@@ -1502,6 +1503,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug-ffi",
+ "grug-math",
  "grug-storage",
  "grug-types",
  "serde",
@@ -1626,10 +1628,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-math"
+version = "0.0.0"
+dependencies = [
+ "bnum",
+ "borsh",
+ "proptest",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-math",
  "grug-types",
  "prost",
  "serde",
@@ -1644,6 +1658,7 @@ dependencies = [
  "borsh",
  "grug-bank",
  "grug-ffi",
+ "grug-math",
  "grug-storage",
  "grug-types",
  "serde",
@@ -1667,6 +1682,7 @@ dependencies = [
  "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-math",
  "grug-storage",
  "grug-taxman",
  "grug-types",
@@ -1690,6 +1706,7 @@ dependencies = [
  "dyn-clone",
  "forward_ref",
  "grug-crypto",
+ "grug-math",
  "hex",
  "hex-literal",
  "paste",
@@ -1713,6 +1730,7 @@ dependencies = [
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-math",
  "grug-testing",
  "grug-types",
  "serde",
@@ -1732,6 +1750,7 @@ dependencies = [
  "grug-app",
  "grug-bank",
  "grug-crypto",
+ "grug-math",
  "grug-tester",
  "grug-testing",
  "grug-types",

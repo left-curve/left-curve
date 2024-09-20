@@ -1,9 +1,9 @@
 use {
     crate::{Config, CONFIG},
     anyhow::ensure,
+    grug_math::{MultiplyFraction, Number, Uint128, Uint256},
     grug_types::{
-        AuthCtx, AuthMode, Coins, Message, MultiplyFraction, MutableCtx, Number, Response,
-        StdResult, Storage, Tx, TxOutcome, Uint128, Uint256,
+        AuthCtx, AuthMode, Coins, Message, MutableCtx, Response, StdResult, Storage, Tx, TxOutcome,
     },
 };
 

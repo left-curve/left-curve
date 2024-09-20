@@ -1,6 +1,7 @@
 use {
-    crate::{Number, StdError, StdResult},
+    crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Number,
     serde::{de, de::Error, Serialize},
     std::{
         fmt,
@@ -105,8 +106,9 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{BorshDeExt, BorshSerExt, JsonDeExt, NonZero, NumberConst, StdError, Uint128},
+        crate::{BorshDeExt, BorshSerExt, JsonDeExt, NonZero, StdError},
         borsh::{BorshDeserialize, BorshSerialize},
+        grug_math::{NumberConst, Uint128},
     };
 
     // The expect error is a `StdError::Deserialize` where the `reason` is a

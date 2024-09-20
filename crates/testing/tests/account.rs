@@ -1,9 +1,8 @@
 use {
     grug_account::Credential,
+    grug_math::{NumberConst, Uint256},
     grug_testing::TestBuilder,
-    grug_types::{
-        Coins, Duration, JsonDeExt, Message, NumberConst, ResultExt, Timestamp, Tx, Uint256,
-    },
+    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -113,11 +112,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 }
 
 mod backrunner {
-    use std::str::FromStr;
-
-    use grug_types::{
-        AuthCtx, AuthResponse, Coins, Denom, Message, Number, NumberConst, Response, StdResult, Tx,
-        Uint128, Uint256,
+    use {
+        grug_math::{Number, NumberConst, Uint128, Uint256},
+        grug_types::{AuthCtx, AuthResponse, Coins, Denom, Message, Response, StdResult, Tx},
+        std::str::FromStr,
     };
 
     // This contract is used for testing the backrunning feature, so we simply

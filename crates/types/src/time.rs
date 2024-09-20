@@ -1,6 +1,6 @@
 use {
-    crate::{Number, StdResult, Uint128},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::{MathResult, Number, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
 };
@@ -94,36 +94,31 @@ impl Number for Duration {
         self.0.is_zero()
     }
 
-    fn abs(self) -> Self {
-        // Duration can't be negative.
-        self
-    }
-
-    fn checked_add(self, other: Self) -> StdResult<Self> {
+    fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
 
-    fn checked_sub(self, other: Self) -> StdResult<Self> {
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
         self.0.checked_sub(other.0).map(Self)
     }
 
-    fn checked_mul(self, other: Self) -> StdResult<Self> {
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
         self.0.checked_mul(other.0).map(Self)
     }
 
-    fn checked_div(self, other: Self) -> StdResult<Self> {
+    fn checked_div(self, other: Self) -> MathResult<Self> {
         self.0.checked_div(other.0).map(Self)
     }
 
-    fn checked_rem(self, other: Self) -> StdResult<Self> {
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(self, other: u32) -> StdResult<Self> {
+    fn checked_pow(self, other: u32) -> MathResult<Self> {
         self.0.checked_pow(other).map(Self)
     }
 
-    fn checked_sqrt(self) -> StdResult<Self> {
+    fn checked_sqrt(self) -> MathResult<Self> {
         self.0.checked_sqrt().map(Self)
     }
 

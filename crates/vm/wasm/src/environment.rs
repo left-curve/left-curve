@@ -281,10 +281,7 @@ mod test {
     use {
         crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
-        grug_types::{
-            BlockInfo, Hash256, MockStorage, NumberConst, Order, StdError, Storage, Timestamp,
-            Uint64,
-        },
+        grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -297,7 +294,7 @@ mod test {
     const MOCK_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;
 
     const MOCK_BLOCK: BlockInfo = BlockInfo {
-        height: Uint64::ONE,
+        height: 1,
         timestamp: Timestamp::from_nanos(100),
         hash: Hash256::ZERO,
     };

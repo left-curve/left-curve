@@ -1,10 +1,9 @@
 use {
-    super::MockStorage,
     crate::{
         Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
-        JsonSerExt, NumberConst, Querier, Query, QueryResponse, StdError, StdResult, Storage,
-        Uint256,
+        JsonSerExt, MockStorage, Querier, Query, QueryResponse, StdError, StdResult, Storage,
     },
+    grug_math::{NumberConst, Uint256},
     serde::Serialize,
     std::collections::BTreeMap,
 };

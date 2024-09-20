@@ -12,9 +12,10 @@
 use {
     crate::{
         Addr, Batch, Binary, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt,
-        JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult, Uint256,
+        JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult,
     },
     dyn_clone::DynClone,
+    grug_math::Uint256,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::collections::BTreeMap,
 };

@@ -1,5 +1,6 @@
-#[doc(hidden)]
-pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+// TODO: remove this linter exception once we add signed number types.
+#[allow(dead_code)]
+pub(crate) const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
@@ -23,8 +24,9 @@ pub const fn grow_be_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-#[doc(hidden)]
-pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+// TODO: remove this linter exception once we add signed number types.
+#[allow(dead_code)]
+pub(crate) const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
@@ -48,8 +50,7 @@ pub const fn grow_le_int<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-#[doc(hidden)]
-pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+pub(crate) const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);
@@ -67,8 +68,7 @@ pub const fn grow_be_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     output
 }
 
-#[doc(hidden)]
-pub const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
+pub(crate) const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usize>(
     input: [u8; INPUT_SIZE],
 ) -> [u8; OUTPUT_SIZE] {
     debug_assert!(INPUT_SIZE <= OUTPUT_SIZE);

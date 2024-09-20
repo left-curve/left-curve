@@ -1,6 +1,7 @@
 use {
+    grug_math::{NumberConst, Uint256},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, NumberConst, ResultExt, TxOutcome, Uint256},
+    grug_types::{Coins, Empty, Message, ResultExt, TxOutcome},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };
@@ -11,9 +12,10 @@ use {
 /// quarter of the gas limit was used and charge the fee accordingly.
 mod taxman {
     use {
+        grug_math::{MultiplyFraction, Number, NumberConst, Udec128, Uint128, Uint256},
         grug_types::{
-            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MultiplyFraction, MutableCtx, Number,
-            NumberConst, Response, StdResult, Tx, TxOutcome, Udec128, Uint128, Uint256,
+            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, Response, StdResult, Tx,
+            TxOutcome,
         },
         std::{str::FromStr, sync::LazyLock},
     };

@@ -14,6 +14,7 @@ members  = [
   "crates/ffi",
   "crates/jellyfish-merkle",
   "crates/macros",
+  "crates/math",
   "crates/std",
   "crates/storage",
   "crates/testing",
