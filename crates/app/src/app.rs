@@ -66,10 +66,10 @@ where
 
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
-        if block.height.number() != 0 {
+        if block.height != 0 {
             return Err(AppError::IncorrectBlockHeight {
                 expect: 0,
-                actual: block.height.number(),
+                actual: block.height,
             });
         }
 
@@ -149,10 +149,10 @@ where
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
-        if block.height.number() != last_finalized_block.height.number() + 1 {
+        if block.height != last_finalized_block.height + 1 {
             return Err(AppError::IncorrectBlockHeight {
-                expect: last_finalized_block.height.number() + 1,
-                actual: block.height.number(),
+                expect: last_finalized_block.height + 1,
+                actual: block.height,
             });
         }
 
@@ -235,12 +235,12 @@ where
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
         // - Merkle tree isn't empty
-        debug_assert_eq!(block.height.number(), version);
+        debug_assert_eq!(block.height, version);
         debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            height = block.height.number(),
+            height = block.height,
             time = into_utc_string(block.timestamp),
             app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
@@ -408,7 +408,7 @@ where
         }
 
         // We can't simulate gas at a block height
-        if height != 0 && height != block.height.number() {
+        if height != 0 && height != block.height {
             return Err(AppError::PastHeightNotSupported);
         }
 

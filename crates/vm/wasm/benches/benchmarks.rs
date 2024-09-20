@@ -5,7 +5,6 @@ use {
     grug_tester::QueryMsg,
     grug_types::{
         Addr, BlockInfo, Context, Empty, GenericResult, Hash, JsonSerExt, MockStorage, Timestamp,
-        Uint64,
     },
     grug_vm_wasm::WasmVm,
     std::time::Duration,
@@ -16,7 +15,7 @@ const MOCK_CHAIN_ID: &str = "dev-1";
 const MOCK_CONTRACT: Addr = Addr::mock(1);
 
 const MOCK_BLOCK: BlockInfo = BlockInfo {
-    height: Uint64::new(1),
+    height: 1,
     timestamp: Timestamp::from_seconds(100),
     hash: Hash::ZERO,
 };

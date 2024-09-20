@@ -1,6 +1,7 @@
 use {
+    grug_math::Uint256,
     grug_storage::Map,
-    grug_types::{Addr, Denom, Uint256},
+    grug_types::{Addr, Denom},
 };
 
 /// Total supplies of tokens, indexed by denoms.

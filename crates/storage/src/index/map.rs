@@ -1809,10 +1809,7 @@ mod cosmwasm_tests {
     }
 
     mod pk_multi_index {
-        use {
-            super::*,
-            grug_types::{Addr, Uint128},
-        };
+        use {super::*, grug_math::Uint128, grug_types::Addr};
 
         struct Indexes<'a> {
             // The last type param must match the `IndexedMap` primary key type below
@@ -1834,7 +1831,7 @@ mod cosmwasm_tests {
             let indexes = Indexes {
                 spender: MultiIndex::new(|pk, _allow| *pk.1, "allowances", "allowances__spender"),
             };
-            let map: IndexedMap<(&Addr, &Addr), grug_types::Uint<u128>, Indexes> =
+            let map: IndexedMap<(&Addr, &Addr), Uint128, Indexes> =
                 IndexedMap::new("allowances", indexes);
             let mut storage = MockStorage::new();
 

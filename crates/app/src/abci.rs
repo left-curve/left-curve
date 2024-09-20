@@ -2,7 +2,7 @@ use {
     crate::{App, AppError, Db, Vm},
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, Timestamp,
-        TxOutcome, Uint64, GENESIS_BLOCK_HASH,
+        TxOutcome, GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -223,7 +223,7 @@ where
 
 fn from_tm_block(height: i64, time: Option<TmTimestamp>, hash: Option<Bytes>) -> BlockInfo {
     BlockInfo {
-        height: Uint64::new(height as u64),
+        height: height as u64,
         timestamp: from_tm_timestamp(time.expect("block time not found")),
         hash: hash.map(from_tm_hash).unwrap_or(GENESIS_BLOCK_HASH),
     }

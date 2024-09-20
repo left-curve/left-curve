@@ -3,7 +3,7 @@
 use crate::{
     Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MockApi,
     MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp,
-    Uint64, Undefined,
+    Undefined,
 };
 
 /// Default mock chain ID used in mock context.
@@ -11,7 +11,7 @@ pub const MOCK_CHAIN_ID: &str = "dev-1";
 
 /// Default mock block info used in mock context.
 pub const MOCK_BLOCK: BlockInfo = BlockInfo {
-    height:    Uint64::new(1),
+    height:    1,
     timestamp: Timestamp::from_seconds(100),
     hash:      Hash256::ZERO,
 };
@@ -159,11 +159,8 @@ impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
         self
     }
 
-    pub fn with_block_height<T>(mut self, height: T) -> Self
-    where
-        T: Into<Uint64>,
-    {
-        self.block.height = height.into();
+    pub fn with_block_height(mut self, height: u64) -> Self {
+        self.block.height = height;
         self
     }
 
@@ -200,11 +197,8 @@ impl<S, A, Q, E, F, M> MockContext<S, A, Q, E, F, M> {
         self.block = block;
     }
 
-    pub fn set_block_height<T>(&mut self, height: T)
-    where
-        T: Into<Uint64>,
-    {
-        self.block.height = height.into();
+    pub fn set_block_height(&mut self, height: u64) {
+        self.block.height = height;
     }
 
     pub fn set_block_timestamp(&mut self, timestamp: Timestamp) {

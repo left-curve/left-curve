@@ -1,5 +1,6 @@
 use {
-    grug_types::{Addr, Coins, Denom, QueryRequest, Uint256},
+    grug_math::Uint256,
+    grug_types::{Addr, Coins, Denom, QueryRequest},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };

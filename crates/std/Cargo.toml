@@ -12,6 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-macros  = { path = "../macros" }
+grug-math    = { path = "../math" }
 grug-storage = { path = "../storage" }
 grug-types   = { path = "../types" }
 serde        = { workspace = true, features = ["derive"] }

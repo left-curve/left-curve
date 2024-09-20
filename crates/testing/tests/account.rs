@@ -1,9 +1,8 @@
 use {
-    grug_account::Credential,
+    grug_math::{NumberConst, Uint256},
+    grug_mock_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{
-        Coins, Duration, JsonDeExt, Message, NumberConst, ResultExt, Timestamp, Tx, Uint256,
-    },
+    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -113,11 +112,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 }
 
 mod backrunner {
-    use std::str::FromStr;
-
-    use grug_types::{
-        AuthCtx, AuthResponse, Coins, Denom, Message, Number, NumberConst, Response, StdResult, Tx,
-        Uint128, Uint256,
+    use {
+        grug_math::{Number, NumberConst, Uint128, Uint256},
+        grug_types::{AuthCtx, AuthResponse, Coins, Denom, Message, Response, StdResult, Tx},
+        std::str::FromStr,
     };
 
     // This contract is used for testing the backrunning feature, so we simply
@@ -134,7 +132,7 @@ mod backrunner {
 
         Ok(Response::new().add_message(Message::execute(
             cfg.bank,
-            &grug_bank::ExecuteMsg::Mint {
+            &grug_mock_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: Denom::from_str("nft/badkids/1")?,
                 amount: Uint256::ONE,
@@ -154,14 +152,14 @@ mod backrunner {
 
 #[test]
 fn backrunning_works() -> anyhow::Result<()> {
-    let account = ContractBuilder::new(Box::new(grug_account::instantiate))
-        .with_receive(Box::new(grug_account::receive))
+    let account = ContractBuilder::new(Box::new(grug_mock_account::instantiate))
+        .with_receive(Box::new(grug_mock_account::receive))
         .with_authenticate(Box::new(backrunner::authenticate))
         .with_backrun(Box::new(backrunner::backrun))
         .build();
 
     let (mut suite, mut accounts) = TestBuilder::new()
-        .set_account_code(account, |public_key| grug_account::InstantiateMsg {
+        .set_account_code(account, |public_key| grug_mock_account::InstantiateMsg {
             public_key,
         })?
         .add_account("sender", Coins::one("ugrug", 50_000_u128)?)?
@@ -194,15 +192,15 @@ fn backrunning_works() -> anyhow::Result<()> {
 
 #[test]
 fn backrunning_with_error() -> anyhow::Result<()> {
-    let bugged_account = ContractBuilder::new(Box::new(grug_account::instantiate))
-        .with_receive(Box::new(grug_account::receive))
+    let bugged_account = ContractBuilder::new(Box::new(grug_mock_account::instantiate))
+        .with_receive(Box::new(grug_mock_account::receive))
         .with_authenticate(Box::new(backrunner::authenticate))
         .with_backrun(Box::new(backrunner::bugged_backrun))
         .build();
 
     let (mut suite, mut accounts) = TestBuilder::new()
-        .set_account_code(bugged_account, |public_key| grug_account::InstantiateMsg {
-            public_key,
+        .set_account_code(bugged_account, |public_key| {
+            grug_mock_account::InstantiateMsg { public_key }
         })?
         .add_account("sender", Coins::one("ugrug", 50_000_u128)?)?
         .add_account("receiver", Coins::new())?

@@ -1,9 +1,9 @@
 use {
     crate::{Config, CONFIG},
     anyhow::ensure,
+    grug_math::{MultiplyFraction, Number, Uint128, Uint256},
     grug_types::{
-        AuthCtx, AuthMode, Coins, Message, MultiplyFraction, MutableCtx, Number, Response,
-        StdResult, Storage, Tx, TxOutcome, Uint128, Uint256,
+        AuthCtx, AuthMode, Coins, Message, MutableCtx, Response, StdResult, Storage, Tx, TxOutcome,
     },
 };
 
@@ -53,7 +53,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let withhold_msg = if !withhold_amount.is_zero() {
         Some(Message::execute(
             cfg.bank,
-            &grug_bank::ExecuteMsg::ForceTransfer {
+            &grug_mock_bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
                 denom: fee_cfg.fee_denom,

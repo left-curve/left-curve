@@ -1,8 +1,7 @@
 use {
+    grug_math::{MultiplyFraction, NumberConst, Udec128, Uint256},
     grug_testing::TestBuilder,
-    grug_types::{
-        Coins, Denom, Message, MultiplyFraction, NumberConst, ResultExt, Udec128, Uint256,
-    },
+    grug_types::{Coins, Denom, Message, ResultExt},
     grug_vm_wasm::WasmVm,
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock, vec},
 };
@@ -75,7 +74,7 @@ fn transfers() -> anyhow::Result<()> {
 
     // List all holders of the denom
     suite
-        .query_wasm_smart(cfg.bank, grug_bank::QueryHoldersRequest {
+        .query_wasm_smart(cfg.bank, grug_mock_bank::QueryHoldersRequest {
             denom: DENOM.clone(),
             start_after: None,
             limit: None,

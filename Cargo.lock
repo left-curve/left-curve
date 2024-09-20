@@ -1314,12 +1314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "forward_ref"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
-
-[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1461,23 +1455,13 @@ dependencies = [
  "grug-client",
  "grug-ffi",
  "grug-macros",
+ "grug-math",
  "grug-storage",
  "grug-testing",
  "grug-types",
  "serde",
  "serde_json",
  "serde_with",
-]
-
-[[package]]
-name = "grug-account"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-storage",
- "grug-types",
- "serde",
 ]
 
 [[package]]
@@ -1494,17 +1478,6 @@ dependencies = [
  "tendermint-proto",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "grug-bank"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-storage",
- "grug-types",
- "serde",
 ]
 
 [[package]]
@@ -1626,27 +1599,63 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-storage"
+name = "grug-math"
 version = "0.0.0"
 dependencies = [
+ "bnum",
  "borsh",
- "grug-types",
- "prost",
+ "proptest",
  "serde",
- "test-case",
+ "thiserror",
 ]
 
 [[package]]
-name = "grug-taxman"
+name = "grug-mock-account"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "borsh",
- "grug-bank",
  "grug-ffi",
  "grug-storage",
  "grug-types",
  "serde",
+]
+
+[[package]]
+name = "grug-mock-bank"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug-ffi",
+ "grug-math",
+ "grug-storage",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
+name = "grug-mock-taxman"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "grug-ffi",
+ "grug-math",
+ "grug-mock-bank",
+ "grug-storage",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
+name = "grug-storage"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "grug-math",
+ "grug-types",
+ "prost",
+ "serde",
+ "test-case",
 ]
 
 [[package]]
@@ -1662,13 +1671,14 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
- "grug-account",
  "grug-app",
- "grug-bank",
  "grug-crypto",
  "grug-db-memory",
+ "grug-math",
+ "grug-mock-account",
+ "grug-mock-bank",
+ "grug-mock-taxman",
  "grug-storage",
- "grug-taxman",
  "grug-types",
  "grug-vm-rust",
  "k256",
@@ -1688,12 +1698,11 @@ dependencies = [
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
- "forward_ref",
  "grug-crypto",
+ "grug-math",
  "hex",
  "hex-literal",
  "paste",
- "proptest",
  "prost",
  "ripemd",
  "serde",
@@ -1713,6 +1722,7 @@ dependencies = [
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-math",
  "grug-testing",
  "grug-types",
  "serde",
@@ -1730,8 +1740,9 @@ dependencies = [
  "data-encoding",
  "ed25519-dalek",
  "grug-app",
- "grug-bank",
  "grug-crypto",
+ "grug-math",
+ "grug-mock-bank",
  "grug-tester",
  "grug-testing",
  "grug-types",

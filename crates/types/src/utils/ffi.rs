@@ -1,15 +1,18 @@
-use crate::{StdError, StdResult};
+use {
+    crate::StdResult,
+    grug_math::{MathError, MathResult},
+};
 
 /// Safely converts input of type T to u32.
 /// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
 #[doc(hidden)]
-pub fn to_u32<T>(input: T) -> StdResult<u32>
+pub fn to_u32<T>(input: T) -> MathResult<u32>
 where
     T: TryInto<u32> + ToString + Copy,
 {
     input
         .try_into()
-        .map_err(|_| StdError::overflow_conversion::<T, u32>(input))
+        .map_err(|_| MathError::overflow_conversion::<T, u32>(input))
 }
 
 /// Given a compound key consisting of [k1, k2, ..., kN] (N > 1) that is encoded

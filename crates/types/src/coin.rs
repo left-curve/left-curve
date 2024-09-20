@@ -1,6 +1,7 @@
 use {
-    crate::{Denom, StdError, StdResult, Uint256},
+    crate::{Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Uint256,
     serde::{Deserialize, Serialize},
     std::fmt,
 };

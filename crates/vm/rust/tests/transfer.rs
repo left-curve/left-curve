@@ -1,6 +1,7 @@
 use {
+    grug_math::{NumberConst, Uint256},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, NumberConst, ResultExt, Uint256},
+    grug_types::{Coins, Denom, Message, ResultExt},
     std::{str::FromStr, sync::LazyLock},
 };
 

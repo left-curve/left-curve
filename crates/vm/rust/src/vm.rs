@@ -271,8 +271,8 @@ mod tests {
         anyhow::ensure,
         grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
-            Addr, Binary, BlockInfo, Coins, Context, Hash, JsonSerExt, MockStorage, NumberConst,
-            Storage, Timestamp, Uint64,
+            Addr, Binary, BlockInfo, Coins, Context, Hash, JsonSerExt, MockStorage, Storage,
+            Timestamp,
         },
         test_case::test_case,
     };
@@ -321,7 +321,7 @@ mod tests {
         let mut vm = RustVm::new();
 
         let block = BlockInfo {
-            height: Uint64::ZERO,
+            height: 0,
             timestamp: Timestamp::from_nanos(0),
             hash: Hash::ZERO,
         };

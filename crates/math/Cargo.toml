@@ -1,5 +1,5 @@
 [package]
-name          = "grug-storage"
+name          = "grug-math"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,11 +10,10 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-borsh      = { workspace = true }
-grug-math  = { path = "../math" }
-grug-types = { path = "../types" }
-prost      = { workspace = true }
-serde      = { workspace = true }
+bnum      = { workspace = true, features = ["borsh"] }
+borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
+serde     = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
 
 [dev-dependencies]
-test-case = { workspace = true }
+proptest = { workspace = true }

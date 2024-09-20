@@ -1,6 +1,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Denom, Udec128},
+    grug_math::Udec128,
+    grug_types::Denom,
     serde::{Deserialize, Serialize},
 };
 

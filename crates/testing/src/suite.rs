@@ -3,11 +3,11 @@ use {
     grug_app::{App, AppError, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
+    grug_math::Uint256,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        NumberConst, Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome,
-        Uint256, Uint64, UnsignedTx,
+        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -105,7 +105,7 @@ where
         let num_txs = txs.len();
 
         // Advance block height and time
-        self.block.height += Uint64::ONE;
+        self.block.height += 1;
         self.block.timestamp = self.block.timestamp + self.block_time;
 
         // Call ABCI `FinalizeBlock` method

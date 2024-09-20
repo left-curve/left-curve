@@ -224,9 +224,9 @@ mod test {
 
         CONFIG.save(&mut storage, &cfg).unwrap();
 
-        let res = CONFIG.update(&mut storage, |_| Err(StdError::ZeroLog));
+        let res = CONFIG.update(&mut storage, |_| Err(StdError::generic_err("test")));
 
-        assert!(matches!(res, Err(StdError::ZeroLog)));
+        assert!(matches!(res, Err(StdError::Generic(err)) if err == "test"));
         assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
     }
 

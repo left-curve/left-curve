@@ -1,5 +1,5 @@
 [package]
-name          = "grug-bank"
+name          = "grug-mock-bank"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -24,6 +24,7 @@ library = []
 [dependencies]
 anyhow       = { workspace = true }
 grug-ffi     = { path = "../../crates/ffi" }
+grug-math    = { path = "../../crates/math" }
 grug-storage = { path = "../../crates/storage" }
 grug-types   = { path = "../../crates/types" }
 serde        = { workspace = true, features = ["derive"] }

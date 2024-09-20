@@ -1,10 +1,9 @@
 use {
-    core::str,
+    grug_math::{Bytable, Udec, Uint, Uint128, Uint256, Uint512, Uint64},
     grug_types::{
-        nested_namespaces_with_key, Addr, Bytable, Denom, Duration, Hash, Number, NumberConst,
-        Part, Sign, Signed, StdError, StdResult, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+        nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
     },
-    std::{borrow::Cow, mem, vec},
+    std::{borrow::Cow, mem, str, vec},
 };
 
 // ------------------------------------ key ------------------------------------
@@ -361,50 +360,6 @@ where
     }
 }
 
-impl<T> PrimaryKey for Signed<T>
-where
-    T: PrimaryKey<Output = T> + NumberConst + Number + Copy,
-{
-    type Output = Self;
-    type Prefix = ();
-    type Suffix = ();
-
-    const KEY_ELEMS: u8 = T::KEY_ELEMS + 1;
-
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        // We prepend a "sign byte" to indicate the number's sign:
-        // 0 for negative, 1 for positive.
-        //
-        // For negative numbers, we use an "offset" value, which the difference
-        // between the inner value and the inner type's minimum value.
-        //
-        // Both of these ensures keys are ordered by value ascendingly.
-        let (sign, offset) = if self.is_negative() {
-            (0_u8, T::MAX.checked_sub(*self.inner()).unwrap())
-        } else {
-            (1_u8, *self.inner())
-        };
-
-        // `offset` is a temporary value, so we must make the raw keys owned,
-        // which can exist even if `offset` goes out of scope.
-        (sign, offset)
-            .raw_keys()
-            .into_iter()
-            .map(|cow| Cow::Owned(cow.into_owned()))
-            .collect()
-    }
-
-    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (sign, offset) = <(u8, T) as PrimaryKey>::from_slice(bytes)?;
-
-        if sign == 0 {
-            Ok(Self::new_negative(T::MAX.checked_sub(offset)?))
-        } else {
-            Ok(Self::new_positive(offset))
-        }
-    }
-}
-
 impl<T, const S: u32> PrimaryKey for Udec<T, S>
 where
     Uint<T>: PrimaryKey<Output = Uint<T>>,
@@ -646,15 +601,6 @@ where
     }
 }
 
-impl<T> Prefixer for Signed<T>
-where
-    T: PrimaryKey<Output = T> + NumberConst + Number + Copy,
-{
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        self.raw_keys()
-    }
-}
-
 macro_rules! impl_integer_prefixer {
     ($($t:ty),+ $(,)?) => {
         $(impl Prefixer for $t {
@@ -676,7 +622,8 @@ mod tests {
     use {
         super::*,
         crate::Set,
-        grug_types::{Dec128, Dec256, Int128, Int256, Int64, MockStorage, Order, Udec128, Udec256},
+        grug_math::{NumberConst, Udec128, Udec256},
+        grug_types::{MockStorage, Order},
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
     };
@@ -754,13 +701,13 @@ mod tests {
 
     const DEC128_SHIFT: u128 = 10_u128.pow(18);
 
-    fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(N + 3);
-        bytes.extend(1_u16.to_be_bytes()); // length prefix of `s`
-        bytes.push(s);
-        bytes.extend(b);
-        bytes
-    }
+    // fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
+    //     let mut bytes = Vec::with_capacity(N + 3);
+    //     bytes.extend(1_u16.to_be_bytes()); // length prefix of `s`
+    //     bytes.push(s);
+    //     bytes.extend(b);
+    //     bytes
+    // }
 
     #[test_case(
         b"slice".as_slice(),
@@ -875,48 +822,48 @@ mod tests {
         &Uint256::MAX.to_be_bytes();
         "udec256_MAX"
     )]
-    /// ---- Signed integers ----
-    #[test_case(
-        Int64::new_positive(10_u64.into()),
-        &with_sign(1, 10_u64.to_be_bytes());
-        "int64_10"
-    )]
-    #[test_case(
-        Int128::new_negative(10_u64.into()),
-        &with_sign(0, (u128::MAX - 10).to_be_bytes());
-        "int128_neg_10"
-    )]
-    #[test_case(
-        Int256::MIN,
-        &with_sign(0, Uint256::MIN.to_be_bytes());
-        "int256_MIN"
-    )]
-    #[test_case(
-        Int256::MAX,
-        &with_sign(1, Uint256::MAX.to_be_bytes());
-        "int256_MAX"
-    )]
-    /// ---- Signed Decimals ----
-    #[test_case(
-        Dec128::MAX,
-        &with_sign(1, Uint128::MAX.to_be_bytes());
-        "dec128_MAX"
-    )]
-    #[test_case(
-        Dec128::MIN,
-        &with_sign(0, Uint128::MIN.to_be_bytes());
-        "dec128_MIN"
-    )]
-    #[test_case(
-        Dec256::from_str("-10.5").unwrap(),
-        &with_sign(0, (Uint256::MAX - Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2)).to_be_bytes());
-        "dec128_neg_10_5"
-    )]
-    #[test_case(
-        Dec256::from_str("20.75").unwrap(),
-        &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes());
-        "dec128_20_75"
-    )]
+    // /// ---- Signed integers ----
+    // #[test_case(
+    //     Int64::new_positive(10_u64.into()),
+    //     &with_sign(1, 10_u64.to_be_bytes());
+    //     "int64_10"
+    // )]
+    // #[test_case(
+    //     Int128::new_negative(10_u64.into()),
+    //     &with_sign(0, (u128::MAX - 10).to_be_bytes());
+    //     "int128_neg_10"
+    // )]
+    // #[test_case(
+    //     Int256::MIN,
+    //     &with_sign(0, Uint256::MIN.to_be_bytes());
+    //     "int256_MIN"
+    // )]
+    // #[test_case(
+    //     Int256::MAX,
+    //     &with_sign(1, Uint256::MAX.to_be_bytes());
+    //     "int256_MAX"
+    // )]
+    // /// ---- Signed Decimals ----
+    // #[test_case(
+    //     Dec128::MAX,
+    //     &with_sign(1, Uint128::MAX.to_be_bytes());
+    //     "dec128_MAX"
+    // )]
+    // #[test_case(
+    //     Dec128::MIN,
+    //     &with_sign(0, Uint128::MIN.to_be_bytes());
+    //     "dec128_MIN"
+    // )]
+    // #[test_case(
+    //     Dec256::from_str("-10.5").unwrap(),
+    //     &with_sign(0, (Uint256::MAX - Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2)).to_be_bytes());
+    //     "dec128_neg_10_5"
+    // )]
+    // #[test_case(
+    //     Dec256::from_str("20.75").unwrap(),
+    //     &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes());
+    //     "dec128_20_75"
+    // )]
     fn key<T>(compare: T, bytes: &[u8])
     where
         T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug,
@@ -940,18 +887,18 @@ mod tests {
         ];
         "uint128"
     )]
-    #[test_case(
-        [
-            Int128::new_negative(Uint128::MAX),
-            Int128::new_negative(Uint128::new(69420)),
-            Int128::new_negative(Uint128::new(12345)),
-            Int128::new_positive(Uint128::ZERO),
-            Int128::new_positive(Uint128::new(12345)),
-            Int128::new_positive(Uint128::new(69420)),
-            Int128::new_positive(Uint128::MAX),
-        ];
-        "int128"
-    )]
+    // #[test_case(
+    //     [
+    //         Int128::new_negative(Uint128::MAX),
+    //         Int128::new_negative(Uint128::new(69420)),
+    //         Int128::new_negative(Uint128::new(12345)),
+    //         Int128::new_positive(Uint128::ZERO),
+    //         Int128::new_positive(Uint128::new(12345)),
+    //         Int128::new_positive(Uint128::new(69420)),
+    //         Int128::new_positive(Uint128::MAX),
+    //     ];
+    //     "int128"
+    // )]
     #[test_case(
         [
             Udec128::ZERO,
@@ -962,20 +909,20 @@ mod tests {
         ];
         "udec128"
     )]
-    #[test_case(
-        [
-            Dec128::new_negative(Udec128::MAX),
-            Dec128::new_negative(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
-            Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
-            Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
-            Dec128::new_positive(Udec128::ZERO),
-            Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
-            Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
-            Dec128::new_positive(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
-            Dec128::new_positive(Udec128::MAX),
-        ];
-        "dec128"
-    )]
+    // #[test_case(
+    //     [
+    //         Dec128::new_negative(Udec128::MAX),
+    //         Dec128::new_negative(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
+    //         Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
+    //         Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
+    //         Dec128::new_positive(Udec128::ZERO),
+    //         Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
+    //         Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
+    //         Dec128::new_positive(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
+    //         Dec128::new_positive(Udec128::MAX),
+    //     ];
+    //     "dec128"
+    // )]
     fn number_key_ordering<T, const N: usize>(numbers: [T; N])
     where
         T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug + Copy,

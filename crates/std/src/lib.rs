@@ -2,7 +2,7 @@
 // rather just re-export contents from other crates. The objective is that
 // contract developers only needs to add one single dependency that has
 // everything they need.
-pub use {grug_macros::*, grug_storage::*, grug_types::*};
+pub use {grug_macros::*, grug_math::*, grug_storage::*, grug_types::*};
 
 // The FFI crate is only included when building for WebAssembly.
 #[cfg(target_arch = "wasm32")]
