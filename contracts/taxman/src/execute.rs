@@ -53,7 +53,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let withhold_msg = if !withhold_amount.is_zero() {
         Some(Message::execute(
             cfg.bank,
-            &grug_bank::ExecuteMsg::ForceTransfer {
+            &grug_mock_bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
                 denom: fee_cfg.fee_denom,

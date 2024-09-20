@@ -41,7 +41,7 @@ mod taxman {
         let withhold_msg = if !withhold_amount.is_zero() {
             Some(Message::execute(
                 cfg.bank,
-                &grug_bank::ExecuteMsg::ForceTransfer {
+                &grug_mock_bank::ExecuteMsg::ForceTransfer {
                     from: tx.sender,
                     to: ctx.contract,
                     denom: FEE_DENOM.clone(),

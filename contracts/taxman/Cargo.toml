@@ -1,5 +1,5 @@
 [package]
-name          = "grug-taxman"
+name          = "grug-mock-taxman"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -22,11 +22,11 @@ library = []
 # > grug-account --> grug-testing --> grug
 # Instead, they have to use Grug crates (types, storage, ffi) individually.
 [dependencies]
-anyhow       = { workspace = true }
-borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
-grug-bank    = { path = "../bank", features = ["library"] }
-grug-ffi     = { path = "../../crates/ffi" }
-grug-math    = { path = "../../crates/math" }
-grug-storage = { path = "../../crates/storage" }
-grug-types   = { path = "../../crates/types" }
-serde        = { workspace = true, features = ["derive"] }
+anyhow         = { workspace = true }
+borsh          = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-ffi       = { path = "../../crates/ffi" }
+grug-math      = { path = "../../crates/math" }
+grug-mock-bank = { path = "../bank", features = ["library"] }
+grug-storage   = { path = "../../crates/storage" }
+grug-types     = { path = "../../crates/types" }
+serde          = { workspace = true, features = ["derive"] }

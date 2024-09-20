@@ -1,6 +1,6 @@
 use {
-    grug_account::{Credential, PublicKey},
     grug_crypto::{sha2_256, Identity256},
+    grug_mock_account::{Credential, PublicKey},
     grug_types::{
         Addr, Addressable, Hash256, Json, JsonSerExt, Message, Signer, StdResult, Tx,
         GENESIS_SENDER,
@@ -52,7 +52,7 @@ impl TestAccount {
         sequence: u32,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let sign_bytes = Identity256::from(grug_account::make_sign_bytes(
+        let sign_bytes = Identity256::from(grug_mock_account::make_sign_bytes(
             sha2_256,
             &msgs,
             self.address,

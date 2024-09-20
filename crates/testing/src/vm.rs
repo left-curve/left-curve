@@ -18,33 +18,33 @@ pub trait TestVm: Vm {
 
 impl TestVm for RustVm {
     fn default_account_code() -> Binary {
-        ContractBuilder::new(Box::new(grug_account::instantiate))
-            .with_execute(Box::new(grug_account::execute))
-            .with_receive(Box::new(grug_account::receive))
-            .with_query(Box::new(grug_account::query))
-            .with_authenticate(Box::new(grug_account::authenticate))
+        ContractBuilder::new(Box::new(grug_mock_account::instantiate))
+            .with_execute(Box::new(grug_mock_account::execute))
+            .with_receive(Box::new(grug_mock_account::receive))
+            .with_query(Box::new(grug_mock_account::query))
+            .with_authenticate(Box::new(grug_mock_account::authenticate))
             .build()
             .to_bytes()
             .into()
     }
 
     fn default_bank_code() -> Binary {
-        ContractBuilder::new(Box::new(grug_bank::instantiate))
-            .with_execute(Box::new(grug_bank::execute))
-            .with_query(Box::new(grug_bank::query))
-            .with_bank_execute(Box::new(grug_bank::bank_execute))
-            .with_bank_query(Box::new(grug_bank::bank_query))
+        ContractBuilder::new(Box::new(grug_mock_bank::instantiate))
+            .with_execute(Box::new(grug_mock_bank::execute))
+            .with_query(Box::new(grug_mock_bank::query))
+            .with_bank_execute(Box::new(grug_mock_bank::bank_execute))
+            .with_bank_query(Box::new(grug_mock_bank::bank_query))
             .build()
             .to_bytes()
             .into()
     }
 
     fn default_taxman_code() -> Binary {
-        ContractBuilder::new(Box::new(grug_taxman::instantiate))
-            .with_execute(Box::new(grug_taxman::execute))
-            .with_query(Box::new(grug_taxman::query))
-            .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
-            .with_finalize_fee(Box::new(grug_taxman::finalize_fee))
+        ContractBuilder::new(Box::new(grug_mock_taxman::instantiate))
+            .with_execute(Box::new(grug_mock_taxman::execute))
+            .with_query(Box::new(grug_mock_taxman::query))
+            .with_withhold_fee(Box::new(grug_mock_taxman::withhold_fee))
+            .with_finalize_fee(Box::new(grug_mock_taxman::finalize_fee))
             .build()
             .to_bytes()
             .into()

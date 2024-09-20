@@ -1,5 +1,5 @@
 [package]
-name          = "grug-account"
+name          = "grug-mock-account"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

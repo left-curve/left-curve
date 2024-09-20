@@ -1,5 +1,5 @@
 [package]
-name          = "grug-bank"
+name          = "grug-mock-bank"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

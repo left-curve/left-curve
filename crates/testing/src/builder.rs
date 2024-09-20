@@ -37,9 +37,9 @@ struct CodeOption<B> {
 
 pub struct TestBuilder<
     VM = RustVm,
-    M1 = grug_account::InstantiateMsg,
-    M2 = grug_bank::InstantiateMsg,
-    M3 = grug_taxman::InstantiateMsg,
+    M1 = grug_mock_account::InstantiateMsg,
+    M2 = grug_mock_bank::InstantiateMsg,
+    M3 = grug_mock_taxman::InstantiateMsg,
     OW = Undefined<Addr>,
     TA = Undefined<TestAccounts>,
 > {
@@ -55,7 +55,7 @@ pub struct TestBuilder<
     // Owner
     owner: OW,
     // Accounts
-    account_opt: CodeOption<Box<dyn Fn(grug_account::PublicKey) -> M1>>,
+    account_opt: CodeOption<Box<dyn Fn(grug_mock_account::PublicKey) -> M1>>,
     accounts: TA,
     // Bank
     bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
@@ -82,18 +82,20 @@ where
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
-                msg_builder: Box::new(|public_key| grug_account::InstantiateMsg { public_key }),
+                msg_builder: Box::new(|public_key| grug_mock_account::InstantiateMsg {
+                    public_key,
+                }),
             },
             bank_opt: CodeOption {
                 code: VM::default_bank_code(),
-                msg_builder: Box::new(|initial_balances| grug_bank::InstantiateMsg {
+                msg_builder: Box::new(|initial_balances| grug_mock_bank::InstantiateMsg {
                     initial_balances,
                 }),
             },
             taxman_opt: CodeOption {
                 code: VM::default_taxman_code(),
-                msg_builder: Box::new(|fee_denom, fee_rate| grug_taxman::InstantiateMsg {
-                    config: grug_taxman::Config {
+                msg_builder: Box::new(|fee_denom, fee_rate| grug_mock_taxman::InstantiateMsg {
+                    config: grug_mock_taxman::Config {
                         fee_denom,
                         fee_rate,
                     },
@@ -191,13 +193,15 @@ where
     /// E.g.
     ///
     /// ```rust
-    /// use grug_testing::TestBuilder;
-    /// use grug_vm_rust::ContractBuilder;
-    /// use grug_types::Coins;
+    /// use {
+    ///     grug_testing::TestBuilder,
+    ///     grug_types::Coins,
+    ///     grug_vm_rust::ContractBuilder,
+    /// };
     ///
-    /// let code = ContractBuilder::new(Box::new(grug_bank::instantiate))
-    ///     .with_bank_execute(Box::new(grug_bank::bank_execute))
-    ///     .with_bank_query(Box::new(grug_bank::bank_query))
+    /// let code = ContractBuilder::new(Box::new(grug_mock_bank::instantiate))
+    ///     .with_bank_execute(Box::new(grug_mock_bank::bank_execute))
+    ///     .with_bank_query(Box::new(grug_mock_bank::bank_query))
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
@@ -207,7 +211,7 @@ where
     ///     .unwrap()
     ///     .set_bank_code(
     ///         code,
-    ///         |initial_balances| grug_bank::InstantiateMsg { initial_balances },
+    ///         |initial_balances| grug_mock_bank::InstantiateMsg { initial_balances },
     ///     )
     ///     .build()
     ///     .unwrap();
@@ -252,13 +256,15 @@ where
     /// E.g.
     ///
     /// ```rust
-    /// use grug_testing::TestBuilder;
-    /// use grug_vm_rust::ContractBuilder;
-    /// use grug_types::Coins;
+    /// use {
+    ///     grug_testing::TestBuilder,
+    ///     grug_types::Coins,
+    ///     grug_vm_rust::ContractBuilder,
+    /// };
     ///
-    /// let code = ContractBuilder::new(Box::new(grug_taxman::instantiate))
-    ///     .with_withhold_fee(Box::new(grug_taxman::withhold_fee))
-    ///     .with_finalize_fee(Box::new(grug_taxman::finalize_fee))
+    /// let code = ContractBuilder::new(Box::new(grug_mock_taxman::instantiate))
+    ///     .with_withhold_fee(Box::new(grug_mock_taxman::withhold_fee))
+    ///     .with_finalize_fee(Box::new(grug_mock_taxman::finalize_fee))
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
@@ -268,8 +274,8 @@ where
     ///     .unwrap()
     ///     .set_taxman_code(
     ///         code,
-    ///         |fee_denom, fee_rate| grug_taxman::InstantiateMsg {
-    ///             config: grug_taxman::Config { fee_denom, fee_rate },
+    ///         |fee_denom, fee_rate| grug_mock_taxman::InstantiateMsg {
+    ///             config: grug_mock_taxman::Config { fee_denom, fee_rate },
     ///         },
     ///     )
     ///     .build()
@@ -372,18 +378,20 @@ where
     /// E.g.
     ///
     /// ```rust
-    /// use grug_testing::TestBuilder;
-    /// use grug_vm_rust::ContractBuilder;
-    /// use grug_types::Coins;
+    /// use {
+    ///     grug_testing::TestBuilder,
+    ///     grug_types::Coins,
+    ///     grug_vm_rust::ContractBuilder,
+    /// };
     ///
-    /// let code = ContractBuilder::new(Box::new(grug_account::instantiate))
-    ///     .with_authenticate(Box::new(grug_account::authenticate))
+    /// let code = ContractBuilder::new(Box::new(grug_mock_account::instantiate))
+    ///     .with_authenticate(Box::new(grug_mock_account::authenticate))
     ///     .build();
     ///
     /// let (suite, accounts) = TestBuilder::new()
     ///     .set_account_code(
     ///         code,
-    ///         |public_key| grug_account::InstantiateMsg { public_key },
+    ///         |public_key| grug_mock_account::InstantiateMsg { public_key },
     ///     )
     ///     .unwrap()
     ///     .add_account("owner", Coins::new())
@@ -400,7 +408,7 @@ where
     ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>>
     where
         T: Into<Binary>,
-        F: Fn(grug_account::PublicKey) -> M1A + 'static,
+        F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
     {
         Ok(TestBuilder {
             vm: self.vm,

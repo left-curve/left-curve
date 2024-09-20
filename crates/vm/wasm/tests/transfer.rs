@@ -74,7 +74,7 @@ fn transfers() -> anyhow::Result<()> {
 
     // List all holders of the denom
     suite
-        .query_wasm_smart(cfg.bank, grug_bank::QueryHoldersRequest {
+        .query_wasm_smart(cfg.bank, grug_mock_bank::QueryHoldersRequest {
             denom: DENOM.clone(),
             start_after: None,
             limit: None,

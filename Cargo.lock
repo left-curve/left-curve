@@ -1471,17 +1471,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-account"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-storage",
- "grug-types",
- "serde",
-]
-
-[[package]]
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
@@ -1495,18 +1484,6 @@ dependencies = [
  "tendermint-proto",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "grug-bank"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-math",
- "grug-storage",
- "grug-types",
- "serde",
 ]
 
 [[package]]
@@ -1639,6 +1616,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-mock-account"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug-ffi",
+ "grug-storage",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
+name = "grug-mock-bank"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug-ffi",
+ "grug-math",
+ "grug-storage",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
+name = "grug-mock-taxman"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "grug-ffi",
+ "grug-math",
+ "grug-mock-bank",
+ "grug-storage",
+ "grug-types",
+ "serde",
+]
+
+[[package]]
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
@@ -1648,20 +1662,6 @@ dependencies = [
  "prost",
  "serde",
  "test-case",
-]
-
-[[package]]
-name = "grug-taxman"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "borsh",
- "grug-bank",
- "grug-ffi",
- "grug-math",
- "grug-storage",
- "grug-types",
- "serde",
 ]
 
 [[package]]
@@ -1677,14 +1677,14 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
- "grug-account",
  "grug-app",
- "grug-bank",
  "grug-crypto",
  "grug-db-memory",
  "grug-math",
+ "grug-mock-account",
+ "grug-mock-bank",
+ "grug-mock-taxman",
  "grug-storage",
- "grug-taxman",
  "grug-types",
  "grug-vm-rust",
  "k256",
@@ -1748,9 +1748,9 @@ dependencies = [
  "data-encoding",
  "ed25519-dalek",
  "grug-app",
- "grug-bank",
  "grug-crypto",
  "grug-math",
+ "grug-mock-bank",
  "grug-tester",
  "grug-testing",
  "grug-types",
