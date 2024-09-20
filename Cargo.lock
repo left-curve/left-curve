@@ -1314,12 +1314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "forward_ref"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
-
-[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1704,13 +1698,11 @@ dependencies = [
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
- "forward_ref",
  "grug-crypto",
  "grug-math",
  "hex",
  "hex-literal",
  "paste",
- "proptest",
  "prost",
  "ripemd",
  "serde",
