@@ -214,6 +214,8 @@ export {
   RpcBroadcastTxSyncResponse,
 } from "./abci";
 
+export type { AppletMetadata } from "./applets";
+
 export { AccountType } from "./account";
 export { KeyTag } from "./key";
 export { Vote } from "./safe";

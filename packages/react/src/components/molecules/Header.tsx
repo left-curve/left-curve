@@ -2,6 +2,7 @@
 
 import { useAccount } from "~/hooks";
 
+import { CommandBar } from "~/components";
 import { ConnectButton } from "./ConnectButton";
 import { MenuAccounts } from "./MenuAccounts";
 import { MenuConnections } from "./MenuConnections";
@@ -14,9 +15,10 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 flex gap-4 z-50 items-center justify-between w-full p-4">
-        <div className="h-10 w-10 rounded-full bg-gray-200" />
-        <div className="flex gap-2 items-center justify-between">
+      <header className="fixed top-0 left-0 gap-4 z-50 flex flex-wrap md:flex-nowrap items-center justify-between w-full p-4 xl:grid xl:grid-cols-4">
+        <div className="h-10 w-10 rounded-full bg-gray-200 order-1" />
+        <CommandBar applets={[]} />
+        <div className="flex gap-2 items-center justify-end order-2 md:order-3">
           {ConnectorStatus.Connected === status ? (
             <>
               <MenuNotifications />

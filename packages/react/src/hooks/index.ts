@@ -62,3 +62,8 @@ export {
   type UseBalancesReturnType,
   useBalances,
 } from "./useBalances";
+
+export {
+  type UseStorageOptions,
+  useStorage,
+} from "./useStorage";

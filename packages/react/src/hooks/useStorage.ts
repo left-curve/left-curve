@@ -1,7 +1,8 @@
 import { createMemoryStorage, createStorage } from "@leftcurve/connect-kit";
-import { deserializeJson, serializeJson } from "@leftcurve/encoding";
+
 import type { Storage } from "@leftcurve/types";
-import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useQuery } from "~/utils";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
@@ -9,18 +10,13 @@ export type UseStorageOptions<T = undefined> = {
 };
 export function useStorage<T = undefined>(
   key: string,
-  options: UseStorageOptions<T>,
+  options: UseStorageOptions<T> = {},
 ): [T, Dispatch<SetStateAction<T>>] {
   const { initialValue: _initialValue_, storage: _storage_ } = options;
 
   const storage = (() => {
     if (_storage_) return _storage_;
-    return createStorage({
-      deserialize: deserializeJson,
-      serialize: serializeJson,
-      key: "grustorage",
-      storage: createMemoryStorage(),
-    });
+    return createStorage({ key: "grustorage", storage: createMemoryStorage() });
   })();
 
   const initialValue = (() => {
@@ -28,31 +24,23 @@ export function useStorage<T = undefined>(
     return (_initialValue_ as () => T)();
   })();
 
-  const [value, _setValue] = useState<T>(initialValue);
+  const { data, refetch, ...rest } = useQuery<T, Error, T, string[]>({
+    queryKey: [key],
+    queryFn: () => (storage.getItem(key) as T) ?? initialValue,
+    initialData: initialValue,
+  });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: This effect should only run once
-  useEffect(() => {
-    (async () => {
-      const value = await storage.getItem(key);
-      if (value) {
-        _setValue(value as T);
-        return;
-      }
-      _setValue(initialValue);
-      storage.setItem(key, initialValue);
-    })();
-  }, []);
-
-  const setValue: Dispatch<SetStateAction<T>> = (valOrFunc) => {
+  const setValue = (valOrFunc: T | ((t: T) => void)) => {
     const newState = (() => {
       if (typeof valOrFunc !== "function") return valOrFunc as T;
-      return (valOrFunc as (prevState: T) => T)(value);
+      return (valOrFunc as (prevState: T) => T)(data as T);
     })();
-    _setValue(newState);
+
     storage.setItem(key, newState);
+    refetch();
   };
 
-  return [value as T, setValue];
+  return [data as T, setValue];
 }
 
 export default useStorage;

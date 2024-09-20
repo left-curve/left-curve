@@ -51,17 +51,24 @@
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
+    "@tanstack/query-core": "^5.56.2",
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@cosmjs/tendermint-rpc": "^0.32.4",
     "@leftcurve/crypto": "workspace:^",
     "@leftcurve/encoding": "workspace:^",
     "@leftcurve/sdk": "workspace:^",
     "@leftcurve/types": "workspace:^",
     "@leftcurve/utils": "workspace:^",
-    "@tanstack/query-core": "^5.53.1",
     "eventemitter3": "^5.0.1",
     "zustand": "^4.5.5"
+  },
+  "peerDependencies": {
+    "@tanstack/query-core": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/query-core": {
+      "optional": true
+    }
   }
 }
