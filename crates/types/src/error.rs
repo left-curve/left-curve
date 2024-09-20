@@ -82,8 +82,8 @@ pub enum StdError {
     #[error("data not found! type: {ty}, storage key: {key}")]
     DataNotFound { ty: &'static str, key: String },
 
-    #[error("duplicate data found! type: {ty}, data: {data}")]
-    DuplicateData { ty: &'static str, data: String },
+    #[error("duplicate data found! type: {ty}")]
+    DuplicateData { ty: &'static str },
 
     #[error("cannot find iterator with ID {iterator_id}")]
     IteratorNotFound { iterator_id: i32 },
@@ -158,14 +158,14 @@ pub enum StdError {
     #[error("expecting a non-zero value of type {ty}, got zero")]
     ZeroValue { ty: &'static str },
 
-    #[error("failed to serialize into json! codec: {codec}, type: {ty}, reason: {reason}")]
+    #[error("failed to serialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Serialize {
         codec: &'static str,
         ty: &'static str,
         reason: String,
     },
 
-    #[error("failed to deserialize from json! codec: {codec}, type: {ty}, reason: {reason}")]
+    #[error("failed to deserialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Deserialize {
         codec: &'static str,
         ty: &'static str,
@@ -216,10 +216,9 @@ impl StdError {
         }
     }
 
-    pub fn duplicate_data<T>(data: &[u8]) -> Self {
+    pub fn duplicate_data<T>() -> Self {
         Self::DuplicateData {
             ty: type_name::<T>(),
-            data: BASE64.encode(data),
         }
     }
 

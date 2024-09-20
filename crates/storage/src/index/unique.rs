@@ -252,7 +252,7 @@ where
 
         // Ensure that indexes are unique.
         if self.index_map.has(storage, idx.clone()) {
-            return Err(StdError::duplicate_data::<IK>(&idx.joined_key()));
+            return Err(StdError::duplicate_data::<IK>());
         }
 
         self.index_map.save(storage, idx, &pk.joined_key())

@@ -8,6 +8,12 @@ pub trait Addressable {
     fn address(&self) -> Addr;
 }
 
+impl Addressable for Addr {
+    fn address(&self) -> Addr {
+        *self
+    }
+}
+
 /// Represents an object that can sign transactions in a synchronous manner.
 pub trait Signer: Addressable {
     // Notes:
