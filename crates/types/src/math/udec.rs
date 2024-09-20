@@ -1,6 +1,6 @@
 use {
     crate::{
-        forward_ref_binop_decimal, forward_ref_op_assign_decimal, generate_decimal,
+        forward_ref_binop_typed, forward_ref_op_assign_typed, generate_decimal,
         impl_all_ops_and_assign, impl_assign_number, impl_number, Decimal, Fraction, Inner,
         MultiplyRatio, NextNumber, NonZero, Number, NumberConst, Sign, StdError, StdResult, Uint,
     },
@@ -22,9 +22,9 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Udec<U, const S: u32>(pub(crate) Uint<U>);
+pub struct Udec<U>(pub(crate) Uint<U>);
 
-impl<U, const S: u32> Udec<U, S> {
+impl<U> Udec<U> {
     /// Ratio between the inner integer value and the decimal value it
     /// represents.
     ///
@@ -33,7 +33,7 @@ impl<U, const S: u32> Udec<U, S> {
     /// calculation to overflow, resulting in a compile time error.
     pub const DECIMAL_FRACTION: u128 = 10u128.pow(Self::DECIMAL_PLACES);
     /// Number of decimal digits to be interpreted as decimal places.
-    pub const DECIMAL_PLACES: u32 = S;
+    pub const DECIMAL_PLACES: u32 = 18;
 
     /// Create a new [`Udec`] _without_ adding decimal places.
     ///
@@ -56,7 +56,7 @@ impl<U, const S: u32> Udec<U, S> {
     }
 }
 
-impl<U, const S: u32> NumberConst for Udec<U, S>
+impl<U> NumberConst for Udec<U>
 where
     Uint<U>: NumberConst,
 {
@@ -69,7 +69,7 @@ where
     const ZERO: Self = Self(Uint::ZERO);
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U> Udec<U>
 where
     Uint<U>: From<u128>,
 {
@@ -83,7 +83,7 @@ where
     }
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U> Udec<U>
 where
     Uint<U>: Number + From<u128>,
 {
@@ -116,7 +116,7 @@ where
     }
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U> Udec<U>
 where
     Uint<U>: NumberConst + Number + From<u128>,
 {
@@ -126,7 +126,7 @@ where
     ) -> StdResult<Self> {
         let atomics = atomics.into();
 
-        let inner = match decimal_places.cmp(&S) {
+        let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
                 let digits = Self::DECIMAL_PLACES - decimal_places;
@@ -153,7 +153,7 @@ where
     }
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U> Udec<U>
 where
     Uint<U>: MultiplyRatio + From<u128>,
 {
@@ -170,48 +170,32 @@ where
 }
 
 // Methods for converting one `Udec` value to another `Udec` type with a
-// different word size and decimal places.
+// different word size.
 //
 // We can't implement the `From` and `TryFrom` traits here, because it would
 // conflict with the standard library's `impl From<T> for T`, as we can't yet
-// specify that `U != OU` or `S != OS` with stable Rust.
-impl<U, const S: u32> Udec<U, S>
+// specify that `U != OU` with stable Rust.
+impl<U> Udec<U>
 where
     Uint<U>: NumberConst + Number,
 {
-    pub fn from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> Self
+    pub fn from_decimal<OU>(other: Udec<OU>) -> Self
     where
         Uint<U>: From<Uint<OU>>,
     {
-        if OS > S {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(OS - S).unwrap();
-            Self(Uint::<U>::from(other.0) / adjusted_precision)
-        } else {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(S - OS).unwrap();
-            Self(Uint::<U>::from(other.0) * adjusted_precision)
-        }
+        Self(Uint::<U>::from(other.0))
     }
 
-    pub fn try_from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> StdResult<Self>
+    pub fn try_from_decimal<OU>(other: Udec<OU>) -> StdResult<Self>
     where
         Uint<U>: TryFrom<Uint<OU>>,
         StdError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
     {
-        if OS > S {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(OS - S)?;
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_div(adjusted_precision))?
-                .map(Self)
-        } else {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(S - OS)?;
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_mul(adjusted_precision))?
-                .map(Self)
-        }
+        Ok(Uint::<U>::try_from(other.0).map(Self)?)
     }
 }
 
-impl<U, const S: u32> Decimal for Udec<U, S>
+impl<U> Decimal for Udec<U>
 where
     U: Copy + PartialEq,
     Uint<U>: Number + From<u128>,
@@ -239,11 +223,11 @@ where
     }
 }
 
-impl<U, const S: u32> Inner for Udec<U, S> {
+impl<U> Inner for Udec<U> {
     type U = U;
 }
 
-impl<U, const S: u32> Sign for Udec<U, S> {
+impl<U> Sign for Udec<U> {
     fn abs(self) -> Self {
         self
     }
@@ -253,7 +237,7 @@ impl<U, const S: u32> Sign for Udec<U, S> {
     }
 }
 
-impl<U, const S: u32> Fraction<U> for Udec<U, S>
+impl<U> Fraction<U> for Udec<U>
 where
     Uint<U>: Number + Copy + From<u128>,
 {
@@ -268,7 +252,7 @@ where
     }
 }
 
-impl<U, const S: u32> Number for Udec<U, S>
+impl<U> Number for Udec<U>
 where
     U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
     Uint<U>: NextNumber + Display + From<u128>,
@@ -338,7 +322,7 @@ where
             return Err(StdError::negative_sqrt::<Self>(self));
         }
         let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
-        (0..=S / 2)
+        (0..=Self::DECIMAL_PLACES / 2)
             .rev()
             .find_map(|i| -> Option<StdResult<Self>> {
                 let inner_mul = match hundred.checked_pow(i) {
@@ -346,7 +330,7 @@ where
                     Err(err) => return Some(Err(err)),
                 };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(S / 2 - i)?;
+                    let outer_mul = hundred.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
                     Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
             })
@@ -387,7 +371,7 @@ where
     }
 }
 
-impl<U, const S: u32> Display for Udec<U, S>
+impl<U> Display for Udec<U>
 where
     U: Display,
     Uint<U>: Number + Copy + From<u128>,
@@ -400,7 +384,11 @@ where
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
-            let fractional_string = format!("{:0>padding$}", fractional.0, padding = S as usize);
+            let fractional_string = format!(
+                "{:0>padding$}",
+                fractional.0,
+                padding = Self::DECIMAL_PLACES as usize
+            );
             f.write_str(&whole.to_string())?;
             f.write_char('.')?;
             f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
@@ -410,7 +398,7 @@ where
     }
 }
 
-impl<U, const S: u32> FromStr for Udec<U, S>
+impl<U> FromStr for Udec<U>
 where
     Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 {
@@ -437,10 +425,15 @@ where
             let fractional = fractional_part
                 .parse::<Uint<U>>()
                 .map_err(|_| StdError::generic_err("error parsing fractional"))?;
-            let exp = (S.checked_sub(fractional_part.len() as u32)).ok_or_else(|| {
-                StdError::generic_err(format!("cannot parse more than {} fractional digits", S))
-            })?;
-            debug_assert!(exp <= S);
+            let exp = (Self::DECIMAL_PLACES.checked_sub(fractional_part.len() as u32)).ok_or_else(
+                || {
+                    StdError::generic_err(format!(
+                        "cannot parse more than {} fractional digits",
+                        Self::DECIMAL_PLACES
+                    ))
+                },
+            )?;
+            debug_assert!(exp <= Self::DECIMAL_PLACES);
 
             let fractional_factor = Uint::TEN.checked_pow(exp).unwrap();
 
@@ -462,7 +455,7 @@ where
     }
 }
 
-impl<U, const T: u32> ser::Serialize for Udec<U, T>
+impl<U> ser::Serialize for Udec<U>
 where
     Self: Display,
 {
@@ -474,10 +467,10 @@ where
     }
 }
 
-impl<'de, U, const S: u32> de::Deserialize<'de> for Udec<U, S>
+impl<'de, U> de::Deserialize<'de> for Udec<U>
 where
-    Udec<U, S>: FromStr,
-    <Udec<U, S> as FromStr>::Err: Display,
+    Udec<U>: FromStr,
+    <Udec<U> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -487,11 +480,11 @@ where
     }
 }
 
-struct DecimalVisitor<U, const S: u32> {
+struct DecimalVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U, const S: u32> DecimalVisitor<U, S> {
+impl<U> DecimalVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -499,12 +492,12 @@ impl<U, const S: u32> DecimalVisitor<U, S> {
     }
 }
 
-impl<'de, U, const S: u32> de::Visitor<'de> for DecimalVisitor<U, S>
+impl<'de, U> de::Visitor<'de> for DecimalVisitor<U>
 where
-    Udec<U, S>: FromStr,
-    <Udec<U, S> as FromStr>::Err: Display,
+    Udec<U>: FromStr,
+    <Udec<U> as FromStr>::Err: Display,
 {
-    type Value = Udec<U, S>;
+    type Value = Udec<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("string-encoded decimal")
@@ -518,32 +511,31 @@ where
     }
 }
 
-impl_number!(impl Udec with Add, add for Udec<U, S> where sub fn checked_add);
-impl_number!(impl Udec with Sub, sub for Udec<U, S> where sub fn checked_sub);
-impl_number!(impl Udec with Mul, mul for Udec<U, S> where sub fn checked_mul);
-impl_number!(impl Udec with Div, div for Udec<U, S> where sub fn checked_div);
+impl_number!(impl Udec with Add, add for Udec<U> where sub fn checked_add);
+impl_number!(impl Udec with Sub, sub for Udec<U> where sub fn checked_sub);
+impl_number!(impl Udec with Mul, mul for Udec<U> where sub fn checked_mul);
+impl_number!(impl Udec with Div, div for Udec<U> where sub fn checked_div);
 
-impl_assign_number!(impl Udec with AddAssign, add_assign for Udec<U, S> where sub fn checked_add);
-impl_assign_number!(impl Udec with SubAssign, sub_assign for Udec<U, S> where sub fn checked_sub);
-impl_assign_number!(impl Udec with MulAssign, mul_assign for Udec<U, S> where sub fn checked_mul);
-impl_assign_number!(impl Udec with DivAssign, div_assign for Udec<U, S> where sub fn checked_div);
+impl_assign_number!(impl Udec with AddAssign, add_assign for Udec<U> where sub fn checked_add);
+impl_assign_number!(impl Udec with SubAssign, sub_assign for Udec<U> where sub fn checked_sub);
+impl_assign_number!(impl Udec with MulAssign, mul_assign for Udec<U> where sub fn checked_mul);
+impl_assign_number!(impl Udec with DivAssign, div_assign for Udec<U> where sub fn checked_div);
 
-forward_ref_binop_decimal!(impl Add, add for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Sub, sub for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Mul, mul for Udec<U, S>, Udec<U, S>);
-forward_ref_binop_decimal!(impl Div, div for Udec<U, S>, Udec<U, S>);
+forward_ref_binop_typed!(impl<U> Add, add for Udec<U>, Udec<U>);
+forward_ref_binop_typed!(impl<U> Sub, sub for Udec<U>, Udec<U>);
+forward_ref_binop_typed!(impl<U> Mul, mul for Udec<U>, Udec<U>);
+forward_ref_binop_typed!(impl<U> Div, div for Udec<U>, Udec<U>);
 
-forward_ref_op_assign_decimal!(impl AddAssign, add_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl SubAssign, sub_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl MulAssign, mul_assign for Udec<U, S>, Udec<U, S>);
-forward_ref_op_assign_decimal!(impl DivAssign, div_assign for Udec<U, S>, Udec<U, S>);
+forward_ref_op_assign_typed!(impl<U> AddAssign, add_assign for Udec<U>, Udec<U>);
+forward_ref_op_assign_typed!(impl<U> SubAssign, sub_assign for Udec<U>, Udec<U>);
+forward_ref_op_assign_typed!(impl<U> MulAssign, mul_assign for Udec<U>, Udec<U>);
+forward_ref_op_assign_typed!(impl<U> DivAssign, div_assign for Udec<U>, Udec<U>);
 
 // ------------------------------ concrete types -------------------------------
 
 generate_decimal!(
     name = Udec128,
     inner_type = u128,
-    decimal_places = 18,
     from_dec = [],
     doc = "128-bit unsigned fixed-point number with 18 decimal places.",
 );
@@ -551,7 +543,6 @@ generate_decimal!(
 generate_decimal!(
     name = Udec256,
     inner_type = U256,
-    decimal_places = 18,
     from_dec = [Udec128],
     doc = "256-bit unsigned fixed-point number with 18 decimal places.",
 );

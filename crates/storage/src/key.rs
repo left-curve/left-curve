@@ -405,7 +405,7 @@ where
     }
 }
 
-impl<T, const S: u32> PrimaryKey for Udec<T, S>
+impl<T> PrimaryKey for Udec<T>
 where
     Uint<T>: PrimaryKey<Output = Uint<T>>,
 {
@@ -637,7 +637,7 @@ where
     }
 }
 
-impl<T, const S: u32> Prefixer for Udec<T, S>
+impl<T> Prefixer for Udec<T>
 where
     Uint<T>: PrimaryKey<Output = Uint<T>>,
 {

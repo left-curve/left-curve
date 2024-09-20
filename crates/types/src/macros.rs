@@ -244,12 +244,11 @@ macro_rules! generate_decimal {
     (
         name = $name:ident,
         inner_type = $inner:ty,
-        decimal_places = $decimal_places:expr,
         from_dec = [$($from:ty),*],
         doc = $doc:literal,
     ) => {
         #[doc = $doc]
-        pub type $name = Udec<$inner, $decimal_places>;
+        pub type $name = Udec<$inner>;
 
         // Ex: From<U256> for Udec256
         impl From<$inner> for $name {
@@ -806,7 +805,7 @@ macro_rules! impl_number {
 
     // Udec Self
     (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: u32> std::ops::$imp for $t
+        impl<U> std::ops::$imp for $t
         where
             Self: Number,
         {
@@ -869,7 +868,7 @@ macro_rules! impl_assign_number {
 
     // Udec
     (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: u32> std::ops::$imp for $t
+        impl<U> std::ops::$imp for $t
         where
             Self: Number + Copy,
         {
@@ -990,67 +989,9 @@ macro_rules! forward_ref_binop_typed {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! forward_ref_binop_decimal {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: u32> std::ops::$imp<$u> for &'_ $t
-        where
-            $t: std::ops::$imp<$u> + Copy,
-        {
-            type Output = <$t as std::ops::$imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: $u) -> <$t as std::ops::$imp<$u>>::Output {
-                std::ops::$imp::$method(*self, other)
-            }
-        }
-
-        impl<U, const S: u32> std::ops::$imp<&$u> for $t
-        where
-            $t: std::ops::$imp<$u> + Copy,
-        {
-            type Output = <$t as std::ops::$imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as std::ops::$imp<$u>>::Output {
-                std::ops::$imp::$method(self, *other)
-            }
-        }
-
-        impl<U, const S: u32> std::ops::$imp<&$u> for &'_ $t
-        where
-            $t: std::ops::$imp<$u> + Copy,
-        {
-            type Output = <$t as std::ops::$imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as std::ops::$imp<$u>>::Output {
-                std::ops::$imp::$method(*self, *other)
-            }
-        }
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
 macro_rules! forward_ref_op_assign_typed {
     (impl<$($gen:tt),*> $imp:ident, $method:ident for $t:ty, $u:ty) => {
         impl <$($gen),*> std::ops::$imp<&$u> for $t
-        where
-            $t: std::ops::$imp<$u> + Copy,
-        {
-            #[inline]
-            fn $method(&mut self, other: &$u) {
-                std::ops::$imp::$method(self, *other);
-            }
-        }
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
-macro_rules! forward_ref_op_assign_decimal {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: u32> std::ops::$imp<&$u> for $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
