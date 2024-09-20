@@ -119,10 +119,10 @@ impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: NumberConst + Number + From<u128>,
 {
-    pub fn checked_from_atomics(
-        atomics: impl Into<Uint<U>>,
-        decimal_places: u32,
-    ) -> MathResult<Self> {
+    pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
+    where
+        T: Into<Uint<U>>,
+    {
         let atomics = atomics.into();
 
         let inner = match decimal_places.cmp(&S) {
@@ -156,12 +156,14 @@ impl<U, const S: u32> Udec<U, S>
 where
     Uint<U>: MultiplyRatio + From<u128>,
 {
-    pub fn checked_from_ratio(
-        numerator: impl Into<Uint<U>>,
-        denominator: impl Into<Uint<U>>,
-    ) -> MathResult<Self> {
-        let numerator: Uint<U> = numerator.into();
-        let denominator: Uint<U> = denominator.into();
+    pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Uint<U>>,
+        D: Into<Uint<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
+
         numerator
             .checked_multiply_ratio_floor(Self::DECIMAL_FRACTION, denominator)
             .map(Self)
@@ -269,7 +271,7 @@ where
 impl<U, const S: u32> Number for Udec<U, S>
 where
     U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Display + From<u128>,
+    Uint<U>: NextNumber + From<u128>,
     <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
 {
     fn is_zero(&self) -> bool {
