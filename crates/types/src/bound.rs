@@ -45,6 +45,39 @@ where
     }
 }
 
+/// Declare a bounded type with the given type and bounds.
+#[macro_export]
+macro_rules! declare_bounded {
+    (name = $name:ident,type = $type:ty,min = $min:expr,max = $max:expr $(,)?) => {
+        paste! {
+            struct [<$name Bounds>];
+
+            impl Bounds<$type> for [<$name Bounds>] {
+                const MIN: Bound<$type> = $min;
+                const MAX: Bound<$type> = $max;
+            }
+
+            type $name = Bounded<$type, [<$name Bounds>]>;
+        }
+    };
+    (name = $name:ident,type = $type:ty,max = $max:expr $(,)?) => {
+        declare_bounded! {
+            name = $name,
+            type = $type,
+            min = Bound::Unbounded,
+            max = $max,
+        }
+    };
+    (name = $name:ident,type = $type:ty,min = $max:expr $(,)?) => {
+        declare_bounded! {
+            name = $name,
+            type = $type,
+            min = $min,
+            max = Bound::Unbounded,
+        }
+    };
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -52,25 +85,27 @@ mod tests {
     use {
         super::*,
         grug_math::{NumberConst, Udec256, Uint256},
+        paste::paste,
     };
 
-    #[derive(Debug)]
-    struct FeeRateBounds;
-
-    impl Bounds<Udec256> for FeeRateBounds {
-        // Maximum fee rate is 100% (exclusive).
-        // If only there's an easier way to define a constant Udec256...
-        const MAX: Bound<Udec256> = Bound::Excluded(Udec256::raw(Uint256::new_from_u128(
-            1_000_000_000_000_000_000,
-        )));
-        // Minimum fee rate is 0% (inclusive).
-        const MIN: Bound<Udec256> = Bound::Included(Udec256::ZERO);
+    declare_bounded! {
+        name = FeeRate,
+        type = Udec256,
+        min = Bound::Included(Udec256::ZERO),
+        // TODO: we need an easier way of defining const Uint256
+        max = Bound::Excluded(Udec256::raw(Uint256::new_from_u128(1_000_000_000_000_000_000))),
     }
-
-    type FeeRate = Bounded<Udec256, FeeRateBounds>;
 
     #[test]
     fn parsing_fee_rate() {
+        // Ensure the `FeeRateBounds` type is correctly defined.
+        assert_eq!(FeeRateBounds::MIN, Bound::Included(Udec256::ZERO));
+        assert_eq!(
+            FeeRateBounds::MAX,
+            Bound::Excluded(Udec256::new_percent(100_u128))
+        );
+
+        // Attempt to parse various values into `FeeRate`.
         assert!(FeeRate::new(Udec256::new_percent(0_u128)).is_ok());
         assert!(FeeRate::new(Udec256::new_percent(50_u128)).is_ok());
         assert!(FeeRate::new(Udec256::new_percent(100_u128)).is_err());
