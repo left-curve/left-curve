@@ -64,6 +64,13 @@ pub enum StdError {
         comment: &'static str,
     },
 
+    #[error("value out of range: {value} {comparator} {bound}")]
+    OutOfRange {
+        value: String,
+        comparator: &'static str,
+        bound: String,
+    },
+
     #[error("invalid denom `{denom}`: {reason}")]
     InvalidDenom { denom: String, reason: &'static str },
 
@@ -104,6 +111,17 @@ pub enum StdError {
 }
 
 impl StdError {
+    pub fn out_of_range<T>(value: T, comparator: &'static str, bound: T) -> Self
+    where
+        T: ToString,
+    {
+        Self::OutOfRange {
+            value: value.to_string(),
+            comparator,
+            bound: bound.to_string(),
+        }
+    }
+
     pub fn invalid_denom<D>(denom: D, reason: &'static str) -> Self
     where
         D: ToString,
