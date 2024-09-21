@@ -1,7 +1,5 @@
-// This is a "meta crate", meaning it doesn't contain any content itself, but
-// rather just re-export contents from other crates. The objective is that
-// contract developers only needs to add one single dependency that has
-// everything they need.
+mod macros;
+
 pub use {grug_macros::*, grug_math::*, grug_storage::*, grug_types::*};
 
 // The FFI crate is only included when building for WebAssembly.
@@ -17,5 +15,5 @@ pub use {grug_client::*, grug_testing::*};
 // Dependencies used by the procedural macros
 #[doc(hidden)]
 pub mod __private {
-    pub use {::borsh, ::serde, ::serde_with};
+    pub use {::borsh, ::paste, ::serde, ::serde_with};
 }
