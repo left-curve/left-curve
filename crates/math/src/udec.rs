@@ -556,30 +556,6 @@ where
     }
 }
 
-impl<IntoUintU, U> Mul<IntoUintU> for Udec<U>
-where
-    U: Number,
-    IntoUintU: Into<Uint<U>>,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: IntoUintU) -> Self::Output {
-        Self::raw(self.0 * rhs.into())
-    }
-}
-
-impl<IntoUintU, U> Div<IntoUintU> for Udec<U>
-where
-    U: Number,
-    IntoUintU: Into<Uint<U>>,
-{
-    type Output = Self;
-
-    fn div(self, rhs: IntoUintU) -> Self::Output {
-        Self::raw(self.0 / rhs.into())
-    }
-}
-
 // ------------------------------ concrete types -------------------------------
 
 macro_rules! generate_decimal {
