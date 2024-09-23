@@ -1,4 +1,4 @@
-use bnum::types::{U256, U512};
+use bnum::types::{I256, I512, U256, U512};
 
 /// Describes a number's associated constants: minimum and maximum; zero, one,
 /// and ten.
@@ -39,3 +39,11 @@ impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
 impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
 impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
 impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
+
+impl_number_const!(i8, i8::MIN, i8::MAX, 0, 1, 10);
+impl_number_const!(i16, i16::MIN, i16::MAX, 0, 1, 10);
+impl_number_const!(i32, i32::MIN, i32::MAX, 0, 1, 10);
+impl_number_const!(i64, i64::MIN, i64::MAX, 0, 1, 10);
+impl_number_const!(i128, i128::MIN, i128::MAX, 0, 1, 10);
+impl_number_const!(I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN);
+impl_number_const!(I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN);

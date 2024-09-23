@@ -1,6 +1,6 @@
 use {
     crate::utils::{grow_be_uint, grow_le_uint},
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes a number that can be convert to and from raw binary representations.
@@ -67,63 +67,31 @@ impl_bytable_std!(u32, 4);
 impl_bytable_std!(u64, 8);
 impl_bytable_std!(u128, 16);
 
+impl_bytable_std!(i8, 1);
+impl_bytable_std!(i16, 2);
+impl_bytable_std!(i32, 4);
+impl_bytable_std!(i64, 8);
+impl_bytable_std!(i128, 16);
+
 // ----------------------------------- bnum ------------------------------------
 
 macro_rules! impl_bytable_bnum {
     ($t:ty, $rot:literal) => {
         impl Bytable<$rot> for $t {
             fn from_be_bytes(bytes: [u8; $rot]) -> Self {
-                let mut digits = [0u64; $rot / 8];
-                for i in 0..$rot / 8 {
-                    digits[i] = u64::from_le_bytes([
-                        bytes[($rot / 8 - i - 1) * 8 + 7],
-                        bytes[($rot / 8 - i - 1) * 8 + 6],
-                        bytes[($rot / 8 - i - 1) * 8 + 5],
-                        bytes[($rot / 8 - i - 1) * 8 + 4],
-                        bytes[($rot / 8 - i - 1) * 8 + 3],
-                        bytes[($rot / 8 - i - 1) * 8 + 2],
-                        bytes[($rot / 8 - i - 1) * 8 + 1],
-                        bytes[($rot / 8 - i - 1) * 8],
-                    ]);
-                }
-                Self::from_digits(digits)
+                Self::from_be_slice(&bytes).unwrap()
             }
 
             fn from_le_bytes(bytes: [u8; $rot]) -> Self {
-                let mut digits = [0u64; $rot / 8];
-                for i in 0..$rot / 8 {
-                    digits[i] = u64::from_le_bytes([
-                        bytes[i * 8],
-                        bytes[i * 8 + 1],
-                        bytes[i * 8 + 2],
-                        bytes[i * 8 + 3],
-                        bytes[i * 8 + 4],
-                        bytes[i * 8 + 5],
-                        bytes[i * 8 + 6],
-                        bytes[i * 8 + 7],
-                    ]);
-                }
-                Self::from_digits(digits)
+                Self::from_le_slice(&bytes).unwrap()
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
-                let words = self.digits();
-                let mut bytes = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
+                self.to_le_bytes()
             }
 
             fn to_le_bytes(self) -> [u8; $rot] {
-                let words = self.digits();
-                let mut bytes = [[0u8; 8]; $rot / 8];
-                for i in 0..$rot / 8 {
-                    bytes[i] = words[i].to_le_bytes();
-                }
-
-                unsafe { std::mem::transmute(bytes) }
+                self.to_be_bytes()
             }
 
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
@@ -139,6 +107,8 @@ macro_rules! impl_bytable_bnum {
 
 impl_bytable_bnum!(U256, 32);
 impl_bytable_bnum!(U512, 64);
+impl_bytable_bnum!(I256, 32);
+impl_bytable_bnum!(I512, 64);
 
 // ----------------------------------- tests -----------------------------------
 
@@ -146,6 +116,7 @@ impl_bytable_bnum!(U512, 64);
 mod tests {
     use {
         crate::{Bytable, Uint128, Uint256},
+        bnum::types::U256,
         proptest::{array::uniform32, prelude::*},
     };
 
@@ -179,5 +150,13 @@ mod tests {
             let recovered = Uint256::from_le_bytes(number.to_le_bytes());
             prop_assert_eq!(number, recovered);
         }
+    }
+
+    #[test]
+    fn byt() {
+        let bytes = [0u8; 32];
+        let a = U256::from_be_slice(&bytes).unwrap();
+
+        println!("{a}");
     }
 }
