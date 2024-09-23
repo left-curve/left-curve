@@ -2,17 +2,18 @@ import type {
   Address,
   Chain,
   Client,
-  Hex,
   Message,
   MessageTypedDataType,
   Metadata,
   Signer,
   Transport,
+  Tx,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getAccountSequence } from "../public/getAccountSequence";
 import { getChainInfo } from "../public/getChainInfo";
 import { simulate } from "../public/simulate";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync";
 
 export type SignAndBroadcastTxParameters = {
   sender: Address;
@@ -21,7 +22,7 @@ export type SignAndBroadcastTxParameters = {
   typedData?: TypedDataParameter<MessageTypedDataType>;
 };
 
-export type SignAndBroadcastTxReturnType = Promise<Hex>;
+export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
 
 export async function signAndBroadcastTx<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,
@@ -57,11 +58,13 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     ? { gasLimit: gas }
     : await simulate(client, { simulate: { sender, msgs: messages, data } });
 
-  return await client.broadcast({
+  const tx: Tx = {
     sender,
     credential,
     data,
     msgs: messages,
     gasLimit,
-  });
+  };
+
+  return await broadcastTxSync(client, { tx });
 }

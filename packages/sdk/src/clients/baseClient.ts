@@ -15,7 +15,7 @@ export function createBaseClient<
 >(parameters: ClientConfig<transport, chain, signer>): Client<transport, chain, signer> {
   const { chain, signer, name = "Base Client", type = "base", username } = parameters;
 
-  const { config: transport, query, broadcast } = parameters.transport({ chain });
+  const { config: transport, request } = parameters.transport({ chain });
 
   const client = {
     signer,
@@ -23,9 +23,8 @@ export function createBaseClient<
     name,
     username,
     transport,
-    query,
-    broadcast,
     type,
+    request,
     uid: uid(),
   };
 

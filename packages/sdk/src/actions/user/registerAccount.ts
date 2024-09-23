@@ -3,21 +3,20 @@ import type {
   Address,
   Chain,
   Client,
-  Hex,
   Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getMembersTypedData } from "@leftcurve/utils";
-import { execute, getAppConfig } from "~/actions";
+import { type ExecuteReturnType, execute, getAppConfig } from "~/actions";
 
 export type RegisterAccountParameters = {
   sender: Address;
   config: AccountConfig;
 };
 
-export type RegisterAccountReturnType = Promise<Hex>;
+export type RegisterAccountReturnType = ExecuteReturnType;
 
 export async function registerAccount<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,

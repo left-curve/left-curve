@@ -38,6 +38,5 @@ export {
   formatAddress,
 } from "./formatters";
 
-export { httpRpc } from "./rpc";
 export { uid } from "./uid";
 export { sleep } from "./promises";

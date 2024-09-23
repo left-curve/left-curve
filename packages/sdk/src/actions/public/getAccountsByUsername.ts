@@ -1,6 +1,5 @@
 import type {
   AccountInfo,
-  AccountTypes,
   Address,
   Chain,
   Client,

@@ -15,7 +15,7 @@ import type {
 
 import { getCoinsTypedData } from "@leftcurve/utils";
 import { computeAddress } from "../public/computeAddress";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type StoreCodeAndInstantiateParameters = {
   sender: Address;
@@ -28,7 +28,9 @@ export type StoreCodeAndInstantiateParameters = {
   typedData?: TypedDataParameter;
 };
 
-export type StoreCodeAndInstantiateReturnType = Promise<[string, Hex]>;
+export type StoreCodeAndInstantiateReturnType = Promise<
+  [string, Awaited<SignAndBroadcastTxReturnType>]
+>;
 
 export async function storeCodeAndInstantiate<
   chain extends Chain | undefined,
@@ -74,11 +76,11 @@ export async function storeCodeAndInstantiate<
 
   const storeCodeMsg = { upload: { code } };
 
-  const txHash = await signAndBroadcastTx(client, {
+  const txData = await signAndBroadcastTx(client, {
     sender,
     messages: [storeCodeMsg, instantiateMsg],
     typedData,
   });
 
-  return [address, txHash];
+  return [address, txData];
 }

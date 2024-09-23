@@ -1,4 +1,4 @@
-import { deserialize, serialize } from "@leftcurve/encoding";
+import { decodeBase64, deserialize, serialize } from "@leftcurve/encoding";
 
 import type {
   Chain,
@@ -8,6 +8,7 @@ import type {
   Signer,
   Transport,
 } from "@leftcurve/types";
+import { queryAbci } from "./queryAbci";
 
 export type QueryAppParameters = {
   query: QueryRequest;
@@ -28,6 +29,13 @@ export async function queryApp<
   signer extends Signer | undefined = undefined,
 >(client: Client<Transport, chain, signer>, parameters: QueryAppParameters): QueryAppReturnType {
   const { query, height = 0 } = parameters;
-  const res = await client.query("/app", serialize(query), height, false);
-  return deserialize<QueryResponse>(res.value);
+
+  const { value } = await queryAbci(client, {
+    data: serialize(query),
+    height,
+    path: "/app",
+    prove: false,
+  });
+
+  return deserialize<QueryResponse>(decodeBase64(value ?? ""));
 }

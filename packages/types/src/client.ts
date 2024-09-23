@@ -35,8 +35,7 @@ export type Client<
   username?: Username;
   chain?: chain;
   name: string;
-  query: ReturnType<transport>["query"];
-  broadcast: ReturnType<transport>["broadcast"];
+  request: ReturnType<transport>["request"];
   transport: ReturnType<transport>["config"];
   type: string;
   uid: string;

@@ -3,14 +3,13 @@ import type {
   Chain,
   Client,
   Coins,
-  Hex,
   MessageTypedDataType,
   Signer,
   Transport,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type TransferParameters = {
   sender: Address;
@@ -18,7 +17,7 @@ export type TransferParameters = {
   coins: Coins;
 };
 
-export type TransferReturnType = Promise<Hex>;
+export type TransferReturnType = SignAndBroadcastTxReturnType;
 
 export async function transfer<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,

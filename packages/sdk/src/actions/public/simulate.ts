@@ -1,4 +1,4 @@
-import { deserialize, serialize } from "@leftcurve/encoding";
+import { decodeBase64, deserialize, serialize } from "@leftcurve/encoding";
 
 import type {
   Chain,
@@ -8,6 +8,7 @@ import type {
   SimulateResponse,
   Transport,
 } from "@leftcurve/types";
+import { queryAbci } from "./queryAbci";
 
 export type SimulateParameters = {
   simulate: SimulateRequest;
@@ -28,6 +29,13 @@ export async function simulate<chain extends Chain | undefined, signer extends S
   parameters: SimulateParameters,
 ): SimulateReturnType {
   const { simulate, height = 0 } = parameters;
-  const res = await client.query("/simulate", serialize(simulate), height, false);
-  return deserialize<SimulateResponse>(res.value);
+
+  const { value } = await queryAbci(client, {
+    data: serialize(simulate),
+    height,
+    path: "/simulate",
+    prove: false,
+  });
+
+  return deserialize<SimulateResponse>(decodeBase64(value ?? ""));
 }

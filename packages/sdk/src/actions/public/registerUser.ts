@@ -10,6 +10,7 @@ import type {
   Transport,
   Username,
 } from "@leftcurve/types";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../user/broadcastTxSync";
 import { getAppConfig } from "./getAppConfig";
 import { simulate } from "./simulate";
 
@@ -19,7 +20,7 @@ export type RegisterUserParameters = {
   keyHash: KeyHash;
 };
 
-export type RegisterUserReturnType = Promise<Hex>;
+export type RegisterUserReturnType = BroadcastTxSyncReturnType;
 
 export type MsgRegisterUser = {
   registerUser: {
@@ -68,5 +69,5 @@ export async function registerUser<
     credential: null,
   };
 
-  return await client.broadcast(tx);
+  return await broadcastTxSync(client, { tx });
 }

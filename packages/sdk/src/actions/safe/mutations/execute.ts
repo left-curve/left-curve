@@ -2,14 +2,13 @@ import type {
   Address,
   Chain,
   Client,
-  Hex,
   ProposalId,
   Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { execute } from "~/actions/user/execute";
+import { type ExecuteReturnType, execute } from "~/actions/user/execute";
 
 export type SafeAccountExecuteParameters = {
   sender: Address;
@@ -17,7 +16,7 @@ export type SafeAccountExecuteParameters = {
   proposalId: ProposalId;
 };
 
-export type SafeAccountExecuteReturnType = Promise<Hex>;
+export type SafeAccountExecuteReturnType = ExecuteReturnType;
 
 /**
  *  Execute a proposal once it's passed and the timelock (if there is one)

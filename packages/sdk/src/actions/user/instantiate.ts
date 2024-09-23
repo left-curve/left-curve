@@ -13,7 +13,7 @@ import type {
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
 import { computeAddress } from "../public/computeAddress";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type InstantiateParameters = {
   sender: Address;
@@ -26,7 +26,7 @@ export type InstantiateParameters = {
   typedData?: TypedDataParameter;
 };
 
-export type InstantiateReturnType = Promise<[string, Hex]>;
+export type InstantiateReturnType = Promise<[string, Awaited<SignAndBroadcastTxReturnType>]>;
 
 export async function instantiate<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,

@@ -1,6 +1,7 @@
 // This file type is partially forked from viem types in the following repository: https://github.com/wevm/viem/tree/main/src/types
 import type { Address } from "./address";
 import type { Hex } from "./encoding";
+import type { RequestFn } from "./rpc";
 import type { ExactPartial, OneOf, Prettify, RequiredBy } from "./utils";
 
 type Index = `0x${string}`;
@@ -1206,71 +1207,11 @@ type BlobSidecar<type extends Hex | Uint8Array = Hex | Uint8Array> = {
   proof: type;
 };
 
-type RpcSchema = readonly {
-  Method: string;
-  Parameters?: unknown | undefined;
-  ReturnType: unknown;
-}[];
-
-type RpcSchemaOverride = Omit<RpcSchema[number], "Method">;
-
-type EIP1193Parameters<rpcSchema extends RpcSchema | undefined = undefined> =
-  rpcSchema extends RpcSchema
-    ? {
-        [K in keyof rpcSchema]: Prettify<
-          {
-            method: rpcSchema[K] extends rpcSchema[number] ? rpcSchema[K]["Method"] : never;
-          } & (rpcSchema[K] extends rpcSchema[number]
-            ? rpcSchema[K]["Parameters"] extends undefined
-              ? { params?: undefined }
-              : { params: rpcSchema[K]["Parameters"] }
-            : never)
-        >;
-      }[number]
-    : {
-        method: string;
-        params?: unknown | undefined;
-      };
-
-type DerivedRpcSchema<
-  rpcSchema extends RpcSchema | undefined,
-  rpcSchemaOverride extends RpcSchemaOverride | undefined,
-> = rpcSchemaOverride extends RpcSchemaOverride
-  ? [rpcSchemaOverride & { Method: string }]
-  : rpcSchema;
-
-type EIP1193RequestFn<rpcSchema extends RpcSchema | undefined = undefined> = <
-  rpcSchemaOverride extends RpcSchemaOverride | undefined = undefined,
-  _parameters extends EIP1193Parameters<
-    DerivedRpcSchema<rpcSchema, rpcSchemaOverride>
-  > = EIP1193Parameters<DerivedRpcSchema<rpcSchema, rpcSchemaOverride>>,
-  _returnType = DerivedRpcSchema<rpcSchema, rpcSchemaOverride> extends RpcSchema
-    ? Extract<
-        DerivedRpcSchema<rpcSchema, rpcSchemaOverride>[number],
-        { Method: _parameters["method"] }
-      >["ReturnType"]
-    : unknown,
->(
-  args: _parameters,
-  options?: EIP1193RequestOptions | undefined,
-) => Promise<_returnType>;
-
-type EIP1193RequestOptions = {
-  // Deduplicate in-flight requests.
-  dedupe?: boolean | undefined;
-  // The base delay (in ms) between retries.
-  retryDelay?: number | undefined;
-  // The max number of times to retry.
-  retryCount?: number | undefined;
-  /** Unique identifier for the request. */
-  uid?: string | undefined;
-};
-
 type EIP1474Methods = [...PublicRpcSchema, ...WalletRpcSchema];
 
 export type EIP1193Provider = Prettify<
   EIP1193Events & {
-    request: EIP1193RequestFn<EIP1474Methods>;
+    request: RequestFn<EIP1474Methods>;
   }
 >;
 

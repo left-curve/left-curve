@@ -9,7 +9,7 @@ import type {
   Transport,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type MigrateParameters = {
   sender: Address;
@@ -19,7 +19,7 @@ export type MigrateParameters = {
   typedData?: TypedDataParameter;
 };
 
-export type MigrateReturnType = Promise<Hex>;
+export type MigrateReturnType = Promise<SignAndBroadcastTxReturnType>;
 
 export async function migrate<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,

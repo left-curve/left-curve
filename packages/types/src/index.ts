@@ -52,8 +52,6 @@ export type {
 export type {
   Transport,
   TransportConfig,
-  CometBroadcastFn,
-  CometQueryFn,
 } from "./transports";
 
 export type {
@@ -203,6 +201,11 @@ export type {
   JsonRpcId,
   JsonRpcRequest,
   RpcClient,
+  RpcSchema,
+  RequestFn,
+  RequestFnParameters,
+  RpcRequestOptions,
+  DerivedRpcSchema,
 } from "./rpc";
 
 export {
@@ -213,6 +216,38 @@ export {
   RpcEvent,
   RpcBroadcastTxSyncResponse,
 } from "./abci";
+
+export {
+  Block,
+  BlockId,
+  BlockIdFlags,
+  BlockIdFlag,
+  BlockMeta,
+  BlockParams,
+  Commit,
+  CommitSignature,
+  ConsensusParams,
+  Evidence,
+  EvidenceParams,
+  Header,
+  NodeInfo,
+  ProofOp,
+  CometBftRpcSchema,
+  SubscriptionEvents,
+  SubscritionEvent,
+  SyncInfo,
+  TxData,
+  TxProof,
+  TxResponse,
+  Validator,
+  ValidatorEd25519Pubkey,
+  ValidatorPubkey,
+  ValidatorSecp256k1Pubkey,
+  ValidatorUpdate,
+  BlockVersion,
+  TxEvent,
+  QueryAbciResponse,
+} from "./cometbft";
 
 export type { AppletMetadata } from "./applets";
 

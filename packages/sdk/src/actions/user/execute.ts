@@ -3,7 +3,6 @@ import type {
   Chain,
   Client,
   Funds,
-  Hex,
   Json,
   MessageTypedDataType,
   Signer,
@@ -11,7 +10,7 @@ import type {
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type ExecuteParameters = {
   sender: Address;
@@ -22,7 +21,7 @@ export type ExecuteParameters = {
   typedData?: TypedDataParameter;
 };
 
-export type ExecuteReturnType = Promise<Hex>;
+export type ExecuteReturnType = SignAndBroadcastTxReturnType;
 
 export async function execute<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,

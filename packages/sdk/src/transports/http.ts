@@ -1,18 +1,13 @@
-import { decodeBase64, encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
-import { httpRpc, mayTransform } from "@leftcurve/utils";
-
 import { UrlRequiredError } from "~/errors/transports";
+import { httpRpc } from "~/rpc/httpClient";
 import { createTransport } from "./createTransport";
 
 import type {
-  AbciQueryResponse,
-  Hex,
+  CometBftRpcSchema,
+  Json,
   JsonRpcBatchOptions,
-  RpcAbciQueryResponse,
-  RpcBroadcastTxSyncResponse,
+  RequestFn,
   Transport,
-  Tx,
-  UnsignedTx,
 } from "@leftcurve/types";
 
 export type HttpTransportConfig = {
@@ -29,7 +24,7 @@ export type HttpTransportConfig = {
   key?: string;
 };
 
-export type HttpTransport = Transport<"http">; /**
+export type HttpTransport = Transport<"http", CometBftRpcSchema>; /**
  * Creates a HTTP transport that connects to a JSON-RPC API.
  * @param url The URL of the JSON-RPC API.
  * @param config {HttpTransportConfig} The configuration of the transport.
@@ -46,74 +41,19 @@ export function http(_url_?: string | undefined, config: HttpTransportConfig = {
 
     const rpcClient = httpRpc(url, headers, batch);
 
-    async function query(
-      path: string,
-      data: Uint8Array,
-      height = 0,
-      prove = false,
-    ): Promise<AbciQueryResponse> {
-      const { error, result } = await rpcClient.request<{ response: RpcAbciQueryResponse }>(
-        "abci_query",
-        {
-          path,
-          prove,
-          data: encodeHex(data),
-          height: String(height),
-        },
-      );
+    const request = (async ({ method, params }, options) => {
+      const { result, error } = await rpcClient.request(method, params as Json);
 
-      if (error) throw new Error(`Request Error: ${error}`);
+      if (error) throw new Error(error.message);
 
-      const { response } = result;
+      return result;
+    }) as RequestFn<CometBftRpcSchema>;
 
-      if (response.code === 0) {
-        return {
-          proof: null,
-          code: response.code,
-          log: response.log,
-          key: decodeBase64(response.key ?? ""),
-          value: decodeBase64(response.value ?? ""),
-          codespace: response.codespace ?? "",
-          height: mayTransform(Number.parseInt, response.height),
-          index: mayTransform(Number.parseInt, response.index),
-          info: response.info ?? "",
-        };
-      }
-      throw new Error(
-        `query failed! codespace: ${response.codespace}, code: ${response.code}, log: ${response.log}`,
-      );
-    }
-
-    async function broadcast(tx: Tx | UnsignedTx): Promise<Hex> {
-      const { error, result } = await rpcClient.request<RpcBroadcastTxSyncResponse>(
-        "broadcast_tx_sync",
-        {
-          tx: encodeBase64(serialize(tx)),
-        },
-      );
-
-      if (error) throw new Error(`Request Error: ${error}`);
-      const { code, codespace, hash, log } = result;
-
-      if (code === 0) {
-        return hash;
-      }
-
-      throw new Error(
-        `failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`,
-      );
-    }
-
-    return createTransport(
-      {
-        key,
-        name,
-        type: "http",
-      },
-      {
-        query,
-        broadcast,
-      },
-    );
+    return createTransport({
+      type: "http",
+      name,
+      key,
+      request,
+    });
   };
 }

@@ -2,7 +2,6 @@ import type {
   Address,
   Chain,
   Client,
-  Hex,
   Message,
   MessageTypedDataType,
   Signer,
@@ -10,7 +9,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { execute } from "~/actions/user/execute";
+import { type ExecuteReturnType, execute } from "~/actions/user/execute";
 
 export type SafeAccountProposeParameters = {
   sender: Address;
@@ -21,7 +20,7 @@ export type SafeAccountProposeParameters = {
   typedData?: TypedDataParameter<MessageTypedDataType>;
 };
 
-export type SafeAccountProposeReturnType = Promise<Hex>;
+export type SafeAccountProposeReturnType = ExecuteReturnType;
 
 /**
  * Create a proposal in a safe account.

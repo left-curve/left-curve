@@ -2,7 +2,6 @@ import type {
   Address,
   Chain,
   Client,
-  Hex,
   ProposalId,
   Signer,
   Transport,
@@ -10,7 +9,7 @@ import type {
   TypedDataParameter,
   Vote,
 } from "@leftcurve/types";
-import { execute } from "~/actions/user/execute";
+import { type ExecuteReturnType, execute } from "~/actions/user/execute";
 
 export type SafeAccountVoteParameters = {
   proposalId: ProposalId;
@@ -21,7 +20,7 @@ export type SafeAccountVoteParameters = {
   execute: boolean;
 };
 
-export type SafeAccountVoteReturnType = Promise<Hex>;
+export type SafeAccountVoteReturnType = ExecuteReturnType;
 
 /**
  * Vote on a proposal during its voting period.

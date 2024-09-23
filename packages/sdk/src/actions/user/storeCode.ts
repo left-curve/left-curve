@@ -3,20 +3,19 @@ import type {
   Base64,
   Chain,
   Client,
-  Hex,
   MessageTypedDataType,
   Signer,
   Transport,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
 
 export type StoreCodeParameters = {
   sender: Address;
   code: Base64;
 };
 
-export type StoreCodeReturnType = Promise<Hex>;
+export type StoreCodeReturnType = Promise<SignAndBroadcastTxReturnType>;
 
 export async function storeCode<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,
