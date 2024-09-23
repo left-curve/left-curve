@@ -87,11 +87,53 @@ macro_rules! impl_bytable_bnum {
             }
 
             fn to_be_bytes(self) -> [u8; $rot] {
-                self.to_le_bytes()
+                let words = self.digits();
+                let mut bytes = [[0u8; 8]; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = words[$rot / 8 - i - 1].to_be_bytes();
+                }
+
+                unsafe { std::mem::transmute(bytes) }
             }
 
             fn to_le_bytes(self) -> [u8; $rot] {
-                self.to_be_bytes()
+                let words = self.digits();
+                let mut bytes = [[0u8; 8]; $rot / 8];
+                for i in 0..$rot / 8 {
+                    bytes[i] = words[i].to_le_bytes();
+                }
+
+                unsafe { std::mem::transmute(bytes) }
+            }
+
+            fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
+                grow_be_uint::<INPUT_SIZE, $rot>(data)
+            }
+
+            fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
+                grow_le_uint::<INPUT_SIZE, $rot>(data)
+            }
+        }
+    };
+}
+
+macro_rules! impl_bytable_signed_bnum {
+    ($t:ty, $rot:literal) => {
+        impl Bytable<$rot> for $t {
+            fn from_be_bytes(bytes: [u8; $rot]) -> Self {
+                Self::from_be_slice(&bytes).unwrap()
+            }
+
+            fn from_le_bytes(bytes: [u8; $rot]) -> Self {
+                Self::from_le_slice(&bytes).unwrap()
+            }
+
+            fn to_be_bytes(self) -> [u8; $rot] {
+                self.to_bits().to_be_bytes()
+            }
+
+            fn to_le_bytes(self) -> [u8; $rot] {
+                self.to_bits().to_le_bytes()
             }
 
             fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; $rot] {
@@ -107,8 +149,8 @@ macro_rules! impl_bytable_bnum {
 
 impl_bytable_bnum!(U256, 32);
 impl_bytable_bnum!(U512, 64);
-impl_bytable_bnum!(I256, 32);
-impl_bytable_bnum!(I512, 64);
+impl_bytable_signed_bnum!(I256, 32);
+impl_bytable_signed_bnum!(I512, 64);
 
 // ----------------------------------- tests -----------------------------------
 
@@ -116,7 +158,7 @@ impl_bytable_bnum!(I512, 64);
 mod tests {
     use {
         crate::{Bytable, Uint128, Uint256},
-        bnum::types::U256,
+        bnum::types::I256,
         proptest::{array::uniform32, prelude::*},
     };
 
@@ -154,11 +196,10 @@ mod tests {
 
     #[test]
     fn byt() {
-        let bytes = [0u8; 32];
-        let a = U256::from_be_slice(&bytes).unwrap();
-
-        let a = U256::from_be_bytes(bytes);
-
-        println!("{a}");
+        for i in [i128::MIN, -1, 0, 1, i128::MAX].iter() {
+            let bytes = I256::from(*i).to_le_bytes();
+            let number = I256::from_le_bytes(bytes);
+            assert_eq!(number, I256::from(*i));
+        }
     }
 }

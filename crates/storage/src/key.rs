@@ -950,18 +950,18 @@ mod tests {
         ];
         "uint128"
     )]
-    // #[test_case(
-    //     [
-    //         Int128::new_negative(Uint128::MAX),
-    //         Int128::new_negative(Uint128::new(69420)),
-    //         Int128::new_negative(Uint128::new(12345)),
-    //         Int128::new_positive(Uint128::ZERO),
-    //         Int128::new_positive(Uint128::new(12345)),
-    //         Int128::new_positive(Uint128::new(69420)),
-    //         Int128::new_positive(Uint128::MAX),
-    //     ];
-    //     "int128"
-    // )]
+    #[test_case(
+        [
+            Int128::new(i128::MIN),
+            Int128::new(-69420),
+            Int128::new(-12345),
+            Int128::new(0),
+            Int128::new(12345),
+            Int128::new(69420),
+            Int128::new(i128::MAX),
+        ];
+        "int128"
+    )]
     #[test_case(
         [
             Udec128::ZERO,
@@ -972,20 +972,20 @@ mod tests {
         ];
         "udec128"
     )]
-    // #[test_case(
-    //     [
-    //         Dec128::new_negative(Udec128::MAX),
-    //         Dec128::new_negative(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
-    //         Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
-    //         Dec128::new_negative(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
-    //         Dec128::new_positive(Udec128::ZERO),
-    //         Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 2_u128).unwrap()),
-    //         Dec128::new_positive(Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),),
-    //         Dec128::new_positive(Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap()),
-    //         Dec128::new_positive(Udec128::MAX),
-    //     ];
-    //     "dec128"
-    // )]
+    #[test_case(
+        [
+            Dec128::raw((-i128::MAX).into()),
+            Dec128::checked_from_ratio(-69420_i128, 12345_i128).unwrap(),
+            Dec128::checked_from_ratio(-1_i128, 1_i128).unwrap(),
+            Dec128::checked_from_ratio(-1_i128, 2_i128).unwrap(),
+            Dec128::new(0_i128),
+            Dec128::checked_from_ratio(1_i128, 2_i128).unwrap(),
+            Dec128::checked_from_ratio(1_i128, 1_i128).unwrap(),
+            Dec128::checked_from_ratio(69420_i128, 12345_i128).unwrap(),
+            Dec128::raw(i128::MAX.into()),
+        ];
+        "dec128"
+    )]
     fn number_key_ordering<T, const N: usize>(numbers: [T; N])
     where
         T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug + Copy,

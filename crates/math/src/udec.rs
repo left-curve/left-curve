@@ -624,7 +624,6 @@ macro_rules! generate_decimal {
             #[doc = $doc]
             pub type $name = Udec<$inner>;
 
-
                 impl NumberConst for $name {
                     const MAX: Self = Self(Uint::MAX);
                     const MIN: Self = Self(Uint::MIN);
