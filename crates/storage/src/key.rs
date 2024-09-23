@@ -1,5 +1,11 @@
 use {
-    grug_math::{Bytable, Udec, Uint, Uint128, Uint256, Uint512, Uint64},
+    bnum::{
+        cast::CastFrom,
+        types::{I256, I512, U256, U512},
+    },
+    grug_math::{
+        Bytable, Int128, Int256, Int512, Int64, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+    },
     grug_types::{
         nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
     },
@@ -380,6 +386,25 @@ where
     }
 }
 
+impl<U> PrimaryKey for Uint<U>
+where
+    U: PrimaryKey<Output = U> + Copy,
+{
+    type Output = Self;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        self.number_ref().raw_keys()
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        U::from_slice(bytes).map(Self::new)
+    }
+}
+
 /// Given the raw bytes of a tuple key consisting of at least one subkey, each
 /// subkey having one or more key elements, split off the first subkey.
 ///
@@ -464,7 +489,7 @@ macro_rules! impl_unsigned_integer_key {
     }
 }
 
-impl_unsigned_integer_key!(u8, u16, u32, u64, u128, Uint64, Uint128, Uint256, Uint512);
+impl_unsigned_integer_key!(u8, u16, u32, u64, u128, U256, U512);
 
 macro_rules! impl_signed_integer_key {
     ($($s:ty => $u:ty),+ ) => {
@@ -499,6 +524,44 @@ macro_rules! impl_signed_integer_key {
 }
 
 impl_signed_integer_key!(i8 => u8, i16 => u16, i32 => u32, i64 => u64, i128 => u128);
+
+macro_rules! impl_bnum_signed_integer_key {
+    ($($s:ty => $u:ty),+ ) => {
+        $(impl PrimaryKey for $s {
+            type Output = $s;
+            type Prefix = ();
+            type Suffix = ();
+
+            const KEY_ELEMS: u8 = 1;
+
+            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+                let bytes = (<$u>::cast_from(self.clone()) ^ <$u>::cast_from(Self::MIN)).to_be_bytes().to_vec();
+                vec![Cow::Owned(bytes)]
+            }
+
+            fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+                let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
+                    return Err(StdError::deserialize::<Self::Output, _>(
+                        "key",
+                        format!(
+                            "wrong number of bytes: expecting {}, got {}",
+                            mem::size_of::<Self>(),
+                            bytes.len(),
+                        )
+                    ));
+                };
+
+                Ok(
+                    Self::cast_from(
+                        <$u>::cast_from(Self::from_be_bytes(bytes)) ^ <$u>::cast_from(Self::MIN)
+                    )
+                )
+            }
+        })*
+    }
+}
+
+impl_bnum_signed_integer_key!(I256 => U256, I512 => U512);
 
 // --------------------------------- prefixer ----------------------------------
 
@@ -602,7 +665,7 @@ where
 }
 
 macro_rules! impl_integer_prefixer {
-    ($($t:ty),+ $(,)?) => {
+    ($($t:ty),+) => {
         $(impl Prefixer for $t {
             fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
                 vec![Cow::Owned(self.to_be_bytes().to_vec())]
@@ -612,7 +675,8 @@ macro_rules! impl_integer_prefixer {
 }
 
 impl_integer_prefixer!(
-    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512,
+    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512, Int64,
+    Int128, Int256, Int512
 );
 
 // ----------------------------------- tests -----------------------------------
@@ -622,7 +686,7 @@ mod tests {
     use {
         super::*,
         crate::Set,
-        grug_math::{NumberConst, Udec128, Udec256},
+        grug_math::{Dec128, Dec256, NumberConst, Udec128, Udec256},
         grug_types::{MockStorage, Order},
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
@@ -822,48 +886,47 @@ mod tests {
         &Uint256::MAX.to_be_bytes();
         "udec256_MAX"
     )]
-    // /// ---- Signed integers ----
-    // #[test_case(
-    //     Int64::new_positive(10_u64.into()),
-    //     &with_sign(1, 10_u64.to_be_bytes());
-    //     "int64_10"
-    // )]
-    // #[test_case(
-    //     Int128::new_negative(10_u64.into()),
-    //     &with_sign(0, (u128::MAX - 10).to_be_bytes());
-    //     "int128_neg_10"
-    // )]
-    // #[test_case(
-    //     Int256::MIN,
-    //     &with_sign(0, Uint256::MIN.to_be_bytes());
-    //     "int256_MIN"
-    // )]
-    // #[test_case(
-    //     Int256::MAX,
-    //     &with_sign(1, Uint256::MAX.to_be_bytes());
-    //     "int256_MAX"
-    // )]
-    // /// ---- Signed Decimals ----
-    // #[test_case(
-    //     Dec128::MAX,
-    //     &with_sign(1, Uint128::MAX.to_be_bytes());
-    //     "dec128_MAX"
-    // )]
-    // #[test_case(
-    //     Dec128::MIN,
-    //     &with_sign(0, Uint128::MIN.to_be_bytes());
-    //     "dec128_MIN"
-    // )]
-    // #[test_case(
-    //     Dec256::from_str("-10.5").unwrap(),
-    //     &with_sign(0, (Uint256::MAX - Uint256::from(10 * DEC128_SHIFT + DEC128_SHIFT / 2)).to_be_bytes());
-    //     "dec128_neg_10_5"
-    // )]
-    // #[test_case(
-    //     Dec256::from_str("20.75").unwrap(),
-    //     &with_sign(1, (Uint256::from(20 * DEC128_SHIFT + DEC128_SHIFT / 2 + DEC128_SHIFT / 4)).to_be_bytes());
-    //     "dec128_20_75"
-    // )]
+    #[test_case(
+        Int64::new(-10),
+        &(-10_i64).joined_key();
+        "int64_10"
+    )]
+    #[test_case(
+        Int128::new(-10),
+        &(-10_i128).joined_key();
+        "int128_neg_10"
+    )]
+    #[test_case(
+        Int256::MIN,
+        &(Int256::MIN).joined_key();
+        "int256_MIN"
+    )]
+    #[test_case(
+        Int256::MAX,
+        &(Int256::MAX).joined_key();
+        "int256_MAX"
+    )]
+    /// ---- Signed Decimals ----
+    #[test_case(
+        Dec128::MAX,
+        &i128::MAX.joined_key();
+        "dec128_MAX"
+    )]
+    #[test_case(
+        Dec128::MIN,
+        &i128::MIN.joined_key();
+        "dec128_MIN"
+    )]
+    #[test_case(
+        Dec256::from_str("-10.5").unwrap(),
+        &I256::from(-(105_i128 * 10_i128.pow(17))).joined_key();
+        "dec128_neg_10_5"
+    )]
+    #[test_case(
+        Dec256::from_str("20.75").unwrap(),
+        &I256::from(2075_i128 * 10_i128.pow(16)).joined_key();
+        "dec128_20_75"
+    )]
     fn key<T>(compare: T, bytes: &[u8])
     where
         T: PrimaryKey + PartialEq<<T as PrimaryKey>::Output> + Debug,

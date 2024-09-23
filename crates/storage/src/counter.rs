@@ -105,9 +105,9 @@ mod tests {
     use {
         crate::Counter,
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_math::{Number, NumberConst, Uint128, Uint512},
+        grug_math::{Dec128, Int128, Number, NumberConst, Uint128, Uint512},
         grug_types::MockStorage,
-        std::fmt::Debug,
+        std::{fmt::Debug, str::FromStr},
         test_case::test_case,
     };
 
@@ -126,16 +126,16 @@ mod tests {
         Uint512::ONE;
         "uint512"
     )]
-    // #[test_case(
-    //     Int128::new_negative(Uint128::ONE),
-    //     Int128::new_negative(Uint128::ONE);
-    //     "int128"
-    // )]
-    // #[test_case(
-    //     Dec128::from_str("0.5").unwrap(),
-    //     Dec128::from_str("1.5").unwrap();
-    //     "dec128"
-    // )]
+    #[test_case(
+        Int128::new(-1),
+        Int128::new(-1);
+        "int128"
+    )]
+    #[test_case(
+        Dec128::from_str("0.5").unwrap(),
+        Dec128::from_str("1.5").unwrap();
+        "dec128"
+    )]
     fn counter_works<T>(base: T, increment: T)
     where
         T: BorshSerialize + BorshDeserialize + NumberConst + Number + PartialEq + Debug + Copy,

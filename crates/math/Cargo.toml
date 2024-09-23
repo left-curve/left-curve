@@ -14,6 +14,7 @@ bnum      = { workspace = true, features = ["borsh"] }
 borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
 serde     = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
+paste     = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

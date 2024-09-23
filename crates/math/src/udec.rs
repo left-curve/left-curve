@@ -1,16 +1,18 @@
 use {
     crate::{
-        Decimal, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
+        Decimal, FixedPoint, Fraction, Inner, Int128, Int256, IsZero, MathError, MathResult,
+        MultiplyRatio, NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
     },
-    bnum::types::U256,
+    bnum::types::{I256, U256},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     std::{
         cmp::Ordering,
         fmt::{self, Display, Write},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
+        ops::{
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+        },
         str::FromStr,
     },
 };
@@ -172,8 +174,8 @@ impl<U> Sign for Udec<U> {
 
 impl<U> Fraction<U> for Udec<U>
 where
-    Self: FixedPoint<U>,
-    U: Number + IsZero + Display + Copy,
+    Self: FixedPoint<U> + ToString,
+    U: IsZero + Copy,
     Uint<U>: MultiplyRatio,
 {
     fn numerator(&self) -> Uint<U> {
@@ -186,7 +188,7 @@ where
 
     fn inv(&self) -> MathResult<Self> {
         if self.is_zero() {
-            Err(MathError::division_by_zero(self))
+            Err(MathError::division_by_zero(*self))
         } else {
             Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
         }
@@ -202,11 +204,22 @@ where
     }
 }
 
+impl<U> Neg for Udec<U>
+where
+    U: Neg<Output = U>,
+{
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
 impl<U> Number for Udec<U>
 where
-    Self: FixedPoint<U> + NumberConst,
-    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + IsZero + Display,
+    Self: FixedPoint<U> + NumberConst + ToString,
+    U: NumberConst + Number + Copy + PartialOrd,
+    Uint<U>: NextNumber,
     <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
@@ -316,7 +329,7 @@ impl<U> Display for Udec<U>
 where
     Self: FixedPoint<U>,
     U: Number + IsZero + Display,
-    Uint<U>: Copy,
+    Uint<U>: Copy + Sign,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION;
@@ -328,12 +341,15 @@ where
         } else {
             let fractional_string = format!(
                 "{:0>padding$}",
-                fractional.0,
+                fractional.abs().0,
                 padding = Self::DECIMAL_PLACES as usize
             );
-            f.write_str(&whole.to_string())?;
+            if whole.is_negative() || fractional.is_negative() {
+                f.write_char('-')?;
+            }
+            f.write_str(&whole.abs().to_string())?;
             f.write_char('.')?;
-            f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
+            f.write_str(&fractional_string.trim_end_matches('0'))?;
         }
 
         Ok(())
@@ -389,9 +405,13 @@ where
             let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
 
             // for negative numbers, we need to subtract the fractional part
-            atomics = atomics
-                .checked_add(fractional_part)
-                .map_err(|_| MathError::parse_number::<Self, _, _>(input, "Value too big"))?;
+            // We can't check if atomics is negative because -0 is positive
+            atomics = if input.starts_with("-") {
+                atomics.checked_sub(fractional_part)
+            } else {
+                atomics.checked_add(fractional_part)
+            }
+            .map_err(|_| MathError::parse_number::<Self, _, _>(input, "Value too big"))?;
         }
 
         if parts_iter.next().is_some() {
@@ -596,116 +616,156 @@ macro_rules! generate_decimal {
         name              = $name:ident,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
+        base_constructor  = $base_constructor:ty,
         from_dec          = [$($from:ty),*],
         doc               = $doc:literal,
     ) => {
-        #[doc = $doc]
-        pub type $name = Udec<$inner>;
+        paste::paste! {
+            #[doc = $doc]
+            pub type $name = Udec<$inner>;
 
-        impl NumberConst for $name {
-            const MAX: Self = Self(Uint::MAX);
-            const MIN: Self = Self(Uint::MIN);
-            const ONE: Self = Self(Self::DECIMAL_FRACTION);
-            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES)));
-            const ZERO: Self = Self(Uint::ZERO);
+
+                impl NumberConst for $name {
+                    const MAX: Self = Self(Uint::MAX);
+                    const MIN: Self = Self(Uint::MIN);
+                    const ONE: Self = Self(Self::DECIMAL_FRACTION);
+                    const TEN: Self = Self($constructor([<10_$base_constructor>].pow(Self::DECIMAL_PLACES)));
+                    const ZERO: Self = Self(Uint::ZERO);
+                }
+
+
+            impl $name {
+                /// Create a new [`Udec`] adding decimal places.
+                ///
+                /// ```rust
+                /// use {
+                ///     grug_math::{Udec128, Uint128},
+                ///     std::str::FromStr,
+                /// };
+                ///
+                /// let decimal = Udec128::new(100);
+                /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+                /// ```
+                pub const fn new(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES)))
+                }
+                pub const fn new_percent(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 2)))
+                }
+
+                pub const fn new_permille(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 3)))
+                }
+
+                pub const fn new_bps(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 4)))
+                }
+            }
+
+            // Ex: From<U256> for Udec256
+            impl From<$inner> for $name {
+                fn from(value: $inner) -> Self {
+                    Self::raw(Uint::new(value))
+                }
+            }
+
+            // Ex: From<Uint<U256>> for Udec256
+            impl From<Uint<$inner>> for $name {
+                fn from(value: Uint<$inner>) -> Self {
+                    Self::raw(value)
+                }
+            }
+
+            // --- From Udec ---
+            $(
+                // Ex: From<Udec128> for Udec256
+                impl From<$from> for $name {
+                    fn from(value: $from) -> Self {
+                        Self::from_decimal(value)
+                    }
+                }
+
+                // Ex: From<Uint128> for Udec256
+                impl From<Uint<<$from as Inner>::U>> for $name {
+                    fn from(value: Uint<<$from as Inner>::U>) -> Self {
+                        Self::raw(value.into())
+                    }
+                }
+
+                // Ex: From<u128> for Udec256
+                impl From<<$from as Inner>::U> for $name {
+                    fn from(value: <$from as Inner>::U) -> Self {
+                        Self::raw(value.into())
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for Udec128
+                impl TryFrom<$name> for $from {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<$from> {
+                        <$from>::try_from_decimal(value)
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for Uint128
+                impl TryFrom<$name> for Uint<<$from as Inner>::U> {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<Uint<<$from as Inner>::U>> {
+                        value.0.try_into().map(Self)
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for u128
+                impl TryFrom<$name> for <$from as Inner>::U {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
+                        value.0.try_into()
+                    }
+                }
+            )*
         }
-
-        impl $name {
-            /// Create a new [`Udec`] adding decimal places.
-            ///
-            /// ```rust
-            /// use {
-            ///     grug_math::{Udec128, Uint128},
-            ///     std::str::FromStr,
-            /// };
-            ///
-            /// let decimal = Udec128::new(100);
-            /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
-            /// ```
-            pub const fn new(x: u128) -> Self {
-                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES)))
-            }
-            pub const fn new_percent(x: u128) -> Self {
-                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 2)))
-            }
-
-            pub const fn new_permille(x: u128) -> Self {
-                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 3)))
-            }
-
-            pub const fn new_bps(x: u128) -> Self {
-                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 4)))
-            }
-        }
-
-        // Ex: From<U256> for Udec256
-        impl From<$inner> for $name {
-            fn from(value: $inner) -> Self {
-                Self::raw(Uint::new(value))
-            }
-        }
-
-        // Ex: From<Uint<U256>> for Udec256
-        impl From<Uint<$inner>> for $name {
-            fn from(value: Uint<$inner>) -> Self {
-                Self::raw(value)
-            }
-        }
-
-        // --- From Udec ---
-        $(
-            // Ex: From<Udec128> for Udec256
-            impl From<$from> for $name {
-                fn from(value: $from) -> Self {
-                    Self::from_decimal(value)
-                }
-            }
-
-            // Ex: From<Uint128> for Udec256
-            impl From<Uint<<$from as Inner>::U>> for $name {
-                fn from(value: Uint<<$from as Inner>::U>) -> Self {
-                    Self::raw(value.into())
-                }
-            }
-
-            // Ex: From<u128> for Udec256
-            impl From<<$from as Inner>::U> for $name {
-                fn from(value: <$from as Inner>::U) -> Self {
-                    Self::raw(value.into())
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for Udec128
-            impl TryFrom<$name> for $from {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<$from> {
-                    <$from>::try_from_decimal(value)
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for Uint128
-            impl TryFrom<$name> for Uint<<$from as Inner>::U> {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<Uint<<$from as Inner>::U>> {
-                    value.0.try_into().map(Self)
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for u128
-            impl TryFrom<$name> for <$from as Inner>::U {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
-                    value.0.try_into()
-                }
-            }
-        )*
     };
+    (
+        type              = Signed,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
+    ) => {
+        generate_decimal! {
+            name              = $name,
+            inner_type        = $inner,
+            inner_constructor = $constructor,
+            base_constructor  = i128,
+            from_dec          = [$($from),*],
+            doc               = $doc,
+        }
+    };
+    (
+        type              = Unsigned,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
+    ) => {
+        generate_decimal! {
+            name              = $name,
+            inner_type        = $inner,
+            inner_constructor = $constructor,
+            base_constructor  = u128,
+            from_dec          = [$($from),*],
+            doc               = $doc,
+        }
+    }
 }
 
 generate_decimal! {
+    type              = Unsigned,
     name              = Udec128,
     inner_type        = u128,
     inner_constructor = Uint128::new,
@@ -714,6 +774,7 @@ generate_decimal! {
 }
 
 generate_decimal! {
+    type              = Unsigned,
     name              = Udec256,
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
@@ -721,12 +782,30 @@ generate_decimal! {
     doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
 }
 
+generate_decimal! {
+    type              = Signed,
+    name              = Dec128,
+    inner_type        = i128,
+    inner_constructor = Int128::new,
+    from_dec          = [],
+    doc               = "128-bit signed fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    type              = Signed,
+    name              = Dec256,
+    inner_type        = I256,
+    inner_constructor = Int256::new_from_i128,
+    from_dec          = [],
+    doc               = "128-bit signed fixed-point number with 18 decimal places.",
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Number, NumberConst, Udec128, Udec256},
+        crate::{Dec128, Number, NumberConst, Udec128, Udec256},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -798,5 +877,34 @@ mod tests {
 
         let foo = Udec256::new(10_u128);
         assert_eq!(Udec128::new(10_u128), Udec128::try_from(foo).unwrap())
+    }
+
+    #[test]
+    fn neg_to_string_works() {
+        assert_eq!(Dec128::new(-1).to_string(), "-1");
+        assert_eq!(Dec128::new_percent(-10).to_string(), "-0.1");
+        assert_eq!(Dec128::new_percent(-110).to_string(), "-1.1");
+        assert_eq!(Dec128::new(1).to_string(), "1");
+        assert_eq!(Dec128::new_percent(10).to_string(), "0.1");
+        assert_eq!(Dec128::new_percent(110).to_string(), "1.1");
+    }
+
+    #[test]
+    fn new_from_str_works() {
+        assert_eq!(Dec128::from_str("0.5").unwrap(), Dec128::new_percent(50));
+        assert_eq!(Dec128::from_str("1").unwrap(), Dec128::new(1));
+        assert_eq!(Dec128::from_str("1.05").unwrap(), Dec128::new_percent(105));
+        assert_eq!(Dec128::from_str("-0.5").unwrap(), Dec128::new_percent(-50));
+        assert_eq!(Dec128::from_str("-1").unwrap(), Dec128::new(-1));
+        assert_eq!(
+            Dec128::from_str("-1.05").unwrap(),
+            Dec128::new_percent(-105)
+        );
+    }
+
+    #[test]
+    fn neg_works() {
+        assert_eq!(-Dec128::new_percent(-105), Dec128::new_percent(105));
+        assert_eq!(-Dec128::new_percent(50), Dec128::new_percent(-50));
     }
 }

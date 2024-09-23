@@ -1,4 +1,4 @@
-use crate::{Uint128, Uint256, Uint512, Uint64};
+use crate::{Int128, Int256, Int64, Uint128, Uint256, Uint512, Uint64};
 
 /// Describes a number type can be cast into another type of a bigger word size.
 ///
@@ -30,4 +30,9 @@ impl_next! {
     Uint64  => Uint128,
     Uint128 => Uint256,
     Uint256 => Uint512,
+    Int64   => Int128,
+    Int128  => Int256,
+
+    // TODO: Fix impl From<I256> for I512 in bnum
+    // Int256  => Int512,
 }

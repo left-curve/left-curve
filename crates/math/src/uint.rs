@@ -1,9 +1,10 @@
 use {
     crate::{
+        utils::{bytes_to_digits, grow_le_int},
         Bytable, Fraction, Inner, Integer, IsZero, MathError, MathResult, MultiplyFraction,
         MultiplyRatio, NextNumber, Number, NumberConst, Sign,
     },
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     std::{
@@ -11,8 +12,8 @@ use {
         iter::Sum,
         marker::PhantomData,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
-            ShrAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign,
+            Shr, ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -38,19 +39,26 @@ where
     pub const fn number(&self) -> U {
         self.0
     }
+
+    pub const fn number_ref(&self) -> &U {
+        &self.0
+    }
 }
 
 impl<U> Inner for Uint<U> {
     type U = U;
 }
 
-impl<U> Sign for Uint<U> {
+impl<U> Sign for Uint<U>
+where
+    U: Sign,
+{
     fn abs(self) -> Self {
-        self
+        Self(self.0.abs())
     }
 
     fn is_negative(&self) -> bool {
-        false
+        self.0.is_negative()
     }
 }
 
@@ -400,6 +408,17 @@ where
     }
 }
 
+impl<U> Neg for Uint<U>
+where
+    U: Neg<Output = U>,
+{
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
 impl<U> Add for Uint<U>
 where
     U: Number,
@@ -656,43 +675,69 @@ generate_uint! {
     doc        = "512-bit unsigned integer.",
 }
 
-// -------------- additional constructor methods for Uint256/512 ---------------
+generate_uint! {
+    name = Int64,
+    inner_type = i64,
+    from_int = [],
+    from_std = [u32, u16, u8],
+    doc = "64-bit signed integer.",
+}
+
+generate_uint! {
+    name = Int128,
+    inner_type = i128,
+    from_int = [Int64, Uint64],
+    from_std = [u32, u16, u8],
+    doc = "128-bit signed integer.",
+}
+
+generate_uint! {
+    name = Int256,
+    inner_type = I256,
+    from_int = [Int128, Int64, Uint128, Uint64],
+    from_std = [u32, u16, u8],
+    doc = "256-bit signed integer.",
+}
+
+generate_uint! {
+    name = Int512,
+    inner_type = I512,
+    from_int = [Int128, Int64, Uint128, Uint64],
+    from_std = [u32, u16, u8],
+    doc = "512-bit signed integer.",
+}
+
+// -------------- additional constructor methods for Uint256/512 & Int256/512 ---------------
 
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let bytes = value.to_le_bytes();
-        Self(U256::from_digits([
-            u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            ]),
-            u64::from_le_bytes([
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
-                bytes[15],
-            ]),
-            0,
-            0,
-        ]))
+        let grown_bytes = grow_le_int::<16, 32>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(U256::from_digits(digits))
     }
 }
 
 impl Uint512 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let bytes = value.to_le_bytes();
-        Self(U512::from_digits([
-            u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            ]),
-            u64::from_le_bytes([
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
-                bytes[15],
-            ]),
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        ]))
+        let grown_bytes = grow_le_int::<16, 64>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(U512::from_digits(digits))
+    }
+}
+
+impl Int256 {
+    pub const fn new_from_i128(value: i128) -> Self {
+        let grown_bytes = grow_le_int::<16, 32>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(I256::from_bits(U256::from_digits(digits)))
+    }
+}
+
+impl Int512 {
+    pub const fn new_from_i128(value: i128) -> Self {
+        let grown_bytes = grow_le_int::<16, 64>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(I512::from_bits(U512::from_digits(digits)))
     }
 }
 
@@ -716,5 +761,31 @@ mod tests {
             let output = uint512.number().try_into().unwrap();
             assert_eq!(input, output);
         }
+    }
+
+    #[test]
+    fn singed_from_str() {
+        assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
+        assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
+        assert_eq!(
+            Int512::from_str("100").unwrap(),
+            Int512::new(I512::from(100))
+        );
+        assert_eq!(
+            Int512::from_str("-100").unwrap(),
+            Int512::new(I512::from(-100))
+        );
+    }
+
+    #[test]
+    fn new_from_i128_works() {
+        assert_eq!(Int512::new_from_i128(100), Int512::new(I512::from(100)));
+        assert_eq!(Int512::new_from_i128(-100), Int512::new(I512::from(-100)))
+    }
+
+    #[test]
+    fn neg_works() {
+        assert_eq!(-Int512::new_from_i128(-100), Int512::new(I512::from(100)));
+        assert_eq!(-Int512::new_from_i128(100), Int512::new(I512::from(-100)))
     }
 }

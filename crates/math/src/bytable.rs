@@ -157,6 +157,8 @@ mod tests {
         let bytes = [0u8; 32];
         let a = U256::from_be_slice(&bytes).unwrap();
 
+        let a = U256::from_be_bytes(bytes);
+
         println!("{a}");
     }
 }
