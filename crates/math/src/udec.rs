@@ -49,7 +49,7 @@ impl<U> Udec<U> {
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: NumberConst + Number + From<u128>,
+    Uint<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -132,7 +132,6 @@ where
 impl<U> Decimal for Udec<U>
 where
     Self: FixedPoint<U>,
-
     U: Number + Copy + PartialEq,
 {
     fn checked_floor(self) -> MathResult<Self> {
@@ -186,12 +185,8 @@ where
         Self::DECIMAL_FRACTION
     }
 
-    fn inv(&self) -> MathResult<Self> {
-        if self.is_zero() {
-            Err(MathError::division_by_zero(*self))
-        } else {
-            Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
-        }
+    fn checked_inv(&self) -> MathResult<Self> {
+        Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
     }
 }
 
@@ -446,15 +441,15 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(DecimalVisitor::new())
+        deserializer.deserialize_str(UdecVisitor::new())
     }
 }
 
-struct DecimalVisitor<U> {
+struct UdecVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U> DecimalVisitor<U> {
+impl<U> UdecVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -462,7 +457,7 @@ impl<U> DecimalVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for DecimalVisitor<U>
+impl<'de, U> de::Visitor<'de> for UdecVisitor<U>
 where
     Udec<U>: FromStr,
     <Udec<U> as FromStr>::Err: Display,
@@ -539,7 +534,6 @@ where
 impl<U> AddAssign for Udec<U>
 where
     Self: Number + Copy,
-    Self: Number + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
@@ -548,7 +542,6 @@ where
 
 impl<U> SubAssign for Udec<U>
 where
-    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn sub_assign(&mut self, rhs: Self) {
@@ -559,7 +552,6 @@ where
 impl<U> MulAssign for Udec<U>
 where
     Self: Number + Copy,
-    Self: Number + Copy,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
@@ -568,7 +560,6 @@ where
 
 impl<U> DivAssign for Udec<U>
 where
-    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn div_assign(&mut self, rhs: Self) {
@@ -582,30 +573,6 @@ where
 {
     fn rem_assign(&mut self, rhs: Self) {
         *self = *self % rhs;
-    }
-}
-
-impl<IntoUintU, U> Mul<IntoUintU> for Udec<U>
-where
-    U: Number,
-    IntoUintU: Into<Uint<U>>,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: IntoUintU) -> Self::Output {
-        Self::raw(self.0 * rhs.into())
-    }
-}
-
-impl<IntoUintU, U> Div<IntoUintU> for Udec<U>
-where
-    U: Number,
-    IntoUintU: Into<Uint<U>>,
-{
-    type Output = Self;
-
-    fn div(self, rhs: IntoUintU) -> Self::Output {
-        Self::raw(self.0 / rhs.into())
     }
 }
 

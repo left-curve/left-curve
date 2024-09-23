@@ -8,15 +8,20 @@ pub trait IsZero {
 }
 
 macro_rules! impl_is_zero {
-    ($($t:ty),+) => {
-        $(impl IsZero for $t
+    ($t:ty) => {
+        impl IsZero for $t
         where
-            $t: NumberConst ,
+            $t: NumberConst,
         {
             fn is_zero(&self) -> bool {
                 *self == Self::ZERO
             }
-        })+
+        }
+    };
+    ($($t:ty),+) => {
+        $(
+            impl_is_zero!($t);
+        )+
     };
 }
 
