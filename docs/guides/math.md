@@ -12,28 +12,28 @@ Rust's primitive number types are insufficient for smart contract use cases, for
 
 Grug provides a number of number types for use in smart contracts. They are built with the following three primitive types:
 
-| type                    | description                                     |
-| ----------------------- | ----------------------------------------------- |
-| `Uint<U>`               | unsigned integer                                |
-| `Udec<U, const S: u32>` | unsigned decimal                                |
-| `Signed<T>`             | wrapper over unsigned types to make them signed |
+| type        | description                                     |
+| ----------- | ----------------------------------------------- |
+| `Uint<U>`   | unsigned integer                                |
+| `Udec<U>`   | unsigned decimal                                |
+| `Signed<T>` | wrapper over unsigned types to make them signed |
 
 It is, however, not recommended to use these types directly. Instead, Grug exports the following type alises:
 
-| alias     | type                     | description                                                |
-| --------- | ------------------------ | ---------------------------------------------------------- |
-| `Uint64`  | `Uint<u64>`              | 64-bit unsigned integer                                    |
-| `Uint128` | `Uint<u128>`             | 128-bit unsigned integer                                   |
-| `Uint256` | `Uint<U256>`             | 256-bit unsigned integer                                   |
-| `Uint512` | `Uint<U512>`             | 512-bit unsigned integer                                   |
-| `Int64`   | `Signed<Uint<u64>>`      | 64-bit signed integer                                      |
-| `Int128`  | `Signed<Uint<u128>>`     | 128-bit signed integer                                     |
-| `Int256`  | `Signed<Uint<U256>>`     | 256-bit signed integer                                     |
-| `Int512`  | `Signed<Uint<U512>>`     | 512-bit signed integer                                     |
-| `Udec128` | `Udec<u128, 18>`         | 128-bit unsigned fixed-point number with 18 decimal places |
-| `Udec256` | `Udec<U256, 18>`         | 256-bit unsigned fixed-point number with 18 decimal places |
-| `Dec128`  | `Signed<Udec<u128, 18>>` | 128-bit signed fixed-point number with 18 decimal places   |
-| `Dec256`  | `Signed<Udec<U256, 18>>` | 256-bit signed fixed-point number with 18 decimal places   |
+| alias     | type                 | description                                                |
+| --------- | -------------------- | ---------------------------------------------------------- |
+| `Uint64`  | `Uint<u64>`          | 64-bit unsigned integer                                    |
+| `Uint128` | `Uint<u128>`         | 128-bit unsigned integer                                   |
+| `Uint256` | `Uint<U256>`         | 256-bit unsigned integer                                   |
+| `Uint512` | `Uint<U512>`         | 512-bit unsigned integer                                   |
+| `Int64`   | `Signed<Uint<u64>>`  | 64-bit signed integer                                      |
+| `Int128`  | `Signed<Uint<u128>>` | 128-bit signed integer                                     |
+| `Int256`  | `Signed<Uint<U256>>` | 256-bit signed integer                                     |
+| `Int512`  | `Signed<Uint<U512>>` | 512-bit signed integer                                     |
+| `Udec128` | `Udec<u128>`         | 128-bit unsigned fixed-point number with 18 decimal places |
+| `Udec256` | `Udec<U256>`         | 256-bit unsigned fixed-point number with 18 decimal places |
+| `Dec128`  | `Signed<Udec<u128>>` | 128-bit signed fixed-point number with 18 decimal places   |
+| `Dec256`  | `Signed<Udec<U256>>` | 256-bit signed fixed-point number with 18 decimal places   |
 
 where `U{256,512}` are from the [bnum][bnum] library.
 
