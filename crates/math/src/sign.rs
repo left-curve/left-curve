@@ -14,17 +14,20 @@ pub trait Sign {
 // ----------------------------------- unsigned ------------------------------------
 
 macro_rules! impl_sign_unsigned {
-    ($($t:ty),+) => {
-        $(
-            impl Sign for $t {
-                fn abs(self) -> Self {
-                    self
-                }
-
-                fn is_negative(&self) -> bool {
-                    false
-                }
+    ($t:ty) => {
+        impl Sign for $t {
+            fn abs(self) -> Self {
+                self
             }
+
+            fn is_negative(&self) -> bool {
+                false
+            }
+        }
+    };
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl_sign_unsigned!($t);
         )+
     };
 }
@@ -34,17 +37,20 @@ impl_sign_unsigned!(u8, u16, u32, u64, u128, U256, U512);
 // ----------------------------------- signed ------------------------------------
 
 macro_rules! impl_sign_signed {
-    ($($t:ty),+) => {
-        $(
-            impl Sign for $t {
-                fn abs(self) -> Self {
-                    self.abs()
-                }
-
-                fn is_negative(&self) -> bool {
-                    *self < Self::ZERO
-                }
+    ($t:ty) => {
+        impl Sign for $t {
+            fn abs(self) -> Self {
+                self.abs()
             }
+
+            fn is_negative(&self) -> bool {
+                *self < Self::ZERO
+            }
+        }
+    };
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl_sign_signed!($t);
         )+
     };
 }
