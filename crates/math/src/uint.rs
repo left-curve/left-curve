@@ -316,7 +316,10 @@ where
     Self: Add<A, Output = Self>,
     U: Number + NumberConst,
 {
-    fn sum<I: Iterator<Item = A>>(iter: I) -> Self {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = A>,
+    {
         iter.fold(Self::ZERO, Add::add)
     }
 }

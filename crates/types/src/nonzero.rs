@@ -15,9 +15,14 @@ use {
 
 /// A wrapper over a number that ensures it is non-zero.
 #[derive(Serialize, BorshSerialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct NonZero<T: IsZero>(pub(crate) T);
+pub struct NonZero<T>(pub(crate) T)
+where
+    T: IsZero;
 
-impl<T: IsZero> NonZero<T> {
+impl<T> NonZero<T>
+where
+    T: IsZero,
+{
     /// Attempt to create a new non-zero wrapper. Error if a zero is provided.
     pub fn new(inner: T) -> StdResult<Self> {
         if inner.is_zero() {
@@ -28,26 +33,38 @@ impl<T: IsZero> NonZero<T> {
     }
 }
 
-impl<T: IsZero> NonZero<T> {
+impl<T> NonZero<T>
+where
+    T: IsZero,
+{
     /// Consume the wrapper, return the wrapped number.
     pub fn into_inner(self) -> T {
         self.0
     }
 }
 
-impl<T: IsZero> AsRef<T> for NonZero<T> {
+impl<T> AsRef<T> for NonZero<T>
+where
+    T: IsZero,
+{
     fn as_ref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T: IsZero> AsMut<T> for NonZero<T> {
+impl<T> AsMut<T> for NonZero<T>
+where
+    T: IsZero,
+{
     fn as_mut(&mut self) -> &mut T {
         &mut self.0
     }
 }
 
-impl<T: IsZero> Deref for NonZero<T> {
+impl<T> Deref for NonZero<T>
+where
+    T: IsZero,
+{
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -55,24 +72,27 @@ impl<T: IsZero> Deref for NonZero<T> {
     }
 }
 
-impl<T: IsZero> DerefMut for NonZero<T> {
+impl<T> DerefMut for NonZero<T>
+where
+    T: IsZero,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T: IsZero> Display for NonZero<T>
+impl<T> Display for NonZero<T>
 where
-    T: Display,
+    T: IsZero + Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl<'de, T: IsZero> de::Deserialize<'de> for NonZero<T>
+impl<'de, T> de::Deserialize<'de> for NonZero<T>
 where
-    T: de::Deserialize<'de>,
+    T: IsZero + de::Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -85,9 +105,9 @@ where
     }
 }
 
-impl<T: IsZero> BorshDeserialize for NonZero<T>
+impl<T> BorshDeserialize for NonZero<T>
 where
-    T: BorshDeserialize,
+    T: IsZero + BorshDeserialize,
 {
     fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
     where
