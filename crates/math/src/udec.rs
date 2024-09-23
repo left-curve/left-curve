@@ -47,7 +47,7 @@ impl<U> Udec<U> {
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: NumberConst + Number + From<u128>,
+    Uint<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -85,7 +85,7 @@ where
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: MultiplyRatio + From<u64>,
+    Uint<U>: MultiplyRatio,
 {
     pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
     where
@@ -130,9 +130,7 @@ where
 impl<U> Decimal for Udec<U>
 where
     Self: FixedPoint<U>,
-
     U: Number + Copy + PartialEq,
-    Uint<U>: From<u64>,
 {
     fn checked_floor(self) -> MathResult<Self> {
         // There are two ways to floor:
@@ -175,7 +173,6 @@ impl<U> Fraction<U> for Udec<U>
 where
     Self: FixedPoint<U>,
     U: Number + Copy,
-    Uint<U>: From<u64>,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
@@ -190,7 +187,7 @@ impl<U> Number for Udec<U>
 where
     Self: FixedPoint<U> + NumberConst,
     U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Display + From<u64>,
+    Uint<U>: NextNumber + Display,
     <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
 {
     fn is_zero(&self) -> bool {
@@ -304,7 +301,7 @@ impl<U> Display for Udec<U>
 where
     Self: FixedPoint<U>,
     U: Number + Display,
-    Uint<U>: Copy + From<u64>,
+    Uint<U>: Copy,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION;
@@ -331,7 +328,7 @@ where
 impl<U> FromStr for Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: NumberConst + Number + Display + FromStr + From<u64>,
+    Uint<U>: NumberConst + Number + Display + FromStr,
 {
     type Err = MathError;
 
