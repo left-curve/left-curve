@@ -199,18 +199,6 @@ where
     }
 }
 
-impl<U> IsZero for Udec<U>
-where
-    Self: FixedPoint<U> + NumberConst,
-    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + IsZero + Display,
-    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
-{
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-}
-
 impl<U> Neg for Udec<U>
 where
     U: Neg<Output = U>,
