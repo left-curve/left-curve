@@ -10,5 +10,5 @@ pub trait Fraction<U>: Sized {
 
     fn denominator() -> Uint<U>;
 
-    fn inv(&self) -> MathResult<Self>;
+    fn checked_inv(&self) -> MathResult<Self>;
 }

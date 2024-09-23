@@ -183,7 +183,7 @@ where
         Self::DECIMAL_FRACTION
     }
 
-    fn inv(&self) -> MathResult<Self> {
+    fn checked_inv(&self) -> MathResult<Self> {
         if self.is_zero() {
             Err(MathError::division_by_zero(self))
         } else {
