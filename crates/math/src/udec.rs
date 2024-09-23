@@ -173,8 +173,8 @@ impl<U> Sign for Udec<U> {
 
 impl<U> Fraction<U> for Udec<U>
 where
-    Self: FixedPoint<U> + ToString,
-    U: IsZero + Copy,
+    Self: FixedPoint<U>,
+    U: Number + IsZero + Display + Copy,
     Uint<U>: MultiplyRatio,
 {
     fn numerator(&self) -> Uint<U> {
@@ -193,6 +193,18 @@ where
 impl<U> IsZero for Udec<U>
 where
     U: IsZero,
+{
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
+impl<U> IsZero for Udec<U>
+where
+    Self: FixedPoint<U> + NumberConst,
+    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + IsZero + Display,
+    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
 {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
