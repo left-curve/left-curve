@@ -53,26 +53,3 @@ fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response>
     Ok(Response::new())
 }
 ```
-
-This seems a bit verbose, so a `declare_bounded` macro is provided to simplify it:
-
-```rust
-use grug::declare_bounded;
-
-declare_bounded! {
-    name = FeeRate,
-    type = Udec256,
-    min = Bound::Inclusive(Udec256::ZERO),
-    max = Bound::Exclusive(Udec256::ONE),
-}
-
-#[grug::derive(Serde)]
-struct InstantiateMsg {
-    pub fee_rate: FeeRate,
-}
-
-#[grug::export]
-fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    Ok(Response::new())
-}
-```

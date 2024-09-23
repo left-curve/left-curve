@@ -16,7 +16,7 @@ pub use grug_ffi::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use {grug_client::*, grug_testing::*};
 
-// Dependencies used by the macros.
+// Dependencies used by the prcedural macros.
 #[doc(hidden)]
 pub mod __private {
     pub use {::borsh, ::serde, ::serde_with};
