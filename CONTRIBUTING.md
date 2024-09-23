@@ -111,14 +111,14 @@ When implementing methods that involve generic types, the relevant trait bounds 
 Trait bound should be _direct_. See the following example on what this means:
 
 ```diff
-impl<U, const S: u32> FromStr for Decimal<U, S>
+impl<U> FromStr for Decimal<U, S>
 where
     Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 {
     // ...
 }
 
-impl<'de, U, const S: u32> de::Visitor<'de> for DecimalVisitor<U, S>
+impl<'de, U> de::Visitor<'de> for DecimalVisitor<U, S>
 where
 -   Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
 +   Decimal<U, S>: FromStr,

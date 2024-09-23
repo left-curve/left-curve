@@ -806,7 +806,7 @@ macro_rules! impl_number {
 
     // Udec Self
     (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: u32> std::ops::$imp for $t
+        impl<U> std::ops::$imp for $t
         where
             Self: Number,
         {
@@ -869,7 +869,7 @@ macro_rules! impl_assign_number {
 
     // Udec
     (impl Udec with $imp:ident, $method:ident for $t:ty where sub fn $sub_method:ident) => {
-        impl<U, const S: u32> std::ops::$imp for $t
+        impl<U> std::ops::$imp for $t
         where
             Self: Number + Copy,
         {
@@ -992,7 +992,7 @@ macro_rules! forward_ref_binop_typed {
 #[doc(hidden)]
 macro_rules! forward_ref_binop_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: u32> std::ops::$imp<$u> for &'_ $t
+        impl<U> std::ops::$imp<$u> for &'_ $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -1004,7 +1004,7 @@ macro_rules! forward_ref_binop_decimal {
             }
         }
 
-        impl<U, const S: u32> std::ops::$imp<&$u> for $t
+        impl<U> std::ops::$imp<&$u> for $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -1016,7 +1016,7 @@ macro_rules! forward_ref_binop_decimal {
             }
         }
 
-        impl<U, const S: u32> std::ops::$imp<&$u> for &'_ $t
+        impl<U> std::ops::$imp<&$u> for &'_ $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {
@@ -1050,7 +1050,7 @@ macro_rules! forward_ref_op_assign_typed {
 #[doc(hidden)]
 macro_rules! forward_ref_op_assign_decimal {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        impl<U, const S: u32> std::ops::$imp<&$u> for $t
+        impl<U> std::ops::$imp<&$u> for $t
         where
             $t: std::ops::$imp<$u> + Copy,
         {

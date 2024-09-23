@@ -15,7 +15,7 @@ Grug provides a number of number types for use in smart contracts. They are buil
 | type                    | description                                     |
 | ----------------------- | ----------------------------------------------- |
 | `Uint<U>`               | unsigned integer                                |
-| `Udec<U, const S: u32>` | unsigned decimal                                |
+| `Udec<U>` | unsigned decimal                                |
 | `Signed<T>`             | wrapper over unsigned types to make them signed |
 
 It is, however, not recommended to use these types directly. Instead, Grug exports the following type alises:
