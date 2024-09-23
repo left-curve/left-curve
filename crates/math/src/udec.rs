@@ -1,7 +1,7 @@
 use {
     crate::{
-        Decimal, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio, NextNumber, Number,
-        NumberConst, Sign, Uint,
+        Decimal, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -23,16 +23,6 @@ use {
 pub struct Udec<U>(pub(crate) Uint<U>);
 
 impl<U> Udec<U> {
-    /// Ratio between the inner integer value and the decimal value it
-    /// represents.
-    ///
-    /// Since we use `u128` here, whose maximum value is 3.4e+38, it's possible
-    /// to have at most 37 decimal places. Going higher would cause this `pow`
-    /// calculation to overflow, resulting in a compile time error.
-    pub const DECIMAL_FRACTION: u64 = 10u64.pow(Self::DECIMAL_PLACES);
-    /// Number of decimal digits to be interpreted as decimal places.
-    pub const DECIMAL_PLACES: u32 = 18;
-
     /// Create a new [`Udec`] _without_ adding decimal places.
     ///
     /// ```rust
@@ -54,69 +44,9 @@ impl<U> Udec<U> {
     }
 }
 
-impl<U> NumberConst for Udec<U>
-where
-    Uint<U>: NumberConst,
-{
-    const MAX: Self = Self(Uint::MAX);
-    const MIN: Self = Self(Uint::MIN);
-    // TODO: These two (one and ten) can be confusing. How can we make this
-    // clear for users?
-    const ONE: Self = Self(Uint::ONE);
-    const TEN: Self = Self(Uint::TEN);
-    const ZERO: Self = Self(Uint::ZERO);
-}
-
 impl<U> Udec<U>
 where
-    Uint<U>: From<u64>,
-{
-    // This can't be made `const` because of the `into` casting isn't constant.
-    pub fn one() -> Self {
-        Self(Self::decimal_fraction())
-    }
-
-    pub fn decimal_fraction() -> Uint<U> {
-        Self::DECIMAL_FRACTION.into()
-    }
-}
-
-impl<U> Udec<U>
-where
-    U: Number,
-    Uint<U>: From<u64>,
-{
-    /// Create a new [`Udec`] adding decimal places.
-    ///
-    /// ```rust
-    /// use {
-    ///     grug_math::{Udec128, Uint128},
-    ///     std::str::FromStr,
-    /// };
-    ///
-    /// let uint = Uint128::new(100);
-    /// let decimal = Udec128::new(uint);
-    /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
-    /// ```
-    pub fn new(value: impl Into<Uint<U>>) -> Self {
-        Self(value.into() * Self::decimal_fraction())
-    }
-
-    pub fn new_percent(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 100).into())
-    }
-
-    pub fn new_permille(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 1_000).into())
-    }
-
-    pub fn new_bps(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 10_000).into())
-    }
-}
-
-impl<U> Udec<U>
-where
+    Self: FixedPoint<U>,
     Uint<U>: NumberConst + Number + From<u128>,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
@@ -154,7 +84,8 @@ where
 
 impl<U> Udec<U>
 where
-    Uint<U>: MultiplyRatio + From<u64>,
+    Self: FixedPoint<U>,
+    Uint<U>: MultiplyRatio,
 {
     pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
     where
@@ -198,8 +129,9 @@ where
 
 impl<U> Decimal for Udec<U>
 where
+    Self: FixedPoint<U>,
+
     U: Number + Copy + PartialEq,
-    Uint<U>: From<u64>,
 {
     fn checked_floor(self) -> MathResult<Self> {
         // There are two ways to floor:
@@ -211,7 +143,7 @@ where
         // This flooring operation in fact can never fail, because flooring an
         // unsigned decimal goes down to 0 at most. However, flooring a _signed_
         // decimal may underflow.
-        Ok(Self(self.0 - self.0.checked_rem(Self::decimal_fraction())?))
+        Ok(Self(self.0 - self.0.checked_rem(Self::DECIMAL_FRACTION)?))
     }
 
     fn checked_ceil(self) -> MathResult<Self> {
@@ -219,7 +151,7 @@ where
         if floor == self {
             Ok(floor)
         } else {
-            floor.0.checked_add(Self::decimal_fraction()).map(Self)
+            floor.0.checked_add(Self::DECIMAL_FRACTION).map(Self)
         }
     }
 }
@@ -240,22 +172,23 @@ impl<U> Sign for Udec<U> {
 
 impl<U> Fraction<U> for Udec<U>
 where
+    Self: FixedPoint<U>,
     U: Number + IsZero + Display + Copy,
-    Uint<U>: MultiplyRatio + From<u64>,
+    Uint<U>: MultiplyRatio,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
     }
 
     fn denominator() -> Uint<U> {
-        Self::decimal_fraction()
+        Self::DECIMAL_FRACTION
     }
 
     fn inv(&self) -> MathResult<Self> {
         if self.is_zero() {
             Err(MathError::division_by_zero(self))
         } else {
-            Self::checked_from_ratio(Self::decimal_fraction(), self.0)
+            Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
         }
     }
 }
@@ -271,8 +204,9 @@ where
 
 impl<U> Number for Udec<U>
 where
+    Self: FixedPoint<U> + NumberConst,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + IsZero + Display + From<u64>,
+    Uint<U>: NextNumber + IsZero + Display,
     <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
@@ -287,7 +221,7 @@ where
         let next_result = self
             .0
             .checked_full_mul(*other.numerator())?
-            .checked_div(Self::decimal_fraction().into())?;
+            .checked_div(Self::DECIMAL_FRACTION.into())?;
         next_result
             .try_into()
             .map(Self)
@@ -304,10 +238,10 @@ where
 
     fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
         if exp == 0 {
-            return Ok(Self::one());
+            return Ok(Self::ONE);
         }
 
-        let mut y = Udec::one();
+        let mut y = Udec::ONE;
         while exp > 1 {
             if exp % 2 == 0 {
                 self = self.checked_mul(self)?;
@@ -380,11 +314,12 @@ where
 
 impl<U> Display for Udec<U>
 where
+    Self: FixedPoint<U>,
     U: Number + IsZero + Display,
-    Uint<U>: Copy + From<u64>,
+    Uint<U>: Copy,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let decimals = Self::DECIMAL_FRACTION.into();
+        let decimals = Self::DECIMAL_FRACTION;
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
@@ -407,7 +342,8 @@ where
 
 impl<U> FromStr for Udec<U>
 where
-    Uint<U>: NumberConst + Number + Display + FromStr + From<u64>,
+    Self: FixedPoint<U>,
+    Uint<U>: NumberConst + Number + Display + FromStr,
 {
     type Err = MathError;
 
@@ -425,7 +361,7 @@ where
             .unwrap() // split always returns at least one element
             .parse::<Uint<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
-            .checked_mul(Self::decimal_fraction())
+            .checked_mul(Self::DECIMAL_FRACTION)
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "value too big"))?;
 
         if let Some(fractional_part) = parts_iter.next() {
@@ -527,9 +463,6 @@ where
 
 impl<U> Add for Udec<U>
 where
-    // U: Number + IsZero + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    // Uint<U>: NextNumber + From<u64>,
-    // <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
     Self: Number,
 {
     type Output = Self;
@@ -586,6 +519,7 @@ where
 impl<U> AddAssign for Udec<U>
 where
     Self: Number + Copy,
+    Self: Number + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
@@ -594,6 +528,7 @@ where
 
 impl<U> SubAssign for Udec<U>
 where
+    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn sub_assign(&mut self, rhs: Self) {
@@ -604,6 +539,7 @@ where
 impl<U> MulAssign for Udec<U>
 where
     Self: Number + Copy,
+    Self: Number + Copy,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
@@ -612,6 +548,7 @@ where
 
 impl<U> DivAssign for Udec<U>
 where
+    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn div_assign(&mut self, rhs: Self) {
@@ -656,13 +593,50 @@ where
 
 macro_rules! generate_decimal {
     (
-        name           = $name:ident,
-        inner_type     = $inner:ty,
-        from_dec       = [$($from:ty),*],
-        doc            = $doc:literal,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
     ) => {
         #[doc = $doc]
         pub type $name = Udec<$inner>;
+
+        impl NumberConst for $name {
+            const MAX: Self = Self(Uint::MAX);
+            const MIN: Self = Self(Uint::MIN);
+            const ONE: Self = Self(Self::DECIMAL_FRACTION);
+            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES)));
+            const ZERO: Self = Self(Uint::ZERO);
+        }
+
+        impl $name {
+            /// Create a new [`Udec`] adding decimal places.
+            ///
+            /// ```rust
+            /// use {
+            ///     grug_math::{Udec128, Uint128},
+            ///     std::str::FromStr,
+            /// };
+            ///
+            /// let decimal = Udec128::new(100);
+            /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+            /// ```
+            pub const fn new(x: u128) -> Self {
+                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES)))
+            }
+            pub const fn new_percent(x: u128) -> Self {
+                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 2)))
+            }
+
+            pub const fn new_permille(x: u128) -> Self {
+                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 3)))
+            }
+
+            pub const fn new_bps(x: u128) -> Self {
+                Self($constructor(x * 10_u128.pow(Self::DECIMAL_PLACES - 4)))
+            }
+        }
 
         // Ex: From<U256> for Udec256
         impl From<$inner> for $name {
@@ -732,17 +706,19 @@ macro_rules! generate_decimal {
 }
 
 generate_decimal! {
-    name           = Udec128,
-    inner_type     = u128,
-    from_dec       = [],
-    doc            = "128-bit unsigned fixed-point number with 18 decimal places.",
+    name              = Udec128,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    from_dec          = [],
+    doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
 }
 
 generate_decimal! {
-    name           = Udec256,
-    inner_type     = U256,
-    from_dec       = [Udec128],
-    doc            = "256-bit unsigned fixed-point number with 18 decimal places.",
+    name              = Udec256,
+    inner_type        = U256,
+    inner_constructor = Uint256::new_from_u128,
+    from_dec          = [Udec128],
+    doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -750,7 +726,7 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Number, Udec128, Udec256},
+        crate::{Number, NumberConst, Udec128, Udec256},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -760,7 +736,7 @@ mod tests {
 
     #[test]
     fn t1() {
-        assert_eq!(Udec128::one() + Udec128::one(), Udec128::new(2_u128));
+        assert_eq!(Udec128::ONE + Udec128::ONE, Udec128::new(2_u128));
 
         assert_eq!(
             Udec128::new(10_u128)

@@ -1,6 +1,7 @@
 mod bytable;
 mod decimal;
 mod error;
+mod fixed_point;
 mod fraction;
 mod inner;
 mod integer;
@@ -16,7 +17,7 @@ mod uint;
 mod utils;
 
 pub use {
-    bytable::*, decimal::*, error::*, fraction::*, inner::*, integer::*, is_zero::*,
-    multiply_fraction::*, multiply_ratio::*, next::*, number::*, number_const::*, sign::*, udec::*,
-    uint::*,
+    bytable::*, decimal::*, error::*, fixed_point::*, fraction::*, inner::*, integer::*,
+    is_zero::*, multiply_fraction::*, multiply_ratio::*, next::*, number::*, number_const::*,
+    sign::*, udec::*, uint::*,
 };
