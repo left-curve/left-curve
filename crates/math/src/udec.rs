@@ -1,7 +1,7 @@
 use {
     crate::{
-        Decimal, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
+        Decimal, FixedPoint, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256, Uint128, Uint256,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -85,7 +85,6 @@ where
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: MultiplyRatio,
     Uint<U>: MultiplyRatio,
 {
     pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
@@ -426,7 +425,7 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(DecimalVisitor::new())
+        deserializer.deserialize_str(UdecVisitor::new())
     }
 }
 
@@ -519,7 +518,6 @@ where
 impl<U> AddAssign for Udec<U>
 where
     Self: Number + Copy,
-    Self: Number + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
@@ -528,7 +526,6 @@ where
 
 impl<U> SubAssign for Udec<U>
 where
-    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn sub_assign(&mut self, rhs: Self) {
@@ -539,7 +536,6 @@ where
 impl<U> MulAssign for Udec<U>
 where
     Self: Number + Copy,
-    Self: Number + Copy,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
@@ -548,7 +544,6 @@ where
 
 impl<U> DivAssign for Udec<U>
 where
-    Self: Number + Copy,
     Self: Number + Copy,
 {
     fn div_assign(&mut self, rhs: Self) {
