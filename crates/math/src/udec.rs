@@ -1,7 +1,7 @@
 use {
     crate::{
-        Decimal, FixedPoint, Fraction, Inner, MathError, MathResult, MultiplyRatio, NextNumber,
-        Number, NumberConst, Sign, Uint, Uint128, Uint256,
+        Decimal, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -10,7 +10,7 @@ use {
         cmp::Ordering,
         fmt::{self, Display, Write},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
         str::FromStr,
     },
 };
@@ -172,7 +172,8 @@ impl<U> Sign for Udec<U> {
 impl<U> Fraction<U> for Udec<U>
 where
     Self: FixedPoint<U>,
-    U: Number + Copy,
+    U: Number + IsZero + Display + Copy,
+    Uint<U>: MultiplyRatio,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
@@ -181,19 +182,28 @@ where
     fn denominator() -> Uint<U> {
         Self::DECIMAL_FRACTION
     }
+
+    fn checked_inv(&self) -> MathResult<Self> {
+        Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
+    }
+}
+
+impl<U> IsZero for Udec<U>
+where
+    U: IsZero,
+{
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
 }
 
 impl<U> Number for Udec<U>
 where
     Self: FixedPoint<U> + NumberConst,
-    U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Display,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + IsZero + Display,
+    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
 {
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
@@ -300,7 +310,7 @@ where
 impl<U> Display for Udec<U>
 where
     Self: FixedPoint<U>,
-    U: Number + Display,
+    U: Number + IsZero + Display,
     Uint<U>: Copy,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -490,6 +500,17 @@ where
     }
 }
 
+impl<U> Rem for Udec<U>
+where
+    Self: Number,
+{
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
 impl<U> AddAssign for Udec<U>
 where
     Self: Number + Copy,
@@ -526,6 +547,15 @@ where
     }
 }
 
+impl<U> RemAssign for Udec<U>
+where
+    Self: Number + Copy,
+{
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
+    }
+}
+
 // ------------------------------ concrete types -------------------------------
 
 macro_rules! generate_decimal {
@@ -543,7 +573,7 @@ macro_rules! generate_decimal {
             const MAX: Self = Self(Uint::MAX);
             const MIN: Self = Self(Uint::MIN);
             const ONE: Self = Self(Self::DECIMAL_FRACTION);
-            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES)));
+            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES + 1)));
             const ZERO: Self = Self(Uint::ZERO);
         }
 

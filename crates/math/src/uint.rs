@@ -1,17 +1,18 @@
 use {
     crate::{
-        Bytable, Fraction, Inner, Integer, MathError, MathResult, MultiplyFraction, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign,
+        Bytable, Fraction, Inner, Integer, IsZero, MathError, MathResult, MultiplyFraction,
+        MultiplyRatio, NextNumber, Number, NumberConst, Sign,
     },
     bnum::types::{U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     std::{
         fmt::{self, Display},
+        iter::Sum,
         marker::PhantomData,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
-            SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr,
+            ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -93,14 +94,19 @@ where
     }
 }
 
-impl<U> Number for Uint<U>
+impl<U> IsZero for Uint<U>
 where
-    U: Number,
+    U: IsZero,
 {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
     }
+}
 
+impl<U> Number for Uint<U>
+where
+    U: Number,
+{
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
@@ -201,7 +207,7 @@ where
 impl<U> MultiplyRatio for Uint<U>
 where
     Uint<U>: NextNumber + NumberConst + Number + Copy,
-    <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
+    <Uint<U> as NextNumber>::Next: Number + IsZero + ToString + Clone,
 {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
@@ -222,9 +228,10 @@ where
         denominator: B,
     ) -> MathResult<Self> {
         let numerator: Self = numerator.into();
+        let denominator: Self = denominator.into();
         let dividend = self.checked_full_mul(numerator)?;
         let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
-        let remained = dividend.checked_rem(floor_result.into_next())?;
+        let remained = dividend.checked_rem(denominator.into_next())?;
         if !remained.is_zero() {
             floor_result.checked_add(Self::ONE)
         } else {
@@ -235,8 +242,8 @@ where
 
 impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
 where
-    Uint<U>: NumberConst + Number + MultiplyRatio + From<Uint<AsU>> + ToString,
-    F: Number + Fraction<AsU> + Sign + ToString,
+    Uint<U>: NumberConst + Number + IsZero + MultiplyRatio + From<Uint<AsU>> + ToString,
+    F: Number + Fraction<AsU> + Sign + ToString + IsZero,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self> {
         // If either left or right hand side is zero, then simply return zero.
@@ -301,6 +308,19 @@ where
         }
 
         self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
+    }
+}
+
+impl<U, A> Sum<A> for Uint<U>
+where
+    Self: Add<A, Output = Self>,
+    U: Number + NumberConst,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = A>,
+    {
+        iter.fold(Self::ZERO, Add::add)
     }
 }
 
@@ -427,6 +447,17 @@ where
     }
 }
 
+impl<U> Rem for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
 impl<U> Shl<u32> for Uint<U>
 where
     U: Integer,
@@ -482,6 +513,15 @@ where
 {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
+    }
+}
+
+impl<U> RemAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
     }
 }
 

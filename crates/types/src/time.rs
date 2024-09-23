@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{MathResult, Number, Uint128},
+    grug_math::{IsZero, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
 };
@@ -89,68 +89,8 @@ impl Sub for Duration {
     }
 }
 
-impl Number for Duration {
+impl IsZero for Duration {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
-    }
-
-    fn checked_add(self, other: Self) -> MathResult<Self> {
-        self.0.checked_add(other.0).map(Self)
-    }
-
-    fn checked_sub(self, other: Self) -> MathResult<Self> {
-        self.0.checked_sub(other.0).map(Self)
-    }
-
-    fn checked_mul(self, other: Self) -> MathResult<Self> {
-        self.0.checked_mul(other.0).map(Self)
-    }
-
-    fn checked_div(self, other: Self) -> MathResult<Self> {
-        self.0.checked_div(other.0).map(Self)
-    }
-
-    fn checked_rem(self, other: Self) -> MathResult<Self> {
-        self.0.checked_rem(other.0).map(Self)
-    }
-
-    fn checked_pow(self, other: u32) -> MathResult<Self> {
-        self.0.checked_pow(other).map(Self)
-    }
-
-    fn checked_sqrt(self) -> MathResult<Self> {
-        self.0.checked_sqrt().map(Self)
-    }
-
-    fn wrapping_add(self, other: Self) -> Self {
-        Self(self.0.wrapping_add(other.0))
-    }
-
-    fn wrapping_sub(self, other: Self) -> Self {
-        Self(self.0.wrapping_sub(other.0))
-    }
-
-    fn wrapping_mul(self, other: Self) -> Self {
-        Self(self.0.wrapping_mul(other.0))
-    }
-
-    fn wrapping_pow(self, other: u32) -> Self {
-        Self(self.0.wrapping_pow(other))
-    }
-
-    fn saturating_add(self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0))
-    }
-
-    fn saturating_sub(self, other: Self) -> Self {
-        Self(self.0.saturating_sub(other.0))
-    }
-
-    fn saturating_mul(self, other: Self) -> Self {
-        Self(self.0.saturating_mul(other.0))
-    }
-
-    fn saturating_pow(self, other: u32) -> Self {
-        Self(self.0.saturating_pow(other))
     }
 }

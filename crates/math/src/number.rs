@@ -1,12 +1,10 @@
 use {
-    crate::{MathError, MathResult, NumberConst},
+    crate::{Integer, IsZero, MathError, MathResult, NumberConst},
     bnum::types::{U256, U512},
 };
 
 /// Describes basic operations that all math types must implement.
 pub trait Number: Sized {
-    fn is_zero(&self) -> bool;
-
     fn checked_add(self, other: Self) -> MathResult<Self>;
 
     fn checked_sub(self, other: Self) -> MathResult<Self>;
@@ -42,12 +40,8 @@ macro_rules! impl_number {
     ($t:ty) => {
         impl Number for $t
         where
-            $t: NumberConst,
+            $t: NumberConst + Integer + IsZero,
         {
-            fn is_zero(&self) -> bool {
-                *self == Self::ZERO
-            }
-
             fn checked_add(self, other: Self) -> MathResult<Self> {
                 self.checked_add(other)
                     .ok_or_else(|| MathError::overflow_add(self, other))
@@ -84,13 +78,21 @@ macro_rules! impl_number {
                 if self.is_zero() {
                     return Ok(Self::ZERO);
                 }
-                let mut x = self;
-                let mut y = (x + 1) >> 1;
-                while y < x {
-                    x = y;
-                    y = (x + self / x) >> 1;
+
+                let mut x0 = Self::ONE << ((Integer::checked_ilog2(self)? / 2) + 1);
+
+                if x0 > Self::ZERO {
+                    let mut x1 = (x0 + self / x0) >> 1;
+
+                    while x1 < x0 {
+                        x0 = x1;
+                        x1 = (x0 + self / x0) >> 1;
+                    }
+
+                    return Ok(x0);
                 }
-                Ok(x)
+
+                Ok(self)
             }
 
             fn wrapping_add(self, other: Self) -> Self {
@@ -126,7 +128,7 @@ macro_rules! impl_number {
             }
         }
     };
-    ($($t:ty),+ $(,)?) => {
+    ($($t:ty),+) => {
         $(
             impl_number!($t);
         )+

@@ -12,7 +12,7 @@ use {
 /// quarter of the gas limit was used and charge the fee accordingly.
 mod taxman {
     use {
-        grug_math::{MultiplyFraction, Number, NumberConst, Udec128, Uint128, Uint256},
+        grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128, Uint256},
         grug_types::{
             AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, Response, StdResult, Tx,
             TxOutcome,

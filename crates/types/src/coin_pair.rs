@@ -1,7 +1,7 @@
 use {
     crate::{Coin, CoinRef, CoinRefMut, Coins, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{MultiplyRatio, Number, Uint256},
+    grug_math::{IsZero, MultiplyRatio, Number, Uint256},
     serde::{de, Serialize},
     std::{cmp::Ordering, collections::BTreeMap, io},
 };
