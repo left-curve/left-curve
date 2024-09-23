@@ -349,7 +349,7 @@ where
             }
             f.write_str(&whole.abs().to_string())?;
             f.write_char('.')?;
-            f.write_str(&fractional_string.trim_end_matches('0'))?;
+            f.write_str(fractional_string.trim_end_matches('0'))?;
         }
 
         Ok(())

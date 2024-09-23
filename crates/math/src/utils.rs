@@ -86,11 +86,13 @@ pub(crate) const fn grow_le_uint<const INPUT_SIZE: usize, const OUTPUT_SIZE: usi
     output
 }
 
-pub(crate) const fn bytes_to_digits<const S: usize, const OUT_SIZE: usize>(data: [u8; S]) -> [u64; OUT_SIZE] {
+pub(crate) const fn bytes_to_digits<const S: usize, const OUT_SIZE: usize>(
+    data: [u8; S],
+) -> [u64; OUT_SIZE] {
     let mut result = [0u64; OUT_SIZE];
     let mut i = 0;
     while i < OUT_SIZE {
-        result[i] = (data[i * 8 + 0] as u64)
+        result[i] = (data[i * 8] as u64)
             | ((data[i * 8 + 1] as u64) << 8)
             | ((data[i * 8 + 2] as u64) << 16)
             | ((data[i * 8 + 3] as u64) << 24)
