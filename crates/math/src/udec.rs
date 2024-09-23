@@ -256,7 +256,7 @@ where
                     Err(err) => return Some(Err(err)),
                 };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
+                    let outer_mul = Uint::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
                     Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
             })
@@ -411,15 +411,15 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(DecimalVisitor::new())
+        deserializer.deserialize_str(UdecVisitor::new())
     }
 }
 
-struct DecimalVisitor<U> {
+struct UdecVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U> DecimalVisitor<U> {
+impl<U> UdecVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -427,7 +427,7 @@ impl<U> DecimalVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for DecimalVisitor<U>
+impl<'de, U> de::Visitor<'de> for UdecVisitor<U>
 where
     Udec<U>: FromStr,
     <Udec<U> as FromStr>::Err: Display,

@@ -104,51 +104,6 @@ mod tests {
 
 ## Trait bounds
 
-### Tightness
-
-When implementing methods that involve generic types, the relevant trait bounds must be as tight as possible. This means if a trait is not required for this implementation, it must not be included in the bound.
-
-Trait bound should be _direct_. See the following example on what this means:
-
-```diff
-impl<U> FromStr for Decimal<U, S>
-where
-    Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
-{
-    // ...
-}
-
-impl<'de, U> de::Visitor<'de> for DecimalVisitor<U, S>
-where
--   Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
-+   Decimal<U, S>: FromStr,
-    <Decimal<U, S> as FromStr>::Err: Display,
-{
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Decimal::from_str(v).map_err(E::custom)
-    }
-}
-```
-
-Here the two ways of writing the trait bound (in red and green) for `DecimalVisitor` are completely equivalent, because
-
-```rust
-Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
-```
-
-implies
-
-```rust
-Decimal<U, S>: FromStr,
-```
-
-However, the visitor utilizes `Decimal`'s `from_str` method; it doesn't `Uint`'s number or display properties. Therefore, and green trait bound on `Decimal` is _direct_ and preferred, while the red one on `Uint` is _indirect_.
-
-### Formatting
-
 _Always_ use the `where` syntax:
 
 ```rust
