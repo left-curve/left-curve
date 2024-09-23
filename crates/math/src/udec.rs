@@ -1,7 +1,7 @@
 use {
     crate::{
-        Decimal, FixedPoint, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256, Uint128, Uint256,
+        Decimal, FixedPoint, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio,
+        NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
     },
     bnum::types::U256,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -425,7 +425,7 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(UdecVisitor::new())
+        deserializer.deserialize_str(DecimalVisitor::new())
     }
 }
 

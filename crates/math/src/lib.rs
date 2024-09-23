@@ -2,7 +2,6 @@ mod bytable;
 mod decimal;
 mod error;
 mod fixed_point;
-mod fixed_point;
 mod fraction;
 mod inner;
 mod integer;
