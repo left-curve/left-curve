@@ -1,6 +1,7 @@
-use bnum::types::{U256, U512};
-
-use crate::NumberConst;
+use {
+    crate::NumberConst,
+    bnum::types::{U256, U512},
+};
 
 pub trait IsZero {
     fn is_zero(&self) -> bool;
