@@ -619,8 +619,7 @@ macro_rules! generate_decimal {
             ///     std::str::FromStr,
             /// };
             ///
-            /// let uint = Uint128::new(100);
-            /// let decimal = Udec128::new(uint);
+            /// let decimal = Udec128::new(100);
             /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
             /// ```
             pub const fn new(x: u128) -> Self {
