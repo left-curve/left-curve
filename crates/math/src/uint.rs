@@ -1,6 +1,6 @@
 use {
     crate::{
-        utils::{bytes_to_digits, grow_le_int},
+        utils::{bytes_to_digits, grow_le_int, grow_le_uint},
         Bytable, Fraction, Inner, Integer, IsZero, MathError, MathResult, MultiplyFraction,
         MultiplyRatio, NextNumber, Number, NumberConst, Sign,
     },
@@ -714,7 +714,7 @@ generate_uint! {
 
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let grown_bytes = grow_le_int::<16, 32>(value.to_le_bytes());
+        let grown_bytes = grow_le_uint::<16, 32>(value.to_le_bytes());
         let digits = bytes_to_digits(grown_bytes);
         Self(U256::from_digits(digits))
     }
@@ -722,7 +722,7 @@ impl Uint256 {
 
 impl Uint512 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let grown_bytes = grow_le_int::<16, 64>(value.to_le_bytes());
+        let grown_bytes = grow_le_uint::<16, 64>(value.to_le_bytes());
         let digits = bytes_to_digits(grown_bytes);
         Self(U512::from_digits(digits))
     }
@@ -764,6 +764,17 @@ mod tests {
             let output = uint512.number().try_into().unwrap();
             assert_eq!(input, output);
         }
+
+        fn int256_const_constructor(input in any::<i128>()) {
+            let int256 = Int256::new_from_i128(input);
+            let output = int256.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
+        fn int512_const_constructor(input in any::<i128>()) {
+            let int512 = Int512::new_from_i128(input);
+            let output = int512.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
     }
 
     #[test]
@@ -778,12 +789,6 @@ mod tests {
             Int512::from_str("-100").unwrap(),
             Int512::new(I512::from(-100))
         );
-    }
-
-    #[test]
-    fn new_from_i128_works() {
-        assert_eq!(Int512::new_from_i128(100), Int512::new(I512::from(100)));
-        assert_eq!(Int512::new_from_i128(-100), Int512::new(I512::from(-100)))
     }
 
     #[test]

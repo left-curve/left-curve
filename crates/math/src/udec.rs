@@ -591,14 +591,13 @@ macro_rules! generate_decimal {
             #[doc = $doc]
             pub type $name = Udec<$inner>;
 
-                impl NumberConst for $name {
-                    const MAX: Self = Self(Uint::MAX);
-                    const MIN: Self = Self(Uint::MIN);
-                    const ONE: Self = Self(Self::DECIMAL_FRACTION);
-                    const TEN: Self = Self($constructor([<10_$base_constructor>].pow(Self::DECIMAL_PLACES +1)));
-                    const ZERO: Self = Self(Uint::ZERO);
-                }
-
+            impl NumberConst for $name {
+                const MAX: Self = Self(Uint::MAX);
+                const MIN: Self = Self(Uint::MIN);
+                const ONE: Self = Self(Self::DECIMAL_FRACTION);
+                const TEN: Self = Self($constructor([<10_$base_constructor>].pow(Self::DECIMAL_PLACES +1)));
+                const ZERO: Self = Self(Uint::ZERO);
+            }
 
             impl $name {
                 /// Create a new [`Udec`] adding decimal places.
