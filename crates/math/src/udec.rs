@@ -47,7 +47,7 @@ impl<U> Udec<U> {
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
-    Uint<U>: NumberConst + Number + From<u128>,
+    Uint<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -85,6 +85,7 @@ where
 impl<U> Udec<U>
 where
     Self: FixedPoint<U>,
+    Uint<U>: MultiplyRatio,
     Uint<U>: MultiplyRatio,
 {
     pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
@@ -130,7 +131,6 @@ where
 impl<U> Decimal for Udec<U>
 where
     Self: FixedPoint<U>,
-
     U: Number + Copy + PartialEq,
 {
     fn checked_floor(self) -> MathResult<Self> {

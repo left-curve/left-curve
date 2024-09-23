@@ -1,7 +1,10 @@
-use bnum::types::U256;
+use {
+    crate::{Udec128, Udec256, Uint, Uint128, Uint256},
+    bnum::types::U256,
+};
 
-use crate::{Udec128, Udec256, Uint, Uint128, Uint256};
-
+/// Describes a [fixed-point decimal](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
+/// number.
 pub trait FixedPoint<U> {
     /// Ratio between the inner integer value and the decimal value it
     /// represents.
@@ -11,14 +14,12 @@ pub trait FixedPoint<U> {
     const DECIMAL_PLACES: u32;
 }
 
-macro_rules! impl_fixed_point {
-    ($t:ty => $u:ty, $constructor:expr, $dp:expr) => {
-        impl FixedPoint<$u> for $t {
-            const DECIMAL_FRACTION: Uint<$u> = $constructor(10_u128.pow($dp));
-            const DECIMAL_PLACES: u32 = $dp;
-        }
-    };
+impl FixedPoint<u128> for Udec128 {
+    const DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000);
+    const DECIMAL_PLACES: u32 = 18;
 }
 
-impl_fixed_point!(Udec128 => u128, Uint128::new, 18);
-impl_fixed_point!(Udec256 => U256, Uint256::new_from_u128, 18);
+impl FixedPoint<U256> for Udec256 {
+    const DECIMAL_FRACTION: Uint256 = Uint256::new_from_u128(1_000_000_000_000_000_000);
+    const DECIMAL_PLACES: u32 = 18;
+}
