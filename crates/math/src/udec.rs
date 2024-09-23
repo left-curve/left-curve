@@ -421,15 +421,15 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(DecimalVisitor::new())
+        deserializer.deserialize_str(UdecVisitor::new())
     }
 }
 
-struct DecimalVisitor<U> {
+struct UdecVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U> DecimalVisitor<U> {
+impl<U> UdecVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -437,7 +437,7 @@ impl<U> DecimalVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for DecimalVisitor<U>
+impl<'de, U> de::Visitor<'de> for UdecVisitor<U>
 where
     Udec<U>: FromStr,
     <Udec<U> as FromStr>::Err: Display,
