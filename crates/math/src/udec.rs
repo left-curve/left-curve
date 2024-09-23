@@ -1,6 +1,6 @@
 use {
     crate::{
-        Decimal, Fraction, Inner, MathError, MathResult, MultiplyRatio, NextNumber, Number,
+        Decimal, Fraction, Inner, IsZero, MathError, MathResult, MultiplyRatio, NextNumber, Number,
         NumberConst, Sign, Uint,
     },
     bnum::types::U256,
@@ -10,7 +10,7 @@ use {
         cmp::Ordering,
         fmt::{self, Display, Write},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
         str::FromStr,
     },
 };
@@ -240,8 +240,8 @@ impl<U> Sign for Udec<U> {
 
 impl<U> Fraction<U> for Udec<U>
 where
-    U: Number + Copy,
-    Uint<U>: From<u64>,
+    U: Number + IsZero + Display + Copy,
+    Uint<U>: MultiplyRatio + From<u64>,
 {
     fn numerator(&self) -> Uint<U> {
         self.0
@@ -250,18 +250,31 @@ where
     fn denominator() -> Uint<U> {
         Self::decimal_fraction()
     }
+
+    fn inv(&self) -> MathResult<Self> {
+        if self.is_zero() {
+            Err(MathError::division_by_zero(self))
+        } else {
+            Self::checked_from_ratio(Self::decimal_fraction(), self.0)
+        }
+    }
 }
 
-impl<U> Number for Udec<U>
+impl<U> IsZero for Udec<U>
 where
-    U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Display + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    U: IsZero,
 {
     fn is_zero(&self) -> bool {
         self.0.is_zero()
     }
+}
 
+impl<U> Number for Udec<U>
+where
+    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + IsZero + Display + From<u64>,
+    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
+{
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
     }
@@ -324,7 +337,7 @@ where
                     Err(err) => return Some(Err(err)),
                 };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
+                    let outer_mul = Uint::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
                     Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
             })
@@ -367,7 +380,7 @@ where
 
 impl<U> Display for Udec<U>
 where
-    U: Number + Display,
+    U: Number + IsZero + Display,
     Uint<U>: Copy + From<u64>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -514,9 +527,10 @@ where
 
 impl<U> Add for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    // U: Number + IsZero + NumberConst + Copy + PartialEq + PartialOrd + Display,
+    // Uint<U>: NextNumber + From<u64>,
+    // <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -527,9 +541,7 @@ where
 
 impl<U> Sub for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -540,9 +552,7 @@ where
 
 impl<U> Mul for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -553,9 +563,7 @@ where
 
 impl<U> Div for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -564,11 +572,20 @@ where
     }
 }
 
+impl<U> Rem for Udec<U>
+where
+    Self: Number,
+{
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
 impl<U> AddAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
@@ -577,9 +594,7 @@ where
 
 impl<U> SubAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
@@ -588,9 +603,7 @@ where
 
 impl<U> MulAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
@@ -599,12 +612,43 @@ where
 
 impl<U> DivAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u64>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
+    }
+}
+
+impl<U> RemAssign for Udec<U>
+where
+    Self: Number + Copy,
+{
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
+    }
+}
+
+impl<IntoUintU, U> Mul<IntoUintU> for Udec<U>
+where
+    U: Number,
+    IntoUintU: Into<Uint<U>>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: IntoUintU) -> Self::Output {
+        Self::raw(self.0 * rhs.into())
+    }
+}
+
+impl<IntoUintU, U> Div<IntoUintU> for Udec<U>
+where
+    U: Number,
+    IntoUintU: Into<Uint<U>>,
+{
+    type Output = Self;
+
+    fn div(self, rhs: IntoUintU) -> Self::Output {
+        Self::raw(self.0 / rhs.into())
     }
 }
 

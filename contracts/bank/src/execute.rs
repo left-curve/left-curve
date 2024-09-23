@@ -1,7 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     anyhow::ensure,
-    grug_math::{Number, Uint256},
+    grug_math::{IsZero, Number, Uint256},
     grug_types::{Addr, Coins, Denom, MutableCtx, Response, StdResult, Storage},
     std::collections::HashMap,
 };
