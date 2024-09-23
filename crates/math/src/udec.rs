@@ -606,7 +606,7 @@ macro_rules! generate_decimal {
             const MAX: Self = Self(Uint::MAX);
             const MIN: Self = Self(Uint::MIN);
             const ONE: Self = Self(Self::DECIMAL_FRACTION);
-            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES)));
+            const TEN: Self = Self($constructor(10_u128.pow(Self::DECIMAL_PLACES + 1)));
             const ZERO: Self = Self(Uint::ZERO);
         }
 
