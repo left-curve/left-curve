@@ -9,7 +9,7 @@ use {
     std::{
         fmt::{self, Display},
         io,
-        ops::{Deref, DerefMut},
+        ops::Deref,
     },
 };
 
@@ -31,12 +31,7 @@ where
 
         Ok(Self(inner))
     }
-}
 
-impl<T> NonZero<T>
-where
-    T: IsZero,
-{
     /// Consume the wrapper, return the wrapped number.
     pub fn into_inner(self) -> T {
         self.0
@@ -52,15 +47,6 @@ where
     }
 }
 
-impl<T> AsMut<T> for NonZero<T>
-where
-    T: IsZero,
-{
-    fn as_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
-}
-
 impl<T> Deref for NonZero<T>
 where
     T: IsZero,
@@ -69,15 +55,6 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<T> DerefMut for NonZero<T>
-where
-    T: IsZero,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
