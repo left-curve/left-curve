@@ -184,11 +184,7 @@ where
     }
 
     fn checked_inv(&self) -> MathResult<Self> {
-        if self.is_zero() {
-            Err(MathError::division_by_zero(self))
-        } else {
-            Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
-        }
+        Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
     }
 }
 
