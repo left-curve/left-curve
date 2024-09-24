@@ -119,16 +119,22 @@ where
         Uint<U>: From<Uint<OU>>,
         Udec<OU>: FixedPoint<OU>,
     {
-        if Udec::<OU>::DECIMAL_PLACES > Udec::<U>::DECIMAL_PLACES {
-            let adjusted_precision = Uint::<U>::TEN
-                .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)
-                .unwrap();
-            Self(Uint::<U>::from(other.0) / adjusted_precision)
-        } else {
-            let adjusted_precision = Uint::<U>::TEN
-                .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)
-                .unwrap();
-            Self(Uint::<U>::from(other.0) * adjusted_precision)
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // There are not overflow problem for adjusted_precision
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) / adjusted_precision)
+            },
+
+            Ordering::Less => {
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) * adjusted_precision)
+            },
+            Ordering::Equal => Self(Uint::<U>::from(other.0)),
         }
     }
 
@@ -138,24 +144,26 @@ where
         Udec<OU>: FixedPoint<OU>,
         Uint<OU>: Number + NumberConst,
     {
-        if Udec::<OU>::DECIMAL_PLACES > Udec::<U>::DECIMAL_PLACES {
-            let adjusted_precision = Uint::<OU>::TEN
-                .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)?;
-            other
-                .0
-                .checked_div(adjusted_precision)
-                .map(Uint::<U>::try_from)?
-                .map(Self)
-        } else if Udec::<OU>::DECIMAL_PLACES < Udec::<U>::DECIMAL_PLACES {
-            let adjusted_precision = Uint::<OU>::TEN
-                .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)?;
-            other
-                .0
-                .checked_mul(adjusted_precision)
-                .map(Uint::<U>::try_from)?
-                .map(Self)
-        } else {
-            Ok(Self(Uint::<U>::try_from(other.0)?))
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // adjusted precision in Uint<OU> prevent overflow in the pow
+                let adjusted_precision = Uint::<OU>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)?;
+                other
+                    .0
+                    .checked_div(adjusted_precision)
+                    .map(Uint::<U>::try_from)?
+                    .map(Self)
+            },
+            Ordering::Less => {
+                // adjusted precision in Uint<U> prevent overflow in the pow
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)?;
+                Uint::<U>::try_from(other.0)?
+                    .checked_mul(adjusted_precision)
+                    .map(Self)
+            },
+            Ordering::Equal => Uint::<U>::try_from(other.0).map(Self),
         }
     }
 }
