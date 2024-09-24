@@ -11,6 +11,8 @@ pub trait Sign {
     fn is_negative(&self) -> bool;
 }
 
+// ----------------------------------- uint ------------------------------------
+
 impl<U> Sign for Uint<U>
 where
     U: Sign,
@@ -23,6 +25,9 @@ where
         self.0.is_negative()
     }
 }
+
+// ----------------------------------- udec ------------------------------------
+
 impl<U> Sign for Udec<U>
 where
     U: Sign,

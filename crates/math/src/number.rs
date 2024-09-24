@@ -41,6 +41,7 @@ pub trait Number: Sized {
 }
 
 // ----------------------------------- uint ------------------------------------
+
 impl<U> Number for Uint<U>
 where
     U: Number,
@@ -105,7 +106,9 @@ where
         Self(self.0.saturating_pow(other))
     }
 }
+
 // ----------------------------------- udec ------------------------------------
+
 impl<U> Number for Udec<U>
 where
     Self: FixedPoint<U> + NumberConst,
@@ -214,6 +217,7 @@ where
         Self(self.0.saturating_pow(other))
     }
 }
+
 // ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_number {

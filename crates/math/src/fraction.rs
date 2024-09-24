@@ -1,4 +1,4 @@
-use crate::{FixedPoint, IsZero, MathResult, MultiplyRatio, Number, Udec, Uint};
+use crate::{FixedPoint, MathResult, MultiplyRatio, Udec, Uint};
 
 /// Describes a number that can be expressed as the quotient of two integers.
 ///
@@ -16,7 +16,7 @@ pub trait Fraction<U>: Sized {
 impl<U> Fraction<U> for Udec<U>
 where
     Self: FixedPoint<U>,
-    U: Number + IsZero + Copy,
+    U: Copy,
     Uint<U>: MultiplyRatio,
 {
     fn numerator(&self) -> Uint<U> {

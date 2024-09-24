@@ -13,6 +13,7 @@ pub trait NumberConst {
 }
 
 // ----------------------------------- uint ------------------------------------
+
 impl<U> NumberConst for Uint<U>
 where
     U: NumberConst,
@@ -23,7 +24,9 @@ where
     const TEN: Self = Self(U::TEN);
     const ZERO: Self = Self(U::ZERO);
 }
+
 // ----------------------------------- udec ------------------------------------
+
 impl NumberConst for Udec128 {
     const MAX: Self = Self::raw(Uint128::MAX);
     const MIN: Self = Self::raw(Uint128::MIN);
@@ -57,6 +60,7 @@ impl NumberConst for Dec256 {
     const TEN: Self = Self::raw(Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Int256::ZERO);
 }
+
 // ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_number_const {

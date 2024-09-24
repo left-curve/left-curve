@@ -5,9 +5,6 @@ use {
 
 /// Describes operations that integer types must implement, which may not be
 /// relevant for non-integer types.
-
-// ----------------------------------- uint ------------------------------------
-
 pub trait Integer: Sized {
     fn checked_ilog2(self) -> MathResult<u32>;
 
@@ -17,6 +14,8 @@ pub trait Integer: Sized {
 
     fn checked_shr(self, other: u32) -> MathResult<Self>;
 }
+
+// ----------------------------------- uint ------------------------------------
 
 impl<U> Integer for Uint<U>
 where
