@@ -188,7 +188,7 @@ impl_bytable_signed_bnum!(I512, 64);
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bytable, Uint128, Uint256},
+        crate::{Bytable, Int128, Int256, Uint128, Uint256},
         bnum::types::{I256, I512, U256, U512},
         proptest::{array::uniform32, prelude::*},
     };
@@ -196,7 +196,7 @@ mod tests {
     proptest! {
         /// Ensure the bytable methods work for `Uint128`.
         #[test]
-        fn integer_bytable_works_128(number in any::<u128>()) {
+        fn integer_bytable_works_u128(number in any::<u128>()) {
             let number = Uint128::from(number);
 
             // Convert the number to big endian bytes and back, should get the
@@ -211,7 +211,7 @@ mod tests {
 
         /// The same test as above, but for `Uint256`.
         #[test]
-        fn integer_bytable_works_256(bytes in uniform32(any::<u8>())) {
+        fn integer_bytable_works_u256(bytes in uniform32(any::<u8>())) {
             let number = Uint256::from_le_bytes(bytes);
 
             // Convert the number to big endian bytes and back, should get the
@@ -221,6 +221,33 @@ mod tests {
 
             // Same thing for little endian
             let recovered = Uint256::from_le_bytes(number.to_le_bytes());
+            prop_assert_eq!(number, recovered);
+        }
+
+        #[test]
+        fn integer_bytable_works_i128(number in any::<i128>()) {
+            let number = Int128::from(number);
+
+            // Convert the number to big endian bytes and back, should get the
+            // the same value
+            let recovered = Int128::from_be_bytes(number.to_be_bytes());
+            prop_assert_eq!(number, recovered);
+
+            // Same thing for little endian
+            let recovered = Int128::from_le_bytes(number.to_le_bytes());
+            prop_assert_eq!(number, recovered);
+        }
+
+        fn integer_bytable_works_i256(number in any::<i128>()) {
+            let number = Int256::from(number);
+
+            // Convert the number to big endian bytes and back, should get the
+            // the same value
+            let recovered = Int256::from_be_bytes(number.to_be_bytes());
+            prop_assert_eq!(number, recovered);
+
+            // Same thing for little endian
+            let recovered = Int256::from_le_bytes(number.to_le_bytes());
             prop_assert_eq!(number, recovered);
         }
 
