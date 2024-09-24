@@ -782,14 +782,6 @@ mod tests {
 
     const DEC128_SHIFT: u128 = 10_u128.pow(18);
 
-    // fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
-    //     let mut bytes = Vec::with_capacity(N + 3);
-    //     bytes.extend(1_u16.to_be_bytes()); // length prefix of `s`
-    //     bytes.push(s);
-    //     bytes.extend(b);
-    //     bytes
-    // }
-
     #[test_case(
         b"slice".as_slice(),
         b"slice";
