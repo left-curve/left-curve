@@ -241,8 +241,8 @@ mod tests {
 
         /// Ensure the bytable methods work for `Int256`.
         #[test]
-        fn integer_bytable_works_i256(number in any::<i128>()) {
-            let number = Int256::from(number);
+        fn integer_bytable_works_i256(number in uniform32(any::<u8>())) {
+            let number = Int256::from_le_bytes(number);
 
             // Convert the number to big endian bytes and back, should get the
             // the same value
