@@ -12,6 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 bnum      = { workspace = true, features = ["borsh"] }
 borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
+paste     = { workspace = true }
 serde     = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 

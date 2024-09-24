@@ -1604,6 +1604,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
+ "paste",
  "proptest",
  "serde",
  "thiserror",
@@ -1650,6 +1651,7 @@ dependencies = [
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
+ "bnum",
  "borsh",
  "grug-math",
  "grug-types",

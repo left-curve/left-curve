@@ -1,6 +1,6 @@
 use {
     crate::{MathError, MathResult},
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes operations that integer types must implement, which may not be
@@ -44,7 +44,10 @@ macro_rules! impl_integer {
     };
 }
 
-impl_integer!(u8, u16, u32, u64, u128, U256, U512);
+impl_integer! {
+    u8, u16, u32, u64, u128, U256, U512,
+    i8, i16, i32, i64, i128, I256, I512,
+}
 
 // ----------------------------------- tests -----------------------------------
 

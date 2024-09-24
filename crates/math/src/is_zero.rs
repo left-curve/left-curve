@@ -1,9 +1,8 @@
 use {
     crate::NumberConst,
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
 };
 
-/// Describes a number that can be compared to zero.
 pub trait IsZero {
     fn is_zero(&self) -> bool;
 }
@@ -19,11 +18,14 @@ macro_rules! impl_is_zero {
             }
         }
     };
-    ($($t:ty),+) => {
+    ($($t:ty),+ $(,)?) => {
         $(
             impl_is_zero!($t);
         )+
     };
 }
 
-impl_is_zero!(u8, u16, u32, u64, u128, U256, U512);
+impl_is_zero! {
+    u8, u16, u32, u64, u128, U256, U512,
+    i8, i16, i32, i64, i128, I256, I512,
+}

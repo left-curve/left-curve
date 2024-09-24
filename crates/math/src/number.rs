@@ -1,6 +1,6 @@
 use {
     crate::{Integer, IsZero, MathError, MathResult, NumberConst},
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes basic operations that all math types must implement.
@@ -128,11 +128,14 @@ macro_rules! impl_number {
             }
         }
     };
-    ($($t:ty),+) => {
+    ($($t:ty),+ $(,)?) => {
         $(
             impl_number!($t);
         )+
     };
 }
 
-impl_number!(u8, u16, u32, u64, u128, U256, U512);
+impl_number! {
+    u8, u16, u32, u64, u128, U256, U512,
+    i8, i16, i32, i64, i128, I256, I512,
+}
