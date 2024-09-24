@@ -61,7 +61,7 @@ macro_rules! impl_bytable_std {
     };
 }
 
-macro_rules! impl_bytable_singed_std {
+macro_rules! impl_bytable_signed_std {
     ($t:ty, $rot:literal) => {
         #[deny(unconditional_recursion)]
         impl Bytable<$rot> for $t {
@@ -98,11 +98,11 @@ impl_bytable_std!(u32, 4);
 impl_bytable_std!(u64, 8);
 impl_bytable_std!(u128, 16);
 
-impl_bytable_singed_std!(i8, 1);
-impl_bytable_singed_std!(i16, 2);
-impl_bytable_singed_std!(i32, 4);
-impl_bytable_singed_std!(i64, 8);
-impl_bytable_singed_std!(i128, 16);
+impl_bytable_signed_std!(i8, 1);
+impl_bytable_signed_std!(i16, 2);
+impl_bytable_signed_std!(i32, 4);
+impl_bytable_signed_std!(i64, 8);
+impl_bytable_signed_std!(i128, 16);
 
 // ----------------------------------- bnum ------------------------------------
 
