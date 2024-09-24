@@ -762,7 +762,7 @@ generate_decimal! {
     inner_type        = I256,
     inner_constructor = Int256::new_from_i128,
     from_dec          = [],
-    doc               = "128-bit signed fixed-point number with 18 decimal places.",
+    doc               = "256-bit signed fixed-point number with 18 decimal places.",
 }
 
 // ----------------------------------- tests -----------------------------------
