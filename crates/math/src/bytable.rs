@@ -268,9 +268,10 @@ mod tests {
                     )+
                 };
             }
+
+            test!(i128, number.0, number.1);
             test!(I256, number.0, number.1);
             test!(I512, number.0, number.1);
-            test!(i128, number.0, number.1);
         }
 
         /// Ensure the grown methods work for `unsigned`.
@@ -287,9 +288,10 @@ mod tests {
                     )+
                 };
             }
+
+            test!(u128, number.0, number.1);
             test!(U256, number.0, number.1);
             test!(U512, number.0, number.1);
-            test!(u128, number.0, number.1);
         }
 
     }
