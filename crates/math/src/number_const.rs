@@ -1,5 +1,7 @@
 use bnum::types::{I256, I512, U256, U512};
 
+use crate::{Dec128, Dec256, FixedPoint, Int128, Int256, Udec128, Udec256, Uint, Uint128, Uint256};
+
 /// Describes a number's associated constants: minimum and maximum; zero, one,
 /// and ten.
 pub trait NumberConst {
@@ -9,6 +11,53 @@ pub trait NumberConst {
     const TEN: Self;
     const ZERO: Self;
 }
+
+// ----------------------------------- uint ------------------------------------
+impl<U> NumberConst for Uint<U>
+where
+    U: NumberConst,
+{
+    const MAX: Self = Self(U::MAX);
+    const MIN: Self = Self(U::MIN);
+    const ONE: Self = Self(U::ONE);
+    const TEN: Self = Self(U::TEN);
+    const ZERO: Self = Self(U::ZERO);
+}
+// ----------------------------------- udec ------------------------------------
+impl NumberConst for Udec128 {
+    const MAX: Self = Self::raw(Uint128::MAX);
+    const MIN: Self = Self::raw(Uint128::MIN);
+    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const TEN: Self = Self::raw(Uint128::new(10_u128.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Uint128::ZERO);
+}
+
+impl NumberConst for Udec256 {
+    const MAX: Self = Self::raw(Uint256::MAX);
+    const MIN: Self = Self::raw(Uint256::MIN);
+    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const TEN: Self = Self::raw(Uint256::new_from_u128(
+        10_u128.pow(Self::DECIMAL_PLACES + 1),
+    ));
+    const ZERO: Self = Self::raw(Uint256::ZERO);
+}
+
+impl NumberConst for Dec128 {
+    const MAX: Self = Self::raw(Int128::MAX);
+    const MIN: Self = Self::raw(Int128::MIN);
+    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const TEN: Self = Self::raw(Int128::new(10_i128.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Int128::ZERO);
+}
+
+impl NumberConst for Dec256 {
+    const MAX: Self = Self::raw(Int256::MAX);
+    const MIN: Self = Self::raw(Int256::MIN);
+    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const TEN: Self = Self::raw(Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Int256::ZERO);
+}
+// ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_number_const {
     ($t:ty, $min:expr, $max:expr, $zero:expr, $one:expr, $ten:expr) => {

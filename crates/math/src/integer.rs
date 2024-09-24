@@ -1,10 +1,13 @@
 use {
-    crate::{MathError, MathResult},
+    crate::{MathError, MathResult, Uint},
     bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes operations that integer types must implement, which may not be
 /// relevant for non-integer types.
+
+// ----------------------------------- uint ------------------------------------
+
 pub trait Integer: Sized {
     fn checked_ilog2(self) -> MathResult<u32>;
 
@@ -14,6 +17,29 @@ pub trait Integer: Sized {
 
     fn checked_shr(self, other: u32) -> MathResult<Self>;
 }
+
+impl<U> Integer for Uint<U>
+where
+    U: Integer,
+{
+    fn checked_ilog2(self) -> MathResult<u32> {
+        self.0.checked_ilog2()
+    }
+
+    fn checked_ilog10(self) -> MathResult<u32> {
+        self.0.checked_ilog10()
+    }
+
+    fn checked_shl(self, other: u32) -> MathResult<Self> {
+        self.0.checked_shl(other).map(Self)
+    }
+
+    fn checked_shr(self, other: u32) -> MathResult<Self> {
+        self.0.checked_shr(other).map(Self)
+    }
+}
+
+// ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_integer {
     ($($t:ty),+) => {

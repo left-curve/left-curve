@@ -1,5 +1,5 @@
 use {
-    crate::NumberConst,
+    crate::{NumberConst, Udec, Uint},
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -9,6 +9,31 @@ pub trait Sign {
     fn abs(self) -> Self;
 
     fn is_negative(&self) -> bool;
+}
+
+impl<U> Sign for Uint<U>
+where
+    U: Sign,
+{
+    fn abs(self) -> Self {
+        Self(self.0.abs())
+    }
+
+    fn is_negative(&self) -> bool {
+        self.0.is_negative()
+    }
+}
+impl<U> Sign for Udec<U>
+where
+    U: Sign,
+{
+    fn abs(self) -> Self {
+        Self(self.0.abs())
+    }
+
+    fn is_negative(&self) -> bool {
+        self.0.is_negative()
+    }
 }
 
 // ----------------------------------- unsigned ------------------------------------
