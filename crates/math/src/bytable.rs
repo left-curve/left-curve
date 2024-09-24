@@ -209,7 +209,7 @@ mod tests {
             prop_assert_eq!(number, recovered);
         }
 
-        /// The same test as above, but for `Uint256`.
+        /// Ensure the bytable methods work for `Uint256`.
         #[test]
         fn integer_bytable_works_u256(bytes in uniform32(any::<u8>())) {
             let number = Uint256::from_le_bytes(bytes);
@@ -224,6 +224,7 @@ mod tests {
             prop_assert_eq!(number, recovered);
         }
 
+        /// Ensure the bytable methods work for `Int128`.
         #[test]
         fn integer_bytable_works_i128(number in any::<i128>()) {
             let number = Int128::from(number);
@@ -238,6 +239,8 @@ mod tests {
             prop_assert_eq!(number, recovered);
         }
 
+        /// Ensure the bytable methods work for `Int256`.
+        #[test]
         fn integer_bytable_works_i256(number in any::<i128>()) {
             let number = Int256::from(number);
 
@@ -251,6 +254,7 @@ mod tests {
             prop_assert_eq!(number, recovered);
         }
 
+        /// Ensure the grown methods work for `signed`.
         #[test]
         fn grown_signed(number in any::<(i8, i64)>()) {
             macro_rules! test {
@@ -269,6 +273,7 @@ mod tests {
             test!(i128, number.0, number.1);
         }
 
+        /// Ensure the grown methods work for `unsigned`.
         #[test]
         fn grown_unsigned(number in any::<(u32, u64)>()) {
             macro_rules! test {
