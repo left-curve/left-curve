@@ -111,21 +111,52 @@ where
 // specify that `U != OU` with stable Rust.
 impl<U> Udec<U>
 where
+    Self: FixedPoint<U>,
     U: NumberConst + Number,
 {
     pub fn from_decimal<OU>(other: Udec<OU>) -> Self
     where
         Uint<U>: From<Uint<OU>>,
+        Udec<OU>: FixedPoint<OU>,
     {
-        Self(Uint::<U>::from(other.0))
+        if Udec::<OU>::DECIMAL_PLACES > Udec::<U>::DECIMAL_PLACES {
+            let adjusted_precision = Uint::<U>::TEN
+                .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)
+                .unwrap();
+            Self(Uint::<U>::from(other.0) / adjusted_precision)
+        } else {
+            let adjusted_precision = Uint::<U>::TEN
+                .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)
+                .unwrap();
+            Self(Uint::<U>::from(other.0) * adjusted_precision)
+        }
     }
 
     pub fn try_from_decimal<OU>(other: Udec<OU>) -> MathResult<Self>
     where
-        Uint<U>: TryFrom<Uint<OU>>,
-        MathError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
+        Uint<U>: TryFrom<Uint<OU>, Error = MathError>,
+        Udec<OU>: FixedPoint<OU>,
+        Uint<OU>: Number + NumberConst,
     {
-        Ok(Uint::<U>::try_from(other.0).map(Self)?)
+        if Udec::<OU>::DECIMAL_PLACES > Udec::<U>::DECIMAL_PLACES {
+            let adjusted_precision = Uint::<OU>::TEN
+                .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)?;
+            other
+                .0
+                .checked_div(adjusted_precision)
+                .map(Uint::<U>::try_from)?
+                .map(Self)
+        } else if Udec::<OU>::DECIMAL_PLACES < Udec::<U>::DECIMAL_PLACES {
+            let adjusted_precision = Uint::<OU>::TEN
+                .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)?;
+            other
+                .0
+                .checked_mul(adjusted_precision)
+                .map(Uint::<U>::try_from)?
+                .map(Self)
+        } else {
+            Ok(Self(Uint::<U>::try_from(other.0)?))
+        }
     }
 }
 
@@ -581,7 +612,7 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Dec128, Number, NumberConst, Udec128, Udec256},
+        crate::{Dec128, Number, NumberConst, Udec128, Udec256, Uint64},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -682,5 +713,51 @@ mod tests {
     fn neg_works() {
         assert_eq!(-Dec128::new_percent(-105), Dec128::new_percent(105));
         assert_eq!(-Dec128::new_percent(50), Dec128::new_percent(-50));
+    }
+
+    #[test]
+    fn different_places_conversion() {
+        use super::*;
+
+        generate_decimal! {
+            name              = Udec64_12,
+            inner_type        = u64,
+            inner_constructor = Uint64::new,
+            base_constructor  = u64,
+            from_dec          = [],
+            doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
+        }
+
+        impl FixedPoint<u64> for Udec64_12 {
+            const DECIMAL_FRACTION: crate::Uint<u64> =
+                crate::Uint64::new(10_u64.pow(Self::DECIMAL_PLACES));
+            const DECIMAL_PLACES: u32 = 12;
+        }
+
+        let d64 = Udec64_12::from_str("1.123456789012").unwrap();
+        let d128 = Udec128::from_decimal(d64);
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012345678").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "1.123456789012");
+
+        let d128 = Udec128::raw((u64::MAX).into());
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18.446744073709");
+
+        let d128 = Udec128::from_str("18446744.073709551615").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18446744.073709551615");
+
+        let d128 = Udec128::from_str("18446744.073709551616").unwrap();
+        assert!(matches!(
+            Udec64_12::try_from_decimal(d128),
+            Err(MathError::OverflowConversion { .. })
+        ));
     }
 }
