@@ -1,4 +1,4 @@
-use crate::{FixedPoint, MathResult, Number, Udec};
+use crate::{Dec, FixedPoint, MathResult, Number};
 
 /// Describes operations that decimal types must implement, which may not be
 /// relevant for non-decimal types.
@@ -8,7 +8,7 @@ pub trait Decimal: Sized {
     fn checked_ceil(self) -> MathResult<Self>;
 }
 
-impl<U> Decimal for Udec<U>
+impl<U> Decimal for Dec<U>
 where
     Self: FixedPoint<U>,
     U: Number + Copy + PartialEq,

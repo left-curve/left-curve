@@ -1,18 +1,18 @@
-use crate::{Udec, Uint};
+use crate::{Dec, Int};
 
 /// Describes a type that wraps another type.
 ///
 /// This trait is used in [`generate_uint!`](crate::generate_uint!) and
 /// [`generate_decimal!`](crate::generate_decimal!) to get the inner type of a
-/// [`Uint`] and implement the conversion from the inner type to the [`Uint`].
+/// [`Int`] and implement the conversion from the inner type to the [`Int`].
 pub trait Inner {
     type U;
 }
 
-impl<U> Inner for Uint<U> {
+impl<U> Inner for Int<U> {
     type U = U;
 }
 
-impl<U> Inner for Udec<U> {
+impl<U> Inner for Dec<U> {
     type U = U;
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{MathError, MathResult, Uint},
+    crate::{Int, MathError, MathResult},
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -17,7 +17,7 @@ pub trait Integer: Sized {
 
 // ----------------------------------- uint ------------------------------------
 
-impl<U> Integer for Uint<U>
+impl<U> Integer for Int<U>
 where
     U: Integer,
 {

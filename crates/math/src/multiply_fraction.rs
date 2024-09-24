@@ -1,5 +1,5 @@
 use crate::{
-    Fraction, IsZero, MathError, MathResult, MultiplyRatio, Number, NumberConst, Sign, Uint,
+    Fraction, Int, IsZero, MathError, MathResult, MultiplyRatio, Number, NumberConst, Sign,
 };
 
 /// Describes operations between a number and a decimal type.
@@ -16,9 +16,9 @@ where
     fn checked_div_dec_ceil(self, rhs: F) -> MathResult<Self>;
 }
 
-impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
+impl<U, AsU, F> MultiplyFraction<F, AsU> for Int<U>
 where
-    Uint<U>: NumberConst + Number + IsZero + MultiplyRatio + From<Uint<AsU>> + ToString,
+    Int<U>: NumberConst + Number + IsZero + MultiplyRatio + From<Int<AsU>> + ToString,
     F: Number + Fraction<AsU> + Sign + ToString + IsZero,
 {
     fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self> {
