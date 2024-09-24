@@ -1,4 +1,5 @@
 use crate::{Int128, Int256, Int64, Uint128, Uint256, Uint512, Uint64};
+use crate::{Int128, Int256, Int64, Uint128, Uint256, Uint512, Uint64};
 
 /// Describes a number type can be cast into another type of a bigger word size.
 ///

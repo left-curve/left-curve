@@ -33,3 +33,13 @@ impl FixedPoint<I256> for Dec256 {
     const DECIMAL_FRACTION: Int256 = Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
 }
+
+impl FixedPoint<i128> for Dec128 {
+    const DECIMAL_FRACTION: Int128 = Int128::new(1_000_000_000_000_000_000);
+    const DECIMAL_PLACES: u32 = 18;
+}
+
+impl FixedPoint<I256> for Dec256 {
+    const DECIMAL_FRACTION: Int256 = Int256::new_from_i128(1_000_000_000_000_000_000);
+    const DECIMAL_PLACES: u32 = 18;
+}
