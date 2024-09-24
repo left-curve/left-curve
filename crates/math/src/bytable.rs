@@ -1,9 +1,9 @@
 use {
     crate::{
-        utils::{grow_be_int, grow_be_int, grow_be_uint, grow_le_int, grow_le_int, grow_le_uint},
+        utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
         Uint,
     },
-    bnum::types::{I256, I512, I256, I512, U256, U512},
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes a number that can be convert to and from raw binary representations.
