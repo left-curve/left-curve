@@ -12,6 +12,7 @@ pub trait Inner {
 impl<U> Inner for Uint<U> {
     type U = U;
 }
+
 impl<U> Inner for Udec<U> {
     type U = U;
 }

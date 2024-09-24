@@ -127,7 +127,6 @@ where
                     .unwrap();
                 Self(Uint::<U>::from(other.0) / adjusted_precision)
             },
-
             Ordering::Less => {
                 let adjusted_precision = Uint::<U>::TEN
                     .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)

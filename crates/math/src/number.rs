@@ -129,6 +129,7 @@ where
             .0
             .checked_full_mul(*other.numerator())?
             .checked_div(Self::DECIMAL_FRACTION.into())?;
+
         next_result
             .try_into()
             .map(Self)
@@ -147,7 +148,9 @@ where
         if exp == 0 {
             return Ok(Self::ONE);
         }
+
         let mut y = Udec::ONE;
+
         while exp > 1 {
             if exp % 2 == 0 {
                 self = self.checked_mul(self)?;
@@ -158,6 +161,7 @@ where
                 exp = (exp - 1) / 2;
             }
         }
+
         self.checked_mul(y)
     }
 
@@ -168,7 +172,9 @@ where
         if self.0 < Uint::ZERO {
             return Err(MathError::negative_sqrt::<Self>(self));
         }
+
         let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
+
         (0..=Self::DECIMAL_PLACES / 2)
             .rev()
             .find_map(|i| -> Option<MathResult<Self>> {

@@ -26,11 +26,13 @@ where
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
+
         // The left hand side is `Uint`, a non-negative type, so multiplication
         // with any non-zero negative number goes out of bound.
         if rhs.is_negative() {
             return Err(MathError::negative_mul(self, rhs));
         }
+
         self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
     }
 
@@ -38,9 +40,11 @@ where
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
+
         if rhs.is_negative() {
             return Err(MathError::negative_mul(self, rhs));
         }
+
         self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
     }
 
@@ -50,16 +54,19 @@ where
         if rhs.is_zero() {
             return Err(MathError::division_by_zero(self));
         }
+
         // If right hand side is negative, throw error, because you can't divide
         // and unsigned number with a negative number.
         if rhs.is_negative() {
             return Err(MathError::negative_div(self, rhs));
         }
+
         // If left hand side is zero, and we know right hand size is positive,
         // then simply return zero.
         if self.is_zero() {
             return Ok(Self::ZERO);
         }
+
         self.checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
     }
 
@@ -67,12 +74,15 @@ where
         if rhs.is_zero() {
             return Err(MathError::division_by_zero(self));
         }
+
         if rhs.is_negative() {
             return Err(MathError::negative_div(self, rhs));
         }
+
         if self.is_zero() {
             return Ok(Self::ZERO);
         }
+
         self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
     }
 }
