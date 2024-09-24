@@ -99,7 +99,7 @@ macro_rules! impl_bytable_std {
     };
 }
 
-macro_rules! impl_bytable_singed_std {
+macro_rules! impl_bytable_signed_std {
     ($t:ty, $rot:literal) => {
         #[deny(unconditional_recursion)]
         impl Bytable<$rot> for $t {
@@ -136,11 +136,11 @@ impl_bytable_std!(u32, 4);
 impl_bytable_std!(u64, 8);
 impl_bytable_std!(u128, 16);
 
-impl_bytable_singed_std!(i8, 1);
-impl_bytable_singed_std!(i16, 2);
-impl_bytable_singed_std!(i32, 4);
-impl_bytable_singed_std!(i64, 8);
-impl_bytable_singed_std!(i128, 16);
+impl_bytable_signed_std!(i8, 1);
+impl_bytable_signed_std!(i16, 2);
+impl_bytable_signed_std!(i32, 4);
+impl_bytable_signed_std!(i64, 8);
+impl_bytable_signed_std!(i128, 16);
 
 // ----------------------------------- bnum ------------------------------------
 
@@ -279,8 +279,8 @@ mod tests {
 
         /// Ensure the bytable methods work for `Int256`.
         #[test]
-        fn integer_bytable_works_i256(number in any::<i128>()) {
-            let number = Int256::from(number);
+        fn integer_bytable_works_i256(number in uniform32(any::<u8>())) {
+            let number = Int256::from_le_bytes(number);
 
             // Convert the number to big endian bytes and back, should get the
             // the same value
@@ -306,9 +306,10 @@ mod tests {
                     )+
                 };
             }
+
+            test!(i128, number.0, number.1);
             test!(I256, number.0, number.1);
             test!(I512, number.0, number.1);
-            test!(i128, number.0, number.1);
         }
 
         /// Ensure the grown methods work for `unsigned`.
@@ -325,9 +326,10 @@ mod tests {
                     )+
                 };
             }
+
+            test!(u128, number.0, number.1);
             test!(U256, number.0, number.1);
             test!(U512, number.0, number.1);
-            test!(u128, number.0, number.1);
         }
 
     }

@@ -492,8 +492,8 @@ macro_rules! impl_unsigned_integer_key {
 impl_unsigned_integer_key!(u8, u16, u32, u64, u128, U256, U512);
 
 macro_rules! impl_signed_integer_key {
-    ($($s:ty => $u:ty),+ ) => {
-        $(impl PrimaryKey for $s {
+    ($s:ty => $u:ty) => {
+        impl PrimaryKey for $s {
             type Output = $s;
             type Prefix = ();
             type Suffix = ();
@@ -519,15 +519,26 @@ macro_rules! impl_signed_integer_key {
 
                 Ok((Self::from_be_bytes(bytes) as $u ^ <$s>::MIN as $u) as _)
             }
-        })*
-    }
+        }
+    };
+    ($($s:ty => $u:ty),+ $(,)?) => {
+        $(
+            impl_signed_integer_key!($s => $u);
+        )*
+    };
 }
 
-impl_signed_integer_key!(i8 => u8, i16 => u16, i32 => u32, i64 => u64, i128 => u128);
+impl_signed_integer_key! {
+    i8   => u8,
+    i16  => u16,
+    i32  => u32,
+    i64  => u64,
+    i128 => u128,
+}
 
 macro_rules! impl_bnum_signed_integer_key {
-    ($($s:ty => $u:ty),+ ) => {
-        $(impl PrimaryKey for $s {
+    ($s:ty => $u:ty) => {
+        impl PrimaryKey for $s {
             type Output = $s;
             type Prefix = ();
             type Suffix = ();
@@ -551,17 +562,23 @@ macro_rules! impl_bnum_signed_integer_key {
                     ));
                 };
 
-                Ok(
-                    Self::cast_from(
-                        <$u>::cast_from(Self::from_be_bytes(bytes)) ^ <$u>::cast_from(Self::MIN)
-                    )
-                )
+                Ok(Self::cast_from(
+                    <$u>::cast_from(Self::from_be_bytes(bytes)) ^ <$u>::cast_from(Self::MIN)
+                ))
             }
-        })*
-    }
+        }
+    };
+    ($($s:ty => $u:ty),+ $(,)?) => {
+        $(
+            impl_bnum_signed_integer_key!($s => $u);
+        )*
+    };
 }
 
-impl_bnum_signed_integer_key!(I256 => U256, I512 => U512);
+impl_bnum_signed_integer_key! {
+    I256 => U256,
+    I512 => U512,
+}
 
 // --------------------------------- prefixer ----------------------------------
 
@@ -764,14 +781,6 @@ mod tests {
     ];
 
     const DEC128_SHIFT: u128 = 10_u128.pow(18);
-
-    // fn with_sign<const N: usize>(s: u8, b: [u8; N]) -> Vec<u8> {
-    //     let mut bytes = Vec::with_capacity(N + 3);
-    //     bytes.extend(1_u16.to_be_bytes()); // length prefix of `s`
-    //     bytes.push(s);
-    //     bytes.extend(b);
-    //     bytes
-    // }
 
     #[test_case(
         b"slice".as_slice(),

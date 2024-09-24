@@ -405,35 +405,35 @@ generate_uint! {
 }
 
 generate_uint! {
-    name = Int64,
+    name       = Int64,
     inner_type = i64,
-    from_int = [],
-    from_std = [u32, u16, u8],
-    doc = "64-bit signed integer.",
+    from_int   = [],
+    from_std   = [u32, u16, u8],
+    doc        = "64-bit signed integer.",
 }
 
 generate_uint! {
-    name = Int128,
+    name       = Int128,
     inner_type = i128,
-    from_int = [Int64, Uint64],
-    from_std = [u32, u16, u8],
-    doc = "128-bit signed integer.",
+    from_int   = [Int64, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "128-bit signed integer.",
 }
 
 generate_uint! {
-    name = Int256,
+    name       = Int256,
     inner_type = I256,
-    from_int = [Int128, Int64, Uint128, Uint64],
-    from_std = [u32, u16, u8],
-    doc = "256-bit signed integer.",
+    from_int   = [Int128, Int64, Uint128, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "256-bit signed integer.",
 }
 
 generate_uint! {
-    name = Int512,
+    name       = Int512,
     inner_type = I512,
-    from_int = [Int128, Int64, Uint128, Uint64],
-    from_std = [u32, u16, u8],
-    doc = "512-bit signed integer.",
+    from_int   = [Int128, Int64, Uint128, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "512-bit signed integer.",
 }
 
 // -------------- additional constructor methods for Uint256/512 & Int256/512 ---------------
@@ -504,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn singed_from_str() {
+    fn signed_from_str() {
         assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
         assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
         assert_eq!(

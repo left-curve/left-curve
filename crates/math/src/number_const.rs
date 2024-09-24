@@ -85,18 +85,17 @@ macro_rules! impl_number_const {
     };
 }
 
-impl_number_const!(u8, 0, u8::MAX, 0, 1, 10);
-impl_number_const!(u16, 0, u16::MAX, 0, 1, 10);
-impl_number_const!(u32, 0, u32::MAX, 0, 1, 10);
-impl_number_const!(u64, 0, u64::MAX, 0, 1, 10);
-impl_number_const!(u128, 0, u128::MAX, 0, 1, 10);
-impl_number_const!(U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN);
-impl_number_const!(U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN);
-
-impl_number_const!(i8, i8::MIN, i8::MAX, 0, 1, 10);
-impl_number_const!(i16, i16::MIN, i16::MAX, 0, 1, 10);
-impl_number_const!(i32, i32::MIN, i32::MAX, 0, 1, 10);
-impl_number_const!(i64, i64::MIN, i64::MAX, 0, 1, 10);
-impl_number_const!(i128, i128::MIN, i128::MAX, 0, 1, 10);
-impl_number_const!(I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN);
-impl_number_const!(I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN);
+impl_number_const! { u8,   u8::MIN,   u8::MAX,   0,          1,         10        }
+impl_number_const! { u16,  u16::MIN,  u16::MAX,  0,          1,         10        }
+impl_number_const! { u32,  u32::MIN,  u32::MAX,  0,          1,         10        }
+impl_number_const! { u64,  u64::MIN,  u64::MAX,  0,          1,         10        }
+impl_number_const! { u128, u128::MIN, u128::MAX, 0,          1,         10        }
+impl_number_const! { U256, U256::MIN, U256::MAX, U256::ZERO, U256::ONE, U256::TEN }
+impl_number_const! { U512, U512::MIN, U512::MAX, U512::ZERO, U512::ONE, U512::TEN }
+impl_number_const! { i8,   i8::MIN,   i8::MAX,   0,          1,         10        }
+impl_number_const! { i16,  i16::MIN,  i16::MAX,  0,          1,         10        }
+impl_number_const! { i32,  i32::MIN,  i32::MAX,  0,          1,         10        }
+impl_number_const! { i64,  i64::MIN,  i64::MAX,  0,          1,         10        }
+impl_number_const! { i128, i128::MIN, i128::MAX, 0,          1,         10        }
+impl_number_const! { I256, I256::MIN, I256::MAX, I256::ZERO, I256::ONE, I256::TEN }
+impl_number_const! { I512, I512::MIN, I512::MAX, I512::ZERO, I512::ONE, I512::TEN }
