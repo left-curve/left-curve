@@ -778,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn singed_from_str() {
+    fn signed_from_str() {
         assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
         assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
         assert_eq!(
