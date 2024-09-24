@@ -16,33 +16,38 @@ pub trait Integer: Sized {
 }
 
 macro_rules! impl_integer {
-    ($($t:ty),+) => {
-        $(
-            impl Integer for $t {
-                fn checked_shl(self, other: u32) -> MathResult<Self> {
-                    self.checked_shl(other)
-                        .ok_or_else(|| MathError::overflow_shl(self, other))
-                }
-
-                fn checked_shr(self, other: u32) -> MathResult<Self> {
-                    self.checked_shr(other)
-                        .ok_or_else(|| MathError::overflow_shr(self, other))
-                }
-
-                fn checked_ilog2(self) -> MathResult<u32> {
-                    self.checked_ilog2().ok_or_else(|| MathError::zero_log())
-                }
-
-                fn checked_ilog10(self) -> MathResult<u32> {
-                    self.checked_ilog10().ok_or_else(|| MathError::zero_log())
-                }
+    ($t:ty) => {
+        impl Integer for $t {
+            fn checked_shl(self, other: u32) -> MathResult<Self> {
+                self.checked_shl(other)
+                    .ok_or_else(|| MathError::overflow_shl(self, other))
             }
+
+            fn checked_shr(self, other: u32) -> MathResult<Self> {
+                self.checked_shr(other)
+                    .ok_or_else(|| MathError::overflow_shr(self, other))
+            }
+
+            fn checked_ilog2(self) -> MathResult<u32> {
+                self.checked_ilog2().ok_or_else(|| MathError::zero_log())
+            }
+
+            fn checked_ilog10(self) -> MathResult<u32> {
+                self.checked_ilog10().ok_or_else(|| MathError::zero_log())
+            }
+        }
+    };
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl_integer!($t);
         )+
     };
 }
 
-impl_integer!(u8, u16, u32, u64, u128, U256, U512);
-impl_integer!(i8, i16, i32, i64, i128, I256, I512);
+impl_integer! {
+    u8, u16, u32, u64, u128, U256, U512,
+    i8, i16, i32, i64, i128, I256, I512,
+}
 
 // ----------------------------------- tests -----------------------------------
 
