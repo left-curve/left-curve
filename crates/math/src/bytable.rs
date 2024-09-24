@@ -1,5 +1,8 @@
 use {
-    crate::utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+    crate::{
+        utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
+        Uint,
+    },
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -27,6 +30,41 @@ pub trait Bytable<const S: usize>: Sized {
         Self::from_le_bytes(Self::grow_le_bytes(data))
     }
 }
+
+// ----------------------------------- uint ------------------------------------
+
+impl<U, const S: usize> Bytable<S> for Uint<U>
+where
+    U: Bytable<S>,
+{
+    fn from_be_bytes(data: [u8; S]) -> Self {
+        Self(U::from_be_bytes(data))
+    }
+
+    fn from_le_bytes(data: [u8; S]) -> Self {
+        Self(U::from_le_bytes(data))
+    }
+
+    fn to_be_bytes(self) -> [u8; S] {
+        self.0.to_be_bytes()
+    }
+
+    fn to_le_bytes(self) -> [u8; S] {
+        self.0.to_le_bytes()
+    }
+
+    fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
+        U::grow_be_bytes(data)
+    }
+
+    fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
+        U::grow_le_bytes(data)
+    }
+}
+
+// ----------------------------------- udec ------------------------------------
+
+// TODO: Bytable for Udec
 
 // ------------------------------------ std ------------------------------------
 

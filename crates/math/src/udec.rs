@@ -1,7 +1,7 @@
 use {
     crate::{
-        Decimal, FixedPoint, Fraction, Inner, Int128, Int256, IsZero, MathError, MathResult,
-        MultiplyRatio, NextNumber, Number, NumberConst, Sign, Uint, Uint128, Uint256,
+        FixedPoint, Inner, Int128, Int256, IsZero, MathError, MathResult, MultiplyRatio, Number,
+        NumberConst, Sign, Uint, Uint128, Uint256,
     },
     bnum::types::{I256, U256},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -111,91 +111,59 @@ where
 // specify that `U != OU` with stable Rust.
 impl<U> Udec<U>
 where
+    Self: FixedPoint<U>,
     U: NumberConst + Number,
 {
     pub fn from_decimal<OU>(other: Udec<OU>) -> Self
     where
         Uint<U>: From<Uint<OU>>,
+        Udec<OU>: FixedPoint<OU>,
     {
-        Self(Uint::<U>::from(other.0))
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // There are not overflow problem for adjusted_precision
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) / adjusted_precision)
+            },
+            Ordering::Less => {
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) * adjusted_precision)
+            },
+            Ordering::Equal => Self(Uint::<U>::from(other.0)),
+        }
     }
 
     pub fn try_from_decimal<OU>(other: Udec<OU>) -> MathResult<Self>
     where
-        Uint<U>: TryFrom<Uint<OU>>,
-        MathError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
+        Uint<U>: TryFrom<Uint<OU>, Error = MathError>,
+        Udec<OU>: FixedPoint<OU>,
+        Uint<OU>: Number + NumberConst,
     {
-        Ok(Uint::<U>::try_from(other.0).map(Self)?)
-    }
-}
-
-impl<U> Decimal for Udec<U>
-where
-    Self: FixedPoint<U>,
-    U: Number + Copy + PartialEq,
-{
-    fn checked_floor(self) -> MathResult<Self> {
-        // There are two ways to floor:
-        // 1. inner / decimal_fraction * decimal_fraction
-        // 2. inner - inner % decimal_fraction
-        // Method 2 is faster because Rem is roughly as fast as or slightly
-        // faster than Div, while Sub is significantly faster than Mul.
-        //
-        // This flooring operation in fact can never fail, because flooring an
-        // unsigned decimal goes down to 0 at most. However, flooring a _signed_
-        // decimal may underflow.
-        Ok(Self(self.0 - self.0.checked_rem(Self::DECIMAL_FRACTION)?))
-    }
-
-    fn checked_ceil(self) -> MathResult<Self> {
-        let floor = self.checked_floor()?;
-        if floor == self {
-            Ok(floor)
-        } else {
-            floor.0.checked_add(Self::DECIMAL_FRACTION).map(Self)
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // adjusted precision in Uint<OU> prevent overflow in the pow
+                let adjusted_precision = Uint::<OU>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)?;
+                other
+                    .0
+                    .checked_div(adjusted_precision)
+                    .map(Uint::<U>::try_from)?
+                    .map(Self)
+            },
+            Ordering::Less => {
+                // adjusted precision in Uint<U> prevent overflow in the pow
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)?;
+                Uint::<U>::try_from(other.0)?
+                    .checked_mul(adjusted_precision)
+                    .map(Self)
+            },
+            Ordering::Equal => Uint::<U>::try_from(other.0).map(Self),
         }
-    }
-}
-
-impl<U> Inner for Udec<U> {
-    type U = U;
-}
-
-impl<U> Sign for Udec<U> {
-    fn abs(self) -> Self {
-        self
-    }
-
-    fn is_negative(&self) -> bool {
-        false
-    }
-}
-
-impl<U> Fraction<U> for Udec<U>
-where
-    Self: FixedPoint<U>,
-    U: Number + IsZero + Display + Copy,
-    Uint<U>: MultiplyRatio,
-{
-    fn numerator(&self) -> Uint<U> {
-        self.0
-    }
-
-    fn denominator() -> Uint<U> {
-        Self::DECIMAL_FRACTION
-    }
-
-    fn checked_inv(&self) -> MathResult<Self> {
-        Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
-    }
-}
-
-impl<U> IsZero for Udec<U>
-where
-    U: IsZero,
-{
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
     }
 }
 
@@ -207,116 +175,6 @@ where
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
-    }
-}
-
-impl<U> Number for Udec<U>
-where
-    Self: FixedPoint<U> + NumberConst + ToString,
-    U: NumberConst + Number + Copy + PartialOrd,
-    Uint<U>: NextNumber,
-    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
-{
-    fn checked_add(self, other: Self) -> MathResult<Self> {
-        self.0.checked_add(other.0).map(Self)
-    }
-
-    fn checked_sub(self, other: Self) -> MathResult<Self> {
-        self.0.checked_sub(other.0).map(Self)
-    }
-
-    fn checked_mul(self, other: Self) -> MathResult<Self> {
-        let next_result = self
-            .0
-            .checked_full_mul(*other.numerator())?
-            .checked_div(Self::DECIMAL_FRACTION.into())?;
-        next_result
-            .try_into()
-            .map(Self)
-            .map_err(|_| MathError::overflow_conversion::<_, Uint<U>>(next_result))
-    }
-
-    fn checked_div(self, other: Self) -> MathResult<Self> {
-        Udec::checked_from_ratio(*self.numerator(), *other.numerator())
-    }
-
-    fn checked_rem(self, other: Self) -> MathResult<Self> {
-        self.0.checked_rem(other.0).map(Self)
-    }
-
-    fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        if exp == 0 {
-            return Ok(Self::ONE);
-        }
-
-        let mut y = Udec::ONE;
-        while exp > 1 {
-            if exp % 2 == 0 {
-                self = self.checked_mul(self)?;
-                exp /= 2;
-            } else {
-                y = self.checked_mul(y)?;
-                self = self.checked_mul(self)?;
-                exp = (exp - 1) / 2;
-            }
-        }
-        self.checked_mul(y)
-    }
-
-    // TODO: Check if this is the best way to implement this
-    fn checked_sqrt(self) -> MathResult<Self> {
-        // With the current design, U should be only unsigned number.
-        // Leave this safety check here for now.
-        if self.0 < Uint::ZERO {
-            return Err(MathError::negative_sqrt::<Self>(self));
-        }
-        let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
-        (0..=Self::DECIMAL_PLACES / 2)
-            .rev()
-            .find_map(|i| -> Option<MathResult<Self>> {
-                let inner_mul = match hundred.checked_pow(i) {
-                    Ok(val) => val,
-                    Err(err) => return Some(Err(err)),
-                };
-                self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = Uint::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
-                    Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
-                })
-            })
-            .transpose()?
-            .ok_or(MathError::SqrtFailed)
-    }
-
-    fn wrapping_add(self, other: Self) -> Self {
-        Self(self.0.wrapping_add(other.0))
-    }
-
-    fn wrapping_sub(self, other: Self) -> Self {
-        Self(self.0.wrapping_sub(other.0))
-    }
-
-    fn wrapping_mul(self, other: Self) -> Self {
-        Self(self.0.wrapping_mul(other.0))
-    }
-
-    fn wrapping_pow(self, other: u32) -> Self {
-        Self(self.0.wrapping_pow(other))
-    }
-
-    fn saturating_add(self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0))
-    }
-
-    fn saturating_sub(self, other: Self) -> Self {
-        Self(self.0.saturating_sub(other.0))
-    }
-
-    fn saturating_mul(self, other: Self) -> Self {
-        Self(self.0.saturating_mul(other.0))
-    }
-
-    fn saturating_pow(self, other: u32) -> Self {
-        Self(self.0.saturating_pow(other))
     }
 }
 
@@ -590,15 +448,6 @@ macro_rules! generate_decimal {
         paste::paste! {
             #[doc = $doc]
             pub type $name = Udec<$inner>;
-
-            impl NumberConst for $name {
-                const MAX: Self = Self(Uint::MAX);
-                const MIN: Self = Self(Uint::MIN);
-                const ONE: Self = Self(Self::DECIMAL_FRACTION);
-                const TEN: Self = Self($constructor([<10_$base_constructor>].pow(Self::DECIMAL_PLACES +1)));
-                const ZERO: Self = Self(Uint::ZERO);
-            }
-
             impl $name {
                 /// Create a new [`Udec`] adding decimal places.
                 ///
@@ -770,7 +619,7 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Dec128, Number, NumberConst, Udec128, Udec256},
+        crate::{Dec128, Number, NumberConst, Udec128, Udec256, Uint64},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -871,5 +720,51 @@ mod tests {
     fn neg_works() {
         assert_eq!(-Dec128::new_percent(-105), Dec128::new_percent(105));
         assert_eq!(-Dec128::new_percent(50), Dec128::new_percent(-50));
+    }
+
+    #[test]
+    fn different_places_conversion() {
+        use super::*;
+
+        generate_decimal! {
+            name              = Udec64_12,
+            inner_type        = u64,
+            inner_constructor = Uint64::new,
+            base_constructor  = u64,
+            from_dec          = [],
+            doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
+        }
+
+        impl FixedPoint<u64> for Udec64_12 {
+            const DECIMAL_FRACTION: crate::Uint<u64> =
+                crate::Uint64::new(10_u64.pow(Self::DECIMAL_PLACES));
+            const DECIMAL_PLACES: u32 = 12;
+        }
+
+        let d64 = Udec64_12::from_str("1.123456789012").unwrap();
+        let d128 = Udec128::from_decimal(d64);
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012345678").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "1.123456789012");
+
+        let d128 = Udec128::raw((u64::MAX).into());
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18.446744073709");
+
+        let d128 = Udec128::from_str("18446744.073709551615").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18446744.073709551615");
+
+        let d128 = Udec128::from_str("18446744.073709551616").unwrap();
+        assert!(matches!(
+            Udec64_12::try_from_decimal(d128),
+            Err(MathError::OverflowConversion { .. })
+        ));
     }
 }

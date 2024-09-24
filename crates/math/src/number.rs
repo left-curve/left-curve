@@ -1,6 +1,10 @@
 use {
-    crate::{Integer, IsZero, MathError, MathResult, NumberConst},
+    crate::{
+        FixedPoint, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst, Sign, Udec,
+        Uint,
+    },
     bnum::types::{I256, I512, U256, U512},
+    std::fmt::Display,
 };
 
 /// Describes basic operations that all math types must implement.
@@ -35,6 +39,192 @@ pub trait Number: Sized {
 
     fn saturating_pow(self, other: u32) -> Self;
 }
+
+// ----------------------------------- uint ------------------------------------
+
+impl<U> Number for Uint<U>
+where
+    U: Number,
+{
+    fn checked_add(self, other: Self) -> MathResult<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
+        self.0.checked_sub(other.0).map(Self)
+    }
+
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
+        self.0.checked_mul(other.0).map(Self)
+    }
+
+    fn checked_div(self, other: Self) -> MathResult<Self> {
+        self.0.checked_div(other.0).map(Self)
+    }
+
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
+        self.0.checked_rem(other.0).map(Self)
+    }
+
+    fn checked_pow(self, other: u32) -> MathResult<Self> {
+        self.0.checked_pow(other).map(Self)
+    }
+
+    fn checked_sqrt(self) -> MathResult<Self> {
+        self.0.checked_sqrt().map(Self)
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
+    fn wrapping_sub(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
+    }
+
+    fn wrapping_mul(self, other: Self) -> Self {
+        Self(self.0.wrapping_mul(other.0))
+    }
+
+    fn wrapping_pow(self, other: u32) -> Self {
+        Self(self.0.wrapping_pow(other))
+    }
+
+    fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+
+    fn saturating_mul(self, other: Self) -> Self {
+        Self(self.0.saturating_mul(other.0))
+    }
+
+    fn saturating_pow(self, other: u32) -> Self {
+        Self(self.0.saturating_pow(other))
+    }
+}
+
+// ----------------------------------- udec ------------------------------------
+
+impl<U> Number for Udec<U>
+where
+    Self: FixedPoint<U> + NumberConst,
+    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
+    Uint<U>: NextNumber + Sign,
+    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
+{
+    fn checked_add(self, other: Self) -> MathResult<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
+        self.0.checked_sub(other.0).map(Self)
+    }
+
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
+        let next_result = self
+            .0
+            .checked_full_mul(*other.numerator())?
+            .checked_div(Self::DECIMAL_FRACTION.into())?;
+
+        next_result
+            .try_into()
+            .map(Self)
+            .map_err(|_| MathError::overflow_conversion::<_, Uint<U>>(next_result))
+    }
+
+    fn checked_div(self, other: Self) -> MathResult<Self> {
+        Udec::checked_from_ratio(*self.numerator(), *other.numerator())
+    }
+
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
+        self.0.checked_rem(other.0).map(Self)
+    }
+
+    fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
+        if exp == 0 {
+            return Ok(Self::ONE);
+        }
+
+        let mut y = Udec::ONE;
+
+        while exp > 1 {
+            if exp % 2 == 0 {
+                self = self.checked_mul(self)?;
+                exp /= 2;
+            } else {
+                y = self.checked_mul(y)?;
+                self = self.checked_mul(self)?;
+                exp = (exp - 1) / 2;
+            }
+        }
+
+        self.checked_mul(y)
+    }
+
+    // TODO: Check if this is the best way to implement this
+    fn checked_sqrt(self) -> MathResult<Self> {
+        // With the current design, U should be only unsigned number.
+        // Leave this safety check here for now.
+        if self.0 < Uint::ZERO {
+            return Err(MathError::negative_sqrt::<Self>(self));
+        }
+
+        let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
+
+        (0..=Self::DECIMAL_PLACES / 2)
+            .rev()
+            .find_map(|i| -> Option<MathResult<Self>> {
+                let inner_mul = match hundred.checked_pow(i) {
+                    Ok(val) => val,
+                    Err(err) => return Some(Err(err)),
+                };
+                self.0.checked_mul(inner_mul).ok().map(|inner| {
+                    let outer_mul = Uint::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
+                    Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
+                })
+            })
+            .transpose()?
+            .ok_or(MathError::SqrtFailed)
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
+    fn wrapping_sub(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
+    }
+
+    fn wrapping_mul(self, other: Self) -> Self {
+        Self(self.0.wrapping_mul(other.0))
+    }
+
+    fn wrapping_pow(self, other: u32) -> Self {
+        Self(self.0.wrapping_pow(other))
+    }
+
+    fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+
+    fn saturating_mul(self, other: Self) -> Self {
+        Self(self.0.saturating_mul(other.0))
+    }
+
+    fn saturating_pow(self, other: u32) -> Self {
+        Self(self.0.saturating_pow(other))
+    }
+}
+
+// ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_number {
     ($t:ty) => {

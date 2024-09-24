@@ -32,7 +32,6 @@ impl_next! {
     Uint256 => Uint512,
     Int64   => Int128,
     Int128  => Int256,
-
     // TODO: Fix impl From<I256> for I512 in bnum
     // Int256  => Int512,
 }
