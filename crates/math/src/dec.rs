@@ -299,15 +299,15 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(UdecVisitor::new())
+        deserializer.deserialize_str(DecVisitor::new())
     }
 }
 
-struct UdecVisitor<U> {
+struct DecVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U> UdecVisitor<U> {
+impl<U> DecVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -315,7 +315,7 @@ impl<U> UdecVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for UdecVisitor<U>
+impl<'de, U> de::Visitor<'de> for DecVisitor<U>
 where
     Dec<U>: FromStr,
     <Dec<U> as FromStr>::Err: Display,

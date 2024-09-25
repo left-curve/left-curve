@@ -31,8 +31,8 @@ It is, however, not recommended to use these types directly. Instead, Grug expor
 | `Int512`  | `Int<I512>>`  | 512-bit signed integer                                     |
 | `Udec128` | `Dec<i128>`   | 128-bit unsigned fixed-point number with 18 decimal places |
 | `Udec256` | `Dec<I256>`   | 256-bit unsigned fixed-point number with 18 decimal places |
-| `Dec128`  | `Ddec<i128>>` | 128-bit signed fixed-point number with 18 decimal places   |
-| `Dec256`  | `Ddec<I256>>` | 256-bit signed fixed-point number with 18 decimal places   |
+| `Dec128`  | `Dec<i128>>` | 128-bit signed fixed-point number with 18 decimal places   |
+| `Dec256`  | `Dec<I256>>` | 256-bit signed fixed-point number with 18 decimal places   |
 
 where `{U,I}{256,512}` are from the [bnum][bnum] library.
 
