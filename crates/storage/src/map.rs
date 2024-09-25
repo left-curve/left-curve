@@ -1,6 +1,6 @@
 use {
-    crate::{Borsh, Bound, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
-    grug_types::{Order, Record, StdError, StdResult, Storage},
+    crate::{Borsh, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
+    grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
@@ -349,7 +349,7 @@ mod test {
                 .prefix_range(
                     &storage,
                     None,
-                    Some(PrefixBound::inclusive(2_u64)),
+                    Some(PrefixBound::Inclusive(2_u64)),
                     grug_types::Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
@@ -367,7 +367,7 @@ mod test {
             let res = MAP
                 .prefix_range(
                     &storage,
-                    Some(PrefixBound::exclusive(2_u64)),
+                    Some(PrefixBound::Exclusive(2_u64)),
                     None,
                     grug_types::Order::Ascending,
                 )
@@ -387,7 +387,7 @@ mod test {
                 .prefix_range(
                     &storage,
                     None,
-                    Some(PrefixBound::exclusive(2_u64)),
+                    Some(PrefixBound::Exclusive(2_u64)),
                     grug_types::Order::Descending,
                 )
                 .collect::<StdResult<Vec<_>>>()
@@ -404,7 +404,7 @@ mod test {
             let res = MAP
                 .prefix_range(
                     &storage,
-                    Some(PrefixBound::inclusive(2_u64)),
+                    Some(PrefixBound::Inclusive(2_u64)),
                     None,
                     grug_types::Order::Descending,
                 )
@@ -425,8 +425,8 @@ mod test {
             let res = MAP
                 .prefix_range(
                     &storage,
-                    Some(PrefixBound::inclusive(2_u64)),
-                    Some(PrefixBound::exclusive(4_u64)),
+                    Some(PrefixBound::Inclusive(2_u64)),
+                    Some(PrefixBound::Exclusive(4_u64)),
                     grug_types::Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
@@ -447,9 +447,9 @@ mod test {
 #[cfg(test)]
 mod cosmwasm_tests {
     use {
-        crate::{Bound, Map, PrefixBound, PrimaryKey},
+        crate::{Map, PrefixBound, PrimaryKey},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{BorshDeExt, BorshSerExt, MockStorage, Order, StdResult, Storage},
+        grug_types::{BorshDeExt, BorshSerExt, Bound, MockStorage, Order, StdResult, Storage},
     };
 
     #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Clone)]
@@ -639,7 +639,7 @@ mod cosmwasm_tests {
         let all: Vec<_> = PEOPLE
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"j" as &[u8])),
+                Some(Bound::Inclusive(b"j")),
                 None,
                 Order::Ascending,
             )
@@ -654,7 +654,7 @@ mod cosmwasm_tests {
         let all: Vec<_> = PEOPLE
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"jo" as &[u8])),
+                Some(Bound::Inclusive(b"jo")),
                 None,
                 Order::Ascending,
             )
@@ -701,7 +701,7 @@ mod cosmwasm_tests {
         let all = PEOPLE
             .range(
                 &storage,
-                Some(Bound::inclusive(b"j".as_slice())),
+                Some(Bound::Inclusive(b"j".as_slice())),
                 None,
                 Order::Ascending,
             )
@@ -716,7 +716,7 @@ mod cosmwasm_tests {
         let all = PEOPLE
             .range(
                 &storage,
-                Some(Bound::inclusive(b"jo".as_slice())),
+                Some(Bound::Inclusive(b"jo".as_slice())),
                 None,
                 Order::Ascending,
             )
@@ -834,7 +834,7 @@ mod cosmwasm_tests {
         let all = PEOPLE_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(56u32)),
+                Some(Bound::Inclusive(56u32)),
                 None,
                 Order::Ascending,
             )
@@ -846,7 +846,7 @@ mod cosmwasm_tests {
         let all = PEOPLE_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(57u32)),
+                Some(Bound::Inclusive(57u32)),
                 None,
                 Order::Ascending,
             )
@@ -883,7 +883,7 @@ mod cosmwasm_tests {
         let all = PEOPLE_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(56u32)),
+                Some(Bound::Inclusive(56u32)),
                 None,
                 Order::Ascending,
             )
@@ -895,7 +895,7 @@ mod cosmwasm_tests {
         let all = PEOPLE_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(57u32)),
+                Some(Bound::Inclusive(57u32)),
                 None,
                 Order::Ascending,
             )
@@ -943,7 +943,7 @@ mod cosmwasm_tests {
         let all = SIGNED_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(-56i32)),
+                Some(Bound::Inclusive(-56i32)),
                 None,
                 Order::Ascending,
             )
@@ -955,8 +955,8 @@ mod cosmwasm_tests {
         let all = SIGNED_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(-55i32)),
-                Some(Bound::inclusive(50i32)),
+                Some(Bound::Inclusive(-55i32)),
+                Some(Bound::Inclusive(50i32)),
                 Order::Descending,
             )
             .collect::<StdResult<Vec<_>>>()
@@ -1003,7 +1003,7 @@ mod cosmwasm_tests {
         let all = SIGNED_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(-56i32)),
+                Some(Bound::Inclusive(-56i32)),
                 None,
                 Order::Ascending,
             )
@@ -1015,8 +1015,8 @@ mod cosmwasm_tests {
         let all = SIGNED_ID
             .range(
                 &storage,
-                Some(Bound::inclusive(-55i32)),
-                Some(Bound::inclusive(50i32)),
+                Some(Bound::Inclusive(-55i32)),
+                Some(Bound::Inclusive(50i32)),
                 Order::Descending,
             )
             .collect::<StdResult<Vec<_>>>()
@@ -1111,7 +1111,7 @@ mod cosmwasm_tests {
             .prefix(b"owner")
             .range(
                 &storage,
-                Some(Bound::inclusive(b"spender".as_slice())),
+                Some(Bound::Inclusive(b"spender".as_slice())),
                 None,
                 Order::Ascending,
             )
@@ -1127,7 +1127,7 @@ mod cosmwasm_tests {
             .prefix(b"owner")
             .range(
                 &storage,
-                Some(Bound::exclusive(b"spender".as_slice())),
+                Some(Bound::Exclusive(b"spender".as_slice())),
                 None,
                 Order::Ascending,
             )
@@ -1276,7 +1276,7 @@ mod cosmwasm_tests {
             .append(9)
             .range(
                 &storage,
-                Some(Bound::inclusive("recipient")),
+                Some(Bound::Inclusive("recipient")),
                 None,
                 Order::Ascending,
             )
@@ -1293,7 +1293,7 @@ mod cosmwasm_tests {
             .append(9)
             .range(
                 &storage,
-                Some(Bound::exclusive("recipient")),
+                Some(Bound::Exclusive("recipient")),
                 None,
                 Order::Ascending,
             )
@@ -1482,7 +1482,7 @@ mod cosmwasm_tests {
         let all: Vec<_> = PEOPLE
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(b"jim" as &[u8])),
+                Some(Bound::Exclusive(b"jim")),
                 None,
                 Order::Ascending,
             )
@@ -1515,8 +1515,8 @@ mod cosmwasm_tests {
             .prefix(b"owner")
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(b"spender1" as &[u8])),
-                Some(Bound::inclusive(b"spender2" as &[u8])),
+                Some(Bound::Exclusive(b"spender1")),
+                Some(Bound::Inclusive(b"spender2")),
                 Order::Descending,
             )
             .collect();
@@ -1556,8 +1556,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range_raw(
                 &storage,
-                Some(PrefixBound::inclusive(3u32)),
-                Some(PrefixBound::inclusive(7u32)),
+                Some(PrefixBound::Inclusive(3u32)),
+                Some(PrefixBound::Inclusive(7u32)),
                 Order::Ascending,
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
@@ -1568,8 +1568,8 @@ mod cosmwasm_tests {
         let exclude = AGES
             .prefix_range_raw(
                 &storage,
-                Some(PrefixBound::exclusive(3u32)),
-                Some(PrefixBound::exclusive(7u32)),
+                Some(PrefixBound::Exclusive(3u32)),
+                Some(PrefixBound::Exclusive(7u32)),
                 Order::Ascending,
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
@@ -1580,8 +1580,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range_raw(
                 &storage,
-                Some(PrefixBound::inclusive(3u32)),
-                Some(PrefixBound::inclusive(5u32)),
+                Some(PrefixBound::Inclusive(3u32)),
+                Some(PrefixBound::Inclusive(5u32)),
                 Order::Descending,
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
@@ -1592,8 +1592,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range_raw(
                 &storage,
-                Some(PrefixBound::exclusive(2u32)),
-                Some(PrefixBound::exclusive(5u32)),
+                Some(PrefixBound::Exclusive(2u32)),
+                Some(PrefixBound::Exclusive(5u32)),
                 Order::Descending,
             )
             .map(|r| r.1.deserialize_borsh().unwrap())
@@ -1627,8 +1627,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive(3u32)),
-                Some(PrefixBound::inclusive(7u32)),
+                Some(PrefixBound::Inclusive(3u32)),
+                Some(PrefixBound::Inclusive(7u32)),
                 Order::Ascending,
             )
             .map(|r| r.map(|(_, v)| v))
@@ -1640,8 +1640,8 @@ mod cosmwasm_tests {
         let exclude = AGES
             .prefix_range(
                 &storage,
-                Some(PrefixBound::exclusive(3u32)),
-                Some(PrefixBound::exclusive(7u32)),
+                Some(PrefixBound::Exclusive(3u32)),
+                Some(PrefixBound::Exclusive(7u32)),
                 Order::Ascending,
             )
             .map(|r| r.map(|(_, v)| v))
@@ -1653,8 +1653,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive(3u32)),
-                Some(PrefixBound::inclusive(5u32)),
+                Some(PrefixBound::Inclusive(3u32)),
+                Some(PrefixBound::Inclusive(5u32)),
                 Order::Descending,
             )
             .map(|r| r.map(|(_, v)| v))
@@ -1666,8 +1666,8 @@ mod cosmwasm_tests {
         let include = AGES
             .prefix_range(
                 &storage,
-                Some(PrefixBound::exclusive(2u32)),
-                Some(PrefixBound::exclusive(5u32)),
+                Some(PrefixBound::Exclusive(2u32)),
+                Some(PrefixBound::Exclusive(5u32)),
                 Order::Descending,
             )
             .map(|r| r.map(|(_, v)| v))
@@ -1704,8 +1704,8 @@ mod cosmwasm_tests {
 
         TEST_MAP.clear(
             &mut storage,
-            Some(Bound::inclusive("key0")),
-            Some(Bound::exclusive("key3")),
+            Some(Bound::Inclusive("key0")),
+            Some(Bound::Exclusive("key3")),
         );
 
         assert!(!TEST_MAP.has(&storage, "key0"));

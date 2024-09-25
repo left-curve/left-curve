@@ -1,8 +1,8 @@
 use {
-    crate::{Bound, Codec, PrefixBound, Prefixer, PrimaryKey, RawBound},
+    crate::{Codec, PrefixBound, Prefixer, PrimaryKey, RawBound},
     grug_types::{
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
-        trim, Order, Record, StdResult, Storage,
+        trim, Bound, Order, Record, StdResult, Storage,
     },
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -389,7 +389,7 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"ra".to_vec())),
+                Some(Bound::Inclusive(b"ra".to_vec())),
                 None,
                 Order::Ascending,
             )
@@ -400,7 +400,7 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(b"ra".to_vec())),
+                Some(Bound::Exclusive(b"ra".to_vec())),
                 None,
                 Order::Ascending,
             )
@@ -411,7 +411,7 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(b"r".to_vec())),
+                Some(Bound::Exclusive(b"r".to_vec())),
                 None,
                 Order::Ascending,
             )
@@ -423,7 +423,7 @@ mod test {
             .range_raw(
                 &storage,
                 None,
-                Some(Bound::inclusive(b"ra".to_vec())),
+                Some(Bound::Inclusive(b"ra".to_vec())),
                 Order::Descending,
             )
             .collect();
@@ -434,7 +434,7 @@ mod test {
             .range_raw(
                 &storage,
                 None,
-                Some(Bound::exclusive(b"ra".to_vec())),
+                Some(Bound::Exclusive(b"ra".to_vec())),
                 Order::Descending,
             )
             .collect();
@@ -445,7 +445,7 @@ mod test {
             .range_raw(
                 &storage,
                 None,
-                Some(Bound::exclusive(b"rb".to_vec())),
+                Some(Bound::Exclusive(b"rb".to_vec())),
                 Order::Descending,
             )
             .collect();
@@ -455,8 +455,8 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"ra".to_vec())),
-                Some(Bound::exclusive(b"zi".to_vec())),
+                Some(Bound::Inclusive(b"ra".to_vec())),
+                Some(Bound::Exclusive(b"zi".to_vec())),
                 Order::Ascending,
             )
             .collect();
@@ -466,8 +466,8 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"ra".to_vec())),
-                Some(Bound::exclusive(b"zi".to_vec())),
+                Some(Bound::Inclusive(b"ra".to_vec())),
+                Some(Bound::Exclusive(b"zi".to_vec())),
                 Order::Descending,
             )
             .collect();
@@ -477,8 +477,8 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(b"ra".to_vec())),
-                Some(Bound::inclusive(b"zi".to_vec())),
+                Some(Bound::Inclusive(b"ra".to_vec())),
+                Some(Bound::Inclusive(b"zi".to_vec())),
                 Order::Descending,
             )
             .collect();
@@ -488,8 +488,8 @@ mod test {
         let res: Vec<_> = prefix
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(b"ra".to_vec())),
-                Some(Bound::exclusive(b"zi".to_vec())),
+                Some(Bound::Exclusive(b"ra".to_vec())),
+                Some(Bound::Exclusive(b"zi".to_vec())),
                 Order::Ascending,
             )
             .collect();
@@ -520,21 +520,21 @@ mod test {
         );
 
         // clear with min bound
-        prefix.clear(&mut storage, None, Some(Bound::inclusive(20i32)));
+        prefix.clear(&mut storage, None, Some(Bound::Inclusive(20i32)));
         assert_eq!(
             prefix.range(&storage, None, None, Order::Ascending).count(),
             100 - 21
         );
 
         // clear with max bound
-        prefix.clear(&mut storage, Some(Bound::inclusive(50)), None);
+        prefix.clear(&mut storage, Some(Bound::Inclusive(50)), None);
         assert_eq!(
             prefix.range(&storage, None, None, Order::Ascending).count(),
             100 - 21 - 50
         );
 
         // clearing more than available should work
-        prefix.clear(&mut storage, None, Some(Bound::inclusive(200)));
+        prefix.clear(&mut storage, None, Some(Bound::Inclusive(200)));
         assert_eq!(
             prefix.range(&storage, None, None, Order::Ascending).count(),
             0
@@ -611,7 +611,7 @@ mod test {
         let keys: Vec<_> = prefix
             .keys_raw(
                 &storage,
-                Some(Bound::exclusive("key1")),
+                Some(Bound::Exclusive(b"key1".to_vec())),
                 None,
                 Order::Ascending,
             )

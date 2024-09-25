@@ -3,9 +3,8 @@ use {
         call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
         StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
-    grug_storage::Bound,
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Coin, Coins, Config, Context,
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins, Config, Context,
         ContractInfo, Denom, GenericResult, Hash256, Json, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
@@ -194,7 +193,7 @@ pub fn query_codes(
     start_after: Option<Hash256>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Hash256, Binary>> {
-    let start = start_after.map(Bound::exclusive);
+    let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CODES
@@ -217,7 +216,7 @@ pub fn query_contracts(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
-    let start = start_after.map(Bound::exclusive);
+    let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CONTRACTS

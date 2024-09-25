@@ -11,6 +11,7 @@
 
 # Reference
 
+- [Bounded values](reference/bounded-values.md)
 - [Exports](reference/exports.md)
 - [Extension traits](reference/extension-traits.md)
 - [Gas](reference/gas.md)

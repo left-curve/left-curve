@@ -1,6 +1,6 @@
 use {
-    crate::{Borsh, Bound, Codec, Map, Prefix, PrefixBound, PrimaryKey},
-    grug_types::{Order, Record, StdError, StdResult, Storage},
+    crate::{Borsh, Codec, Map, Prefix, PrefixBound, PrimaryKey},
+    grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
 };
 
 pub trait IndexList<K, T> {
@@ -304,9 +304,9 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bound, Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
+        crate::{Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{MockStorage, Order, StdResult},
+        grug_types::{Bound, MockStorage, Order, StdResult},
     };
 
     const FOOS: IndexedMap<(u64, u64), Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
@@ -593,11 +593,10 @@ mod tests {
 mod cosmwasm_tests {
     use {
         crate::{
-            Borsh, Bound, Index, IndexList, IndexedMap, MultiIndex, PrefixBound, PrimaryKey,
-            UniqueIndex,
+            Borsh, Index, IndexList, IndexedMap, MultiIndex, PrefixBound, PrimaryKey, UniqueIndex,
         },
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{BorshDeExt, BorshSerExt, MockStorage, Order, StdResult},
+        grug_types::{BorshDeExt, BorshSerExt, Bound, MockStorage, Order, StdResult},
     };
 
     #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -791,7 +790,7 @@ mod cosmwasm_tests {
             .name
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(key)),
+                Some(Bound::Inclusive(key)),
                 None,
                 Order::Ascending,
             )
@@ -808,7 +807,7 @@ mod cosmwasm_tests {
             .name
             .range_raw(
                 &storage,
-                Some(Bound::exclusive(key)),
+                Some(Bound::Exclusive(key)),
                 None,
                 Order::Ascending,
             )
@@ -824,7 +823,7 @@ mod cosmwasm_tests {
             .age
             .range_raw(
                 &storage,
-                Some(Bound::inclusive(age_key)),
+                Some(Bound::Inclusive(age_key)),
                 None,
                 Order::Ascending,
             )
@@ -1292,7 +1291,7 @@ mod cosmwasm_tests {
         let all = DATA
             .range(
                 &storage,
-                Some(Bound::inclusive("3")),
+                Some(Bound::Inclusive("3")),
                 None,
                 Order::Ascending,
             )
@@ -1563,7 +1562,7 @@ mod cosmwasm_tests {
         let result = map
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive("2")),
+                Some(PrefixBound::Inclusive("2")),
                 None,
                 Order::Ascending,
             )
@@ -1579,8 +1578,8 @@ mod cosmwasm_tests {
         let result = map
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive("2")),
-                Some(PrefixBound::exclusive("3")),
+                Some(PrefixBound::Inclusive("2")),
+                Some(PrefixBound::Exclusive("3")),
                 Order::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()
@@ -1646,7 +1645,7 @@ mod cosmwasm_tests {
         let result = map
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive("1")),
+                Some(PrefixBound::Inclusive("1")),
                 None,
                 Order::Ascending,
             )
@@ -1675,8 +1674,8 @@ mod cosmwasm_tests {
         let result = map
             .prefix_range(
                 &storage,
-                Some(PrefixBound::inclusive("1")),
-                Some(PrefixBound::exclusive("2")),
+                Some(PrefixBound::Inclusive("1")),
+                Some(PrefixBound::Exclusive("2")),
                 Order::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()
@@ -1733,7 +1732,7 @@ mod cosmwasm_tests {
                 .values(
                     &storage,
                     None,
-                    Some(Bound::inclusive(1u64)),
+                    Some(Bound::Inclusive(1u64)),
                     Order::Ascending,
                 )
                 .map(|val| val.unwrap().1)
@@ -1746,7 +1745,7 @@ mod cosmwasm_tests {
                 .secondary
                 .values(
                     &storage,
-                    Some(Bound::exclusive(2u64)),
+                    Some(Bound::Exclusive(2u64)),
                     None,
                     Order::Ascending,
                 )
@@ -1795,7 +1794,7 @@ mod cosmwasm_tests {
                 .secondary
                 .range(
                     &storage,
-                    Some(Bound::exclusive((2u64, "two"))),
+                    Some(Bound::Exclusive((2u64, "two"))),
                     None,
                     Order::Ascending,
                 )
