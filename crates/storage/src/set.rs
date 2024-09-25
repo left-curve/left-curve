@@ -1,6 +1,6 @@
 use {
-    crate::{Borsh, Bound, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
-    grug_types::{Empty, Order, StdResult, Storage},
+    crate::{Borsh, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
+    grug_types::{Bound, Empty, Order, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
@@ -157,8 +157,8 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bound, Codec, Prefixer, PrimaryKey, Set},
-        grug_types::{concat, Empty, MockStorage, Order, StdResult, Storage},
+        crate::{Codec, Prefixer, PrimaryKey, Set},
+        grug_types::{concat, Bound, Empty, MockStorage, Order, StdResult, Storage},
     };
 
     const SINGLE: Set<&[u8]> = Set::new("single");
@@ -315,7 +315,7 @@ mod tests {
             let data = SINGLE
                 .range(
                     storage,
-                    Some(Bound::inclusive(
+                    Some(Bound::Inclusive(
                         concat(b"foo", &70_u32.joined_prefix()).as_slice(),
                     )),
                     None,
@@ -335,7 +335,7 @@ mod tests {
                 .range(
                     storage,
                     None,
-                    Some(Bound::exclusive(
+                    Some(Bound::Exclusive(
                         concat(b"foo", &30_u32.joined_prefix()).as_slice(),
                     )),
                     Order::Ascending,
@@ -353,10 +353,10 @@ mod tests {
             let data = SINGLE
                 .range(
                     storage,
-                    Some(Bound::inclusive(
+                    Some(Bound::Inclusive(
                         concat(b"foo", &40_u32.joined_prefix()).as_slice(),
                     )),
-                    Some(Bound::exclusive(
+                    Some(Bound::Exclusive(
                         concat(b"foo", &50_u32.joined_prefix()).as_slice(),
                     )),
                     Order::Ascending,

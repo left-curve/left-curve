@@ -1,6 +1,6 @@
 use {
-    crate::{Borsh, Bound, Codec, Index, Map, PrimaryKey, Raw},
-    grug_types::{Order, StdError, StdResult, Storage},
+    crate::{Borsh, Codec, Index, Map, PrimaryKey, Raw},
+    grug_types::{Bound, Order, StdError, StdResult, Storage},
 };
 
 /// An indexer that ensures that indexes are unique, meaning no two records in

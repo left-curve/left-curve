@@ -1,15 +1,26 @@
 use {
     crate::{StdError, StdResult},
-    std::{marker::PhantomData, ops::Bound},
+    std::marker::PhantomData,
 };
 
-pub trait Bounds<T> {
-    const MIN: Bound<T>;
-    const MAX: Bound<T>;
+/// A limit for a value.
+pub enum Bound<T> {
+    Inclusive(T),
+    Exclusive(T),
 }
 
+/// Describess a set of minimum and maximum bounds for a value.
+pub trait Bounds<T> {
+    const MIN: Option<Bound<T>>;
+    const MAX: Option<Bound<T>>;
+}
+
+/// A wrapper that enforces the value to be within the specified bounds.
 #[derive(Debug)]
-pub struct Bounded<T, B>(T, PhantomData<B>);
+pub struct Bounded<T, B> {
+    value: T,
+    bounds: PhantomData<B>,
+}
 
 impl<T, B> Bounded<T, B>
 where
@@ -18,30 +29,37 @@ where
 {
     pub fn new(value: T) -> StdResult<Self> {
         match B::MIN {
-            Bound::Included(bound) if value < bound => {
+            Some(Bound::Inclusive(bound)) if value < bound => {
                 return Err(StdError::out_of_range(value, "<", bound));
             },
-            Bound::Excluded(bound) if value <= bound => {
+            Some(Bound::Exclusive(bound)) if value <= bound => {
                 return Err(StdError::out_of_range(value, "<=", bound));
             },
             _ => (),
         }
 
         match B::MAX {
-            Bound::Included(bound) if value > bound => {
+            Some(Bound::Inclusive(bound)) if value > bound => {
                 return Err(StdError::out_of_range(value, ">", bound));
             },
-            Bound::Excluded(bound) if value >= bound => {
+            Some(Bound::Exclusive(bound)) if value >= bound => {
                 return Err(StdError::out_of_range(value, ">=", bound));
             },
             _ => (),
         }
 
-        Ok(Self(value, PhantomData))
+        Ok(Self {
+            value,
+            bounds: PhantomData,
+        })
+    }
+
+    pub fn inner(&self) -> &T {
+        &self.value
     }
 
     pub fn into_inner(self) -> T {
-        self.0
+        self.value
     }
 }
 
@@ -60,11 +78,11 @@ mod tests {
     impl Bounds<Udec256> for FeeRateBounds {
         // Maximum fee rate is 100% (exclusive).
         // If only there's an easier way to define a constant Udec256...
-        const MAX: Bound<Udec256> = Bound::Excluded(Udec256::raw(Uint256::new_from_u128(
-            1_000_000_000_000_000_000,
+        const MAX: Option<Bound<Udec256>> = Some(Bound::Exclusive(Udec256::raw(
+            Uint256::new_from_u128(1_000_000_000_000_000_000),
         )));
         // Minimum fee rate is 0% (inclusive).
-        const MIN: Bound<Udec256> = Bound::Included(Udec256::ZERO);
+        const MIN: Option<Bound<Udec256>> = Some(Bound::Inclusive(Udec256::ZERO));
     }
 
     type FeeRate = Bounded<Udec256, FeeRateBounds>;
