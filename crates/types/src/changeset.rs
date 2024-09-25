@@ -18,9 +18,6 @@ pub struct ChangeSet<K, V> {
     add: BTreeMap<K, V>,
     /// For removing existing keys.
     remove: BTreeSet<K>,
-    // The `add` and `remove` fields are private, such that a `ChangeSet` can
-    // only be created with the `new` method or via deserialization, which
-    // ensures any `ChangeSet` that exists must be valid.
 }
 
 impl<K, V> ChangeSet<K, V>
@@ -35,6 +32,11 @@ where
         }
 
         Ok(Self { add, remove })
+    }
+
+    /// Create a new `ChangeSet` but without checking for intersection.
+    pub fn new_unchecked(add: BTreeMap<K, V>, remove: BTreeSet<K>) -> Self {
+        Self { add, remove }
     }
 
     /// Return the `add` map as a reference.
