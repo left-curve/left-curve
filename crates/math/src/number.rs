@@ -268,6 +268,10 @@ macro_rules! impl_number {
                     return Ok(Self::ZERO);
                 }
 
+                if self.is_negative() {
+                    return Err(MathError::negative_sqrt(self));
+                }
+
                 let mut x0 = Self::ONE << ((Integer::checked_ilog2(self)? / 2) + 1);
 
                 if x0 > Self::ZERO {
@@ -739,6 +743,65 @@ mod tests {
         }
     );
 
+    int_test!( sqrt,
+        Specific
+        u128 = [[ // Passing cases
+                    (4_u128, 2_u128),
+                    (64, 8),
+                    (80, 8),
+                    (81, 9),
+                ],
+                [ // Failing cases
+                    0u32;0
+                ]]
+
+        u256 = [[ // Passing cases
+                    (U256::from(4_u32), U256::from(2_u32)),
+                    (U256::from(64_u32), U256::from(8_u32)),
+                    (U256::from(80_u32), U256::from(8_u32)),
+                    (U256::from(81_u32), U256::from(9_u32)),
+                ],
+                [  // Failing cases
+                    0u32;0
+                ]]
+
+        i128 = [[ // Passing cases
+                    (4_i128, 2_i128),
+                    (64, 8),
+                    (80, 8),
+                    (81, 9),
+                ],
+                [ // Failing cases
+                    -1,
+                    -4
+                ]]
+
+        i256 = [[ // Passing cases
+                (I256::from(4_i128), I256::from(2_i128)),
+                (I256::from(64), I256::from(8)),
+                (I256::from(80), I256::from(8)),
+                (I256::from(81), I256::from(9)),
+                ],
+                [ // Failing cases
+                    I256::from(-1),
+                    I256::from(-4)
+                ]]
+        => |_0, samples, failing_samples| {
+            for (base, expected) in samples {
+                let base = Int::from(base);
+                let expected = Int::from(expected);
+                dts!(_0, base, expected);
+                assert_eq!(base.checked_sqrt().unwrap(), expected);
+            }
+
+            for base in failing_samples {
+                let base = bt(_0, Int::from(base));
+                // base.checked_sqrt().unwrap();
+                assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
+            }
+        }
+    );
+
     int_test!( wrapping_add,
         NoArgs
         => |_0| {
@@ -783,7 +846,12 @@ mod tests {
                     (I256::MAX, I256::from(2), I256::from(-2)),
                     (I256::MAX, I256::from(3), I256::MAX - I256::from(2)),
                     (I256::MAX, I256::from(4), I256::from(-4)),
-                    (I256::MAX, I256::from(5), I256::MAX - I256::from(4))
+                    (I256::MAX, I256::from(5), I256::MAX - I256::from(4)),
+
+                    (I256::MIN, I256::from(2), I256::ZERO),
+                    (I256::MIN, I256::from(3), I256::MIN),
+                    (I256::MIN, I256::from(4), I256::ZERO),
+                    (I256::MIN, I256::from(5), I256::MIN),
                 ]]
 
        => |_0, samples| {
@@ -800,27 +868,35 @@ mod tests {
     int_test!( wrapping_pow,
         Specific
         u128 = [[
-                    (u128::MAX, 2, u128::MAX - 1),
-                    (u128::MAX, 3, u128::MAX - 2)
+                    (u128::MAX, 2, 1),
+                    (u128::MAX, 3, u128::MAX)
                 ]]
 
         u256 = [[
-                    (U256::MAX, 2, U256::MAX - U256::ONE),
-                    (U256::MAX, 3, U256::MAX - U256::from(2_u32))
+                    (U256::MAX, 2, U256::ONE),
+                    (U256::MAX, 3, U256::MAX)
                 ]]
 
         i128 = [[
-                    (i128::MAX, 2, -2_i128),
-                    (i128::MAX, 3, i128::MAX - 2),
-                    (i128::MAX, 4, -4_i128),
-                    (i128::MAX, 5, i128::MAX - 4)
+                    (i128::MAX, 2, 1),
+                    (i128::MAX, 3, i128::MAX),
+                    (i128::MAX, 4, 1),
+                    (i128::MAX, 5, i128::MAX),
+
+                    (i128::MIN, 2, 0),
+                    (i128::MIN, 3, 0),
+                    (i128::MIN, 4, 0),
                 ]]
 
         i256 = [[
-                    (I256::MAX, 2, I256::from(-2)),
-                    (I256::MAX, 3, I256::MAX - I256::from(2)),
-                    (I256::MAX, 4, I256::from(-4)),
-                    (I256::MAX, 5, I256::MAX - I256::from(4))
+                    (I256::MAX, 2, I256::ONE),
+                    (I256::MAX, 3, I256::MAX),
+                    (I256::MAX, 4, I256::ONE),
+                    (I256::MAX, 5, I256::MAX),
+
+                    (I256::MIN, 2, I256::ZERO),
+                    (I256::MIN, 3, I256::ZERO),
+                    (I256::MIN, 4, I256::ZERO),
                 ]]
 
        => |_0, samples| {
