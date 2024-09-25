@@ -2,6 +2,7 @@ mod address;
 mod app;
 mod bank;
 mod binary;
+mod bound;
 mod builder;
 mod bytearray;
 mod changeset;
@@ -31,9 +32,9 @@ mod unique_vec;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, changeset::*, coin::*,
-    coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, error::*, event::*, hash::*,
-    hashers::*, imports::*, non_empty::*, non_zero::*, query::*, response::*, result::*,
+    address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytearray::*, changeset::*,
+    coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, error::*, event::*,
+    hash::*, hashers::*, imports::*, non_empty::*, non_zero::*, query::*, response::*, result::*,
     serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 

@@ -1,6 +1,6 @@
 use {
-    crate::{Borsh, Bound, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
-    grug_types::{Empty, Order, StdResult, Storage},
+    crate::{Borsh, Codec, PathBuf, Prefix, PrefixBound, Prefixer, PrimaryKey},
+    grug_types::{Bound, Empty, Order, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 
@@ -157,9 +157,9 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bound, Codec, PrefixBound, Prefixer, PrimaryKey, Set},
+        crate::{Codec, PrefixBound, Prefixer, PrimaryKey, Set},
         grug_math::{Dec128, NumberConst},
-        grug_types::{concat, Empty, MockStorage, Order, StdResult, Storage},
+        grug_types::{concat, Bound, Empty, MockStorage, Order, StdResult, Storage},
         std::str::FromStr,
     };
 
@@ -245,7 +245,7 @@ mod tests {
         // Min bound
         SINGLE.clear(
             storage,
-            Some(Bound::inclusive(
+            Some(Bound::Inclusive(
                 concat(b"foo", &70_u32.joined_prefix()).as_slice(),
             )),
             None,
@@ -257,7 +257,7 @@ mod tests {
         SINGLE.clear(
             storage,
             None,
-            Some(Bound::exclusive(
+            Some(Bound::Exclusive(
                 concat(b"foo", &30_u32.joined_prefix()).as_slice(),
             )),
         );
@@ -271,10 +271,10 @@ mod tests {
         // Max Min bound
         SINGLE.clear(
             storage,
-            Some(Bound::inclusive(
+            Some(Bound::Inclusive(
                 concat(b"foo", &40_u32.joined_prefix()).as_slice(),
             )),
-            Some(Bound::exclusive(
+            Some(Bound::Exclusive(
                 concat(b"foo", &50_u32.joined_prefix()).as_slice(),
             )),
         );
@@ -317,7 +317,7 @@ mod tests {
             let data = SINGLE
                 .range(
                     storage,
-                    Some(Bound::inclusive(
+                    Some(Bound::Inclusive(
                         concat(b"foo", &70_u32.joined_prefix()).as_slice(),
                     )),
                     None,
@@ -337,7 +337,7 @@ mod tests {
                 .range(
                     storage,
                     None,
-                    Some(Bound::exclusive(
+                    Some(Bound::Exclusive(
                         concat(b"foo", &30_u32.joined_prefix()).as_slice(),
                     )),
                     Order::Ascending,
@@ -355,10 +355,10 @@ mod tests {
             let data = SINGLE
                 .range(
                     storage,
-                    Some(Bound::inclusive(
+                    Some(Bound::Inclusive(
                         concat(b"foo", &40_u32.joined_prefix()).as_slice(),
                     )),
-                    Some(Bound::exclusive(
+                    Some(Bound::Exclusive(
                         concat(b"foo", &50_u32.joined_prefix()).as_slice(),
                     )),
                     Order::Ascending,
@@ -433,7 +433,7 @@ mod tests {
         {
             let val = DOUBLE
                 .prefix(Dec128::from_str("-2").unwrap())
-                .keys(storage, Some(Bound::inclusive("c")), None, Order::Ascending)
+                .keys(storage, Some(Bound::Inclusive("c")), None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
             assert_eq!(val, ["c", "d", "e"])
@@ -443,7 +443,7 @@ mod tests {
         {
             let val = DOUBLE
                 .prefix(Dec128::from_str("-2").unwrap())
-                .keys(storage, None, Some(Bound::exclusive("d")), Order::Ascending)
+                .keys(storage, None, Some(Bound::Exclusive("d")), Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
             assert_eq!(val, ["a", "b", "c"]);
@@ -455,8 +455,8 @@ mod tests {
                 .prefix(Dec128::from_str("-2").unwrap())
                 .keys(
                     storage,
-                    Some(Bound::inclusive("b")),
-                    Some(Bound::exclusive("d")),
+                    Some(Bound::Inclusive("b")),
+                    Some(Bound::Exclusive("d")),
                     Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
@@ -492,7 +492,7 @@ mod tests {
             let val = DOUBLE
                 .prefix_range(
                     storage,
-                    Some(PrefixBound::inclusive(Dec128::from_str("-1.5").unwrap())),
+                    Some(PrefixBound::Inclusive(Dec128::from_str("-1.5").unwrap())),
                     None,
                     Order::Ascending,
                 )
@@ -515,7 +515,7 @@ mod tests {
                 .prefix_range(
                     storage,
                     None,
-                    Some(PrefixBound::exclusive(Dec128::from_str("0.5").unwrap())),
+                    Some(PrefixBound::Exclusive(Dec128::from_str("0.5").unwrap())),
                     Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
@@ -538,8 +538,8 @@ mod tests {
             let val = DOUBLE
                 .prefix_range(
                     storage,
-                    Some(PrefixBound::inclusive(Dec128::from_str("-2").unwrap())),
-                    Some(PrefixBound::exclusive(Dec128::from_str("0").unwrap())),
+                    Some(PrefixBound::Inclusive(Dec128::from_str("-2").unwrap())),
+                    Some(PrefixBound::Exclusive(Dec128::from_str("0").unwrap())),
                     Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
