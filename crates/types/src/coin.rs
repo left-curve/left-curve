@@ -1,7 +1,7 @@
 use {
     crate::{Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Uint256,
+    grug_math::{IsZero, Uint256},
     serde::{Deserialize, Serialize},
     std::fmt,
 };
@@ -59,6 +59,12 @@ impl Coin {
             denom: &self.denom,
             amount: &mut self.amount,
         }
+    }
+}
+
+impl IsZero for Coin {
+    fn is_zero(&self) -> bool {
+        self.amount.is_zero()
     }
 }
 

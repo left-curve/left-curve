@@ -1,7 +1,7 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::IsZero,
+    grug_math::{Inner, IsZero},
     serde::{
         de::{self, Error},
         Serialize,
@@ -32,8 +32,22 @@ where
         Ok(Self(inner))
     }
 
-    /// Consume the wrapper, return the wrapped number.
-    pub fn into_inner(self) -> T {
+    pub fn new_unchecked(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
+impl<T> Inner for NonZero<T>
+where
+    T: IsZero,
+{
+    type U = T;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
         self.0
     }
 }

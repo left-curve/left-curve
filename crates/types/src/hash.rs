@@ -1,6 +1,7 @@
 use {
     crate::{forward_ref_partial_eq, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     serde::{de, ser},
     std::{
         fmt,
@@ -53,6 +54,18 @@ impl<const N: usize> Hash<N> {
     /// Cast the hash into a byte vector.
     pub fn into_vec(self) -> Vec<u8> {
         self.0.into()
+    }
+}
+
+impl<const N: usize> Inner for Hash<N> {
+    type U = [u8; N];
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
     }
 }
 

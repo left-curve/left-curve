@@ -1,8 +1,7 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug_math::{NumberConst, Uint256},
-    grug_storage::Bound,
-    grug_types::{Addr, Coin, Coins, Denom, Order, StdResult, Storage},
+    grug_types::{Addr, Bound, Coin, Coins, Denom, Order, StdResult, Storage},
     std::collections::BTreeMap,
 };
 
@@ -62,7 +61,7 @@ pub fn query_holders(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<Addr, Uint256>> {
-    let start = start_after.map(Bound::exclusive);
+    let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     BALANCES_BY_DENOM

@@ -1,7 +1,7 @@
 use {
     crate::{GasTracker, GAS_COSTS},
-    grug_storage::{Bound, Codec, Item, Map, PrimaryKey},
-    grug_types::{Order, Record, StdResult, Storage},
+    grug_storage::{Codec, Item, Map, PrimaryKey},
+    grug_types::{Bound, Order, Record, StdResult, Storage},
 };
 
 // ---------------------------------- storage ----------------------------------

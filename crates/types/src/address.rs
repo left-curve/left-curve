@@ -7,6 +7,7 @@ use {
     crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, HashExt, StdError},
     borsh::{BorshDeserialize, BorshSerialize},
     core::str,
+    grug_math::Inner,
     serde::{de, ser},
     std::{
         fmt,
@@ -116,6 +117,18 @@ impl Addr {
         }
 
         Ok(addr)
+    }
+}
+
+impl Inner for Addr {
+    type U = Hash160;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
     }
 }
 
