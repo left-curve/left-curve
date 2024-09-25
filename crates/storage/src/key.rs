@@ -4,8 +4,7 @@ use {
         types::{I256, I512, U256, U512},
     },
     grug_math::{
-        Bytable, Inner, Dec, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512,
-        Uint64,
+        Bytable, Dec, Inner, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
     },
     grug_types::{
         nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
