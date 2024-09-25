@@ -85,6 +85,9 @@ pub enum StdError {
     #[error("cannot find iterator with ID {iterator_id}")]
     IteratorNotFound { iterator_id: i32 },
 
+    #[error("expecting a non-empty value of type {ty}, got empty")]
+    EmptyValue { ty: &'static str },
+
     #[error("expecting a non-zero value of type {ty}, got zero")]
     ZeroValue { ty: &'static str },
 
@@ -136,6 +139,12 @@ impl StdError {
 
     pub fn duplicate_data<T>() -> Self {
         Self::DuplicateData {
+            ty: type_name::<T>(),
+        }
+    }
+
+    pub fn empty_value<T>() -> Self {
+        Self::EmptyValue {
             ty: type_name::<T>(),
         }
     }
