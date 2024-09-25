@@ -15,7 +15,7 @@ pub trait Integer: Sized {
     fn checked_shr(self, other: u32) -> MathResult<Self>;
 }
 
-// ----------------------------------- uint ------------------------------------
+// ------------------------------------ int ------------------------------------
 
 impl<U> Integer for Int<U>
 where

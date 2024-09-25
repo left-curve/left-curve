@@ -290,7 +290,7 @@ where
 
 // ------------------------------ concrete types -------------------------------
 
-macro_rules! generate_uint {
+macro_rules! generate_int {
     (
         name       = $name:ident,
         inner_type = $inner:ty,
@@ -372,7 +372,7 @@ macro_rules! generate_uint {
     };
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint64,
     inner_type = u64,
     from_int   = [],
@@ -380,7 +380,7 @@ generate_uint! {
     doc        = "64-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint128,
     inner_type = u128,
     from_int   = [Uint64],
@@ -388,7 +388,7 @@ generate_uint! {
     doc        = "128-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint256,
     inner_type = U256,
     from_int   = [Uint64, Uint128],
@@ -396,7 +396,7 @@ generate_uint! {
     doc        = "256-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint512,
     inner_type = U512,
     from_int   = [Uint256, Uint64, Uint128],
@@ -404,7 +404,7 @@ generate_uint! {
     doc        = "512-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int64,
     inner_type = i64,
     from_int   = [],
@@ -412,7 +412,7 @@ generate_uint! {
     doc        = "64-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int128,
     inner_type = i128,
     from_int   = [Int64, Uint64],
@@ -420,7 +420,7 @@ generate_uint! {
     doc        = "128-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int256,
     inner_type = I256,
     from_int   = [Int128, Int64, Uint128, Uint64],
@@ -428,7 +428,7 @@ generate_uint! {
     doc        = "256-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int512,
     inner_type = I512,
     from_int   = [Int128, Int64, Uint128, Uint64],
