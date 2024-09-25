@@ -57,19 +57,19 @@ impl Duration {
     }
 
     pub fn into_seconds(self) -> u128 {
-        self.0.number() / NANOS_PER_SECOND
+        self.0.into_inner() / NANOS_PER_SECOND
     }
 
     pub fn into_millis(self) -> u128 {
-        self.0.number() / NANOS_PER_MILLI
+        self.0.into_inner() / NANOS_PER_MILLI
     }
 
     pub fn into_micros(self) -> u128 {
-        self.0.number() / NANOS_PER_MICRO
+        self.0.into_inner() / NANOS_PER_MICRO
     }
 
     pub fn into_nanos(self) -> u128 {
-        self.0.number()
+        self.0.into_inner()
     }
 }
 

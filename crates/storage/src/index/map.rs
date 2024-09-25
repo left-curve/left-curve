@@ -1808,7 +1808,11 @@ mod cosmwasm_tests {
     }
 
     mod pk_multi_index {
-        use {super::*, grug_math::Uint128, grug_types::Addr};
+        use {
+            super::*,
+            grug_math::{Inner, Uint128},
+            grug_types::Addr,
+        };
 
         struct Indexes<'a> {
             // The last type param must match the `IndexedMap` primary key type below
@@ -1851,7 +1855,7 @@ mod cosmwasm_tests {
                 .range_raw(&storage, None, None, Order::Ascending)
                 .map(|(_, v)| {
                     // Strip the index from values (for simpler comparison)
-                    v.deserialize_borsh::<Uint128>().unwrap().number()
+                    v.deserialize_borsh::<Uint128>().unwrap().into_inner()
                 })
                 .collect::<Vec<_>>();
             assert_eq!(items, [11, 12, 21]);
@@ -1861,7 +1865,7 @@ mod cosmwasm_tests {
                 .idx
                 .spender
                 .range(&storage, None, None, Order::Ascending)
-                .map(|val| val.unwrap().2.number())
+                .map(|val| val.unwrap().2.into_inner())
                 .collect::<Vec<_>>();
             assert_eq!(items, [11, 21, 12]);
 
@@ -1871,7 +1875,7 @@ mod cosmwasm_tests {
                 .range(&storage, None, None, Order::Ascending)
                 .map(|res| {
                     // Strip the index from values (for simpler comparison)
-                    res.unwrap().1.number()
+                    res.unwrap().1.into_inner()
                 })
                 .collect::<Vec<_>>();
             assert_eq!(items, [11, 12]);
@@ -1884,7 +1888,7 @@ mod cosmwasm_tests {
                 .range(&storage, None, None, Order::Ascending)
                 .map(|res| {
                     // Strip the index from values (for simpler comparison)
-                    res.unwrap().1.number()
+                    res.unwrap().1.into_inner()
                 })
                 .collect::<Vec<_>>();
             assert_eq!(items, [11, 21]);
