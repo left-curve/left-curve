@@ -16,28 +16,28 @@ pub enum MathError {
         value: String,
     },
 
-    #[error("addition overflow: {a} + {b} > {ty}::MAX")]
+    #[error("addition overflow: {a} + {b} (type: {ty})")]
     OverflowAdd {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("subtraction overflow: {a} - {b} < {ty}::MIN")]
+    #[error("subtraction overflow: {a} - {b} (type: {ty})")]
     OverflowSub {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("multiplication overflow: {a} * {b} > {ty}::MAX")]
+    #[error("multiplication overflow: {a} * {b} (type: {ty})")]
     OverflowMul {
         ty: &'static str,
         a: String,
         b: String,
     },
 
-    #[error("power overflow: {a} ^ {b} > {ty}::MAX")]
+    #[error("power overflow: {a} ^ {b} (type: {ty})")]
     OverflowPow {
         ty: &'static str,
         a: String,

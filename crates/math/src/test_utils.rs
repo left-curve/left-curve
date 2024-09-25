@@ -13,7 +13,7 @@ pub(crate) fn dt<T>(_: T, _: T) {}
 macro_rules! dts{
         ($u: expr, $($p:expr),* ) =>
          {
-            $(dt($u, $p);)*
+            $($crate::test_utils::dt($u, $p);)*
          }
     }
 
@@ -60,34 +60,38 @@ macro_rules! int_test {
         ) => {
             paste::paste! {
                 $(#[$meta])*
+                #[allow(clippy::just_underscores_and_digits)]
                 #[test]
                 fn [<$name _u128>]() {
                     $(
-                        ($test_fn)(crate::Uint128::ZERO, $($pu128),*);
+                        ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
                     )?
                 }
 
                 $(#[$meta])*
+                #[allow(clippy::just_underscores_and_digits)]
                 #[test]
                 fn [<$name _u256>]() {
                     $(
-                        ($test_fn)(crate::Uint256::ZERO, $($pu256),*);
+                        ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
                     )?
                 }
-                $(#[$meta])*
 
+                $(#[$meta])*
+                #[allow(clippy::just_underscores_and_digits)]
                 #[test]
                 fn [<$name _i128>]() {
                     $(
-                        ($test_fn)(crate::Int128::ZERO, $($pi128),*);
+                        ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
                     )?
                 }
 
                 $(#[$meta])*
+                #[allow(clippy::just_underscores_and_digits)]
                 #[test]
                 fn [<$name _i256>]() {
                     $(
-                        ($test_fn)(crate::Int256::ZERO, $($pi256),*);
+                        ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
                     )?
                 }
             }
@@ -105,29 +109,33 @@ macro_rules! int_test {
             paste::paste! {
                 $(
                     #[test]
+                    #[allow(clippy::just_underscores_and_digits)]
                     fn [<$name _u128>]() {
-                        ($test_fn)(crate::Uint128::ZERO, $($pu128),*);
+                        ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
                     }
                 )?
 
                 $(
                     #[test]
+                    #[allow(clippy::just_underscores_and_digits)]
                     fn [<$name _u256>]() {
-                        ($test_fn)(crate::Uint256::ZERO, $($pu256),*);
-                    }
-                )?
-
-                $(
-                #[test]
-                    fn [<$name _i128>]() {
-                        ($test_fn)(crate::Int128::ZERO, $($pi128),*);
+                        ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
                     }
                 )?
 
                 $(
                     #[test]
+                    #[allow(clippy::just_underscores_and_digits)]
+                    fn [<$name _i128>]() {
+                        ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
+                    }
+                )?
+
+                $(
+                    #[test]
+                    #[allow(clippy::just_underscores_and_digits)]
                     fn [<$name _i256>]() {
-                        ($test_fn)(crate::Int256::ZERO, $($pi256),*);
+                        ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
                     }
                 )?
             }
