@@ -1,5 +1,5 @@
 use {
-    crate::{Dec128, Dec256, Int128, Int256, Udec128, Udec256, Uint, Uint128, Uint256},
+    crate::{Dec128, Dec256, Int, Int128, Int256, Udec128, Udec256, Uint128, Uint256},
     bnum::types::{I256, U256},
 };
 
@@ -8,7 +8,7 @@ use {
 pub trait FixedPoint<U> {
     /// Ratio between the inner integer value and the decimal value it
     /// represents.
-    const DECIMAL_FRACTION: Uint<U>;
+    const DECIMAL_FRACTION: Int<U>;
 
     /// Number of decimal digits to be interpreted as decimal places.
     const DECIMAL_PLACES: u32;

@@ -1,7 +1,7 @@
 use {
     crate::{
         utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
-        Uint,
+        Int,
     },
     bnum::types::{I256, I512, U256, U512},
 };
@@ -33,7 +33,7 @@ pub trait Bytable<const S: usize>: Sized {
 
 // ----------------------------------- uint ------------------------------------
 
-impl<U, const S: usize> Bytable<S> for Uint<U>
+impl<U, const S: usize> Bytable<S> for Int<U>
 where
     U: Bytable<S>,
 {
@@ -62,9 +62,9 @@ where
     }
 }
 
-// ----------------------------------- udec ------------------------------------
+// ------------------------------------ dec ------------------------------------
 
-// TODO: Bytable for Udec
+// TODO: Bytable for `Dec`
 
 // ------------------------------------ std ------------------------------------
 

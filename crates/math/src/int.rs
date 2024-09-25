@@ -22,30 +22,43 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Uint<U>(pub(crate) U);
+pub struct Int<U>(pub(crate) U);
 
-impl<U> Uint<U> {
+impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
     }
 }
 
-impl<U> Uint<U>
+impl<U> Int<U>
 where
-    Uint<U>: NextNumber,
-    <Uint<U> as NextNumber>::Next: Number,
+    U: Copy,
+{
+    pub const fn number(&self) -> U {
+        self.0
+    }
+
+    pub const fn number_ref(&self) -> &U {
+        &self.0
+    }
+}
+
+impl<U> Int<U>
+where
+    Int<U>: NextNumber,
+    <Int<U> as NextNumber>::Next: Number,
 {
     pub fn checked_full_mul(
         self,
         rhs: impl Into<Self>,
-    ) -> MathResult<<Uint<U> as NextNumber>::Next> {
+    ) -> MathResult<<Int<U> as NextNumber>::Next> {
         let s = self.into_next();
         let r = rhs.into().into_next();
         s.checked_mul(r)
     }
 }
 
-impl<U> FromStr for Uint<U>
+impl<U> FromStr for Int<U>
 where
     U: FromStr,
     <U as FromStr>::Err: ToString,
@@ -59,7 +72,7 @@ where
     }
 }
 
-impl<U> fmt::Display for Uint<U>
+impl<U> fmt::Display for Int<U>
 where
     U: Display,
 {
@@ -68,9 +81,9 @@ where
     }
 }
 
-impl<U> ser::Serialize for Uint<U>
+impl<U> ser::Serialize for Int<U>
 where
-    Uint<U>: Display,
+    Int<U>: Display,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -80,24 +93,24 @@ where
     }
 }
 
-impl<'de, U> de::Deserialize<'de> for Uint<U>
+impl<'de, U> de::Deserialize<'de> for Int<U>
 where
-    Uint<U>: FromStr,
-    <Uint<U> as FromStr>::Err: Display,
+    Int<U>: FromStr,
+    <Int<U> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(UintVisitor::<U>::new())
+        deserializer.deserialize_str(IntVisitor::<U>::new())
     }
 }
 
-struct UintVisitor<U> {
+struct IntVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U> UintVisitor<U> {
+impl<U> IntVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -105,12 +118,12 @@ impl<U> UintVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for UintVisitor<U>
+impl<'de, U> de::Visitor<'de> for IntVisitor<U>
 where
-    Uint<U>: FromStr,
-    <Uint<U> as FromStr>::Err: Display,
+    Int<U>: FromStr,
+    <Int<U> as FromStr>::Err: Display,
 {
-    type Value = Uint<U>;
+    type Value = Int<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("a string-encoded unsigned integer")
@@ -120,11 +133,11 @@ where
     where
         E: de::Error,
     {
-        Uint::<U>::from_str(v).map_err(E::custom)
+        Int::<U>::from_str(v).map_err(E::custom)
     }
 }
 
-impl<U> Neg for Uint<U>
+impl<U> Neg for Int<U>
 where
     U: Neg<Output = U>,
 {
@@ -135,7 +148,7 @@ where
     }
 }
 
-impl<U> Add for Uint<U>
+impl<U> Add for Int<U>
 where
     U: Number,
 {
@@ -146,7 +159,7 @@ where
     }
 }
 
-impl<U> Sub for Uint<U>
+impl<U> Sub for Int<U>
 where
     U: Number,
 {
@@ -157,7 +170,7 @@ where
     }
 }
 
-impl<U> Mul for Uint<U>
+impl<U> Mul for Int<U>
 where
     U: Number,
 {
@@ -168,7 +181,7 @@ where
     }
 }
 
-impl<U> Div for Uint<U>
+impl<U> Div for Int<U>
 where
     U: Number,
 {
@@ -179,7 +192,7 @@ where
     }
 }
 
-impl<U> Rem for Uint<U>
+impl<U> Rem for Int<U>
 where
     U: Number,
 {
@@ -190,7 +203,7 @@ where
     }
 }
 
-impl<U> Shl<u32> for Uint<U>
+impl<U> Shl<u32> for Int<U>
 where
     U: Integer,
 {
@@ -201,7 +214,7 @@ where
     }
 }
 
-impl<U> Shr<u32> for Uint<U>
+impl<U> Shr<u32> for Int<U>
 where
     U: Integer,
 {
@@ -212,7 +225,7 @@ where
     }
 }
 
-impl<U> AddAssign for Uint<U>
+impl<U> AddAssign for Int<U>
 where
     U: Number + Copy,
 {
@@ -221,7 +234,7 @@ where
     }
 }
 
-impl<U> SubAssign for Uint<U>
+impl<U> SubAssign for Int<U>
 where
     U: Number + Copy,
 {
@@ -230,7 +243,7 @@ where
     }
 }
 
-impl<U> MulAssign for Uint<U>
+impl<U> MulAssign for Int<U>
 where
     U: Number + Copy,
 {
@@ -239,7 +252,7 @@ where
     }
 }
 
-impl<U> DivAssign for Uint<U>
+impl<U> DivAssign for Int<U>
 where
     U: Number + Copy,
 {
@@ -248,7 +261,7 @@ where
     }
 }
 
-impl<U> RemAssign for Uint<U>
+impl<U> RemAssign for Int<U>
 where
     U: Number + Copy,
 {
@@ -257,7 +270,7 @@ where
     }
 }
 
-impl<U> ShlAssign<u32> for Uint<U>
+impl<U> ShlAssign<u32> for Int<U>
 where
     U: Integer + Copy,
 {
@@ -266,7 +279,7 @@ where
     }
 }
 
-impl<U> ShrAssign<u32> for Uint<U>
+impl<U> ShrAssign<u32> for Int<U>
 where
     U: Integer + Copy,
 {
@@ -277,7 +290,7 @@ where
 
 // ------------------------------ concrete types -------------------------------
 
-macro_rules! generate_uint {
+macro_rules! generate_int {
     (
         name       = $name:ident,
         inner_type = $inner:ty,
@@ -286,9 +299,9 @@ macro_rules! generate_uint {
         doc        = $doc:literal,
     ) => {
         #[doc = $doc]
-        pub type $name = Uint<$inner>;
+        pub type $name = Int<$inner>;
 
-        // --- Impl From Uint and from inner type ---
+        // --- Impl From Int and from inner type ---
         $(
             // Ex: From<Uint64> for Uint128
             impl From<$from> for $name {
@@ -359,7 +372,7 @@ macro_rules! generate_uint {
     };
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint64,
     inner_type = u64,
     from_int   = [],
@@ -367,7 +380,7 @@ generate_uint! {
     doc        = "64-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint128,
     inner_type = u128,
     from_int   = [Uint64],
@@ -375,7 +388,7 @@ generate_uint! {
     doc        = "128-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint256,
     inner_type = U256,
     from_int   = [Uint64, Uint128],
@@ -383,7 +396,7 @@ generate_uint! {
     doc        = "256-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Uint512,
     inner_type = U512,
     from_int   = [Uint256, Uint64, Uint128],
@@ -391,7 +404,7 @@ generate_uint! {
     doc        = "512-bit unsigned integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int64,
     inner_type = i64,
     from_int   = [],
@@ -399,7 +412,7 @@ generate_uint! {
     doc        = "64-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int128,
     inner_type = i128,
     from_int   = [Int64, Uint64],
@@ -407,7 +420,7 @@ generate_uint! {
     doc        = "128-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int256,
     inner_type = I256,
     from_int   = [Int128, Int64, Uint128, Uint64],
@@ -415,7 +428,7 @@ generate_uint! {
     doc        = "256-bit signed integer.",
 }
 
-generate_uint! {
+generate_int! {
     name       = Int512,
     inner_type = I512,
     from_int   = [Int128, Int64, Uint128, Uint64],

@@ -4,8 +4,7 @@ use {
         types::{I256, I512, U256, U512},
     },
     grug_math::{
-        Bytable, Inner, Int128, Int256, Int512, Int64, Udec, Uint, Uint128, Uint256, Uint512,
-        Uint64,
+        Bytable, Dec, Inner, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
     },
     grug_types::{
         nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
@@ -367,9 +366,9 @@ where
     }
 }
 
-impl<T> PrimaryKey for Udec<T>
+impl<T> PrimaryKey for Dec<T>
 where
-    Uint<T>: PrimaryKey<Output = Uint<T>>,
+    Int<T>: PrimaryKey<Output = Int<T>>,
 {
     type Output = Self;
     type Prefix = ();
@@ -382,12 +381,12 @@ where
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let numerator = Uint::<T>::from_slice(bytes)?;
+        let numerator = Int::<T>::from_slice(bytes)?;
         Ok(Self::raw(numerator))
     }
 }
 
-impl<U> PrimaryKey for Uint<U>
+impl<U> PrimaryKey for Int<U>
 where
     U: PrimaryKey<Output = U> + Copy,
 {
@@ -673,9 +672,9 @@ where
     }
 }
 
-impl<T> Prefixer for Udec<T>
+impl<T> Prefixer for Dec<T>
 where
-    Uint<T>: PrimaryKey<Output = Uint<T>>,
+    Int<T>: PrimaryKey<Output = Int<T>>,
 {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         self.raw_keys()

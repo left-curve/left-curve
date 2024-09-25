@@ -1,25 +1,25 @@
-use crate::{FixedPoint, MathResult, MultiplyRatio, Udec, Uint};
+use crate::{Dec, FixedPoint, Int, MathResult, MultiplyRatio};
 
 /// Describes a number that can be expressed as the quotient of two integers.
 pub trait Fraction<U>: Sized {
-    fn numerator(&self) -> Uint<U>;
+    fn numerator(&self) -> Int<U>;
 
-    fn denominator() -> Uint<U>;
+    fn denominator() -> Int<U>;
 
     fn checked_inv(&self) -> MathResult<Self>;
 }
 
-impl<U> Fraction<U> for Udec<U>
+impl<U> Fraction<U> for Dec<U>
 where
     Self: FixedPoint<U>,
     U: Copy,
-    Uint<U>: MultiplyRatio,
+    Int<U>: MultiplyRatio,
 {
-    fn numerator(&self) -> Uint<U> {
+    fn numerator(&self) -> Int<U> {
         self.0
     }
 
-    fn denominator() -> Uint<U> {
+    fn denominator() -> Int<U> {
         Self::DECIMAL_FRACTION
     }
 

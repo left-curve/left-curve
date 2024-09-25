@@ -1,5 +1,5 @@
 use {
-    crate::{NumberConst, Udec, Uint},
+    crate::{Dec, Int, NumberConst},
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -11,9 +11,9 @@ pub trait Sign {
     fn is_negative(&self) -> bool;
 }
 
-// ----------------------------------- uint ------------------------------------
+// ------------------------------------ int ------------------------------------
 
-impl<U> Sign for Uint<U>
+impl<U> Sign for Int<U>
 where
     U: Sign,
 {
@@ -26,9 +26,9 @@ where
     }
 }
 
-// ----------------------------------- udec ------------------------------------
+// ------------------------------------ dec ------------------------------------
 
-impl<U> Sign for Udec<U>
+impl<U> Sign for Dec<U>
 where
     U: Sign,
 {

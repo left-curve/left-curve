@@ -1,4 +1,4 @@
-use crate::{IsZero, MathError, MathResult, NextNumber, Number, NumberConst, Uint};
+use crate::{Int, IsZero, MathError, MathResult, NextNumber, Number, NumberConst};
 
 /// Describes operations where a number is multiplied by a numerator then
 /// immediately divided by a denominator.
@@ -16,10 +16,10 @@ pub trait MultiplyRatio: Sized {
         B: Into<Self>;
 }
 
-impl<U> MultiplyRatio for Uint<U>
+impl<U> MultiplyRatio for Int<U>
 where
-    Uint<U>: NextNumber + NumberConst + Number + Copy,
-    <Uint<U> as NextNumber>::Next: Number + IsZero + ToString + Clone,
+    Int<U>: NextNumber + NumberConst + Number + Copy,
+    <Int<U> as NextNumber>::Next: Number + IsZero + ToString + Clone,
 {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,

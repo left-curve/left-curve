@@ -1,6 +1,6 @@
 use bnum::types::{I256, I512, U256, U512};
 
-use crate::{Dec128, Dec256, FixedPoint, Int128, Int256, Udec128, Udec256, Uint, Uint128, Uint256};
+use crate::{Dec128, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec256, Uint128, Uint256};
 
 /// Describes a number's associated constants: minimum and maximum; zero, one,
 /// and ten.
@@ -12,9 +12,9 @@ pub trait NumberConst {
     const ZERO: Self;
 }
 
-// ----------------------------------- uint ------------------------------------
+// ------------------------------------ int ------------------------------------
 
-impl<U> NumberConst for Uint<U>
+impl<U> NumberConst for Int<U>
 where
     U: NumberConst,
 {
@@ -25,7 +25,7 @@ where
     const ZERO: Self = Self(U::ZERO);
 }
 
-// ----------------------------------- udec ------------------------------------
+// ------------------------------------ dec ------------------------------------
 
 impl NumberConst for Udec128 {
     const MAX: Self = Self::raw(Uint128::MAX);

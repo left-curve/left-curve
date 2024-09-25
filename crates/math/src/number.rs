@@ -1,7 +1,6 @@
 use {
     crate::{
-        FixedPoint, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst, Sign, Udec,
-        Uint,
+        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::fmt::Display,
@@ -40,9 +39,9 @@ pub trait Number: Sized {
     fn saturating_pow(self, other: u32) -> Self;
 }
 
-// ----------------------------------- uint ------------------------------------
+// ------------------------------------ int ------------------------------------
 
-impl<U> Number for Uint<U>
+impl<U> Number for Int<U>
 where
     U: Number,
 {
@@ -107,14 +106,14 @@ where
     }
 }
 
-// ----------------------------------- udec ------------------------------------
+// ------------------------------------ dec ------------------------------------
 
-impl<U> Number for Udec<U>
+impl<U> Number for Dec<U>
 where
     Self: FixedPoint<U> + NumberConst,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + Sign,
-    <Uint<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
+    Int<U>: NextNumber + Sign,
+    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
@@ -133,11 +132,11 @@ where
         next_result
             .try_into()
             .map(Self)
-            .map_err(|_| MathError::overflow_conversion::<_, Uint<U>>(next_result))
+            .map_err(|_| MathError::overflow_conversion::<_, Int<U>>(next_result))
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {
-        Udec::checked_from_ratio(*self.numerator(), *other.numerator())
+        Dec::checked_from_ratio(*self.numerator(), *other.numerator())
     }
 
     fn checked_rem(self, other: Self) -> MathResult<Self> {
@@ -149,7 +148,7 @@ where
             return Ok(Self::ONE);
         }
 
-        let mut y = Udec::ONE;
+        let mut y = Dec::ONE;
 
         while exp > 1 {
             if exp % 2 == 0 {
@@ -169,11 +168,11 @@ where
     fn checked_sqrt(self) -> MathResult<Self> {
         // With the current design, U should be only unsigned number.
         // Leave this safety check here for now.
-        if self.0 < Uint::ZERO {
+        if self.0 < Int::ZERO {
             return Err(MathError::negative_sqrt::<Self>(self));
         }
 
-        let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
+        let hundred = Int::TEN.checked_mul(Int::TEN)?;
 
         (0..=Self::DECIMAL_PLACES / 2)
             .rev()
@@ -183,7 +182,7 @@ where
                     Err(err) => return Some(Err(err)),
                 };
                 self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = Uint::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
+                    let outer_mul = Int::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
                     Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
                 })
             })

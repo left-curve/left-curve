@@ -1,5 +1,5 @@
 use {
-    crate::{NumberConst, Udec, Uint},
+    crate::{Dec, Int, NumberConst},
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -7,9 +7,9 @@ pub trait IsZero {
     fn is_zero(&self) -> bool;
 }
 
-// ----------------------------------- uint ------------------------------------
+// ------------------------------------ int ------------------------------------
 
-impl<U> IsZero for Uint<U>
+impl<U> IsZero for Int<U>
 where
     U: IsZero,
 {
@@ -18,9 +18,9 @@ where
     }
 }
 
-// ----------------------------------- udec ------------------------------------
+// ------------------------------------ dec ------------------------------------
 
-impl<U> IsZero for Udec<U>
+impl<U> IsZero for Dec<U>
 where
     U: IsZero,
 {
