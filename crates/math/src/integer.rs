@@ -1,6 +1,6 @@
 use {
-    crate::{MathError, MathResult},
-    bnum::types::{U256, U512},
+    crate::{MathError, MathResult, Uint},
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes operations that integer types must implement, which may not be
@@ -14,6 +14,31 @@ pub trait Integer: Sized {
 
     fn checked_shr(self, other: u32) -> MathResult<Self>;
 }
+
+// ----------------------------------- uint ------------------------------------
+
+impl<U> Integer for Uint<U>
+where
+    U: Integer,
+{
+    fn checked_ilog2(self) -> MathResult<u32> {
+        self.0.checked_ilog2()
+    }
+
+    fn checked_ilog10(self) -> MathResult<u32> {
+        self.0.checked_ilog10()
+    }
+
+    fn checked_shl(self, other: u32) -> MathResult<Self> {
+        self.0.checked_shl(other).map(Self)
+    }
+
+    fn checked_shr(self, other: u32) -> MathResult<Self> {
+        self.0.checked_shr(other).map(Self)
+    }
+}
+
+// ------------------------------ primitive types ------------------------------
 
 macro_rules! impl_integer {
     ($t:ty) => {
@@ -44,7 +69,10 @@ macro_rules! impl_integer {
     };
 }
 
-impl_integer!(u8, u16, u32, u64, u128, U256, U512);
+impl_integer! {
+    u8, u16, u32, u64, u128, U256, U512,
+    i8, i16, i32, i64, i128, I256, I512,
+}
 
 // ----------------------------------- tests -----------------------------------
 

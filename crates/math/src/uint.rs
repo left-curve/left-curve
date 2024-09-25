@@ -1,17 +1,17 @@
 use {
     crate::{
-        Bytable, Fraction, Inner, Integer, MathError, MathResult, MultiplyFraction, MultiplyRatio,
-        NextNumber, Number, NumberConst, Sign,
+        utils::{bytes_to_digits, grow_le_int, grow_le_uint},
+        Inner, Integer, MathError, MathResult, NextNumber, Number,
     },
-    bnum::types::{U256, U512},
+    bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     std::{
         fmt::{self, Display},
         marker::PhantomData,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
-            SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign,
+            Shr, ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -37,149 +37,9 @@ where
     pub const fn number(&self) -> U {
         self.0
     }
-}
 
-impl<U> Inner for Uint<U> {
-    type U = U;
-}
-
-impl<U> Sign for Uint<U> {
-    fn abs(self) -> Self {
-        self
-    }
-
-    fn is_negative(&self) -> bool {
-        false
-    }
-}
-
-impl<U> NumberConst for Uint<U>
-where
-    U: NumberConst,
-{
-    const MAX: Self = Self(U::MAX);
-    const MIN: Self = Self(U::MIN);
-    const ONE: Self = Self(U::ONE);
-    const TEN: Self = Self(U::TEN);
-    const ZERO: Self = Self(U::ZERO);
-}
-
-impl<U, const S: usize> Bytable<S> for Uint<U>
-where
-    U: Bytable<S>,
-{
-    fn from_be_bytes(data: [u8; S]) -> Self {
-        Self(U::from_be_bytes(data))
-    }
-
-    fn from_le_bytes(data: [u8; S]) -> Self {
-        Self(U::from_le_bytes(data))
-    }
-
-    fn to_be_bytes(self) -> [u8; S] {
-        self.0.to_be_bytes()
-    }
-
-    fn to_le_bytes(self) -> [u8; S] {
-        self.0.to_le_bytes()
-    }
-
-    fn grow_be_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
-        U::grow_be_bytes(data)
-    }
-
-    fn grow_le_bytes<const INPUT_SIZE: usize>(data: [u8; INPUT_SIZE]) -> [u8; S] {
-        U::grow_le_bytes(data)
-    }
-}
-
-impl<U> Number for Uint<U>
-where
-    U: Number,
-{
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
-    fn checked_add(self, other: Self) -> MathResult<Self> {
-        self.0.checked_add(other.0).map(Self)
-    }
-
-    fn checked_sub(self, other: Self) -> MathResult<Self> {
-        self.0.checked_sub(other.0).map(Self)
-    }
-
-    fn checked_mul(self, other: Self) -> MathResult<Self> {
-        self.0.checked_mul(other.0).map(Self)
-    }
-
-    fn checked_div(self, other: Self) -> MathResult<Self> {
-        self.0.checked_div(other.0).map(Self)
-    }
-
-    fn checked_rem(self, other: Self) -> MathResult<Self> {
-        self.0.checked_rem(other.0).map(Self)
-    }
-
-    fn checked_pow(self, other: u32) -> MathResult<Self> {
-        self.0.checked_pow(other).map(Self)
-    }
-
-    fn checked_sqrt(self) -> MathResult<Self> {
-        self.0.checked_sqrt().map(Self)
-    }
-
-    fn wrapping_add(self, other: Self) -> Self {
-        Self(self.0.wrapping_add(other.0))
-    }
-
-    fn wrapping_sub(self, other: Self) -> Self {
-        Self(self.0.wrapping_sub(other.0))
-    }
-
-    fn wrapping_mul(self, other: Self) -> Self {
-        Self(self.0.wrapping_mul(other.0))
-    }
-
-    fn wrapping_pow(self, other: u32) -> Self {
-        Self(self.0.wrapping_pow(other))
-    }
-
-    fn saturating_add(self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0))
-    }
-
-    fn saturating_sub(self, other: Self) -> Self {
-        Self(self.0.saturating_sub(other.0))
-    }
-
-    fn saturating_mul(self, other: Self) -> Self {
-        Self(self.0.saturating_mul(other.0))
-    }
-
-    fn saturating_pow(self, other: u32) -> Self {
-        Self(self.0.saturating_pow(other))
-    }
-}
-
-impl<U> Integer for Uint<U>
-where
-    U: Integer,
-{
-    fn checked_ilog2(self) -> MathResult<u32> {
-        self.0.checked_ilog2()
-    }
-
-    fn checked_ilog10(self) -> MathResult<u32> {
-        self.0.checked_ilog10()
-    }
-
-    fn checked_shl(self, other: u32) -> MathResult<Self> {
-        self.0.checked_shl(other).map(Self)
-    }
-
-    fn checked_shr(self, other: u32) -> MathResult<Self> {
-        self.0.checked_shr(other).map(Self)
+    pub const fn number_ref(&self) -> &U {
+        &self.0
     }
 }
 
@@ -195,112 +55,6 @@ where
         let s = self.into_next();
         let r = rhs.into().into_next();
         s.checked_mul(r)
-    }
-}
-
-impl<U> MultiplyRatio for Uint<U>
-where
-    Uint<U>: NextNumber + NumberConst + Number + Copy,
-    <Uint<U> as NextNumber>::Next: Number + ToString + Clone,
-{
-    fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> MathResult<Self> {
-        let denominator = denominator.into().into_next();
-        let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
-        next_result
-            .clone()
-            .try_into()
-            .map_err(|_| MathError::overflow_conversion::<_, Self>(next_result))
-    }
-
-    fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(
-        self,
-        numerator: A,
-        denominator: B,
-    ) -> MathResult<Self> {
-        let numerator: Self = numerator.into();
-        let dividend = self.checked_full_mul(numerator)?;
-        let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
-        let remained = dividend.checked_rem(floor_result.into_next())?;
-        if !remained.is_zero() {
-            floor_result.checked_add(Self::ONE)
-        } else {
-            Ok(floor_result)
-        }
-    }
-}
-
-impl<U, AsU, F> MultiplyFraction<F, AsU> for Uint<U>
-where
-    Uint<U>: NumberConst + Number + MultiplyRatio + From<Uint<AsU>> + ToString,
-    F: Number + Fraction<AsU> + Sign + ToString,
-{
-    fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self> {
-        // If either left or right hand side is zero, then simply return zero.
-        if self.is_zero() || rhs.is_zero() {
-            return Ok(Self::ZERO);
-        }
-
-        // The left hand side is `Uint`, a non-negative type, so multiplication
-        // with any non-zero negative number goes out of bound.
-        if rhs.is_negative() {
-            return Err(MathError::negative_mul(self, rhs));
-        }
-
-        self.checked_multiply_ratio_floor(rhs.numerator(), F::denominator())
-    }
-
-    fn checked_mul_dec_ceil(self, rhs: F) -> MathResult<Self> {
-        if self.is_zero() || rhs.is_zero() {
-            return Ok(Self::ZERO);
-        }
-
-        if rhs.is_negative() {
-            return Err(MathError::negative_mul(self, rhs));
-        }
-
-        self.checked_multiply_ratio_ceil(rhs.numerator(), F::denominator())
-    }
-
-    fn checked_div_dec_floor(self, rhs: F) -> MathResult<Self> {
-        // If right hand side is zero, throw error, because you can't divide any
-        // number by zero.
-        if rhs.is_zero() {
-            return Err(MathError::division_by_zero(self));
-        }
-
-        // If right hand side is negative, throw error, because you can't divide
-        // and unsigned number with a negative number.
-        if rhs.is_negative() {
-            return Err(MathError::negative_div(self, rhs));
-        }
-
-        // If left hand side is zero, and we know right hand size is positive,
-        // then simply return zero.
-        if self.is_zero() {
-            return Ok(Self::ZERO);
-        }
-
-        self.checked_multiply_ratio_floor(F::denominator(), rhs.numerator())
-    }
-
-    fn checked_div_dec_ceil(self, rhs: F) -> MathResult<Self> {
-        if rhs.is_zero() {
-            return Err(MathError::division_by_zero(self));
-        }
-
-        if rhs.is_negative() {
-            return Err(MathError::negative_div(self, rhs));
-        }
-
-        if self.is_zero() {
-            return Ok(Self::ZERO);
-        }
-
-        self.checked_multiply_ratio_ceil(F::denominator(), rhs.numerator())
     }
 }
 
@@ -383,6 +137,17 @@ where
     }
 }
 
+impl<U> Neg for Uint<U>
+where
+    U: Neg<Output = U>,
+{
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
 impl<U> Add for Uint<U>
 where
     U: Number,
@@ -424,6 +189,17 @@ where
 
     fn div(self, rhs: Self) -> Self::Output {
         self.checked_div(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> Rem for Uint<U>
+where
+    U: Number,
+{
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs).unwrap_or_else(|err| panic!("{err}"))
     }
 }
 
@@ -482,6 +258,15 @@ where
 {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
+    }
+}
+
+impl<U> RemAssign for Uint<U>
+where
+    U: Number + Copy,
+{
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
     }
 }
 
@@ -619,43 +404,69 @@ generate_uint! {
     doc        = "512-bit unsigned integer.",
 }
 
-// -------------- additional constructor methods for Uint256/512 ---------------
+generate_uint! {
+    name       = Int64,
+    inner_type = i64,
+    from_int   = [],
+    from_std   = [u32, u16, u8],
+    doc        = "64-bit signed integer.",
+}
+
+generate_uint! {
+    name       = Int128,
+    inner_type = i128,
+    from_int   = [Int64, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "128-bit signed integer.",
+}
+
+generate_uint! {
+    name       = Int256,
+    inner_type = I256,
+    from_int   = [Int128, Int64, Uint128, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "256-bit signed integer.",
+}
+
+generate_uint! {
+    name       = Int512,
+    inner_type = I512,
+    from_int   = [Int128, Int64, Uint128, Uint64],
+    from_std   = [u32, u16, u8],
+    doc        = "512-bit signed integer.",
+}
+
+// -------------- additional constructor methods for Uint256/512 & Int256/512 ---------------
 
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let bytes = value.to_le_bytes();
-        Self(U256::from_digits([
-            u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            ]),
-            u64::from_le_bytes([
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
-                bytes[15],
-            ]),
-            0,
-            0,
-        ]))
+        let grown_bytes = grow_le_uint::<16, 32>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(U256::from_digits(digits))
     }
 }
 
 impl Uint512 {
     pub const fn new_from_u128(value: u128) -> Self {
-        let bytes = value.to_le_bytes();
-        Self(U512::from_digits([
-            u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            ]),
-            u64::from_le_bytes([
-                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
-                bytes[15],
-            ]),
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        ]))
+        let grown_bytes = grow_le_uint::<16, 64>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(U512::from_digits(digits))
+    }
+}
+
+impl Int256 {
+    pub const fn new_from_i128(value: i128) -> Self {
+        let grown_bytes = grow_le_int::<16, 32>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(I256::from_bits(U256::from_digits(digits)))
+    }
+}
+
+impl Int512 {
+    pub const fn new_from_i128(value: i128) -> Self {
+        let grown_bytes = grow_le_int::<16, 64>(value.to_le_bytes());
+        let digits = bytes_to_digits(grown_bytes);
+        Self(I512::from_bits(U512::from_digits(digits)))
     }
 }
 
@@ -679,5 +490,36 @@ mod tests {
             let output = uint512.number().try_into().unwrap();
             assert_eq!(input, output);
         }
+
+        fn int256_const_constructor(input in any::<i128>()) {
+            let int256 = Int256::new_from_i128(input);
+            let output = int256.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
+        fn int512_const_constructor(input in any::<i128>()) {
+            let int512 = Int512::new_from_i128(input);
+            let output = int512.number().try_into().unwrap();
+            assert_eq!(input, output);
+        }
+    }
+
+    #[test]
+    fn signed_from_str() {
+        assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
+        assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
+        assert_eq!(
+            Int512::from_str("100").unwrap(),
+            Int512::new(I512::from(100))
+        );
+        assert_eq!(
+            Int512::from_str("-100").unwrap(),
+            Int512::new(I512::from(-100))
+        );
+    }
+
+    #[test]
+    fn neg_works() {
+        assert_eq!(-Int512::new_from_i128(-100), Int512::new(I512::from(100)));
+        assert_eq!(-Int512::new_from_i128(100), Int512::new(I512::from(-100)))
     }
 }

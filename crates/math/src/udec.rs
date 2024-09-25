@@ -1,16 +1,18 @@
 use {
     crate::{
-        Decimal, Fraction, Inner, MathError, MathResult, MultiplyRatio, NextNumber, Number,
-        NumberConst, Sign, Uint,
+        FixedPoint, Inner, Int128, Int256, IsZero, MathError, MathResult, MultiplyRatio, Number,
+        NumberConst, Sign, Uint, Uint128, Uint256,
     },
-    bnum::types::U256,
+    bnum::types::{I256, U256},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{de, ser},
     std::{
         cmp::Ordering,
         fmt::{self, Display, Write},
         marker::PhantomData,
-        ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+        ops::{
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+        },
         str::FromStr,
     },
 };
@@ -20,19 +22,9 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Udec<U, const S: u32>(pub(crate) Uint<U>);
+pub struct Udec<U>(pub(crate) Uint<U>);
 
-impl<U, const S: u32> Udec<U, S> {
-    /// Ratio between the inner integer value and the decimal value it
-    /// represents.
-    ///
-    /// Since we use `u128` here, whose maximum value is 3.4e+38, it's possible
-    /// to have at most 37 decimal places. Going higher would cause this `pow`
-    /// calculation to overflow, resulting in a compile time error.
-    pub const DECIMAL_FRACTION: u128 = 10u128.pow(Self::DECIMAL_PLACES);
-    /// Number of decimal digits to be interpreted as decimal places.
-    pub const DECIMAL_PLACES: u32 = S;
-
+impl<U> Udec<U> {
     /// Create a new [`Udec`] _without_ adding decimal places.
     ///
     /// ```rust
@@ -54,70 +46,10 @@ impl<U, const S: u32> Udec<U, S> {
     }
 }
 
-impl<U, const S: u32> NumberConst for Udec<U, S>
+impl<U> Udec<U>
 where
-    Uint<U>: NumberConst,
-{
-    const MAX: Self = Self(Uint::MAX);
-    const MIN: Self = Self(Uint::MIN);
-    // TODO: These two (one and ten) can be confusing. How can we make this
-    // clear for users?
-    const ONE: Self = Self(Uint::ONE);
-    const TEN: Self = Self(Uint::TEN);
-    const ZERO: Self = Self(Uint::ZERO);
-}
-
-impl<U, const S: u32> Udec<U, S>
-where
-    Uint<U>: From<u128>,
-{
-    // This can't be made `const` because of the `into` casting isn't constant.
-    pub fn one() -> Self {
-        Self(Self::decimal_fraction())
-    }
-
-    pub fn decimal_fraction() -> Uint<U> {
-        Self::DECIMAL_FRACTION.into()
-    }
-}
-
-impl<U, const S: u32> Udec<U, S>
-where
-    U: Number,
-    Uint<U>: From<u128>,
-{
-    /// Create a new [`Udec`] adding decimal places.
-    ///
-    /// ```rust
-    /// use {
-    ///     grug_math::{Udec128, Uint128},
-    ///     std::str::FromStr,
-    /// };
-    ///
-    /// let uint = Uint128::new(100);
-    /// let decimal = Udec128::new(uint);
-    /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
-    /// ```
-    pub fn new(value: impl Into<Uint<U>>) -> Self {
-        Self(value.into() * Self::decimal_fraction())
-    }
-
-    pub fn new_percent(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 100).into())
-    }
-
-    pub fn new_permille(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 1_000).into())
-    }
-
-    pub fn new_bps(x: impl Into<Uint<U>>) -> Self {
-        Self(x.into() * (Self::DECIMAL_FRACTION / 10_000).into())
-    }
-}
-
-impl<U, const S: u32> Udec<U, S>
-where
-    Uint<U>: NumberConst + Number + From<u128>,
+    Self: FixedPoint<U>,
+    Uint<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -125,7 +57,7 @@ where
     {
         let atomics = atomics.into();
 
-        let inner = match decimal_places.cmp(&S) {
+        let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
                 let digits = Self::DECIMAL_PLACES - decimal_places;
@@ -152,9 +84,10 @@ where
     }
 }
 
-impl<U, const S: u32> Udec<U, S>
+impl<U> Udec<U>
 where
-    Uint<U>: MultiplyRatio + From<u128>,
+    Self: FixedPoint<U>,
+    Uint<U>: MultiplyRatio,
 {
     pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
     where
@@ -171,242 +104,115 @@ where
 }
 
 // Methods for converting one `Udec` value to another `Udec` type with a
-// different word size and decimal places.
+// different word size.
 //
 // We can't implement the `From` and `TryFrom` traits here, because it would
 // conflict with the standard library's `impl From<T> for T`, as we can't yet
-// specify that `U != OU` or `S != OS` with stable Rust.
-impl<U, const S: u32> Udec<U, S>
+// specify that `U != OU` with stable Rust.
+impl<U> Udec<U>
 where
+    Self: FixedPoint<U>,
     U: NumberConst + Number,
 {
-    pub fn from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> Self
+    pub fn from_decimal<OU>(other: Udec<OU>) -> Self
     where
         Uint<U>: From<Uint<OU>>,
+        Udec<OU>: FixedPoint<OU>,
     {
-        if OS > S {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(OS - S).unwrap();
-            Self(Uint::<U>::from(other.0) / adjusted_precision)
-        } else {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(S - OS).unwrap();
-            Self(Uint::<U>::from(other.0) * adjusted_precision)
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // There are not overflow problem for adjusted_precision
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) / adjusted_precision)
+            },
+            Ordering::Less => {
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)
+                    .unwrap();
+                Self(Uint::<U>::from(other.0) * adjusted_precision)
+            },
+            Ordering::Equal => Self(Uint::<U>::from(other.0)),
         }
     }
 
-    pub fn try_from_decimal<OU, const OS: u32>(other: Udec<OU, OS>) -> MathResult<Self>
+    pub fn try_from_decimal<OU>(other: Udec<OU>) -> MathResult<Self>
     where
-        Uint<U>: TryFrom<Uint<OU>>,
-        MathError: From<<Uint<U> as TryFrom<Uint<OU>>>::Error>,
+        Uint<U>: TryFrom<Uint<OU>, Error = MathError>,
+        Udec<OU>: FixedPoint<OU>,
+        Uint<OU>: Number + NumberConst,
     {
-        if OS > S {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(OS - S)?;
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_div(adjusted_precision))?
-                .map(Self)
-        } else {
-            let adjusted_precision = Uint::<U>::TEN.checked_pow(S - OS)?;
-            Uint::<U>::try_from(other.0)
-                .map(|val| val.checked_mul(adjusted_precision))?
-                .map(Self)
+        match Udec::<OU>::DECIMAL_PLACES.cmp(&Udec::<U>::DECIMAL_PLACES) {
+            Ordering::Greater => {
+                // adjusted precision in Uint<OU> prevent overflow in the pow
+                let adjusted_precision = Uint::<OU>::TEN
+                    .checked_pow(Udec::<OU>::DECIMAL_PLACES - Udec::<U>::DECIMAL_PLACES)?;
+                other
+                    .0
+                    .checked_div(adjusted_precision)
+                    .map(Uint::<U>::try_from)?
+                    .map(Self)
+            },
+            Ordering::Less => {
+                // adjusted precision in Uint<U> prevent overflow in the pow
+                let adjusted_precision = Uint::<U>::TEN
+                    .checked_pow(Udec::<U>::DECIMAL_PLACES - Udec::<OU>::DECIMAL_PLACES)?;
+                Uint::<U>::try_from(other.0)?
+                    .checked_mul(adjusted_precision)
+                    .map(Self)
+            },
+            Ordering::Equal => Uint::<U>::try_from(other.0).map(Self),
         }
     }
 }
 
-impl<U, const S: u32> Decimal for Udec<U, S>
+impl<U> Neg for Udec<U>
 where
-    U: Number + Copy + PartialEq,
-    Uint<U>: From<u128>,
+    U: Neg<Output = U>,
 {
-    fn checked_floor(self) -> MathResult<Self> {
-        // There are two ways to floor:
-        // 1. inner / decimal_fraction * decimal_fraction
-        // 2. inner - inner % decimal_fraction
-        // Method 2 is faster because Rem is roughly as fast as or slightly
-        // faster than Div, while Sub is significantly faster than Mul.
-        //
-        // This flooring operation in fact can never fail, because flooring an
-        // unsigned decimal goes down to 0 at most. However, flooring a _signed_
-        // decimal may underflow.
-        Ok(Self(self.0 - self.0.checked_rem(Self::decimal_fraction())?))
-    }
+    type Output = Self;
 
-    fn checked_ceil(self) -> MathResult<Self> {
-        let floor = self.checked_floor()?;
-        if floor == self {
-            Ok(floor)
-        } else {
-            floor.0.checked_add(Self::decimal_fraction()).map(Self)
-        }
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
     }
 }
 
-impl<U, const S: u32> Inner for Udec<U, S> {
-    type U = U;
-}
-
-impl<U, const S: u32> Sign for Udec<U, S> {
-    fn abs(self) -> Self {
-        self
-    }
-
-    fn is_negative(&self) -> bool {
-        false
-    }
-}
-
-impl<U, const S: u32> Fraction<U> for Udec<U, S>
+impl<U> Display for Udec<U>
 where
-    U: Number + Copy,
-    Uint<U>: From<u128>,
-{
-    fn numerator(&self) -> Uint<U> {
-        self.0
-    }
-
-    fn denominator() -> Uint<U> {
-        Self::decimal_fraction()
-    }
-}
-
-impl<U, const S: u32> Number for Udec<U, S>
-where
-    U: NumberConst + Number + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
-{
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
-    fn checked_add(self, other: Self) -> MathResult<Self> {
-        self.0.checked_add(other.0).map(Self)
-    }
-
-    fn checked_sub(self, other: Self) -> MathResult<Self> {
-        self.0.checked_sub(other.0).map(Self)
-    }
-
-    fn checked_mul(self, other: Self) -> MathResult<Self> {
-        let next_result = self
-            .0
-            .checked_full_mul(*other.numerator())?
-            .checked_div(Self::decimal_fraction().into())?;
-        next_result
-            .try_into()
-            .map(Self)
-            .map_err(|_| MathError::overflow_conversion::<_, Uint<U>>(next_result))
-    }
-
-    fn checked_div(self, other: Self) -> MathResult<Self> {
-        Udec::checked_from_ratio(*self.numerator(), *other.numerator())
-    }
-
-    fn checked_rem(self, other: Self) -> MathResult<Self> {
-        self.0.checked_rem(other.0).map(Self)
-    }
-
-    fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        if exp == 0 {
-            return Ok(Self::one());
-        }
-
-        let mut y = Udec::one();
-        while exp > 1 {
-            if exp % 2 == 0 {
-                self = self.checked_mul(self)?;
-                exp /= 2;
-            } else {
-                y = self.checked_mul(y)?;
-                self = self.checked_mul(self)?;
-                exp = (exp - 1) / 2;
-            }
-        }
-        self.checked_mul(y)
-    }
-
-    // TODO: Check if this is the best way to implement this
-    fn checked_sqrt(self) -> MathResult<Self> {
-        // With the current design, U should be only unsigned number.
-        // Leave this safety check here for now.
-        if self.0 < Uint::ZERO {
-            return Err(MathError::negative_sqrt::<Self>(self));
-        }
-        let hundred = Uint::TEN.checked_mul(Uint::TEN)?;
-        (0..=S / 2)
-            .rev()
-            .find_map(|i| -> Option<MathResult<Self>> {
-                let inner_mul = match hundred.checked_pow(i) {
-                    Ok(val) => val,
-                    Err(err) => return Some(Err(err)),
-                };
-                self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = hundred.checked_pow(S / 2 - i)?;
-                    Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
-                })
-            })
-            .transpose()?
-            .ok_or(MathError::SqrtFailed)
-    }
-
-    fn wrapping_add(self, other: Self) -> Self {
-        Self(self.0.wrapping_add(other.0))
-    }
-
-    fn wrapping_sub(self, other: Self) -> Self {
-        Self(self.0.wrapping_sub(other.0))
-    }
-
-    fn wrapping_mul(self, other: Self) -> Self {
-        Self(self.0.wrapping_mul(other.0))
-    }
-
-    fn wrapping_pow(self, other: u32) -> Self {
-        Self(self.0.wrapping_pow(other))
-    }
-
-    fn saturating_add(self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0))
-    }
-
-    fn saturating_sub(self, other: Self) -> Self {
-        Self(self.0.saturating_sub(other.0))
-    }
-
-    fn saturating_mul(self, other: Self) -> Self {
-        Self(self.0.saturating_mul(other.0))
-    }
-
-    fn saturating_pow(self, other: u32) -> Self {
-        Self(self.0.saturating_pow(other))
-    }
-}
-
-impl<U, const S: u32> Display for Udec<U, S>
-where
-    U: Number + Display,
-    Uint<U>: Copy + From<u128>,
+    Self: FixedPoint<U>,
+    U: Number + IsZero + Display,
+    Uint<U>: Copy + Sign,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let decimals = Self::DECIMAL_FRACTION.into();
+        let decimals = Self::DECIMAL_FRACTION;
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
-            let fractional_string = format!("{:0>padding$}", fractional.0, padding = S as usize);
-            f.write_str(&whole.to_string())?;
+            let fractional_string = format!(
+                "{:0>padding$}",
+                fractional.abs().0,
+                padding = Self::DECIMAL_PLACES as usize
+            );
+            if whole.is_negative() || fractional.is_negative() {
+                f.write_char('-')?;
+            }
+            f.write_str(&whole.abs().to_string())?;
             f.write_char('.')?;
-            f.write_str(&fractional_string.trim_end_matches('0').replace('-', ""))?;
+            f.write_str(fractional_string.trim_end_matches('0'))?;
         }
 
         Ok(())
     }
 }
 
-impl<U, const S: u32> FromStr for Udec<U, S>
+impl<U> FromStr for Udec<U>
 where
-    Uint<U>: NumberConst + Number + Display + FromStr + From<u128>,
+    Self: FixedPoint<U>,
+    Uint<U>: NumberConst + Number + Display + FromStr,
 {
     type Err = MathError;
 
@@ -424,21 +230,26 @@ where
             .unwrap() // split always returns at least one element
             .parse::<Uint<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
-            .checked_mul(Self::decimal_fraction())
+            .checked_mul(Self::DECIMAL_FRACTION)
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "value too big"))?;
 
         if let Some(fractional_part) = parts_iter.next() {
             let fractional = fractional_part.parse::<Uint<U>>().map_err(|_| {
                 MathError::parse_number::<Self, _, _>(input, "error parsing fractional")
             })?;
-            let exp = (S.checked_sub(fractional_part.len() as u32)).ok_or_else(|| {
-                MathError::parse_number::<Self, _, _>(
-                    input,
-                    format!("cannot parse more than {} fractional digits", S),
-                )
-            })?;
+            let exp = (Self::DECIMAL_PLACES.checked_sub(fractional_part.len() as u32)).ok_or_else(
+                || {
+                    MathError::parse_number::<Self, _, _>(
+                        input,
+                        format!(
+                            "cannot parse more than {} fractional digits",
+                            Self::DECIMAL_FRACTION
+                        ),
+                    )
+                },
+            )?;
 
-            debug_assert!(exp <= S);
+            debug_assert!(exp <= Self::DECIMAL_PLACES);
 
             let fractional_factor = Uint::TEN.checked_pow(exp).unwrap();
 
@@ -447,9 +258,13 @@ where
             let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
 
             // for negative numbers, we need to subtract the fractional part
-            atomics = atomics
-                .checked_add(fractional_part)
-                .map_err(|_| MathError::parse_number::<Self, _, _>(input, "Value too big"))?;
+            // We can't check if atomics is negative because -0 is positive
+            atomics = if input.starts_with("-") {
+                atomics.checked_sub(fractional_part)
+            } else {
+                atomics.checked_add(fractional_part)
+            }
+            .map_err(|_| MathError::parse_number::<Self, _, _>(input, "Value too big"))?;
         }
 
         if parts_iter.next().is_some() {
@@ -463,7 +278,7 @@ where
     }
 }
 
-impl<U, const T: u32> ser::Serialize for Udec<U, T>
+impl<U> ser::Serialize for Udec<U>
 where
     Self: Display,
 {
@@ -475,24 +290,24 @@ where
     }
 }
 
-impl<'de, U, const S: u32> de::Deserialize<'de> for Udec<U, S>
+impl<'de, U> de::Deserialize<'de> for Udec<U>
 where
-    Udec<U, S>: FromStr,
-    <Udec<U, S> as FromStr>::Err: Display,
+    Udec<U>: FromStr,
+    <Udec<U> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(DecimalVisitor::new())
+        deserializer.deserialize_str(UdecVisitor::new())
     }
 }
 
-struct DecimalVisitor<U, const S: u32> {
+struct UdecVisitor<U> {
     _marker: PhantomData<U>,
 }
 
-impl<U, const S: u32> DecimalVisitor<U, S> {
+impl<U> UdecVisitor<U> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -500,12 +315,12 @@ impl<U, const S: u32> DecimalVisitor<U, S> {
     }
 }
 
-impl<'de, U, const S: u32> de::Visitor<'de> for DecimalVisitor<U, S>
+impl<'de, U> de::Visitor<'de> for UdecVisitor<U>
 where
-    Udec<U, S>: FromStr,
-    <Udec<U, S> as FromStr>::Err: Display,
+    Udec<U>: FromStr,
+    <Udec<U> as FromStr>::Err: Display,
 {
-    type Value = Udec<U, S>;
+    type Value = Udec<U>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("string-encoded decimal")
@@ -519,11 +334,9 @@ where
     }
 }
 
-impl<U, const S: u32> Add for Udec<U, S>
+impl<U> Add for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -532,11 +345,9 @@ where
     }
 }
 
-impl<U, const S: u32> Sub for Udec<U, S>
+impl<U> Sub for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -545,11 +356,9 @@ where
     }
 }
 
-impl<U, const S: u32> Mul for Udec<U, S>
+impl<U> Mul for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -558,11 +367,9 @@ where
     }
 }
 
-impl<U, const S: u32> Div for Udec<U, S>
+impl<U> Div for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
 {
     type Output = Self;
 
@@ -571,47 +378,59 @@ where
     }
 }
 
-impl<U, const S: u32> AddAssign for Udec<U, S>
+impl<U> Rem for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number,
+{
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        self.checked_rem(rhs).unwrap_or_else(|err| panic!("{err}"))
+    }
+}
+
+impl<U> AddAssign for Udec<U>
+where
+    Self: Number + Copy,
 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
-impl<U, const S: u32> SubAssign for Udec<U, S>
+impl<U> SubAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl<U, const S: u32> MulAssign for Udec<U, S>
+impl<U> MulAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
 }
 
-impl<U, const S: u32> DivAssign for Udec<U, S>
+impl<U> DivAssign for Udec<U>
 where
-    U: Number + NumberConst + Copy + PartialEq + PartialOrd + Display,
-    Uint<U>: NextNumber + From<u128>,
-    <Uint<U> as NextNumber>::Next: Number + Copy + ToString,
+    Self: Number + Copy,
 {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs;
+    }
+}
+
+impl<U> RemAssign for Udec<U>
+where
+    Self: Number + Copy,
+{
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
     }
 }
 
@@ -619,96 +438,180 @@ where
 
 macro_rules! generate_decimal {
     (
-        name           = $name:ident,
-        inner_type     = $inner:ty,
-        decimal_places = $decimal_places:expr,
-        from_dec       = [$($from:ty),*],
-        doc            = $doc:literal,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        base_constructor  = $base_constructor:ty,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
     ) => {
-        #[doc = $doc]
-        pub type $name = Udec<$inner, $decimal_places>;
+        paste::paste! {
+            #[doc = $doc]
+            pub type $name = Udec<$inner>;
+            impl $name {
+                /// Create a new [`Udec`] adding decimal places.
+                ///
+                /// ```rust
+                /// use {
+                ///     grug_math::{Udec128, Uint128},
+                ///     std::str::FromStr,
+                /// };
+                ///
+                /// let decimal = Udec128::new(100);
+                /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+                /// ```
+                pub const fn new(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES)))
+                }
+                pub const fn new_percent(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 2)))
+                }
 
-        // Ex: From<U256> for Udec256
-        impl From<$inner> for $name {
-            fn from(value: $inner) -> Self {
-                Self::raw(Uint::new(value))
+                pub const fn new_permille(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 3)))
+                }
+
+                pub const fn new_bps(x: $base_constructor) -> Self {
+                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 4)))
+                }
             }
+
+            // Ex: From<U256> for Udec256
+            impl From<$inner> for $name {
+                fn from(value: $inner) -> Self {
+                    Self::raw(Uint::new(value))
+                }
+            }
+
+            // Ex: From<Uint<U256>> for Udec256
+            impl From<Uint<$inner>> for $name {
+                fn from(value: Uint<$inner>) -> Self {
+                    Self::raw(value)
+                }
+            }
+
+            // --- From Udec ---
+            $(
+                // Ex: From<Udec128> for Udec256
+                impl From<$from> for $name {
+                    fn from(value: $from) -> Self {
+                        Self::from_decimal(value)
+                    }
+                }
+
+                // Ex: From<Uint128> for Udec256
+                impl From<Uint<<$from as Inner>::U>> for $name {
+                    fn from(value: Uint<<$from as Inner>::U>) -> Self {
+                        Self::raw(value.into())
+                    }
+                }
+
+                // Ex: From<u128> for Udec256
+                impl From<<$from as Inner>::U> for $name {
+                    fn from(value: <$from as Inner>::U) -> Self {
+                        Self::raw(value.into())
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for Udec128
+                impl TryFrom<$name> for $from {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<$from> {
+                        <$from>::try_from_decimal(value)
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for Uint128
+                impl TryFrom<$name> for Uint<<$from as Inner>::U> {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<Uint<<$from as Inner>::U>> {
+                        value.0.try_into().map(Self)
+                    }
+                }
+
+                // Ex: TryFrom<Udec256> for u128
+                impl TryFrom<$name> for <$from as Inner>::U {
+                    type Error = MathError;
+
+                    fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
+                        value.0.try_into()
+                    }
+                }
+            )*
         }
-
-        // Ex: From<Uint<U256>> for Udec256
-        impl From<Uint<$inner>> for $name {
-            fn from(value: Uint<$inner>) -> Self {
-                Self::raw(value)
-            }
-        }
-
-        // --- From Udec ---
-        $(
-            // Ex: From<Udec128> for Udec256
-            impl From<$from> for $name {
-                fn from(value: $from) -> Self {
-                    Self::from_decimal(value)
-                }
-            }
-
-            // Ex: From<Uint128> for Udec256
-            impl From<Uint<<$from as Inner>::U>> for $name {
-                fn from(value: Uint<<$from as Inner>::U>) -> Self {
-                    Self::raw(value.into())
-                }
-            }
-
-            // Ex: From<u128> for Udec256
-            impl From<<$from as Inner>::U> for $name {
-                fn from(value: <$from as Inner>::U) -> Self {
-                    Self::raw(value.into())
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for Udec128
-            impl TryFrom<$name> for $from {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<$from> {
-                    <$from>::try_from_decimal(value)
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for Uint128
-            impl TryFrom<$name> for Uint<<$from as Inner>::U> {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<Uint<<$from as Inner>::U>> {
-                    value.0.try_into().map(Self)
-                }
-            }
-
-            // Ex: TryFrom<Udec256> for u128
-            impl TryFrom<$name> for <$from as Inner>::U {
-                type Error = MathError;
-
-                fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
-                    value.0.try_into()
-                }
-            }
-        )*
     };
+    (
+        type              = Signed,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
+    ) => {
+        generate_decimal! {
+            name              = $name,
+            inner_type        = $inner,
+            inner_constructor = $constructor,
+            base_constructor  = i128,
+            from_dec          = [$($from),*],
+            doc               = $doc,
+        }
+    };
+    (
+        type              = Unsigned,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        from_dec          = [$($from:ty),*],
+        doc               = $doc:literal,
+    ) => {
+        generate_decimal! {
+            name              = $name,
+            inner_type        = $inner,
+            inner_constructor = $constructor,
+            base_constructor  = u128,
+            from_dec          = [$($from),*],
+            doc               = $doc,
+        }
+    }
 }
 
 generate_decimal! {
-    name           = Udec128,
-    inner_type     = u128,
-    decimal_places = 18,
-    from_dec       = [],
-    doc            = "128-bit unsigned fixed-point number with 18 decimal places.",
+    type              = Unsigned,
+    name              = Udec128,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    from_dec          = [],
+    doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
 }
 
 generate_decimal! {
-    name           = Udec256,
-    inner_type     = U256,
-    decimal_places = 18,
-    from_dec       = [Udec128],
-    doc            = "256-bit unsigned fixed-point number with 18 decimal places.",
+    type              = Unsigned,
+    name              = Udec256,
+    inner_type        = U256,
+    inner_constructor = Uint256::new_from_u128,
+    from_dec          = [Udec128],
+    doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    type              = Signed,
+    name              = Dec128,
+    inner_type        = i128,
+    inner_constructor = Int128::new,
+    from_dec          = [],
+    doc               = "128-bit signed fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    type              = Signed,
+    name              = Dec256,
+    inner_type        = I256,
+    inner_constructor = Int256::new_from_i128,
+    from_dec          = [],
+    doc               = "256-bit signed fixed-point number with 18 decimal places.",
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -716,7 +619,7 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Number, Udec128, Udec256},
+        crate::{Dec128, Number, NumberConst, Udec128, Udec256, Uint64},
         bnum::{
             errors::TryFromIntError,
             types::{U256, U512},
@@ -726,7 +629,7 @@ mod tests {
 
     #[test]
     fn t1() {
-        assert_eq!(Udec128::one() + Udec128::one(), Udec128::new(2_u128));
+        assert_eq!(Udec128::ONE + Udec128::ONE, Udec128::new(2_u128));
 
         assert_eq!(
             Udec128::new(10_u128)
@@ -788,5 +691,80 @@ mod tests {
 
         let foo = Udec256::new(10_u128);
         assert_eq!(Udec128::new(10_u128), Udec128::try_from(foo).unwrap())
+    }
+
+    #[test]
+    fn neg_to_string_works() {
+        assert_eq!(Dec128::new(-1).to_string(), "-1");
+        assert_eq!(Dec128::new_percent(-10).to_string(), "-0.1");
+        assert_eq!(Dec128::new_percent(-110).to_string(), "-1.1");
+        assert_eq!(Dec128::new(1).to_string(), "1");
+        assert_eq!(Dec128::new_percent(10).to_string(), "0.1");
+        assert_eq!(Dec128::new_percent(110).to_string(), "1.1");
+    }
+
+    #[test]
+    fn new_from_str_works() {
+        assert_eq!(Dec128::from_str("0.5").unwrap(), Dec128::new_percent(50));
+        assert_eq!(Dec128::from_str("1").unwrap(), Dec128::new(1));
+        assert_eq!(Dec128::from_str("1.05").unwrap(), Dec128::new_percent(105));
+        assert_eq!(Dec128::from_str("-0.5").unwrap(), Dec128::new_percent(-50));
+        assert_eq!(Dec128::from_str("-1").unwrap(), Dec128::new(-1));
+        assert_eq!(
+            Dec128::from_str("-1.05").unwrap(),
+            Dec128::new_percent(-105)
+        );
+    }
+
+    #[test]
+    fn neg_works() {
+        assert_eq!(-Dec128::new_percent(-105), Dec128::new_percent(105));
+        assert_eq!(-Dec128::new_percent(50), Dec128::new_percent(-50));
+    }
+
+    #[test]
+    fn different_places_conversion() {
+        use super::*;
+
+        generate_decimal! {
+            name              = Udec64_12,
+            inner_type        = u64,
+            inner_constructor = Uint64::new,
+            base_constructor  = u64,
+            from_dec          = [],
+            doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
+        }
+
+        impl FixedPoint<u64> for Udec64_12 {
+            const DECIMAL_FRACTION: crate::Uint<u64> =
+                crate::Uint64::new(10_u64.pow(Self::DECIMAL_PLACES));
+            const DECIMAL_PLACES: u32 = 12;
+        }
+
+        let d64 = Udec64_12::from_str("1.123456789012").unwrap();
+        let d128 = Udec128::from_decimal(d64);
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), d128.to_string());
+
+        let d128 = Udec128::from_str("1.123456789012345678").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "1.123456789012");
+
+        let d128 = Udec128::raw((u64::MAX).into());
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18.446744073709");
+
+        let d128 = Udec128::from_str("18446744.073709551615").unwrap();
+        let d64 = Udec64_12::try_from_decimal(d128).unwrap();
+        assert_eq!(d64.to_string(), "18446744.073709551615");
+
+        let d128 = Udec128::from_str("18446744.073709551616").unwrap();
+        assert!(matches!(
+            Udec64_12::try_from_decimal(d128),
+            Err(MathError::OverflowConversion { .. })
+        ));
     }
 }
