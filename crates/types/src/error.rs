@@ -34,42 +34,20 @@ impl VerificationError {
 
 #[derive(Debug, Clone, Error)]
 pub enum StdError {
-    /// This variant exists such that we can use `Coins` as the generic `C` in
-    /// contructor methods `Message::{instantiate,execute}`, which has the trait
-    /// bound: `StdError: From<<C as TryInto<Coins>>::Error>`.
     #[error(transparent)]
     Infallible(#[from] Infallible),
 
     #[error(transparent)]
-    FromHex(#[from] FromHexError),
-
-    #[error(transparent)]
     TryFromSlice(#[from] TryFromSliceError),
 
-    // TODO: rename this. this means an error is thrown by the host over the FFI.
-    // something like `StdError::Host` may be more appropriate.
-    #[error("generic error: {0}")]
-    Generic(String),
+    #[error(transparent)]
+    FromHex(#[from] FromHexError),
 
     #[error(transparent)]
     Math(#[from] MathError),
 
     #[error(transparent)]
     Verification(#[from] VerificationError),
-
-    #[error("out of gas! limit: {limit}, used: {used}, comment: {comment}")]
-    OutOfGas {
-        limit: u64,
-        used: u64,
-        comment: &'static str,
-    },
-
-    #[error("value out of range: {value} {comparator} {bound}")]
-    OutOfRange {
-        value: String,
-        comparator: &'static str,
-        bound: String,
-    },
 
     #[error("invalid denom `{denom}`: {reason}")]
     InvalidDenom { denom: String, reason: &'static str },
@@ -89,9 +67,6 @@ pub enum StdError {
     #[error("duplicate data found! type: {ty}")]
     DuplicateData { ty: &'static str },
 
-    #[error("cannot find iterator with ID {iterator_id}")]
-    IteratorNotFound { iterator_id: i32 },
-
     #[error("expecting a non-empty value of type {ty}, got empty")]
     EmptyValue { ty: &'static str },
 
@@ -100,6 +75,20 @@ pub enum StdError {
 
     #[error("invalid change set: the add and remove sets must be disjoint")]
     InvalidChangeSet,
+
+    #[error("value out of range: {value} {comparator} {bound}")]
+    OutOfRange {
+        value: String,
+        comparator: &'static str,
+        bound: String,
+    },
+
+    #[error("out of gas! limit: {limit}, used: {used}, comment: {comment}")]
+    OutOfGas {
+        limit: u64,
+        used: u64,
+        comment: &'static str,
+    },
 
     #[error("failed to serialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Serialize {
@@ -114,20 +103,13 @@ pub enum StdError {
         ty: &'static str,
         reason: String,
     },
+
+    // TODO: rename this to `FFI`
+    #[error("generic error: {0}")]
+    Generic(String),
 }
 
 impl StdError {
-    pub fn out_of_range<T>(value: T, comparator: &'static str, bound: T) -> Self
-    where
-        T: ToString,
-    {
-        Self::OutOfRange {
-            value: value.to_string(),
-            comparator,
-            bound: bound.to_string(),
-        }
-    }
-
     pub fn invalid_denom<D>(denom: D, reason: &'static str) -> Self
     where
         D: ToString,
@@ -173,6 +155,17 @@ impl StdError {
     pub fn zero_value<T>() -> Self {
         Self::ZeroValue {
             ty: type_name::<T>(),
+        }
+    }
+
+    pub fn out_of_range<T>(value: T, comparator: &'static str, bound: T) -> Self
+    where
+        T: ToString,
+    {
+        Self::OutOfRange {
+            value: value.to_string(),
+            comparator,
+            bound: bound.to_string(),
         }
     }
 
