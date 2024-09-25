@@ -12,10 +12,10 @@ Rust's primitive number types are insufficient for smart contract use cases, for
 
 Grug provides a number of number types for use in smart contracts. They are built with the following two primitive types:
 
-| type     | description      |
-| -------- | ---------------- |
-| `Int<U>` | unsigned integer |
-| `Dec<U>` | unsigned decimal |
+| type     | description         |
+| -------- | ------------------- |
+| `Int<U>` | integer             |
+| `Dec<U>` | fixed-point decimal |
 
 It is, however, not recommended to use these types directly. Instead, Grug exports the following type alises:
 
