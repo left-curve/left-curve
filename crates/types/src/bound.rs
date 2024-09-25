@@ -4,7 +4,7 @@ use {
     grug_math::Inner,
     serde::{
         de::{self, Error},
-        Serialize,
+        ser,
     },
     std::{io, marker::PhantomData, ops::Deref},
 };
@@ -22,7 +22,7 @@ pub trait Bounds<T> {
 }
 
 /// A wrapper that enforces the value to be within the specified bounds.
-#[derive(Serialize, BorshSerialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Bounded<T, B>
 where
     T: PartialOrd + ToString,
@@ -62,6 +62,13 @@ where
             value,
             bounds: PhantomData,
         })
+    }
+
+    pub fn new_unchecked(value: T) -> Self {
+        Self {
+            value,
+            bounds: PhantomData,
+        }
     }
 }
 
@@ -103,6 +110,19 @@ where
     }
 }
 
+impl<T, B> ser::Serialize for Bounded<T, B>
+where
+    T: PartialOrd + ToString + ser::Serialize,
+    B: Bounds<T>,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        self.value.serialize(serializer)
+    }
+}
+
 impl<'de, T, B> de::Deserialize<'de> for Bounded<T, B>
 where
     T: PartialOrd + ToString + de::Deserialize<'de>,
@@ -115,6 +135,19 @@ where
         let value = T::deserialize(deserializer)?;
 
         Self::new(value).map_err(D::Error::custom)
+    }
+}
+
+impl<T, B> BorshSerialize for Bounded<T, B>
+where
+    T: PartialOrd + ToString + BorshSerialize,
+    B: Bounds<T>,
+{
+    fn serialize<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        self.value.serialize(writer)
     }
 }
 
@@ -139,7 +172,7 @@ where
 mod tests {
     use {
         super::*,
-        crate::JsonDeExt,
+        crate::{JsonDeExt, JsonSerExt, ResultExt},
         grug_math::{NumberConst, Udec256, Uint256},
     };
 
@@ -159,13 +192,32 @@ mod tests {
     type FeeRate = Bounded<Udec256, FeeRateBounds>;
 
     #[test]
-    fn parsing_fee_rate() {
-        assert!(FeeRate::new(Udec256::new_percent(0_u128)).is_ok());
-        assert!(FeeRate::new(Udec256::new_percent(50_u128)).is_ok());
-        assert!(FeeRate::new(Udec256::new_percent(100_u128)).is_err());
+    fn serializing_fee_rate() {
+        FeeRate::new(Udec256::new_percent(0))
+            .unwrap()
+            .to_json_string()
+            .should_succeed_and_equal("\"0\"");
 
-        assert!("\"0\"".deserialize_json::<FeeRate>().is_ok());
-        assert!("\"0.5\"".deserialize_json::<FeeRate>().is_ok());
-        assert!("\"1\"".deserialize_json::<FeeRate>().is_err());
+        FeeRate::new(Udec256::new_percent(50))
+            .unwrap()
+            .to_json_string()
+            .should_succeed_and_equal("\"0.5\"");
+    }
+
+    #[test]
+    fn deserializing_fee_rate() {
+        "\"0\""
+            .deserialize_json::<FeeRate>()
+            .map(Inner::into_inner)
+            .should_succeed_and_equal(Udec256::new_percent(0));
+
+        "\"0.5\""
+            .deserialize_json::<FeeRate>()
+            .map(Inner::into_inner)
+            .should_succeed_and_equal(Udec256::new_percent(50));
+
+        "\"1\""
+            .deserialize_json::<FeeRate>()
+            .should_fail_with_error(StdError::out_of_range("1", ">=", "1"));
     }
 }
