@@ -50,3 +50,20 @@ impl_is_zero! {
     u8, u16, u32, u64, u128, U256, U512,
     i8, i16, i32, i64, i128, I256, I512,
 }
+
+// ------------------------------------ tests ------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use crate::{int_test, test_utils::dt, Int, IsZero, NumberConst};
+
+    int_test!( is_zero,
+        NoArgs
+        => |zero: Int<_>| {
+            assert!(zero.is_zero());
+            let non_zero = Int::ONE;
+            dt(non_zero, zero);
+            assert!(!non_zero.is_zero());
+        }
+    );
+}

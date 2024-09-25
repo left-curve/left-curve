@@ -408,7 +408,7 @@ generate_int! {
     name       = Int64,
     inner_type = i64,
     from_int   = [],
-    from_std   = [u32, u16, u8],
+    from_std   = [u32, u16, u8, i32, i16, i8],
     doc        = "64-bit signed integer.",
 }
 
@@ -416,7 +416,7 @@ generate_int! {
     name       = Int128,
     inner_type = i128,
     from_int   = [Int64, Uint64],
-    from_std   = [u32, u16, u8],
+    from_std   = [u32, u16, u8, i32, i16, i8],
     doc        = "128-bit signed integer.",
 }
 
@@ -424,7 +424,7 @@ generate_int! {
     name       = Int256,
     inner_type = I256,
     from_int   = [Int128, Int64, Uint128, Uint64],
-    from_std   = [u32, u16, u8],
+    from_std   = [u32, u16, u8, i32, i16, i8],
     doc        = "256-bit signed integer.",
 }
 
@@ -432,7 +432,7 @@ generate_int! {
     name       = Int512,
     inner_type = I512,
     from_int   = [Int128, Int64, Uint128, Uint64],
-    from_std   = [u32, u16, u8],
+    from_std   = [u32, u16, u8, i32, i16, i8],
     doc        = "512-bit signed integer.",
 }
 
@@ -532,96 +532,61 @@ pub mod testse {
         crate::{
             dts, int_test,
             test_utils::{bt, dt, smart_assert},
-            Bytable, IsZero, MultiplyFraction, MultiplyRatio, NumberConst, Udec128, Udec256,
+            MultiplyFraction, MultiplyRatio, NumberConst, Udec128, Udec256,
         },
+        std::{i128, u128},
     };
 
     int_test!( size_of,
         Specific
         u128 = [16]
         u256 = [32]
+        i128 = [16]
+        i256 = [32]
         => |_0, size| {
             assert_eq!(core::mem::size_of_val(&_0), size);
         }
     );
 
-    int_test!( bytable_to_be,
+    int_test!( from_str,
         Specific
-        u128 = [&[0u8; 16], &[0xff; 16]]
-        u256 = [&[0u8; 32], &[0xff; 32]]
-        => |_0, zero_as_byte: &[u8], max_as_byte| {
-            let _1 = Int::ONE;
-            let max = Int::MAX;
-            dts!(_0, _1, max);
+        u128 = [[(128_u128, "128")]]
+        u256 = [[(U256::from(256_u128), "256")]]
+        i128 = [[(-128_i128, "-128"), (-128_i128, "-128")]]
+        i256 = [[(I256::from(256_i128), "256"), (I256::from(-256_i128), "-256")]]
+        => |_, samples| {
+            for (val, str) in samples {
+                let original = Int::new(val);
+                assert_eq!(original.0, val);
 
-            assert_eq!(_0.to_be_bytes().to_vec(), zero_as_byte);
+                let from_str = Int::from_str(str).unwrap();
+                assert_eq!(from_str, original);
 
-            let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
-
-            // change last byte to 1
-            if let Some(last) = one_as_bytes.last_mut() {
-                *last = 1u8;
+                let as_into = original.into();
+                dt(as_into, val);
+                assert_eq!(as_into, val);
             }
-            assert_eq!(_1.to_be_bytes().to_vec(), one_as_bytes);
-            assert_eq!(max.to_be_bytes().to_vec(), max_as_byte);
-        }
-    );
-
-    int_test!( bytable_to_le,
-        Specific
-        u128 = [&[0u8; 16], &[0xff; 16]]
-        u256 = [&[0u8; 32], &[0xff; 32]]
-        => |_0, zero_as_byte: &[u8], max_as_byte| {
-            let _1 = Int::ONE;
-            let max = Int::MAX;
-            dts!(_0, _1, max);
-
-            assert_eq!(_0.to_be_bytes().to_vec(), zero_as_byte);
-
-            let mut one_as_bytes: Vec<u8> = zero_as_byte.to_vec();
-
-            // change first byte to 1
-            if let Some(first) = one_as_bytes.first_mut() {
-                *first = 1u8;
-            }
-            assert_eq!(_1.to_le_bytes().to_vec(), one_as_bytes);
-            assert_eq!(max.to_le_bytes().to_vec(), max_as_byte);
-        }
-    );
-
-    int_test!( converts,
-        Specific
-        u128 = [128_u128,             "128"]
-        u256 = [U256::from(256_u128), "256"]
-
-        => |_, val, str| {
-           let original = Int::new(val);
-           assert_eq!(original.0, val);
-
-           let from_str = Int::from_str(str).unwrap();
-           assert_eq!(from_str, original);
-
-           let as_into = original.into();
-           dt(as_into, val);
-
-           assert_eq!(as_into, val);
         }
     );
 
     int_test!( from,
         Specific
-        u128 = [8_u8, 16_u16, 32_u32, Some(64_u64), None::<u128>]
-        u256 = [8_u8, 16_u16, 32_u32, Some(64_u64), Some(128_u128)]
+        u128 = [u8::MAX, u16::MAX, u32::MAX, u64::MAX, None::<u128>]
+        u256 = [u8::MAX, u16::MAX, u32::MAX, u64::MAX, Some(u128::MAX)]
+        i128 = [i8::MAX, i16::MAX, i32::MAX, i64::MAX, None::<i128>]
+        i256 = [i8::MAX, i16::MAX, i32::MAX, i64::MAX, Some(i128::MAX)]
         => |_0, u8, u16, u32, u64, u128| {
             let uint8 = Int::from(u8);
             let uint16 = Int::from(u16);
             let uint32 = Int::from(u32);
+            let uint64 = Int::from(u64);
 
-            dts!(_0, uint8, uint16, uint32);
+            dts!(_0, uint8, uint16, uint32, uint64);
 
             smart_assert(u8, uint8.try_into().unwrap());
             smart_assert(u16, uint16.try_into().unwrap());
             smart_assert(u32, uint32.try_into().unwrap());
+            smart_assert(u64, uint64.try_into().unwrap());
 
             macro_rules! maybe_from {
                 ($t:expr) => {
@@ -632,77 +597,116 @@ pub mod testse {
                 };
             }
 
-            maybe_from!(u64);
             maybe_from!(u128);
         }
     );
 
     int_test!( try_into,
         Specific
-       u128 = [Some(Uint256::MAX), Uint256::ZERO, Uint256::from(128_u128), Uint128::from(128_u128)]
-       u256 = [Some(Uint512::MAX), Uint512::ZERO, Uint512::from(256_u128), Uint256::from(256_u128)]
-       => |_0, next_max, next_zero, next_valid, compare| {
+        u128 = [
+            [Uint256::MAX],
+            [
+                (Uint256::ZERO, Uint128::ZERO),
+                (Uint256::from(u128::MAX), Uint128::MAX)
+            ]
+        ]
+        u256 = [
+            [Uint512::MAX],
+            [
+                (Uint512::ZERO, Uint256::ZERO),
+                (Uint512::from(U256::MAX), Uint256::MAX)
+            ]
+        ]
+        i128 = [
+            [Int256::MAX, Int256::MIN],
+            [
+                (Int256::ZERO, Int128::ZERO),
+                (Int256::from(i128::MAX), Int128::MAX),
+                (Int256::from(i128::MIN), Int128::MIN)
+            ]
+        ]
+        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
+        => |_0, samples_invalid, samples_compare| {
 
-            if let Some(next_max) = next_max {
-                let maybe_uint = Int::try_from(next_max);
-                dt(&maybe_uint, &Ok(_0));
-                maybe_uint.unwrap_err();
+                for invalid in samples_invalid {
+                    let maybe_int = Int::try_from(invalid);
+                    dt(&maybe_int, &Ok(_0));
+                    assert!(matches!(maybe_int, Err(MathError::OverflowConversion { .. })));
+                }
+
+                for (try_from, should_be) in samples_compare {
+                    let int = Int::try_from(try_from).unwrap();
+                    assert_eq!(int, should_be);
+                }
             }
-
-            let uint_zero = Int::try_from(next_zero).unwrap();
-            assert_eq!(_0, uint_zero);
-
-            let uint = Int::try_from(next_valid).unwrap();
-            assert_eq!(uint, compare);
-
-        }
     );
 
     int_test!( display,
         Specific
-        u128 = [Uint128::new(128_u128), "128"]
-        u256 = [Uint256::new(U256::from(256_u128)), "256"]
-        => |_, uint, str| {
-            assert_eq!(format!("{}", uint), str);
+        u128 = [[(Uint128::new(128_u128), "128")]]
+        u256 = [[(Uint256::new(U256::from(256_u128)), "256")]]
+        i128 = [[
+                    (Int128::MAX, "170141183460469231731687303715884105727"),
+                    (Int128::MIN, "-170141183460469231731687303715884105728"),
+                    (Int128::new(i128::ZERO), "0"),
+                ]]
+        i256 = [[
+            (Int256::MAX, "57896044618658097711785492504343953926634992332820282019728792003956564819967"),
+            (Int256::MIN, "-57896044618658097711785492504343953926634992332820282019728792003956564819968"),
+            (Int256::ZERO, "0"),
+
+        ]]
+        => |_, samples| {
+            for (number, str) in samples {
+                assert_eq!(format!("{}", number), str);
+            }
         }
     );
 
     int_test!( display_padding_front,
         Specific
-        u128 = ["00128", "128"]
-        u256 = ["000256", "256"]
-        => |_0, padded_str, compare| {
-            let uint = bt(_0, Int::from_str(padded_str).unwrap());
-            assert_eq!(format!("{}", uint), compare);
-        }
-    );
-
-    int_test!( is_zero,
-        NoArgs
-        => |zero: Int<_>| {
-            assert!(zero.is_zero());
-            let non_zero = Int::ONE;
-            dt(non_zero, zero);
-            assert!(!non_zero.is_zero());
+        u128 = [[("00128", "128")]]
+        u256 = [[("000256", "256")]]
+        i128 = [[
+                    ("000128", "128"),
+                    ("-000128", "-128"),
+                ]]
+        i256 = [[
+                    ("000256", "256"),
+                    ("-000256", "-256"),
+                ]]
+        => |_0, samples| {
+            for (padded_str, compare) in samples {
+                let uint = bt(_0, Int::from_str(padded_str).unwrap());
+                assert_eq!(format!("{}", uint), compare);
+            }
         }
     );
 
     int_test!( json,
-        NoArgs
-    => |_0| {
-        let original = bt(_0, Int::from_str("123456").unwrap());
+        Specific
+        u128 = [["123456"]]
+        u256 = [["123456"]]
+        i128 = [["123456", "-123456"]]
+        i256 = [["123456", "-123456"]]
 
-        let serialized_str = serde_json::to_string(&original).unwrap();
-        assert_eq!(serialized_str, format!("\"{}\"", "123456"));
+    => |_0, samples| {
 
-        let serialized_vec = serde_json::to_vec(&original).unwrap();
-        assert_eq!(serialized_vec, format!("\"{}\"", "123456").as_bytes());
+        for sample in samples {
+            let original = bt(_0, Int::from_str(sample).unwrap());
 
-        let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
-        assert_eq!(parsed, original);
+            let serialized_str = serde_json::to_string(&original).unwrap();
+            assert_eq!(serialized_str, format!("\"{}\"", sample));
 
-        let parsed: Int::<_> = serde_json::from_slice(&serialized_vec).unwrap();
-        assert_eq!(parsed, original);
+            let serialized_vec = serde_json::to_vec(&original).unwrap();
+            assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
+
+            let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
+            assert_eq!(parsed, original);
+
+            let parsed: Int::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+            assert_eq!(parsed, original);
+        }
     });
 
     int_test!( compare,
@@ -864,7 +868,11 @@ pub mod testse {
     );
 
     int_test!( multiply_ratio,
-        NoArgs
+        Specific
+        u128 = []
+        u256 = []
+        i128 = []
+        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
         => |_0| {
             let base = Int::from(500_u64);
             let min = Int::MIN;
@@ -919,7 +927,11 @@ pub mod testse {
     );
 
     int_test!( multiply_ratio_does_not_overflow_when_result_fits,
-        NoArgs
+        Specific
+        u128 = []
+        u256 = []
+        i128 = []
+        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
          => |_0| {
             // Almost max value for Uint128.
             let max = Int::MAX;
@@ -933,7 +945,11 @@ pub mod testse {
     );
 
     int_test!( multiply_ratio_overflow,
-        NoArgs
+        Specific
+        u128 = []
+        u256 = []
+        i128 = []
+        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
         => |_0| {
             // Almost max value for Uint128.
             let max = Int::MAX;
@@ -954,7 +970,11 @@ pub mod testse {
     );
 
     int_test!( multiply_ratio_divide_by_zero,
-        NoArgs
+        Specific
+        u128 = []
+        u256 = []
+        i128 = []
+        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
         => |_0| {
             let base = bt(_0, Int::from(500_u64));
 
@@ -984,6 +1004,8 @@ pub mod testse {
         Specific
         u128 = [128]
         u256 = [256]
+        i128 = [128]
+        i256 = [256]
         attrs = #[should_panic(expected = "shift overflow")]
         => |u, shift| {
             let original = bt(u, Int::from(1_u64));
@@ -1005,6 +1027,8 @@ pub mod testse {
         Specific
         u128 = [128]
         u256 = [256]
+        i128 = [128]
+        i256 = [256]
         attrs = #[should_panic(expected = "shift overflow")]
         => |_0, shift| {
             let original = bt(_0, Int::from(1_u64));

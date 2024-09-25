@@ -45,35 +45,91 @@ macro_rules! int_test {
             NoArgs
             $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
-                int_test!($name, Specific u128 = [] u256 = [] $(attrs = $(#[$meta])*)? => $test_fn);
+                int_test!($name, Specific u128 = [] u256 = [] i128 = [] i256 = [] $(attrs = $(#[$meta])*)? => $test_fn);
         };
-        // Multiple optional tests.
-        // is not possible to use `$(attrs = $(#[$meta:meta])*)?`
-        // because it seems not possible to have nested optional arguments
-        (
+        // Multiple optional tests with attrs.
+         (
             $name:ident,
             Specific
-            $(u128  = [$($p128:expr),*])?
-            $(u256  = [$($p256:expr),*])?
-            $(attrs = $(#[$meta:meta])*)?
+            $(u128  = [$($pu128:expr),*])?
+            $(u256  = [$($pu256:expr),*])?
+            $(i128  = [$($pi128:expr),*])?
+            $(i256  = [$($pi256:expr),*])?
+            attrs = $(#[$meta:meta])*
             => $test_fn:expr
         ) => {
             paste::paste! {
-                $($(#[$meta])*)?
+                $(#[$meta])*
                 #[test]
                 fn [<$name _u128>]() {
                     $(
-                        ($test_fn)(Uint128::ZERO, $($p128),*);
+                        ($test_fn)(crate::Uint128::ZERO, $($pu128),*);
                     )?
                 }
 
-                $( $(#[$meta])* )?
+                $(#[$meta])*
                 #[test]
                 fn [<$name _u256>]() {
                     $(
-                        ($test_fn)(Uint256::ZERO, $($p256),*);
+                        ($test_fn)(crate::Uint256::ZERO, $($pu256),*);
                     )?
                 }
+                $(#[$meta])*
+
+                #[test]
+                fn [<$name _i128>]() {
+                    $(
+                        ($test_fn)(crate::Int128::ZERO, $($pi128),*);
+                    )?
+                }
+
+                $(#[$meta])*
+                #[test]
+                fn [<$name _i256>]() {
+                    $(
+                        ($test_fn)(crate::Int256::ZERO, $($pi256),*);
+                    )?
+                }
+            }
+        };
+         // Multiple optional tests without attrs.
+         (
+            $name:ident,
+            Specific
+            $(u128  = [$($pu128:expr),*])?
+            $(u256  = [$($pu256:expr),*])?
+            $(i128  = [$($pi128:expr),*])?
+            $(i256  = [$($pi256:expr),*])?
+            => $test_fn:expr
+        ) => {
+            paste::paste! {
+                $(
+                    #[test]
+                    fn [<$name _u128>]() {
+                        ($test_fn)(crate::Uint128::ZERO, $($pu128),*);
+                    }
+                )?
+
+                $(
+                    #[test]
+                    fn [<$name _u256>]() {
+                        ($test_fn)(crate::Uint256::ZERO, $($pu256),*);
+                    }
+                )?
+
+                $(
+                #[test]
+                    fn [<$name _i128>]() {
+                        ($test_fn)(crate::Int128::ZERO, $($pi128),*);
+                    }
+                )?
+
+                $(
+                    #[test]
+                    fn [<$name _i256>]() {
+                        ($test_fn)(crate::Int256::ZERO, $($pi256),*);
+                    }
+                )?
             }
         };
     }
