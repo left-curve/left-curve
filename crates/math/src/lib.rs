@@ -16,6 +16,9 @@ mod number_const;
 mod sign;
 mod utils;
 
+#[cfg(test)]
+mod test_utils;
+
 pub use {
     bytable::*, dec::*, decimal::*, error::*, fixed_point::*, fraction::*, inner::*, int::*,
     integer::*, is_zero::*, multiply_fraction::*, multiply_ratio::*, next::*, number::*,
