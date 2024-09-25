@@ -8,19 +8,21 @@ use {
 
 /// A wrapper over a vector that guarantees that no element appears twice.
 #[derive(Serialize, BorshSerialize, Debug, Clone, PartialEq, Eq)]
-pub struct UniqueVec<T>(Vec<T>);
+pub struct UniqueVec<T>(Vec<T>)
+where
+    T: Eq + Hash;
 
-impl<T> UniqueVec<T> {
+impl<T> UniqueVec<T>
+where
+    T: Eq + Hash,
+{
     // Here we collect the elements into a set, and check whether the set has
     // the same length as the vector.
     // Different trait bounds are required using HashSet or BTreeSet.
     // HashSet has faster insertion and lookup, while BTreeSet has faster
     // comparison if `T` is a simple number type such as `u32`.
     // Overall, we choose to use a HashSet here.
-    pub fn new(inner: Vec<T>) -> StdResult<Self>
-    where
-        T: Eq + Hash,
-    {
+    pub fn new(inner: Vec<T>) -> StdResult<Self> {
         if inner.iter().collect::<HashSet<_>>().len() != inner.len() {
             return Err(StdError::duplicate_data::<T>());
         }
@@ -33,7 +35,10 @@ impl<T> UniqueVec<T> {
     }
 }
 
-impl<T> Inner for UniqueVec<T> {
+impl<T> Inner for UniqueVec<T>
+where
+    T: Eq + Hash,
+{
     type U = Vec<T>;
 
     fn inner(&self) -> &Self::U {
@@ -45,7 +50,10 @@ impl<T> Inner for UniqueVec<T> {
     }
 }
 
-impl<T> IntoIterator for UniqueVec<T> {
+impl<T> IntoIterator for UniqueVec<T>
+where
+    T: Eq + Hash,
+{
     type IntoIter = vec::IntoIter<T>;
     type Item = T;
 
