@@ -91,6 +91,9 @@ pub enum StdError {
     #[error("expecting a non-zero value of type {ty}, got zero")]
     ZeroValue { ty: &'static str },
 
+    #[error("invalid change set: the add and remove sets must be disjoint")]
+    InvalidChangeSet,
+
     #[error("failed to serialize! codec: {codec}, type: {ty}, reason: {reason}")]
     Serialize {
         codec: &'static str,

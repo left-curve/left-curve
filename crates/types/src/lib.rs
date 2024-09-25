@@ -4,6 +4,7 @@ mod bank;
 mod binary;
 mod builder;
 mod bytearray;
+mod changeset;
 mod coin;
 mod coin_pair;
 mod coins;
@@ -30,10 +31,10 @@ mod unique_vec;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, coin::*, coin_pair::*,
-    coins::*, context::*, db::*, denom::*, empty::*, error::*, event::*, hash::*, hashers::*,
-    imports::*, non_empty::*, non_zero::*, query::*, response::*, result::*, serializers::*,
-    signer::*, time::*, tx::*, unique_vec::*, utils::*,
+    address::*, app::*, bank::*, binary::*, builder::*, bytearray::*, changeset::*, coin::*,
+    coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, error::*, event::*, hash::*,
+    hashers::*, imports::*, non_empty::*, non_zero::*, query::*, response::*, result::*,
+    serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
