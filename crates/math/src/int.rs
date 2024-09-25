@@ -721,22 +721,6 @@ pub mod testse {
         }
     );
 
-    int_test! (pow_works,
-        NoArgs
-        => |_0| {
-            assert_eq!(bt(_0, Int::from(2_u32)).checked_pow(2).unwrap(), bt(_0, Int::from(4_u32)));
-            assert_eq!(bt(_0, Int::from(2_u32)).checked_pow(10).unwrap(), bt(_0, Int::from(1024_u32)));
-
-            // overflow
-            let max = bt(_0, Int::MAX);
-            let result = max.checked_pow(2);
-            let MathError::OverflowPow { .. } = result.unwrap_err() else {
-                panic!("Expected OverflowPow error");
-            };
-
-        }
-    );
-
     int_test!( multiply_ratio,
         Specific
         u128 = []

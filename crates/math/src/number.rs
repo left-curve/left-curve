@@ -680,4 +680,156 @@ mod tests {
             assert_eq!(a, bt(_0, Int::from(7_u64)));
         }
     );
+
+    int_test!( pow,
+        Specific
+        u128 = [[ // Passing cases
+                    (2_u128, 2, 4_u128),
+                    (10, 3, 1_000),
+                    (0, 2, 0),
+                ],
+                [ // Failing cases
+                    (u128::MAX, 2)
+                ]]
+
+        u256 = [[ // Passing cases
+                    (U256::from(2_u32), 2, U256::from(4_u32)),
+                    (U256::from(10_u32), 3, U256::from(1_000_u32)),
+                    (U256::ZERO, 2, U256::ZERO),
+                ],
+                [  // Failing cases
+                    (U256::MAX, 2)
+                ]]
+
+        i128 = [[ // Passing cases
+                    (2_i128, 2, 4_i128),
+                    (10, 3, 1_000),
+                    (-2, 2, 4),
+                    (-10, 3, -1_000),
+                    (0, 2, 0),
+                ],
+                [ // Failing cases
+                    (i128::MAX, 2),
+                    (i128::MIN, 2)
+                ]]
+
+        i256 = [[ // Passing cases
+                    (I256::from(2), 2, I256::from(4)),
+                    (I256::from(10), 3, I256::from(1_000)),
+                    (I256::from(-2), 2, I256::from(4)),
+                    (I256::from(-10), 3, I256::from(-1_000)),
+                    (I256::ZERO, 2, I256::ZERO),
+                ],
+                [ // Failing cases
+                    (I256::MAX, 2),
+                    (I256::MIN, 2),
+                ]]
+        => |_0, samples, failing_samples| {
+            for (base, exp, expected) in samples {
+                let base = Int::from(base);
+                let expected = Int::from(expected);
+                dts!(_0, base, expected);
+                assert_eq!(base.checked_pow(exp).unwrap(), expected);
+            }
+
+            for (base, exp) in failing_samples {
+                let base = bt(_0, Int::from(base));
+                assert!(matches!(base.checked_pow(exp), Err(MathError::OverflowPow { .. })));
+            }
+        }
+    );
+
+    int_test!( wrapping_add,
+        NoArgs
+        => |_0| {
+                let max = bt(_0, Int::MAX);
+                assert_eq!(max.wrapping_add(Int::ONE), Int::MIN);
+        }
+    );
+
+    int_test!( wrapping_sub,
+        NoArgs
+        => |_0| {
+                let min = bt(_0, Int::MIN);
+                assert_eq!(min.wrapping_sub(Int::ONE), Int::MAX);
+        }
+    );
+
+    int_test!( wrapping_mul,
+        Specific
+        u128 = [[
+                    (u128::MAX, 2_u128, u128::MAX - 1),
+                    (u128::MAX, 3_u128, u128::MAX - 2)
+                ]]
+
+        u256 = [[
+                    (U256::MAX, U256::from(2_u32), U256::MAX - U256::ONE),
+                    (U256::MAX, U256::from(3_u32), U256::MAX - U256::from(2_u32))
+                ]]
+
+        i128 = [[
+                    (i128::MAX, 2_i128, -2_i128),
+                    (i128::MAX, 3_i128, i128::MAX - 2),
+                    (i128::MAX, 4_i128, -4_i128),
+                    (i128::MAX, 5_i128, i128::MAX - 4),
+
+                    (i128::MIN, 2_i128, 0),
+                    (i128::MIN, 3_i128, i128::MIN),
+                    (i128::MIN, 4_i128, 0),
+                    (i128::MIN, 5_i128, i128::MIN),
+                ]]
+
+        i256 = [[
+                    (I256::MAX, I256::from(2), I256::from(-2)),
+                    (I256::MAX, I256::from(3), I256::MAX - I256::from(2)),
+                    (I256::MAX, I256::from(4), I256::from(-4)),
+                    (I256::MAX, I256::from(5), I256::MAX - I256::from(4))
+                ]]
+
+       => |_0, samples| {
+            for (left, right, expected) in samples {
+                let left = Int::from(left);
+                let right = Int::from(right);
+                let expected = Int::from(expected);
+                dts!(_0, left, right, expected);
+                assert_eq!(left.wrapping_mul(right), expected);
+            }
+       }
+    );
+
+    int_test!( wrapping_pow,
+        Specific
+        u128 = [[
+                    (u128::MAX, 2, u128::MAX - 1),
+                    (u128::MAX, 3, u128::MAX - 2)
+                ]]
+
+        u256 = [[
+                    (U256::MAX, 2, U256::MAX - U256::ONE),
+                    (U256::MAX, 3, U256::MAX - U256::from(2_u32))
+                ]]
+
+        i128 = [[
+                    (i128::MAX, 2, -2_i128),
+                    (i128::MAX, 3, i128::MAX - 2),
+                    (i128::MAX, 4, -4_i128),
+                    (i128::MAX, 5, i128::MAX - 4)
+                ]]
+
+        i256 = [[
+                    (I256::MAX, 2, I256::from(-2)),
+                    (I256::MAX, 3, I256::MAX - I256::from(2)),
+                    (I256::MAX, 4, I256::from(-4)),
+                    (I256::MAX, 5, I256::MAX - I256::from(4))
+                ]]
+
+       => |_0, samples| {
+            for (base, exp, expected) in samples {
+                let base = Int::from(base);
+                let expected = Int::from(expected);
+                dts!(_0, base, expected);
+                assert_eq!(base.wrapping_pow(exp), expected);
+            }
+       }
+    );
 }
