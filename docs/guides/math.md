@@ -19,18 +19,18 @@ Grug provides a number of number types for use in smart contracts. They are buil
 
 It is, however, not recommended to use these types directly. Instead, Grug exports the following type alises:
 
-| alias     | type          | description                                                |
-| --------- | ------------- | ---------------------------------------------------------- |
-| `Uint64`  | `Int<u64>`    | 64-bit unsigned integer                                    |
-| `Uint128` | `Int<u128>`   | 128-bit unsigned integer                                   |
-| `Uint256` | `Int<U256>`   | 256-bit unsigned integer                                   |
-| `Uint512` | `Int<U512>`   | 512-bit unsigned integer                                   |
-| `Int64`   | `Int<i64>>`   | 64-bit signed integer                                      |
-| `Int128`  | `Int<i128>>`  | 128-bit signed integer                                     |
-| `Int256`  | `Int<I256>>`  | 256-bit signed integer                                     |
-| `Int512`  | `Int<I512>>`  | 512-bit signed integer                                     |
-| `Udec128` | `Dec<i128>`   | 128-bit unsigned fixed-point number with 18 decimal places |
-| `Udec256` | `Dec<I256>`   | 256-bit unsigned fixed-point number with 18 decimal places |
+| alias     | type         | description                                                |
+| --------- | ------------ | ---------------------------------------------------------- |
+| `Uint64`  | `Int<u64>`   | 64-bit unsigned integer                                    |
+| `Uint128` | `Int<u128>`  | 128-bit unsigned integer                                   |
+| `Uint256` | `Int<U256>`  | 256-bit unsigned integer                                   |
+| `Uint512` | `Int<U512>`  | 512-bit unsigned integer                                   |
+| `Int64`   | `Int<i64>>`  | 64-bit signed integer                                      |
+| `Int128`  | `Int<i128>>` | 128-bit signed integer                                     |
+| `Int256`  | `Int<I256>>` | 256-bit signed integer                                     |
+| `Int512`  | `Int<I512>>` | 512-bit signed integer                                     |
+| `Udec128` | `Dec<i128>`  | 128-bit unsigned fixed-point number with 18 decimal places |
+| `Udec256` | `Dec<I256>`  | 256-bit unsigned fixed-point number with 18 decimal places |
 | `Dec128`  | `Dec<i128>>` | 128-bit signed fixed-point number with 18 decimal places   |
 | `Dec256`  | `Dec<I256>>` | 256-bit signed fixed-point number with 18 decimal places   |
 
