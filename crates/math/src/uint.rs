@@ -32,19 +32,6 @@ impl<U> Uint<U> {
 
 impl<U> Uint<U>
 where
-    U: Copy,
-{
-    pub const fn number(&self) -> U {
-        self.0
-    }
-
-    pub const fn number_ref(&self) -> &U {
-        &self.0
-    }
-}
-
-impl<U> Uint<U>
-where
     Uint<U>: NextNumber,
     <Uint<U> as NextNumber>::Next: Number,
 {
@@ -306,7 +293,7 @@ macro_rules! generate_uint {
             // Ex: From<Uint64> for Uint128
             impl From<$from> for $name {
                 fn from(value: $from) -> Self {
-                    Self(value.number().into())
+                    Self(value.into_inner().into())
                 }
             }
 
@@ -321,7 +308,7 @@ macro_rules! generate_uint {
             impl TryFrom<$name> for $from {
                 type Error = MathError;
                 fn try_from(value: $name) -> MathResult<$from> {
-                    <$from as Inner>::U::try_from(value.number())
+                    <$from as Inner>::U::try_from(value.into_inner())
                         .map(Self)
                         .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
                 }
@@ -331,7 +318,7 @@ macro_rules! generate_uint {
             impl TryFrom<$name> for <$from as Inner>::U {
                 type Error = MathError;
                 fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
-                    <$from as Inner>::U::try_from(value.number())
+                    <$from as Inner>::U::try_from(value.into_inner())
                         .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
                 }
             }
@@ -350,7 +337,7 @@ macro_rules! generate_uint {
             impl TryFrom<$name> for $from_std {
                 type Error = MathError;
                 fn try_from(value: $name) -> MathResult<$from_std> {
-                    <$from_std>::try_from(value.number())
+                    <$from_std>::try_from(value.into_inner())
                     .map_err(|_| MathError::overflow_conversion::<_, $from_std>(value))
                 }
             }
@@ -366,7 +353,7 @@ macro_rules! generate_uint {
         // Ex: From<Uint128> for u128
         impl From<$name> for $inner {
             fn from(value: $name) -> Self {
-               value.number()
+               value.into_inner()
             }
         }
     };
@@ -480,25 +467,25 @@ mod tests {
         #[test]
         fn uint256_const_constructor(input in any::<u128>()) {
             let uint256 = Uint256::new_from_u128(input);
-            let output = uint256.number().try_into().unwrap();
+            let output = uint256.into_inner().try_into().unwrap();
             assert_eq!(input, output);
         }
 
         #[test]
         fn uint512_const_constructor(input in any::<u128>()) {
             let uint512 = Uint512::new_from_u128(input);
-            let output = uint512.number().try_into().unwrap();
+            let output = uint512.into_inner().try_into().unwrap();
             assert_eq!(input, output);
         }
 
         fn int256_const_constructor(input in any::<i128>()) {
             let int256 = Int256::new_from_i128(input);
-            let output = int256.number().try_into().unwrap();
+            let output = int256.into_inner().try_into().unwrap();
             assert_eq!(input, output);
         }
         fn int512_const_constructor(input in any::<i128>()) {
             let int512 = Int512::new_from_i128(input);
-            let output = int512.number().try_into().unwrap();
+            let output = int512.into_inner().try_into().unwrap();
             assert_eq!(input, output);
         }
     }

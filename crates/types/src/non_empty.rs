@@ -1,6 +1,7 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     serde::{de, Serialize},
     std::{
         fmt::{self, Display},
@@ -29,12 +30,19 @@ where
     pub fn new_unchecked(inner: T) -> Self {
         Self(inner)
     }
+}
 
-    pub fn inner(&self) -> &T {
+impl<T> Inner for NonEmpty<T>
+where
+    for<'a> &'a T: IntoIterator,
+{
+    type U = T;
+
+    fn inner(&self) -> &Self::U {
         &self.0
     }
 
-    pub fn into_inner(self) -> T {
+    fn into_inner(self) -> Self::U {
         self.0
     }
 }

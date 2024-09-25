@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, Uint128},
+    grug_math::{Inner, IsZero, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
 };
@@ -57,19 +57,37 @@ impl Duration {
     }
 
     pub fn into_seconds(self) -> u128 {
-        self.0.number() / NANOS_PER_SECOND
+        self.0.into_inner() / NANOS_PER_SECOND
     }
 
     pub fn into_millis(self) -> u128 {
-        self.0.number() / NANOS_PER_MILLI
+        self.0.into_inner() / NANOS_PER_MILLI
     }
 
     pub fn into_micros(self) -> u128 {
-        self.0.number() / NANOS_PER_MICRO
+        self.0.into_inner() / NANOS_PER_MICRO
     }
 
     pub fn into_nanos(self) -> u128 {
-        self.0.number()
+        self.0.into_inner()
+    }
+}
+
+impl Inner for Duration {
+    type U = Uint128;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
+}
+
+impl IsZero for Duration {
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
     }
 }
 
@@ -86,11 +104,5 @@ impl Sub for Duration {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
-    }
-}
-
-impl IsZero for Duration {
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
     }
 }

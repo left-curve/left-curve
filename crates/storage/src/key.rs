@@ -4,7 +4,8 @@ use {
         types::{I256, I512, U256, U512},
     },
     grug_math::{
-        Bytable, Int128, Int256, Int512, Int64, Udec, Uint, Uint128, Uint256, Uint512, Uint64,
+        Bytable, Inner, Int128, Int256, Int512, Int64, Udec, Uint, Uint128, Uint256, Uint512,
+        Uint64,
     },
     grug_types::{
         nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
@@ -397,7 +398,7 @@ where
     const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        self.number_ref().raw_keys()
+        self.inner().raw_keys()
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
