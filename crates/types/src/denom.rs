@@ -1,6 +1,7 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     serde::{
         de::{self, Error},
         ser, Serialize,
@@ -8,7 +9,7 @@ use {
     std::{
         fmt::{self, Display, Formatter, Write},
         io,
-        ops::{Deref, DerefMut},
+        ops::Deref,
         str::FromStr,
     },
 };
@@ -26,21 +27,23 @@ impl Part {
     {
         Self(s.into())
     }
+}
 
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
+impl Inner for Part {
+    type U = String;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-
-    pub fn into_string(self) -> String {
+    fn into_inner(self) -> Self::U {
         self.0
     }
+}
 
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0.into_bytes()
+impl AsRef<str> for Part {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -49,12 +52,6 @@ impl Deref for Part {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl DerefMut for Part {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
@@ -180,16 +177,16 @@ impl Denom {
             None
         }
     }
+}
 
-    pub fn parts(&self) -> &Vec<Part> {
+impl Inner for Denom {
+    type U = Vec<Part>;
+
+    fn inner(&self) -> &Self::U {
         &self.0
     }
 
-    pub fn parts_mut(&mut self) -> &mut Vec<Part> {
-        &mut self.0
-    }
-
-    pub fn into_parts(self) -> Vec<Part> {
+    fn into_inner(self) -> Self::U {
         self.0
     }
 }

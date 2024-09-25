@@ -1,6 +1,7 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     serde::{
         de::{self, Error},
         Serialize,
@@ -62,12 +63,20 @@ where
             bounds: PhantomData,
         })
     }
+}
 
-    pub fn inner(&self) -> &T {
+impl<T, B> Inner for Bounded<T, B>
+where
+    T: PartialOrd + ToString,
+    B: Bounds<T>,
+{
+    type U = T;
+
+    fn inner(&self) -> &Self::U {
         &self.value
     }
 
-    pub fn into_inner(self) -> T {
+    fn into_inner(self) -> Self::U {
         self.value
     }
 }

@@ -2,6 +2,7 @@ use {
     crate::{Binary, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     data_encoding::BASE64,
+    grug_math::Inner,
     serde::{de, ser},
     std::{
         fmt,
@@ -19,6 +20,18 @@ pub struct ByteArray<const N: usize>([u8; N]);
 
 impl<const N: usize> ByteArray<N> {
     pub fn into_array(self) -> [u8; N] {
+        self.0
+    }
+}
+
+impl<const N: usize> Inner for ByteArray<N> {
+    type U = [u8; N];
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
         self.0
     }
 }

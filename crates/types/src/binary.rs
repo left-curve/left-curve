@@ -1,6 +1,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     data_encoding::BASE64,
+    grug_math::Inner,
     serde::{de, ser},
     std::{
         fmt,
@@ -16,6 +17,18 @@ pub struct Binary(Vec<u8>);
 impl Binary {
     pub fn empty() -> Self {
         Self(vec![])
+    }
+}
+
+impl Inner for Binary {
+    type U = Vec<u8>;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
     }
 }
 

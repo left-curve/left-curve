@@ -1,8 +1,9 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     serde::{de, Serialize},
-    std::{collections::HashSet, hash::Hash, io, slice, vec},
+    std::{collections::HashSet, hash::Hash, io, vec},
 };
 
 /// A wrapper over a vector that guarantees that no element appears twice.
@@ -10,20 +11,37 @@ use {
 pub struct UniqueVec<T>(Vec<T>);
 
 impl<T> UniqueVec<T> {
+    // Here we collect the elements into a set, and check whether the set has
+    // the same length as the vector.
+    // Different trait bounds are required using HashSet or BTreeSet.
+    // HashSet has faster insertion and lookup, while BTreeSet has faster
+    // comparison if `T` is a simple number type such as `u32`.
+    // Overall, we choose to use a HashSet here.
+    pub fn new(inner: Vec<T>) -> StdResult<Self>
+    where
+        T: Eq + Hash,
+    {
+        if inner.iter().collect::<HashSet<_>>().len() != inner.len() {
+            return Err(StdError::duplicate_data::<T>());
+        }
+
+        Ok(Self(inner))
+    }
+
     pub fn new_unchecked(inner: Vec<T>) -> Self {
         Self(inner)
     }
+}
 
-    pub fn into_inner(self) -> Vec<T> {
+impl<T> Inner for UniqueVec<T> {
+    type U = Vec<T>;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
         self.0
-    }
-
-    pub fn iter(&self) -> slice::Iter<'_, T> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
-        self.0.iter_mut()
     }
 }
 
@@ -42,20 +60,8 @@ where
 {
     type Error = StdError;
 
-    // Here we collect the elements into a set, and check whether the set has
-    // the same length as the vector.
-    // Different trait bounds are required using HashSet or BTreeSet.
-    // HashSet has faster insertion and lookup, while BTreeSet has faster
-    // comparison if `T` is a simple number type such as `u32`.
-    // Overall, we choose to use a HashSet here.
     fn try_from(vector: Vec<T>) -> StdResult<Self> {
-        let set = vector.iter().collect::<HashSet<_>>();
-
-        if set.len() != vector.len() {
-            return Err(StdError::duplicate_data::<T>());
-        }
-
-        Ok(Self(vector))
+        Self::new(vector)
     }
 }
 

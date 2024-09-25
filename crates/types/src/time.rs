@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, Uint128},
+    grug_math::{Inner, IsZero, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
 };
@@ -73,6 +73,24 @@ impl Duration {
     }
 }
 
+impl Inner for Duration {
+    type U = Uint128;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
+}
+
+impl IsZero for Duration {
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
 impl Add for Duration {
     type Output = Self;
 
@@ -86,11 +104,5 @@ impl Sub for Duration {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
-    }
-}
-
-impl IsZero for Duration {
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
     }
 }
