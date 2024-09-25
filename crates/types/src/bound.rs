@@ -1,6 +1,11 @@
 use {
     crate::{StdError, StdResult},
-    std::marker::PhantomData,
+    borsh::{BorshDeserialize, BorshSerialize},
+    serde::{
+        de::{self, Error},
+        Serialize,
+    },
+    std::{io, marker::PhantomData, ops::Deref},
 };
 
 /// A limit for a value.
@@ -16,8 +21,12 @@ pub trait Bounds<T> {
 }
 
 /// A wrapper that enforces the value to be within the specified bounds.
-#[derive(Debug)]
-pub struct Bounded<T, B> {
+#[derive(Serialize, BorshSerialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Bounded<T, B>
+where
+    T: PartialOrd + ToString,
+    B: Bounds<T>,
+{
     value: T,
     bounds: PhantomData<B>,
 }
@@ -63,12 +72,65 @@ where
     }
 }
 
+impl<T, B> AsRef<T> for Bounded<T, B>
+where
+    T: PartialOrd + ToString,
+    B: Bounds<T>,
+{
+    fn as_ref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T, B> Deref for Bounded<T, B>
+where
+    T: PartialOrd + ToString,
+    B: Bounds<T>,
+{
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<'de, T, B> de::Deserialize<'de> for Bounded<T, B>
+where
+    T: PartialOrd + ToString + de::Deserialize<'de>,
+    B: Bounds<T>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let value = T::deserialize(deserializer)?;
+
+        Self::new(value).map_err(D::Error::custom)
+    }
+}
+
+impl<T, B> BorshDeserialize for Bounded<T, B>
+where
+    T: PartialOrd + ToString + BorshDeserialize,
+    B: Bounds<T>,
+{
+    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
+    where
+        R: io::Read,
+    {
+        let value = BorshDeserialize::deserialize_reader(reader)?;
+
+        Self::new(value).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
         super::*,
+        crate::JsonDeExt,
         grug_math::{NumberConst, Udec256, Uint256},
     };
 
@@ -92,5 +154,9 @@ mod tests {
         assert!(FeeRate::new(Udec256::new_percent(0_u128)).is_ok());
         assert!(FeeRate::new(Udec256::new_percent(50_u128)).is_ok());
         assert!(FeeRate::new(Udec256::new_percent(100_u128)).is_err());
+
+        assert!("\"0\"".deserialize_json::<FeeRate>().is_ok());
+        assert!("\"0.5\"".deserialize_json::<FeeRate>().is_ok());
+        assert!("\"1\"".deserialize_json::<FeeRate>().is_err());
     }
 }
