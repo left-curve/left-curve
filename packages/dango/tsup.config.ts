@@ -7,9 +7,18 @@ import { type Options, defineConfig } from "tsup";
 export default defineConfig([
   {
     ...(config as Options),
-    entry: ["src/index.ts"],
+    entry: ["./src/**"],
+    bundle: true,
+    splitting: false,
+    treeshake: false,
     format: ["esm"],
-    external: ["react", "@tanstack/react-query"],
+    external: ["react", "react-dom", "@tanstack/react-query"],
     platform: "browser",
+    publicDir: "./public",
+    esbuildOptions(options) {
+      options.banner = {
+        js: "'use client'",
+      };
+    },
   },
 ]);

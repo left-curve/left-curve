@@ -4,17 +4,19 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'main'
-      - 'develop'
+      - "main"
+      - "develop"
     paths:
-      - 'packages/react/**'
-      - 'apps/superapp/**'
+      - "packages/react/**"
+      - "packages/dango/**"
+      - "apps/superapp/**"
   pull_request:
     branches:
-      - '*'
+      - "*"
     paths:
-      - 'packages/react/**'
-      - 'apps/superapp/**'
+      - "packages/react/**"
+      - "packages/dango/**"
+      - "apps/superapp/**"
 
 jobs:
   deploy:
@@ -35,7 +37,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
@@ -46,7 +48,7 @@ jobs:
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
-          wranglerVersion: '3'
+          wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-portal

@@ -12,7 +12,7 @@ import {
 } from "@leftcurve/connect-kit/handlers";
 
 import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
-import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "~/utils/query";
+import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query";
 
 import { useConfig } from "./useConfig";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors";

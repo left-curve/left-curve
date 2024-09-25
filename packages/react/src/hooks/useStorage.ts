@@ -2,7 +2,7 @@ import { createMemoryStorage, createStorage } from "@leftcurve/connect-kit";
 
 import type { Storage } from "@leftcurve/types";
 import type { Dispatch, SetStateAction } from "react";
-import { useQuery } from "~/utils";
+import { useQuery } from "../query";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);

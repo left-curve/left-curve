@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@leftcurve/connect-kit": "workspace:^",
+    "@leftcurve/dango": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "next": "14.2.5",

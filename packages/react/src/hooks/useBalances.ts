@@ -1,5 +1,5 @@
 import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
-import { type QueryParameter, type UseQueryReturnType, useQuery } from "~/utils/query";
+import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query";
 import { useConfig } from "./useConfig";
 
 import {

@@ -6,7 +6,7 @@ on:
     branches:
       - "main"
     paths:
-      - "packages/react/**"
+      - "packages/dango/**"
 
 jobs:
   deploy:
@@ -36,7 +36,7 @@ jobs:
         run: pnpm build:pkg
 
       - name: Build Storybook
-        working-directory: ./packages/react
+        working-directory: ./packages/dango
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages

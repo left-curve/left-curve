@@ -1,4 +1,4 @@
-import { ExampleHeader } from "@leftcurve/react/components/examples";
+import { ExampleHeader } from "@leftcurve/dango/components/examples";
 
 function App() {
   return (

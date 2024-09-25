@@ -1,18 +1,15 @@
-"use client";
+import { GrunnectProvider as Provider } from "@leftcurve/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 
 import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
 import { localhost } from "@leftcurve/connect-kit/chains";
-import { GrunnectProvider } from "@leftcurve/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import type React from "react";
 import "@leftcurve/types/window";
 
 export const config = createConfig({
-  ssr: true,
   chains: [localhost],
   transports: {
-    [localhost.id]: http("http://localhost:26657"),
+    [localhost.id]: http("http://localhost:26657", { batch: true }),
   },
   coins: {
     [localhost.id]: {
@@ -42,16 +39,10 @@ export const config = createConfig({
   ],
 });
 
-const queryClient = new QueryClient();
-
-export interface ProvidersProps {
-  children: React.ReactNode;
-}
-
-export function Providers({ children }: ProvidersProps) {
+export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <GrunnectProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </GrunnectProvider>
+    <Provider config={config}>
+      <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+    </Provider>
   );
-}
+};

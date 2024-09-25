@@ -33,7 +33,7 @@
   },
   "overrides": [
     {
-      "include": ["examples/vite/**", "packages/react/**"],
+      "include": ["examples/vite/**", "packages/dango/**"],
       "linter": {
         "rules": {
           "a11y": {

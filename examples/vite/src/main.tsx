@@ -1,10 +1,10 @@
 import { createRoot } from "react-dom/client";
-import { AppProvider } from "./providers";
+import { AppProvider } from "./AppProvider";
 
-import "@leftcurve/react/fonts/ABCDiatypeRounded/index.css"
+import "@leftcurve/dango/fonts/ABCDiatypeRounded/index.css";
 import "./index.css";
 
-import App from "./App.tsx";
+import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <AppProvider>

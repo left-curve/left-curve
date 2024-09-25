@@ -5,7 +5,7 @@ const config: Config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx}",
     "node_modules/@leftcurve/config/tailwind/**",
-    "node_modules/@leftcurve/react/src/components/**/*.{js,ts,jsx,tsx}",
+    "node_modules/@leftcurve/dango/src/components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {},

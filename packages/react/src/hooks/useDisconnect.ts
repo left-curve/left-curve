@@ -7,7 +7,7 @@ import {
   disconnectMutationOptions,
 } from "@leftcurve/connect-kit/handlers";
 import type { ConfigParameter, Connector, Prettify } from "@leftcurve/types";
-import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "~/utils/query";
+import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query";
 import { useConfig } from "./useConfig";
 import { useConnectors } from "./useConnectors";
 

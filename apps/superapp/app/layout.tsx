@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Providers } from "./providers";
 
-import { Header } from "@leftcurve/react/components";
+import { Header } from "@leftcurve/dango/components";
 
-import "@leftcurve/react/fonts/ABCDiatypeRounded/index.css"
+import "@leftcurve/dango/fonts/ABCDiatypeRounded/index.css";
 import "../public/styles/globals.css";
 
 const inter = Inter({

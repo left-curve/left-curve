@@ -2,9 +2,6 @@
   "name": "@leftcurve/react",
   "version": "0.1.0",
   "scripts": {
-    "tw:build": "tailwindcss -o build/components/styles.css --minify",
-    "sb:dev": "storybook dev -p 6006",
-    "sb:build": "storybook build",
     "dev": "pnpm tsup --watch --silent",
     "lint": "pnpm biome check --write ./src",
     "lint:fix": "pnpm biome ci ./src",
@@ -14,57 +11,17 @@
   "main": "./build/index.js",
   "module": "./build/index.mjs",
   "types": "./build/index.d.ts",
-  "typings": "./build/index.d.ts",
   "sideEffects": false,
   "files": [
     "build",
     "src",
-    "!**/*.spec.ts",
-    "!typedoc.json",
-    "!tsup.config.ts"
+    "!**/*.spec.ts"
   ],
   "exports": {
-    "./fonts/*": "./build/fonts/*",
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.mjs",
       "default": "./build/index.js"
-    },
-    "./components": {
-      "types": "./build/components/index.d.ts",
-      "import": "./build/components/index.mjs",
-      "default": "./build/components/index.js"
-    },
-    "./components/examples": {
-      "types": "./build/components/examples/index.d.ts",
-      "import": "./build/components/examples/index.mjs",
-      "default": "./build/components/examples/index.js"
-    },
-    "./hooks": {
-      "types": "./build/hooks/index.d.ts",
-      "import": "./build/hooks/index.mjs",
-      "default": "./build/hooks/index.js"
-    },
-    "./providers": {
-      "types": "./build/providers/index.d.ts",
-      "import": "./build/providers/index.mjs",
-      "default": "./build/providers/index.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "components": [
-        "./build/components/index.d.ts"
-      ],
-      "components/examples": [
-        "./build/components/examples/index.d.ts"
-      ],
-      "hooks": [
-        "./build/hooks/index.d.ts"
-      ],
-      "providers": [
-        "./build/providers/index.d.ts"
-      ]
     }
   },
   "dependencies": {
@@ -72,37 +29,17 @@
     "@leftcurve/crypto": "workspace:^",
     "@leftcurve/encoding": "workspace:^",
     "@leftcurve/utils": "workspace:^",
-    "@radix-ui/react-label": "^2.1.0",
-    "@radix-ui/react-slot": "^1.1.0",
-    "clsx": "^2.1.1",
-    "framer-motion": "^11.3.21",
-    "react-use": "^17.5.1",
-    "tailwind-variants": "^0.2.1",
     "use-sync-external-store": "^1.2.2"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
-    "@storybook/addon-a11y": "^8.3.2",
-    "@storybook/addon-essentials": "^8.3.2",
-    "@storybook/addon-links": "^8.3.2",
-    "@storybook/blocks": "^8.3.2",
-    "@storybook/react": "^8.3.2",
-    "@storybook/react-vite": "^8.3.2",
     "@tanstack/react-query": ">=5.45.1",
     "@types/node": "^20",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/use-sync-external-store": "^0.0.6",
-    "autoprefixer": "^10.4.20",
-    "glob": "^11.0.0",
-    "postcss": "^8",
-    "react": "^18",
-    "react-dom": "^18.3.1",
-    "storybook": "^8.3.2",
-    "tailwindcss": "^3.4.1",
-    "vite": "^5.4.7",
-    "vite-tsconfig-paths": "^5.0.1"
+    "react": "^18"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5.0.0",

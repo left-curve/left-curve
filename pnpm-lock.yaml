@@ -32,6 +32,9 @@ importers:
       '@leftcurve/connect-kit':
         specifier: workspace:^
         version: link:../../packages/connect-kit
+      '@leftcurve/dango':
+        specifier: workspace:^
+        version: link:../../packages/dango
       '@leftcurve/react':
         specifier: workspace:^
         version: link:../../packages/react
@@ -78,6 +81,9 @@ importers:
       '@leftcurve/connect-kit':
         specifier: workspace:^
         version: link:../../packages/connect-kit
+      '@leftcurve/dango':
+        specifier: workspace:^
+        version: link:../../packages/dango
       '@leftcurve/react':
         specifier: workspace:^
         version: link:../../packages/react
@@ -149,6 +155,9 @@ importers:
       '@leftcurve/connect-kit':
         specifier: workspace:^
         version: link:../../packages/connect-kit
+      '@leftcurve/dango':
+        specifier: workspace:^
+        version: link:../../packages/dango
       '@leftcurve/react':
         specifier: workspace:^
         version: link:../../packages/react
@@ -273,36 +282,11 @@ importers:
         specifier: ^2.0.5
         version: 2.1.1(@types/node@22.5.5)
 
-  packages/encoding:
+  packages/dango:
     dependencies:
-      '@leftcurve/utils':
+      '@leftcurve/react':
         specifier: workspace:^
-        version: link:../utils
-      superjson:
-        specifier: ^2.2.1
-        version: 2.2.1
-    devDependencies:
-      '@leftcurve/config':
-        specifier: workspace:^
-        version: link:../config
-      '@leftcurve/types':
-        specifier: workspace:^
-        version: link:../types
-      vitest:
-        specifier: ^2.0.5
-        version: 2.1.1(@types/node@22.5.5)
-
-  packages/react:
-    dependencies:
-      '@leftcurve/connect-kit':
-        specifier: workspace:^
-        version: link:../connect-kit
-      '@leftcurve/crypto':
-        specifier: workspace:^
-        version: link:../crypto
-      '@leftcurve/encoding':
-        specifier: workspace:^
-        version: link:../encoding
+        version: link:../react
       '@leftcurve/utils':
         specifier: workspace:^
         version: link:../utils
@@ -324,9 +308,6 @@ importers:
       tailwind-variants:
         specifier: ^0.2.1
         version: 0.2.1(tailwindcss@3.4.12)
-      use-sync-external-store:
-        specifier: ^1.2.2
-        version: 1.2.2(react@18.3.1)
     devDependencies:
       '@leftcurve/config':
         specifier: workspace:^
@@ -364,9 +345,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.0
-      '@types/use-sync-external-store':
-        specifier: ^0.0.6
-        version: 0.0.6
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
@@ -394,6 +372,71 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.0.1
         version: 5.0.1(typescript@5.6.2)(vite@5.4.7(@types/node@20.16.5))
+
+  packages/encoding:
+    dependencies:
+      '@leftcurve/utils':
+        specifier: workspace:^
+        version: link:../utils
+      superjson:
+        specifier: ^2.2.1
+        version: 2.2.1
+    devDependencies:
+      '@leftcurve/config':
+        specifier: workspace:^
+        version: link:../config
+      '@leftcurve/types':
+        specifier: workspace:^
+        version: link:../types
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.1(@types/node@22.5.5)
+
+  packages/react:
+    dependencies:
+      '@leftcurve/connect-kit':
+        specifier: workspace:^
+        version: link:../connect-kit
+      '@leftcurve/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@leftcurve/encoding':
+        specifier: workspace:^
+        version: link:../encoding
+      '@leftcurve/utils':
+        specifier: workspace:^
+        version: link:../utils
+      react-dom:
+        specifier: ^18
+        version: 18.3.1(react@18.3.1)
+      use-sync-external-store:
+        specifier: ^1.2.2
+        version: 1.2.2(react@18.3.1)
+    devDependencies:
+      '@leftcurve/config':
+        specifier: workspace:^
+        version: link:../config
+      '@leftcurve/types':
+        specifier: workspace:^
+        version: link:../types
+      '@tanstack/react-query':
+        specifier: '>=5.45.1'
+        version: 5.56.2(react@18.3.1)
+      '@types/node':
+        specifier: ^20
+        version: 20.16.5
+      '@types/react':
+        specifier: ^18.3.3
+        version: 18.3.8
+      '@types/react-dom':
+        specifier: ^18.3.0
+        version: 18.3.0
+      '@types/use-sync-external-store':
+        specifier: ^0.0.6
+        version: 0.0.6
+      react:
+        specifier: ^18
+        version: 18.3.1
 
   packages/sdk:
     dependencies:
