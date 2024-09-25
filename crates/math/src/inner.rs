@@ -4,10 +4,10 @@ use crate::{Udec, Uint};
 pub trait Inner {
     type U;
 
-    // Returns an immutable reference to the inner value.
+    /// Returns an immutable reference to the inner value.
     fn inner(&self) -> &Self::U;
 
-    // Consume the wrapper, return an owned instance of the inner value.
+    /// Consume the wrapper, return an owned instance of the inner value.
     fn into_inner(self) -> Self::U;
 }
 
@@ -37,6 +37,6 @@ impl<U> Inner for Udec<U> {
 
 /// Describes a type that wraps another type, and the inner value is mutable.
 pub trait InnerMut: Inner {
-    // Returns a mutable reference to the inner value.
+    /// Returns a mutable reference to the inner value.
     fn inner_mut(&mut self) -> &mut Self::U;
 }
