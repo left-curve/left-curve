@@ -30,7 +30,8 @@
     "react": "pnpm -F react",
     "sdk": "pnpm -F sdk",
     "types": "pnpm -F types",
-    "utils": "pnpm -F utils"
+    "utils": "pnpm -F utils",
+    "portal": "pnpm -F superapp"
   },
   "engines": {
     "pnpm": ">=9.0.0",

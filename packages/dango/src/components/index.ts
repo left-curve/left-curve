@@ -6,21 +6,27 @@ export { Button, type ButtonProps } from "./atoms/Button";
 export { Input, type InputProps } from "./atoms/Input";
 export { Label } from "./atoms/Label";
 export { Spinner } from "./atoms/Spinner";
+export { Tabs } from "./atoms/tabs/Tabs";
+export { TabItem as Tab } from "./atoms/tabs/TabItem";
+export { ProposalCard } from "./atoms/ProposalCard";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Molecules                                 */
 /* -------------------------------------------------------------------------- */
 
 export { Modal, type ModalProps, type ModalRef } from "./molecules/Modal";
-export { Header } from "./molecules/Header";
 export { AccountCard } from "./molecules/AccountCard";
 export { MenuAccounts } from "./molecules/MenuAccounts";
 export { MenuConnections } from "./molecules/MenuConnections";
 export { MenuNotifications } from "./molecules/MenuNotifications";
 export { ConnectButton } from "./molecules/ConnectButton";
-export { SpotAccountInfo } from "./molecules/SpotAccountInfo";
+export { AccountInfo } from "./molecules/AccountInfo";
 export { AppLetCard } from "./molecules/AppletCard";
-export { SpotPortfolio } from "./molecules/SpotPortfolio";
+export { PortfolioTable } from "./molecules/PortfolioTable";
+export { SpotPortfolioTable } from "./molecules/SpotPortfolioTable";
+export { SafePortfolioTable } from "./molecules/SafePortfolioTable";
+export { SafeMembersTable } from "./molecules/SafeMembersTable";
+export { SafeProposalsTable } from "./molecules/SafeProposalsTable";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

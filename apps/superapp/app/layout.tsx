@@ -1,27 +1,14 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
 import { Providers } from "./providers";
 
-import { Header } from "@leftcurve/dango/components";
+import { Header } from "./components/Header";
 
 import "@leftcurve/dango/fonts/ABCDiatypeRounded/index.css";
 import "../public/styles/globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  display: "optional",
-  subsets: ["latin"],
-});
-
-const grotesk = Space_Grotesk({
-  variable: "--font-grotesk",
-  display: "optional",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "SuperApp",
-  description: "A super app",
+  title: "Dango Portal App",
+  description: "",
 };
 
 export default function RootLayout({
@@ -31,10 +18,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${grotesk.variable} flex flex-col min-h-screen w-full`}>
+      <body className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-x-auto overflow-y-hidden scrollbar-none items-center justify-center pt-[166px] md:pt-[110px]">
+        <img
+          src="./images/background.png"
+          alt="bg-image"
+          className="object-cover h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl "
+        />
         <Providers>
           <Header />
-          <main className="flex flex-1 bg-stone-50">{children}</main>
+          <main className="flex flex-1 w-full">{children}</main>
         </Providers>
       </body>
     </html>

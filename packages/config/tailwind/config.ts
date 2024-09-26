@@ -8,16 +8,49 @@ export const tailwindConfig: Partial<Config> = {
         green: {
           DEFAULT: "#afb244",
           50: "#f9f8ec",
-          100: "#f1f0d6",
+          100: "#EEF2F0",
           200: "#e5e4b1",
-          300: "#d2d184",
-          400: "#bdbf5c",
+          300: "#A9BCB2",
+          400: "#71847A",
           500: "#afb244",
           600: "#7e822e",
           700: "#606427",
           800: "#4d5024",
           900: "#424522",
           950: "#22250e",
+        },
+        gradient: {
+          start: "#7EE7A8",
+          end: "#F53D6B",
+        },
+        "brand-green": {
+          DEFAULT: "#AFB244",
+        },
+        "brand-pink": {
+          DEFAULT: "#DD375B",
+        },
+        "typography-black": {
+          200: "#6B4862",
+          300: "#402B3B",
+        },
+        "typography-green": {
+          300: "#A9BCB2",
+          400: "#71847A",
+        },
+        "typography-purple": {
+          300: "#B9A2AA",
+          400: "#926D7B",
+        },
+        "surface-rose": {
+          200: "#FEF1E1",
+        },
+        "surface-green": {
+          100: "#EEF2F0",
+        },
+        "surface-yellow": {
+          100: "#F9F7EB",
+          200: "#F4EFD7",
+          300: "#ECE4BA",
         },
         sand: {
           DEFAULT: "#F5DDB8",
@@ -46,6 +79,11 @@ export const tailwindConfig: Partial<Config> = {
           800: "#902426",
           900: "#782425",
           950: "#410e0f",
+        },
+        brand: {
+          pink: "#DD375B",
+          green: "#AFB244",
+          white: "#F2E2B8",
         },
         purple: {
           DEFAULT: "#C2C0E1",

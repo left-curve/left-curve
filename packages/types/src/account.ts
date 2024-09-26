@@ -21,11 +21,10 @@ export const AccountType = {
 export type AccountSingleConfig = { owner: Username };
 export type AccountMultiConfig = Safe;
 
-export type AccountConfig = {
-  readonly [AccountType.Spot]: AccountSingleConfig;
-  readonly [AccountType.Margin]: AccountSingleConfig;
-  readonly [AccountType.Safe]: AccountMultiConfig;
-};
+export type AccountConfig =
+  | { readonly [AccountType.Spot]: AccountSingleConfig }
+  | { readonly [AccountType.Margin]: AccountSingleConfig }
+  | { readonly [AccountType.Safe]: AccountMultiConfig };
 
 export type AccountIndex = number;
 

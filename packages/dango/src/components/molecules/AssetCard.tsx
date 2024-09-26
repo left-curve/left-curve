@@ -17,7 +17,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(coin.amount, coin.denom, { format: true });
 
   return (
-    <div className="bg-white p-2 rounded-3xl grid grid-cols-[1fr_100px_100px] items-center">
+    <div className="bg-white px-4 py-2 rounded-3xl grid grid-cols-[1fr_100px_100px] items-center border border-white/50">
       <div className="flex gap-2 items-center">
         {coinInfo.logoURI ? (
           <img src={coinInfo.logoURI} className="h-8 w-8 rounded-full" alt={coinInfo.denom} />
@@ -30,7 +30,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
         </div>
       </div>
       <div className="min-w-[3rem]">{formatNumber(coin.amount, { language })}</div>
-      <div className="min-w-[3rem]">{price}</div>
+      <div className="min-w-[3rem] text-end">{price}</div>
     </div>
   );
 };

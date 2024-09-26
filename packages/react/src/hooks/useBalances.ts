@@ -25,13 +25,16 @@ export type UseBalancesReturnType<selectData = GetBalancesData> = UseQueryReturn
   GetBalancesErrorType
 >;
 
-export function useBalances(parameters: UseBalancesParameters): UseBalancesReturnType {
-  const { query = {} } = parameters;
+export function useBalances(
+  parameters: Omit<UseBalancesParameters, "address"> & { address?: string },
+): UseBalancesReturnType {
+  const { query = {}, address } = parameters;
 
   const config = useConfig(parameters);
   const options = getBalancesQueryOptions(config, {
     ...parameters,
+    address: address as `0x${string}`,
   });
 
-  return useQuery({ ...query, ...options });
+  return useQuery({ ...query, enabled: query.enabled || Boolean(address), ...options });
 }

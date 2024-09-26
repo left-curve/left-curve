@@ -33,7 +33,7 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
     extraTypes: {
       RegisterAccount: [{ name: "params", type: "AccountParams" }],
       AccountParams: [
-        ...(config.safe
+        ...("safe" in config
           ? [
               { name: "threshold", type: "uint32" },
               { name: "votingPeriod", type: "uint256" },
@@ -42,7 +42,7 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
             ]
           : [{ name: "owner", type: "string" }]),
       ],
-      Member: [...(config?.safe?.members ? getMembersTypedData(config.safe.members) : [])],
+      Member: [...("safe" in config ? getMembersTypedData(config.safe.members) : [])],
     },
   };
 

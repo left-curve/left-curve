@@ -2,11 +2,13 @@
 
 import { useAccount } from "@leftcurve/react";
 
-import { CommandBar } from "~/components";
-import { ConnectButton } from "./ConnectButton";
-import { MenuAccounts } from "./MenuAccounts";
-import { MenuConnections } from "./MenuConnections";
-import { MenuNotifications } from "./MenuNotifications";
+import {
+  CommandBar,
+  ConnectButton,
+  MenuAccounts,
+  MenuConnections,
+  MenuNotifications,
+} from "@leftcurve/dango";
 
 import { ConnectorStatus } from "@leftcurve/types";
 
