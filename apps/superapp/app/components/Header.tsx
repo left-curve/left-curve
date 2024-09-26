@@ -10,7 +10,7 @@ import {
   MenuNotifications,
 } from "@leftcurve/dango";
 
-import { ConnectorStatus } from "@leftcurve/types";
+import { AccountType, ConnectorStatus } from "@leftcurve/types";
 
 export const Header: React.FC = () => {
   const { status } = useAccount();
@@ -24,7 +24,13 @@ export const Header: React.FC = () => {
           {ConnectorStatus.Connected === status ? (
             <>
               <MenuNotifications />
-              <MenuAccounts />
+              <MenuAccounts
+                images={{
+                  [AccountType.Spot]: "/images/avatars/spot.png",
+                  [AccountType.Margin]: "/images/avatars/margin.png",
+                  [AccountType.Safe]: "/images/avatars/safe.png",
+                }}
+              />
               <MenuConnections />
             </>
           ) : (

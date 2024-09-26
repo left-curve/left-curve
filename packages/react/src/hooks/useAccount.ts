@@ -1,21 +1,23 @@
 "use client";
 
 import { type GetAccountReturnType, getAccount, watchAccount } from "@leftcurve/connect-kit";
-import type { Config, ConfigParameter } from "@leftcurve/types";
+import type { AccountTypes, Config, ConfigParameter } from "@leftcurve/types";
 import { useConfig } from "./useConfig";
 import { useSyncExternalStoreWithTracked } from "./useSyncExternalStoreWithTRacked";
 
 export type UseAccountParameters<config extends Config = Config> = ConfigParameter<config>;
 
-export type UseAccountReturnType = GetAccountReturnType;
+export type UseAccountReturnType<accountType extends AccountTypes = AccountTypes> =
+  GetAccountReturnType<accountType>;
 
-export function useAccount<config extends Config = Config>(
-  parameters: UseAccountParameters<config> = {},
-): UseAccountReturnType {
-  const config = useConfig(parameters);
+export function useAccount<
+  accountType extends AccountTypes = AccountTypes,
+  config extends Config = Config,
+>(parameters: UseAccountParameters = {}): UseAccountReturnType<accountType> {
+  const config = useConfig<config>(parameters);
 
   return useSyncExternalStoreWithTracked(
     (onChange) => watchAccount(config, { onChange }),
-    () => getAccount(config),
+    () => getAccount<accountType, config>(config),
   );
 }

@@ -2,14 +2,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "../atoms/Button";
 import { SafeMemberRow } from "./SafeMemberRow";
 
-import type { Account, AccountMultiConfig } from "@leftcurve/types";
+import type { Account, AccountType } from "@leftcurve/types";
 
 interface Props {
-  account: Account;
+  account: Account<typeof AccountType.Safe>;
 }
 
 export const SafeMembersTable: React.FC<Props> = ({ account }) => {
-  const { members } = (account.params as { safe: AccountMultiConfig }).safe;
+  const { members } = account.params.safe;
 
   const totalPower = Object.values(members).reduce((acc, power) => acc + power, 0);
 

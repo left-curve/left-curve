@@ -10,7 +10,17 @@ import { twMerge } from "~/utils";
 import { AccountCard, Button } from "~/components";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "~/components";
 
-export const MenuAccounts: React.FC = () => {
+import { AccountType } from "@leftcurve/types";
+
+interface Props {
+  images: {
+    [AccountType.Spot]: string;
+    [AccountType.Margin]: string;
+    [AccountType.Safe]: string;
+  };
+}
+
+export const MenuAccounts: React.FC<Props> = ({ images }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -82,6 +92,7 @@ export const MenuAccounts: React.FC = () => {
           {sortedAccounts.map((account) => {
             return (
               <AccountCard
+                avatarUrl={images[account.type]}
                 key={account.index}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}

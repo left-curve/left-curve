@@ -67,6 +67,7 @@ export type {
   AccountIndex,
   AccountTypes,
   AccountConfig,
+  AccountParams,
   AccountMultiConfig,
   AccountSingleConfig,
 } from "./account";

@@ -8,10 +8,10 @@ export const tailwindConfig: Partial<Config> = {
         green: {
           DEFAULT: "#afb244",
           50: "#f9f8ec",
-          100: "#EEF2F0",
+          100: "#f1f0d6",
           200: "#e5e4b1",
-          300: "#A9BCB2",
-          400: "#71847A",
+          300: "#d2d184",
+          400: "#bdbf5c",
           500: "#afb244",
           600: "#7e822e",
           700: "#606427",
@@ -22,12 +22,6 @@ export const tailwindConfig: Partial<Config> = {
         gradient: {
           start: "#7EE7A8",
           end: "#F53D6B",
-        },
-        "brand-green": {
-          DEFAULT: "#AFB244",
-        },
-        "brand-pink": {
-          DEFAULT: "#DD375B",
         },
         "typography-black": {
           200: "#6B4862",
@@ -40,6 +34,14 @@ export const tailwindConfig: Partial<Config> = {
         "typography-purple": {
           300: "#B9A2AA",
           400: "#926D7B",
+        },
+        "typography-rose": {
+          500: "#E0B989",
+          600: "#C9A274",
+        },
+        "typography-yellow": {
+          300: "#CFBA4F",
+          400: "#C8B137",
         },
         "surface-rose": {
           200: "#FEF1E1",

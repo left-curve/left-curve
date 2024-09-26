@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "@leftcurve/react";
-import { ConnectorStatus } from "@leftcurve/types";
+import { AccountType, ConnectorStatus } from "@leftcurve/types";
 import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "~/components";
 
 export const ExampleHeader: React.FC = () => {
@@ -29,7 +29,13 @@ export const ExampleHeader: React.FC = () => {
         {ConnectorStatus.Connected === status ? (
           <>
             <MenuNotifications />
-            <MenuAccounts />
+            <MenuAccounts
+              images={{
+                [AccountType.Spot]: "https://www.tapback.co/api/avatar/spot.webp",
+                [AccountType.Margin]: "https://www.tapback.co/api/avatar/margin.webp",
+                [AccountType.Safe]: "https://www.tapback.co/api/avatar/safe.webp",
+              }}
+            />
             <MenuConnections />
           </>
         ) : (

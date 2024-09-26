@@ -21,6 +21,12 @@ export const AccountType = {
 export type AccountSingleConfig = { owner: Username };
 export type AccountMultiConfig = Safe;
 
+export type AccountConfigs = {
+  [AccountType.Spot]: AccountSingleConfig;
+  [AccountType.Margin]: AccountSingleConfig;
+  [AccountType.Safe]: AccountMultiConfig;
+};
+
 export type AccountConfig =
   | { readonly [AccountType.Spot]: AccountSingleConfig }
   | { readonly [AccountType.Margin]: AccountSingleConfig }
@@ -28,15 +34,18 @@ export type AccountConfig =
 
 export type AccountIndex = number;
 
-export type AccountInfo = {
+export type AccountInfo<accountType extends AccountTypes = AccountTypes> = {
   readonly index: AccountIndex;
-  readonly params: AccountConfig;
+  readonly params: AccountParams<accountType>;
 };
 
-export type Account = Prettify<
+export type Account<accountType extends AccountTypes = AccountTypes> = Prettify<
   {
     readonly username: Username;
     readonly address: Address;
-    readonly type: AccountTypes;
-  } & AccountInfo
+    readonly type: accountType;
+  } & AccountInfo<accountType>
 >;
+
+export type AccountParams<K extends AccountTypes | unknown = unknown> =
+  K extends keyof AccountConfigs ? { readonly [P in K]: AccountConfigs[K] } : AccountConfig;

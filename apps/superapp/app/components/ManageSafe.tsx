@@ -9,9 +9,10 @@ import {
   Tabs,
 } from "@leftcurve/dango";
 import { useAccount } from "@leftcurve/react";
+import type { AccountType } from "@leftcurve/types";
 
 export const ManageSafe: React.FC = () => {
-  const { account } = useAccount();
+  const { account } = useAccount<typeof AccountType.Safe>();
   if (!account) return null;
   return (
     <Tabs

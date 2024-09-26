@@ -15,7 +15,6 @@ export { ProposalCard } from "./atoms/ProposalCard";
 /* -------------------------------------------------------------------------- */
 
 export { Modal, type ModalProps, type ModalRef } from "./molecules/Modal";
-export { AccountCard } from "./molecules/AccountCard";
 export { MenuAccounts } from "./molecules/MenuAccounts";
 export { MenuConnections } from "./molecules/MenuConnections";
 export { MenuNotifications } from "./molecules/MenuNotifications";
@@ -34,6 +33,7 @@ export { SafeProposalsTable } from "./molecules/SafeProposalsTable";
 
 export { CommandBar } from "./organisms/CommandBar";
 export { ConnectModal } from "./organisms/ConnectModal";
+export { AccountCard } from "./organisms/AccountCard";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Icons                                   */

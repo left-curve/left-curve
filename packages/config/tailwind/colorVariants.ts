@@ -17,8 +17,10 @@ const shadow = {
 
 const outline = {
   default: "bg-transparent border-gray-200 text-gray-900",
-  purple: "bg-transparent border-purple-100 text-purple-900",
-  green: "bg-transparent border-purple-100 text-purple-900",
+  purple: "bg-transparent border-typography-purple-400 text-typography-purple-400",
+  rose: "bg-transparent border-typography-rose-600 text-typography-rose-600",
+  green: "bg-transparent border-typography-yellow-400 text-typography-yellow-400",
+  yellow: "bg-transparent border-typography-yellow-400 text-typography-yellow-400",
   danger: "bg-transparent border-purple-100 text-purple-900",
   sand: "bg-transparent border-purple-100 text-purple-900",
 };

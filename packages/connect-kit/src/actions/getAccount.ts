@@ -1,10 +1,18 @@
-import type { Account, Chain, ChainId, Config, Connector, Username } from "@leftcurve/types";
+import type {
+  Account,
+  AccountTypes,
+  Chain,
+  ChainId,
+  Config,
+  Connector,
+  Username,
+} from "@leftcurve/types";
 import { changeAccount as changeAccountAction } from "./changeAccount";
 
-export type GetAccountReturnType =
+export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {
       username: Username;
-      account: Account;
+      account: Account<accounType>;
       accounts: readonly Account[];
       chain: Chain | undefined;
       chainId: ChainId;
@@ -18,7 +26,7 @@ export type GetAccountReturnType =
     }
   | {
       username: Username | undefined;
-      account: Account | undefined;
+      account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -32,7 +40,7 @@ export type GetAccountReturnType =
     }
   | {
       username: Username | undefined;
-      account: Account | undefined;
+      account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
       chainId: ChainId | undefined;
@@ -74,7 +82,10 @@ const disconnected = {
   changeAccount: undefined,
 } as const;
 
-export function getAccount<config extends Config>(config: config): GetAccountReturnType {
+export function getAccount<
+  accountType extends AccountTypes = AccountTypes,
+  config extends Config = Config,
+>(config: config): GetAccountReturnType<accountType> {
   const { chainId, connections, connectors, status } = config.state;
   const connectorUId = connectors.get(chainId);
   const connection = connections.get(connectorUId!);
@@ -89,7 +100,8 @@ export function getAccount<config extends Config>(config: config): GetAccountRet
     changeAccountAction(config, { account, connectorUId: connectorUId! });
   };
 
-  const { accounts, connector, username, account } = connection;
+  const { accounts, connector, username, account: acc } = connection;
+  const account = acc as Account<accountType>;
   switch (status) {
     case "connected":
       return {
