@@ -49,6 +49,19 @@ impl<U> Dec<U> {
 impl<U> Dec<U>
 where
     Self: FixedPoint<U>,
+    Int<U>: Number,
+{
+    pub fn checked_from_int<T>(int: T) -> MathResult<Self>
+    where
+        T: Into<Int<U>>,
+    {
+        int.into().checked_mul(Self::DECIMAL_FRACTION).map(Self)
+    }
+}
+
+impl<U> Dec<U>
+where
+    Self: FixedPoint<U>,
     Int<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>

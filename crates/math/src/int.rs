@@ -1,7 +1,7 @@
 use {
     crate::{
         utils::{bytes_to_digits, grow_le_int, grow_le_uint},
-        Inner, Integer, MathError, MathResult, NextNumber, Number,
+        Dec, FixedPoint, Inner, Integer, MathError, MathResult, NextNumber, Number,
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -40,6 +40,16 @@ where
 
     pub const fn number_ref(&self) -> &U {
         &self.0
+    }
+}
+
+impl<U> Int<U>
+where
+    Self: Number,
+    Dec<U>: FixedPoint<U>,
+{
+    pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
+        Dec::<U>::checked_from_int(self)
     }
 }
 
