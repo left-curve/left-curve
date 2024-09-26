@@ -32,19 +32,6 @@ impl<U> Int<U> {
 
 impl<U> Int<U>
 where
-    U: Copy,
-{
-    pub const fn number(&self) -> U {
-        self.0
-    }
-
-    pub const fn number_ref(&self) -> &U {
-        &self.0
-    }
-}
-
-impl<U> Int<U>
-where
     Self: Number,
     Dec<U>: FixedPoint<U>,
 {
