@@ -433,7 +433,7 @@ generate_int! {
     doc        = "512-bit signed integer.",
 }
 
-// -------------- additional constructor methods for Uint256/512 & Int256/512 ---------------
+// -------- additional constructor methods for Uint256/512 & Int256/512 --------
 
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {
