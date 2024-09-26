@@ -1,7 +1,7 @@
 use {
     crate::{
         utils::{bytes_to_digits, grow_le_int, grow_le_uint},
-        Dec, FixedPoint, Inner, Integer, MathError, MathResult, NextNumber, Number,
+        Inner, Integer, MathError, MathResult, NextNumber, Number,
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -27,16 +27,6 @@ pub struct Int<U>(pub(crate) U);
 impl<U> Int<U> {
     pub const fn new(value: U) -> Self {
         Self(value)
-    }
-}
-
-impl<U> Int<U>
-where
-    Self: Number,
-    Dec<U>: FixedPoint<U>,
-{
-    pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
-        Dec::<U>::checked_from_int(self)
     }
 }
 
