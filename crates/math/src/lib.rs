@@ -1,4 +1,5 @@
 mod bytable;
+mod conversions;
 mod dec;
 mod decimal;
 mod error;
