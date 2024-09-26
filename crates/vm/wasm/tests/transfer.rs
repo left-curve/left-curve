@@ -1,5 +1,5 @@
 use {
-    grug_math::{MultiplyFraction, NumberConst, Udec128, Uint256},
+    grug_math::{MultiplyFraction, NumberConst, PrevNumber, Udec256, Uint256},
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message, ResultExt},
     grug_vm_wasm::WasmVm,
@@ -10,17 +10,20 @@ const WASM_CACHE_CAPACITY: usize = 10;
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.1").unwrap());
+static FEE_RATE: LazyLock<Udec256> = LazyLock::new(|| Udec256::from_str("0.1").unwrap());
 
 #[test]
 fn transfers() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM.clone(), 300_000_u128)?)?
+        .add_account(
+            "sender",
+            Coins::one(DENOM.clone(), Uint256::new_from_u128(300_000))?,
+        )?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
         .set_fee_denom(DENOM.clone())
-        .set_fee_rate(*FEE_RATE)
+        .set_fee_rate(FEE_RATE.into_prev()?)
         .build()?;
 
     let to = accounts["receiver"].address;
@@ -29,7 +32,7 @@ fn transfers() -> anyhow::Result<()> {
     // Sender needs to have sufficient tokens to cover gas fee and the transfers.
     suite
         .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(Uint256::from(300_000_u128));
+        .should_succeed_and_equal(Uint256::new_from_u128(300_000));
     suite
         .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint256::ZERO);
@@ -39,19 +42,19 @@ fn transfers() -> anyhow::Result<()> {
         suite.send_messages_with_gas(accounts.get_mut("sender").unwrap(), 2_500_000, vec![
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 10_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(10))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 15_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(15))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 20_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(20))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 25_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(25))?,
             },
         ])?;
 
@@ -59,8 +62,8 @@ fn transfers() -> anyhow::Result<()> {
 
     // Sender remaining balance should be 300k - 70 - withhold + (withhold - charge).
     // = 300k - 70 - charge
-    let fee = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(*FEE_RATE)?;
-    let sender_balance_after = Uint256::from(300_000_u128 - 70) - fee;
+    let fee = Uint256::new_from_u128(outcome.gas_used as u128).checked_mul_dec_ceil(*FEE_RATE)?;
+    let sender_balance_after = Uint256::new_from_u128(300_000 - 70) - fee;
 
     // Check balances again
     suite
@@ -68,7 +71,7 @@ fn transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(sender_balance_after);
     suite
         .query_balance(&accounts["receiver"], DENOM.clone())
-        .should_succeed_and_equal(Uint256::from(70_u128));
+        .should_succeed_and_equal(Uint256::new_from_u128(70));
 
     let cfg = suite.query_config().should_succeed();
 
@@ -82,7 +85,7 @@ fn transfers() -> anyhow::Result<()> {
         .should_succeed_and_equal(BTreeMap::from([
             (accounts["owner"].address, fee),
             (accounts["sender"].address, sender_balance_after),
-            (accounts["receiver"].address, Uint256::from(70_u128)),
+            (accounts["receiver"].address, Uint256::new_from_u128(70)),
         ]));
 
     Ok(())
@@ -92,10 +95,13 @@ fn transfers() -> anyhow::Result<()> {
 fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())?
-        .add_account("sender", Coins::one(DENOM.clone(), 200_000_u128)?)?
+        .add_account(
+            "sender",
+            Coins::one(DENOM.clone(), Uint256::new_from_u128(200_000))?,
+        )?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
-        .set_fee_rate(*FEE_RATE)
+        .set_fee_rate(FEE_RATE.into_prev()?)
         .build()?;
 
     let to = accounts["receiver"].address;
@@ -113,15 +119,15 @@ fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
         100_000,
         Message::Transfer {
             to,
-            coins: Coins::one(DENOM.clone(), 10_u128)?,
+            coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(10))?,
         },
     )?;
 
     outcome.result.should_fail();
 
     // The transfer should have failed, but gas fee already spent is still charged.
-    let fee = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(*FEE_RATE)?;
-    let sender_balance_after = Uint256::from(200_000_u128) - fee;
+    let fee = Uint256::new_from_u128(outcome.gas_used as u128).checked_mul_dec_ceil(*FEE_RATE)?;
+    let sender_balance_after = Uint256::new_from_u128(200_000) - fee;
 
     // Tx is went out of gas.
     // Balances should remain the same

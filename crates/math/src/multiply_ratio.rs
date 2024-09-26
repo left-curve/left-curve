@@ -1,4 +1,4 @@
-use crate::{Int, IsZero, MathError, MathResult, NextNumber, Number, NumberConst};
+use crate::{Int, IsZero, MathResult, NextNumber, Number, NumberConst, PrevNumber};
 
 /// Describes operations where a number is multiplied by a numerator then
 /// immediately divided by a denominator.
@@ -19,7 +19,7 @@ pub trait MultiplyRatio: Sized {
 impl<U> MultiplyRatio for Int<U>
 where
     Int<U>: NextNumber + NumberConst + Number + Copy,
-    <Int<U> as NextNumber>::Next: Number + IsZero + ToString + Clone,
+    <Int<U> as NextNumber>::Next: Number + IsZero + ToString + Clone + PrevNumber<Prev = Int<U>>,
 {
     fn checked_multiply_ratio_floor<A: Into<Self>, B: Into<Self>>(
         self,
@@ -28,10 +28,7 @@ where
     ) -> MathResult<Self> {
         let denominator = denominator.into().into_next();
         let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
-        next_result
-            .clone()
-            .try_into()
-            .map_err(|_| MathError::overflow_conversion::<_, Self>(next_result))
+        next_result.clone().into_prev()
     }
 
     fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(

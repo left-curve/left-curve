@@ -1,7 +1,7 @@
 use {
     crate::{
         utils::{bytes_to_digits, grow_le_int, grow_le_uint},
-        Inner, Integer, MathError, MathResult, NextNumber, Number,
+        Integer, MathError, MathResult, NextNumber, Number,
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -277,151 +277,29 @@ where
 
 // ------------------------------ concrete types -------------------------------
 
-macro_rules! generate_int {
-    (
-        name       = $name:ident,
-        inner_type = $inner:ty,
-        from_int   = [$($from:ty),*],
-        from_std   = [$($from_std:ty),*],
-        doc        = $doc:literal,
-    ) => {
-        #[doc = $doc]
-        pub type $name = Int<$inner>;
+/// 64-bit unsigned integer.
+pub type Uint64 = Int<u64>;
 
-        // --- Impl From Int and from inner type ---
-        $(
-            // Ex: From<Uint64> for Uint128
-            impl From<$from> for $name {
-                fn from(value: $from) -> Self {
-                    Self(value.into_inner().into())
-                }
-            }
+/// 128-bit unsigned integer.
+pub type Uint128 = Int<u128>;
 
-            // Ex: From<u64> for Uint128
-            impl From<<$from as Inner>::U> for $name {
-                fn from(value: <$from as Inner>::U) -> Self {
-                    Self(value.into())
-                }
-            }
+/// 256-bit unsigned integer.
+pub type Uint256 = Int<U256>;
 
-            // Ex: TryFrom<Uint128> for Uint64
-            impl TryFrom<$name> for $from {
-                type Error = MathError;
-                fn try_from(value: $name) -> MathResult<$from> {
-                    <$from as Inner>::U::try_from(value.into_inner())
-                        .map(Self)
-                        .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
-                }
-            }
+/// 512-bit unsigned integer.
+pub type Uint512 = Int<U512>;
 
-            // Ex: TryFrom<Uint128> for u64
-            impl TryFrom<$name> for <$from as Inner>::U {
-                type Error = MathError;
-                fn try_from(value: $name) -> MathResult<<$from as Inner>::U> {
-                    <$from as Inner>::U::try_from(value.into_inner())
-                        .map_err(|_| MathError::overflow_conversion::<_, $from>(value))
-                }
-            }
-        )*
+/// 64-bit signed integer.
+pub type Int64 = Int<i64>;
 
-        // --- Impl From std ---
-        $(
-            // Ex: From<u32> for Uint128
-            impl From<$from_std> for $name {
-                fn from(value: $from_std) -> Self {
-                    Self(value.into())
-                }
-            }
+/// 128-bit signed integer.
+pub type Int128 = Int<i128>;
 
-            // Ex: TryFrom<Uint128> for u32
-            impl TryFrom<$name> for $from_std {
-                type Error = MathError;
-                fn try_from(value: $name) -> MathResult<$from_std> {
-                    <$from_std>::try_from(value.into_inner())
-                    .map_err(|_| MathError::overflow_conversion::<_, $from_std>(value))
-                }
-            }
-        )*
+/// 256-bit signed integer.
+pub type Int256 = Int<I256>;
 
-        // Ex: From<u128> for Uint128
-        impl From<$inner> for $name {
-            fn from(value: $inner) -> Self {
-                Self::new(value)
-            }
-        }
-
-        // Ex: From<Uint128> for u128
-        impl From<$name> for $inner {
-            fn from(value: $name) -> Self {
-               value.into_inner()
-            }
-        }
-    };
-}
-
-generate_int! {
-    name       = Uint64,
-    inner_type = u64,
-    from_int   = [],
-    from_std   = [u32, u16, u8],
-    doc        = "64-bit unsigned integer.",
-}
-
-generate_int! {
-    name       = Uint128,
-    inner_type = u128,
-    from_int   = [Uint64],
-    from_std   = [u32, u16, u8],
-    doc        = "128-bit unsigned integer.",
-}
-
-generate_int! {
-    name       = Uint256,
-    inner_type = U256,
-    from_int   = [Uint64, Uint128],
-    from_std   = [u32, u16, u8],
-    doc        = "256-bit unsigned integer.",
-}
-
-generate_int! {
-    name       = Uint512,
-    inner_type = U512,
-    from_int   = [Uint256, Uint64, Uint128],
-    from_std   = [u32, u16, u8],
-    doc        = "512-bit unsigned integer.",
-}
-
-generate_int! {
-    name       = Int64,
-    inner_type = i64,
-    from_int   = [],
-    from_std   = [u32, u16, u8],
-    doc        = "64-bit signed integer.",
-}
-
-generate_int! {
-    name       = Int128,
-    inner_type = i128,
-    from_int   = [Int64, Uint64],
-    from_std   = [u32, u16, u8],
-    doc        = "128-bit signed integer.",
-}
-
-generate_int! {
-    name       = Int256,
-    inner_type = I256,
-    from_int   = [Int128, Int64, Uint128, Uint64],
-    from_std   = [u32, u16, u8],
-    doc        = "256-bit signed integer.",
-}
-
-generate_int! {
-    name       = Int512,
-    inner_type = I512,
-    from_int   = [Int128, Int64, Uint128, Uint64],
-    from_std   = [u32, u16, u8],
-    doc        = "512-bit signed integer.",
-}
+/// 512-bit signed integer.
+pub type Int512 = Int<I512>;
 
 // -------- additional constructor methods for Uint256/512 & Int256/512 --------
 
@@ -461,7 +339,7 @@ impl Int512 {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, proptest::prelude::*};
+    use {super::*, crate::Inner, proptest::prelude::*};
 
     proptest! {
         #[test]

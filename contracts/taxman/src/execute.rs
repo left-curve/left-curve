@@ -1,7 +1,7 @@
 use {
     crate::{Config, CONFIG},
     anyhow::ensure,
-    grug_math::{IsZero, MultiplyFraction, Number, Uint128, Uint256},
+    grug_math::{IsZero, MultiplyFraction, NextNumber, Number, Uint256, Uint64},
     grug_types::{
         AuthCtx, AuthMode, Coins, Message, MutableCtx, Response, StdResult, Storage, Tx, TxOutcome,
     },
@@ -39,7 +39,8 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Compute the maximum amount of fee this transaction may incur.
     //
     // Note that we ceil the amount here, instead of flooring.
-    let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let withhold_amount = Uint256::new_from_u128(tx.gas_limit as u128)
+        .checked_mul_dec_ceil(fee_cfg.fee_rate.into_next())?;
 
     // If the fee amount is non-zero, we force transfer the max fee amount from
     // the sender to here (the taxman). If zero, nothing to do.
@@ -81,13 +82,17 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     }
 
     // Compute the amount of fee that was withheld during `withheld fee`.
-    let withheld_amount = Uint128::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let withheld_amount = Uint64::new(tx.gas_limit)
+        .into_next()
+        .checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // Compute the amount of fee that will actually be charged, based on actual
     // gas consumption.
     //
     // Same as withholding, we ceil here instead of flooring.
-    let charge_amount = Uint128::from(outcome.gas_used).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let charge_amount = Uint64::new(outcome.gas_used)
+        .into_next()
+        .checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // The difference between the two amounts is to be refunded to the user.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
@@ -99,7 +104,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let charge_msg = if !charge_amount.is_zero() {
         Some(Message::Transfer {
             to: cfg.owner,
-            coins: Coins::one(fee_cfg.fee_denom.clone(), charge_amount)?,
+            coins: Coins::one(fee_cfg.fee_denom.clone(), charge_amount.into_next())?,
         })
     } else {
         None
@@ -108,7 +113,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let refund_msg = if !refund_amount.is_zero() {
         Some(Message::Transfer {
             to: tx.sender,
-            coins: Coins::one(fee_cfg.fee_denom, refund_amount)?,
+            coins: Coins::one(fee_cfg.fee_denom, refund_amount.into_next())?,
         })
     } else {
         None

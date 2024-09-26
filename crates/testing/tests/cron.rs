@@ -1,5 +1,6 @@
 use {
     anyhow::ensure,
+    grug_math::{NumberConst, Uint256},
     grug_testing::TestBuilder,
     grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Timestamp},
     grug_vm_rust::ContractBuilder,
@@ -50,9 +51,9 @@ struct Balances {
 fn cronjob_works() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", [
-            ("uatom", 100_u128),
-            ("uosmo", 100),
-            ("umars", 100),
+            ("uatom", Uint256::new_from_u128(100)),
+            ("uosmo", Uint256::new_from_u128(100)),
+            ("umars", Uint256::new_from_u128(100)),
         ])?
         .add_account("jake", Coins::new())?
         .set_genesis_time(Timestamp::from_nanos(0))
@@ -81,9 +82,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron1",
         &tester::Job {
             receiver,
-            coin: Coin::new("uatom", 1_u128)?,
+            coin: Coin::new("uatom", Uint256::ONE)?,
         },
-        Coins::one("uatom", 3_u128)?,
+        Coins::one("uatom", Uint256::new_from_u128(3))?,
     )?;
 
     // Block time: 3
@@ -93,9 +94,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron2",
         &tester::Job {
             receiver,
-            coin: Coin::new("uosmo", 1_u128)?,
+            coin: Coin::new("uosmo", Uint256::new_from_u128(1))?,
         },
-        Coins::one("uosmo", 3_u128)?,
+        Coins::one("uosmo", Uint256::new_from_u128(3))?,
     )?;
 
     // Block time: 4
@@ -105,9 +106,9 @@ fn cronjob_works() -> anyhow::Result<()> {
         "cron3",
         &tester::Job {
             receiver,
-            coin: Coin::new("umars", 1_u128)?,
+            coin: Coin::new("umars", Uint256::ONE)?,
         },
-        Coins::one("umars", 3_u128)?,
+        Coins::one("umars", Uint256::new_from_u128(3))?,
     )?;
 
     // Block time: 5
@@ -211,9 +212,9 @@ fn cronjob_works() -> anyhow::Result<()> {
     ] {
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new();
-        expect.insert(Coin::new("uatom", balances.uatom)?)?;
-        expect.insert(Coin::new("uosmo", balances.uosmo)?)?;
-        expect.insert(Coin::new("umars", balances.umars)?)?;
+        expect.insert(Coin::new("uatom", Uint256::new_from_u128(balances.uatom))?)?;
+        expect.insert(Coin::new("uosmo", Uint256::new_from_u128(balances.uosmo))?)?;
+        expect.insert(Coin::new("umars", Uint256::new_from_u128(balances.umars))?)?;
 
         // Advance block
         suite.make_empty_block()?;

@@ -235,7 +235,7 @@ mod tests {
         /// Ensure the bytable methods work for `Uint128`.
         #[test]
         fn integer_bytable_works_u128(number in any::<u128>()) {
-            let number = Uint128::from(number);
+            let number = Uint128::new(number);
 
             // Convert the number to big endian bytes and back, should get the
             // the same value
@@ -265,7 +265,7 @@ mod tests {
         /// Ensure the bytable methods work for `Int128`.
         #[test]
         fn integer_bytable_works_i128(number in any::<i128>()) {
-            let number = Int128::from(number);
+            let number = Int128::new(number);
 
             // Convert the number to big endian bytes and back, should get the
             // the same value
