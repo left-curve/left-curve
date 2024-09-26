@@ -24,12 +24,9 @@ macro_rules! impl_prev {
             type Prev = $prev;
 
             fn into_prev(self) -> MathResult<Self::Prev> {
-
                 self.0.try_into().map(<$prev>::new).map_err(|_| {
                     MathError::overflow_conversion::<_, $prev>(self)
                 })
-
-
             }
         }
     };
@@ -43,8 +40,8 @@ macro_rules! impl_prev {
 impl_prev! {
     Uint128 => Uint64,
     Uint256 => Uint128,
-    Int128 => Int64,
-    Int256 => Int128,
+    Int128  => Int64,
+    Int256  => Int128,
 }
 
 // ----------------------------------- bnum ------------------------------------
@@ -70,7 +67,7 @@ macro_rules! impl_prev_bnum {
 
 impl_prev_bnum! {
     Uint512 => Uint256,
-    Int512 => Int256,
+    Int512  => Int256,
 }
 
 // ----------------------------------- dec ------------------------------------
