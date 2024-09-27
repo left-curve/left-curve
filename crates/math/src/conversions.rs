@@ -1,196 +1,96 @@
 use {
-    crate::{
-        Dec128, Dec256, FixedPoint, Int128, Int256, Int512, Int64, MathError, MathResult, Number,
-        NumberConst, Sign, Udec128, Udec256, Uint128, Uint256, Uint512, Uint64,
-    },
-    bnum::cast::As,
+    crate::{Dec, FixedPoint, Int, MathError, MathResult, Number},
+    std::{fmt::Display, ops::Div},
 };
 
 // -------------------------------- int -> dec ---------------------------------
 
-macro_rules! impl_checked_into_dec {
-    ($int:ty => $dec:ty) => {
-        impl $int {
-            pub fn checked_into_dec(self) -> MathResult<$dec> {
-                self.checked_mul(<$dec>::DECIMAL_FRACTION).map(<$dec>::raw)
-            }
-        }
-    };
-    ($($int:ty => $dec:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_dec!($int => $dec);
-        )+
-    };
-}
-
-impl_checked_into_dec! {
-    Uint128 => Udec128,
-    Uint256 => Udec256,
-     Int128 =>  Dec128,
-     Int256 =>  Dec256,
+impl<U> Int<U>
+where
+    Self: Number + Display + Copy,
+    Dec<U>: FixedPoint<U>,
+{
+    pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
+        self.checked_mul(Dec::<U>::DECIMAL_FRACTION)
+            .map(Dec::raw)
+            .map_err(|_| MathError::overflow_conversion::<_, Dec<U>>(self))
+    }
 }
 
 // -------------------------------- dec -> int ---------------------------------
 
-macro_rules! impl_into_int {
-    ($dec:ty => $int:ty) => {
-        impl $dec {
-            pub fn into_int(self) -> $int {
-                // The decimal fraction is non-zero, so safe to unwrap.
-                self.0.checked_div(<$dec>::DECIMAL_FRACTION).unwrap()
+impl<U> Dec<U>
+where
+    Self: FixedPoint<U>,
+    Int<U>: Div<Output = Int<U>>,
+{
+    pub fn into_int(self) -> Int<U> {
+        self.0 / Self::DECIMAL_FRACTION
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bnum::types::{I256, U256};
+
+    use crate::{
+        int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError, NumberConst,
+        Udec128, Udec256, Uint256,
+    };
+
+    int_test!( int_to_dec,
+        Specific
+        u128 = [[ // Passing cases
+                    (0_u128, Udec128::ZERO),
+                    (10, Udec128::TEN),
+                    (u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES), Udec128::new(u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES))),
+                ],
+                [ // Failing cases
+                    u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES) + 1
+                ]]
+
+        u256 = [[ // Passing cases
+                    (U256::ZERO, Udec256::ZERO),
+                    (U256::TEN, Udec256::TEN),
+                    (U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES), Udec256::raw(Uint256::new(U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) * U256::TEN.pow(Udec128::DECIMAL_PLACES)))),
+                ],
+                [ // Failing cases
+                    U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + 1
+                ]]
+
+        i128 = [[ // Passing cases
+                    (0_i128, Dec128::ZERO),
+                    (10, Dec128::TEN),
+                    (-10, -Dec128::TEN),
+                    (i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES), Dec128::new(i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES))),
+                    (i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES), Dec128::new(i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES))),
+                ],
+                [ // Failing cases
+                    i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES) + 1,
+                    i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES) - 1,
+                ]]
+
+        i256 = [[ // Passing cases
+                    (I256::ZERO, Dec256::ZERO),
+                    (I256::TEN, Dec256::TEN),
+                    (-I256::TEN, -Dec256::TEN),
+                    (I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES), Dec256::raw(Int256::new(I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES) * I256::TEN.pow(Dec256::DECIMAL_PLACES)))),
+                    (I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES), Dec256::raw(Int256::new(I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES) * I256::TEN.pow(Dec256::DECIMAL_PLACES)))),
+                ],
+                [ // Failing cases
+                    I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES) + I256::ONE,
+                    I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES) - I256::ONE,
+                ]]
+        => |_0, samples, failing_samples| {
+            for (unsigned, expected) in samples {
+                let uint = bt(_0, Int::new(unsigned));
+                assert_eq!(uint.checked_into_dec().unwrap(), expected);
+            }
+
+            for unsigned in failing_samples {
+                let uint = bt(_0, Int::new(unsigned));
+                assert!(matches!(uint.checked_into_dec(), Err(MathError::OverflowConversion { .. })));
             }
         }
-    };
-    ($($dec:ty => $int:ty),+ $(,)?) => {
-        $(
-            impl_into_int!($dec => $int);
-        )+
-    };
-}
-
-impl_into_int! {
-    Udec128 => Uint128,
-    Udec256 => Uint256,
-     Dec128 =>  Int128,
-     Dec256 =>  Int256,
-}
-
-// ---------------------------- unsigned -> signed -----------------------------
-
-macro_rules! impl_checked_into_signed_std {
-    ($unsigned:ty => $signed:ty) => {
-        impl $unsigned {
-            pub fn checked_into_signed(self) -> MathResult<$signed> {
-                if self.0 > <$signed>::MAX.0 as _ {
-                    return Err(MathError::overflow_conversion::<$unsigned, $signed>(self));
-                }
-
-                Ok(<$signed>::new(self.0 as _))
-            }
-        }
-    };
-    ($($unsigned:ty => $signed:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_signed_std!($unsigned => $signed);
-        )+
-    };
-}
-
-impl_checked_into_signed_std! {
-    Uint64  => Int64,
-    Uint128 => Int128,
-}
-
-macro_rules! impl_checked_into_signed_bnum {
-    ($unsigned:ty => $signed:ty) => {
-        impl $unsigned {
-            pub fn checked_into_signed(self) -> MathResult<$signed> {
-                if self.0 > <$signed>::MAX.0.as_() {
-                    return Err(MathError::overflow_conversion::<$unsigned, $signed>(self));
-                }
-
-                Ok(<$signed>::new(self.0.as_()))
-            }
-        }
-    };
-    ($($unsigned:ty => $signed:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_signed_bnum!($unsigned => $signed);
-        )+
-    };
-}
-
-impl_checked_into_signed_bnum! {
-    Uint256 => Int256,
-    Uint512 => Int512,
-}
-
-macro_rules! impl_chekced_into_signed_dec {
-    ($unsigned:ty => $signed:ty) => {
-        impl $unsigned {
-            pub fn checked_into_signed(self) -> MathResult<$signed> {
-                self.0.checked_into_signed().map(<$signed>::raw)
-            }
-        }
-    };
-    ($($unsigned:ty => $signed:ty),+ $(,)?) => {
-        $(
-            impl_chekced_into_signed_dec!($unsigned => $signed);
-        )+
-    };
-}
-
-impl_chekced_into_signed_dec! {
-    Udec128 => Dec128,
-    Udec256 => Dec256,
-}
-
-// ---------------------------- signed -> unsigned -----------------------------
-
-macro_rules! impl_checked_into_unsigned_std {
-    ($signed:ty => $unsigned:ty) => {
-        impl $signed {
-            pub fn checked_into_unsigned(self) -> MathResult<$unsigned> {
-                if self.is_negative() {
-                    return Err(MathError::overflow_conversion::<$signed, $unsigned>(self));
-                }
-
-                Ok(<$unsigned>::new(self.0 as _))
-            }
-        }
-    };
-    ($($signed:ty => $unsigned:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_unsigned_std!($signed => $unsigned);
-        )+
-    };
-}
-
-impl_checked_into_unsigned_std! {
-    Int64  => Uint64,
-    Int128 => Uint128,
-}
-
-macro_rules! impl_checked_into_unsigned_bnum {
-    ($signed:ty => $unsigned:ty) => {
-        impl $signed {
-            pub fn checked_into_unsigned(self) -> MathResult<$unsigned> {
-                if self.is_negative() {
-                    return Err(MathError::overflow_conversion::<$signed, $unsigned>(self));
-                }
-
-                Ok(<$unsigned>::new(self.0.as_()))
-            }
-        }
-    };
-    ($($signed:ty => $unsigned:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_unsigned_bnum!($signed => $unsigned);
-        )+
-    };
-}
-
-impl_checked_into_unsigned_bnum! {
-    Int256 => Uint256,
-    Int512 => Uint512,
-}
-
-macro_rules! impl_checked_into_unsigned_dec {
-    ($signed:ty => $unsigned:ty) => {
-        impl $signed {
-            pub fn checked_into_unsigned(self) -> MathResult<$unsigned> {
-                self.0.checked_into_unsigned().map(<$unsigned>::raw)
-            }
-        }
-    };
-    ($($signed:ty => $unsigned:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_unsigned_dec!($signed => $unsigned);
-        )+
-    };
-}
-
-impl_checked_into_unsigned_dec! {
-    Dec128 => Udec128,
-    Dec256 => Udec256,
+    );
 }

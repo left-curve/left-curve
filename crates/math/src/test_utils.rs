@@ -10,12 +10,11 @@ pub(crate) fn dt<T>(_: T, _: T) {}
 ///
 ///  Allow compiler to derive the types of multiple variables
 #[macro_export(local_inner_macros)]
-macro_rules! dts{
-        ($u: expr, $($p:expr),* ) =>
-         {
+macro_rules! dts {
+    ($u: expr, $($p:expr),* ) => {
             $($crate::test_utils::dt($u, $p);)*
-         }
-    }
+         };
+}
 
 /// `built_type`
 ///
@@ -25,7 +24,7 @@ pub(crate) fn bt<T>(_: T, ret: T) -> T {
 }
 
 /// Combines `assert_eq` and `derive_type` to derive the type and assert
-pub(crate) fn smart_assert<T: Debug + PartialEq>(left: T, right: T) {
+pub(crate) fn _smart_assert<T: Debug + PartialEq>(left: T, right: T) {
     assert_eq!(left, right);
 }
 
@@ -39,16 +38,16 @@ pub(crate) fn smart_assert<T: Debug + PartialEq>(left: T, right: T) {
 /// (see [`derive_type`], [`derive_types`] and [`smart_assert`] ).
 #[macro_export(local_inner_macros)]
 macro_rules! int_test {
-        // No Args
-        (
+    // No Args
+    (
             $name:ident,
             NoArgs
             $(attrs = $(#[$meta:meta])*)?
             => $test_fn:expr) => {
                 int_test!($name, Specific u128 = [] u256 = [] i128 = [] i256 = [] $(attrs = $(#[$meta])*)? => $test_fn);
         };
-        // Multiple optional tests with attrs.
-         (
+    // Multiple optional tests with attrs.
+    (
             $name:ident,
             Specific
             $(u128  = [$($pu128:expr),*])?
@@ -96,8 +95,8 @@ macro_rules! int_test {
                 }
             }
         };
-         // Multiple optional tests without attrs.
-         (
+    // Multiple optional tests without attrs.
+    (
             $name:ident,
             Specific
             $(u128  = [$($pu128:expr),*])?
@@ -140,4 +139,4 @@ macro_rules! int_test {
                 )?
             }
         };
-    }
+}

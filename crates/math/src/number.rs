@@ -441,7 +441,7 @@ mod tests {
                     (U256::MAX, U256::MAX, U256::ZERO),
                     (U256::from(30_u32), U256::from(10_u32), U256::from(20_u32)),
                 ],
-                [  // Failing cases
+                [ // Failing cases
                     (U256::ONE, U256::from(2_u32))
                 ]]
 
