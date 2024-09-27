@@ -26,6 +26,10 @@ export { SpotPortfolioTable } from "./molecules/SpotPortfolioTable";
 export { SafePortfolioTable } from "./molecules/SafePortfolioTable";
 export { SafeMembersTable } from "./molecules/SafeMembersTable";
 export { SafeProposalsTable } from "./molecules/SafeProposalsTable";
+export { MarginAccountInfo } from "./molecules/MarginAccountInfo";
+export { MarginDebtsTable } from "./molecules/MarginDebtsTable";
+export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
+export { BorrowingBar } from "./molecules/BorrowingBar";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

@@ -3,6 +3,7 @@
 import { useAccount } from "@leftcurve/react";
 import { useEffect } from "react";
 
+import { ManageMargin } from "./ManageMargin";
 import { ManageSafe } from "./ManageSafe";
 import { ManageSpot } from "./ManageSpot";
 
@@ -30,6 +31,6 @@ export const AccountRouter: React.FC<Props> = ({ index }) => {
     case AccountType.Safe:
       return <ManageSafe />;
     case AccountType.Margin:
-      return null;
+      return <ManageMargin />;
   }
 };

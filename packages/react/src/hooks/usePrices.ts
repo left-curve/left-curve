@@ -37,7 +37,11 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     currencies = ["USD", "EUR"],
     refetchInterval = 60 * 1000 * 5,
     formatter = formatCurrency,
-    storage = createStorage<{ prices: Prices }>({ key: "cache_query", storage: localStorage }),
+    storage = createStorage<{ prices: Prices }>({
+      key: "cache_query",
+      storage:
+        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
+    }),
   } = parameters;
   const config = useConfig();
 
@@ -85,6 +89,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
 
   const { data, ...rest } = useQuery<Prices>({
     queryKey: ["prices", coins, currencies],
+    enabled: typeof window !== "undefined" && window.location.protocol === "https:",
     queryFn: async () => {
       const coinsByCoingeckoId = Object.fromEntries(
         Object.values(coins).map((c) => [c.coingeckoId, c]),

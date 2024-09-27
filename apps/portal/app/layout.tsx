@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-x-auto overflow-y-hidden scrollbar-none items-center justify-center pt-[166px] md:pt-[110px]">
+      <body className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center pt-[166px] md:pt-[110px]">
         <img
           src="/images/background.png"
           alt="bg-image"

@@ -16,7 +16,11 @@ export function useStorage<T = undefined>(
 
   const storage = (() => {
     if (_storage_) return _storage_;
-    return createStorage({ key: "grustorage", storage: localStorage });
+    return createStorage({
+      key: "grustorage",
+      storage:
+        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
+    });
   })();
 
   const initialValue = (() => {
