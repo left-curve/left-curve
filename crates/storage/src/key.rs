@@ -486,7 +486,7 @@ macro_rules! impl_unsigned_integer_key {
                 Ok(Self::from_be_bytes(bytes))
             }
         })*
-    }
+    };
 }
 
 impl_unsigned_integer_key!(u8, u16, u32, u64, u128, U256, U512);
@@ -688,7 +688,7 @@ macro_rules! impl_integer_prefixer {
                 vec![Cow::Owned(self.to_be_bytes().to_vec())]
             }
         })*
-    }
+    };
 }
 
 impl_integer_prefixer!(
