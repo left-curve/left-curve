@@ -92,7 +92,7 @@ mod tests {
         /// - `(root + 1) ** 2 > square`
         #[test]
         fn integer_sqrt_works_128(square in any::<u128>()) {
-            let square = Uint128::from(square);
+            let square = Uint128::new(square);
             let root = square.checked_sqrt().unwrap();
             prop_assert!(root * root <= square);
             prop_assert!((root + Uint128::ONE) * (root + Uint128::ONE) > square);
@@ -104,7 +104,7 @@ mod tests {
             let square = Uint256::from_le_bytes(bytes);
             let root = square.checked_sqrt().unwrap();
             prop_assert!(root * root <= square);
-            prop_assert!((root + Uint128::ONE.into()) * (root + Uint128::ONE.into()) > square);
+            prop_assert!((root + Uint256::ONE) * (root + Uint256::ONE) > square);
         }
     }
 }

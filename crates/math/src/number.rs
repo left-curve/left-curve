@@ -1,6 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst, Sign,
+        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst,
+        PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::fmt::Display,
@@ -113,7 +114,7 @@ where
     Self: FixedPoint<U> + NumberConst,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
     Int<U>: NextNumber + Sign,
-    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + ToString,
+    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + ToString + PrevNumber<Prev = Int<U>>,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
@@ -124,15 +125,11 @@ where
     }
 
     fn checked_mul(self, other: Self) -> MathResult<Self> {
-        let next_result = self
-            .0
+        self.0
             .checked_full_mul(*other.numerator())?
-            .checked_div(Self::DECIMAL_FRACTION.into())?;
-
-        next_result
-            .try_into()
+            .checked_div(Self::DECIMAL_FRACTION.into_next())?
+            .checked_into_prev()
             .map(Self)
-            .map_err(|_| MathError::overflow_conversion::<_, Int<U>>(next_result))
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {

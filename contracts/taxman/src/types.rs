@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Udec128,
+    grug_math::Udec256,
     grug_types::Denom,
     serde::{Deserialize, Serialize},
 };
@@ -9,7 +9,7 @@ use {
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub fee_denom: Denom,
-    pub fee_rate: Udec128,
+    pub fee_rate: Udec256,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

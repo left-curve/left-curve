@@ -1,4 +1,5 @@
 mod bytable;
+mod conversions;
 mod dec;
 mod decimal;
 mod error;
@@ -13,6 +14,7 @@ mod multiply_ratio;
 mod next;
 mod number;
 mod number_const;
+mod prev;
 mod sign;
 mod utils;
 
@@ -22,5 +24,5 @@ mod test_utils;
 pub use {
     bytable::*, dec::*, decimal::*, error::*, fixed_point::*, fraction::*, inner::*, int::*,
     integer::*, is_zero::*, multiply_fraction::*, multiply_ratio::*, next::*, number::*,
-    number_const::*, sign::*,
+    number_const::*, prev::*, sign::*,
 };
