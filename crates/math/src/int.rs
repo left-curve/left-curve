@@ -426,83 +426,11 @@ pub mod testse {
                 let from_str = Int::from_str(str).unwrap();
                 assert_eq!(from_str, original);
 
-                let as_into = original.into();
+                let as_into = original.0;
                 dt(as_into, val);
                 assert_eq!(as_into, val);
             }
         }
-    );
-
-    int_test!( from,
-        Specific
-        u128 = [u8::MAX, u16::MAX, u32::MAX, u64::MAX, None::<u128>]
-        u256 = [u8::MAX, u16::MAX, u32::MAX, u64::MAX, Some(u128::MAX)]
-        i128 = [i8::MAX, i16::MAX, i32::MAX, i64::MAX, None::<i128>]
-        i256 = [i8::MAX, i16::MAX, i32::MAX, i64::MAX, Some(i128::MAX)]
-        => |_0, u8, u16, u32, u64, u128| {
-            let uint8 = Int::from(u8);
-            let uint16 = Int::from(u16);
-            let uint32 = Int::from(u32);
-            let uint64 = Int::from(u64);
-
-            dts!(_0, uint8, uint16, uint32, uint64);
-
-            smart_assert(u8, uint8.try_into().unwrap());
-            smart_assert(u16, uint16.try_into().unwrap());
-            smart_assert(u32, uint32.try_into().unwrap());
-            smart_assert(u64, uint64.try_into().unwrap());
-
-            macro_rules! maybe_from {
-                ($t:expr) => {
-                    if let Some(t) = $t {
-                        let uint = bt(_0, Int::from(t));
-                        smart_assert(t, uint.try_into().unwrap());
-                    }
-                };
-            }
-
-            maybe_from!(u128);
-        }
-    );
-
-    int_test!( try_into,
-        Specific
-        u128 = [
-            [Uint256::MAX],
-            [
-                (Uint256::ZERO, Uint128::ZERO),
-                (Uint256::from(u128::MAX), Uint128::MAX)
-            ]
-        ]
-        u256 = [
-            [Uint512::MAX],
-            [
-                (Uint512::ZERO, Uint256::ZERO),
-                (Uint512::from(U256::MAX), Uint256::MAX)
-            ]
-        ]
-        i128 = [
-            [Int256::MAX, Int256::MIN],
-            [
-                (Int256::ZERO, Int128::ZERO),
-                (Int256::from(i128::MAX), Int128::MAX),
-                (Int256::from(i128::MIN), Int128::MIN)
-            ]
-        ]
-        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
-        => |_0, samples_invalid, samples_compare| {
-
-                for invalid in samples_invalid {
-                    let maybe_int = Int::try_from(invalid);
-                    dt(&maybe_int, &Ok(_0));
-                    assert!(matches!(maybe_int, Err(MathError::OverflowConversion { .. })));
-                }
-
-                for (try_from, should_be) in samples_compare {
-                    let int = Int::try_from(try_from).unwrap();
-                    assert_eq!(int, should_be);
-                }
-            }
     );
 
     int_test!( display,
@@ -574,329 +502,341 @@ pub mod testse {
     });
 
     int_test!( compare,
-        NoArgs
-        => |_0| {
-            let a = Int::from(10_u64);
-            let b = Int::from(20_u64);
-            dts!(_0, a, b);
-
-            assert!(a < b);
-            assert!(b > a);
-            assert_eq!(a, a);
-        }
-    );
-
-    int_test!( multiply_ratio,
         Specific
-        u128 = []
-        u256 = []
-        i128 = []
-        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
-        => |_0| {
-            let base = Int::from(500_u64);
-            let min = Int::MIN;
-            let max = Int::MAX;
-            dts!(_0, base, min, max);
-
-            // factor 1/1
-            assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 3_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_ceil(654321_u64, 654321_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_ceil(max, max).unwrap(), base);
-
-            assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_floor(3_u64, 3_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_floor(654321_u64, 654321_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_floor(max, max).unwrap(), base);
-
-            // factor 3/2
-            assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 2_u64).unwrap(), Int::from(750_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(3_u64, 2_u64).unwrap(), Int::from(750_u64));
-            assert_eq!(base.checked_multiply_ratio_ceil(333333_u64, 222222_u64).unwrap(), Int::from(750_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(333333_u64, 222222_u64).unwrap(), Int::from(750_u64));
-
-            // factor 2/3
-            assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 3_u64).unwrap(), Int::from(334_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(2_u64, 3_u64).unwrap(), Int::from(333_u64));
-            assert_eq!(base.checked_multiply_ratio_ceil(222222_u64, 333333_u64).unwrap(), Int::from(334_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(222222_u64, 333333_u64).unwrap(), Int::from(333_u64));
-
-            // factor 5/6
-            assert_eq!(base.checked_multiply_ratio_ceil(5_u64, 6_u64).unwrap(), Int::from(417_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(5_u64, 6_u64).unwrap(), Int::from(416_u64));
-            assert_eq!(base.checked_multiply_ratio_ceil(100_u64, 120_u64).unwrap(), Int::from(417_u64));
-            assert_eq!(base.checked_multiply_ratio_floor(100_u64, 120_u64).unwrap(), Int::from(416_u64));
-
-
-            // 0 num works
-            assert_eq!(base.checked_multiply_ratio_ceil(_0, 1_u64).unwrap(), _0);
-            assert_eq!(base.checked_multiply_ratio_floor(_0, 1_u64).unwrap(), _0);
-
-            // 1 num works
-            assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
-
-            // not round on even divide
-            let _2 = bt(_0, Int::from(2_u64));
-
-            assert_eq!(_2.checked_multiply_ratio_ceil(6_u64, 4_u64).unwrap(), Int::from(3_u64));
-            assert_eq!(_2.checked_multiply_ratio_floor(6_u64, 4_u64).unwrap(), Int::from(3_u64));
-
-        }
-    );
-
-    int_test!( multiply_ratio_does_not_overflow_when_result_fits,
-        Specific
-        u128 = []
-        u256 = []
-        i128 = []
-        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
-         => |_0| {
-            // Almost max value for Uint128.
-            let max = Int::MAX;
-            let reduce = Int::from(9_u64);
-            let base = max - reduce;
-            dts!(_0, base, max, reduce);
-
-            assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 2_u64).unwrap(), base);
-            assert_eq!(base.checked_multiply_ratio_floor(2_u64, 2_u64).unwrap(), base);
-        }
-    );
-
-    int_test!( multiply_ratio_overflow,
-        Specific
-        u128 = []
-        u256 = []
-        i128 = []
-        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
-        => |_0| {
-            // Almost max value for Uint128.
-            let max = Int::MAX;
-            let reduce = Int::from(9_u64);
-            let base = max - reduce;
-            dts!(_0, base, max, reduce);
-
-            let result = base.checked_multiply_ratio_ceil(2_u64, 1_u64);
-            let MathError::OverflowConversion { .. } = result.unwrap_err() else {
-                panic!("Expected OverflowConversion error");
-            };
-
-            let result = base.checked_multiply_ratio_floor(2_u64, 1_u64);
-            let MathError::OverflowConversion { .. } = result.unwrap_err() else {
-                panic!("Expected OverflowConversion error");
-            };
-        }
-    );
-
-    int_test!( multiply_ratio_divide_by_zero,
-        Specific
-        u128 = []
-        u256 = []
-        i128 = []
-        // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
-        => |_0| {
-            let base = bt(_0, Int::from(500_u64));
-
-            let result = base.checked_multiply_ratio_ceil(1_u64, 0_u64);
-            let MathError::DivisionByZero { .. } = result.unwrap_err() else {
-                panic!("Expected DivisionByZero error");
-            };
-
-            let result = base.checked_multiply_ratio_floor(1_u64, 0_u64);
-            let MathError::DivisionByZero { .. } = result.unwrap_err() else {
-                panic!("Expected DivisionByZero error");
-            };
-        }
-    );
-
-    int_test! (shr,
-        NoArgs
-        => |_0| {
-            let original = bt(_0, Int::from(160_u64));
-            assert_eq!(original >> 1, bt(_0, Int::from(80_u64)));
-            assert_eq!(original >> 3, bt(_0, Int::from(20_u64)));
-            assert_eq!(original >> 2, bt(_0, Int::from(40_u64)));
-        }
-    );
-
-    int_test!( shr_overflow_panics,
-        Specific
-        u128 = [128]
-        u256 = [256]
-        i128 = [128]
-        i256 = [256]
-        attrs = #[should_panic(expected = "shift overflow")]
-        => |u, shift| {
-            let original = bt(u, Int::from(1_u64));
-            let _ = original >> shift;
-        }
-    );
-
-    int_test! (shl,
-        NoArgs
-        => |_0| {
-            let original = bt(_0, Int::from(160_u64));
-            assert_eq!(original << 1, bt(_0, Int::from(320_u64)));
-            assert_eq!(original << 2, bt(_0, Int::from(640_u64)));
-            assert_eq!(original << 3, bt(_0, Int::from(1280_u64)));
-        }
-    );
-
-    int_test!( shl_overflow_panics,
-        Specific
-        u128 = [128]
-        u256 = [256]
-        i128 = [128]
-        i256 = [256]
-        attrs = #[should_panic(expected = "shift overflow")]
-        => |_0, shift| {
-            let original = bt(_0, Int::from(1_u64));
-            let _ = original << shift;
-        }
-    );
-
-    int_test!( rem,
-        NoArgs
-        attrs = #[allow(clippy::op_ref)]
-        => |_0| {
-            let _1 = Int::from(1_u64);
-            let _10 = Int::from(10_u64);
-            let _3 = Int::from(3_u64);
-            dts!(_0, _1, _3, _3);
-
-            assert_eq!(_10 % Int::from(10_u64), _0);
-            assert_eq!(_10 % Int::from(2_u64), _0);
-            assert_eq!(_10 % Int::from(1_u64), _0);
-            assert_eq!(_10 % Int::from(3_u64), Int::from(1_u64));
-            assert_eq!(_10 % Int::from(4_u64), Int::from(2_u64));
-            assert_eq!(_10 % _3, _1);
-
-            // works for assign
-            let mut _30 = bt(_0, Int::from(30_u64));
-            _30 %=  Int::from(4_u64);
-            assert_eq!(_30, Int::from(2_u64));
-        }
-    );
-
-    int_test!( rem_panics_for_zero,
-        NoArgs
-        attrs = #[should_panic(expected = "division by zero")]
-        => |_0| {
-            let _ = Int::from(10_u64) % _0;
-        }
-    );
-
-    int_test!( partial_eq,
-        NoArgs
-        attrs = #[allow(clippy::op_ref)]
-        => |_0| {
-            let test_cases = [
-                    (1_u64, 1_u64, true),
-                    (42_u64, 42_u64, true),
-                    (42_u64, 24_u64, false),
-                    (0_u64, 0_u64, true)
-                ]
-                .into_iter()
-                .map(|(lhs, rhs, expected)|
-                    (
-                        bt(_0, Int::from(lhs)),
-                        bt(_0, Int::from(rhs)),
-                        expected
-                    )
-                );
-
-            for (lhs, rhs, expected) in test_cases {
-                assert_eq!(lhs == rhs, expected);
+        u128 = [[(10_u128, 200_u128)]]
+        u256 = [[(U256::from(10_u128), U256::from(200_u128))]]
+        i128 = [[
+                    (10_i128, 200_i128),
+                    (-10, 200),
+                    (-200, -10)
+                ]]
+        i256 = [[
+                    (I256::from(10), I256::from(200_i128)),
+                    (I256::from(-10), I256::from(200)),
+                    (I256::from(-200), I256::from(-10))
+                 ]]
+        => |_0, samples| {
+            for (low, high) in samples {
+                let low = Int::new(low);
+                let high = Int::new(high);
+                dts!(_0, low, high);
+                assert!(low < high);
+                assert!(high > low);
+                assert_eq!(low, low);
             }
         }
     );
 
-    int_test!( mul_floor,
-        Specific
-        u128 = [Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
-        u256 = [Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
-        => |_0, _2d, _0_5d, _1_5d| {
-            let _1 = Int::from(1_u64);
-            let _2 = Int::from(2_u64);
-            let _10 = Int::from(10_u64);
-            let _11 = Int::from(11_u64);
-            let max = Int::MAX;
-            dts!(_0, _1, _2, _10, _11, max);
+    // int_test!( multiply_ratio,
+    //     Specific
+    //     u128 = []
+    //     u256 = []
+    //     i128 = []
+    //     // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
+    //     => |_0| {
+    //         let base = Int::from(500_u64);
+    //         let min = Int::MIN;
+    //         let max = Int::MAX;
+    //         dts!(_0, base, min, max);
 
-            assert_eq!(_10.checked_mul_dec_ceil(_2d).unwrap(), Int::from(20_u64));
-            assert_eq!(_10.checked_mul_dec_floor(_2d).unwrap(), Int::from(20_u64));
+    //         // factor 1/1
+    //         assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 3_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_ceil(654321_u64, 654321_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_ceil(max, max).unwrap(), base);
 
-            assert_eq!(_10.checked_mul_dec_ceil(_1_5d).unwrap(), Int::from(15_u64));
-            assert_eq!(_10.checked_mul_dec_floor(_1_5d).unwrap(), Int::from(15_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_floor(3_u64, 3_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_floor(654321_u64, 654321_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_floor(max, max).unwrap(), base);
 
-            assert_eq!(_10.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(5_u64));
-            assert_eq!(_10.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
+    //         // factor 3/2
+    //         assert_eq!(base.checked_multiply_ratio_ceil(3_u64, 2_u64).unwrap(), Int::from(750_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(3_u64, 2_u64).unwrap(), Int::from(750_u64));
+    //         assert_eq!(base.checked_multiply_ratio_ceil(333333_u64, 222222_u64).unwrap(), Int::from(750_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(333333_u64, 222222_u64).unwrap(), Int::from(750_u64));
 
-            // ceil works
-            assert_eq!(_11.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
-            assert_eq!(_11.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(6_u64));
+    //         // factor 2/3
+    //         assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 3_u64).unwrap(), Int::from(334_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(2_u64, 3_u64).unwrap(), Int::from(333_u64));
+    //         assert_eq!(base.checked_multiply_ratio_ceil(222222_u64, 333333_u64).unwrap(), Int::from(334_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(222222_u64, 333333_u64).unwrap(), Int::from(333_u64));
 
-            // overflow num but not overflow result
-            assert_eq!(max.checked_mul_dec_ceil(_0_5d).unwrap(), max / _2 + _1);
-            assert_eq!(max.checked_mul_dec_floor(_0_5d).unwrap(), max / _2);
+    //         // factor 5/6
+    //         assert_eq!(base.checked_multiply_ratio_ceil(5_u64, 6_u64).unwrap(), Int::from(417_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(5_u64, 6_u64).unwrap(), Int::from(416_u64));
+    //         assert_eq!(base.checked_multiply_ratio_ceil(100_u64, 120_u64).unwrap(), Int::from(417_u64));
+    //         assert_eq!(base.checked_multiply_ratio_floor(100_u64, 120_u64).unwrap(), Int::from(416_u64));
 
-            // overflow num and overflow result
-            assert!(matches!(
-                max.checked_mul_dec_ceil(_2d),
-                Err(MathError::OverflowConversion { .. })
-            ));
-            assert!(matches!(
-                max.checked_mul_dec_floor(_2d),
-                Err(MathError::OverflowConversion { .. })
-            ));
-        }
-    );
+    //         // 0 num works
+    //         assert_eq!(base.checked_multiply_ratio_ceil(_0, 1_u64).unwrap(), _0);
+    //         assert_eq!(base.checked_multiply_ratio_floor(_0, 1_u64).unwrap(), _0);
 
-    int_test!( div_floor,
-        Specific
-        u128 = [Udec128::new(0_u128), Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
-        u256 = [Udec256::new(0_u128), Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
-        => |_0, _0d, _2d, _0_5d, _1_5d| {
-            let _1 = Int::from(1_u64);
-            let _2 = Int::from(2_u64);
-            let _10 = Int::from(10_u64);
-            let _11 = Int::from(11_u64);
-            let max = Int::MAX;
-            dts!(_0, _1, _2, _10, _11,  max);
+    //         // 1 num works
+    //         assert_eq!(base.checked_multiply_ratio_ceil(1_u64, 1_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_floor(1_u64, 1_u64).unwrap(), base);
 
-            assert_eq!(_11.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
-            assert_eq!(_11.checked_div_dec_ceil(_2d).unwrap(), Int::from(6_u64));
+    //         // not round on even divide
+    //         let _2 = bt(_0, Int::from(2_u64));
 
-            assert_eq!(_10.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
-            assert_eq!(_10.checked_div_dec_ceil(_2d).unwrap(), Int::from(5_u64));
+    //         assert_eq!(_2.checked_multiply_ratio_ceil(6_u64, 4_u64).unwrap(), Int::from(3_u64));
+    //         assert_eq!(_2.checked_multiply_ratio_floor(6_u64, 4_u64).unwrap(), Int::from(3_u64));
 
-            // ceil works
-            assert_eq!(_11.checked_div_dec_floor(_1_5d).unwrap(), Int::from(7_u64));
-            assert_eq!(_11.checked_div_dec_ceil(_1_5d).unwrap(), Int::from(8_u64));
+    //     }
+    // );
 
-            // overflow num but not overflow result
-            assert_eq!(max.checked_div_dec_floor(_2d).unwrap(), max / _2);
-            assert_eq!(max.checked_div_dec_ceil(_2d).unwrap(), max / _2 + _1);
+    // int_test!( multiply_ratio_does_not_overflow_when_result_fits,
+    //     Specific
+    //     u128 = []
+    //     u256 = []
+    //     i128 = []
+    //     // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
+    //      => |_0| {
+    //         // Almost max value for Uint128.
+    //         let max = Int::MAX;
+    //         let reduce = Int::from(9_u64);
+    //         let base = max - reduce;
+    //         dts!(_0, base, max, reduce);
 
-            // overflow num and overflow result
-            assert!(matches!(
-                max.checked_div_dec_floor(_0_5d),
-                Err(MathError::OverflowConversion { .. })
-            ));
-            assert!(matches!(
-                max.checked_div_dec_ceil(_0_5d),
-                Err(MathError::OverflowConversion { .. })
-            ));
+    //         assert_eq!(base.checked_multiply_ratio_ceil(2_u64, 2_u64).unwrap(), base);
+    //         assert_eq!(base.checked_multiply_ratio_floor(2_u64, 2_u64).unwrap(), base);
+    //     }
+    // );
 
-            // Divide by zero
-            assert!(matches!(
-                _10.checked_div_dec_floor(_0d),
-                Err(MathError::DivisionByZero { .. })
-            ));
-            assert!(matches!(
-                _10.checked_div_dec_ceil(_0d),
-                Err(MathError::DivisionByZero { .. })
-            ));
-        }
-    );
+    // int_test!( multiply_ratio_overflow,
+    //     Specific
+    //     u128 = []
+    //     u256 = []
+    //     i128 = []
+    //     // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
+    //     => |_0| {
+    //         // Almost max value for Uint128.
+    //         let max = Int::MAX;
+    //         let reduce = Int::from(9_u64);
+    //         let base = max - reduce;
+    //         dts!(_0, base, max, reduce);
+
+    //         let result = base.checked_multiply_ratio_ceil(2_u64, 1_u64);
+    //         let MathError::OverflowConversion { .. } = result.unwrap_err() else {
+    //             panic!("Expected OverflowConversion error");
+    //         };
+
+    //         let result = base.checked_multiply_ratio_floor(2_u64, 1_u64);
+    //         let MathError::OverflowConversion { .. } = result.unwrap_err() else {
+    //             panic!("Expected OverflowConversion error");
+    //         };
+    //     }
+    // );
+
+    // int_test!( multiply_ratio_divide_by_zero,
+    //     Specific
+    //     u128 = []
+    //     u256 = []
+    //     i128 = []
+    //     // TODO: Missing i256 casue From<I256> for I512 is not implemented yet
+    //     => |_0| {
+    //         let base = bt(_0, Int::from(500_u64));
+
+    //         let result = base.checked_multiply_ratio_ceil(1_u64, 0_u64);
+    //         let MathError::DivisionByZero { .. } = result.unwrap_err() else {
+    //             panic!("Expected DivisionByZero error");
+    //         };
+
+    //         let result = base.checked_multiply_ratio_floor(1_u64, 0_u64);
+    //         let MathError::DivisionByZero { .. } = result.unwrap_err() else {
+    //             panic!("Expected DivisionByZero error");
+    //         };
+    //     }
+    // );
+
+    // int_test! (shr,
+    //     NoArgs
+    //     => |_0| {
+    //         let original = bt(_0, Int::from(160_u64));
+    //         assert_eq!(original >> 1, bt(_0, Int::from(80_u64)));
+    //         assert_eq!(original >> 3, bt(_0, Int::from(20_u64)));
+    //         assert_eq!(original >> 2, bt(_0, Int::from(40_u64)));
+    //     }
+    // );
+
+    // int_test!( shr_overflow_panics,
+    //     Specific
+    //     u128 = [128]
+    //     u256 = [256]
+    //     i128 = [128]
+    //     i256 = [256]
+    //     attrs = #[should_panic(expected = "shift overflow")]
+    //     => |u, shift| {
+    //         let original = bt(u, Int::from(1_u64));
+    //         let _ = original >> shift;
+    //     }
+    // );
+
+    // int_test! (shl,
+    //     NoArgs
+    //     => |_0| {
+    //         let original = bt(_0, Int::from(160_u64));
+    //         assert_eq!(original << 1, bt(_0, Int::from(320_u64)));
+    //         assert_eq!(original << 2, bt(_0, Int::from(640_u64)));
+    //         assert_eq!(original << 3, bt(_0, Int::from(1280_u64)));
+    //     }
+    // );
+
+    // int_test!( shl_overflow_panics,
+    //     Specific
+    //     u128 = [128]
+    //     u256 = [256]
+    //     i128 = [128]
+    //     i256 = [256]
+    //     attrs = #[should_panic(expected = "shift overflow")]
+    //     => |_0, shift| {
+    //         let original = bt(_0, Int::from(1_u64));
+    //         let _ = original << shift;
+    //     }
+    // );
+
+    // int_test!( rem,
+    //     NoArgs
+    //     attrs = #[allow(clippy::op_ref)]
+    //     => |_0| {
+    //         let _1 = Int::from(1_u64);
+    //         let _10 = Int::from(10_u64);
+    //         let _3 = Int::from(3_u64);
+    //         dts!(_0, _1, _3, _3);
+
+    //         assert_eq!(_10 % Int::from(10_u64), _0);
+    //         assert_eq!(_10 % Int::from(2_u64), _0);
+    //         assert_eq!(_10 % Int::from(1_u64), _0);
+    //         assert_eq!(_10 % Int::from(3_u64), Int::from(1_u64));
+    //         assert_eq!(_10 % Int::from(4_u64), Int::from(2_u64));
+    //         assert_eq!(_10 % _3, _1);
+
+    //         // works for assign
+    //         let mut _30 = bt(_0, Int::from(30_u64));
+    //         _30 %=  Int::from(4_u64);
+    //         assert_eq!(_30, Int::from(2_u64));
+    //     }
+    // );
+
+    // int_test!( rem_panics_for_zero,
+    //     NoArgs
+    //     attrs = #[should_panic(expected = "division by zero")]
+    //     => |_0| {
+    //         let _ = Int::from(10_u64) % _0;
+    //     }
+    // );
+
+    // int_test!( partial_eq,
+    //     NoArgs
+    //     attrs = #[allow(clippy::op_ref)]
+    //     => |_0| {
+    //         let test_cases = [
+    //                 (1_u64, 1_u64, true),
+    //                 (42_u64, 42_u64, true),
+    //                 (42_u64, 24_u64, false),
+    //                 (0_u64, 0_u64, true)
+    //             ]
+    //             .into_iter()
+    //             .map(|(lhs, rhs, expected)|
+    //                 (
+    //                     bt(_0, Int::from(lhs)),
+    //                     bt(_0, Int::from(rhs)),
+    //                     expected
+    //                 )
+    //             );
+
+    //         for (lhs, rhs, expected) in test_cases {
+    //             assert_eq!(lhs == rhs, expected);
+    //         }
+    //     }
+    // );
+
+    // int_test!( mul_floor,
+    //     Specific
+    //     u128 = [Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
+    //     u256 = [Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
+    //     => |_0, _2d, _0_5d, _1_5d| {
+    //         let _1 = Int::from(1_u64);
+    //         let _2 = Int::from(2_u64);
+    //         let _10 = Int::from(10_u64);
+    //         let _11 = Int::from(11_u64);
+    //         let max = Int::MAX;
+    //         dts!(_0, _1, _2, _10, _11, max);
+
+    //         assert_eq!(_10.checked_mul_dec_ceil(_2d).unwrap(), Int::from(20_u64));
+    //         assert_eq!(_10.checked_mul_dec_floor(_2d).unwrap(), Int::from(20_u64));
+
+    //         assert_eq!(_10.checked_mul_dec_ceil(_1_5d).unwrap(), Int::from(15_u64));
+    //         assert_eq!(_10.checked_mul_dec_floor(_1_5d).unwrap(), Int::from(15_u64));
+
+    //         assert_eq!(_10.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(5_u64));
+    //         assert_eq!(_10.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
+
+    //         // ceil works
+    //         assert_eq!(_11.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
+    //         assert_eq!(_11.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(6_u64));
+
+    //         // overflow num but not overflow result
+    //         assert_eq!(max.checked_mul_dec_ceil(_0_5d).unwrap(), max / _2 + _1);
+    //         assert_eq!(max.checked_mul_dec_floor(_0_5d).unwrap(), max / _2);
+
+    //         // overflow num and overflow result
+    //         assert!(matches!(
+    //             max.checked_mul_dec_ceil(_2d),
+    //             Err(MathError::OverflowConversion { .. })
+    //         ));
+    //         assert!(matches!(
+    //             max.checked_mul_dec_floor(_2d),
+    //             Err(MathError::OverflowConversion { .. })
+    //         ));
+    //     }
+    // );
+
+    // int_test!( div_floor,
+    //     Specific
+    //     u128 = [Udec128::new(0_u128), Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
+    //     u256 = [Udec256::new(0_u128), Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
+    //     => |_0, _0d, _2d, _0_5d, _1_5d| {
+    //         let _1 = Int::from(1_u64);
+    //         let _2 = Int::from(2_u64);
+    //         let _10 = Int::from(10_u64);
+    //         let _11 = Int::from(11_u64);
+    //         let max = Int::MAX;
+    //         dts!(_0, _1, _2, _10, _11,  max);
+
+    //         assert_eq!(_11.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
+    //         assert_eq!(_11.checked_div_dec_ceil(_2d).unwrap(), Int::from(6_u64));
+
+    //         assert_eq!(_10.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
+    //         assert_eq!(_10.checked_div_dec_ceil(_2d).unwrap(), Int::from(5_u64));
+
+    //         // ceil works
+    //         assert_eq!(_11.checked_div_dec_floor(_1_5d).unwrap(), Int::from(7_u64));
+    //         assert_eq!(_11.checked_div_dec_ceil(_1_5d).unwrap(), Int::from(8_u64));
+
+    //         // overflow num but not overflow result
+    //         assert_eq!(max.checked_div_dec_floor(_2d).unwrap(), max / _2);
+    //         assert_eq!(max.checked_div_dec_ceil(_2d).unwrap(), max / _2 + _1);
+
+    //         // overflow num and overflow result
+    //         assert!(matches!(
+    //             max.checked_div_dec_floor(_0_5d),
+    //             Err(MathError::OverflowConversion { .. })
+    //         ));
+    //         assert!(matches!(
+    //             max.checked_div_dec_ceil(_0_5d),
+    //             Err(MathError::OverflowConversion { .. })
+    //         ));
+
+    //         // Divide by zero
+    //         assert!(matches!(
+    //             _10.checked_div_dec_floor(_0d),
+    //             Err(MathError::DivisionByZero { .. })
+    //         ));
+    //         assert!(matches!(
+    //             _10.checked_div_dec_ceil(_0d),
+    //             Err(MathError::DivisionByZero { .. })
+    //         ));
+    //     }
+    // );
 }

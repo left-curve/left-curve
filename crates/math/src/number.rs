@@ -389,16 +389,16 @@ mod tests {
                 ]]
         => |_0, samples, failing_samples| {
             for (left, right, expected) in samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
-                let expected = Int::from(expected);
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
                 dts!(_0, left, right, expected);
                 assert_eq!(left + right, expected);
             }
 
             for (left, right) in failing_samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
+                let left = Int::new(left);
+                let right = Int::new(right);
                 dts!(_0, left, right);
                 assert!(matches!(left.checked_add(right), Err(MathError::OverflowAdd { .. })));
             }
@@ -419,9 +419,9 @@ mod tests {
         NoArgs
         attrs = #[allow(clippy::op_ref)]
         => |_0| {
-            let mut a = bt(_0, Int::from(14_u64));
-            a += bt(_0, Int::from(2_u64));
-            assert_eq!(a, bt(_0, Int::from(16_u64)));
+            let mut a = bt(_0, Int::new(14_u64.into()));
+            a += bt(_0, Int::new(2_u64.into()));
+            assert_eq!(a, bt(_0, Int::new(16_u64.into())));
         }
     );
 
@@ -476,16 +476,16 @@ mod tests {
                 ]]
         => |_0, samples, failing_samples| {
             for (left, right, expected) in samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
-                let expected = Int::from(expected);
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
                 dts!(_0, left, right, expected);
                 assert_eq!(left - right, expected);
             }
 
             for (left, right) in failing_samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
+                let left = Int::new(left);
+                let right = Int::new(right);
                 dts!(_0, left, right);
                 assert!(matches!(left.checked_sub(right), Err(MathError::OverflowSub { .. })));
             }
@@ -506,9 +506,9 @@ mod tests {
         NoArgs
         attrs = #[allow(clippy::op_ref)]
         => |_0| {
-            let mut a = bt(_0, Int::from(14_u64));
-            a -= bt(_0, Int::from(2_u64));
-            assert_eq!(a, bt(_0, Int::from(12_u64)));
+            let mut a = bt(_0, Int::new(14_u64.into()));
+            a -= bt(_0, Int::new(2_u64.into()));
+            assert_eq!(a, bt(_0, Int::new(12_u64.into())));
         }
     );
 
@@ -569,16 +569,16 @@ mod tests {
                 ]]
         => |_0, samples, failing_samples| {
             for (left, right, expected) in samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
-                let expected = Int::from(expected);
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
                 dts!(_0, left, right, expected);
                 assert_eq!(left * right, expected);
             }
 
             for (left, right) in failing_samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
+                let left = Int::new(left);
+                let right = Int::new(right);
                 dts!(_0, left, right);
                 assert!(matches!(left.checked_mul(right), Err(MathError::OverflowMul { .. })));
             }
@@ -590,7 +590,7 @@ mod tests {
         attrs = #[should_panic(expected = "multiplication overflow")]
         => |_0| {
             let max = bt(_0, Int::MAX);
-            let one = bt(_0, Int::from(2_u64));
+            let one = bt(_0, Int::new(2_u64.into()));
             let _ = max * one;
         }
     );
@@ -599,9 +599,9 @@ mod tests {
         NoArgs
         attrs = #[allow(clippy::op_ref)]
         => |_0| {
-            let mut a = bt(_0, Int::from(14_u64));
-            a *= bt(_0, Int::from(2_u64));
-            assert_eq!(a, bt(_0, Int::from(28_u64)));
+            let mut a = bt(_0, Int::new(14_u64.into()));
+            a *= bt(_0, Int::new(2_u64.into()));
+            assert_eq!(a, bt(_0, Int::new(28_u64.into())));
         }
     );
 
@@ -648,9 +648,9 @@ mod tests {
                 ]]
         => |_0, samples| {
             for (left, right, expected) in samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
-                let expected = Int::from(expected);
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
                 dts!(_0, left, right, expected);
                 assert_eq!(left / right, expected);
             }
@@ -676,9 +676,9 @@ mod tests {
         NoArgs
         attrs = #[allow(clippy::op_ref)]
         => |_0| {
-            let mut a = bt(_0, Int::from(14_u64));
-            a /= bt(_0, Int::from(2_u64));
-            assert_eq!(a, bt(_0, Int::from(7_u64)));
+            let mut a = bt(_0, Int::new(14_u64.into()));
+            a /= bt(_0, Int::new(2_u64.into()));
+            assert_eq!(a, bt(_0, Int::new(7_u64.into())));
         }
     );
 
@@ -727,14 +727,14 @@ mod tests {
                 ]]
         => |_0, samples, failing_samples| {
             for (base, exp, expected) in samples {
-                let base = Int::from(base);
-                let expected = Int::from(expected);
+                let base = Int::new(base);
+                let expected = Int::new(expected);
                 dts!(_0, base, expected);
                 assert_eq!(base.checked_pow(exp).unwrap(), expected);
             }
 
             for (base, exp) in failing_samples {
-                let base = bt(_0, Int::from(base));
+                let base = bt(_0, Int::new(base));
                 assert!(matches!(base.checked_pow(exp), Err(MathError::OverflowPow { .. })));
             }
         }
@@ -749,7 +749,7 @@ mod tests {
                     (81, 9),
                 ],
                 [ // Failing cases
-                    0u32;0
+                    0u128;0
                 ]]
 
         u256 = [[ // Passing cases
@@ -759,7 +759,7 @@ mod tests {
                     (U256::from(81_u32), U256::from(9_u32)),
                 ],
                 [  // Failing cases
-                    0u32;0
+                    U256::ZERO;0
                 ]]
 
         i128 = [[ // Passing cases
@@ -769,8 +769,8 @@ mod tests {
                     (81, 9),
                 ],
                 [ // Failing cases
-                    -1,
-                    -4
+                    -1_i128,
+                    -4_i128
                 ]]
 
         i256 = [[ // Passing cases
@@ -785,14 +785,14 @@ mod tests {
                 ]]
         => |_0, samples, failing_samples| {
             for (base, expected) in samples {
-                let base = Int::from(base);
-                let expected = Int::from(expected);
+                let base = Int::new(base);
+                let expected = Int::new(expected);
                 dts!(_0, base, expected);
                 assert_eq!(base.checked_sqrt().unwrap(), expected);
             }
 
             for base in failing_samples {
-                let base = bt(_0, Int::from(base));
+                let base = bt(_0, Int::new(base));
                 // base.checked_sqrt().unwrap();
                 assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
             }
@@ -853,9 +853,9 @@ mod tests {
 
        => |_0, samples| {
             for (left, right, expected) in samples {
-                let left = Int::from(left);
-                let right = Int::from(right);
-                let expected = Int::from(expected);
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
                 dts!(_0, left, right, expected);
                 assert_eq!(left.wrapping_mul(right), expected);
             }
@@ -898,8 +898,8 @@ mod tests {
 
        => |_0, samples| {
             for (base, exp, expected) in samples {
-                let base = Int::from(base);
-                let expected = Int::from(expected);
+                let base = Int::new(base);
+                let expected = Int::new(expected);
                 dts!(_0, base, expected);
                 assert_eq!(base.wrapping_pow(exp), expected);
             }

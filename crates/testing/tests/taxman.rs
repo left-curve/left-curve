@@ -126,7 +126,7 @@ mod taxman {
     0,
     10,
     0,
-    Some("subtraction overflow: 10 - 25000 < bnum::buint::BUint<4>::MIN");
+    Some("subtraction overflow: 10 - 25000 (type: bnum::buint::BUint<4>)");
     "error while withholding fee"
 )]
 // Case 2. Sender has enough balance to cover gas fee, but not enough for the
@@ -140,7 +140,7 @@ mod taxman {
     6250,  // = 100,000 / 4 * 0.25
     23750, // = 30,000 - (100,000 / 4 * 0.25)
     0,
-    Some("subtraction overflow: 5000 - 99999 < bnum::buint::BUint<4>::MIN");
+    Some("subtraction overflow: 5000 - 99999 (type: bnum::buint::BUint<4>)");
     "error while processing messages"
 )]
 // Case 3. Sender has enough balance to cover both gas fee and the transfer.
