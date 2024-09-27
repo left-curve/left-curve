@@ -1,7 +1,7 @@
 # https://rust-lang.github.io/rustfmt/
 condense_wildcard_suffixes     = true  # unstable
-format_macro_bodies            = true  # unstable
-format_macro_matchers          = true  # unstable
+format_macro_bodies            = false  # unstable
+format_macro_matchers          = false  # unstable
 imports_granularity            = "One" # unstable
 match_block_trailing_comma     = true
 normalize_comments             = true  # unstable

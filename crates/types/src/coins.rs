@@ -434,14 +434,15 @@ impl fmt::Debug for Coins {
 mod tests {
     use {
         crate::{json, Coins, Json, JsonDeExt, JsonSerExt},
+        grug_math::Uint256,
         std::str::FromStr,
     };
 
     fn mock_coins() -> Coins {
         Coins::try_from([
-            ("uatom", 123_u128),
-            ("umars", 456_u128),
-            ("uosmo", 789_u128),
+            ("uatom", Uint256::new_from_u128(123)),
+            ("umars", Uint256::new_from_u128(456)),
+            ("uosmo", Uint256::new_from_u128(789)),
         ])
         .unwrap()
     }

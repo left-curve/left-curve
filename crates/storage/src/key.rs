@@ -486,7 +486,7 @@ macro_rules! impl_unsigned_integer_key {
                 Ok(Self::from_be_bytes(bytes))
             }
         })*
-    }
+    };
 }
 
 impl_unsigned_integer_key!(u8, u16, u32, u64, u128, U256, U512);
@@ -688,7 +688,7 @@ macro_rules! impl_integer_prefixer {
                 vec![Cow::Owned(self.to_be_bytes().to_vec())]
             }
         })*
-    }
+    };
 }
 
 impl_integer_prefixer!(
@@ -974,24 +974,24 @@ mod tests {
     #[test_case(
         [
             Udec128::ZERO,
-            Udec128::checked_from_ratio(1_u128, 2_u128).unwrap(),
-            Udec128::checked_from_ratio(1_u128, 1_u128).unwrap(),
-            Udec128::checked_from_ratio(69420_u128, 12345_u128).unwrap(),
+            Udec128::checked_from_ratio(Uint128::new(1), Uint128::new(2)).unwrap(),
+            Udec128::checked_from_ratio(Uint128::new(1), Uint128::new(1)).unwrap(),
+            Udec128::checked_from_ratio(Uint128::new(69420), Uint128::new(12345)).unwrap(),
             Udec128::MAX,
         ];
         "udec128"
     )]
     #[test_case(
         [
-            Dec128::raw((-i128::MAX).into()),
-            Dec128::checked_from_ratio(-69420_i128, 12345_i128).unwrap(),
-            Dec128::checked_from_ratio(-1_i128, 1_i128).unwrap(),
-            Dec128::checked_from_ratio(-1_i128, 2_i128).unwrap(),
+            Dec128::MIN,
+            Dec128::checked_from_ratio(Int128::new(-69420), Int128::new(12345)).unwrap(),
+            Dec128::checked_from_ratio(Int128::new(-1), Int128::new(1)).unwrap(),
+            Dec128::checked_from_ratio(Int128::new(-1), Int128::new(2)).unwrap(),
             Dec128::new(0_i128),
-            Dec128::checked_from_ratio(1_i128, 2_i128).unwrap(),
-            Dec128::checked_from_ratio(1_i128, 1_i128).unwrap(),
-            Dec128::checked_from_ratio(69420_i128, 12345_i128).unwrap(),
-            Dec128::raw(i128::MAX.into()),
+            Dec128::checked_from_ratio(Int128::new(1), Int128::new(2)).unwrap(),
+            Dec128::checked_from_ratio(Int128::new(1), Int128::new(1)).unwrap(),
+            Dec128::checked_from_ratio(Int128::new(69420), Int128::new(12345)).unwrap(),
+            Dec128::MAX,
         ];
         "dec128"
     )]

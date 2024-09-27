@@ -288,8 +288,9 @@ dependencies = [
 
 [[package]]
 name = "bnum"
-version = "0.11.0"
-source = "git+https://github.com/left-curve/bnum?rev=91dfe8a#91dfe8a34402c11f3ecae8b0eeab5f091f0aa2fb"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50202def95bf36cb7d1d7a7962cea1c36a3f8ad42425e5d2b71d7acb8041b5b8"
 dependencies = [
  "borsh",
 ]

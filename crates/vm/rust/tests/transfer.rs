@@ -10,7 +10,10 @@ static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap
 #[test]
 fn transfers() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("sender", Coins::one(DENOM.clone(), 100_u128)?)?
+        .add_account(
+            "sender",
+            Coins::one(DENOM.clone(), Uint256::new_from_u128(100))?,
+        )?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -20,7 +23,7 @@ fn transfers() -> anyhow::Result<()> {
     // Check that sender has been given 100 ugrug
     suite
         .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(100_u128.into());
+        .should_succeed_and_equal(Uint256::new_from_u128(100_u128));
     suite
         .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint256::ZERO);
@@ -30,19 +33,19 @@ fn transfers() -> anyhow::Result<()> {
         .send_messages(accounts.get_mut("sender").unwrap(), vec![
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 10_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(10))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 15_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(15))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 20_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(20))?,
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 25_u128)?,
+                coins: Coins::one(DENOM.clone(), Uint256::new_from_u128(25))?,
             },
         ])?
         .result
@@ -51,10 +54,10 @@ fn transfers() -> anyhow::Result<()> {
     // Check balances again
     suite
         .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(Uint256::from(30_u128));
+        .should_succeed_and_equal(Uint256::new_from_u128(30));
     suite
         .query_balance(&accounts["receiver"], DENOM.clone())
-        .should_succeed_and_equal(Uint256::from(70_u128));
+        .should_succeed_and_equal(Uint256::new_from_u128(70));
 
     Ok(())
 }
