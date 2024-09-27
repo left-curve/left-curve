@@ -20,7 +20,7 @@ export { MenuConnections } from "./molecules/MenuConnections";
 export { MenuNotifications } from "./molecules/MenuNotifications";
 export { ConnectButton } from "./molecules/ConnectButton";
 export { AccountInfo } from "./molecules/AccountInfo";
-export { AppLetCard } from "./molecules/AppletCard";
+export { AppletCard } from "./molecules/AppletCard";
 export { PortfolioTable } from "./molecules/PortfolioTable";
 export { SpotPortfolioTable } from "./molecules/SpotPortfolioTable";
 export { SafePortfolioTable } from "./molecules/SafePortfolioTable";

@@ -27,7 +27,7 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-  apps/superapp:
+  apps/portal:
     dependencies:
       '@leftcurve/connect-kit':
         specifier: workspace:^

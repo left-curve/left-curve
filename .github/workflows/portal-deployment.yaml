@@ -9,14 +9,14 @@ on:
     paths:
       - "packages/react/**"
       - "packages/dango/**"
-      - "apps/superapp/**"
+      - "apps/portal/**"
   pull_request:
     branches:
       - "*"
     paths:
       - "packages/react/**"
       - "packages/dango/**"
-      - "apps/superapp/**"
+      - "apps/portal/**"
 
 jobs:
   deploy:
@@ -52,6 +52,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-portal
-          directory: ./apps/superapp/.vercel/output/static
+          directory: ./apps/portal/.vercel/output/static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

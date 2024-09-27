@@ -2,17 +2,39 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { AppLetCard } from "~/components";
+import { AppletCard } from "~/components";
 
-import type { AppletMetadata } from "@leftcurve/types";
+import { useMemo } from "react";
+import { CommandBodyPreview } from "./CommandBodyPreview";
+
+import type { AppletMetadata } from "~/types";
 
 interface Props {
   isOpen: boolean;
-  recentApplets: AppletMetadata[];
-  applets: AppletMetadata[];
+  action: (applet: AppletMetadata) => void;
+  searchText?: string;
+  applets: {
+    popular: AppletMetadata[];
+    all: AppletMetadata[];
+  };
 }
 
-export const CommandBody: React.FC<Props> = ({ isOpen, recentApplets, applets }) => {
+export const CommandBody: React.FC<Props> = ({ isOpen, applets, searchText, action }) => {
+  const { popular, all } = applets;
+
+  const filteredApplets = useMemo(() => {
+    if (!searchText) return all;
+
+    const search = searchText.toLowerCase();
+
+    return all.filter((applet) => {
+      return (
+        applet.title.toLowerCase().includes(search) ||
+        applet.description.toLowerCase().includes(search)
+      );
+    });
+  }, [searchText, all]);
+
   return (
     <AnimatePresence mode="popLayout">
       {isOpen && (
@@ -22,29 +44,20 @@ export const CommandBody: React.FC<Props> = ({ isOpen, recentApplets, applets })
           exit={{ opacity: 0, translateY: 100 }}
           className="w-full flex flex-col gap-6 max-w-[calc(100vh-3.5rem)] overflow-scroll scrollbar-none md:p-4"
         >
-          {recentApplets.length ? (
-            <div className="py-2 flex flex-col gap-3 w-full">
+          {searchText ? (
+            <>
               <h3 className="text-sm font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest">
-                RECENT APPS
+                FOUND APPS
               </h3>
-
               <div className="flex w-full flex-col gap-1">
-                {recentApplets.map((applet) => (
-                  <AppLetCard key={applet.title} metadata={applet} />
+                {filteredApplets.map((applet) => (
+                  <AppletCard key={applet.title} metadata={applet} onClick={action} />
                 ))}
               </div>
-            </div>
-          ) : null}
-          <div className="py-2 flex flex-col gap-3 w-full">
-            <h3 className="text-sm font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest">
-              POPULAR APPS
-            </h3>
-            <div className="flex w-full flex-col gap-1">
-              {applets.map((applet) => (
-                <AppLetCard key={applet.title} metadata={applet} />
-              ))}
-            </div>
-          </div>
+            </>
+          ) : (
+            <CommandBodyPreview popularApplets={popular} action={action} />
+          )}
         </motion.div>
       )}
     </AnimatePresence>

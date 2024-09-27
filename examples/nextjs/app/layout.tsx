@@ -20,8 +20,7 @@ const grotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "SuperApp",
-  description: "A super app",
+  title: "Nextjs Example",
 };
 
 export default function RootLayout({

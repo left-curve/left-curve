@@ -18,6 +18,7 @@ export interface CardProps extends VariantProps<typeof cardVariants> {
   className?: string;
   avatarUrl: string;
   account: Account;
+  manageAction?: (account: Account) => void;
   onClick?: () => void;
   expanded?: boolean;
 }
@@ -25,6 +26,7 @@ export interface CardProps extends VariantProps<typeof cardVariants> {
 export const AccountCard: React.FC<CardProps> = ({
   className,
   onClick,
+  manageAction,
   account,
   avatarUrl,
   expanded,
@@ -81,7 +83,7 @@ export const AccountCard: React.FC<CardProps> = ({
         </div>
       </div>
       {isActive ? (
-        <Button variant="outline" color={color}>
+        <Button variant="outline" color={color} onClick={() => manageAction?.(account)}>
           Manage
         </Button>
       ) : null}

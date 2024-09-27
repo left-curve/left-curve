@@ -29,7 +29,7 @@ This repository uses `pnpm` for managing dependencies and running scripts. Below
   pnpm dev:app
   ```
 
-  This will start the development mode for the app located in the `./apps/superapp` directory.
+  This will start the development mode for the app located in the `./apps/portal` directory.
 
 ### Build
 

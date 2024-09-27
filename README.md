@@ -6,9 +6,9 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 
 #### `/apps`
 
-| App        | Description |
-| ---------- | ----------- |
-| [SuperApp] | -           |
+| App         | Description |
+| ----------- | ----------- |
+| [PortalApp] | -           |
 
 #### `/packages`
 
@@ -17,8 +17,9 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 | [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc and tailwind                                                                                       |
 | [`connect-kit`](./packages/connect-kit/) | It allows connection to multiple blockchains and wallets, manages accounts, and enables interaction with smart contracts.                                   |
 | [`crypto`](./packages/crypto)            | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
+| [`dango`](./packages/dango)              | React components, hooks, providers and others that help to build [PortalApp]. It includes a [Storybook] server.                                             |
 | [`encoding`](./packages/encoding)        | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
-| [`react`](./packages/react)              | React components, hooks, providers and others that help to build [SuperApp]. It includes a [Storybook] server.                                              |
+| [`react`](./packages/react)              | It wrap connect-kit actions into react-hooks and wrap the state in a react provider with hydration for ssr                                                  |
 | [`sdk`](./packages/sdk)                  | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
 | [`types`](./packages/types)              | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./packages/utils)              | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
@@ -50,7 +51,7 @@ TBD
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
 [Storybook]: https://storybook.js.org/
-[SuperApp]: ./apps/superapp
+[PortalApp]: ./apps/portal
 [Hacking.md]: ./HACKING.md
 [Viem]: https://github.com/wevm/viem
 [Cosmjs]: https://github.com/cosmos/cosmjs

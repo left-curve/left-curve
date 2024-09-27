@@ -10,9 +10,10 @@ import { twMerge } from "~/utils";
 import { AccountCard, Button } from "~/components";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "~/components";
 
-import { AccountType } from "@leftcurve/types";
+import { type Account, AccountType } from "@leftcurve/types";
 
 interface Props {
+  manageAction?: (account: Account) => void;
   images: {
     [AccountType.Spot]: string;
     [AccountType.Margin]: string;
@@ -20,7 +21,7 @@ interface Props {
   };
 }
 
-export const MenuAccounts: React.FC<Props> = ({ images }) => {
+export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -96,6 +97,7 @@ export const MenuAccounts: React.FC<Props> = ({ images }) => {
                 key={account.index}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}
+                manageAction={manageAction}
                 expanded={expanded}
               />
             );

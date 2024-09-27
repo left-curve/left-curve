@@ -1,4 +1,4 @@
-import { createMemoryStorage, createStorage } from "@leftcurve/connect-kit";
+import { createStorage } from "@leftcurve/connect-kit";
 
 import type { Storage } from "@leftcurve/types";
 import type { Dispatch, SetStateAction } from "react";
@@ -16,7 +16,7 @@ export function useStorage<T = undefined>(
 
   const storage = (() => {
     if (_storage_) return _storage_;
-    return createStorage({ key: "grustorage", storage: createMemoryStorage() });
+    return createStorage({ key: "grustorage", storage: localStorage });
   })();
 
   const initialValue = (() => {
@@ -24,9 +24,14 @@ export function useStorage<T = undefined>(
     return (_initialValue_ as () => T)();
   })();
 
-  const { data, refetch, ...rest } = useQuery<T, Error, T, string[]>({
+  const { data, refetch } = useQuery<T, Error, T, string[]>({
     queryKey: [key],
-    queryFn: () => (storage.getItem(key) as T) ?? initialValue,
+    queryFn: () => {
+      const value = storage.getItem(key);
+      if (value) return value as T;
+      storage.setItem(key, initialValue);
+      return initialValue as T;
+    },
     initialData: initialValue,
   });
 

@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 
-import { useStorage } from "@leftcurve/react";
 import { useClickAway } from "react-use";
 import { twMerge } from "~/utils";
 
@@ -11,22 +10,25 @@ import { Button } from "~/components";
 import { CloseIcon, SearchIcon } from "~/components";
 import { CommandBody } from "./CommandBody";
 
-import type { AppletMetadata } from "@leftcurve/types";
+import type { AppletMetadata } from "~/types";
 
 interface Props {
-  applets: AppletMetadata[];
+  applets: {
+    popular: AppletMetadata[];
+    all: AppletMetadata[];
+  };
+  action: (applet: AppletMetadata) => void;
 }
 
-export const CommandBar: React.FC<Props> = ({ applets }) => {
+export const CommandBar: React.FC<Props> = ({ applets, action }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [recentApplets] = useStorage<AppletMetadata[]>("recentApplets", {
-    initialValue: [],
-  });
+  const [searchText, setSearchText] = useState("");
 
   useClickAway(menuRef, (e) => {
     setIsOpen(false);
+    setSearchText("");
   });
 
   const handleInteraction = () => {
@@ -67,6 +69,8 @@ export const CommandBar: React.FC<Props> = ({ applets }) => {
                 <SearchIcon className="h-6 w-6" />
                 <input
                   ref={inputRef}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
                   placeholder="Search for apps and commands"
                   className="flex-1 bg-transparent text-gray-800 placeholder-gray-400 pt-1 outline-none"
                 />
@@ -83,7 +87,12 @@ export const CommandBar: React.FC<Props> = ({ applets }) => {
                 <CloseIcon className="h-6 w-6" />
               </Button>
             </div>
-            <CommandBody isOpen={isOpen} applets={applets} recentApplets={recentApplets} />
+            <CommandBody
+              isOpen={isOpen}
+              applets={applets}
+              action={action}
+              searchText={searchText}
+            />
           </motion.div>
         </div>
       </div>

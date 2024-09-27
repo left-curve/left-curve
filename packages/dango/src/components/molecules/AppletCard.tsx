@@ -3,19 +3,19 @@
 import { useStorage } from "@leftcurve/react";
 import type React from "react";
 
-import type { AppletMetadata } from "@leftcurve/types";
+import type { AppletMetadata } from "~/types";
 interface Props {
   metadata: AppletMetadata;
-  onClick?: () => void;
+  onClick?: (applet: AppletMetadata) => void;
 }
-export const AppLetCard: React.FC<Props> = ({ metadata, onClick }) => {
+export const AppletCard: React.FC<Props> = ({ metadata, onClick }) => {
   const { img, title, description } = metadata;
-  const [recentApplets, setRecentApplets] = useStorage<AppletMetadata[]>("recentApplets", {
+  const [recentApplets, setRecentApplets] = useStorage<AppletMetadata[]>("applets", {
     initialValue: [],
   });
 
-  const handleOnClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    onClick?.();
+  const handleOnClick = (applet: AppletMetadata) => {
+    onClick?.(applet);
 
     if (recentApplets.some((applet) => applet.title === metadata.title)) {
       setRecentApplets((applets) => {
@@ -32,8 +32,8 @@ export const AppLetCard: React.FC<Props> = ({ metadata, onClick }) => {
 
   return (
     <div
-      className="w-full rounded-3xl bg-sand-50 flex gap-2 cursor-pointer relative group"
-      onClick={handleOnClick}
+      className="w-full rounded-3xl bg-surface-rose-200 flex gap-2 cursor-pointer relative group text-black"
+      onClick={() => handleOnClick(metadata)}
     >
       <div className="w-[70px] bg-white absolute h-[70px] rounded-3xl group-hover:w-full transition-all" />
       <div className="p-2 relative rounded-3xl flex items-center justify-center z-10">
