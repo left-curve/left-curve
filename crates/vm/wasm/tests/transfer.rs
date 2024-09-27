@@ -1,5 +1,5 @@
 use {
-    grug_math::{MultiplyFraction, NumberConst, PrevNumber, Udec256, Uint256},
+    grug_math::{MultiplyFraction, NumberConst, Udec256, Uint256},
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message, ResultExt},
     grug_vm_wasm::WasmVm,
@@ -23,7 +23,7 @@ fn transfers() -> anyhow::Result<()> {
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
         .set_fee_denom(DENOM.clone())
-        .set_fee_rate(FEE_RATE.into_prev()?)
+        .set_fee_rate(*FEE_RATE)
         .build()?;
 
     let to = accounts["receiver"].address;
@@ -101,7 +101,7 @@ fn transfers_with_insufficient_gas_limit() -> anyhow::Result<()> {
         )?
         .add_account("receiver", Coins::new())?
         .set_owner("owner")?
-        .set_fee_rate(FEE_RATE.into_prev()?)
+        .set_fee_rate(*FEE_RATE)
         .build()?;
 
     let to = accounts["receiver"].address;

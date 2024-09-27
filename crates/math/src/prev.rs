@@ -13,7 +13,8 @@ use {
 /// with `Prev` being [`Uint128`](crate::Uint128).
 pub trait PrevNumber {
     type Prev;
-    fn into_prev(self) -> MathResult<Self::Prev>;
+
+    fn checked_into_prev(self) -> MathResult<Self::Prev>;
 }
 
 // ------------------------------------ std ------------------------------------
@@ -23,7 +24,7 @@ macro_rules! impl_prev {
         impl PrevNumber for $this {
             type Prev = $prev;
 
-            fn into_prev(self) -> MathResult<Self::Prev> {
+            fn checked_into_prev(self) -> MathResult<Self::Prev> {
                 self.0.try_into().map(<$prev>::new).map_err(|_| {
                     MathError::overflow_conversion::<_, $prev>(self)
                 })
@@ -51,7 +52,7 @@ macro_rules! impl_prev_bnum {
         impl PrevNumber for $this {
             type Prev = $prev;
 
-            fn into_prev(self) -> MathResult<Self::Prev> {
+            fn checked_into_prev(self) -> MathResult<Self::Prev> {
                 BTryFrom::<<$this as Inner>::U>::try_from(self.0)
                     .map(<$prev>::new)
                     .map_err(|_| MathError::overflow_conversion::<_, Uint256>(self))
@@ -77,8 +78,8 @@ macro_rules! impl_prev_dec {
         impl PrevNumber for $this {
             type Prev = $prev;
 
-            fn into_prev(self) -> MathResult<Self::Prev> {
-                self.0.into_prev().map(<$prev>::raw)
+            fn checked_into_prev(self) -> MathResult<Self::Prev> {
+                self.0.checked_into_prev().map(<$prev>::raw)
             }
         }
     };

@@ -2,7 +2,7 @@ use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::{anyhow, ensure},
     grug_app::AppError,
-    grug_math::Udec128,
+    grug_math::Udec256,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
         Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Undefined,
@@ -61,9 +61,9 @@ pub struct TestBuilder<
     bank_opt: CodeOption<Box<dyn FnOnce(BTreeMap<Addr, Coins>) -> M2>>,
     balances: BTreeMap<Addr, Coins>,
     // Taxman
-    taxman_opt: CodeOption<Box<dyn FnOnce(Denom, Udec128) -> M3>>,
+    taxman_opt: CodeOption<Box<dyn FnOnce(Denom, Udec256) -> M3>>,
     fee_denom: Option<Denom>,
-    fee_rate: Option<Udec128>,
+    fee_rate: Option<Udec256>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -161,7 +161,7 @@ where
         self
     }
 
-    pub fn set_fee_rate(mut self, fee_rate: Udec128) -> Self {
+    pub fn set_fee_rate(mut self, fee_rate: Udec256) -> Self {
         self.fee_rate = Some(fee_rate);
         self
     }
@@ -288,7 +288,7 @@ where
     ) -> TestBuilder<VM, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
-        F: FnOnce(Denom, Udec128) -> M3A + 'static,
+        F: FnOnce(Denom, Udec256) -> M3A + 'static,
     {
         TestBuilder {
             vm: self.vm,
@@ -493,7 +493,7 @@ where
 
         let fee_rate = self
             .fee_rate
-            .unwrap_or_else(|| Udec128::from_str(DEFAULT_FEE_RATE).unwrap());
+            .unwrap_or_else(|| Udec256::from_str(DEFAULT_FEE_RATE).unwrap());
 
         // Use the current system time as genesis time, if unspecified.
         let genesis_time = match self.genesis_time {

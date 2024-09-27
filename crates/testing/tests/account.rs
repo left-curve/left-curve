@@ -86,10 +86,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(70)));
+        .should_succeed_and_equal(Uint256::new_from_u128(70));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(30)));
+        .should_succeed_and_equal(Uint256::new_from_u128(30));
 
     // Try create a block with a tx with sequence = 3
     let tx = accounts["rhaki"].sign_transaction_with_sequence(
@@ -106,10 +106,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(60)));
+        .should_succeed_and_equal(Uint256::new_from_u128(60));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(40)));
+        .should_succeed_and_equal(Uint256::new_from_u128(40));
 
     Ok(())
 }
@@ -185,10 +185,10 @@ fn backrunning_works() -> anyhow::Result<()> {
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite
         .query_balance(&accounts["receiver"], "ugrug")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(123)));
+        .should_succeed_and_equal(Uint256::new_from_u128(123));
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(50_000 - 123)));
+        .should_succeed_and_equal(Uint256::new_from_u128(50_000 - 123));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
         .should_succeed_and_equal(Uint256::ONE);
@@ -233,7 +233,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint256::ZERO);
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint256::from(Uint256::new_from_u128(50_000)));
+        .should_succeed_and_equal(Uint256::new_from_u128(50_000));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
         .should_succeed_and_equal(Uint256::ZERO);
