@@ -27,8 +27,9 @@ where
         denominator: B,
     ) -> MathResult<Self> {
         let denominator = denominator.into().into_next();
-        let next_result = self.checked_full_mul(numerator)?.checked_div(denominator)?;
-        next_result.clone().into_prev()
+        self.checked_full_mul(numerator)?
+            .checked_div(denominator)?
+            .checked_into_prev()
     }
 
     fn checked_multiply_ratio_ceil<A: Into<Self>, B: Into<Self>>(

@@ -125,12 +125,11 @@ where
     }
 
     fn checked_mul(self, other: Self) -> MathResult<Self> {
-        let next_result = self
-            .0
+        self.0
             .checked_full_mul(*other.numerator())?
-            .checked_div(Self::DECIMAL_FRACTION.into_next())?;
-
-        next_result.into_prev().map(Self)
+            .checked_div(Self::DECIMAL_FRACTION.into_next())?
+            .checked_into_prev()
+            .map(Self)
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {

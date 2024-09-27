@@ -1,7 +1,7 @@
 use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
-    grug_math::{Udec128, Uint256},
+    grug_math::{Udec256, Uint256},
     grug_tester::{
         QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
@@ -22,7 +22,7 @@ const WASM_CACHE_CAPACITY: usize = 10;
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-static FEE_RATE: LazyLock<Udec128> = LazyLock::new(|| Udec128::from_str("0.1").unwrap());
+static FEE_RATE: LazyLock<Udec256> = LazyLock::new(|| Udec256::from_str("0.1").unwrap());
 
 fn read_wasm_file(filename: &str) -> io::Result<Binary> {
     let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));

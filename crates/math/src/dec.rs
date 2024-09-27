@@ -374,12 +374,11 @@ where
 
 macro_rules! generate_decimal {
     (
-        name =
-        $name:ident,inner_type =
-        $inner:ty,inner_constructor =
-        $constructor:expr,base_constructor =
-        $base_constructor:ty,doc =
-        $doc:literal,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        base_constructor  = $base_constructor:expr,
+        doc               = $doc:literal,
     ) => {
         paste::paste! {
             #[doc = $doc]
@@ -417,11 +416,11 @@ macro_rules! generate_decimal {
         }
     };
     (
-        type = Signed,name =
-        $name:ident,inner_type =
-        $inner:ty,inner_constructor =
-        $constructor:expr,doc =
-        $doc:literal,
+        type              = Signed,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        doc               = $doc:literal,
     ) => {
         generate_decimal! {
             name              = $name,
@@ -432,11 +431,11 @@ macro_rules! generate_decimal {
         }
     };
     (
-        type = Unsigned,name =
-        $name:ident,inner_type =
-        $inner:ty,inner_constructor =
-        $constructor:expr,doc =
-        $doc:literal,
+        type              = Unsigned,
+        name              = $name:ident,
+        inner_type        = $inner:ty,
+        inner_constructor = $constructor:expr,
+        doc               = $doc:literal,
     ) => {
         generate_decimal! {
             name              = $name,

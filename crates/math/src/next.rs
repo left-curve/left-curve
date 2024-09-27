@@ -10,6 +10,7 @@ use crate::{
 /// with `Next` being [`Uint256`](crate::Uint256).
 pub trait NextNumber {
     type Next;
+
     fn into_next(self) -> Self::Next;
 }
 
