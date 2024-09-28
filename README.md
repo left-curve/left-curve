@@ -24,6 +24,50 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 | [`types`](./packages/types)              | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./packages/utils)              | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 
+## Module Graph
+
+```mermaid
+%%{
+  init: {
+  'theme': 'base',
+	'themeVariables': {"primaryTextColor":"#fff","primaryColor":"#5a4f7c","lineColor":"#f5a623" }
+  }
+}%%
+stateDiagram-v2
+    @leftcurve/config --> @leftcurve/types
+    @leftcurve/config --> @leftcurve/utils
+    @leftcurve/types --> @leftcurve/utils
+    @leftcurve/config --> @leftcurve/sdk
+    @leftcurve/types --> @leftcurve/sdk
+    @leftcurve/utils --> @leftcurve/sdk
+    @leftcurve/crypto --> @leftcurve/sdk
+    @leftcurve/encoding --> @leftcurve/sdk
+    @leftcurve/config --> @leftcurve/react
+    @leftcurve/types --> @leftcurve/react
+    @leftcurve/connectkit --> @leftcurve/react
+    @leftcurve/crypto --> @leftcurve/react
+    @leftcurve/encoding --> @leftcurve/react
+    @leftcurve/utils --> @leftcurve/react
+    @leftcurve/config --> @leftcurve/encoding
+    @leftcurve/types --> @leftcurve/encoding
+    @leftcurve/utils --> @leftcurve/encoding
+    @leftcurve/config --> @leftcurve/dango
+    @leftcurve/react --> @leftcurve/dango
+    @leftcurve/utils --> @leftcurve/dango
+    @leftcurve/sdk --> @leftcurve/dango
+    @leftcurve/types --> @leftcurve/dango
+    @leftcurve/config --> @leftcurve/crypto
+    @leftcurve/types --> @leftcurve/crypto
+    @leftcurve/encoding --> @leftcurve/crypto
+    @leftcurve/config --> @leftcurve/connectkit
+    @leftcurve/crypto --> @leftcurve/connectkit
+    @leftcurve/encoding --> @leftcurve/connectkit
+    @leftcurve/sdk --> @leftcurve/connectkit
+    @leftcurve/types --> @leftcurve/connectkit
+    @leftcurve/utils --> @leftcurve/connectkit
+```
+
+
 ## Supported JS environments
 Packages in the workspace are compiled to JavaScript ES2021, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.
 
@@ -39,9 +83,9 @@ See [Hacking.md]
 
 This project draws inspiration from and follows some of the architectural design principles of [Viem], while utilizing foundational code from [Wagmi]. Several concepts and ideas have been directly adapted from their codebase, significantly influencing this project.
 
-Additionally, we would like to acknowledge [Cosmjs] for providing essential code and tools that contributed to key aspects of this project.
+Additionally, we would like to acknowledge [CosmJS] for providing essential code and tools that contributed to key aspects of this project.
 
-We are grateful to both the [Wevm] team and [Cosmjs] for their open-source contributions and the valuable support they offer to the community.
+We are grateful to both the [Wevm] and [Confio] team for their open-source contributions and the valuable support they offer to the community.
 
 ## License
 
@@ -54,4 +98,5 @@ TBD
 [PortalApp]: ./apps/portal
 [Hacking.md]: ./HACKING.md
 [Viem]: https://github.com/wevm/viem
-[Cosmjs]: https://github.com/cosmos/cosmjs
+[CosmJS]: https://github.com/cosmos/cosmjs
+[Confio]: https://confio.gmbh/
