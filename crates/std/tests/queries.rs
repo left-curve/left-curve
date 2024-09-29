@@ -1,4 +1,4 @@
-use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, TestBuilder, Uint256};
+use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, TestBuilder};
 
 mod query_maker {
     use grug::{
@@ -40,10 +40,7 @@ mod query_maker {
 #[test]
 fn query_super_smart() {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account(
-            "larry",
-            Coins::one("uusdc", Uint256::new_from_u128(123)).unwrap(),
-        )
+        .add_account("larry", Coins::one("uusdc", 123_u128).unwrap())
         .unwrap()
         .set_chain_id("kebab")
         .set_owner("larry")

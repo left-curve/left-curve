@@ -1,5 +1,5 @@
 use {
-    grug_math::Uint256,
+    grug_math::Uint128,
     grug_types::{Addr, Coins, Denom, QueryRequest},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
@@ -17,13 +17,13 @@ pub enum ExecuteMsg {
     Mint {
         to: Addr,
         denom: Denom,
-        amount: Uint256,
+        amount: Uint128,
     },
     /// Burn a token of the specified amount from a user.
     Burn {
         from: Addr,
         denom: Denom,
-        amount: Uint256,
+        amount: Uint128,
     },
     /// Forcibly transfer a coin from an account to a receiver.
     /// Can only be called by the chain's taxman contract.
@@ -32,7 +32,7 @@ pub enum ExecuteMsg {
         from: Addr,
         to: Addr,
         denom: Denom,
-        amount: Uint256,
+        amount: Uint128,
     },
 }
 
@@ -66,5 +66,5 @@ impl From<QueryHoldersRequest> for QueryMsg {
 
 impl QueryRequest for QueryHoldersRequest {
     type Message = QueryMsg;
-    type Response = BTreeMap<Addr, Uint256>;
+    type Response = BTreeMap<Addr, Uint128>;
 }

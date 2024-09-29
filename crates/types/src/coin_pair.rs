@@ -1,7 +1,7 @@
 use {
     crate::{Coin, CoinRef, CoinRefMut, Coins, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, MultiplyRatio, Number, Uint256},
+    grug_math::{IsZero, MultiplyRatio, Number, Uint128},
     serde::{de, Serialize},
     std::{cmp::Ordering, collections::BTreeMap, io},
 };
@@ -133,7 +133,7 @@ impl CoinPair {
     ///
     /// The numerator must be no greater than the denominator, otherwise a
     /// subtraction overflow error is returned.
-    pub fn split(&mut self, numerator: Uint256, denominator: Uint256) -> StdResult<Self> {
+    pub fn split(&mut self, numerator: Uint128, denominator: Uint128) -> StdResult<Self> {
         let amount1 = self.0[0]
             .amount
             .checked_multiply_ratio_floor(numerator, denominator)?;

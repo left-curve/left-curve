@@ -1,7 +1,7 @@
 use {
     crate::{btree_map, Coin, CoinPair, CoinRef, Denom, NonZero, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, IsZero, Number, NumberConst, Uint256},
+    grug_math::{Inner, IsZero, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
     std::{
         collections::{btree_map, BTreeMap},
@@ -14,7 +14,7 @@ use {
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
 )]
-pub struct Coins(BTreeMap<Denom, Uint256>);
+pub struct Coins(BTreeMap<Denom, Uint128>);
 
 impl Coins {
     // There are two ways to stringify a Coins:
@@ -38,7 +38,7 @@ impl Coins {
     }
 
     /// Create a new `Coins` from an inner map without checking for validity.
-    pub fn new_unchecked(inner: BTreeMap<Denom, Uint256>) -> Self {
+    pub fn new_unchecked(inner: BTreeMap<Denom, Uint128>) -> Self {
         Self(inner)
     }
 
@@ -47,11 +47,11 @@ impl Coins {
     pub fn one<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,
-        A: TryInto<Uint256>,
-        StdError: From<D::Error> + From<A::Error>,
+        A: Into<Uint128>,
+        StdError: From<D::Error>,
     {
         let denom = denom.try_into()?;
-        let amount = NonZero::new(amount.try_into()?)?;
+        let amount = NonZero::new(amount.into())?;
 
         Ok(Self(btree_map! { denom => amount.into_inner() }))
     }
@@ -67,17 +67,17 @@ impl Coins {
     }
 
     /// Return an immutable reference to the inner B-tree map.
-    pub fn inner(&self) -> &BTreeMap<Denom, Uint256> {
+    pub fn inner(&self) -> &BTreeMap<Denom, Uint128> {
         &self.0
     }
 
     /// Return a mutable reference to the inner B-tree map.
-    pub fn inner_mut(&mut self) -> &mut BTreeMap<Denom, Uint256> {
+    pub fn inner_mut(&mut self) -> &mut BTreeMap<Denom, Uint128> {
         &mut self.0
     }
 
     /// Consume self, return the inner B-tree map as owned value.
-    pub fn into_inner(self) -> BTreeMap<Denom, Uint256> {
+    pub fn into_inner(self) -> BTreeMap<Denom, Uint128> {
         self.0
     }
 
@@ -88,8 +88,8 @@ impl Coins {
 
     /// Get the amount of the given denom.
     /// Note, if the denom does not exist, zero is returned.
-    pub fn amount_of(&self, denom: &Denom) -> Uint256 {
-        self.0.get(denom).copied().unwrap_or(Uint256::ZERO)
+    pub fn amount_of(&self, denom: &Denom) -> Uint128 {
+        self.0.get(denom).copied().unwrap_or(Uint128::ZERO)
     }
 
     /// If the `Coins` is exactly one coin, return a reference to this coin;
@@ -199,7 +199,7 @@ impl Coins {
     /// Take a coin of the given denom out of the `Coins`.
     /// Return a coin of zero amount if the denom doesn't exist in this `Coins`.
     pub fn take(&mut self, denom: Denom) -> Coin {
-        let amount = self.0.remove(&denom).unwrap_or(Uint256::ZERO);
+        let amount = self.0.remove(&denom).unwrap_or(Uint128::ZERO);
 
         Coin { denom, amount }
     }
@@ -207,8 +207,8 @@ impl Coins {
     /// Take a pair of coins of the given denoms out of the `Coins`.
     /// Error if the two denoms are the same.
     pub fn take_pair(&mut self, (denom1, denom2): (Denom, Denom)) -> StdResult<CoinPair> {
-        let amount1 = self.0.remove(&denom1).unwrap_or(Uint256::ZERO);
-        let amount2 = self.0.remove(&denom2).unwrap_or(Uint256::ZERO);
+        let amount1 = self.0.remove(&denom1).unwrap_or(Uint128::ZERO);
+        let amount2 = self.0.remove(&denom2).unwrap_or(Uint128::ZERO);
 
         CoinPair::new(
             Coin {
@@ -234,7 +234,7 @@ impl Coins {
     fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
         D: TryInto<Denom>,
-        A: Into<Uint256>,
+        A: Into<Uint128>,
         I: IntoIterator<Item = (D, A)>,
         StdError: From<D::Error>,
     {
@@ -292,7 +292,7 @@ impl FromStr for Coins {
                 return Err(StdError::invalid_coins(format!("duplicate denom: {denom}")));
             }
 
-            let Ok(amount) = Uint256::from_str(amount_str) else {
+            let Ok(amount) = Uint128::from_str(amount_str) else {
                 return Err(StdError::invalid_coins(format!(
                     "invalid amount `{amount_str}`"
                 )));
@@ -330,7 +330,7 @@ impl TryFrom<Vec<Coin>> for Coins {
 impl<D, A, const N: usize> TryFrom<[(D, A); N]> for Coins
 where
     D: TryInto<Denom>,
-    A: Into<Uint256>,
+    A: Into<Uint128>,
     StdError: From<D::Error>,
 {
     type Error = StdError;
@@ -343,7 +343,7 @@ where
 impl<D, A> TryFrom<BTreeMap<D, A>> for Coins
 where
     D: TryInto<Denom>,
-    A: Into<Uint256>,
+    A: Into<Uint128>,
     StdError: From<D::Error>,
 {
     type Error = StdError;
@@ -383,7 +383,7 @@ impl IntoIterator for Coins {
     }
 }
 
-pub struct CoinsIter<'a>(btree_map::Iter<'a, Denom, Uint256>);
+pub struct CoinsIter<'a>(btree_map::Iter<'a, Denom, Uint128>);
 
 impl<'a> Iterator for CoinsIter<'a> {
     type Item = CoinRef<'a>;
@@ -395,7 +395,7 @@ impl<'a> Iterator for CoinsIter<'a> {
     }
 }
 
-pub struct CoinsIntoIter(btree_map::IntoIter<Denom, Uint256>);
+pub struct CoinsIntoIter(btree_map::IntoIter<Denom, Uint128>);
 
 impl Iterator for CoinsIntoIter {
     type Item = Coin;
@@ -434,15 +434,15 @@ impl fmt::Debug for Coins {
 mod tests {
     use {
         crate::{json, Coins, Json, JsonDeExt, JsonSerExt},
-        grug_math::Uint256,
+        grug_math::Uint128,
         std::str::FromStr,
     };
 
     fn mock_coins() -> Coins {
         Coins::try_from([
-            ("uatom", Uint256::new_from_u128(123)),
-            ("umars", Uint256::new_from_u128(456)),
-            ("uosmo", Uint256::new_from_u128(789)),
+            ("uatom", Uint128::new(123)),
+            ("umars", Uint128::new(456)),
+            ("uosmo", Uint128::new(789)),
         ])
         .unwrap()
     }

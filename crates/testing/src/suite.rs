@@ -3,7 +3,7 @@ use {
     grug_app::{App, AppError, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
-    grug_math::Uint256,
+    grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
@@ -475,7 +475,7 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_balance<D>(&self, account: &dyn Addressable, denom: D) -> anyhow::Result<Uint256>
+    pub fn query_balance<D>(&self, account: &dyn Addressable, denom: D) -> anyhow::Result<Uint128>
     where
         D: TryInto<Denom>,
         D::Error: Error + Send + Sync + 'static,
@@ -510,7 +510,7 @@ where
             .map_err(Into::into)
     }
 
-    pub fn query_supply<D>(&self, denom: D) -> anyhow::Result<Uint256>
+    pub fn query_supply<D>(&self, denom: D) -> anyhow::Result<Uint128>
     where
         D: TryInto<Denom>,
         D::Error: Error + Send + Sync + 'static,

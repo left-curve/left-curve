@@ -1,5 +1,5 @@
 use {
-    grug_math::{NumberConst, Uint256},
+    grug_math::{NumberConst, Uint128},
     grug_mock_account::Credential,
     grug_testing::TestBuilder,
     grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
@@ -9,7 +9,7 @@ use {
 #[test]
 fn check_tx_and_finalize() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("rhaki", [("uatom", Uint256::new_from_u128(100))])?
+        .add_account("rhaki", Coins::one("uatom", 100)?)?
         .add_account("larry", Coins::new())?
         .add_account("owner", Coins::new())?
         .set_genesis_time(Timestamp::from_nanos(0))
@@ -17,10 +17,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .set_owner("owner")?
         .build()?;
 
-    let transfer_msg = Message::transfer(
-        accounts["larry"].address,
-        Coins::one("uatom", Uint256::new_from_u128(10))?,
-    )?;
+    let transfer_msg = Message::transfer(accounts["larry"].address, Coins::one("uatom", 10)?)?;
 
     // Create a tx to set sequence to 1.
     suite.send_message(accounts.get_mut("rhaki").unwrap(), transfer_msg.clone())?;
@@ -86,10 +83,10 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint256::new_from_u128(70));
+        .should_succeed_and_equal(Uint128::new(70));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint256::new_from_u128(30));
+        .should_succeed_and_equal(Uint128::new(30));
 
     // Try create a block with a tx with sequence = 3
     let tx = accounts["rhaki"].sign_transaction_with_sequence(
@@ -106,17 +103,17 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
-        .should_succeed_and_equal(Uint256::new_from_u128(60));
+        .should_succeed_and_equal(Uint128::new(60));
     suite
         .query_balance(&accounts["larry"], "uatom")
-        .should_succeed_and_equal(Uint256::new_from_u128(40));
+        .should_succeed_and_equal(Uint128::new(40));
 
     Ok(())
 }
 
 mod backrunner {
     use {
-        grug_math::{Number, NumberConst, Uint128, Uint256},
+        grug_math::{Number, NumberConst, Uint128},
         grug_types::{AuthCtx, AuthResponse, Coins, Denom, Message, Response, StdResult, Tx},
         std::str::FromStr,
     };
@@ -138,7 +135,7 @@ mod backrunner {
             &grug_mock_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: Denom::from_str("nft/badkids/1")?,
-                amount: Uint256::ONE,
+                amount: Uint128::ONE,
             },
             Coins::new(),
         )?))
@@ -165,10 +162,7 @@ fn backrunning_works() -> anyhow::Result<()> {
         .set_account_code(account, |public_key| grug_mock_account::InstantiateMsg {
             public_key,
         })?
-        .add_account(
-            "sender",
-            Coins::one("ugrug", Uint256::new_from_u128(50_000))?,
-        )?
+        .add_account("sender", Coins::one("ugrug", 50_000)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -179,19 +173,19 @@ fn backrunning_works() -> anyhow::Result<()> {
     suite.transfer(
         accounts.get_mut("sender").unwrap(),
         receiver,
-        Coins::one("ugrug", Uint256::new_from_u128(123))?,
+        Coins::one("ugrug", 123)?,
     )?;
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite
         .query_balance(&accounts["receiver"], "ugrug")
-        .should_succeed_and_equal(Uint256::new_from_u128(123));
+        .should_succeed_and_equal(Uint128::new(123));
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint256::new_from_u128(50_000 - 123));
+        .should_succeed_and_equal(Uint128::new(50_000 - 123));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
-        .should_succeed_and_equal(Uint256::ONE);
+        .should_succeed_and_equal(Uint128::ONE);
 
     Ok(())
 }
@@ -208,10 +202,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
         .set_account_code(bugged_account, |public_key| {
             grug_mock_account::InstantiateMsg { public_key }
         })?
-        .add_account(
-            "sender",
-            Coins::one("ugrug", Uint256::new_from_u128(50_000))?,
-        )?
+        .add_account("sender", Coins::one("ugrug", 50_000)?)?
         .add_account("receiver", Coins::new())?
         .set_owner("sender")?
         .build()?;
@@ -222,7 +213,7 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     suite
         .send_message(
             accounts.get_mut("sender").unwrap(),
-            Message::transfer(receiver, Coins::one("ugrug", Uint256::new_from_u128(123))?)?,
+            Message::transfer(receiver, Coins::one("ugrug", 123)?)?,
         )?
         .result
         .should_fail_with_error("division by zero: 1 / 0");
@@ -230,13 +221,13 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     // Transfer should have been reverted, and sender doesn't get bad kids.
     suite
         .query_balance(&accounts["receiver"], "ugrug")
-        .should_succeed_and_equal(Uint256::ZERO);
+        .should_succeed_and_equal(Uint128::ZERO);
     suite
         .query_balance(&accounts["sender"], "ugrug")
-        .should_succeed_and_equal(Uint256::new_from_u128(50_000));
+        .should_succeed_and_equal(Uint128::new(50_000));
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
-        .should_succeed_and_equal(Uint256::ZERO);
+        .should_succeed_and_equal(Uint128::ZERO);
 
     Ok(())
 }
