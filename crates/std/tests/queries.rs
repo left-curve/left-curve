@@ -40,7 +40,7 @@ mod query_maker {
 #[test]
 fn query_super_smart() {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", Coins::one("uusdc", 123_u128).unwrap())
+        .add_account("larry", Coins::one("uusdc", 123).unwrap())
         .unwrap()
         .set_chain_id("kebab")
         .set_owner("larry")
