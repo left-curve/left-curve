@@ -2,31 +2,39 @@ use {
     grug_math::{NumberConst, Uint128},
     grug_mock_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
+    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, StdResult, Timestamp, Tx},
     grug_vm_rust::ContractBuilder,
 };
 
 #[test]
-fn check_tx_and_finalize() -> anyhow::Result<()> {
+fn check_tx_and_finalize() {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("rhaki", Coins::one("uatom", 100)?)?
-        .add_account("larry", Coins::new())?
-        .add_account("owner", Coins::new())?
+        .add_account("rhaki", Coins::one("uatom", 100).unwrap())
+        .unwrap()
+        .add_account("larry", Coins::new())
+        .unwrap()
+        .add_account("owner", Coins::new())
+        .unwrap()
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
-        .set_owner("owner")?
-        .build()?;
+        .set_owner("owner")
+        .unwrap()
+        .build()
+        .unwrap();
 
-    let transfer_msg = Message::transfer(accounts["larry"].address, Coins::one("uatom", 10)?)?;
+    let transfer_msg =
+        Message::transfer(accounts["larry"].address, Coins::one("uatom", 10).unwrap()).unwrap();
 
     // Create a tx to set sequence to 1.
-    suite.send_message(accounts.get_mut("rhaki").unwrap(), transfer_msg.clone())?;
+    suite
+        .send_message(accounts.get_mut("rhaki").unwrap(), transfer_msg.clone())
+        .unwrap();
 
     // Create a tx with sequence 0, 1, 2, 4.
     let txs: Vec<Tx> = [0, 1, 2, 4]
         .into_iter()
         .filter_map(|sequence| {
-            (|| -> anyhow::Result<_> {
+            (|| -> StdResult<_> {
                 // Sign the tx
                 let tx = accounts["rhaki"].sign_transaction_with_sequence(
                     vec![transfer_msg.clone()],
@@ -36,7 +44,17 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
                 )?;
 
                 // Check the tx and if the result is ok, return the tx.
-                suite.check_tx(tx.clone())?.result.into_std_result()?;
+                //
+                // Note: there are two layers of results here:
+                // - `check_tx` must succeed, meaning the chain itself doesn't
+                //   run into any error, so we `unwrap`.
+                // - The `Outcome::result` returned by `checked_tx` may fail,
+                //   so we gracefully handle it with `?`.
+                suite
+                    .check_tx(tx.clone())
+                    .unwrap()
+                    .result
+                    .into_std_result()?;
 
                 Ok(tx)
             })()
@@ -50,7 +68,8 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         txs[0]
             .credential
             .clone()
-            .deserialize_json::<Credential>()?
+            .deserialize_json::<Credential>()
+            .unwrap()
             .sequence,
         1
     );
@@ -58,7 +77,8 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         txs[1]
             .credential
             .clone()
-            .deserialize_json::<Credential>()?
+            .deserialize_json::<Credential>()
+            .unwrap()
             .sequence,
         2
     );
@@ -66,7 +86,8 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         txs[2]
             .credential
             .clone()
-            .deserialize_json::<Credential>()?
+            .deserialize_json::<Credential>()
+            .unwrap()
             .sequence,
         4
     );
@@ -75,7 +96,7 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     // The tx with sequence 1 should succeed.
     // The tx with sequence 2 should succeed.
     // The tx with sequence 4 should fail.
-    let result = suite.make_block(txs)?;
+    let result = suite.make_block(txs).unwrap();
 
     result.tx_outcomes[0].result.clone().should_succeed();
     result.tx_outcomes[1].result.clone().should_succeed();
@@ -89,14 +110,11 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
         .should_succeed_and_equal(Uint128::new(30));
 
     // Try create a block with a tx with sequence = 3
-    let tx = accounts["rhaki"].sign_transaction_with_sequence(
-        vec![transfer_msg],
-        &suite.chain_id,
-        3,
-        0,
-    )?;
+    let tx = accounts["rhaki"]
+        .sign_transaction_with_sequence(vec![transfer_msg], &suite.chain_id, 3, 0)
+        .unwrap();
 
-    suite.make_block(vec![tx])?.tx_outcomes[0]
+    suite.make_block(vec![tx]).unwrap().tx_outcomes[0]
         .result
         .clone()
         .should_succeed();
@@ -107,8 +125,6 @@ fn check_tx_and_finalize() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["larry"], "uatom")
         .should_succeed_and_equal(Uint128::new(40));
-
-    Ok(())
 }
 
 mod backrunner {
@@ -128,17 +144,20 @@ mod backrunner {
     // Accounts can do any action while backrunning. In this test, the account
     // attempts to mint itself a token.
     pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-        let cfg = ctx.querier.query_config()?;
+        let cfg = ctx.querier.query_config().unwrap();
 
-        Ok(Response::new().add_message(Message::execute(
-            cfg.bank,
-            &grug_mock_bank::ExecuteMsg::Mint {
-                to: ctx.contract,
-                denom: Denom::from_str("nft/badkids/1")?,
-                amount: Uint128::ONE,
-            },
-            Coins::new(),
-        )?))
+        Ok(Response::new().add_message(
+            Message::execute(
+                cfg.bank,
+                &grug_mock_bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    denom: Denom::from_str("nft/badkids/1").unwrap(),
+                    amount: Uint128::ONE,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        ))
     }
 
     // The account can also reject and revert state changes from the messages
@@ -151,7 +170,7 @@ mod backrunner {
 }
 
 #[test]
-fn backrunning_works() -> anyhow::Result<()> {
+fn backrunning_works() {
     let account = ContractBuilder::new(Box::new(grug_mock_account::instantiate))
         .with_receive(Box::new(grug_mock_account::receive))
         .with_authenticate(Box::new(backrunner::authenticate))
@@ -161,20 +180,27 @@ fn backrunning_works() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
         .set_account_code(account, |public_key| grug_mock_account::InstantiateMsg {
             public_key,
-        })?
-        .add_account("sender", Coins::one("ugrug", 50_000)?)?
-        .add_account("receiver", Coins::new())?
-        .set_owner("sender")?
-        .build()?;
+        })
+        .unwrap()
+        .add_account("sender", Coins::one("ugrug", 50_000).unwrap())
+        .unwrap()
+        .add_account("receiver", Coins::new())
+        .unwrap()
+        .set_owner("sender")
+        .unwrap()
+        .build()
+        .unwrap();
 
     let receiver = accounts["receiver"].address;
 
     // Attempt to send a transaction
-    suite.transfer(
-        accounts.get_mut("sender").unwrap(),
-        receiver,
-        Coins::one("ugrug", 123)?,
-    )?;
+    suite
+        .transfer(
+            accounts.get_mut("sender").unwrap(),
+            receiver,
+            Coins::one("ugrug", 123).unwrap(),
+        )
+        .unwrap();
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite
@@ -186,12 +212,10 @@ fn backrunning_works() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
         .should_succeed_and_equal(Uint128::ONE);
-
-    Ok(())
 }
 
 #[test]
-fn backrunning_with_error() -> anyhow::Result<()> {
+fn backrunning_with_error() {
     let bugged_account = ContractBuilder::new(Box::new(grug_mock_account::instantiate))
         .with_receive(Box::new(grug_mock_account::receive))
         .with_authenticate(Box::new(backrunner::authenticate))
@@ -201,11 +225,16 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
         .set_account_code(bugged_account, |public_key| {
             grug_mock_account::InstantiateMsg { public_key }
-        })?
-        .add_account("sender", Coins::one("ugrug", 50_000)?)?
-        .add_account("receiver", Coins::new())?
-        .set_owner("sender")?
-        .build()?;
+        })
+        .unwrap()
+        .add_account("sender", Coins::one("ugrug", 50_000).unwrap())
+        .unwrap()
+        .add_account("receiver", Coins::new())
+        .unwrap()
+        .set_owner("sender")
+        .unwrap()
+        .build()
+        .unwrap();
 
     let receiver = accounts["receiver"].address;
 
@@ -213,8 +242,9 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     suite
         .send_message(
             accounts.get_mut("sender").unwrap(),
-            Message::transfer(receiver, Coins::one("ugrug", 123)?)?,
-        )?
+            Message::transfer(receiver, Coins::one("ugrug", 123).unwrap()).unwrap(),
+        )
+        .unwrap()
         .result
         .should_fail_with_error("division by zero: 1 / 0");
 
@@ -228,6 +258,4 @@ fn backrunning_with_error() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["sender"], "nft/badkids/1")
         .should_succeed_and_equal(Uint128::ZERO);
-
-    Ok(())
 }

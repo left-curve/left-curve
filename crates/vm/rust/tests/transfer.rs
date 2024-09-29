@@ -8,12 +8,16 @@ use {
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
 #[test]
-fn transfers() -> anyhow::Result<()> {
+fn transfers() {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("sender", Coins::one(DENOM.clone(), 100)?)?
-        .add_account("receiver", Coins::new())?
-        .set_owner("sender")?
-        .build()?;
+        .add_account("sender", Coins::one(DENOM.clone(), 100).unwrap())
+        .unwrap()
+        .add_account("receiver", Coins::new())
+        .unwrap()
+        .set_owner("sender")
+        .unwrap()
+        .build()
+        .unwrap();
 
     let to = accounts["receiver"].address;
 
@@ -30,21 +34,22 @@ fn transfers() -> anyhow::Result<()> {
         .send_messages(accounts.get_mut("sender").unwrap(), vec![
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 10)?,
+                coins: Coins::one(DENOM.clone(), 10).unwrap(),
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 15)?,
+                coins: Coins::one(DENOM.clone(), 15).unwrap(),
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 20)?,
+                coins: Coins::one(DENOM.clone(), 20).unwrap(),
             },
             Message::Transfer {
                 to,
-                coins: Coins::one(DENOM.clone(), 25)?,
+                coins: Coins::one(DENOM.clone(), 25).unwrap(),
             },
-        ])?
+        ])
+        .unwrap()
         .result
         .should_succeed();
 
@@ -55,6 +60,4 @@ fn transfers() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts["receiver"], DENOM.clone())
         .should_succeed_and_equal(Uint128::new(70));
-
-    Ok(())
 }

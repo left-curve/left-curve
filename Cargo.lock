@@ -1721,7 +1721,6 @@ dependencies = [
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "elsa",
  "grug-app",
  "grug-crypto",
@@ -1737,7 +1736,6 @@ dependencies = [
 name = "grug-vm-wasm"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "clru",
  "criterion",
  "data-encoding",

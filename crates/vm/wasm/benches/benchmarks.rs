@@ -42,7 +42,7 @@ fn looping(c: &mut Criterion) {
                 // `Bencher::iter_batched` with `PerIteration`. See:
                 // https://bheisler.github.io/criterion.rs/book/user_guide/timing_loops.html#deprecated-timing-loops
                 b.iter_batched(
-                    || -> anyhow::Result<_> {
+                    || {
                         let storage = Box::new(MockStorage::new());
                         let gas_tracker = GasTracker::new_limitless();
 
@@ -54,15 +54,17 @@ fn looping(c: &mut Criterion) {
                         );
                         let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
 
-                        let instance = vm.build_instance(
-                            BENCHMARKER_CODE,
-                            Hash::from_array(sha2_256(BENCHMARKER_CODE)),
-                            storage,
-                            true,
-                            querier,
-                            0,
-                            gas_tracker.clone(),
-                        )?;
+                        let instance = vm
+                            .build_instance(
+                                BENCHMARKER_CODE,
+                                Hash::from_array(sha2_256(BENCHMARKER_CODE)),
+                                storage,
+                                true,
+                                querier,
+                                0,
+                                gas_tracker.clone(),
+                            )
+                            .unwrap();
 
                         let ctx = Context {
                             chain_id: MOCK_CHAIN_ID.to_string(),
@@ -76,14 +78,15 @@ fn looping(c: &mut Criterion) {
                         let msg = QueryMsg::Loop {
                             iterations: *iterations,
                         }
-                        .to_json_vec()?;
+                        .to_json_vec()
+                        .unwrap();
 
-                        let ok = GenericResult::Ok(Empty {}).to_json_vec()?;
+                        let ok = GenericResult::Ok(Empty {}).to_json_vec().unwrap();
 
-                        Ok((instance, ctx, msg, ok, gas_tracker))
+                        (instance, ctx, msg, ok, gas_tracker)
                     },
                     |suite| {
-                        let (instance, ctx, msg, ok, gas_tracker) = suite.unwrap();
+                        let (instance, ctx, msg, ok, gas_tracker) = suite;
 
                         // Call the `loop` query method
                         let output = instance.call_in_1_out_1("query", &ctx, &msg).unwrap();

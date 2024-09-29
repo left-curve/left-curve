@@ -18,7 +18,6 @@ serde       = { workspace = true }
 thiserror   = { workspace = true }
 
 [dev-dependencies]
-anyhow       = { workspace = true }
 grug-math    = { path = "../../math" }
 grug-testing = { path = "../../testing" }
 test-case    = { workspace = true }
