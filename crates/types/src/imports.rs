@@ -15,7 +15,7 @@ use {
         JsonSerExt, Op, Order, Query, QueryRequest, QueryResponse, Record, StdResult,
     },
     dyn_clone::DynClone,
-    grug_math::Uint256,
+    grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::collections::BTreeMap,
 };
@@ -305,7 +305,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_app_configs())
     }
 
-    pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint256> {
+    pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
         self.inner
             .query_chain(Query::Balance { address, denom })
             .map(|res| res.as_balance().amount)
@@ -326,7 +326,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_balances())
     }
 
-    pub fn query_supply(&self, denom: Denom) -> StdResult<Uint256> {
+    pub fn query_supply(&self, denom: Denom) -> StdResult<Uint128> {
         self.inner
             .query_chain(Query::Supply { denom })
             .map(|res| res.as_supply().amount)

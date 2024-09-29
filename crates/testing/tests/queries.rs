@@ -1,5 +1,4 @@
 use {
-    grug_math::Uint256,
     grug_testing::TestBuilder,
     grug_types::{Coins, Empty},
     grug_vm_rust::ContractBuilder,
@@ -8,7 +7,7 @@ use {
 mod query_maker {
     use {
         anyhow::ensure,
-        grug_math::{IsZero, Uint256},
+        grug_math::{IsZero, Uint128},
         grug_types::{Denom, Empty, MutableCtx, Query, Response},
         std::str::FromStr,
     };
@@ -26,7 +25,7 @@ mod query_maker {
         ])?;
 
         ensure!(res1.as_balance().amount.is_zero());
-        ensure!(res2.as_supply().amount == Uint256::new_from_u128(123));
+        ensure!(res2.as_supply().amount == Uint128::new(123));
 
         Ok(Response::new())
     }
@@ -35,7 +34,7 @@ mod query_maker {
 #[test]
 fn handling_multi_query() -> anyhow::Result<()> {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", Coins::one("uusdc", Uint256::new_from_u128(123))?)?
+        .add_account("larry", Coins::one("uusdc", 123)?)?
         .set_chain_id("kebab")
         .set_owner("larry")?
         .build()?;

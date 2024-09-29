@@ -301,7 +301,31 @@ pub type Int256 = Int<I256>;
 /// 512-bit signed integer.
 pub type Int512 = Int<I512>;
 
-// -------- additional constructor methods for Uint256/512 & Int256/512 --------
+// ---------------------- additional constructor methods -----------------------
+
+impl From<u64> for Uint64 {
+    fn from(value: u64) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<u128> for Uint128 {
+    fn from(value: u128) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<i64> for Int64 {
+    fn from(value: i64) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<i128> for Int128 {
+    fn from(value: i128) -> Self {
+        Self::new(value)
+    }
+}
 
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {

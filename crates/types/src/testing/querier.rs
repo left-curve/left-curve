@@ -3,7 +3,7 @@ use {
         Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
         JsonSerExt, MockStorage, Querier, Query, QueryResponse, StdError, StdResult, Storage,
     },
-    grug_math::{NumberConst, Uint256},
+    grug_math::{NumberConst, Uint128},
     serde::Serialize,
     std::collections::BTreeMap,
 };
@@ -19,8 +19,8 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 pub struct MockQuerier {
     config: Option<Config>,
     app_configs: BTreeMap<String, Json>,
-    balances: BTreeMap<Addr, BTreeMap<Denom, Uint256>>,
-    supplies: BTreeMap<Denom, Uint256>,
+    balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
+    supplies: BTreeMap<Denom, Uint128>,
     codes: BTreeMap<Hash256, Binary>,
     contracts: BTreeMap<Addr, ContractInfo>,
     raw_query_handler: MockRawQueryHandler,
@@ -52,7 +52,7 @@ impl MockQuerier {
     pub fn with_balance<D, A>(mut self, address: Addr, denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,
-        A: Into<Uint256>,
+        A: Into<Uint128>,
         StdError: From<D::Error>,
     {
         self.balances
@@ -65,7 +65,7 @@ impl MockQuerier {
     pub fn with_supplies<D, A>(mut self, denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,
-        A: Into<Uint256>,
+        A: Into<Uint128>,
         StdError: From<D::Error>,
     {
         self.supplies.insert(denom.try_into()?, amount.into());
@@ -154,7 +154,7 @@ impl Querier for MockQuerier {
                     .get(&address)
                     .and_then(|amounts| amounts.get(&denom))
                     .cloned()
-                    .unwrap_or(Uint256::ZERO);
+                    .unwrap_or(Uint128::ZERO);
                 Ok(QueryResponse::Balance(Coin { denom, amount }))
             },
             Query::Balances {
@@ -181,7 +181,7 @@ impl Querier for MockQuerier {
                 Ok(QueryResponse::Balances(coins))
             },
             Query::Supply { denom } => {
-                let amount = self.supplies.get(&denom).cloned().unwrap_or(Uint256::ZERO);
+                let amount = self.supplies.get(&denom).cloned().unwrap_or(Uint128::ZERO);
                 Ok(QueryResponse::Supply(Coin { denom, amount }))
             },
             Query::Supplies { start_after, limit } => {
