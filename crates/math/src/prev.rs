@@ -93,5 +93,66 @@ macro_rules! impl_prev_dec {
 impl_prev_dec! {
     Udec256 => Udec128,
     Dec256  => Dec128,
+}
 
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{int_test, test_utils::bt, Int, MathError, PrevNumber},
+        bnum::types::{I256, U256},
+    };
+
+    int_test!( prev
+        inputs = {
+            u128 = {
+                passing: [
+                    (u64::MAX as u128, u64::MAX),
+                ],
+                failing: [
+                    u64::MAX as u128 + 1,
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(u128::MAX), u128::MAX),
+                ],
+                failing: [
+                    U256::from(u128::MAX) + U256::ONE,
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i64::MAX as i128, i64::MAX),
+                    (i64::MIN as i128, i64::MIN),
+                ],
+                failing: [
+                    i64::MAX as i128 + 1,
+                    i64::MIN as i128 - 1,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(i128::MAX), i128::MAX),
+                    (I256::from(i128::MIN), i128::MIN),
+                ],
+                failing: [
+                    I256::from(i128::MAX) + I256::ONE,
+                    I256::from(i128::MIN) - I256::ONE,
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (current, prev) in passing {
+                let current = bt(_0, Int::new(current));
+                assert_eq!(current.checked_into_prev().unwrap(), Int::new(prev));
+            }
+
+            for failing in failing {
+                let current = bt(_0, Int::new(failing));
+                assert!(matches!(current.checked_into_prev(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
 }

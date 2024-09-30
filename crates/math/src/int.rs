@@ -362,53 +362,278 @@ impl Int512 {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
-    use {super::*, crate::Inner, proptest::prelude::*};
+pub mod tests {
+    use {
+        super::*,
+        crate::{
+            dts, int_test,
+            test_utils::{bt, dt},
+            NumberConst,
+        },
+    };
 
-    proptest! {
-        #[test]
-        fn uint256_const_constructor(input in any::<u128>()) {
-            let uint256 = Uint256::new_from_u128(input);
-            let output = uint256.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
+    int_test!( size_of
+        inputs = {
+            u128 = [16]
+            u256 = [32]
+            i128 = [16]
+            i256 = [32]
+        }
+        method = |_0, size| {
+            assert_eq!(core::mem::size_of_val(&_0), size);
+        }
+    );
+
+    int_test!( from_str
+        inputs = {
+            u128 = {
+                passing: [
+                    (128_u128, "128"),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(256_u128), "256"),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (-128_i128, "-128"), (-128_i128, "-128"),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(256_i128), "256"), (I256::from(-256_i128), "-256"),
+                ]
+            }
+        }
+        method = |_, samples| {
+            for (val, str) in samples {
+                let original = Int::new(val);
+                assert_eq!(original.0, val);
+
+                let from_str = Int::from_str(str).unwrap();
+                assert_eq!(from_str, original);
+
+                let as_into = original.0;
+                dt(as_into, val);
+                assert_eq!(as_into, val);
+            }
+        }
+    );
+
+    int_test!( display
+        inputs = {
+            u128 = {
+                passing: [
+                    (Uint128::new(128_u128), "128"),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Uint256::new(U256::from(256_u128)), "256"),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int128::MAX, "170141183460469231731687303715884105727"),
+                    (Int128::MIN, "-170141183460469231731687303715884105728"),
+                    (Int128::new(i128::ZERO), "0"),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int256::MAX, "57896044618658097711785492504343953926634992332820282019728792003956564819967"),
+                    (Int256::MIN, "-57896044618658097711785492504343953926634992332820282019728792003956564819968"),
+                    (Int256::ZERO, "0"),
+                ]
+            }
+        }
+        method = |_, samples| {
+            for (number, str) in samples {
+                assert_eq!(format!("{}", number), str);
+            }
+        }
+    );
+
+    int_test!( display_padding_front
+        inputs = {
+            u128 = {
+                passing: [
+                    ("00128", "128"),
+                ]
+            }
+            u256 = {
+                passing: [
+                    ("000256", "256"),
+                ]
+            }
+            i128 = {
+                passing: [
+                    ("000128", "128"),
+                    ("-000128", "-128"),
+                ]
+            }
+            i256 = {
+                passing: [
+                    ("000256", "256"),
+                    ("-000256", "-256"),
+                ]
+            }
+        }
+        method = |_0, samples| {
+            for (padded_str, compare) in samples {
+                let uint = bt(_0, Int::from_str(padded_str).unwrap());
+                assert_eq!(format!("{}", uint), compare);
+            }
+        }
+    );
+
+    int_test!( json
+        inputs = {
+            u128 = {
+                passing: ["123456"]
+            }
+            u256 = {
+                passing: ["123456"]
+            }
+            i128 = {
+                passing: ["123456", "-123456"]
+            }
+            i256 = {
+                passing: ["123456", "-123456"]
+            }
+        }
+        method = |_0, samples| {
+            for sample in samples {
+                let original = bt(_0, Int::from_str(sample).unwrap());
+
+                let serialized_str = serde_json::to_string(&original).unwrap();
+                assert_eq!(serialized_str, format!("\"{}\"", sample));
+
+                let serialized_vec = serde_json::to_vec(&original).unwrap();
+                assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
+
+                let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
+                assert_eq!(parsed, original);
+
+                let parsed: Int::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+                assert_eq!(parsed, original);
+            }
+        }
+    );
+
+    int_test!( compare
+        inputs = {
+            u128 = {
+                passing: [
+                    (10_u128, 200_u128),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(10_u128), U256::from(200_u128)),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (10_i128, 200_i128),
+                    (-10, 200),
+                    (-200, -10),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(10), I256::from(200_i128)),
+                    (I256::from(-10), I256::from(200)),
+                    (I256::from(-200), I256::from(-10)),
+                ]
+            }
+        }
+        method = |_0, samples| {
+            for (low, high) in samples {
+                let low = Int::new(low);
+                let high = Int::new(high);
+                dts!(_0, low, high);
+                assert!(low < high);
+                assert!(high > low);
+                assert_eq!(low, low);
+            }
         }
 
-        #[test]
-        fn uint512_const_constructor(input in any::<u128>()) {
-            let uint512 = Uint512::new_from_u128(input);
-            let output = uint512.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
-        }
+    );
 
-        fn int256_const_constructor(input in any::<i128>()) {
-            let int256 = Int256::new_from_i128(input);
-            let output = int256.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
+    int_test!( partial_eq
+        inputs = {
+            u128 = {
+                passing: [
+                    (1_u128, 1_u128),
+                    (42_u128, 42_u128),
+                    (u128::MAX, u128::MAX),
+                    (0_u128, 0_u128),
+                ],
+                failing: [
+                    (42_u128, 24_u128),
+                    (24_u128, 42_u128),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(1_u128), U256::from(1_u128)),
+                    (U256::from(42_u128), U256::from(42_u128)),
+                    (U256::from(u128::MAX), U256::from(u128::MAX)),
+                    (U256::from(0_u128), U256::from(0_u128)),
+                ],
+                failing: [
+                    (U256::from(42_u128), U256::from(24_u128)),
+                    (U256::from(24_u128), U256::from(42_u128)),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (1_i128, 1_i128),
+                    (42_i128, 42_i128),
+                    (i128::MAX, i128::MAX),
+                    (0_i128, 0_i128),
+                    (-42_i128, -42_i128),
+                ],
+                failing: [
+                    (42_i128, 24_i128),
+                    (24_i128, 42_i128),
+                    (-42_i128, 42_i128),
+                    (42_i128, -42_i128),
+                    (i128::MIN, -i128::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(1_i128), I256::from(1_i128)),
+                    (I256::from(42_i128), I256::from(42_i128)),
+                    (I256::from(i128::MAX), I256::from(i128::MAX)),
+                    (I256::from(0_i128), I256::from(0_i128)),
+                    (I256::from(-42_i128), I256::from(-42_i128))
+                ]
+                failing: [
+                    (I256::from(42_i128), I256::from(24_i128)),
+                    (I256::from(24_i128), I256::from(42_i128)),
+                    (I256::from(-42_i128), I256::from(24_i128)),
+                    (I256::from(42_i128), I256::from(-24_i128)),
+                    (I256::MIN, -I256::MAX),
+                ]
+            }
         }
-        fn int512_const_constructor(input in any::<i128>()) {
-            let int512 = Int512::new_from_i128(input);
-            let output = int512.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
+        method = |_0, passing, failing| {
+            for (lhs, rhs) in passing {
+                let lhs = Int::new(lhs);
+                let rhs = Int::new(rhs);
+                assert!(lhs == rhs);
+            }
+
+            for (lhs, rhs) in failing {
+                let lhs = Int::new(lhs);
+                let rhs = Int::new(rhs);
+                assert!(lhs != rhs);
+            }
         }
-    }
-
-    #[test]
-    fn signed_from_str() {
-        assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
-        assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
-        assert_eq!(
-            Int512::from_str("100").unwrap(),
-            Int512::new(I512::from(100))
-        );
-        assert_eq!(
-            Int512::from_str("-100").unwrap(),
-            Int512::new(I512::from(-100))
-        );
-    }
-
-    #[test]
-    fn neg_works() {
-        assert_eq!(-Int512::new_from_i128(-100), Int512::new(I512::from(100)));
-        assert_eq!(-Int512::new_from_i128(100), Int512::new(I512::from(-100)))
-    }
+    );
 }

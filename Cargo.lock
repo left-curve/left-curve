@@ -1608,6 +1608,7 @@ dependencies = [
  "paste",
  "proptest",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
