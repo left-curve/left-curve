@@ -29,11 +29,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use bnum::types::{I256, U256};
-
-    use crate::{
-        int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError, NumberConst,
-        Udec128, Udec256, Uint256,
+    use {
+        crate::{
+            int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError,
+            NumberConst, Udec128, Udec256, Uint256,
+        },
+        bnum::types::{I256, U256},
     };
 
     int_test!( int_to_dec
