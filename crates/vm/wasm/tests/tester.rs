@@ -1,7 +1,7 @@
 use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
-    grug_math::{Udec256, Uint256},
+    grug_math::Udec128,
     grug_tester::{
         QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
@@ -14,47 +14,50 @@ use {
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
     serde::{de::DeserializeOwned, Serialize},
-    std::{fmt::Debug, fs, io, str::FromStr, sync::LazyLock, vec},
+    std::{fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
     test_case::test_case,
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
 
+const FEE_RATE: Udec128 = Udec128::new_percent(10);
+
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-static FEE_RATE: LazyLock<Udec256> = LazyLock::new(|| Udec256::from_str("0.1").unwrap());
-
-fn read_wasm_file(filename: &str) -> io::Result<Binary> {
+fn read_wasm_file(filename: &str) -> Binary {
     let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
-    fs::read(path).map(Into::into)
+    fs::read(path).unwrap().into()
 }
 
-fn setup_test() -> anyhow::Result<(TestSuite<WasmVm>, TestAccounts, Addr)> {
+fn setup_test() -> (TestSuite<WasmVm>, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())?
-        .add_account(
-            "sender",
-            Coins::one(DENOM.clone(), Uint256::new_from_u128(32_100_000))?,
-        )?
-        .set_owner("owner")?
-        .set_fee_rate(*FEE_RATE)
-        .build()?;
+        .add_account("owner", Coins::new())
+        .unwrap()
+        .add_account("sender", Coins::one(DENOM.clone(), 32_100_000).unwrap())
+        .unwrap()
+        .set_owner("owner")
+        .unwrap()
+        .set_fee_rate(FEE_RATE)
+        .build()
+        .unwrap();
 
-    let (_, tester) = suite.upload_and_instantiate_with_gas(
-        accounts.get_mut("sender").unwrap(),
-        320_000_000,
-        read_wasm_file("grug_tester.wasm")?,
-        "tester",
-        &grug_tester::InstantiateMsg {},
-        Coins::new(),
-    )?;
+    let (_, tester) = suite
+        .upload_and_instantiate_with_gas(
+            accounts.get_mut("sender").unwrap(),
+            320_000_000,
+            read_wasm_file("grug_tester.wasm"),
+            "tester",
+            &grug_tester::InstantiateMsg {},
+            Coins::new(),
+        )
+        .unwrap();
 
-    Ok((suite, accounts, tester))
+    (suite, accounts, tester)
 }
 
 #[test]
-fn infinite_loop() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, tester) = setup_test()?;
+fn infinite_loop() {
+    let (mut suite, mut accounts, tester) = setup_test();
 
     suite
         .send_message_with_gas(
@@ -62,19 +65,20 @@ fn infinite_loop() -> anyhow::Result<()> {
             1_000_000,
             Message::Execute {
                 contract: tester,
-                msg: grug_tester::ExecuteMsg::InfiniteLoop {}.to_json_value()?,
+                msg: grug_tester::ExecuteMsg::InfiniteLoop {}
+                    .to_json_value()
+                    .unwrap(),
                 funds: Coins::new(),
             },
-        )?
+        )
+        .unwrap()
         .result
         .should_fail_with_error("out of gas");
-
-    Ok(())
 }
 
 #[test]
-fn immutable_state() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, tester) = setup_test()?;
+fn immutable_state() {
+    let (mut suite, mut accounts, tester) = setup_test();
 
     // Query the tester contract.
     //
@@ -107,32 +111,30 @@ fn immutable_state() -> anyhow::Result<()> {
                     key: "larry".to_string(),
                     value: "engineer".to_string(),
                 }
-                .to_json_value()?,
+                .to_json_value()
+                .unwrap(),
                 funds: Coins::new(),
             },
-        )?
+        )
+        .unwrap()
         .result
         .should_fail_with_error(VmError::ImmutableState);
-
-    Ok(())
 }
 
 #[test]
-fn query_stack_overflow() -> anyhow::Result<()> {
-    let (suite, _, tester) = setup_test()?;
+fn query_stack_overflow() {
+    let (suite, _, tester) = setup_test();
 
     // The contract attempts to call with `QueryMsg::StackOverflow` to itself in
     // a loop. Should raise the "exceeded max query depth" error.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
         .should_fail_with_error(VmError::ExceedMaxQueryDepth);
-
-    Ok(())
 }
 
 #[test]
-fn message_stack_overflow() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, tester) = setup_test()?;
+fn message_stack_overflow() {
+    let (mut suite, mut accounts, tester) = setup_test();
 
     // The contract attempts to return a Response with `Execute::StackOverflow`
     // to itself in a loop. Should raise the "exceeded max message depth" error.
@@ -144,12 +146,12 @@ fn message_stack_overflow() -> anyhow::Result<()> {
                 tester,
                 &grug_tester::ExecuteMsg::StackOverflow {},
                 Coins::default(),
-            )?,
-        )?
+            )
+            .unwrap(),
+        )
+        .unwrap()
         .result
         .should_fail_with_error(AppError::ExceedMaxMessageDepth);
-
-    Ok(())
 }
 
 // ------------------------------- crypto tests --------------------------------
@@ -368,28 +370,25 @@ fn verifying_signature<G, M, R>(
     generate_request: G,
     malleate: M,
     expect: GenericResult<R::Response>,
-) -> anyhow::Result<()>
-where
+) where
     G: FnOnce() -> R,
     M: FnOnce(R) -> R,
     R: QueryRequest,
     R::Message: Serialize,
     R::Response: DeserializeOwned + Debug + PartialEq,
 {
-    let (suite, _, tester) = setup_test()?;
+    let (suite, _, tester) = setup_test();
 
     // Generate and malleate query request
     let req = generate_request();
     let req = malleate(req);
 
     suite.query_wasm_smart(tester, req).should_match(expect);
-
-    Ok(())
 }
 
 #[test]
-fn recovering_secp256k1_pubkey() -> anyhow::Result<()> {
-    let (suite, _, tester) = setup_test()?;
+fn recovering_secp256k1_pubkey() {
+    let (suite, _, tester) = setup_test();
 
     // Generate a valid signature
     let (vk, req) = {
@@ -398,7 +397,7 @@ fn recovering_secp256k1_pubkey() -> anyhow::Result<()> {
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
         let msg_hash = Identity256::from(sha2_256(MSG));
-        let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone())?;
+        let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
 
         (vk, QueryRecoverSepc256k1Request {
             sig: sig.to_vec().into(),
@@ -434,8 +433,6 @@ fn recovering_secp256k1_pubkey() -> anyhow::Result<()> {
             .query_wasm_smart(tester, false_req)
             .should_fail_with_error(VerificationError::InvalidRecoveryId);
     }
-
-    Ok(())
 }
 
 fn ed25519_sign(msg: &str) -> (Binary, Binary, Binary) {
@@ -453,8 +450,8 @@ fn ed25519_sign(msg: &str) -> (Binary, Binary, Binary) {
 }
 
 #[test]
-fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
-    let (suite, _, tester) = setup_test()?;
+fn wasm_ed25519_batch_verify() {
+    let (suite, _, tester) = setup_test();
 
     let mut req = {
         let (prehash_msg1, sig1, vk1) = ed25519_sign("Jake");
@@ -481,6 +478,4 @@ fn wasm_ed25519_batch_verify() -> anyhow::Result<()> {
             .query_wasm_smart(tester, req)
             .should_fail_with_error(VerificationError::Unauthentic);
     }
-
-    Ok(())
 }

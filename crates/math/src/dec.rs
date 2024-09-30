@@ -490,26 +490,22 @@ mod tests {
 
     #[test]
     fn t1() {
-        assert_eq!(Udec128::ONE + Udec128::ONE, Udec128::new(2_u128));
+        assert_eq!(Udec128::ONE + Udec128::ONE, Udec128::new(2));
 
         assert_eq!(
-            Udec128::new(10_u128)
-                .checked_add(Udec128::new(20_u128))
-                .unwrap(),
-            Udec128::new(30_u128)
+            Udec128::new(10).checked_add(Udec128::new(20)).unwrap(),
+            Udec128::new(30)
         );
 
         assert_eq!(
-            Udec128::new(3_u128)
-                .checked_rem(Udec128::new(2_u128))
-                .unwrap(),
+            Udec128::new(3).checked_rem(Udec128::new(2)).unwrap(),
             Udec128::from_str("1").unwrap()
         );
 
         assert_eq!(
             Udec128::from_str("3.5")
                 .unwrap()
-                .checked_rem(Udec128::new(2_u128))
+                .checked_rem(Udec128::new(2))
                 .unwrap(),
             Udec128::from_str("1.5").unwrap()
         );

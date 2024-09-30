@@ -36,9 +36,28 @@ It is, however, not recommended to use these types directly. Instead, Grug expor
 
 where `{U,I}{256,512}` are from the [bnum][bnum] library.
 
-## How to use
+## Traits
 
-> TODO
+|                    | `Uint64` | `Uint128` | `Uint256` | `Uint512` | `Int64` | `Int128` | `Int256` | `Int512` | `Udec128` | `Udec256` | `Dec128` | `Dec256` |
+| ------------------ | -------- | --------- | --------- | --------- | ------- | -------- | -------- | -------- | --------- | --------- | -------- | -------- |
+| `Bytable`          | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `Decimal`          | ❌        | ❌         | ❌         | ❌         | ❌       | ❌        | ❌        | ❌        | ✅         | ✅         | ✅        | ✅        |
+| `FixedPoint`       | ❌        | ❌         | ❌         | ❌         | ❌       | ❌        | ❌        | ❌        | ✅         | ✅         | ✅        | ✅        |
+| `Fraction`         | ❌        | ❌         | ❌         | ❌         | ❌       | ❌        | ❌        | ❌        | ✅         | ✅         | ✅        | ✅        |
+| `Inner`            | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `Integer`          | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ❌         | ❌         | ❌        | ❌        |
+| `IntoDec`          | ❌        | ✅         | ✅         | ❌         | ❌       | ✅        | ✅        | ❌        | ❌         | ❌         | ❌        | ❌        |
+| `IntoInt`          | ❌        | ❌         | ❌         | ❌         | ❌       | ❌        | ❌        | ❌        | ✅         | ✅         | ✅        | ✅        |
+| `IsZero`           | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `MultiplyFraction` | ❌        | ✅         | ✅         | ❌         | ❌       | ✅        | ✅        | ❌        | ❌         | ❌         | ❌        | ❌        |
+| `MultiplyRatio`    | ❌        | ✅         | ✅         | ❌         | ❌       | ✅        | ✅        | ❌        | ❌         | ❌         | ❌        | ❌        |
+| `NextNumber`       | ✅        | ✅         | ✅         | ❌         | ✅       | ✅        | ✅        | ❌        | ✅         | ❌         | ✅        | ❌        |
+| `Number`           | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `NumberConst`      | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `PrevNumber`       | ❌        | ✅         | ✅         | ✅         | ❌       | ✅        | ✅        | ✅        | ❌         | ✅         | ❌        | ✅        |
+| `Sign`             | ✅        | ✅         | ✅         | ✅         | ✅       | ✅        | ✅        | ✅        | ✅         | ✅         | ✅        | ✅        |
+| `Signed`           | ❌        | ❌         | ❌         | ❌         | ✅       | ✅        | ✅        | ✅        | ❌         | ❌         | ✅        | ✅        |
+| `Unsigned`         | ✅        | ✅         | ✅         | ✅         | ❌       | ❌        | ❌        | ❌        | ✅         | ✅         | ❌        | ❌        |
 
 [bnum]: https://github.com/left-curve/bnum/tree/v0.11.0-grug
 [fixed-point-arithmetic]: https://en.wikipedia.org/wiki/Fixed-point_arithmetic

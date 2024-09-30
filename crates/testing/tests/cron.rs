@@ -1,6 +1,4 @@
 use {
-    anyhow::ensure,
-    grug_math::{NumberConst, Uint256},
     grug_testing::TestBuilder,
     grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Timestamp},
     grug_vm_rust::ContractBuilder,
@@ -29,15 +27,15 @@ mod tester {
     }
 
     pub fn instantiate(ctx: MutableCtx, job: Job) -> StdResult<Response> {
-        JOB.save(ctx.storage, &job)?;
+        JOB.save(ctx.storage, &job).unwrap();
 
         Ok(Response::new())
     }
 
     pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-        let job = JOB.load(ctx.storage)?;
+        let job = JOB.load(ctx.storage).unwrap();
 
-        Ok(Response::new().add_message(Message::transfer(job.receiver, job.coin)?))
+        Ok(Response::new().add_message(Message::transfer(job.receiver, job.coin).unwrap()))
     }
 }
 
@@ -48,18 +46,18 @@ struct Balances {
 }
 
 #[test]
-fn cronjob_works() -> anyhow::Result<()> {
+fn cronjob_works() {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", [
-            ("uatom", Uint256::new_from_u128(100)),
-            ("uosmo", Uint256::new_from_u128(100)),
-            ("umars", Uint256::new_from_u128(100)),
-        ])?
-        .add_account("jake", Coins::new())?
+        .add_account("larry", [("uatom", 100), ("uosmo", 100), ("umars", 100)])
+        .unwrap()
+        .add_account("jake", Coins::new())
+        .unwrap()
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
-        .set_owner("larry")?
-        .build()?;
+        .set_owner("larry")
+        .unwrap()
+        .build()
+        .unwrap();
 
     let tester_code = ContractBuilder::new(Box::new(tester::instantiate))
         .with_cron_execute(Box::new(tester::cron_execute))
@@ -70,46 +68,54 @@ fn cronjob_works() -> anyhow::Result<()> {
     // Block time: 1
     //
     // Upload the tester contract code.
-    let tester_code_hash = suite.upload(accounts.get_mut("larry").unwrap(), tester_code)?;
+    let tester_code_hash = suite
+        .upload(accounts.get_mut("larry").unwrap(), tester_code)
+        .unwrap();
 
     // Block time: 2
     //
     // Deploy three tester contracts with different jobs.
     // Each contract is given an initial coin balance.
-    let cron1 = suite.instantiate(
-        accounts.get_mut("larry").unwrap(),
-        tester_code_hash,
-        "cron1",
-        &tester::Job {
-            receiver,
-            coin: Coin::new("uatom", Uint256::ONE)?,
-        },
-        Coins::one("uatom", Uint256::new_from_u128(3))?,
-    )?;
+    let cron1 = suite
+        .instantiate(
+            accounts.get_mut("larry").unwrap(),
+            tester_code_hash,
+            "cron1",
+            &tester::Job {
+                receiver,
+                coin: Coin::new("uatom", 1).unwrap(),
+            },
+            Coins::one("uatom", 3).unwrap(),
+        )
+        .unwrap();
 
     // Block time: 3
-    let cron2 = suite.instantiate(
-        accounts.get_mut("larry").unwrap(),
-        tester_code_hash,
-        "cron2",
-        &tester::Job {
-            receiver,
-            coin: Coin::new("uosmo", Uint256::new_from_u128(1))?,
-        },
-        Coins::one("uosmo", Uint256::new_from_u128(3))?,
-    )?;
+    let cron2 = suite
+        .instantiate(
+            accounts.get_mut("larry").unwrap(),
+            tester_code_hash,
+            "cron2",
+            &tester::Job {
+                receiver,
+                coin: Coin::new("uosmo", 1).unwrap(),
+            },
+            Coins::one("uosmo", 3).unwrap(),
+        )
+        .unwrap();
 
     // Block time: 4
-    let cron3 = suite.instantiate(
-        accounts.get_mut("larry").unwrap(),
-        tester_code_hash,
-        "cron3",
-        &tester::Job {
-            receiver,
-            coin: Coin::new("umars", Uint256::ONE)?,
-        },
-        Coins::one("umars", Uint256::new_from_u128(3))?,
-    )?;
+    let cron3 = suite
+        .instantiate(
+            accounts.get_mut("larry").unwrap(),
+            tester_code_hash,
+            "cron3",
+            &tester::Job {
+                receiver,
+                coin: Coin::new("umars", 1).unwrap(),
+            },
+            Coins::one("umars", 3).unwrap(),
+        )
+        .unwrap();
 
     // Block time: 5
     //
@@ -127,7 +133,9 @@ fn cronjob_works() -> anyhow::Result<()> {
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite.configure(accounts.get_mut("larry").unwrap(), updates, BTreeMap::new())?;
+    suite
+        .configure(accounts.get_mut("larry").unwrap(), updates, BTreeMap::new())
+        .unwrap();
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.
@@ -212,17 +220,21 @@ fn cronjob_works() -> anyhow::Result<()> {
     ] {
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new();
-        expect.insert(Coin::new("uatom", Uint256::new_from_u128(balances.uatom))?)?;
-        expect.insert(Coin::new("uosmo", Uint256::new_from_u128(balances.uosmo))?)?;
-        expect.insert(Coin::new("umars", Uint256::new_from_u128(balances.umars))?)?;
+        expect
+            .insert(Coin::new("uatom", balances.uatom).unwrap())
+            .unwrap();
+        expect
+            .insert(Coin::new("uosmo", balances.uosmo).unwrap())
+            .unwrap();
+        expect
+            .insert(Coin::new("umars", balances.umars).unwrap())
+            .unwrap();
 
         // Advance block
-        suite.make_empty_block()?;
+        suite.make_empty_block().unwrap();
 
         // Check the balances are correct
         let actual = suite.query_balances(&accounts["jake"]).should_succeed();
-        ensure!(actual == expect);
+        assert_eq!(actual, expect);
     }
-
-    Ok(())
 }

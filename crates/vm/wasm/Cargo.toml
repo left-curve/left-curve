@@ -28,7 +28,6 @@ wasmer             = { workspace = true, features = ["singlepass"] }
 wasmer-middlewares = { workspace = true }
 
 [dev-dependencies]
-anyhow         = { workspace = true }
 criterion      = { workspace = true }
 ed25519-dalek  = { workspace = true, features = ["batch", "digest"] }
 grug-app       = { path = "../../app", features = ["tracing"] }

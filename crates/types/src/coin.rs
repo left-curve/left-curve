@@ -1,7 +1,7 @@
 use {
     crate::{Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, Uint256},
+    grug_math::{IsZero, Uint128},
     serde::{Deserialize, Serialize},
     std::fmt,
 };
@@ -10,7 +10,7 @@ use {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CoinRef<'a> {
     pub denom: &'a Denom,
-    pub amount: &'a Uint256,
+    pub amount: &'a Uint128,
 }
 
 /// A mutable reference to a coin.
@@ -19,7 +19,7 @@ pub struct CoinRef<'a> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CoinRefMut<'a> {
     pub denom: &'a Denom,
-    pub amount: &'a mut Uint256,
+    pub amount: &'a mut Uint128,
 }
 
 /// A coin, defined by a denomincation ("denom") and an amount.
@@ -27,7 +27,7 @@ pub struct CoinRefMut<'a> {
 #[serde(deny_unknown_fields)]
 pub struct Coin {
     pub denom: Denom,
-    pub amount: Uint256,
+    pub amount: Uint128,
 }
 
 impl Coin {
@@ -36,7 +36,7 @@ impl Coin {
     pub fn new<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,
-        A: Into<Uint256>,
+        A: Into<Uint128>,
         StdError: From<D::Error>,
     {
         Ok(Self {
@@ -71,7 +71,7 @@ impl IsZero for Coin {
 impl<D, A> TryFrom<(D, A)> for Coin
 where
     D: TryInto<Denom>,
-    A: Into<Uint256>,
+    A: Into<Uint128>,
     StdError: From<D::Error>,
 {
     type Error = StdError;

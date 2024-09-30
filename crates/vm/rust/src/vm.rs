@@ -268,7 +268,6 @@ impl Instance for RustInstance {
 mod tests {
     use {
         crate::{ContractBuilder, RustVm},
-        anyhow::ensure,
         grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
             Addr, Binary, BlockInfo, Coins, Context, Hash, JsonSerExt, MockStorage, Storage,
@@ -311,7 +310,7 @@ mod tests {
         Some("unknown function: `your_mom`");
         "unknown method"
     )]
-    fn calling_functions(name: &'static str, maybe_error: Option<&str>) -> anyhow::Result<()> {
+    fn calling_functions(name: &'static str, maybe_error: Option<&str>) {
         let code: Binary = ContractBuilder::new(Box::new(tester::instantiate))
             .build()
             .to_bytes()
@@ -333,15 +332,17 @@ mod tests {
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
-        let instance = vm.build_instance(
-            &code,
-            Hash::ZERO,
-            storage_provider,
-            false,
-            querier_provider,
-            0,
-            gas_tracker,
-        )?;
+        let instance = vm
+            .build_instance(
+                &code,
+                Hash::ZERO,
+                storage_provider,
+                false,
+                querier_provider,
+                0,
+                gas_tracker,
+            )
+            .unwrap();
 
         let ctx = Context {
             chain_id: "dev-1".to_string(),
@@ -357,15 +358,15 @@ mod tests {
             v: "engineer".to_string(),
         };
 
-        let result = instance.call_in_1_out_1(name, &ctx, &msg.to_json_vec()?);
+        let result = instance.call_in_1_out_1(name, &ctx, &msg.to_json_vec().unwrap());
 
         match maybe_error {
             // We expect the call to succeed. Check that the data is correctly
             // written to the DB.
             None => {
-                ensure!(result.is_ok());
+                assert!(result.is_ok());
                 let value = db.read_access().read(b"testerlarry");
-                ensure!(value == Some(b"engineer".to_vec()));
+                assert_eq!(value, Some(b"engineer".to_vec()));
             },
             // We expect the call to fail. Check that the error message is as
             // expected.
@@ -375,10 +376,8 @@ mod tests {
             // inherits `StdError`, which inherits `TryFromSliceError`, which
             // doesn't implement `PartialEq`.
             Some(expect) => {
-                ensure!(result.is_err_and(|actual| actual.to_string() == expect));
+                assert!(result.is_err_and(|actual| actual.to_string() == expect));
             },
         }
-
-        Ok(())
     }
 }
