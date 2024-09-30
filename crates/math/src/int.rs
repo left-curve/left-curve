@@ -362,59 +362,7 @@ impl Int512 {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
-    use {super::*, crate::Inner, proptest::prelude::*};
-
-    proptest! {
-        #[test]
-        fn uint256_const_constructor(input in any::<u128>()) {
-            let uint256 = Uint256::new_from_u128(input);
-            let output = uint256.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
-        }
-
-        #[test]
-        fn uint512_const_constructor(input in any::<u128>()) {
-            let uint512 = Uint512::new_from_u128(input);
-            let output = uint512.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
-        }
-
-        fn int256_const_constructor(input in any::<i128>()) {
-            let int256 = Int256::new_from_i128(input);
-            let output = int256.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
-        }
-        fn int512_const_constructor(input in any::<i128>()) {
-            let int512 = Int512::new_from_i128(input);
-            let output = int512.into_inner().try_into().unwrap();
-            assert_eq!(input, output);
-        }
-    }
-
-    #[test]
-    fn signed_from_str() {
-        assert_eq!(Int128::from_str("100").unwrap(), Int128::new(100));
-        assert_eq!(Int128::from_str("-100").unwrap(), Int128::new(-100));
-        assert_eq!(
-            Int512::from_str("100").unwrap(),
-            Int512::new(I512::from(100))
-        );
-        assert_eq!(
-            Int512::from_str("-100").unwrap(),
-            Int512::new(I512::from(-100))
-        );
-    }
-
-    #[test]
-    fn neg_works() {
-        assert_eq!(-Int512::new_from_i128(-100), Int512::new(I512::from(100)));
-        assert_eq!(-Int512::new_from_i128(100), Int512::new(I512::from(-100)))
-    }
-}
-
-#[cfg(test)]
-pub mod testse {
+pub mod tests {
 
     use {
         super::*,
@@ -558,7 +506,6 @@ pub mod testse {
             }
         }
     method = |_0, samples| {
-
         for sample in samples {
             let original = bt(_0, Int::from_str(sample).unwrap());
 
@@ -616,59 +563,78 @@ pub mod testse {
 
     );
 
-    // int_test!( rem,
-    //     NoArgs
-    //     attrs = #[allow(clippy::op_ref)]
-    //     => |_0| {
-    //         let _1 = Int::from(1_u64);
-    //         let _10 = Int::from(10_u64);
-    //         let _3 = Int::from(3_u64);
-    //         dts!(_0, _1, _3, _3);
+    int_test!( partial_eq
+        inputs = {
+            u128 = {
+                passing: [
+                    (1_u128, 1_u128),
+                    (42_u128, 42_u128),
+                    (u128::MAX, u128::MAX),
+                    (0_u128, 0_u128)
+                ],
+                failing: [
+                    (42_u128, 24_u128),
+                    (24_u128, 42_u128),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(1_u128), U256::from(1_u128)),
+                    (U256::from(42_u128), U256::from(42_u128)),
+                    (U256::from(u128::MAX), U256::from(u128::MAX)),
+                    (U256::from(0_u128), U256::from(0_u128))
+                ],
+                failing: [
+                    (U256::from(42_u128), U256::from(24_u128)),
+                    (U256::from(24_u128), U256::from(42_u128)),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (1_i128, 1_i128),
+                    (42_i128, 42_i128),
+                    (i128::MAX, i128::MAX),
+                    (0_i128, 0_i128),
+                    (-42_i128, -42_i128)
+                ],
+                failing: [
+                    (42_i128, 24_i128),
+                    (24_i128, 42_i128),
+                    (-42_i128, 42_i128),
+                    (42_i128, -42_i128),
+                    (i128::MIN, -i128::MAX)
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(1_i128), I256::from(1_i128)),
+                    (I256::from(42_i128), I256::from(42_i128)),
+                    (I256::from(i128::MAX), I256::from(i128::MAX)),
+                    (I256::from(0_i128), I256::from(0_i128)),
+                    (I256::from(-42_i128), I256::from(-42_i128))
+                ]
+                failing: [
+                    (I256::from(42_i128), I256::from(24_i128)),
+                    (I256::from(24_i128), I256::from(42_i128)),
+                    (I256::from(-42_i128), I256::from(24_i128)),
+                    (I256::from(42_i128), I256::from(-24_i128)),
+                    (I256::MIN, -I256::MAX),
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
 
-    //         assert_eq!(_10 % Int::from(10_u64), _0);
-    //         assert_eq!(_10 % Int::from(2_u64), _0);
-    //         assert_eq!(_10 % Int::from(1_u64), _0);
-    //         assert_eq!(_10 % Int::from(3_u64), Int::from(1_u64));
-    //         assert_eq!(_10 % Int::from(4_u64), Int::from(2_u64));
-    //         assert_eq!(_10 % _3, _1);
+            for (lhs, rhs) in passing {
+                let lhs = Int::new(lhs);
+                let rhs = Int::new(rhs);
+                assert!(lhs == rhs);
+            }
 
-    //         // works for assign
-    //         let mut _30 = bt(_0, Int::from(30_u64));
-    //         _30 %=  Int::from(4_u64);
-    //         assert_eq!(_30, Int::from(2_u64));
-    //     }
-    // );
-
-    // int_test!( rem_panics_for_zero,
-    //     NoArgs
-    //     attrs = #[should_panic(expected = "division by zero")]
-    //     => |_0| {
-    //         let _ = Int::from(10_u64) % _0;
-    //     }
-    // );
-
-    // int_test!( partial_eq,
-    //     NoArgs
-    //     attrs = #[allow(clippy::op_ref)]
-    //     => |_0| {
-    //         let test_cases = [
-    //                 (1_u64, 1_u64, true),
-    //                 (42_u64, 42_u64, true),
-    //                 (42_u64, 24_u64, false),
-    //                 (0_u64, 0_u64, true)
-    //             ]
-    //             .into_iter()
-    //             .map(|(lhs, rhs, expected)|
-    //                 (
-    //                     bt(_0, Int::from(lhs)),
-    //                     bt(_0, Int::from(rhs)),
-    //                     expected
-    //                 )
-    //             );
-
-    //         for (lhs, rhs, expected) in test_cases {
-    //             assert_eq!(lhs == rhs, expected);
-    //         }
-    //     }
-    // );
+            for (lhs, rhs) in failing {
+                let lhs = Int::new(lhs);
+                let rhs = Int::new(rhs);
+                assert!(lhs != rhs);
+            }
+        }
+    );
 }

@@ -186,34 +186,3 @@ macro_rules! int_test {
         );
     };
 }
-
-// int_test!( test
-//     inputs = {
-//         u128 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         u256 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         i128 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         i256 = {
-//             passing: [
-//             ]
-//             failing: [
-//             ]
-//         }
-//     }
-//     method = |_0, passing, failing| {
-//     }
-// );

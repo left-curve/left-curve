@@ -340,7 +340,7 @@ mod tests {
         bnum::types::{I256, U256},
     };
 
-    int_test!( add
+    int_test!( checked_add
         inputs = {
             u128 = {
                 passing: [
@@ -429,7 +429,7 @@ mod tests {
         }
     );
 
-    int_test!( sub
+    int_test!( checked_sub
         inputs = {
             u128 = {
                 passing: [
@@ -520,7 +520,7 @@ mod tests {
         }
     );
 
-    int_test!( mul
+    int_test!( checked_mul
         inputs = {
             u128 = {
                 passing: [
@@ -617,7 +617,7 @@ mod tests {
         }
     );
 
-    int_test!( div
+    int_test!( checked_div
         inputs = {
             u128 = {
                 passing: [
@@ -698,7 +698,7 @@ mod tests {
         }
     );
 
-    int_test!( pow
+    int_test!( checked_pow
         inputs = {
             u128 = {
                 passing: [
@@ -762,7 +762,7 @@ mod tests {
         }
     );
 
-    int_test!( sqrt
+    int_test!( checked_sqrt
         inputs = {
             u128 = {
                 passing: [
@@ -822,6 +822,97 @@ mod tests {
                 // base.checked_sqrt().unwrap();
                 assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
             }
+        }
+    );
+
+    int_test!( checked_rem
+        inputs = {
+            u128 = {
+                passing: [
+                    (10_u128, 4_u128, 2_u128),
+                    (10_u128, 3_u128, 1_u128),
+                    (10_u128, 1_u128, 0_u128),
+                    (10_u128, 2_u128, 0_u128)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(10_u32), U256::from(4_u32), U256::from(2_u32)),
+                    (U256::from(10_u32), U256::from(3_u32), U256::from(1_u32)),
+                    (U256::from(10_u32), U256::ONE, U256::ZERO),
+                    (U256::from(10_u32), U256::from(2_u32), U256::ZERO)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (10_i128, 4_i128, 2_i128),
+                    (10_i128, 3_i128, 1_i128),
+                    (10_i128, 1_i128, 0_i128),
+                    (10_i128, 2_i128, 0_i128),
+                    (-10_i128, 4_i128, -2_i128),
+                    (-10_i128, 3_i128, -1_i128),
+                    (-10_i128, 1_i128, 0_i128),
+                    (-10_i128, 2_i128, 0_i128),
+                    (10_i128, -4_i128, 2_i128),
+                    (10_i128, -3_i128, 1_i128),
+                    (10_i128, -1_i128, 0_i128),
+                    (10_i128, -2_i128, 0_i128),
+                    (-10_i128, -4_i128, -2_i128),
+                    (-10_i128, -3_i128, -1_i128),
+                    (-10_i128, -1_i128, 0_i128),
+                    (-10_i128, -2_i128, 0_i128)
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(10_i128), I256::from(4_i128), I256::from(2_i128)),
+                    (I256::from(10_i128), I256::from(3_i128), I256::from(1_i128)),
+                    (I256::from(10_i128), I256::ONE, I256::ZERO),
+                    (I256::from(10_i128), I256::from(2_i128), I256::ZERO),
+                    (I256::from(-10_i128), I256::from(4_i128), I256::from(-2_i128)),
+                    (I256::from(-10_i128), I256::from(3_i128), I256::from(-1_i128)),
+                    (I256::from(-10_i128), I256::ONE, I256::ZERO),
+                    (I256::from(-10_i128), I256::from(2_i128), I256::ZERO),
+                    (I256::from(10_i128), I256::from(-4_i128), I256::from(2_i128)),
+                    (I256::from(10_i128), I256::from(-3_i128), I256::from(1_i128)),
+                    (I256::from(10_i128), I256::from(-1_i128), I256::ZERO),
+                    (I256::from(10_i128), I256::from(-2_i128), I256::ZERO),
+                    (I256::from(-10_i128), I256::from(-4_i128), I256::from(-2_i128)),
+                    (I256::from(-10_i128), I256::from(-3_i128), I256::from(-1_i128)),
+                    (I256::from(-10_i128), I256::from(-1_i128), I256::ZERO),
+                    (I256::from(-10_i128), I256::from(-2_i128), I256::ZERO)
+                ]
+            }
+        }
+        method = |_0, passing| {
+
+            for (base, div, expected) in passing {
+                let base = Int::new(base);
+                let div = Int::new(div);
+                let expected = Int::new(expected);
+                dts!(_0, base, div, expected);
+                assert_eq!(base.checked_rem(div).unwrap(), expected);
+            }
+
+            // Division by zero
+            let ten = Int::TEN;
+            assert!(matches!(ten.checked_rem(_0), Err(MathError::DivisionByZero { .. })));
+        }
+    );
+
+    int_test!( rem_panic
+        attrs = #[should_panic(expected = "division by zero")]
+        method = |_0| {
+            let max = bt(_0, Int::MAX);
+            let _ = max % _0;
+        }
+    );
+    int_test!( rem_assign
+        attrs = #[allow(clippy::op_ref)]
+        method = |_0| {
+            let mut a = bt(_0, Int::new(14_u64.into()));
+            a %= bt(_0, Int::new(3_u64.into()));
+            assert_eq!(a, bt(_0, Int::new(2_u64.into())));
         }
     );
 

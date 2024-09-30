@@ -99,7 +99,6 @@ mod tests {
             cast::As,
             types::{I256, I512, U256, U512},
         },
-        std::i128,
     };
 
     int_test!( next

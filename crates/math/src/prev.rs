@@ -100,7 +100,6 @@ mod tests {
     use {
         crate::{int_test, test_utils::bt, Int, MathError, PrevNumber},
         bnum::types::{I256, U256},
-        std::i128,
     };
 
     int_test!( prev
