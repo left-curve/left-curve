@@ -363,7 +363,6 @@ impl Int512 {
 
 #[cfg(test)]
 pub mod tests {
-
     use {
         super::*,
         crate::{
@@ -505,23 +504,24 @@ pub mod tests {
                 passing: ["123456", "-123456"]
             }
         }
-    method = |_0, samples| {
-        for sample in samples {
-            let original = bt(_0, Int::from_str(sample).unwrap());
+        method = |_0, samples| {
+            for sample in samples {
+                let original = bt(_0, Int::from_str(sample).unwrap());
 
-            let serialized_str = serde_json::to_string(&original).unwrap();
-            assert_eq!(serialized_str, format!("\"{}\"", sample));
+                let serialized_str = serde_json::to_string(&original).unwrap();
+                assert_eq!(serialized_str, format!("\"{}\"", sample));
 
-            let serialized_vec = serde_json::to_vec(&original).unwrap();
-            assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
+                let serialized_vec = serde_json::to_vec(&original).unwrap();
+                assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
 
-            let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
-            assert_eq!(parsed, original);
+                let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
+                assert_eq!(parsed, original);
 
-            let parsed: Int::<_> = serde_json::from_slice(&serialized_vec).unwrap();
-            assert_eq!(parsed, original);
+                let parsed: Int::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+                assert_eq!(parsed, original);
+            }
         }
-    });
+    );
 
     int_test!( compare
         inputs = {
@@ -623,7 +623,6 @@ pub mod tests {
             }
         }
         method = |_0, passing, failing| {
-
             for (lhs, rhs) in passing {
                 let lhs = Int::new(lhs);
                 let rhs = Int::new(rhs);
