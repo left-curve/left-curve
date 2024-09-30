@@ -8,12 +8,12 @@ use {
 
 pub trait Unsigned {
     type Signed;
+
     fn checked_into_signed(self) -> MathResult<Self::Signed>;
 }
 
 macro_rules! impl_checked_into_signed_std {
     ($unsigned:ty => $signed:ty) => {
-
         impl Unsigned for $unsigned {
             type Signed = $signed;
             fn checked_into_signed(self) -> MathResult<$signed> {
@@ -38,7 +38,6 @@ impl_checked_into_signed_std! {
 
 macro_rules! impl_checked_into_signed_bnum {
     ($unsigned:ty => $signed:ty) => {
-
         impl Unsigned for $unsigned {
             type Signed = $signed;
             fn checked_into_signed(self) -> MathResult<$signed> {
@@ -64,7 +63,6 @@ impl_checked_into_signed_bnum! {
 
 macro_rules! impl_chekced_into_signed_dec {
     ($unsigned:ty => $signed:ty) => {
-
         impl Unsigned for $unsigned {
             type Signed = $signed;
             fn checked_into_signed(self) -> MathResult<$signed> {
@@ -88,9 +86,10 @@ impl_chekced_into_signed_dec! {
 
 #[cfg(test)]
 mod tests {
-    use bnum::{cast::As, types::U256};
-
-    use crate::{int_test, test_utils::bt, Int, Int128, Int256, MathError, Unsigned};
+    use {
+        crate::{int_test, test_utils::bt, Int, Int128, Int256, MathError, Unsigned},
+        bnum::{cast::As, types::U256},
+    };
 
     int_test!( unsigned_to_signed
         inputs = {
