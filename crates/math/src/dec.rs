@@ -118,25 +118,30 @@ impl<U> Display for Dec<U>
 where
     Self: FixedPoint<U>,
     U: Number + IsZero + Display,
-    Int<U>: Copy + Sign,
+    Int<U>: Copy + Sign + NumberConst + PartialEq,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::DECIMAL_FRACTION;
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
+        if whole == Int::<U>::MIN {
+            f.write_str(whole.to_string().as_str())?;
+            return Ok(());
+        }
+
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
             let fractional_string = format!(
                 "{:0>padding$}",
-                fractional.abs().0,
+                fractional.checked_abs().unwrap().0,
                 padding = Self::DECIMAL_PLACES as usize
             );
             if whole.is_negative() || fractional.is_negative() {
                 f.write_char('-')?;
             }
-            f.write_str(&whole.abs().to_string())?;
+            f.write_str(&whole.checked_abs().unwrap().to_string())?;
             f.write_char('.')?;
             f.write_str(fractional_string.trim_end_matches('0'))?;
         }
