@@ -65,13 +65,16 @@ where
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use bnum::types::{I256, U256};
-
-    use crate::{
-        int_test, test_utils::bt, Dec, Dec128, Dec256, Int, MathError, MultiplyFraction,
-        NumberConst, Udec128, Udec256,
+    use {
+        crate::{
+            int_test, test_utils::bt, Dec, Dec128, Dec256, Int, MathError, MultiplyFraction,
+            NumberConst, Udec128, Udec256,
+        },
+        bnum::types::{I256, U256},
     };
 
     int_test!( checked_mul_dec_floor
