@@ -108,38 +108,38 @@ mod tests {
         inputs = {
             u128 = {
                 passing: [
-                    (u64::MAX as u128, u64::MAX)
+                    (u64::MAX as u128, u64::MAX),
                 ],
                 failing: [
-                    u64::MAX as u128 + 1
+                    u64::MAX as u128 + 1,
                 ]
             }
             u256 = {
                 passing: [
-                    (U256::from(u128::MAX), u128::MAX)
+                    (U256::from(u128::MAX), u128::MAX),
                 ],
                 failing: [
-                    U256::from(u128::MAX) + U256::ONE
+                    U256::from(u128::MAX) + U256::ONE,
                 ]
             }
             i128 = {
                 passing: [
                     (i64::MAX as i128, i64::MAX),
-                    (i64::MIN as i128, i64::MIN)
+                    (i64::MIN as i128, i64::MIN),
                 ],
                 failing: [
                     i64::MAX as i128 + 1,
-                    i64::MIN as i128 - 1
+                    i64::MIN as i128 - 1,
                 ]
             }
             i256 = {
                 passing: [
                     (I256::from(i128::MAX), i128::MAX),
-                    (I256::from(i128::MIN), i128::MIN)
+                    (I256::from(i128::MIN), i128::MIN),
                 ],
                 failing: [
                     I256::from(i128::MAX) + I256::ONE,
-                    I256::from(i128::MIN) - I256::ONE
+                    I256::from(i128::MIN) - I256::ONE,
                 ]
             }
         }

@@ -109,16 +109,14 @@ mod tests {
                     (u128::ZERO, false, u128::ZERO),
                     (u128::MAX, false, u128::MAX),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             u256 = {
                 passing: [
                     (U256::ZERO, false, U256::ZERO),
                     (U256::MAX, false, U256::MAX),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             i128 = {
                 passing: [
@@ -128,7 +126,7 @@ mod tests {
                     (-i128::MAX, true, i128::MAX),
                 ],
                 failing: [
-                    i128::MIN
+                    i128::MIN,
                 ]
             }
             i256 = {
@@ -139,7 +137,7 @@ mod tests {
                     (-I256::MAX, true, I256::MAX),
                 ],
                 failing: [
-                    I256::MIN
+                    I256::MIN,
                 ]
             }
         }

@@ -101,22 +101,22 @@ mod tests {
                 passing: [
                     (0, Uint128::ZERO),
                     (10i128, Uint128::TEN),
-                    (i128::MAX, Uint128::new(i128::MAX as u128))
+                    (i128::MAX, Uint128::new(i128::MAX as u128)),
                 ],
                 failing: [
                     -1,
-                    i128::MIN
+                    i128::MIN,
                 ]
             }
             i256 = {
                 passing: [
                     (I256::ZERO, Uint256::ZERO),
                     (I256::TEN, Uint256::TEN),
-                    (I256::MAX, Uint256::new(I256::MAX.as_()))
+                    (I256::MAX, Uint256::new(I256::MAX.as_())),
                 ],
                 failing: [
                     -I256::ONE,
-                    I256::MIN
+                    I256::MIN,
                 ]
             }
         }

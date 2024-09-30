@@ -274,8 +274,7 @@ mod tests {
                     (2047_u128, 10),
                     (2048_u128, 11)
                 ],
-                failing: [
-                ]
+                failing: []
             }
             u256 = {
                 passing: [
@@ -284,8 +283,7 @@ mod tests {
                     (U256::from(2047_u128), 10),
                     (U256::from(2048_u128), 11)
                 ],
-                failing: [
-                ]
+                failing: []
             }
             i128 = {
                 passing: [
@@ -334,8 +332,7 @@ mod tests {
                     (999_u128, 2),
                     (1000_u128, 3)
                 ],
-                failing: [
-                ]
+                failing: []
             }
             u256 = {
                 passing: [
@@ -344,8 +341,7 @@ mod tests {
                     (U256::from(999_u128), 2),
                     (U256::from(1000_u128), 3)
                 ],
-                failing: [
-                ]
+                failing: []
             }
             i128 = {
                 passing: [

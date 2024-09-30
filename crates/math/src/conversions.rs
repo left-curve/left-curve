@@ -46,7 +46,7 @@ mod tests {
                     (u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES), Udec128::new(u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES))),
                 ],
                 failing: [
-                    u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES) + 1
+                    u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES) + 1,
                 ]
             }
             u256 = {
@@ -56,7 +56,7 @@ mod tests {
                     (U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES), Udec256::raw(Uint256::new(U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) * U256::TEN.pow(Udec128::DECIMAL_PLACES)))),
                 ],
                 failing: [
-                    U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + 1
+                    U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + 1,
                 ]
             }
             i128 = {

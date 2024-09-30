@@ -96,19 +96,19 @@ mod tests {
             u128 = {
                 passing: [
                     (10u128, Int128::new(10)),
-                    (u128::MAX / 2, Int128::new((u128::MAX / 2) as i128))
+                    (u128::MAX / 2, Int128::new((u128::MAX / 2) as i128)),
                 ],
                 failing: [
-                    u128::MAX / 2 + 1
+                    u128::MAX / 2 + 1,
                 ]
             }
             u256 = {
                 passing: [
                     (U256::from(10u128), Int256::new_from_i128(10)),
-                    (U256::MAX / 2, Int256::new((U256::MAX / 2).as_()))
+                    (U256::MAX / 2, Int256::new((U256::MAX / 2).as_())),
                 ],
                 failing: [
-                    U256::MAX / 2 + 1
+                    U256::MAX / 2 + 1,
                 ]
             }
         }
