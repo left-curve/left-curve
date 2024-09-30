@@ -125,9 +125,8 @@ where
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
-        if whole == Int::<U>::MIN {
-            f.write_str(whole.to_string().as_str())?;
-            return Ok(());
+        if whole == Int::<U>::MIN && whole.is_negative() {
+            f.write_str(whole.to_string().as_str())?
         }
 
         if fractional.is_zero() {
