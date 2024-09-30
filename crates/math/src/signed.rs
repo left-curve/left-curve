@@ -40,7 +40,6 @@ impl_checked_into_unsigned_std! {
 
 macro_rules! impl_checked_into_unsigned_bnum {
     ($signed:ty => $unsigned:ty) => {
-
         impl Signed for $signed {
             type Unsigned = $unsigned;
 
@@ -67,7 +66,6 @@ impl_checked_into_unsigned_bnum! {
 
 macro_rules! impl_checked_into_unsigned_dec {
     ($signed:ty => $unsigned:ty) => {
-
         impl Signed for $signed {
             type Unsigned = $unsigned;
 
@@ -88,7 +86,7 @@ impl_checked_into_unsigned_dec! {
     Dec256 => Udec256,
 }
 
-// ------------------------------------ tests ------------------------------------
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
