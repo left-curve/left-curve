@@ -440,22 +440,22 @@ pub mod testse {
     int_test!( from_str
         inputs = {
             u128 = {
-                passing:[
+                passing: [
                     (128_u128, "128")
                 ]
             }
             u256 = {
-                passing:[
+                passing: [
                     (U256::from(256_u128), "256")
                 ]
             }
             i128 = {
-                passing:[
+                passing: [
                     (-128_i128, "-128"), (-128_i128, "-128")
                 ]
             }
             i256 = {
-                passing:[
+                passing: [
                     (I256::from(256_i128), "256"), (I256::from(-256_i128), "-256")
                 ]
             }
