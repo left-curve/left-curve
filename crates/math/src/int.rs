@@ -616,10 +616,6 @@ pub mod testse {
 
     );
 
-
-
-
-
     // int_test!( rem,
     //     NoArgs
     //     attrs = #[allow(clippy::op_ref)]
@@ -673,95 +669,6 @@ pub mod testse {
     //         for (lhs, rhs, expected) in test_cases {
     //             assert_eq!(lhs == rhs, expected);
     //         }
-    //     }
-    // );
-
-    // int_test!( mul_floor,
-    //     Specific
-    //     u128 = [Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
-    //     u256 = [Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
-    //     => |_0, _2d, _0_5d, _1_5d| {
-    //         let _1 = Int::from(1_u64);
-    //         let _2 = Int::from(2_u64);
-    //         let _10 = Int::from(10_u64);
-    //         let _11 = Int::from(11_u64);
-    //         let max = Int::MAX;
-    //         dts!(_0, _1, _2, _10, _11, max);
-
-    //         assert_eq!(_10.checked_mul_dec_ceil(_2d).unwrap(), Int::from(20_u64));
-    //         assert_eq!(_10.checked_mul_dec_floor(_2d).unwrap(), Int::from(20_u64));
-
-    //         assert_eq!(_10.checked_mul_dec_ceil(_1_5d).unwrap(), Int::from(15_u64));
-    //         assert_eq!(_10.checked_mul_dec_floor(_1_5d).unwrap(), Int::from(15_u64));
-
-    //         assert_eq!(_10.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(5_u64));
-    //         assert_eq!(_10.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
-
-    //         // ceil works
-    //         assert_eq!(_11.checked_mul_dec_floor(_0_5d).unwrap(), Int::from(5_u64));
-    //         assert_eq!(_11.checked_mul_dec_ceil(_0_5d).unwrap(), Int::from(6_u64));
-
-    //         // overflow num but not overflow result
-    //         assert_eq!(max.checked_mul_dec_ceil(_0_5d).unwrap(), max / _2 + _1);
-    //         assert_eq!(max.checked_mul_dec_floor(_0_5d).unwrap(), max / _2);
-
-    //         // overflow num and overflow result
-    //         assert!(matches!(
-    //             max.checked_mul_dec_ceil(_2d),
-    //             Err(MathError::OverflowConversion { .. })
-    //         ));
-    //         assert!(matches!(
-    //             max.checked_mul_dec_floor(_2d),
-    //             Err(MathError::OverflowConversion { .. })
-    //         ));
-    //     }
-    // );
-
-    // int_test!( div_floor,
-    //     Specific
-    //     u128 = [Udec128::new(0_u128), Udec128::new(2_u128), Udec128::from_str("0.5").unwrap(), Udec128::from_str("1.5").unwrap()]
-    //     u256 = [Udec256::new(0_u128), Udec256::new(2_u128), Udec256::from_str("0.5").unwrap(), Udec256::from_str("1.5").unwrap()]
-    //     => |_0, _0d, _2d, _0_5d, _1_5d| {
-    //         let _1 = Int::from(1_u64);
-    //         let _2 = Int::from(2_u64);
-    //         let _10 = Int::from(10_u64);
-    //         let _11 = Int::from(11_u64);
-    //         let max = Int::MAX;
-    //         dts!(_0, _1, _2, _10, _11,  max);
-
-    //         assert_eq!(_11.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
-    //         assert_eq!(_11.checked_div_dec_ceil(_2d).unwrap(), Int::from(6_u64));
-
-    //         assert_eq!(_10.checked_div_dec_floor(_2d).unwrap(), Int::from(5_u64));
-    //         assert_eq!(_10.checked_div_dec_ceil(_2d).unwrap(), Int::from(5_u64));
-
-    //         // ceil works
-    //         assert_eq!(_11.checked_div_dec_floor(_1_5d).unwrap(), Int::from(7_u64));
-    //         assert_eq!(_11.checked_div_dec_ceil(_1_5d).unwrap(), Int::from(8_u64));
-
-    //         // overflow num but not overflow result
-    //         assert_eq!(max.checked_div_dec_floor(_2d).unwrap(), max / _2);
-    //         assert_eq!(max.checked_div_dec_ceil(_2d).unwrap(), max / _2 + _1);
-
-    //         // overflow num and overflow result
-    //         assert!(matches!(
-    //             max.checked_div_dec_floor(_0_5d),
-    //             Err(MathError::OverflowConversion { .. })
-    //         ));
-    //         assert!(matches!(
-    //             max.checked_div_dec_ceil(_0_5d),
-    //             Err(MathError::OverflowConversion { .. })
-    //         ));
-
-    //         // Divide by zero
-    //         assert!(matches!(
-    //             _10.checked_div_dec_floor(_0d),
-    //             Err(MathError::DivisionByZero { .. })
-    //         ));
-    //         assert!(matches!(
-    //             _10.checked_div_dec_ceil(_0d),
-    //             Err(MathError::DivisionByZero { .. })
-    //         ));
     //     }
     // );
 }
