@@ -97,28 +97,32 @@ mod tests {
         bnum::{cast::As, types::I256},
     };
 
-    int_test!( singed_to_unsigned,
-        Specific
-        i128 = [[ // Passing cases
+    int_test!( singed_to_unsigned
+        inputs = {
+            i128 = {
+                passing: [
                     (0, Uint128::ZERO),
                     (10i128, Uint128::TEN),
                     (i128::MAX, Uint128::new(i128::MAX as u128))
                 ],
-                [ // Failing cases
+                failing: [
                     -1,
                     i128::MIN
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::ZERO, Uint256::ZERO),
                     (I256::TEN, Uint256::TEN),
                     (I256::MAX, Uint256::new(I256::MAX.as_()))
                 ],
-                [ // Failing cases
+                failing: [
                     -I256::ONE,
                     I256::MIN
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (unsigned, expected) in samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert_eq!(uint.checked_into_unsigned().unwrap(), expected);

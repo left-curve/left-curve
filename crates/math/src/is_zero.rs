@@ -57,9 +57,8 @@ impl_is_zero! {
 mod tests {
     use crate::{int_test, test_utils::dt, Int, IsZero, NumberConst};
 
-    int_test!( is_zero,
-        NoArgs
-        => |zero: Int<_>| {
+    int_test!( is_zero
+        method = |zero: Int<_>| {
             assert!(zero.is_zero());
             let non_zero = Int::ONE;
             dt(non_zero, zero);

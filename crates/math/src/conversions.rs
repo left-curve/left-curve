@@ -38,50 +38,56 @@ mod tests {
         Udec128, Udec256, Uint256,
     };
 
-    int_test!( int_to_dec,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( int_to_dec
+        inputs = {
+            u128 = {
+                passing: [
                     (0_u128, Udec128::ZERO),
                     (10, Udec128::TEN),
                     (u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES), Udec128::new(u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES))),
                 ],
-                [ // Failing cases
+                failing: [
                     u128::MAX / 10_u128.pow(Udec128::DECIMAL_PLACES) + 1
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing: [
                     (U256::ZERO, Udec256::ZERO),
                     (U256::TEN, Udec256::TEN),
                     (U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES), Udec256::raw(Uint256::new(U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) * U256::TEN.pow(Udec128::DECIMAL_PLACES)))),
                 ],
-                [ // Failing cases
+                failing: [
                     U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + 1
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing: [
                     (0_i128, Dec128::ZERO),
                     (10, Dec128::TEN),
                     (-10, -Dec128::TEN),
                     (i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES), Dec128::new(i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES))),
                     (i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES), Dec128::new(i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES))),
                 ],
-                [ // Failing cases
+                failing: [
                     i128::MAX / 10_i128.pow(Dec128::DECIMAL_PLACES) + 1,
                     i128::MIN / 10_i128.pow(Dec128::DECIMAL_PLACES) - 1,
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::ZERO, Dec256::ZERO),
                     (I256::TEN, Dec256::TEN),
                     (-I256::TEN, -Dec256::TEN),
                     (I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES), Dec256::raw(Int256::new(I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES) * I256::TEN.pow(Dec256::DECIMAL_PLACES)))),
                     (I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES), Dec256::raw(Int256::new(I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES) * I256::TEN.pow(Dec256::DECIMAL_PLACES)))),
                 ],
-                [ // Failing cases
+                failing: [
                     I256::MAX / I256::TEN.pow(Dec256::DECIMAL_PLACES) + I256::ONE,
                     I256::MIN / I256::TEN.pow(Dec256::DECIMAL_PLACES) - I256::ONE,
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (unsigned, expected) in samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert_eq!(uint.checked_into_dec().unwrap(), expected);

@@ -40,103 +40,149 @@ pub(crate) fn _smart_assert<T: Debug + PartialEq>(left: T, right: T) {
 macro_rules! int_test {
     // No Args
     (
-            $name:ident,
-            NoArgs
-            $(attrs = $(#[$meta:meta])*)?
-            => $test_fn:expr) => {
-                int_test!($name, Specific u128 = [] u256 = [] i128 = [] i256 = [] $(attrs = $(#[$meta])*)? => $test_fn);
-        };
+        $name:ident
+        $(attrs = $(#[$meta:meta])* $(,)?)?
+        method = $test_fn:expr
+    ) => {
+        int_test!($name
+            inputs = {
+                u128 = []
+                u256 = []
+                i128 = []
+                i256 = []
+            }
+            $(attrs = $(#[$meta])*)?
+            method = $test_fn
+        );
+    };
     // Multiple optional tests with attrs.
     (
-            $name:ident,
-            Specific
-            $(u128  = [$($pu128:expr),*])?
-            $(u256  = [$($pu256:expr),*])?
-            $(i128  = [$($pi128:expr),*])?
-            $(i256  = [$($pi256:expr),*])?
-            attrs = $(#[$meta:meta])*
-            => $test_fn:expr
-        ) => {
-            paste::paste! {
-                $(#[$meta])*
-                #[allow(clippy::just_underscores_and_digits)]
-                #[test]
-                fn [<$name _u128>]() {
-                    $(
-                        ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
-                    )?
-                }
-
-                $(#[$meta])*
-                #[allow(clippy::just_underscores_and_digits)]
-                #[test]
-                fn [<$name _u256>]() {
-                    $(
-                        ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
-                    )?
-                }
-
-                $(#[$meta])*
-                #[allow(clippy::just_underscores_and_digits)]
-                #[test]
-                fn [<$name _i128>]() {
-                    $(
-                        ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
-                    )?
-                }
-
-                $(#[$meta])*
-                #[allow(clippy::just_underscores_and_digits)]
-                #[test]
-                fn [<$name _i256>]() {
-                    $(
-                        ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
-                    )?
-                }
+        $name:ident
+        inputs = {
+            $(u128 = [$($pu128:expr),*] $(,)?)?
+            $(u256 = [$($pu256:expr),*] $(,)?)?
+            $(i128 = [$($pi128:expr),*] $(,)?)?
+            $(i256 = [$($pi256:expr),*] $(,)?)?
+        } $(,)?
+        attrs = $(#[$meta:meta])* $(,)?
+        method = $test_fn:expr
+    ) => {
+        paste::paste! {
+            $(#[$meta])*
+            #[allow(clippy::just_underscores_and_digits)]
+            #[test]
+            fn [<$name _u128>]() {
+                $(
+                    ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
+                )?
             }
-        };
+
+            $(#[$meta])*
+            #[allow(clippy::just_underscores_and_digits)]
+            #[test]
+            fn [<$name _u256>]() {
+                $(
+                    ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
+                )?
+            }
+
+            $(#[$meta])*
+            #[allow(clippy::just_underscores_and_digits)]
+            #[test]
+            fn [<$name _i128>]() {
+                $(
+                    ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
+                )?
+            }
+
+            $(#[$meta])*
+            #[allow(clippy::just_underscores_and_digits)]
+            #[test]
+            fn [<$name _i256>]() {
+                $(
+                    ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
+                )?
+            }
+        }
+    };
     // Multiple optional tests without attrs.
     (
-            $name:ident,
-            Specific
-            $(u128  = [$($pu128:expr),*])?
-            $(u256  = [$($pu256:expr),*])?
-            $(i128  = [$($pi128:expr),*])?
-            $(i256  = [$($pi256:expr),*])?
-            => $test_fn:expr
-        ) => {
-            paste::paste! {
-                $(
-                    #[test]
-                    #[allow(clippy::just_underscores_and_digits)]
-                    fn [<$name _u128>]() {
-                        ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
-                    }
-                )?
+        $name:ident
+        inputs = {
+            $(u128 = [$($pu128:expr),*] $(,)?)?
+            $(u256 = [$($pu256:expr),*] $(,)?)?
+            $(i128 = [$($pi128:expr),*] $(,)?)?
+            $(i256 = [$($pi256:expr),*] $(,)?)?
+        } $(,)?
+        method = $test_fn:expr
+    ) => {
+        paste::paste! {
+            $(
+                #[test]
+                #[allow(clippy::just_underscores_and_digits)]
+                fn [<$name _u128>]() {
+                    ($test_fn)(<$crate::Uint128 as $crate::NumberConst>::ZERO, $($pu128),*);
+                }
+            )?
 
-                $(
-                    #[test]
-                    #[allow(clippy::just_underscores_and_digits)]
-                    fn [<$name _u256>]() {
-                        ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
-                    }
-                )?
+            $(
+                #[test]
+                #[allow(clippy::just_underscores_and_digits)]
+                fn [<$name _u256>]() {
+                    ($test_fn)(<$crate::Uint256 as $crate::NumberConst>::ZERO, $($pu256),*);
+                }
+            )?
 
-                $(
-                    #[test]
-                    #[allow(clippy::just_underscores_and_digits)]
-                    fn [<$name _i128>]() {
-                        ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
-                    }
-                )?
+            $(
+                #[test]
+                #[allow(clippy::just_underscores_and_digits)]
+                fn [<$name _i128>]() {
+                    ($test_fn)(<$crate::Int128 as $crate::NumberConst>::ZERO, $($pi128),*);
+                }
+            )?
 
-                $(
-                    #[test]
-                    #[allow(clippy::just_underscores_and_digits)]
-                    fn [<$name _i256>]() {
-                        ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
-                    }
-                )?
+            $(
+                #[test]
+                #[allow(clippy::just_underscores_and_digits)]
+                fn [<$name _i256>]() {
+                    ($test_fn)(<$crate::Int256 as $crate::NumberConst>::ZERO, $($pi256),*);
+                }
+            )?
+        }
+    };
+    (
+        $name:ident
+        inputs = {
+            $(u128 = {
+                passing: [$($pu128:expr),* $(,)?] $(,)?
+                $(failing: [$($fu128:expr),* $(,)?])? $(,)?
+            } $(,)? )?
+            $(u256 = {
+                passing: [$($pu256:expr),* $(,)?] $(,)?
+                $(failing: [$($fu256:expr),* $(,)?])? $(,)?
+            } $(,)? )?
+            $(i128 = {
+                passing: [$($pi128:expr),* $(,)?] $(,)?
+                $(failing: [$($fi128:expr),* $(,)?])? $(,)?
+            } $(,)? )?
+            $(i256 = {
+                passing: [$($pi256:expr),* $(,)?] $(,)?
+                $(failing: [$($fi256:expr),* $(,)?])? $(,)?
+            } $(,)? )?
+        } $(,)?
+        $(attrs = $ (#[$meta:meta])*)? $(,)?
+        method = $test_fn:expr
+    ) => {
+        int_test!(
+            $name
+            inputs = {
+                $(u128 = [[$($pu128),*] $(, [$($fu128),*])?])?
+                $(u256 = [[$($pu256),*] $(, [$($fu256),*])?])?
+                $(i128 = [[$($pi128),*] $(, [$($fi128),*])?])?
+                $(i256 = [[$($pi256),*] $(, [$($fi256),*])?])?
             }
-        };
+            $(attrs = $(#[$meta])*)?
+            method = $test_fn
+        );
+    };
 }

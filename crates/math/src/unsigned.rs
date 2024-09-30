@@ -92,24 +92,28 @@ mod tests {
 
     use crate::{int_test, test_utils::bt, Int, Int128, Int256, MathError, Unsigned};
 
-    int_test!( unsigned_to_signed,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( unsigned_to_signed
+        inputs = {
+            u128 = {
+                passing: [
                     (10u128, Int128::new(10)),
                     (u128::MAX / 2, Int128::new((u128::MAX / 2) as i128))
                 ],
-                [ // Failing cases
+                failing: [
                     u128::MAX / 2 + 1
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing: [
                     (U256::from(10u128), Int256::new_from_i128(10)),
                     (U256::MAX / 2, Int256::new((U256::MAX / 2).as_()))
                 ],
-                [ // Failing cases
+                failing: [
                     U256::MAX / 2 + 1
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (unsigned, expected) in samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert_eq!(uint.checked_into_signed().unwrap(), expected);

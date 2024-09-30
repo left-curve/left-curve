@@ -340,55 +340,61 @@ mod tests {
         bnum::types::{I256, U256},
     };
 
-    int_test!( add,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( add
+        inputs = {
+            u128 = {
+                passing: [
                     (0_u128, 0_u128, 0_u128),
                     (0, u128::MAX, u128::MAX),
-                    (10, 20, 30),
-                ],
-                [ // Failing cases
+                    (10, 20, 30)
+                ]
+                failing: [
                     (u128::MAX, 1_u128)
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing: [
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::ZERO, U256::MAX, U256::MAX),
-                    (U256::from(10_u32), U256::from(20_u32), U256::from(30_u32)),
-                ],
-                [  // Failing cases
+                    (U256::from(10_u32), U256::from(20_u32), U256::from(30_u32))
+                ]
+                failing: [
                     (U256::MAX, U256::ONE)
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing: [
                     (0_i128, 0_i128, 0_i128),
                     (0, i128::MAX, i128::MAX),
                     (0, i128::MIN, i128::MIN),
                     (10, 20, 30),
                     (-10, 20, 10),
                     (10, -20, -10),
-                    (-10, -20, -30),
+                    (-10, -20, -30)
                 ],
-                [ // Failing cases
+                failing: [
                     (i128::MAX, 1),
-                    (i128::MIN, -1),
-                ]]
-
-        i256 = [[ // Passing cases
+                    (i128::MIN, -1)
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::ZERO, I256::ZERO, I256::ZERO),
                     (I256::ZERO, I256::MAX, I256::MAX),
                     (I256::ZERO, I256::MIN, I256::MIN),
                     (I256::from(10), I256::from(20), I256::from(30)),
                     (I256::from(-10), I256::from(20), I256::from(10)),
                     (I256::from(10), I256::from(-20), I256::from(-10)),
-                    (I256::from(-10), I256::from(-20), I256::from(-30)),
-                ],
-                [ // Failing cases
+                    (I256::from(-10), I256::from(-20), I256::from(-30))
+                ]
+                failing: [
                     (I256::MAX, I256::ONE),
-                    (I256::MIN, -I256::ONE),
-                ]]
-        => |_0, samples, failing_samples| {
-            for (left, right, expected) in samples {
+                    (I256::MIN, -I256::ONE)
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (left, right, expected) in passing {
                 let left = Int::new(left);
                 let right = Int::new(right);
                 let expected = Int::new(expected);
@@ -396,7 +402,7 @@ mod tests {
                 assert_eq!(left + right, expected);
             }
 
-            for (left, right) in failing_samples {
+            for (left, right) in failing {
                 let left = Int::new(left);
                 let right = Int::new(right);
                 dts!(_0, left, right);
@@ -405,47 +411,48 @@ mod tests {
         }
     );
 
-    int_test!( add_panic,
-        NoArgs
+    int_test!( add_panic
         attrs = #[should_panic(expected = "addition overflow")]
-        => |_0| {
+        method = |_0| {
             let max = bt(_0, Int::MAX);
             let one = bt(_0,Int::ONE);
             let _ = max + one;
         }
     );
 
-    int_test!( add_assign,
-        NoArgs
+    int_test!( add_assign
         attrs = #[allow(clippy::op_ref)]
-        => |_0| {
+        method = |_0| {
             let mut a = bt(_0, Int::new(14_u64.into()));
             a += bt(_0, Int::new(2_u64.into()));
             assert_eq!(a, bt(_0, Int::new(16_u64.into())));
         }
     );
 
-    int_test!( sub,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( sub
+        inputs = {
+            u128 = {
+                passing: [
                     (0_u128, 0_u128, 0_u128),
                     (u128::MAX, u128::MAX, 0),
                     (30, 20, 10),
                 ],
-                [ // Failing cases
+                failing: [
                     (1_u128, 2_u128)
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing:[
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::MAX, U256::MAX, U256::ZERO),
                     (U256::from(30_u32), U256::from(10_u32), U256::from(20_u32)),
                 ],
-                [ // Failing cases
+                failing:[
                     (U256::ONE, U256::from(2_u32))
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing:[
                     (0_i128, 0_i128, 0_i128),
                     (i128::MAX, i128::MAX, 0),
                     (i128::MIN, i128::MIN, 0),
@@ -455,12 +462,13 @@ mod tests {
                     (10, -20, 30),
                     (-10, -20, 10),
                 ],
-                [ // Failing cases
+                failing:[
                     (i128::MIN, 1),
                     (i128::MAX, -1),
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing:[
                     (I256::ZERO, I256::ZERO, I256::ZERO),
                     (I256::MAX, I256::MAX, I256::ZERO),
                     (I256::MIN, I256::MIN, I256::ZERO),
@@ -470,11 +478,13 @@ mod tests {
                     (I256::from(10), I256::from(-20), I256::from(30)),
                     (I256::from(-10), I256::from(-20), I256::from(10)),
                 ],
-                [ // Failing cases
+                failing: [
                     (I256::MIN, I256::ONE),
                     (I256::MAX, -I256::ONE),
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (left, right, expected) in samples {
                 let left = Int::new(left);
                 let right = Int::new(right);
@@ -492,47 +502,48 @@ mod tests {
         }
     );
 
-    int_test!( sub_panic,
-        NoArgs
+    int_test!( sub_panic
         attrs = #[should_panic(expected = "subtraction overflow")]
-        => |_0| {
+        method = |_0| {
             let max = bt(_0, Int::MIN);
             let one = bt(_0, Int::ONE);
             let _ = max - one;
         }
     );
 
-    int_test!( sub_assign,
-        NoArgs
+    int_test!( sub_assign
         attrs = #[allow(clippy::op_ref)]
-        => |_0| {
+        method = |_0| {
             let mut a = bt(_0, Int::new(14_u64.into()));
             a -= bt(_0, Int::new(2_u64.into()));
             assert_eq!(a, bt(_0, Int::new(12_u64.into())));
         }
     );
 
-    int_test!( mul,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( mul
+        inputs = {
+            u128 = {
+                passing: [
                     (0_u128, 0_u128, 0_u128),
                     (u128::MAX, 0, 0),
                     (30, 20, 600),
                 ],
-                [ // Failing cases
+                failing: [
                     (u128::MAX, 2_u128)
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing: [
                     (U256::ZERO, U256::ZERO, U256::ZERO),
                     (U256::MAX, U256::ZERO, U256::ZERO),
                     (U256::from(30_u32), U256::from(10_u32), U256::from(300_u32)),
                 ],
-                [  // Failing cases
+                failing: [  // Failing cases
                     (U256::MAX, U256::from(2_u32))
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing: [
                     (0_i128, 0_i128, 0_i128),
                     (i128::MAX, 0, 0),
                     (i128::MIN, 1, i128::MIN),
@@ -543,14 +554,15 @@ mod tests {
                     (10, -20, -200),
                     (-10, -20, 200),
                 ],
-                [ // Failing cases
+                failing: [
                     (i128::MIN, 2),
                     (i128::MIN, -2),
                     (i128::MAX, 2),
                     (i128::MAX, -2),
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::ZERO, I256::ZERO, I256::ZERO),
                     (I256::MAX, I256::ZERO, I256::ZERO),
                     (I256::MIN, I256::ONE, I256::MIN),
@@ -561,13 +573,15 @@ mod tests {
                     (I256::from(10), I256::from(-20), I256::from(-200)),
                     (I256::from(-10), I256::from(-20), I256::from(200)),
                 ],
-                [ // Failing cases
+                failing: [
                     (I256::MIN, I256::from(2)),
                     (I256::MIN, I256::from(-2)),
                     (I256::MAX, I256::from(2)),
                     (I256::MAX, I256::from(-2)),
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (left, right, expected) in samples {
                 let left = Int::new(left);
                 let right = Int::new(right);
@@ -585,43 +599,44 @@ mod tests {
         }
     );
 
-    int_test!( mul_panic,
-        NoArgs
+    int_test!( mul_panic
         attrs = #[should_panic(expected = "multiplication overflow")]
-        => |_0| {
+        method = |_0| {
             let max = bt(_0, Int::MAX);
             let one = bt(_0, Int::new(2_u64.into()));
             let _ = max * one;
         }
     );
 
-    int_test!( mul_assign,
-        NoArgs
+    int_test!( mul_assign
         attrs = #[allow(clippy::op_ref)]
-        => |_0| {
+        method = |_0| {
             let mut a = bt(_0, Int::new(14_u64.into()));
             a *= bt(_0, Int::new(2_u64.into()));
             assert_eq!(a, bt(_0, Int::new(28_u64.into())));
         }
     );
 
-    int_test!( div,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( div
+        inputs = {
+            u128 = {
+                passing: [ // Passing cases
                     (u128::MAX, 1_u128, u128::MAX),
                     (0, 1, 0),
                     (300, 20, 15),
                     (30, 20, 1),
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing:[ // Passing cases
                     (U256::MAX, U256::ONE, U256::MAX),
                     (U256::ZERO, U256::ONE, U256::ZERO),
                     (U256::from(300_u32), U256::from(20_u32), U256::from(15_u32)),
                     (U256::from(30_u32), U256::from(20_u32), U256::from(1_u32)),
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing:[ // Passing cases
                     (i128::MAX, 1_i128, i128::MAX),
                     (i128::MIN, 1_i128, i128::MIN),
                     (i128::MIN + 1, -1_i128, i128::MAX),
@@ -632,9 +647,10 @@ mod tests {
                     (-30, 20, -1),
                     (-300, -20, 15),
                     (300, -20, -15),
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing:[ // Passing cases
                     (I256::MAX, I256::ONE, I256::MAX),
                     (I256::MIN, I256::ONE, I256::MIN),
                     (I256::MIN + I256::ONE, -I256::ONE, I256::MAX),
@@ -645,8 +661,10 @@ mod tests {
                     (I256::from(-30), I256::from(20), I256::from(-1)),
                     (I256::from(-300), I256::from(-20), I256::from(15)),
                     (I256::from(300), I256::from(-20), I256::from(-15)),
-                ]]
-        => |_0, samples| {
+                ]
+            }
+        }
+        method = |_0, samples| {
             for (left, right, expected) in samples {
                 let left = Int::new(left);
                 let right = Int::new(right);
@@ -663,69 +681,73 @@ mod tests {
         }
     );
 
-    int_test!( div_panic,
-        NoArgs
+    int_test!( div_panic
         attrs = #[should_panic(expected = "division by zero")]
-        => |_0| {
+        method = |_0| {
             let max = bt(_0, Int::MAX);
             let _ = max / _0;
         }
     );
 
-    int_test!( div_assign,
-        NoArgs
+    int_test!( div_assign
         attrs = #[allow(clippy::op_ref)]
-        => |_0| {
+        method = |_0| {
             let mut a = bt(_0, Int::new(14_u64.into()));
             a /= bt(_0, Int::new(2_u64.into()));
             assert_eq!(a, bt(_0, Int::new(7_u64.into())));
         }
     );
 
-    int_test!( pow,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( pow
+        inputs = {
+            u128 = {
+                passing: [
                     (2_u128, 2, 4_u128),
                     (10, 3, 1_000),
                     (0, 2, 0),
                 ],
-                [ // Failing cases
+                failing: [
                     (u128::MAX, 2)
-                ]]
-
-        u256 = [[ // Passing cases
+                ]
+            }
+            u256 = {
+                passing: [
                     (U256::from(2_u32), 2, U256::from(4_u32)),
                     (U256::from(10_u32), 3, U256::from(1_000_u32)),
                     (U256::ZERO, 2, U256::ZERO),
                 ],
-                [  // Failing cases
+                failing: [
                     (U256::MAX, 2)
-                ]]
-
-        i128 = [[ // Passing cases
+                ]
+            }
+            i128 = {
+                passing: [
                     (2_i128, 2, 4_i128),
                     (10, 3, 1_000),
                     (-2, 2, 4),
                     (-10, 3, -1_000),
                     (0, 2, 0),
                 ],
-                [ // Failing cases
+                failing: [
                     (i128::MAX, 2),
                     (i128::MIN, 2)
-                ]]
-
-        i256 = [[ // Passing cases
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::from(2), 2, I256::from(4)),
                     (I256::from(10), 3, I256::from(1_000)),
                     (I256::from(-2), 2, I256::from(4)),
                     (I256::from(-10), 3, I256::from(-1_000)),
                     (I256::ZERO, 2, I256::ZERO),
                 ],
-                [ // Failing cases
+                failing: [
                     (I256::MAX, 2),
                     (I256::MIN, 2),
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (base, exp, expected) in samples {
                 let base = Int::new(base);
                 let expected = Int::new(expected);
@@ -740,50 +762,57 @@ mod tests {
         }
     );
 
-    int_test!( sqrt,
-        Specific
-        u128 = [[ // Passing cases
+    int_test!( sqrt
+        inputs = {
+            u128 = {
+                passing: [
                     (4_u128, 2_u128),
                     (64, 8),
                     (80, 8),
                     (81, 9),
                 ],
-                [ // Failing cases
-                    0u128;0
-                ]]
+                failing: [
+                ]
+            }
 
-        u256 = [[ // Passing cases
+            u256 = {
+                passing: [
                     (U256::from(4_u32), U256::from(2_u32)),
                     (U256::from(64_u32), U256::from(8_u32)),
                     (U256::from(80_u32), U256::from(8_u32)),
                     (U256::from(81_u32), U256::from(9_u32)),
                 ],
-                [  // Failing cases
-                    U256::ZERO;0
-                ]]
+                failing: [
+                ]
+            }
 
-        i128 = [[ // Passing cases
+            i128 = {
+                passing: [
                     (4_i128, 2_i128),
                     (64, 8),
                     (80, 8),
                     (81, 9),
                 ],
-                [ // Failing cases
+                failing: [
                     -1_i128,
                     -4_i128
-                ]]
+                ]
+            }
 
-        i256 = [[ // Passing cases
-                (I256::from(4_i128), I256::from(2_i128)),
-                (I256::from(64), I256::from(8)),
-                (I256::from(80), I256::from(8)),
-                (I256::from(81), I256::from(9)),
+            i256 = {
+                passing: [
+                    (I256::from(4_i128), I256::from(2_i128)),
+                    (I256::from(64), I256::from(8)),
+                    (I256::from(80), I256::from(8)),
+                    (I256::from(81), I256::from(9)),
                 ],
-                [ // Failing cases
+                failing: [
                     I256::from(-1),
                     I256::from(-4)
-                ]]
-        => |_0, samples, failing_samples| {
+                ]
+            }
+        }
+        method = |_0, samples, failing_samples| {
             for (base, expected) in samples {
                 let base = Int::new(base);
                 let expected = Int::new(expected);
@@ -799,35 +828,36 @@ mod tests {
         }
     );
 
-    int_test!( wrapping_add,
-        NoArgs
-        => |_0| {
+    int_test!( wrapping_add
+        method = |_0| {
                 let max = bt(_0, Int::MAX);
                 assert_eq!(max.wrapping_add(Int::ONE), Int::MIN);
         }
     );
 
-    int_test!( wrapping_sub,
-        NoArgs
-        => |_0| {
+    int_test!( wrapping_sub
+        method = |_0| {
                 let min = bt(_0, Int::MIN);
                 assert_eq!(min.wrapping_sub(Int::ONE), Int::MAX);
         }
     );
 
-    int_test!( wrapping_mul,
-        Specific
-        u128 = [[
+    int_test!( wrapping_mul
+        inputs = {
+            u128 = {
+                passing:[
                     (u128::MAX, 2_u128, u128::MAX - 1),
                     (u128::MAX, 3_u128, u128::MAX - 2)
-                ]]
-
-        u256 = [[
+                ]
+            }
+            u256 = {
+                passing:[
                     (U256::MAX, U256::from(2_u32), U256::MAX - U256::ONE),
                     (U256::MAX, U256::from(3_u32), U256::MAX - U256::from(2_u32))
-                ]]
-
-        i128 = [[
+                ]
+            }
+            i128 = {
+                passing:[
                     (i128::MAX, 2_i128, -2_i128),
                     (i128::MAX, 3_i128, i128::MAX - 2),
                     (i128::MAX, 4_i128, -4_i128),
@@ -837,9 +867,10 @@ mod tests {
                     (i128::MIN, 3_i128, i128::MIN),
                     (i128::MIN, 4_i128, 0),
                     (i128::MIN, 5_i128, i128::MIN),
-                ]]
-
-        i256 = [[
+                ]
+            }
+            i256 = {
+                passing:[
                     (I256::MAX, I256::from(2), I256::from(-2)),
                     (I256::MAX, I256::from(3), I256::MAX - I256::from(2)),
                     (I256::MAX, I256::from(4), I256::from(-4)),
@@ -849,9 +880,10 @@ mod tests {
                     (I256::MIN, I256::from(3), I256::MIN),
                     (I256::MIN, I256::from(4), I256::ZERO),
                     (I256::MIN, I256::from(5), I256::MIN),
-                ]]
-
-       => |_0, samples| {
+                ]
+            }
+        }
+       method =  |_0, samples| {
             for (left, right, expected) in samples {
                 let left = Int::new(left);
                 let right = Int::new(right);
@@ -862,19 +894,22 @@ mod tests {
        }
     );
 
-    int_test!( wrapping_pow,
-        Specific
-        u128 = [[
+    int_test!( wrapping_pow
+        inputs = {
+            u128 = {
+                passing:[
                     (u128::MAX, 2, 1),
                     (u128::MAX, 3, u128::MAX)
-                ]]
-
-        u256 = [[
+                ]
+            }
+            u256 = {
+                passing:[
                     (U256::MAX, 2, U256::ONE),
                     (U256::MAX, 3, U256::MAX)
-                ]]
-
-        i128 = [[
+                ]
+            }
+            i128 = {
+                passing:[
                     (i128::MAX, 2, 1),
                     (i128::MAX, 3, i128::MAX),
                     (i128::MAX, 4, 1),
@@ -883,9 +918,10 @@ mod tests {
                     (i128::MIN, 2, 0),
                     (i128::MIN, 3, 0),
                     (i128::MIN, 4, 0),
-                ]]
-
-        i256 = [[
+                ]
+            }
+            i256 = {
+                passing:[
                     (I256::MAX, 2, I256::ONE),
                     (I256::MAX, 3, I256::MAX),
                     (I256::MAX, 4, I256::ONE),
@@ -894,15 +930,16 @@ mod tests {
                     (I256::MIN, 2, I256::ZERO),
                     (I256::MIN, 3, I256::ZERO),
                     (I256::MIN, 4, I256::ZERO),
-                ]]
-
-       => |_0, samples| {
+                ]
+            }
+        }
+        method =  |_0, samples| {
             for (base, exp, expected) in samples {
                 let base = Int::new(base);
                 let expected = Int::new(expected);
                 dts!(_0, base, expected);
                 assert_eq!(base.wrapping_pow(exp), expected);
             }
-       }
+        }
     );
 }

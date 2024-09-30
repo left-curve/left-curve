@@ -425,24 +425,42 @@ pub mod testse {
         },
     };
 
-    int_test!( size_of,
-        Specific
-        u128 = [16]
-        u256 = [32]
-        i128 = [16]
-        i256 = [32]
-        => |_0, size| {
+    int_test!( size_of
+        inputs = {
+            u128 = [16]
+            u256 = [32]
+            i128 = [16]
+            i256 = [32]
+        }
+        method = |_0, size| {
             assert_eq!(core::mem::size_of_val(&_0), size);
         }
     );
 
-    int_test!( from_str,
-        Specific
-        u128 = [[(128_u128, "128")]]
-        u256 = [[(U256::from(256_u128), "256")]]
-        i128 = [[(-128_i128, "-128"), (-128_i128, "-128")]]
-        i256 = [[(I256::from(256_i128), "256"), (I256::from(-256_i128), "-256")]]
-        => |_, samples| {
+    int_test!( from_str
+        inputs = {
+            u128 = {
+                passing:[
+                    (128_u128, "128")
+                ]
+            }
+            u256 = {
+                passing:[
+                    (U256::from(256_u128), "256")
+                ]
+            }
+            i128 = {
+                passing:[
+                    (-128_i128, "-128"), (-128_i128, "-128")
+                ]
+            }
+            i256 = {
+                passing:[
+                    (I256::from(256_i128), "256"), (I256::from(-256_i128), "-256")
+                ]
+            }
+        }
+        method = |_, samples| {
             for (val, str) in samples {
                 let original = Int::new(val);
                 assert_eq!(original.0, val);
@@ -457,41 +475,66 @@ pub mod testse {
         }
     );
 
-    int_test!( display,
-        Specific
-        u128 = [[(Uint128::new(128_u128), "128")]]
-        u256 = [[(Uint256::new(U256::from(256_u128)), "256")]]
-        i128 = [[
-                    (Int128::MAX, "170141183460469231731687303715884105727"),
-                    (Int128::MIN, "-170141183460469231731687303715884105728"),
-                    (Int128::new(i128::ZERO), "0"),
-                ]]
-        i256 = [[
-            (Int256::MAX, "57896044618658097711785492504343953926634992332820282019728792003956564819967"),
-            (Int256::MIN, "-57896044618658097711785492504343953926634992332820282019728792003956564819968"),
-            (Int256::ZERO, "0"),
-
-        ]]
-        => |_, samples| {
+    int_test!( display
+        inputs = {
+            u128 = {
+                passing: [
+                    (Uint128::new(128_u128), "128")
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Uint256::new(U256::from(256_u128)), "256")
+                ]
+            }
+            i128 = {
+                passing: [
+                        (Int128::MAX, "170141183460469231731687303715884105727"),
+                        (Int128::MIN, "-170141183460469231731687303715884105728"),
+                        (Int128::new(i128::ZERO), "0"),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int256::MAX, "57896044618658097711785492504343953926634992332820282019728792003956564819967"),
+                    (Int256::MIN, "-57896044618658097711785492504343953926634992332820282019728792003956564819968"),
+                    (Int256::ZERO, "0"),
+                ]
+            }
+        }
+        method = |_, samples| {
             for (number, str) in samples {
                 assert_eq!(format!("{}", number), str);
             }
         }
     );
 
-    int_test!( display_padding_front,
-        Specific
-        u128 = [[("00128", "128")]]
-        u256 = [[("000256", "256")]]
-        i128 = [[
+    int_test!( display_padding_front
+        inputs = {
+            u128 = {
+                passing: [
+                    ("00128", "128")
+                ]
+            }
+            u256 = {
+                passing: [
+                    ("000256", "256")
+                ]
+            }
+            i128 = {
+                passing: [
                     ("000128", "128"),
-                    ("-000128", "-128"),
-                ]]
-        i256 = [[
+                    ("-000128", "-128")
+                ]
+            }
+            i256 = {
+                passing: [
                     ("000256", "256"),
-                    ("-000256", "-256"),
-                ]]
-        => |_0, samples| {
+                    ("-000256", "-256")
+                ]
+            }
+        }
+        method = |_0, samples| {
             for (padded_str, compare) in samples {
                 let uint = bt(_0, Int::from_str(padded_str).unwrap());
                 assert_eq!(format!("{}", uint), compare);
@@ -499,14 +542,22 @@ pub mod testse {
         }
     );
 
-    int_test!( json,
-        Specific
-        u128 = [["123456"]]
-        u256 = [["123456"]]
-        i128 = [["123456", "-123456"]]
-        i256 = [["123456", "-123456"]]
-
-    => |_0, samples| {
+    int_test!( json
+        inputs = {
+            u128 = {
+                passing: ["123456"]
+            }
+            u256 = {
+                passing: ["123456"]
+            }
+            i128 = {
+                passing: ["123456", "-123456"]
+            }
+            i256 = {
+                passing: ["123456", "-123456"]
+            }
+        }
+    method = |_0, samples| {
 
         for sample in samples {
             let original = bt(_0, Int::from_str(sample).unwrap());
@@ -525,21 +576,34 @@ pub mod testse {
         }
     });
 
-    int_test!( compare,
-        Specific
-        u128 = [[(10_u128, 200_u128)]]
-        u256 = [[(U256::from(10_u128), U256::from(200_u128))]]
-        i128 = [[
+    int_test!( compare
+        inputs = {
+            u128 = {
+                passing: [
+                    (10_u128, 200_u128)
+                    ]
+                }
+            u256 = {
+                passing: [
+                    (U256::from(10_u128), U256::from(200_u128))
+                    ]
+                }
+            i128 = {
+                passing: [
                     (10_i128, 200_i128),
                     (-10, 200),
                     (-200, -10)
-                ]]
-        i256 = [[
+                ]
+            }
+            i256 = {
+                passing: [
                     (I256::from(10), I256::from(200_i128)),
                     (I256::from(-10), I256::from(200)),
                     (I256::from(-200), I256::from(-10))
-                 ]]
-        => |_0, samples| {
+                ]
+            }
+        }
+        method = |_0, samples| {
             for (low, high) in samples {
                 let low = Int::new(low);
                 let high = Int::new(high);
@@ -549,6 +613,7 @@ pub mod testse {
                 assert_eq!(low, low);
             }
         }
+
     );
 
     // int_test!( multiply_ratio,
