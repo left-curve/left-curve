@@ -90,11 +90,12 @@ impl_next_udec! {
     Dec128  => Dec256,
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
-        super::NextNumber,
-        crate::{int_test, test_utils::bt, Int},
+        crate::{int_test, test_utils::bt, Int, NextNumber},
         bnum::{
             cast::As,
             types::{I256, I512, U256, U512},
