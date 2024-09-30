@@ -334,7 +334,6 @@ impl_number! {
 
 #[cfg(test)]
 mod tests {
-
     use {
         crate::{dts, int_test, test_utils::bt, Int, MathError, Number, NumberConst},
         bnum::types::{I256, U256},
@@ -771,8 +770,7 @@ mod tests {
                     (80, 8),
                     (81, 9),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             u256 = {
                 passing: [
@@ -781,8 +779,7 @@ mod tests {
                     (U256::from(80_u32), U256::from(8_u32)),
                     (U256::from(81_u32), U256::from(9_u32)),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             i128 = {
                 passing: [
@@ -885,7 +882,6 @@ mod tests {
             }
         }
         method = |_0, passing| {
-
             for (base, div, expected) in passing {
                 let base = Int::new(base);
                 let div = Int::new(div);
@@ -907,6 +903,7 @@ mod tests {
             let _ = max % _0;
         }
     );
+
     int_test!( rem_assign
         attrs = #[allow(clippy::op_ref)]
         method = |_0| {
@@ -918,15 +915,15 @@ mod tests {
 
     int_test!( wrapping_add
         method = |_0| {
-                let max = bt(_0, Int::MAX);
-                assert_eq!(max.wrapping_add(Int::ONE), Int::MIN);
+            let max = bt(_0, Int::MAX);
+            assert_eq!(max.wrapping_add(Int::ONE), Int::MIN);
         }
     );
 
     int_test!( wrapping_sub
         method = |_0| {
-                let min = bt(_0, Int::MIN);
-                assert_eq!(min.wrapping_sub(Int::ONE), Int::MAX);
+            let min = bt(_0, Int::MIN);
+            assert_eq!(min.wrapping_sub(Int::ONE), Int::MAX);
         }
     );
 
