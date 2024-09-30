@@ -46,6 +46,8 @@ where
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
@@ -220,9 +222,7 @@ mod tests {
 
             // Not overflow
             let max = Int::MAX;
-            // let min = Int::MIN;
             assert_eq!(max.checked_multiply_ratio_ceil(_10, _10).unwrap(), max);
-            // assert_eq!(min.checked_multiply_ratio_ceil(_10, _10).unwrap(), min);
 
             // Divison by zero
             assert!(matches!(max.checked_multiply_ratio_ceil(_10, _0), Err(MathError::DivisionByZero { .. })));
