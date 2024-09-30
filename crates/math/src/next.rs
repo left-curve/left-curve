@@ -89,3 +89,49 @@ impl_next_udec! {
     Udec128 => Udec256,
     Dec128  => Dec256,
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::NextNumber,
+        crate::{int_test, test_utils::bt, Int},
+        bnum::{
+            cast::As,
+            types::{I256, I512, U256, U512},
+        },
+        std::i128,
+    };
+
+    int_test!( next
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::MAX, U256::from(u128::MAX))
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::MAX, U256::MAX.as_::<U512>())
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i128::MAX, I256::from(i128::MAX)),
+                    (i128::MIN, I256::from(i128::MIN))
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::MAX, I256::MAX.as_::<I512>()),
+                    (I256::MIN, I256::MIN.as_::<I512>())
+                ]
+            }
+        }
+        method = |_0, samples| {
+            for (current, next) in samples {
+                let current = bt(_0, Int::new(current));
+                assert_eq!(current.into_next(), Int::new(next));
+            }
+        }
+    );
+}
