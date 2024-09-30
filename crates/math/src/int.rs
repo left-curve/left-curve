@@ -616,51 +616,9 @@ pub mod testse {
 
     );
 
-    // int_test! (shr,
-    //     NoArgs
-    //     => |_0| {
-    //         let original = bt(_0, Int::from(160_u64));
-    //         assert_eq!(original >> 1, bt(_0, Int::from(80_u64)));
-    //         assert_eq!(original >> 3, bt(_0, Int::from(20_u64)));
-    //         assert_eq!(original >> 2, bt(_0, Int::from(40_u64)));
-    //     }
-    // );
 
-    // int_test!( shr_overflow_panics,
-    //     Specific
-    //     u128 = [128]
-    //     u256 = [256]
-    //     i128 = [128]
-    //     i256 = [256]
-    //     attrs = #[should_panic(expected = "shift overflow")]
-    //     => |u, shift| {
-    //         let original = bt(u, Int::from(1_u64));
-    //         let _ = original >> shift;
-    //     }
-    // );
 
-    // int_test! (shl,
-    //     NoArgs
-    //     => |_0| {
-    //         let original = bt(_0, Int::from(160_u64));
-    //         assert_eq!(original << 1, bt(_0, Int::from(320_u64)));
-    //         assert_eq!(original << 2, bt(_0, Int::from(640_u64)));
-    //         assert_eq!(original << 3, bt(_0, Int::from(1280_u64)));
-    //     }
-    // );
 
-    // int_test!( shl_overflow_panics,
-    //     Specific
-    //     u128 = [128]
-    //     u256 = [256]
-    //     i128 = [128]
-    //     i256 = [256]
-    //     attrs = #[should_panic(expected = "shift overflow")]
-    //     => |_0, shift| {
-    //         let original = bt(_0, Int::from(1_u64));
-    //         let _ = original << shift;
-    //     }
-    // );
 
     // int_test!( rem,
     //     NoArgs

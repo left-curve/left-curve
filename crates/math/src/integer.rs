@@ -79,7 +79,11 @@ impl_integer! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Bytable, Number, NumberConst, Uint128, Uint256},
+        crate::{
+            int_test, test_utils::bt, Bytable, Int, Integer, MathError, Number, NumberConst,
+            Uint128, Uint256,
+        },
+        bnum::types::{I256, U256},
         proptest::{array::uniform32, prelude::*},
     };
 
@@ -107,4 +111,277 @@ mod tests {
             prop_assert!((root + Uint256::ONE) * (root + Uint256::ONE) > square);
         }
     }
+
+    int_test!( checked_shr
+        inputs = {
+            u128 = {
+                passing: [
+                    (160_u128, 1, 80_u128),
+                    (160_u128, 2, 40_u128),
+                    (160_u128, 3, 20_u128),
+                ],
+                failing: [
+                    128,
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(160_u128), 1, U256::from(80_u128)),
+                    (U256::from(160_u128), 2, U256::from(40_u128)),
+                    (U256::from(160_u128), 3, U256::from(20_u128)),
+                ],
+                failing: [
+                    256,
+                ]
+            }
+            i128 = {
+                passing: [
+                    (160_i128, 1, 80_i128),
+                    (160_i128, 2, 40_i128),
+                    (160_i128, 3, 20_i128),
+                    (-160_i128, 1, -80_i128),
+                    (-160_i128, 2, -40_i128),
+                    (-160_i128, 3, -20_i128),
+                ],
+                failing: [
+                    128,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(160_i128), 1, I256::from(80_i128)),
+                    (I256::from(160_i128), 2, I256::from(40_i128)),
+                    (I256::from(160_i128), 3, I256::from(20_i128)),
+                    (I256::from(-160_i128), 1, I256::from(-80_i128)),
+                    (I256::from(-160_i128), 2, I256::from(-40_i128)),
+                    (I256::from(-160_i128), 3, I256::from(-20_i128)),
+                ],
+                failing: [
+                    256,
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (base, shift, expect) in passing {
+                let base = Int::new(base);
+                let expect = Int::new(expect);
+                assert_eq!(base.checked_shr(shift).unwrap(), expect);
+            }
+            for shift in failing {
+                let base = bt(_0, Int::ONE);
+                assert!(matches!(base.checked_shr(shift), Err(MathError::OverflowShr { .. })));
+            }
+
+        }
+    );
+
+    int_test!( shr_panic
+        inputs = {
+            u128 = [128]
+            u256 = [256]
+            i128 = [128]
+            i256 = [256]
+        }
+        attrs = #[should_panic(expected = "shift overflow")]
+        method = |_0, shift| {
+            let base = bt(_0, Int::MAX);
+            let _ = base << shift;
+        }
+    );
+
+    int_test!( checked_shl
+        inputs = {
+            u128 = {
+                passing: [
+                    (160_u128, 1, 320_u128),
+                    (160_u128, 2, 640_u128),
+                    (160_u128, 3, 1280_u128),
+                ],
+                failing: [
+                    128,
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(160_u128), 1, U256::from(320_u128)),
+                    (U256::from(160_u128), 2, U256::from(640_u128)),
+                    (U256::from(160_u128), 3, U256::from(1280_u128)),
+                ],
+                failing: [
+                    256,
+                ]
+            }
+            i128 = {
+                passing: [
+                    (160_i128, 1, 320_i128),
+                    (160_i128, 2, 640_i128),
+                    (160_i128, 3, 1280_i128),
+                    (-160_i128, 1, -320_i128),
+                    (-160_i128, 2, -640_i128),
+                    (-160_i128, 3, -1280_i128),
+                ],
+                failing: [
+                    128,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(160_i128), 1, I256::from(320_i128)),
+                    (I256::from(160_i128), 2, I256::from(640_i128)),
+                    (I256::from(160_i128), 3, I256::from(1280_i128)),
+                    (I256::from(-160_i128), 1, I256::from(-320_i128)),
+                    (I256::from(-160_i128), 2, I256::from(-640_i128)),
+                    (I256::from(-160_i128), 3, I256::from(-1280_i128)),
+                ],
+                failing: [
+                    256,
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (base, shift, expect) in passing {
+                let base = Int::new(base);
+                let expect = Int::new(expect);
+                assert_eq!(base.checked_shl(shift).unwrap(), expect);
+            }
+            for shift in failing {
+                let base = bt(_0, Int::MAX);
+                assert!(matches!(base.checked_shl(shift), Err(MathError::OverflowShl { .. })));
+            }
+        }
+    );
+
+    int_test!( shl_panic
+        inputs = {
+            u128 = [128]
+            u256 = [256]
+            i128 = [128]
+            i256 = [256]
+        }
+        attrs = #[should_panic(expected = "shift overflow")]
+        method = |_0, shift| {
+            let base = bt(_0, Int::ONE);
+            let _ = base << shift;
+        }
+    );
+
+    int_test!( checked_ilog2
+        inputs = {
+            u128 = {
+                passing: [
+                    (1024_u128, 10),
+                    (1025_u128, 10),
+                    (2047_u128, 10),
+                    (2048_u128, 11)
+                ],
+                failing: [
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(1024_u128), 10),
+                    (U256::from(1025_u128), 10),
+                    (U256::from(2047_u128), 10),
+                    (U256::from(2048_u128), 11)
+                ],
+                failing: [
+                ]
+            }
+            i128 = {
+                passing: [
+                    (1024_i128, 10),
+                    (1025_i128, 10),
+                    (2047_i128, 10),
+                    (2048_i128, 11)
+                ],
+                failing: [
+                    -1_i128,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(1024_i128), 10),
+                    (I256::from(1025_i128), 10),
+                    (I256::from(2047_i128), 10),
+                    (I256::from(2048_i128), 11)
+                ],
+                failing: [
+                    -I256::ONE,
+                ]
+            }
+        }
+        method = |_0: Int<_>, samples, failing| {
+            for (base, expect) in samples {
+                let base = Int::new(base);
+                assert_eq!(base.checked_ilog2().unwrap(), expect);
+            }
+            for base in failing {
+                let base = bt(_0, Int::new(base));
+                assert!(matches!(base.checked_ilog2(), Err(MathError::ZeroLog)));
+
+            }
+            // 0 log
+            assert!(matches!(_0.checked_ilog2(), Err(MathError::ZeroLog)))
+        }
+    );
+
+    int_test!( checked_ilog10
+        inputs = {
+            u128 = {
+                passing: [
+                    (100_u128, 2),
+                    (101_u128, 2),
+                    (999_u128, 2),
+                    (1000_u128, 3)
+                ],
+                failing: [
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(100_u128), 2),
+                    (U256::from(101_u128), 2),
+                    (U256::from(999_u128), 2),
+                    (U256::from(1000_u128), 3)
+                ],
+                failing: [
+                ]
+            }
+            i128 = {
+                passing: [
+                    (100_i128, 2),
+                    (101_i128, 2),
+                    (999_i128, 2),
+                    (1000_i128, 3)
+                ],
+                failing: [
+                    -1_i128,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(100_i128), 2),
+                    (I256::from(101_i128), 2),
+                    (I256::from(999_i128), 2),
+                    (I256::from(1000_i128), 3)
+                ],
+                failing: [
+                    -I256::ONE,
+                ]
+            }
+        }
+        method = |_0: Int<_>, samples, failing| {
+            for (base, expect) in samples {
+                let base = Int::new(base);
+                assert_eq!(base.checked_ilog10().unwrap(), expect);
+            }
+            for base in failing {
+                let base = bt(_0, Int::new(base));
+                assert!(matches!(base.checked_ilog10(), Err(MathError::ZeroLog)));
+
+            }
+            // 0 log
+            assert!(matches!(_0.checked_ilog10(), Err(MathError::ZeroLog)))
+        }
+    );
 }
