@@ -86,3 +86,51 @@ macro_rules! impl_sign_signed {
 }
 
 impl_sign_signed!(i8, i16, i32, i64, i128, I256, I512);
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{int_test, test_utils::bt, Int, NumberConst, Sign},
+        bnum::types::{I256, U256},
+    };
+
+    int_test!( sign
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::ZERO, false, u128::ZERO),
+                    (u128::MAX, false, u128::MAX),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::ZERO, false, U256::ZERO),
+                    (U256::MAX, false, U256::MAX),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i128::ZERO, false, i128::ZERO),
+                    (i128::MAX, false, i128::MAX),
+                    (-i128::ONE, true, i128::ONE),
+                    (-i128::MAX, true, i128::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::ZERO, false, I256::ZERO),
+                    (I256::MAX, false, I256::MAX),
+                    (-I256::ONE, true, I256::ONE),
+                    (-I256::MAX, true, I256::MAX),
+                ]
+            }
+        }
+        method = |_0, passing| {
+            for (base, sign, abs) in passing {
+                let base = bt(_0, Int::new(base));
+                assert_eq!(base.is_negative(), sign);
+                assert_eq!(base.abs(), Int::new(abs));
+            }
+        }
+    );
+}
