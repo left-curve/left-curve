@@ -93,6 +93,8 @@ macro_rules! impl_sign_signed {
 
 impl_sign_signed!(i8, i16, i32, i64, i128, I256, I512);
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
@@ -150,7 +152,7 @@ mod tests {
 
             for failing in failing {
                 let base = bt(_0, Int::new(failing));
-                assert!(matches!(base.checked_abs(), Err(MathError::OverflowConversion {.. })));
+                assert!(matches!(base.checked_abs(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );
