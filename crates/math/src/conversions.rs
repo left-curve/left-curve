@@ -1,13 +1,10 @@
-use {
-    crate::{Dec, FixedPoint, Int, MathError, MathResult, Number},
-    std::{fmt::Display, ops::Div},
-};
+use crate::{Dec, FixedPoint, Int, MathError, MathResult, Number};
 
 // -------------------------------- int -> dec ---------------------------------
 
 impl<U> Int<U>
 where
-    Self: Number + Display + Copy,
+    Self: Number + Copy + ToString,
     Dec<U>: FixedPoint<U>,
 {
     pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
@@ -22,10 +19,11 @@ where
 impl<U> Dec<U>
 where
     Self: FixedPoint<U>,
-    Int<U>: Div<Output = Int<U>>,
+    Int<U>: Number,
 {
     pub fn into_int(self) -> Int<U> {
-        self.0 / Self::DECIMAL_FRACTION
+        // We know the decimal fraction is non-zero, so safe to unwrap.
+        self.0.checked_div(Self::DECIMAL_FRACTION).unwrap()
     }
 }
 
