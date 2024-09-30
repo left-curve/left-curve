@@ -95,6 +95,8 @@ impl_prev_dec! {
     Dec256  => Dec128,
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
@@ -149,7 +151,7 @@ mod tests {
 
             for failing in failing {
                 let current = bt(_0, Int::new(failing));
-                assert!(matches!(current.checked_into_prev(), Err(MathError::OverflowConversion { .. }) ));
+                assert!(matches!(current.checked_into_prev(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );
