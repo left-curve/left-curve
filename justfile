@@ -30,3 +30,8 @@ optimize:
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     --platform linux/amd64 \
     leftcurve/optimizer:0.17.0-rc.0; fi
+
+# Update data used for wasmvm tests
+update-test-data:
+  cp -v artifacts/grug_mock_*.wasm crates/vm/wasm/testdata/ && \
+  cp -v artifacts/grug_tester.wasm crates/vm/wasm/testdata/
