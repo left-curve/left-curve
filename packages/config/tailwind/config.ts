@@ -4,6 +4,9 @@ import type { Config } from "tailwindcss";
 export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
+      backgroundImage: {
+        "gradient-container": "linear-gradient(156.47deg, #FFF2E299 23.72%, #C4B7BA99 128.44%)",
+      },
       colors: {
         green: {
           DEFAULT: "#afb244",
@@ -23,7 +26,12 @@ export const tailwindConfig: Partial<Config> = {
           start: "#7EE7A8",
           end: "#F53D6B",
         },
+        "gradient-2": {
+          start: "#FFF2E2",
+          end: "#C4B7BA",
+        },
         "typography-black": {
+          100: "#867481",
           200: "#6B4862",
           300: "#402B3B",
         },
@@ -35,6 +43,9 @@ export const tailwindConfig: Partial<Config> = {
           300: "#B9A2AA",
           400: "#926D7B",
         },
+        "typography-pink": {
+          200: "#D88F97",
+        },
         "typography-rose": {
           500: "#E0B989",
           600: "#C9A274",
@@ -45,6 +56,11 @@ export const tailwindConfig: Partial<Config> = {
         },
         "surface-rose": {
           200: "#FEF1E1",
+          300: "#FDE8CE",
+          400: "#FCDFBA",
+        },
+        "surface-purple": {
+          200: "#E0D6DA",
         },
         "surface-green": {
           100: "#EEF2F0",

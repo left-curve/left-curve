@@ -9,6 +9,9 @@ export { Spinner } from "./atoms/Spinner";
 export { Tabs } from "./atoms/tabs/Tabs";
 export { TabItem as Tab } from "./atoms/tabs/TabItem";
 export { ProposalCard } from "./atoms/ProposalCard";
+export { Select, Item as SelectItem } from "./atoms/Select";
+export { GradientContainer } from "./atoms/GradientContainer";
+export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Molecules                                 */
@@ -54,3 +57,4 @@ export { BellIcon } from "./icons/Bell";
 export { WalletIcon } from "./icons/Wallet";
 export { ExternalLinkIcon } from "./icons/ExternalLink";
 export { SearchIcon } from "./icons/Search";
+export { ArrowSelectorIcon } from "./icons/ArrowSelector";
