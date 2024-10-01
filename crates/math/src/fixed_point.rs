@@ -33,3 +33,49 @@ impl FixedPoint<I256> for Dec256 {
     const DECIMAL_FRACTION: Int256 = Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{dec_test, FixedPoint, Int},
+        bnum::types::{I256, U256},
+        std::fmt::Debug,
+    };
+
+    dec_test!( test
+        inputs = {
+            udec128 = {
+                passing: [
+                    (18_u32, 1_000_000_000_000_000_000_u128)
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (18_u32, U256::from(1_000_000_000_000_000_000_u128))
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (18_u32, 1_000_000_000_000_000_000_i128)
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (18_u32, I256::from(1_000_000_000_000_000_000_i128))
+                ]
+            }
+        }
+        method = |_0d, passing| {
+            for (precision, decimal_fraction) in passing {
+
+                fn t<U, FP: FixedPoint<U>>(_: FP, precision: u32, decimal_fraction: Int<U>)
+                where Int<U>: PartialEq + Debug {
+                    assert_eq!(FP::DECIMAL_FRACTION, decimal_fraction);
+                    assert_eq!(FP::DECIMAL_PLACES, precision);
+                }
+
+                t(_0d, precision, Int::new(decimal_fraction));
+            }
+        }
+    );
+}
