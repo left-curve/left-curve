@@ -2,16 +2,27 @@
 resolver = "2"
 members  = [
   "bin",
+  "contracts/account/factory",
+  "contracts/account/safe",
+  "contracts/account/spot",
+  "contracts/amm",
+  "contracts/bank",
+  "contracts/ibc-transfer",
   "contracts/mocks/account",
   "contracts/mocks/bank",
   "contracts/mocks/taxman",
+  "contracts/taxman",
   "contracts/tester",
+  "contracts/token-factory",
   "crates/app",
+  "crates/auth",
   "crates/client",
   "crates/crypto",
+  "crates/dango",
   "crates/db/disk",
   "crates/db/memory",
   "crates/ffi",
+  "crates/genesis",
   "crates/jellyfish-merkle",
   "crates/macros",
   "crates/math",
@@ -21,6 +32,7 @@ members  = [
   "crates/types",
   "crates/vm/rust",
   "crates/vm/wasm",
+  "e2e",
 ]
 
 [workspace.package]
@@ -36,6 +48,7 @@ categories    = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
 anyhow             = "1"
+base64             = "0.22" # TODO: used in dango-auth; replace with data-encoding
 blake2             = "0.10"
 blake3             = "1"
 bnum               = "0.12"

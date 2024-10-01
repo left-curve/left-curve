@@ -1,0 +1,19 @@
+[package]
+name          = "dango-auth"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+anyhow                = { workspace = true }
+base64                = { workspace = true }
+grug                  = { path = "../std" }
+dango-account-factory = { path = "../../contracts/account/factory", features = ["library"] }
+dango-types           = { path = "../dango" }
+
+[dev-dependencies]
