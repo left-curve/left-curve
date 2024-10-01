@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/dango": "workspace:^",
+    "@leftcurve/ui": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/connect-kit": "workspace:^",
     "next": "14.2.5",

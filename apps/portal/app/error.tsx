@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@leftcurve/dango";
+import { Button } from "../../../packages/ui/build/index.mjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

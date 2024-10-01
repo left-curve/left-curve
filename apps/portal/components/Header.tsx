@@ -9,7 +9,7 @@ import {
   MenuAccounts,
   MenuConnections,
   MenuNotifications,
-} from "@leftcurve/dango";
+} from "../../../packages/ui/build/index.mjs";
 
 import { AccountType, ConnectorStatus } from "@leftcurve/types";
 

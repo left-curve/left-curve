@@ -1,5 +1,7 @@
 "use client";
 
+import { useAccount } from "@leftcurve/react";
+import type { AccountType } from "@leftcurve/types";
 import {
   AccountInfo,
   SafeMembersTable,
@@ -7,9 +9,7 @@ import {
   SafeProposalsTable,
   Tab,
   Tabs,
-} from "@leftcurve/dango";
-import { useAccount } from "@leftcurve/react";
-import type { AccountType } from "@leftcurve/types";
+} from "../../../packages/ui/build/index.mjs";
 
 export const ManageSafe: React.FC = () => {
   const { account } = useAccount<typeof AccountType.Safe>();

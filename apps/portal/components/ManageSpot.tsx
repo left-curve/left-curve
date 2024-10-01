@@ -1,4 +1,4 @@
-import { AccountInfo, SpotPortfolioTable } from "@leftcurve/dango";
+import { AccountInfo, SpotPortfolioTable } from "../../../packages/ui/build/index.mjs";
 
 export const ManageSpot: React.FC = () => {
   return (

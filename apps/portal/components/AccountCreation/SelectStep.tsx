@@ -1,7 +1,7 @@
 "use client";
 
-import { AccountDescriptionCard, useWizard } from "@leftcurve/dango";
 import { AccountType, type AccountTypes } from "@leftcurve/types";
+import { AccountDescriptionCard, useWizard } from "../../../../packages/ui/build/index.mjs";
 import { motion } from "framer-motion";
 import type React from "react";
 

@@ -8,14 +8,14 @@ on:
       - "develop"
     paths:
       - "packages/react/**"
-      - "packages/dango/**"
+      - "packages/ui/**"
       - "apps/portal/**"
   pull_request:
     branches:
       - "*"
     paths:
       - "packages/react/**"
-      - "packages/dango/**"
+      - "packages/ui/**"
       - "apps/portal/**"
 
 jobs:

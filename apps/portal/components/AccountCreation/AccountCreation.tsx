@@ -1,4 +1,4 @@
-import { WizardProvider } from "@leftcurve/dango";
+import { WizardProvider } from "../../../../packages/ui/build/index.mjs";
 import type React from "react";
 import { SelectStep } from "./SelectStep";
 import { Stepper } from "./Stepper";

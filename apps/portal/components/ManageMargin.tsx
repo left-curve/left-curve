@@ -1,6 +1,10 @@
 "use client";
 
-import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@leftcurve/dango";
+import {
+  MarginAccountInfo,
+  MarginAssetsTable,
+  MarginDebtsTable,
+} from "../../../packages/ui/build/index.mjs";
 
 export const ManageMargin: React.FC = () => {
   return (

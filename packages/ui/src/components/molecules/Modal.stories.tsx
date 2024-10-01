@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import type React from "react";
 import { useRef } from "react";
-import { Button, CloseIcon } from "../";
+import { Button, CloseIcon } from "..";
 import { Modal, type ModalProps, type ModalRef } from "./Modal";
 
 const meta: Meta<typeof Modal> = {

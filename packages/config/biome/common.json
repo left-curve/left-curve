@@ -33,7 +33,7 @@
   },
   "overrides": [
     {
-      "include": ["examples/vite/**", "packages/dango/**"],
+      "include": ["examples/**", "packages/ui/**", "packages/apps/**"],
       "linter": {
         "rules": {
           "a11y": {

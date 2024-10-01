@@ -1,6 +1,6 @@
 "use client";
 
-import { GradientContainer, twMerge, useWizard } from "@leftcurve/dango";
+import { GradientContainer, twMerge, useWizard } from "../../../../packages/ui/build/index.mjs";
 import { AnimatePresence } from "framer-motion";
 import type { PropsWithChildren } from "react";
 

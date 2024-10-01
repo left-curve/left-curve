@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 
 import { Header } from "~/components/Header";
 
-import "@leftcurve/dango/fonts/ABCDiatypeRounded/index.css";
+import "@leftcurve/ui/fonts/ABCDiatypeRounded/index.css";
 import "~/public/styles/globals.css";
 
 export const metadata: Metadata = {

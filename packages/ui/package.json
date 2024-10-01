@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/dango",
+  "name": "@leftcurve/ui",
   "version": "0.1.0",
   "scripts": {
     "sb:dev": "storybook dev -p 6006",

@@ -1,4 +1,4 @@
-import { ExampleHeader } from "@leftcurve/dango/components/examples";
+import { ExampleHeader } from "../../../packages/ui/build/components/examples/index.d.mts";
 
 function App() {
   return (
