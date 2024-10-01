@@ -2,9 +2,9 @@
 resolver = "2"
 members  = [
   "bin",
-  "contracts/account",
-  "contracts/bank",
-  "contracts/taxman",
+  "contracts/mocks/account",
+  "contracts/mocks/bank",
+  "contracts/mocks/taxman",
   "contracts/tester",
   "crates/app",
   "crates/client",

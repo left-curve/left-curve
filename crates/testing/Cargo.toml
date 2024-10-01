@@ -15,9 +15,9 @@ grug-app           = { path = "../app", features = ["tracing"] }
 grug-crypto        = { path = "../crypto" }
 grug-db-memory     = { path = "../db/memory" }
 grug-math          = { path = "../math" }
-grug-mock-account  = { path = "../../contracts/account", features = ["library"] }
-grug-mock-bank     = { path = "../../contracts/bank", features = ["library"] }
-grug-mock-taxman   = { path = "../../contracts/taxman", features = ["library"] }
+grug-mock-account  = { path = "../../contracts/mocks/account", features = ["library"] }
+grug-mock-bank     = { path = "../../contracts/mocks/bank", features = ["library"] }
+grug-mock-taxman   = { path = "../../contracts/mocks/taxman", features = ["library"] }
 grug-types         = { path = "../types" }
 grug-vm-rust       = { path = "../vm/rust" }
 k256               = { workspace = true }
