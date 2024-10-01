@@ -197,10 +197,10 @@ fn safe() {
         .should_succeed_and(|prop| prop.status == Status::Executed);
 
     // Ensure the tokens have been delivered.
-    // Owner has 100_000_000_000_000 uusd to start, and now has received 888_888.
+    // Owner has 100_000_000_000 uusd to start, and now has received 888_888.
     suite
         .query_balance(&accounts.owner, "uusdc")
-        .should_succeed_and_equal(Uint128::new(100_000_000_888_888));
+        .should_succeed_and_equal(Uint128::new(100_000_888_888));
 
     // --------------------- Proposal with manual execute ----------------------
 

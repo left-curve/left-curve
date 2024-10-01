@@ -8,7 +8,7 @@ install:
 
 # Run tests
 test:
-  cargo test --all-features
+  RUST_BACKTRACE=1 cargo test --all-features
 
 # Perform linting
 lint:

@@ -2,7 +2,10 @@ use {
     crate::{PoolExt, PoolInit},
     anyhow::bail,
     dango_types::amm::{XykParams, XykPool},
-    grug::{Coin, CoinPair, Inner, MultiplyFraction, MultiplyRatio, Number, PrevNumber, Uint128},
+    grug::{
+        Coin, CoinPair, Inner, MultiplyFraction, MultiplyRatio, NextNumber, Number, PrevNumber,
+        Uint128,
+    },
 };
 
 impl PoolInit for XykPool {
@@ -74,20 +77,22 @@ impl PoolExt for XykPool {
 
     // See `liquidity-providion.md` in docs for the math used here.
     fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint128> {
-        let pool1 = *self.liquidity.first().amount;
-        let pool2 = *self.liquidity.second().amount;
+        let pool1 = self.liquidity.first().amount.into_next();
+        let pool2 = self.liquidity.second().amount.into_next();
 
-        let user1 = *deposit.first().amount;
-        let user2 = *deposit.second().amount;
+        let user1 = deposit.first().amount.into_next();
+        let user2 = deposit.second().amount.into_next();
 
         let shares_before = self.shares;
         let shares_after = shares_before
+            .into_next()
             .checked_pow(2)?
             .checked_mul(pool1.checked_add(user1)?)?
             .checked_mul(pool2.checked_add(user2)?)?
             .checked_div(pool1)?
             .checked_div(pool2)?
-            .checked_sqrt()?;
+            .checked_sqrt()?
+            .checked_into_prev()?;
 
         self.shares = shares_after;
         self.liquidity.merge(deposit)?;
