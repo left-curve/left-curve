@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Coin, Denom, Uint256},
+    grug::{Addr, Coin, Denom, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -33,13 +33,13 @@ pub enum ExecuteMsg {
     Mint {
         denom: Denom,
         to: Addr,
-        amount: Uint256,
+        amount: Uint128,
     },
     /// Burn the token of the specified subdenom and amount from a source.
     Burn {
         denom: Denom,
         from: Addr,
-        amount: Uint256,
+        amount: Uint128,
     },
 }
 

@@ -8,7 +8,7 @@ use {
         config::ACCOUNT_FACTORY_KEY,
         token_factory::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Part, Response, Uint256},
+    grug::{Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Part, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -108,7 +108,7 @@ fn create(
     Ok(Response::new())
 }
 
-fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint256) -> anyhow::Result<Response> {
+fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == DENOM_ADMINS.load(ctx.storage, &denom)?,
         "sender isn't the admin of denom `{denom}`"
@@ -123,7 +123,7 @@ fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint256) -> anyhow::Res
     )?))
 }
 
-fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint256) -> anyhow::Result<Response> {
+fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint128) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == DENOM_ADMINS.load(ctx.storage, &denom)?,
         "sender isn't the admin of denom `{denom}`"

@@ -1,6 +1,6 @@
 use {
     crate::amm::FeeRate,
-    grug::{CoinPair, Denom, Uint256},
+    grug::{CoinPair, Denom, Uint128},
 };
 
 /// Identifier of an AMM pool.
@@ -57,7 +57,7 @@ pub struct XykPool {
     /// The amount of liquidity provided to this pool.
     pub liquidity: CoinPair,
     /// The total amount of liquidity shares outstanding.
-    pub shares: Uint256,
+    pub shares: Uint128,
 }
 
 /// State of a concentrated liquidity AMM pool (a.k.a. Curve V2 pool).
@@ -68,6 +68,6 @@ pub struct ConcentratedPool {
     /// The amount of liquidity provided to this pool.
     pub liquidity: CoinPair,
     /// The total amount of liquidity shares outstanding.
-    pub shares: Uint256,
+    pub shares: Uint128,
     // TODO: other params...
 }

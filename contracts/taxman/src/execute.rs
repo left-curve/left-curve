@@ -8,7 +8,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        Response, StdResult, Tx, TxOutcome, Uint256,
+        Response, StdResult, Tx, TxOutcome, Uint128,
     },
 };
 
@@ -56,7 +56,8 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Compute the maximum amount of fee this transaction may incur.
     //
     // Note that we ceil this amount, instead of flooring.
-    let withhold_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let withhold_amount =
+        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // If the withhold amount is non-zero, we force transfer this amount from
     // the sender to the fee recipient.
@@ -101,11 +102,13 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     //
     // FIXME: this doesn't work if the fee rate was changed during this tx!!!
     // Instead of recomputing, we should save this in the storage.
-    let withheld_amount = Uint256::from(tx.gas_limit).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let withheld_amount =
+        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // Compute how much fee to charge the sender, based on the actual amount of
     // gas consumed.
-    let charge_amount = Uint256::from(outcome.gas_used).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    let charge_amount =
+        Uint128::new(outcome.gas_used as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // If we have withheld more funds than the actual charge amount, we need to
     // refund the difference.

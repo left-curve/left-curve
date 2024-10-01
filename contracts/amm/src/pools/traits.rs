@@ -1,4 +1,4 @@
-use grug::{Coin, CoinPair, Uint256};
+use grug::{Coin, CoinPair, Uint128};
 
 // Note: this trait is not object-safe, because of:
 // - it has an associated type;
@@ -23,9 +23,9 @@ pub trait PoolExt {
 
     /// Provide liquidity to the pool.
     /// Returns the amount of liquidity tokens to be minted.
-    fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint256>;
+    fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint128>;
 
     /// Withdraw liquidity from the pool.
     /// Returns the amount of liquidity to be refunded to the user.
-    fn withdraw_liquidity(&mut self, shares_to_burn: Uint256) -> anyhow::Result<CoinPair>;
+    fn withdraw_liquidity(&mut self, shares_to_burn: Uint128) -> anyhow::Result<CoinPair>;
 }

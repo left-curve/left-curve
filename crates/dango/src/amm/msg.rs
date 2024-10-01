@@ -1,6 +1,6 @@
 use {
     crate::amm::{Config, Pool, PoolId, PoolParams},
-    grug::{Coin, Coins, Uint256, UniqueVec},
+    grug::{Coin, Coins, Uint128, UniqueVec},
     std::collections::BTreeMap,
 };
 
@@ -18,12 +18,12 @@ pub enum ExecuteMsg {
         // Note: the route must not contain any loop. We make sure of this by
         // using a `UniqueVec`.
         route: UniqueVec<PoolId>,
-        minimum_output: Option<Uint256>,
+        minimum_output: Option<Uint128>,
     },
     /// Provide liquidity to a trading pool.
     ProvideLiquidity {
         pool_id: PoolId,
-        minimum_output: Option<Uint256>,
+        minimum_output: Option<Uint128>,
     },
     /// Withdraw liquidity from a trading pool.
     WithdrawLiquidity { pool_id: PoolId },

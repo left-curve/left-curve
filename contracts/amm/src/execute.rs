@@ -9,7 +9,7 @@ use {
         bank,
     },
     grug::{
-        Coins, Denom, Inner, Message, MutableCtx, Number, Response, StdResult, Uint256, UniqueVec,
+        Coins, Denom, Inner, Message, MutableCtx, Number, Response, StdResult, Uint128, UniqueVec,
     },
 };
 
@@ -113,7 +113,7 @@ fn create_pool(ctx: MutableCtx, params: PoolParams) -> anyhow::Result<Response> 
 fn swap(
     ctx: MutableCtx,
     route: UniqueVec<PoolId>,
-    minimum_output: Option<Uint256>,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
     let input = ctx.funds.into_one_coin()?;
@@ -150,7 +150,7 @@ fn swap(
 fn provide_liquidity(
     mut ctx: MutableCtx,
     pool_id: PoolId,
-    minimum_output: Option<Uint256>,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let mut pool = POOLS.load(ctx.storage, pool_id)?;
 

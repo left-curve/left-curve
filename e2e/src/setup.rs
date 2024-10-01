@@ -3,7 +3,7 @@ use {
     dango_genesis::{build_genesis, Codes, Contracts, GenesisUser},
     grug::{
         btree_map, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration, NumberConst,
-        TestSuite, Timestamp, Udec256, Uint256, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
 };
 
@@ -75,7 +75,7 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000_000_u128)?,
+                balances: Coins::one("uusdc", 100_000_000_000)?,
             },
             fee_recipient.username.clone() => GenesisUser {
                 key: fee_recipient.key,
@@ -86,9 +86,9 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
                 key: relayer.key,
                 key_hash: relayer.key_hash,
                 balances: btree_map! {
-                    "uusdc" => 100_000_000_000_000_u128,
-                    "uatom" => 100_000_000_000_000_u128,
-                    "uosmo" => 100_000_000_000_000_u128,
+                    "uusdc" => 100_000_000_000_000,
+                    "uatom" => 100_000_000_000_000,
+                    "uosmo" => 100_000_000_000_000,
                 }
                 .try_into()?,
             },
@@ -96,8 +96,8 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
         &owner.username,
         &fee_recipient.username,
         "uusdc",
-        Udec256::ZERO,
-        Uint256::from(10_000_000_u128),
+        Udec128::ZERO,
+        Uint128::new(10_000_000),
     )?;
 
     let suite = TestSuite::new(

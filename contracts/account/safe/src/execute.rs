@@ -718,7 +718,7 @@ mod tests {
                 description: None,
                 messages: vec![Message::transfer(
                     Addr::mock(123),
-                    Coins::one("uusdc", 12_345_u128).unwrap(),
+                    Coins::one("uusdc", 12_345).unwrap(),
                 )
                 .unwrap()],
                 status: Status::Voting {

@@ -2,7 +2,7 @@ use {
     crate::{PoolExt, PoolInit},
     anyhow::bail,
     dango_types::amm::{XykParams, XykPool},
-    grug::{Coin, CoinPair, Inner, MultiplyFraction, MultiplyRatio, Number, Uint256},
+    grug::{Coin, CoinPair, Inner, MultiplyFraction, MultiplyRatio, Number, PrevNumber, Uint128},
 };
 
 impl PoolInit for XykPool {
@@ -14,7 +14,7 @@ impl PoolInit for XykPool {
             .amount
             .checked_full_mul(*liquidity.second().amount)?
             .checked_sqrt()?
-            .try_into()?;
+            .checked_into_prev()?;
 
         Ok(Self {
             params,
@@ -73,7 +73,7 @@ impl PoolExt for XykPool {
     }
 
     // See `liquidity-providion.md` in docs for the math used here.
-    fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint256> {
+    fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint128> {
         let pool1 = *self.liquidity.first().amount;
         let pool2 = *self.liquidity.second().amount;
 
@@ -95,7 +95,7 @@ impl PoolExt for XykPool {
         Ok(shares_after - shares_before)
     }
 
-    fn withdraw_liquidity(&mut self, shares_to_burn: Uint256) -> anyhow::Result<CoinPair> {
+    fn withdraw_liquidity(&mut self, shares_to_burn: Uint128) -> anyhow::Result<CoinPair> {
         let shares_before = self.shares;
 
         self.shares = shares_before.checked_sub(shares_to_burn)?;

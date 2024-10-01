@@ -11,7 +11,7 @@ use {
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, GenesisState, Hash160,
         Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, StdResult,
-        Udec256, Uint256, GENESIS_SENDER,
+        Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, str::FromStr},
@@ -57,8 +57,8 @@ pub fn build_genesis<T, D>(
     owner: &Username,
     fee_recipient: &Username,
     fee_denom: D,
-    fee_rate: Udec256,
-    denom_creation_fee: Uint256,
+    fee_rate: Udec128,
+    denom_creation_fee: Uint128,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -152,10 +152,10 @@ where
         &amm::InstantiateMsg {
             config: amm::Config {
                 fee_recipient,
-                protocol_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(10_u128)), // 0.1%
+                protocol_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(10)), // 0.1%
                 pool_creation_fee: NonZero::new_unchecked(Coin::new(
                     fee_denom.clone(),
-                    10_000_000_u128,
+                    10_000_000,
                 )?), // 10 USDC
             },
         },

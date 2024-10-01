@@ -1,7 +1,7 @@
 use {
     dango_e2e::setup_test,
     dango_types::token_factory::{ExecuteMsg, NAMESPACE},
-    grug::{Addressable, Coins, Denom, Message, ResultExt, Uint256},
+    grug::{Addressable, Coins, Denom, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -46,7 +46,7 @@ fn token_factory() {
                     username: Some(owner_username.clone()),
                     admin: None,
                 },
-                Coins::one("uusdc", 20_000_000_u128).unwrap(), // wrong!
+                Coins::one("uusdc", 20_000_000).unwrap(), // wrong!
             )
             .unwrap(),
         )
@@ -65,7 +65,7 @@ fn token_factory() {
                     username: Some(accounts.fee_recipient.username.clone()), // wrong!
                     admin: None,
                 },
-                Coins::one("uusdc", 10_000_000_u128).unwrap(),
+                Coins::one("uusdc", 10_000_000).unwrap(),
             )
             .unwrap(),
         )
@@ -83,7 +83,7 @@ fn token_factory() {
                 username: Some(owner_username.clone()),
                 admin: None,
             },
-            Coins::one("uusdc", 10_000_000_u128).unwrap(),
+            Coins::one("uusdc", 10_000_000).unwrap(),
         )
         .unwrap();
 
@@ -98,7 +98,7 @@ fn token_factory() {
                     username: Some(owner_username.clone()),
                     admin: None,
                 },
-                Coins::one("uusdc", 10_000_000_u128).unwrap(),
+                Coins::one("uusdc", 10_000_000).unwrap(),
             )
             .unwrap(),
         )
@@ -125,7 +125,7 @@ fn token_factory() {
                 &ExecuteMsg::Mint {
                     denom: denom.clone(),
                     to: accounts.fee_recipient.address(),
-                    amount: Uint256::from(12_345_u128),
+                    amount: Uint128::new(12_345),
                 },
                 Coins::new(),
             )
@@ -149,7 +149,7 @@ fn token_factory() {
                     ])
                     .unwrap(),
                     to: accounts.fee_recipient.address(),
-                    amount: Uint256::from(12_345_u128),
+                    amount: Uint128::new(12_345),
                 },
                 Coins::new(),
             )
@@ -167,7 +167,7 @@ fn token_factory() {
             &ExecuteMsg::Mint {
                 denom: denom.clone(),
                 to: accounts.fee_recipient.address(),
-                amount: Uint256::from(12_345_u128),
+                amount: Uint128::new(12_345),
             },
             Coins::new(),
         )
@@ -176,7 +176,7 @@ fn token_factory() {
     // The recipient's balance should have been updated.
     suite
         .query_balance(&accounts.fee_recipient, denom.clone())
-        .should_succeed_and_equal(Uint256::from(12_345_u128));
+        .should_succeed_and_equal(Uint128::new(12_345));
 
     // ----------------------------- Token burning -----------------------------
 
@@ -189,7 +189,7 @@ fn token_factory() {
                 &ExecuteMsg::Burn {
                     denom: denom.clone(),
                     from: accounts.fee_recipient.address(),
-                    amount: Uint256::from(88_888_u128),
+                    amount: Uint128::new(88_888),
                 },
                 Coins::new(),
             )
@@ -207,7 +207,7 @@ fn token_factory() {
             &ExecuteMsg::Burn {
                 denom: denom.clone(),
                 from: accounts.fee_recipient.address(),
-                amount: Uint256::from(2_345_u128),
+                amount: Uint128::new(2_345),
             },
             Coins::new(),
         )
@@ -216,5 +216,5 @@ fn token_factory() {
     // The recipient's balance should have been updated.
     suite
         .query_balance(&accounts.fee_recipient, denom)
-        .should_succeed_and_equal(Uint256::from(10_000_u128));
+        .should_succeed_and_equal(Uint128::new(10_000));
 }

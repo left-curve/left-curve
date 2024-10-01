@@ -1,7 +1,7 @@
-use grug::{Addr, Denom, Map, Part, Uint256};
+use grug::{Addr, Denom, Map, Part, Uint128};
 
-pub const SUPPLIES: Map<&Denom, Uint256> = Map::new("supply");
+pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 
-pub const BALANCES: Map<(&Addr, &Denom), Uint256> = Map::new("balance");
+pub const BALANCES: Map<(&Addr, &Denom), Uint128> = Map::new("balance");
 
 pub const NAMESPACE_OWNERS: Map<&Part, Addr> = Map::new("namespace_owner");

@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     dango_genesis::{build_genesis, Codes, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
-    grug::{Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec256, Uint256},
+    grug::{Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
     k256::{
         ecdsa::{SigningKey, VerifyingKey},
         elliptic_curve::rand_core::OsRng,
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     let users = [
         random_genesis_user("fee_recipient", Coins::new())?,
         random_genesis_user("owner", Coins::new())?,
-        random_genesis_user("relayer", Coins::one("uusdc", 100_000_000_000_000_u128)?)?,
+        random_genesis_user("relayer", Coins::one("uusdc", 100_000_000_000_000)?)?,
     ]
     .into();
 
@@ -69,8 +69,8 @@ fn main() -> anyhow::Result<()> {
         &Username::from_str("owner")?,
         &Username::from_str("fee_recipient")?,
         "uusdc",
-        Udec256::from_str("0.25")?,
-        Uint256::from(10_000_000_u128),
+        Udec128::new_percent(25),
+        Uint128::new(10_000_000),
     )?;
 
     println!("genesis_state = {}", genesis_state.to_json_string_pretty()?);

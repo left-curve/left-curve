@@ -12,7 +12,7 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, Coins, HashExt, Message, NonZero, ResultExt,
-        Timestamp, Uint256,
+        Timestamp, Uint128,
     },
 };
 
@@ -42,7 +42,7 @@ fn safe() {
                     &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
                         recipient: user.address(),
                     },
-                    Coins::one("uusdc", 100_000_000_u128).unwrap(),
+                    Coins::one("uusdc", 100_000_000).unwrap(),
                 )
                 .unwrap();
 
@@ -90,7 +90,7 @@ fn safe() {
             },
             // Fund the Safe with some tokens.
             // The Safe will pay for gas fees, so it must have sufficient tokens.
-            Coins::one("uusdc", 5_000_000_u128).unwrap(),
+            Coins::one("uusdc", 5_000_000).unwrap(),
         )
         .unwrap();
 
@@ -138,7 +138,7 @@ fn safe() {
     // The Safe should have received tokens.
     suite
         .query_balance(&safe, "uusdc")
-        .should_succeed_and_equal(Uint256::from(5_000_000_u128));
+        .should_succeed_and_equal(Uint128::new(5_000_000));
 
     // ---------------------- Proposal with auto-execute -----------------------
 
@@ -152,7 +152,7 @@ fn safe() {
                 description: None,
                 messages: vec![Message::transfer(
                     accounts.owner.address(),
-                    Coins::one("uusdc", 888_888_u128).unwrap(),
+                    Coins::one("uusdc", 888_888).unwrap(),
                 )
                 .unwrap()],
             },
@@ -200,7 +200,7 @@ fn safe() {
     // Owner has 100_000_000_000_000 uusd to start, and now has received 888_888.
     suite
         .query_balance(&accounts.owner, "uusdc")
-        .should_succeed_and_equal(Uint256::from(100_000_000_888_888_u128));
+        .should_succeed_and_equal(Uint128::new(100_000_000_888_888));
 
     // --------------------- Proposal with manual execute ----------------------
 

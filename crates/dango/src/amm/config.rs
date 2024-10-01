@@ -1,16 +1,16 @@
-use grug::{Addr, Bound, Bounded, Bounds, Coin, NonZero, NumberConst, Udec256};
+use grug::{Addr, Bound, Bounded, Bounds, Coin, NonZero, NumberConst, Udec128};
 
 /// Defines the bounds for a fee rate: 0 <= FeeRate < 1.
 #[grug::derive(Serde)]
 pub struct FeeRateBounds;
 
-impl Bounds<Udec256> for FeeRateBounds {
-    const MAX: Option<Bound<Udec256>> = Some(Bound::Exclusive(Udec256::ONE));
-    const MIN: Option<Bound<Udec256>> = None;
+impl Bounds<Udec128> for FeeRateBounds {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = None;
 }
 
 /// A decimal bounded by the fee rate bounds.
-pub type FeeRate = Bounded<Udec256, FeeRateBounds>;
+pub type FeeRate = Bounded<Udec128, FeeRateBounds>;
 
 /// Global configuration of the AMM.
 #[grug::derive(Serde, Borsh)]

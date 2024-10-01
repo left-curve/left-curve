@@ -1,6 +1,6 @@
 use {
     dango_types::amm::{ConcentratedParams, ConcentratedPool},
-    grug::{Coin, CoinPair, Uint256},
+    grug::{Coin, CoinPair, Uint128},
 };
 
 use super::{PoolExt, PoolInit};
@@ -18,11 +18,11 @@ impl PoolExt for ConcentratedPool {
         todo!()
     }
 
-    fn provide_liquidity(&mut self, _deposit: CoinPair) -> anyhow::Result<Uint256> {
+    fn provide_liquidity(&mut self, _deposit: CoinPair) -> anyhow::Result<Uint128> {
         todo!()
     }
 
-    fn withdraw_liquidity(&mut self, _shares_to_burn: Uint256) -> anyhow::Result<CoinPair> {
+    fn withdraw_liquidity(&mut self, _shares_to_burn: Uint128) -> anyhow::Result<CoinPair> {
         todo!()
     }
 }

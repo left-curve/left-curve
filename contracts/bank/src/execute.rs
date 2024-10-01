@@ -4,14 +4,14 @@ use {
     dango_types::bank::{ExecuteMsg, InstantiateMsg},
     grug::{
         Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response, StdResult,
-        Storage, SudoCtx, Uint256,
+        Storage, SudoCtx, Uint128,
     },
     std::collections::HashMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    let mut supplies = HashMap::<Denom, Uint256>::new();
+    let mut supplies = HashMap::<Denom, Uint128>::new();
 
     for (address, coins) in msg.balances {
         for coin in coins {
@@ -80,7 +80,7 @@ fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Res
     Ok(Response::new())
 }
 
-fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint256) -> anyhow::Result<Response> {
+fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
     ensure_namespace_owner(&ctx, &denom)?;
 
     increase_supply(ctx.storage, &denom, amount)?;
@@ -89,7 +89,7 @@ fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint256) -> anyhow::Res
     Ok(Response::new())
 }
 
-fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint256) -> anyhow::Result<Response> {
+fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
     ensure_namespace_owner(&ctx, &denom)?;
 
     decrease_supply(ctx.storage, &denom, amount)?;
@@ -127,7 +127,7 @@ fn force_transfer(
     from: Addr,
     to: Addr,
     denom: Denom,
-    amount: Uint256,
+    amount: Uint128,
 ) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
@@ -156,12 +156,12 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
 fn increase_supply(
     storage: &mut dyn Storage,
     denom: &Denom,
-    amount: Uint256,
-) -> StdResult<Option<Uint256>> {
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
     debug_assert!(!amount.is_zero(), "increasing supply by zero");
 
     SUPPLIES.update(storage, denom, |maybe_supply| {
-        let supply = maybe_supply.unwrap_or(Uint256::ZERO).checked_add(amount)?;
+        let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_add(amount)?;
 
         Ok(Some(supply))
     })
@@ -170,12 +170,12 @@ fn increase_supply(
 fn decrease_supply(
     storage: &mut dyn Storage,
     denom: &Denom,
-    amount: Uint256,
-) -> StdResult<Option<Uint256>> {
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
     debug_assert!(!amount.is_zero(), "decreasing supply by zero");
 
     SUPPLIES.update(storage, denom, |maybe_supply| {
-        let supply = maybe_supply.unwrap_or(Uint256::ZERO).checked_sub(amount)?;
+        let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
 
         if supply.is_zero() {
             Ok(None)
@@ -189,12 +189,12 @@ fn increase_balance(
     storage: &mut dyn Storage,
     address: &Addr,
     denom: &Denom,
-    amount: Uint256,
-) -> StdResult<Option<Uint256>> {
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
     debug_assert!(!amount.is_zero(), "increasing balance by zero");
 
     BALANCES.update(storage, (address, denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(Uint256::ZERO).checked_add(amount)?;
+        let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_add(amount)?;
 
         Ok(Some(balance))
     })
@@ -204,12 +204,12 @@ fn decrease_balance(
     storage: &mut dyn Storage,
     address: &Addr,
     denom: &Denom,
-    amount: Uint256,
-) -> StdResult<Option<Uint256>> {
+    amount: Uint128,
+) -> StdResult<Option<Uint128>> {
     debug_assert!(!amount.is_zero(), "decreasing balance by zero");
 
     BALANCES.update(storage, (address, denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(Uint256::ZERO).checked_sub(amount)?;
+        let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
 
         if balance.is_zero() {
             Ok(None)

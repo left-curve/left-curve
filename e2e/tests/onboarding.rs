@@ -8,7 +8,7 @@ use {
     },
     grug::{
         btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, ResultExt, Tx,
-        Uint256,
+        Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -34,7 +34,7 @@ fn user_onboarding() -> anyhow::Result<()> {
         &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
             recipient: user.address(),
         },
-        Coins::one("uusdc", 123_u128)?,
+        Coins::one("uusdc", 123)?,
     )?;
 
     // User uses account factory as sender to send an empty transaction.
@@ -84,7 +84,7 @@ fn user_onboarding() -> anyhow::Result<()> {
     // User's account should have been created with the correct token balance.
     suite
         .query_balance(&user, "uusdc")
-        .should_succeed_and_equal(Uint256::from(123_u128));
+        .should_succeed_and_equal(Uint128::new(123));
 
     Ok(())
 }
@@ -111,7 +111,7 @@ fn onboarding_existing_user() -> anyhow::Result<()> {
             &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
             },
-            Coins::one("uusdc", 123_u128)?,
+            Coins::one("uusdc", 123)?,
         )?;
 
         // Send the register user message with account factory.

@@ -5,7 +5,7 @@ use {
         XykParams, XykPool, MINIMUM_LIQUIDITY,
     },
     grug::{
-        btree_map, Coin, CoinPair, Coins, Denom, Message, ResultExt, Udec256, Uint256, UniqueVec,
+        btree_map, Coin, CoinPair, Coins, Denom, Message, ResultExt, Udec128, Uint128, UniqueVec,
     },
     std::{str::FromStr, sync::LazyLock},
 };
@@ -29,13 +29,13 @@ fn amm() {
             Message::execute(
                 contracts.amm,
                 &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 })),
                 Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint256::new_from_u128(657_761_324_779),
-                    OSMO.clone() => Uint256::new_from_u128(5_886_161_498_040),
+                    ATOM.clone() => Uint128::new(657_761_324_779),
+                    OSMO.clone() => Uint128::new(5_886_161_498_040),
                     // pool creation fee
-                    USDC.clone() => Uint256::new_from_u128(10_000_000),
+                    USDC.clone() => Uint128::new(10_000_000),
                 }),
             )
             .unwrap(),
@@ -43,12 +43,12 @@ fn amm() {
             Message::execute(
                 contracts.amm,
                 &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 })),
                 Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint256::new_from_u128(224_078_907_873),
+                    ATOM.clone() => Uint128::new(224_078_907_873),
                     // liquidity + pool creation fee
-                    USDC.clone() => Uint256::new_from_u128(173_573_581_955),
+                    USDC.clone() => Uint128::new(173_573_581_955),
                 }),
             )
             .unwrap(),
@@ -66,38 +66,38 @@ fn amm() {
         .should_succeed_and_equal(btree_map! {
             1 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(657_761_324_779),
+                        amount: Uint128::new(657_761_324_779),
                     },
                     Coin {
                         denom: OSMO.clone(),
-                        amount: Uint256::new_from_u128(5_886_161_498_040),
+                        amount: Uint128::new(5_886_161_498_040),
                     },
                 ),
                 // floor(sqrt(657,761,324,779 * 5,886,161,498,040))
-                shares: Uint256::new_from_u128(1_967_660_891_722),
+                shares: Uint128::new(1_967_660_891_722),
             }),
             2 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(224_078_907_873),
+                        amount: Uint128::new(224_078_907_873),
                     },
                     Coin {
                         denom: USDC.clone(),
                         // Note that pool creation fee is subtracted.
-                        amount: Uint256::new_from_u128(173_563_581_955),
+                        amount: Uint128::new(173_563_581_955),
                     },
                 ),
                 // floor(sqrt(224,078,907,873 * 173,563,581,955))
-                shares: Uint256::new_from_u128(197_210_389_916),
+                shares: Uint128::new(197_210_389_916),
             }),
         });
 
@@ -106,9 +106,9 @@ fn amm() {
         .query_balances(&contracts.amm)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             // 657,761,324,779 + 224,078,907,873
-            ATOM.clone() => Uint256::new_from_u128(881_840_232_652),
-            OSMO.clone() => Uint256::new_from_u128(5_886_161_498_040),
-            USDC.clone() => Uint256::new_from_u128(173_563_581_955),
+            ATOM.clone() => Uint128::new(881_840_232_652),
+            OSMO.clone() => Uint128::new(5_886_161_498_040),
+            USDC.clone() => Uint128::new(173_563_581_955),
             LP_1.clone() => MINIMUM_LIQUIDITY,
             LP_2.clone() => MINIMUM_LIQUIDITY,
         }));
@@ -118,21 +118,21 @@ fn amm() {
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             // 100,000,000,000,000 - 657,761,324,779 - 224,078,907,873
-            ATOM.clone() => Uint256::new_from_u128(99_118_159_767_348),
+            ATOM.clone() => Uint128::new(99_118_159_767_348),
             // 100,000,000,000,000 - 5,886,161,498,040
-            OSMO.clone() => Uint256::new_from_u128(94_113_838_501_960),
+            OSMO.clone() => Uint128::new(94_113_838_501_960),
             // 100,000,000,000,000 - 173,573,581,955 - 10,000,000
-            USDC.clone() => Uint256::new_from_u128(99_826_416_418_045),
+            USDC.clone() => Uint128::new(99_826_416_418_045),
             // 1,967,660,891,722 - MINIMUM_LIQUIDITY
-            LP_1.clone() => Uint256::new_from_u128(1_967_660_890_722),
+            LP_1.clone() => Uint128::new(1_967_660_890_722),
             // 197,210,389,916 - MINIMUM_LIQUIDITY
-            LP_2.clone() => Uint256::new_from_u128(197_210_388_916),
+            LP_2.clone() => Uint128::new(197_210_388_916),
         }));
 
     // Check the fee collector has received the pool creation fees.
     suite
         .query_balance(&accounts.fee_recipient, USDC.clone())
-        .should_succeed_and_equal(Uint256::new_from_u128(20_000_000));
+        .should_succeed_and_equal(Uint128::new(20_000_000));
 
     // -------------------------- Liquidity provision --------------------------
 
@@ -194,8 +194,8 @@ fn amm() {
                     minimum_output: None,
                 },
                 Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint256::new_from_u128(6_577_613),
-                    OSMO.clone() => Uint256::new_from_u128(58_861_614),
+                    ATOM.clone() => Uint128::new(6_577_613),
+                    OSMO.clone() => Uint128::new(58_861_614),
                 }),
             )
             .unwrap(),
@@ -206,7 +206,7 @@ fn amm() {
                     minimum_output: None,
                 },
                 Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint256::new_from_u128(100_000_000),
+                    ATOM.clone() => Uint128::new(100_000_000),
                 }),
             )
             .unwrap(),
@@ -224,36 +224,36 @@ fn amm() {
         .should_succeed_and_equal(btree_map! {
             1 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(657_767_902_392),
+                        amount: Uint128::new(657_767_902_392),
                     },
                     Coin {
                         denom: OSMO.clone(),
-                        amount: Uint256::new_from_u128(5_886_220_359_654),
+                        amount: Uint128::new(5_886_220_359_654),
                     },
                 ),
-                shares: Uint256::new_from_u128(1_967_680_568_330),
+                shares: Uint128::new(1_967_680_568_330),
             }),
             2 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(224_178_907_873),
+                        amount: Uint128::new(224_178_907_873),
                     },
                     Coin {
                         denom: USDC.clone(),
                         // Note that pool creation fee is subtracted.
-                        amount: Uint256::new_from_u128(173_563_581_955),
+                        amount: Uint128::new(173_563_581_955),
                     },
                 ),
-                shares: Uint256::new_from_u128(197_254_389_682),
+                shares: Uint128::new(197_254_389_682),
             }),
         });
 
@@ -262,15 +262,15 @@ fn amm() {
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             // 99_118_159_767_348 - 6_577_613 - 100_000_000
-            ATOM.clone() => Uint256::new_from_u128(99_118_053_189_735),
+            ATOM.clone() => Uint128::new(99_118_053_189_735),
             // 94_113_838_501_960 - 58_861_614
-            OSMO.clone() => Uint256::new_from_u128(94_113_779_640_346),
+            OSMO.clone() => Uint128::new(94_113_779_640_346),
             // unchanged
-            USDC.clone() => Uint256::new_from_u128(99_826_416_418_045),
+            USDC.clone() => Uint128::new(99_826_416_418_045),
             // 1,967,660,890,722 + 19,676,608 = 1,967,680,567,330
-            LP_1.clone() => Uint256::new_from_u128(1_967_680_567_330),
+            LP_1.clone() => Uint128::new(1_967_680_567_330),
             // 197,210,388,916 + 44,999,766 = 197,254,388,682
-            LP_2.clone() => Uint256::new_from_u128(197_254_388_682),
+            LP_2.clone() => Uint128::new(197_254_388_682),
         }));
 
     // --------------------------------- Swap ----------------------------------
@@ -284,7 +284,7 @@ fn amm() {
                 route: UniqueVec::new_unchecked(vec![2, 1]),
                 minimum_output: None,
             },
-            Coin::new(USDC.clone(), Uint256::new_from_u128(100_000_000)).unwrap(),
+            Coin::new(USDC.clone(), Uint128::new(100_000_000)).unwrap(),
         )
         .unwrap();
 
@@ -312,12 +312,12 @@ fn amm() {
     // output = 1,150,339,052 - 1,150,340 = 1,149,188,712
     suite
         .query_balance(&accounts.owner, OSMO.clone())
-        .should_succeed_and_equal(Uint256::new_from_u128(1_149_188_712));
+        .should_succeed_and_equal(Uint128::new(1_149_188_712));
 
     // Check that fee collector has received the protocol fee.
     suite
         .query_balance(&accounts.fee_recipient, OSMO.clone())
-        .should_succeed_and_equal(Uint256::new_from_u128(1_150_340));
+        .should_succeed_and_equal(Uint128::new(1_150_340));
 
     // The pool states should have been updated.
     //
@@ -336,36 +336,36 @@ fn amm() {
         .should_succeed_and_equal(btree_map! {
             1 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(657_896_732_252),
+                        amount: Uint128::new(657_896_732_252),
                     },
                     Coin {
                         denom: OSMO.clone(),
-                        amount: Uint256::new_from_u128(5_885_070_020_602),
+                        amount: Uint128::new(5_885_070_020_602),
                     },
                 ),
-                shares: Uint256::new_from_u128(1_967_680_568_330),
+                shares: Uint128::new(1_967_680_568_330),
             }),
             2 => Pool::Xyk(XykPool {
                 params:XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
                 },
                 liquidity: CoinPair::new_unchecked(
                     Coin {
                         denom: ATOM.clone(),
-                        amount: Uint256::new_from_u128(224_050_078_013),
+                        amount: Uint128::new(224_050_078_013),
                     },
                     Coin {
                         denom: USDC.clone(),
                         // Note that pool creation fee is subtracted.
-                        amount: Uint256::new_from_u128(173_663_581_955),
+                        amount: Uint128::new(173_663_581_955),
                     },
                 ),
-                shares: Uint256::new_from_u128(197_254_389_682),
+                shares: Uint128::new(197_254_389_682),
             }),
         });
 
@@ -377,7 +377,7 @@ fn amm() {
             &mut accounts.relayer,
             contracts.amm,
             &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
-            Coin::new(LP_1.clone(), Uint256::new_from_u128(655_886_963_574)).unwrap(),
+            Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
         )
         .unwrap();
 
@@ -394,15 +394,15 @@ fn amm() {
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             // 99,118,053,189,735 + 219,296,717,672
-            ATOM.clone() => Uint256::new_from_u128(99_337_349_907_407),
+            ATOM.clone() => Uint128::new(99_337_349_907_407),
             // 94,113,779,640,346 + 1,961,670,389,167
-            OSMO.clone() => Uint256::new_from_u128(96_075_450_029_513),
+            OSMO.clone() => Uint128::new(96_075_450_029_513),
             // unchanged
-            USDC.clone() => Uint256::new_from_u128(99_826_416_418_045),
+            USDC.clone() => Uint128::new(99_826_416_418_045),
             // 1,967,680,567,330 - 655_886_963_574
-            LP_1.clone() => Uint256::new_from_u128(1_311_793_603_756),
+            LP_1.clone() => Uint128::new(1_311_793_603_756),
             // unchanged
-            LP_2.clone() => Uint256::new_from_u128(197_254_388_682),
+            LP_2.clone() => Uint128::new(197_254_388_682),
         }));
 
     // Check pool states.
@@ -410,21 +410,21 @@ fn amm() {
         .query_wasm_smart(contracts.amm, QueryPoolRequest { pool_id: 1 })
         .should_succeed_and_equal(Pool::Xyk(XykPool {
             params: XykParams {
-                liquidity_fee_rate: FeeRate::new_unchecked(Udec256::new_bps(20)),
+                liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
             },
             liquidity: CoinPair::new_unchecked(
                 Coin {
                     denom: ATOM.clone(),
                     // 657,896,732,252 - 219,296,717,672
-                    amount: Uint256::new_from_u128(438_600_014_580),
+                    amount: Uint128::new(438_600_014_580),
                 },
                 Coin {
                     denom: OSMO.clone(),
                     // 5,885,070,020,602 - 1,961,670,389,167
-                    amount: Uint256::new_from_u128(3_923_399_631_435),
+                    amount: Uint128::new(3_923_399_631_435),
                 },
             ),
             // 1,967,680,568,330 - 655_886_963_574
-            shares: Uint256::new_from_u128(1_311_793_604_756),
+            shares: Uint128::new(1_311_793_604_756),
         }));
 }

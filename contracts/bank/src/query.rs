@@ -2,7 +2,7 @@ use {
     crate::{BALANCES, SUPPLIES},
     grug::{
         Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, NumberConst,
-        Order, StdResult, Uint256,
+        Order, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -40,7 +40,7 @@ fn query_balance(ctx: ImmutableCtx, address: Addr, denom: Denom) -> StdResult<Co
 
     Ok(Coin {
         denom,
-        amount: maybe_amount.unwrap_or(Uint256::ZERO),
+        amount: maybe_amount.unwrap_or(Uint128::ZERO),
     })
 }
 
@@ -66,7 +66,7 @@ fn query_supply(ctx: ImmutableCtx, denom: Denom) -> StdResult<Coin> {
 
     Ok(Coin {
         denom,
-        amount: maybe_supply.unwrap_or(Uint256::ZERO),
+        amount: maybe_supply.unwrap_or(Uint128::ZERO),
     })
 }
 

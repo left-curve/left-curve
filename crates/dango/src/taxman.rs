@@ -1,10 +1,10 @@
-use grug::{Addr, Denom, Udec256};
+use grug::{Addr, Denom, Udec128};
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
     pub fee_recipient: Addr,
     pub fee_denom: Denom,
-    pub fee_rate: Udec256,
+    pub fee_rate: Udec128,
 }
 
 #[grug::derive(Serde)]
