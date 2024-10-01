@@ -11,13 +11,13 @@ categories    = { workspace = true }
 
 [dependencies]
 elsa        = { workspace = true }
-grug-app    = { path = "../../app" }
-grug-crypto = { path = "../../crypto" }
-grug-types  = { path = "../../types" }
+grug-app    = { workspace = true }
+grug-crypto = { workspace = true }
+grug-types  = { workspace = true }
 serde       = { workspace = true }
 thiserror   = { workspace = true }
 
 [dev-dependencies]
-grug-math    = { path = "../../math" }
-grug-testing = { path = "../../testing" }
+grug-math    = { workspace = true }
+grug-testing = { workspace = true }
 test-case    = { workspace = true }

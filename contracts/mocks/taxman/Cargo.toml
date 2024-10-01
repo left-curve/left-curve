@@ -24,9 +24,9 @@ library = []
 [dependencies]
 anyhow         = { workspace = true }
 borsh          = { workspace = true, features = ["derive", "de_strict_order"] }
-grug-ffi       = { path = "../../../crates/ffi" }
-grug-math      = { path = "../../../crates/math" }
-grug-mock-bank = { path = "../bank", features = ["library"] }
-grug-storage   = { path = "../../../crates/storage" }
-grug-types     = { path = "../../../crates/types" }
+grug-ffi       = { workspace = true }
+grug-math      = { workspace = true }
+grug-mock-bank = { workspace = true, features = ["library"] }
+grug-storage   = { workspace = true }
+grug-types     = { workspace = true }
 serde          = { workspace = true, features = ["derive"] }

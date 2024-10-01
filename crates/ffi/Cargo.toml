@@ -11,7 +11,7 @@ categories    = { workspace = true }
 
 [dependencies]
 borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
-grug-types = { path = "../types" }
+grug-types = { workspace = true }
 serde      = { workspace = true }
 
 [dev-dependencies]

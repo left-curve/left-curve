@@ -11,15 +11,15 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow             = { workspace = true }
-grug-app           = { path = "../app", features = ["tracing"] }
-grug-crypto        = { path = "../crypto" }
-grug-db-memory     = { path = "../db/memory" }
-grug-math          = { path = "../math" }
-grug-mock-account  = { path = "../../contracts/mocks/account", features = ["library"] }
-grug-mock-bank     = { path = "../../contracts/mocks/bank", features = ["library"] }
-grug-mock-taxman   = { path = "../../contracts/mocks/taxman", features = ["library"] }
-grug-types         = { path = "../types" }
-grug-vm-rust       = { path = "../vm/rust" }
+grug-app           = { workspace = true, features = ["tracing"] }
+grug-crypto        = { workspace = true }
+grug-db-memory     = { workspace = true }
+grug-math          = { workspace = true }
+grug-mock-account  = { workspace = true, features = ["library"] }
+grug-mock-bank     = { workspace = true, features = ["library"] }
+grug-mock-taxman   = { workspace = true, features = ["library"] }
+grug-types         = { workspace = true }
+grug-vm-rust       = { workspace = true }
 k256               = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }
@@ -28,5 +28,5 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
-grug-storage = { path = "../storage" }
+grug-storage = { workspace = true }
 test-case    = { workspace = true }

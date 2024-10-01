@@ -18,8 +18,8 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-dango-account-factory = { path = "../account/factory", features = ["library"] }
-dango-types           = { path = "../../crates/dango" }
-grug                  = { path = "../../crates/std" }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+grug                  = { workspace = true }
 
 [dev-dependencies]

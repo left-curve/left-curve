@@ -19,10 +19,10 @@ library = []
 
 [dependencies]
 anyhow                = { workspace = true }
-dango-account-factory = { path = "../factory", features = ["library"] }
-dango-auth            = { path = "../../../crates/auth" }
-dango-types           = { path = "../../../crates/dango" }
-grug                  = { path = "../../../crates/std" }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-auth            = { workspace = true }
+dango-types           = { workspace = true }
+grug                  = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

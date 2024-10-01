@@ -19,8 +19,8 @@ library = []
 
 [dependencies]
 anyhow      = { workspace = true }
-dango-auth  = { path = "../../../crates/auth" }
-dango-types = { path = "../../../crates/dango" }
-grug        = { path = "../../../crates/std" }
+dango-auth  = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
 
 [dev-dependencies]

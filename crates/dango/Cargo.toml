@@ -12,7 +12,7 @@ categories    = { workspace = true }
 [dependencies]
 anyhow    = { workspace = true }
 borsh     = { workspace = true, features = ["derive"] }
-grug      = { path = "../std" }
+grug      = { workspace = true }
 paste     = { workspace = true }
 serde     = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }

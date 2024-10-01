@@ -78,6 +78,12 @@ prost              = "0.13"
 quote              = "1"
 rand               = "0.8"
 ripemd             = "0.1"
+# Use the latest `master` branch of rust-rocksdb, which includes support for
+# the user-defined timestamp feature:
+# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
+#
+# TODO: Update to v0.23.0 once released.
+rocksdb            = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "1710120" }
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"
@@ -98,14 +104,40 @@ tracing-subscriber = "0.3"
 wasmer             = "4"
 wasmer-middlewares = "4"
 
-# Use the latest `master` branch of rust-rocksdb, which includes support for
-# the user-defined timestamp feature:
-# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-#
-# TODO: Update to v0.23.0 once released.
-[workspace.dependencies.rocksdb]
-git = "https://github.com/rust-rocksdb/rust-rocksdb"
-rev = "1710120"
+# Grug packages
+grug              = { path = "crates/std" }
+grug-app          = { path = "crates/app" }
+grug-auth         = { path = "crates/auth" }
+grug-client       = { path = "crates/client" }
+grug-crypto       = { path = "crates/crypto" }
+grug-db-disk      = { path = "crates/db/disk" }
+grug-db-memory    = { path = "crates/db/memory" }
+grug-ffi          = { path = "crates/ffi" }
+grug-jmt          = { path = "crates/jellyfish-merkle" }
+grug-macros       = { path = "crates/macros" }
+grug-math         = { path = "crates/math" }
+grug-mock-account = { path = "contracts/mocks/account" }
+grug-mock-bank    = { path = "contracts/mocks/bank" }
+grug-mock-taxman  = { path = "contracts/mocks/taxman" }
+grug-storage      = { path = "crates/storage" }
+grug-tester       = { path = "contracts/tester" }
+grug-testing      = { path = "crates/testing" }
+grug-types        = { path = "crates/types" }
+grug-vm-rust      = { path = "crates/vm/rust" }
+grug-vm-wasm      = { path = "crates/vm/wasm" }
+
+# Dango packages
+dango-account-factory = { path = "contracts/account/factory" }
+dango-account-safe    = { path = "contracts/account/safe" }
+dango-account-spot    = { path = "contracts/account/spot" }
+dango-amm             = { path = "contracts/amm" }
+dango-auth            = { path = "crates/auth" }
+dango-bank            = { path = "contracts/bank" }
+dango-genesis         = { path = "crates/genesis" }
+dango-ibc-transfer    = { path = "contracts/ibc-transfer" }
+dango-taxman          = { path = "contracts/taxman" }
+dango-token-factory   = { path = "contracts/token-factory" }
+dango-types           = { path = "crates/dango" }
 
 [profile.release]
 codegen-units    = 1

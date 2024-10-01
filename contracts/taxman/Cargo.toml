@@ -19,7 +19,7 @@ library = []
 
 [dependencies]
 anyhow      = { workspace = true }
-dango-types = { path = "../../crates/dango" }
-grug        = { path = "../../crates/std" }
+dango-types = { workspace = true }
+grug        = { workspace = true }
 
 [dev-dependencies]

@@ -11,21 +11,21 @@ categories    = { workspace = true }
 
 [dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
-grug-macros  = { path = "../macros" }
-grug-math    = { path = "../math" }
-grug-storage = { path = "../storage" }
-grug-types   = { path = "../types" }
+grug-macros  = { workspace = true }
+grug-math    = { workspace = true }
+grug-storage = { workspace = true }
+grug-types   = { workspace = true }
 serde        = { workspace = true, features = ["derive"] }
 serde_json   = { workspace = true }
 serde_with   = { workspace = true }
 
 # The FFI crate is only included when building for WebAssembly.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-grug-ffi = { path = "../ffi" }
+grug-ffi = { workspace = true }
 
 # The client and testing crates are only included when _not_ building for WebAseembly.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-grug-client  = { path = "../client" }
-grug-testing = { path = "../testing" }
+grug-client  = { workspace = true }
+grug-testing = { workspace = true }
 
 [dev-dependencies]

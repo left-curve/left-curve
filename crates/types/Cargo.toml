@@ -20,7 +20,7 @@ borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
 data-encoding = { workspace = true }
 digest        = { workspace = true }
 dyn-clone     = { workspace = true }
-grug-math     = { path = "../math" }
+grug-math     = { workspace = true }
 hex           = { workspace = true }
 hex-literal   = { workspace = true }
 paste         = { workspace = true }
@@ -34,7 +34,7 @@ sha3          = { workspace = true, optional = true }
 thiserror     = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-grug-crypto = { path = "../crypto" }
+grug-crypto = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

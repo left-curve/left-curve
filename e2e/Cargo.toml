@@ -11,17 +11,17 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow                  = { workspace = true }
-dango-account-factory   = { path = "../contracts/account/factory", features = ["library"] }
-dango-account-safe      = { path = "../contracts/account/safe", features = ["library"] }
-dango-account-spot      = { path = "../contracts/account/spot", features = ["library"] }
-dango-amm               = { path = "../contracts/amm", features = ["library"] }
-dango-bank              = { path = "../contracts/bank", features = ["library"] }
-dango-genesis           = { path = "../crates/genesis" }
-dango-ibc-transfer      = { path = "../contracts/ibc-transfer", features = ["library"] }
-dango-taxman            = { path = "../contracts/taxman", features = ["library"] }
-dango-token-factory     = { path = "../contracts/token-factory", features = ["library"] }
-dango-types             = { path = "../crates/dango" }
-grug                    = { path = "../crates/std" }
+dango-account-factory   = { workspace = true, features = ["library"] }
+dango-account-safe      = { workspace = true, features = ["library"] }
+dango-account-spot      = { workspace = true, features = ["library"] }
+dango-amm               = { workspace = true, features = ["library"] }
+dango-bank              = { workspace = true, features = ["library"] }
+dango-genesis           = { workspace = true }
+dango-ibc-transfer      = { workspace = true, features = ["library"] }
+dango-taxman            = { workspace = true, features = ["library"] }
+dango-token-factory     = { workspace = true, features = ["library"] }
+dango-types             = { workspace = true }
+grug                    = { workspace = true }
 k256                    = { workspace = true }
 
 [dev-dependencies]

@@ -16,8 +16,8 @@ tracing = ["chrono", "dep:tracing"]
 
 [dependencies]
 chrono           = { workspace = true, optional = true }
-grug-storage     = { path = "../storage" }
-grug-types       = { path = "../types" }
+grug-storage     = { workspace = true }
+grug-types       = { workspace = true }
 ics23            = { workspace = true }
 prost            = { workspace = true }
 serde            = { workspace = true }

@@ -11,8 +11,8 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow      = { workspace = true }
-dango-types = { path = "../dango" }
-grug        = { path = "../std" }
+dango-types = { workspace = true }
+grug        = { workspace = true }
 serde       = { workspace = true }
 
 [dev-dependencies]

@@ -10,9 +10,9 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-grug-app   = { path = "../../app" }
-grug-jmt   = { path = "../../jellyfish-merkle" }
-grug-types = { path = "../../types" }
+grug-app   = { workspace = true }
+grug-jmt   = { workspace = true }
+grug-types = { workspace = true }
 ics23      = { workspace = true }
 thiserror  = { workspace = true }
 

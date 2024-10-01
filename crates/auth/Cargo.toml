@@ -12,8 +12,8 @@ categories    = { workspace = true }
 [dependencies]
 anyhow                = { workspace = true }
 base64                = { workspace = true }
-grug                  = { path = "../std" }
-dango-account-factory = { path = "../../contracts/account/factory", features = ["library"] }
-dango-types           = { path = "../dango" }
+grug                  = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
 
 [dev-dependencies]

@@ -12,8 +12,8 @@ categories    = { workspace = true }
 
 [dependencies]
 anyhow         = { workspace = true }
-grug-jmt       = { path = "../../crates/jellyfish-merkle" }
-grug-types     = { path = "../../crates/types" }
+grug-jmt       = { workspace = true }
+grug-types     = { workspace = true }
 serde          = { workspace = true }
 tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }

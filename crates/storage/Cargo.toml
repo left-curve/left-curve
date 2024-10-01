@@ -12,8 +12,8 @@ categories    = { workspace = true }
 [dependencies]
 bnum       = { workspace = true }
 borsh      = { workspace = true }
-grug-math  = { path = "../math" }
-grug-types = { path = "../types" }
+grug-math  = { workspace = true }
+grug-types = { workspace = true }
 prost      = { workspace = true }
 serde      = { workspace = true }
 
