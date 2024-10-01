@@ -42,7 +42,7 @@ mod tests {
         std::fmt::Debug,
     };
 
-    dec_test!( test
+    dec_test!( fixed_point
         inputs = {
             udec128 = {
                 passing: [
