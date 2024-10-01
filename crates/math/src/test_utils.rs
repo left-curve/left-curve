@@ -351,3 +351,33 @@ macro_rules! dec_test {
         );
     };
 }
+
+    // dec_test!( test
+    //     inputs = {
+    //         udec128 = {
+    //             passing: [
+    //             ],
+    //             failing: [
+    //             ]
+    //         }
+    //         udec256 = {
+    //             passing: [
+    //             ],
+    //             failing: [
+    //             ]
+    //         }
+    //         dec128 = {
+    //             passing: [
+    //             ],
+    //             failing: [
+    //             ]
+    //         }
+    //         dec256 = {
+    //             passing: [
+    //             ],
+    //             failing: [
+    //             ]
+    //         }
+    //     }
+    // method = |_0d: Dec<_>, passing, failing| {
+    // }
