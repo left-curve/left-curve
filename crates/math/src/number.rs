@@ -145,24 +145,28 @@ where
     }
 
     fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        if exp == 0 {
-            return Ok(Self::ONE);
-        }
-
-        let mut y = Dec::ONE;
-
-        while exp > 1 {
-            if exp % 2 == 0 {
-                self = self.checked_mul(self)?;
-                exp /= 2;
-            } else {
-                y = self.checked_mul(y)?;
-                self = self.checked_mul(self)?;
-                exp = (exp - 1) / 2;
+        let mut clos = || {
+            if exp == 0 {
+                return Ok(Self::ONE);
             }
-        }
 
-        self.checked_mul(y)
+            let mut y = Dec::ONE;
+
+            while exp > 1 {
+                if exp % 2 == 0 {
+                    self = self.checked_mul(self)?;
+                    exp /= 2;
+                } else {
+                    y = self.checked_mul(y)?;
+                    self = self.checked_mul(self)?;
+                    exp = (exp - 1) / 2;
+                }
+            }
+
+            self.checked_mul(y)
+        };
+
+        clos().map_err(|_| MathError::overflow_pow(self, exp))
     }
 
     // TODO: Check if this is the best way to implement this
@@ -1487,6 +1491,130 @@ mod dec_tests {
             let mut a = bt(_0d, dec("10"));
             a /= bt(_0d, dec("2.5"));
             assert_eq!(a, dec("4"));
+        }
+    );
+
+    dec_test!( checked_pow
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, 2, Dec::ZERO),
+                    (dec("10"), 2, dec("100")),
+                    (dec("2.5"), 2, dec("6.25")),
+                    (dec("123.123"), 3, dec("1866455.185461867")),
+                ],
+                failing: [
+                    (Dec::MAX, 2),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, 2, Dec::ZERO),
+                    (dec("10"), 2, dec("100")),
+                    (dec("2.5"), 2, dec("6.25")),
+                    (dec("123.123"), 3, dec("1866455.185461867")),
+                ],
+                failing: [
+                    (Dec::MAX, 2),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, 2, Dec::ZERO),
+                    (dec("10"), 2, dec("100")),
+                    (dec("2.5"), 2, dec("6.25")),
+                    (dec("123.123"), 3, dec("1866455.185461867")),
+                    (dec("-10"), 2, dec("100")),
+                    (dec("-10"), 3, dec("-1000")),
+                ],
+                failing: [
+                    (Dec::MAX, 2),
+                    (Dec::MIN, 2),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, 2, Dec::ZERO),
+                    (dec("10"), 2, dec("100")),
+                    (dec("2.5"), 2, dec("6.25")),
+                    (dec("123.123"), 3, dec("1866455.185461867")),
+                    (dec("-10"), 2, dec("100")),
+                    (dec("-10"), 3, dec("-1000")),
+                ],
+                failing: [
+                    (Dec::MAX, 2),
+                    (Dec::MIN, 2),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, expected);
+                assert_eq!(left.checked_pow(right).unwrap(), expected);
+            }
+
+            for (left, right) in failing {
+                dts!(_0d, left);
+                assert!(matches!(left.checked_pow(right), Err(MathError::OverflowPow { .. })));
+            }
+        }
+    );
+
+    dec_test!( checked_sqrt
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (dec("100"), dec("10")),
+                    (dec("2"), dec("1.414213562373095048")),
+                    (dec("4.84"), dec("2.2")),
+                ],
+                failing: [
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (dec("100"), dec("10")),
+                    (dec("2"), dec("1.414213562373095048")),
+                    (dec("4.84"), dec("2.2")),
+                ],
+                failing: [
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (dec("100"), dec("10")),
+                    (dec("2"), dec("1.414213562373095048")),
+                    (dec("4.84"), dec("2.2")),
+                ],
+                failing: [
+                    -Dec::ONE
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (dec("100"), dec("10")),
+                    (dec("2"), dec("1.414213562373095048")),
+                    (dec("4.84"), dec("2.2")),
+                ],
+                failing: [
+                    -Dec::ONE
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (base, expected) in passing {
+                dts!(_0d, base, expected);
+                assert_eq!(base.checked_sqrt().unwrap(), expected);
+            }
+
+            for base in failing {
+                dts!(_0d, base);
+                assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
+            }
         }
     );
 }
