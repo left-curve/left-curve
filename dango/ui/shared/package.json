@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/ui",
+  "name": "@dango/shared",
   "version": "0.1.0",
   "scripts": {
     "sb:dev": "storybook dev -p 6006",
@@ -51,9 +51,9 @@
     }
   },
   "dependencies": {
-    "@leftcurve/react": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
+    "@leftcurve/react":"link:../../../grug/sdk/packages/react",
+    "@leftcurve/sdk":"link:../../../grug/sdk/packages/sdk",
+    "@leftcurve/utils":"link:../../../grug/sdk/packages/utils",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@react-aria/button": "^3.9.8",
@@ -75,8 +75,8 @@
     "tailwind-variants": "^0.2.1"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
+    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
     "@react-types/select": "^3.9.6",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",

@@ -3,14 +3,14 @@ name: PR Packages Checks
 on:
   pull_request:
     paths:
-      - "sdk/packages/**"
+      - "grug/sdk/packages/**"
 
 jobs:
   checks:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: "sdk"
+        working-directory: "grug/sdk"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
 
-      - name: Install dependencies
+      - name: Install SDK dependencies
         run: pnpm i --frozen-lockfile
 
       - name: Linter checks

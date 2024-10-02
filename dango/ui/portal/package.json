@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/portal",
+  "name": "@dango/portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,9 +7,9 @@
     "build": "NODE_ENV=production tsx .rspack/rspack.prod.ts"
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "workspace:^",
-    "@leftcurve/react": "workspace:^",
-    "@leftcurve/ui": "workspace:^",
+    "@leftcurve/connect-kit": "link:../../../grug/sdk/packages/connect-kit",
+    "@leftcurve/react": "link:../../../grug/sdk/packages/react",
+    "@dango/shared": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
     "react": "^18",
@@ -17,8 +17,8 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
+    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
     "@rsbuild/core": "^1.0.9",
     "@rspack/cli": "^1.0.8",
     "@rspack/core": "^1.0.8",

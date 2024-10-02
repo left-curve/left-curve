@@ -1,14 +1,8 @@
-## Interface
+## Grug SDK
 
 You can find more info in our [documentation](https://ui-doc.pages.dev/).
 
 ## Packages
-
-#### `/apps`
-
-| App         | Description |
-| ----------- | ----------- |
-| [PortalApp] | -           |
 
 #### `/packages`
 
@@ -17,7 +11,6 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 | [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc and tailwind                                                                                       |
 | [`connect-kit`](./packages/connect-kit/) | It allows connection to multiple blockchains and wallets, manages accounts, and enables interaction with smart contracts.                                   |
 | [`crypto`](./packages/crypto)            | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
-| [`ui`](./packages/ui)                    | React components, hooks, providers and others that help to build [PortalApp]. It includes a [Storybook] server.                                             |
 | [`encoding`](./packages/encoding)        | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
 | [`react`](./packages/react)              | It wrap connect-kit actions into react-hooks and wrap the state in a react provider with hydration for ssr                                                  |
 | [`sdk`](./packages/sdk)                  | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
@@ -51,11 +44,6 @@ stateDiagram-v2
     @leftcurve/config --> @leftcurve/encoding
     @leftcurve/types --> @leftcurve/encoding
     @leftcurve/utils --> @leftcurve/encoding
-    @leftcurve/config --> @leftcurve/ui
-    @leftcurve/react --> @leftcurve/ui
-    @leftcurve/utils --> @leftcurve/ui
-    @leftcurve/sdk --> @leftcurve/ui
-    @leftcurve/types --> @leftcurve/ui
     @leftcurve/config --> @leftcurve/crypto
     @leftcurve/types --> @leftcurve/crypto
     @leftcurve/encoding --> @leftcurve/crypto

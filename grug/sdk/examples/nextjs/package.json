@@ -7,7 +7,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/ui": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/connect-kit": "workspace:^",
     "next": "14.2.5",

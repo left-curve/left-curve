@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/landing",
+  "name": "@dango/landing",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "workspace:^",
-    "@leftcurve/ui": "workspace:^",
-    "@leftcurve/react": "workspace:^",
+    "@leftcurve/connect-kit": "link:../../../grug/sdk/packages/connect-kit",
+    "@dango/shared": "workspace:^",
+    "@leftcurve/react": "link:../../../grug/sdk/packages/react",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
     "next": "14.2.5",
@@ -19,8 +19,8 @@
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
+    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

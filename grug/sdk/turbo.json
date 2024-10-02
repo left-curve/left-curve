@@ -7,7 +7,7 @@
     "ci": {},
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "build/**"]
+      "outputs": ["build/**"]
     },
     "dev": {
       "cache": false,
