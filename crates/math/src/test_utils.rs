@@ -1,6 +1,6 @@
 use std::{fmt::Debug, str::FromStr};
 
-use crate::Dec;
+use crate::{Dec, Int, NumberConst};
 
 /// `derive_type`
 ///
@@ -354,12 +354,27 @@ macro_rules! dec_test {
     };
 }
 
+/// Shortcut for create a `Dec` from a string.
 pub fn dec<U>(val: &str) -> Dec<U>
 where
     Dec<U>: FromStr,
     <Dec<U> as FromStr>::Err: Debug,
 {
     Dec::from_str(val).unwrap()
+}
+
+pub trait Leftover {
+    /// Rappresent the minimum value that can be represented by the decimal.
+    ///
+    /// `Dec::raw(Int::<U>::ONE)`
+    const LEFTOVER: Self;
+}
+
+impl<U> Leftover for Dec<U>
+where
+    Int<U>: NumberConst,
+{
+    const LEFTOVER: Dec<U> = Dec::raw(Int::<U>::ONE);
 }
 
 // dec_test!( test

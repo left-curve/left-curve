@@ -922,16 +922,68 @@ mod int_tests {
     );
 
     int_test!( wrapping_add
-        method = |_0| {
-            let max = bt(_0, Int::MAX);
-            assert_eq!(max.wrapping_add(Int::ONE), Int::MIN);
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::ZERO)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::ZERO)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::MIN),
+                    (Int::MIN, -Int::ONE, Int::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::MIN),
+                    (Int::MIN, -Int::ONE, Int::MAX),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_add(right), expected);
+            }
         }
     );
 
     int_test!( wrapping_sub
-        method = |_0| {
-            let min = bt(_0, Int::MIN);
-            assert_eq!(min.wrapping_sub(Int::ONE), Int::MAX);
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::ZERO, Int::ONE, Int::MAX)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::ZERO, Int::ONE, Int::MAX)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MIN, Int::ONE, Int::MAX),
+                    (Int::MAX, -Int::ONE, Int::MIN),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MIN, Int::ONE, Int::MAX),
+                    (Int::MAX, -Int::ONE, Int::MIN),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_sub(right), expected);
+            }
         }
     );
 
@@ -991,12 +1043,16 @@ mod int_tests {
                 passing: [
                     (u128::MAX, 2, 1),
                     (u128::MAX, 3, u128::MAX),
+                    (u128::MAX, 4, 1),
+                    (u128::MAX, 5, u128::MAX),
                 ]
             }
             u256 = {
                 passing: [
                     (U256::MAX, 2, U256::ONE),
                     (U256::MAX, 3, U256::MAX),
+                    (U256::MAX, 4, U256::ONE),
+                    (U256::MAX, 5, U256::MAX),
                 ]
             }
             i128 = {
@@ -1035,12 +1091,10 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-    use bnum::types::I256;
-
     use crate::{
         dec_test, dts,
-        test_utils::{bt, dec},
-        Dec, Int, MathError, Number, NumberConst,
+        test_utils::{bt, dec, Leftover},
+        Dec, MathError, Number, NumberConst,
     };
 
     dec_test!( checked_add
@@ -1305,7 +1359,7 @@ mod dec_tests {
                 passing: [
                     (Dec::ZERO, Dec::ZERO, Dec::ZERO),
                     (Dec::MAX, Dec::ZERO, Dec::ZERO),
-                    (Dec::MIN + Dec::raw(Int::new(1)), -Dec::ONE, Dec::MAX),
+                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
                     (dec("20"), dec("10"), dec("200")),
                     (dec("20"), dec("1.5"), dec("30")),
                     (dec("20"), dec("0.1"), dec("2")),
@@ -1327,7 +1381,7 @@ mod dec_tests {
                 passing: [
                     (Dec::ZERO, Dec::ZERO, Dec::ZERO),
                     (Dec::MAX, Dec::ZERO, Dec::ZERO),
-                    (Dec::MIN + Dec::raw(Int::new(1.into())), -Dec::ONE, Dec::MAX),
+                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
                     (dec("20"), dec("10"), dec("200")),
                     (dec("20"), dec("1.5"), dec("30")),
                     (dec("20"), dec("0.1"), dec("2")),
@@ -1419,8 +1473,8 @@ mod dec_tests {
                     (dec("2"), dec("8"), dec("0.25")),
 
                     (Dec::MIN, Dec::ONE, Dec::MIN),
-                    (Dec::MIN + Dec::raw(Int::new(1)), -Dec::ONE, Dec::MAX),
-                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::raw(Int::new(1))),
+                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
+                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::LEFTOVER),
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
@@ -1445,8 +1499,8 @@ mod dec_tests {
                     (dec("2"), dec("8"), dec("0.25")),
 
                     (Dec::MIN, Dec::ONE, Dec::MIN),
-                    (Dec::MIN + Dec::raw(Int::new(I256::from(1))), -Dec::ONE, Dec::MAX),
-                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::raw(Int::new(I256::from(1)))),
+                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
+                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::LEFTOVER),
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
@@ -1614,6 +1668,265 @@ mod dec_tests {
             for base in failing {
                 dts!(_0d, base);
                 assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
+            }
+        }
+    );
+
+    dec_test!( checked_rem
+        inputs = {
+            udec128 = {
+                passing: [
+                    (dec("10"), dec("4"), dec("2")),
+                    (dec("10"), dec("3"), dec("1")),
+                    (dec("2.5"), dec("2"), dec("0.5")),
+                    (dec("0.3"), dec("2.5"), dec("0.3")),
+                    (dec("28"), dec("2.5"), dec("0.5")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (dec("10"), dec("4"), dec("2")),
+                    (dec("10"), dec("3"), dec("1")),
+                    (dec("2.5"), dec("2"), dec("0.5")),
+                    (dec("0.3"), dec("2.5"), dec("0.3")),
+                    (dec("28"), dec("2.5"), dec("0.5")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (dec("10"), dec("4"), dec("2")),
+                    (dec("10"), dec("3"), dec("1")),
+                    (dec("2.5"), dec("2"), dec("0.5")),
+                    (dec("0.3"), dec("2.5"), dec("0.3")),
+                    (dec("28"), dec("2.5"), dec("0.5")),
+
+                    (dec("-10"), dec("4"), dec("-2")),
+                    (dec("28"), dec("-2.5"), dec("0.5")),
+                    (dec("-0.3"), dec("-2.5"), dec("-0.3")),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec("10"), dec("4"), dec("2")),
+                    (dec("10"), dec("3"), dec("1")),
+                    (dec("2.5"), dec("2"), dec("0.5")),
+                    (dec("0.3"), dec("2.5"), dec("0.3")),
+                    (dec("28"), dec("2.5"), dec("0.5")),
+
+                    (dec("-10"), dec("4"), dec("-2")),
+                    (dec("28"), dec("-2.5"), dec("0.5")),
+                    (dec("-0.3"), dec("-2.5"), dec("-0.3")),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (base, div, expected) in passing {
+                dts!(_0d, base, div, expected);
+                assert_eq!(base.checked_rem(div).unwrap(), expected);
+            }
+
+            // Division by zero
+            assert!(matches!(Dec::TEN.checked_rem(_0d), Err(MathError::DivisionByZero { .. })));
+        }
+    );
+
+    dec_test!( rem_panic
+        attrs = #[should_panic(expected = "division by zero")]
+        method = |_0d| {
+            let max = bt(_0d, Dec::MAX);
+            let _ = max % _0d;
+        }
+    );
+
+    dec_test!( rem_assign
+        attrs = #[allow(clippy::op_ref)]
+        method = |_0d| {
+            let mut a = bt(_0d, dec("14"));
+            a %= bt(_0d, dec("3.3"));
+            assert_eq!(a, dec("0.8"));
+        }
+    );
+
+    dec_test!( wrapping_add
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER, Dec::ZERO)
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER, Dec::ZERO)
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN, -Dec::LEFTOVER, Dec::MAX)
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN, -Dec::LEFTOVER, Dec::MAX)
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_add(right), expected);
+            }
+        }
+    );
+
+    dec_test!( wrapping_sub
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::LEFTOVER, Dec::MAX)
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::LEFTOVER, Dec::MAX)
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::MIN, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX, -Dec::LEFTOVER, Dec::MIN)
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::MIN, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX, -Dec::LEFTOVER, Dec::MIN)
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_sub(right), expected);
+            }
+        }
+    );
+
+    dec_test!( wrapping_mul
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER * dec("2"), Dec::MAX - Dec::LEFTOVER),
+                    (Dec::MAX, Dec::LEFTOVER * dec("3"), Dec::MAX - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, dec("2"), Dec::MAX - dec("2") + Dec::LEFTOVER),
+                    (Dec::MAX, dec("3"), Dec::MAX - dec("3") + Dec::LEFTOVER),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER * dec("2"), Dec::MAX - Dec::LEFTOVER),
+                    (Dec::MAX, Dec::LEFTOVER * dec("3"), Dec::MAX - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, dec("2"), Dec::MAX - dec("2") + Dec::LEFTOVER),
+                    (Dec::MAX, dec("3"), Dec::MAX - dec("3") + Dec::LEFTOVER),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER * dec("2"), - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("3"), Dec::MAX - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("4"), - Dec::LEFTOVER * dec("4")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("5"), Dec::MAX - Dec::LEFTOVER * dec("4")),
+                    (Dec::MAX, dec("2"), - dec("2")),
+                    (Dec::MAX, dec("3"), - dec("3")),
+                    (Dec::MAX, dec("4"), - dec("4")),
+
+                    (Dec::MIN, Dec::LEFTOVER * dec("2"), Dec::ZERO),
+                    (Dec::MIN, Dec::LEFTOVER * dec("3"), Dec::MIN),
+                    (Dec::MIN, Dec::LEFTOVER * dec("4"), Dec::ZERO),
+                    (Dec::MIN, Dec::LEFTOVER * dec("5"), Dec::MIN),
+                    (Dec::MIN, dec("2"), Dec::ZERO),
+                    (Dec::MIN, dec("3"), Dec::ZERO),
+                    (Dec::MIN, dec("4"), Dec::ZERO),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::MAX, Dec::LEFTOVER * dec("2"), - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("3"), Dec::MAX - Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("4"), - Dec::LEFTOVER * dec("4")),
+                    (Dec::MAX, Dec::LEFTOVER * dec("5"), Dec::MAX - Dec::LEFTOVER * dec("4")),
+                    (Dec::MAX, dec("2"), - dec("2")),
+                    (Dec::MAX, dec("3"), - dec("3")),
+                    (Dec::MAX, dec("4"), - dec("4")),
+
+                    (Dec::MIN, Dec::LEFTOVER * dec("2"), Dec::ZERO),
+                    (Dec::MIN, Dec::LEFTOVER * dec("3"), Dec::MIN),
+                    (Dec::MIN, Dec::LEFTOVER * dec("4"), Dec::ZERO),
+                    (Dec::MIN, Dec::LEFTOVER * dec("5"), Dec::MIN),
+                    (Dec::MIN, dec("2"), Dec::ZERO),
+                    (Dec::MIN, dec("3"), Dec::ZERO),
+                    (Dec::MIN, dec("4"), Dec::ZERO),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_mul(right), expected);
+            }
+        }
+    );
+
+    dec_test!( wrapping_pow
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::MAX, 2, Dec::LEFTOVER),
+                    (Dec::MAX, 3, Dec::MAX),
+                    (Dec::MAX, 4, Dec::LEFTOVER),
+                    (Dec::MAX, 5, Dec::MAX),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::MAX, 2, Dec::LEFTOVER),
+                    (Dec::MAX, 3, Dec::MAX),
+                    (Dec::MAX, 4, Dec::LEFTOVER),
+                    (Dec::MAX, 5, Dec::MAX),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::MAX, 2, Dec::LEFTOVER),
+                    (Dec::MAX, 3, Dec::MAX),
+                    (Dec::MAX, 4, Dec::LEFTOVER),
+                    (Dec::MAX, 5, Dec::MAX),
+
+                    (Dec::MIN, 2, Dec::ZERO),
+                    (Dec::MIN, 3, Dec::ZERO),
+                    (Dec::MIN, 4, Dec::ZERO),
+                    (Dec::MIN, 5, Dec::ZERO),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::MAX, 2, Dec::LEFTOVER),
+                    (Dec::MAX, 3, Dec::MAX),
+                    (Dec::MAX, 4, Dec::LEFTOVER),
+                    (Dec::MAX, 5, Dec::MAX),
+
+                    (Dec::MIN, 2, Dec::ZERO),
+                    (Dec::MIN, 3, Dec::ZERO),
+                    (Dec::MIN, 4, Dec::ZERO),
+                    (Dec::MIN, 5, Dec::ZERO),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (base, exp, expected) in passing {
+                dts!(_0d, base,  expected);
+                assert_eq!(base.wrapping_pow(exp), expected);
             }
         }
     );
