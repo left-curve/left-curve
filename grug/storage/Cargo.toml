@@ -1,0 +1,21 @@
+[package]
+name          = "grug-storage"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+bnum       = { workspace = true }
+borsh      = { workspace = true }
+grug-math  = { workspace = true }
+grug-types = { workspace = true }
+prost      = { workspace = true }
+serde      = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }

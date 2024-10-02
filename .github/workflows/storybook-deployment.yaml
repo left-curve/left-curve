@@ -1,0 +1,52 @@
+name: Storybook Deployment
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "ui/shared/**"
+
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        working-directory: "grug/sdk"
+        run: pnpm i --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm build:pkg
+
+      - name: Build Storybook
+        working-directory: "ui/shared"
+        run: pnpm sb:build
+
+      - name: Uploading to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          wranglerVersion: "3"
+          apiToken: ${{ secrets.CF_TOKEN }}
+          accountId: 9f30716e11f27c296dfbadb7b7571ae6
+          projectName: dango-storybook
+          directory: ./ui/shared/storybook-static
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${GITHUB_REF##*/}

@@ -1,0 +1,17 @@
+[package]
+name          = "grug-ffi"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+borsh      = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-types = { workspace = true }
+serde      = { workspace = true }
+
+[dev-dependencies]

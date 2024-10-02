@@ -1,0 +1,38 @@
+{
+  "name": "@dango/portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_ENV=development tsx .rspack/rspack.dev.ts",
+    "build": "NODE_ENV=production tsx .rspack/rspack.prod.ts"
+  },
+  "dependencies": {
+    "@leftcurve/connect-kit": "workspace:^",
+    "@leftcurve/react": "workspace:^",
+    "@dango/shared": "workspace:^",
+    "@tanstack/react-query": "^5.56.2",
+    "framer-motion": "^11.3.21",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@rsbuild/core": "^1.0.9",
+    "@rspack/cli": "^1.0.8",
+    "@rspack/core": "^1.0.8",
+    "@rspack/dev-server": "^1.0.7",
+    "@rspack/plugin-react-refresh": "^1.0.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "postcss": "^8",
+    "postcss-loader": "^8.1.1",
+    "react-refresh": "^0.14.2",
+    "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.17.0",
+    "typescript": "^5"
+  }
+}

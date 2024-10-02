@@ -1,0 +1,20 @@
+[package]
+name          = "dango-types"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+anyhow    = { workspace = true }
+borsh     = { workspace = true, features = ["derive"] }
+grug      = { workspace = true }
+paste     = { workspace = true }
+serde     = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]

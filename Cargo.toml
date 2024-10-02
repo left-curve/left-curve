@@ -1,26 +1,39 @@
 [workspace]
 resolver = "2"
 members  = [
-  "bin",
-  "contracts/account",
-  "contracts/bank",
-  "contracts/taxman",
-  "contracts/tester",
-  "crates/app",
-  "crates/client",
-  "crates/crypto",
-  "crates/db/disk",
-  "crates/db/memory",
-  "crates/ffi",
-  "crates/jellyfish-merkle",
-  "crates/macros",
-  "crates/math",
-  "crates/std",
-  "crates/storage",
-  "crates/testing",
-  "crates/types",
-  "crates/vm/rust",
-  "crates/vm/wasm",
+  "dango/account-factory",
+  "dango/account-safe",
+  "dango/account-spot",
+  "dango/amm",
+  "dango/auth",
+  "dango/bank",
+  "dango/genesis",
+  "dango/ibc-transfer",
+  "dango/taxman",
+  "dango/testing",
+  "dango/token-factory",
+  "dango/types",
+  "grug/app",
+  "grug/bob-the-builder",
+  "grug/cli",
+  "grug/client",
+  "grug/crypto",
+  "grug/db-disk",
+  "grug/db-memory",
+  "grug/ffi",
+  "grug/jellyfish-merkle",
+  "grug/macros",
+  "grug/math",
+  "grug/mock-account",
+  "grug/mock-bank",
+  "grug/mock-taxman",
+  "grug/std",
+  "grug/storage",
+  "grug/tester",
+  "grug/testing",
+  "grug/types",
+  "grug/vm-rust",
+  "grug/vm-wasm",
 ]
 
 [workspace.package]
@@ -36,6 +49,7 @@ categories    = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
 anyhow             = "1"
+base64             = "0.22" # TODO: used in dango-auth; replace with data-encoding
 blake2             = "0.10"
 blake3             = "1"
 bnum               = "0.12"
@@ -52,6 +66,7 @@ digest             = "0.10"
 dyn-clone          = "1"
 ed25519-dalek      = "2"
 elsa               = "1"
+glob               = "0.3"
 hex                = "0.4"
 hex-literal        = "0.4"
 home               = "0.5"
@@ -65,6 +80,12 @@ prost              = "0.13"
 quote              = "1"
 rand               = "0.8"
 ripemd             = "0.1"
+# Use the latest `master` branch of rust-rocksdb, which includes support for
+# the user-defined timestamp feature:
+# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
+#
+# TODO: Update to v0.23.0 once released.
+rocksdb            = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "1710120" }
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"
@@ -80,19 +101,47 @@ tendermint-rpc     = "0.39"
 test-case          = "3"
 thiserror          = "1"
 tokio              = "1"
+toml               = "0.8"
 tracing            = "0.1"
 tracing-subscriber = "0.3"
 wasmer             = "4"
 wasmer-middlewares = "4"
 
-# Use the latest `master` branch of rust-rocksdb, which includes support for
-# the user-defined timestamp feature:
-# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-#
-# TODO: Update to v0.23.0 once released.
-[workspace.dependencies.rocksdb]
-git = "https://github.com/rust-rocksdb/rust-rocksdb"
-rev = "1710120"
+# Grug packages
+grug              = { path = "grug/std" }
+grug-app          = { path = "grug/app" }
+grug-auth         = { path = "grug/auth" }
+grug-client       = { path = "grug/client" }
+grug-crypto       = { path = "grug/crypto" }
+grug-db-disk      = { path = "grug/db-disk" }
+grug-db-memory    = { path = "grug/db-memory" }
+grug-ffi          = { path = "grug/ffi" }
+grug-jmt          = { path = "grug/jellyfish-merkle" }
+grug-macros       = { path = "grug/macros" }
+grug-math         = { path = "grug/math" }
+grug-mock-account = { path = "grug/mock-account" }
+grug-mock-bank    = { path = "grug/mock-bank" }
+grug-mock-taxman  = { path = "grug/mock-taxman" }
+grug-storage      = { path = "grug/storage" }
+grug-tester       = { path = "grug/tester" }
+grug-testing      = { path = "grug/testing" }
+grug-types        = { path = "grug/types" }
+grug-vm-rust      = { path = "grug/vm-rust" }
+grug-vm-wasm      = { path = "grug/vm-wasm" }
+
+# Dango packages
+dango-account-factory = { path = "dango/account-factory" }
+dango-account-safe    = { path = "dango/account-safe" }
+dango-account-spot    = { path = "dango/account-spot" }
+dango-amm             = { path = "dango/amm" }
+dango-auth            = { path = "dango/auth" }
+dango-bank            = { path = "dango/bank" }
+dango-genesis         = { path = "dango/genesis" }
+dango-ibc-transfer    = { path = "dango/ibc-transfer" }
+dango-taxman          = { path = "dango/taxman" }
+dango-testing         = { path = "dango/testing" }
+dango-token-factory   = { path = "dango/token-factory" }
+dango-types           = { path = "dango/types" }
 
 [profile.release]
 codegen-units    = 1

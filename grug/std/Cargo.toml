@@ -1,0 +1,31 @@
+[package]
+name          = "grug"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-macros  = { workspace = true }
+grug-math    = { workspace = true }
+grug-storage = { workspace = true }
+grug-types   = { workspace = true }
+serde        = { workspace = true, features = ["derive"] }
+serde_json   = { workspace = true }
+serde_with   = { workspace = true }
+
+# The FFI crate is only included when building for WebAssembly.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+grug-ffi = { workspace = true }
+
+# The client and testing crates are only included when _not_ building for WebAseembly.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+grug-client  = { workspace = true }
+grug-testing = { workspace = true }
+
+[dev-dependencies]

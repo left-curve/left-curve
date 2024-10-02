@@ -1,0 +1,29 @@
+{
+  "name": "@leftcurve/encoding",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
+  "scripts": {
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "ci": "pnpm lint",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "build": "pnpm tsup --clean"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@leftcurve/utils": "workspace:^",
+    "superjson": "^2.2.1"
+  }
+}

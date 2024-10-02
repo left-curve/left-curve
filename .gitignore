@@ -12,3 +12,15 @@
 
 # macOS
 **/.DS_Store
+
+# Node.js
+**/node_modules
+**/build
+**/.turbo
+
+# SDK
+sdk/docs
+
+# UI
+*storybook.log
+**/storybook-static

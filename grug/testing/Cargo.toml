@@ -1,0 +1,32 @@
+[package]
+name          = "grug-testing"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+anyhow             = { workspace = true }
+grug-app           = { workspace = true, features = ["tracing"] }
+grug-crypto        = { workspace = true }
+grug-db-memory     = { workspace = true }
+grug-math          = { workspace = true }
+grug-mock-account  = { workspace = true, features = ["library"] }
+grug-mock-bank     = { workspace = true, features = ["library"] }
+grug-mock-taxman   = { workspace = true, features = ["library"] }
+grug-types         = { workspace = true }
+grug-vm-rust       = { workspace = true }
+k256               = { workspace = true }
+rand               = { workspace = true }
+serde              = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-storage = { workspace = true }
+test-case    = { workspace = true }

@@ -1,0 +1,28 @@
+[package]
+name          = "dango-testing"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+anyhow                  = { workspace = true }
+dango-account-factory   = { workspace = true, features = ["library"] }
+dango-account-safe      = { workspace = true, features = ["library"] }
+dango-account-spot      = { workspace = true, features = ["library"] }
+dango-amm               = { workspace = true, features = ["library"] }
+dango-bank              = { workspace = true, features = ["library"] }
+dango-genesis           = { workspace = true }
+dango-ibc-transfer      = { workspace = true, features = ["library"] }
+dango-taxman            = { workspace = true, features = ["library"] }
+dango-token-factory     = { workspace = true, features = ["library"] }
+dango-types             = { workspace = true }
+grug                    = { workspace = true }
+k256                    = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }
