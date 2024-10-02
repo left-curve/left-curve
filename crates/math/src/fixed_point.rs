@@ -34,6 +34,7 @@ impl FixedPoint<I256> for Dec256 {
     const DECIMAL_PLACES: u32 = 18;
 }
 
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {

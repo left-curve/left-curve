@@ -103,7 +103,6 @@ mod int_tests {
 }
 
 #[cfg(test)]
-
 mod dec_tests {
     use {
         crate::{
