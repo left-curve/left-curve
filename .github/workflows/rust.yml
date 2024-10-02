@@ -7,7 +7,7 @@ on:
       - "*"
     paths:
       - "dango/**"
-      - "sdk/**"
+      - "grug/**"
       - "**.toml"
 
 jobs:
