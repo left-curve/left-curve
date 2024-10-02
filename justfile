@@ -33,5 +33,5 @@ optimize:
 
 # Update data used for wasmvm tests
 update-test-data:
-  cp -v artifacts/grug_mock_*.wasm crates/vm/wasm/testdata/ && \
-  cp -v artifacts/grug_tester.wasm crates/vm/wasm/testdata/
+  cp -v artifacts/grug_mock_*.wasm grug/vm-wasm/testdata/ && \
+  cp -v artifacts/grug_tester.wasm grug/vm-wasm/testdata/
