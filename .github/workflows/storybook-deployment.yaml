@@ -6,7 +6,7 @@ on:
     branches:
       - "main"
     paths:
-      - "dango/ui/shared/**"
+      - "ui/shared/**"
 
 jobs:
   deploy:
@@ -29,19 +29,15 @@ jobs:
           node-version: 20
           cache: "pnpm"
 
-      - name: Install SDK dependencies
+      - name: Install dependencies
         working-directory: "grug/sdk"
         run: pnpm i --frozen-lockfile
 
       - name: Build SDK
         run: pnpm build:pkg
 
-      - name: Install Dango dependencies
-        working-directory: "dango/ui"
-        run: pnpm i --frozen-lockfile
-
       - name: Build Storybook
-        working-directory: "dango/ui/shared"
+        working-directory: "ui/shared"
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages
@@ -51,6 +47,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-storybook
-          directory: ./dango/ui/shared/storybook-static
+          directory: ./ui/shared/storybook-static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

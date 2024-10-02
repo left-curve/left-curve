@@ -3,14 +3,11 @@ name: PR Packages Checks
 on:
   pull_request:
     paths:
-      - "grug/sdk/packages/**"
+      - "sdk/packages/**"
 
 jobs:
   checks:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: "grug/sdk"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4

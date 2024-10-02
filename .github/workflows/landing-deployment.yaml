@@ -7,16 +7,16 @@ on:
       - "main"
       - "develop"
     paths:
-      - "grug/sdk/packages/react/**"
-      - "dango/ui/shared/**"
-      - "dango/ui/landing/**"
+      - "sdk/packages/react/**"
+      - "ui/shared/**"
+      - "ui/landing/**"
   pull_request:
     branches:
       - "*"
     paths:
-      - "grug/sdk/packages/react/**"
-      - "dango/ui/shared/**"
-      - "dango/ui/landing/**"
+      - "sdk/packages/react/**"
+      - "ui/shared/**"
+      - "ui/landing/**"
 
 jobs:
   deploy:
@@ -25,9 +25,6 @@ jobs:
       deployments: write
       pull-requests: write
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: "sdk"
     steps:
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -42,16 +39,12 @@ jobs:
           node-version: 20
           cache: "pnpm"
 
-      - name: Install SDK dependencies
+      - name: Install dependencies
         working-directory: "grug/sdk"
         run: pnpm i --frozen-lockfile
 
       - name: Build SDK
         run: pnpm build:pkg
-
-      - name: Install Dango dependencies
-        working-directory: "dango/ui"
-        run: pnpm i --frozen-lockfile
 
       - name: Build Landing
         run: pnpm build:landing
@@ -63,6 +56,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-portal
-          directory: ./dango/ui/landing/.vercel/output/static
+          directory: ./ui/landing/.vercel/output/static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

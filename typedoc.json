@@ -1,11 +1,11 @@
 {
   "name": "Leftcurve Grug",
   "entryPoints": [
-    "./packages/sdk",
-    "./packages/crypto",
-    "./packages/encoding",
-    "./packages/types",
-    "./packages/utils"
+    "./sdk/packages/sdk",
+    "./sdk/packages/crypto",
+    "./sdk/packages/encoding",
+    "./sdk/packages/types",
+    "./sdk/packages/utils"
   ],
   "navigationLinks": {
     "GitHub": "https://github.com/left-curve/interface"
@@ -14,5 +14,6 @@
   "includeVersion": true,
   "githubPages": true,
   "readme": "./README.md",
-  "darkHighlightTheme": "dark-plus"
+  "darkHighlightTheme": "dark-plus",
+  "out": "./sdk/docs"
 }

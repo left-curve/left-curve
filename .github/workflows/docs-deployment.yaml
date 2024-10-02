@@ -6,7 +6,7 @@ on:
     branches:
       - "main"
     paths:
-      - "grug/sdk/**"
+      - "sdk/**"
 
 jobs:
   deploy:
@@ -15,9 +15,6 @@ jobs:
       deployments: write
       pull-requests: write
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: "grug/sdk"
     steps:
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -52,6 +49,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: ui-doc
-          directory: ./docs
+          directory: ./sdk/docs
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
