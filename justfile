@@ -1,3 +1,5 @@
+# ------------------------------------ Rust ------------------------------------
+
 # List available recipes
 default:
   @just --list
@@ -18,20 +20,32 @@ lint:
 fmt:
   cargo +nightly fmt --all
 
-# Compile and optimize contracts (https://github.com/CosmWasm/rust-optimizer)
+# Update data used for wasmvm tests
+testdata:
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
+
+# --------------------------------- Optimizer ----------------------------------
+
+OPTIMIZER_NAME := "leftcurve/optimizer"
+OPTIMIZER_VERSION := "0.1.0"
+
+# TODO: add platform variants (x86_64 or arm64)
+
+# Build optimizer Docker image
+optimizer-build:
+  docker build -t {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} --target optimizer --load docker/optimizer
+
+# Publish optimizer Docker image
+optimizer-publish:
+  docker push {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+
+# Compile and optimize contracts
 optimize:
-  if [[ $(uname -m) =~ "arm64" ]]; then \
   docker run --rm -v "$(pwd)":/code \
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-    leftcurve/optimizer-arm64:0.17.0-rc.0; else \
-  docker run --rm -v "$(pwd)":/code \
-    --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-    --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-    --platform linux/amd64 \
-    leftcurve/optimizer:0.17.0-rc.0; fi
+    {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
 
-# Update data used for wasmvm tests
-update-test-data:
-  cp -v artifacts/grug_mock_*.wasm grug/vm-wasm/testdata/ && \
-  cp -v artifacts/grug_tester.wasm grug/vm-wasm/testdata/
+# ----------------------------------- Devnet -----------------------------------
+
+# TODO...
