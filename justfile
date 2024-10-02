@@ -35,3 +35,9 @@ optimize:
 update-test-data:
   cp -v artifacts/grug_mock_*.wasm grug/vm-wasm/testdata/ && \
   cp -v artifacts/grug_tester.wasm grug/vm-wasm/testdata/
+
+sdk *args:
+  @pnpm --prefix="./grug/sdk" {{args}}
+
+ui *args:
+  @pnpm --prefix="./dango/ui" {{args}}

@@ -44,6 +44,7 @@ export const common: Configuration = {
   resolve: {
     alias: {
       "~": path.resolve(_dirname, "./src"),
+      react: path.resolve(_dirname, "./node_modules/react"),
     },
     extensions: [".tsx", ".ts", ".js", ".mjs"],
   },

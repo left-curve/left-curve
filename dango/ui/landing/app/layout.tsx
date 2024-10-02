@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 
-import "@leftcurve/ui/fonts/ABCDiatypeRounded/index.css";
+import "@dango/shared/fonts/ABCDiatypeRounded/index.css";
 import "~/public/styles/globals.css";
 
 export const metadata: Metadata = {

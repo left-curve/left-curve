@@ -9,7 +9,7 @@ export const Layout: React.FC = () => {
         alt="bg-image"
         className="object-cover h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl "
       />
-      <Header />
+      {/* <Header /> */}
       <main className="flex flex-1 w-full">
         <Outlet />
       </main>

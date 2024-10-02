@@ -1,4 +1,4 @@
-import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@leftcurve/ui";
+import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@dango/shared";
 
 export const ManageMargin: React.FC = () => {
   return (

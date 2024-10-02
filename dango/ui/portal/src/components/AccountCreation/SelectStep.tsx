@@ -1,4 +1,4 @@
-import { AccountDescriptionCard, useWizard } from "@leftcurve/ui";
+import { AccountDescriptionCard, useWizard } from "@dango/shared";
 import { motion } from "framer-motion";
 import type React from "react";
 

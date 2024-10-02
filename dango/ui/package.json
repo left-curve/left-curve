@@ -4,11 +4,12 @@
   "author": "left-curve software",
   "scripts": {
     "dev": "turbo dev",
+    "dev:portal": "turbo dev -F @dango/portal -F @dango/shared",
     "lint": "turbo lint",
     "lerna": "lerna",
     "clean": "lerna clean -y && pnpm -r exec rm -rf build && pnpm -r exec rm -rf .turbo",
-    "storybook": "pnpm ui sb:dev",
-    "ui": "pnpm -F ui",
+    "storybook": "pnpm shared sb:dev",
+    "shared": "pnpm -F shared",
     "landing": "pnpm -F landing",
     "portal": "pnpm -F portal"
   },

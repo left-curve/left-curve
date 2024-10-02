@@ -1,5 +1,5 @@
 import { useConfig } from "@leftcurve/react";
-import { Button, Input, Select, SelectItem } from "@leftcurve/ui";
+import { Button, Input, Select, SelectItem } from "@dango/shared";
 import { motion } from "framer-motion";
 
 import type { NativeCoin } from "@leftcurve/types";

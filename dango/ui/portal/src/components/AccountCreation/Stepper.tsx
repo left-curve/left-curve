@@ -1,4 +1,4 @@
-import { GradientContainer, twMerge, useWizard } from "@leftcurve/ui";
+import { GradientContainer, twMerge, useWizard } from "@dango/shared";
 import { AnimatePresence } from "framer-motion";
 import type { PropsWithChildren } from "react";
 

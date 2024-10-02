@@ -6,7 +6,7 @@ import {
   SafeProposalsTable,
   Tab,
   Tabs,
-} from "@leftcurve/ui";
+} from "@dango/shared";
 
 import type { AccountType } from "@leftcurve/types";
 
