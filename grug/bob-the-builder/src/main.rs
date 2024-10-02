@@ -153,4 +153,6 @@ fn main() {
         .status()
         .unwrap();
     assert!(checksums.success());
+
+    println!("done 🤟");
 }
