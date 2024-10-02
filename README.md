@@ -67,7 +67,7 @@ pnpm dev:pkg
 Start the development mode for the app located in the `ui/portal` directory:
 
 ```shell
-pnpm dev:app
+pnpm dev:portal
 ```
 
 Build the SDK:
@@ -76,10 +76,10 @@ Build the SDK:
 pnpm build:pkg
 ```
 
-Build both the SDK and the UI:
+Build both the SDK and the Portal App:
 
 ```shell
-pnpm build:app
+pnpm build:portal
 ```
 
 Run tests:
@@ -98,6 +98,11 @@ Generate documentation:
 
 ```shell
 pnpm doc
+```
+
+Storybook
+```shell
+pnpm storybook
 ```
 
 ## Acknowledgement
