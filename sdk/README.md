@@ -23,7 +23,7 @@ You can find more info in our [documentation](https://ui-doc.pages.dev/).
 %%{
   init: {
   'theme': 'base',
-	'themeVariables': {"primaryTextColor":"#fff","primaryColor":"#5a4f7c","lineColor":"#f5a623" }
+  'themeVariables': {"primaryTextColor":"#fff","primaryColor":"#5a4f7c","lineColor":"#f5a623" }
   }
 }%%
 stateDiagram-v2
@@ -55,17 +55,13 @@ stateDiagram-v2
     @leftcurve/utils --> @leftcurve/connectkit
 ```
 
-
 ## Supported JS environments
+
 Packages in the workspace are compiled to JavaScript ES2021, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.
 
 1. Node.js 18+
 2. Modern browsers (Chromium/Firefox/Safari)
 3. Browser extensions (Chromium/Firefox)
-
-## Development
-
-See [Hacking.md]
 
 ## Acknowledgement
 
@@ -82,9 +78,6 @@ TBD
 [Grug]: https://github.com/left-curve/grug
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
-[Storybook]: https://storybook.js.org/
-[PortalApp]: ./apps/portal
-[Hacking.md]: ./HACKING.md
 [Viem]: https://github.com/wevm/viem
 [CosmJS]: https://github.com/cosmos/cosmjs
 [Confio]: https://confio.gmbh/
