@@ -1,0 +1,39 @@
+{
+  "name": "@leftcurve/types",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs",
+      "default": "./build/index.js"
+    },
+    "./window": {
+      "types": "./build/window.d.ts",
+      "import": "./build/window.mjs",
+      "default": "./build/window.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "window": ["./build/window.d.ts"]
+    }
+  },
+  "scripts": {
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "ci": "pnpm lint",
+    "build": "pnpm tsup --clean"
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "vitest": "^2.0.5"
+  }
+}

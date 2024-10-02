@@ -1,0 +1,28 @@
+import type { Chain, Client, ClientConfig, Transport } from "@leftcurve/types";
+import type { PublicActions } from "../actions/publicActions";
+
+import { publicActions } from "../actions/publicActions";
+import { createBaseClient } from "./baseClient";
+
+export type PublicClientConfig<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+> = ClientConfig<transport, chain, undefined>;
+
+export type PublicClient<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+> = Client<transport, chain, undefined, PublicActions<transport, chain>>;
+
+export function createPublicClient<
+  transport extends Transport,
+  chain extends Chain | undefined = undefined,
+>(parameters: PublicClientConfig<transport, chain>): PublicClient<transport, chain> {
+  const { name = "Public Client" } = parameters;
+  const client = createBaseClient({
+    ...parameters,
+    name,
+    type: "public",
+  });
+  return client.extend(publicActions);
+}

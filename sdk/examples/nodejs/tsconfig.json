@@ -1,0 +1,9 @@
+{
+  "extends": "@leftcurve/config/ts/common.json",
+  "include": [
+    "./*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

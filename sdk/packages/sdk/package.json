@@ -1,0 +1,78 @@
+{
+  "name": "@leftcurve/sdk",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "ci": "pnpm lint",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.js",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs",
+      "default": "./build/index.js"
+    },
+    "./actions": {
+      "types": "./build/actions/index.d.ts",
+      "import": "./build/actions/index.mjs",
+      "default": "./build/actions/index.js"
+    },
+    "./clients": {
+      "types": "./build/clients/index.d.ts",
+      "import": "./build/clients/index.mjs",
+      "default": "./build/clients/index.js"
+    },
+    "./chains": {
+      "types": "./build/chains/index.d.ts",
+      "import": "./build/chains/index.mjs",
+      "default": "./build/chains/index.js"
+    },
+    "./signers": {
+      "types": "./build/signers/index.d.ts",
+      "import": "./build/signers/index.mjs",
+      "default": "./build/signers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "actions": [
+        "./build/actions/index.d.ts"
+      ],
+      "clients": [
+        "./build/clients/index.d.ts"
+      ],
+      "chains": [
+        "./build/chains/index.d.ts"
+      ],
+      "signers": [
+        "./build/signers/index.d.ts"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@leftcurve/crypto": "workspace:^",
+    "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@leftcurve/utils": "workspace:^"
+  }
+}
