@@ -4,12 +4,19 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - "main"
+      - "develop"
+    paths:
+      - "dango/**"
+      - "grug/**"
+      - "**.toml"
+  pull_request:
+    branches:
       - "*"
     paths:
       - "dango/**"
       - "grug/**"
       - "**.toml"
-
 jobs:
   test:
     name: Test
