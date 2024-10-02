@@ -333,7 +333,7 @@ impl_number! {
 // ------------------------------------ tests ------------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{dts, int_test, test_utils::bt, Int, MathError, Number, NumberConst},
         bnum::types::{I256, U256},
@@ -1021,6 +1021,127 @@ mod tests {
                 dts!(_0, base, expected);
                 assert_eq!(base.wrapping_pow(exp), expected);
             }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use crate::{
+        dec_test, dts,
+        test_utils::{bt, dec},
+        Dec, Dec128, Dec256, MathError, Number, NumberConst, Udec128, Udec256,
+    };
+
+    dec_test!( checked_add
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Udec128::ZERO, Udec128::ZERO, Udec128::ZERO),
+                    (Udec128::ZERO, Udec128::MAX, Udec128::MAX),
+                    (dec("10"), dec("20"), dec("30")),
+                    (dec("0.1"), dec("20"), dec("20.1")),
+                    (dec("0.01"), dec("20"), dec("20.01")),
+                    (dec("0.001"), dec("20"), dec("20.001")),
+                    (dec("0.0001"), dec("20"), dec("20.0001")),
+                ],
+                failing: [
+                    (Udec128::MAX, Udec128::ONE),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Udec256::ZERO, Udec256::ZERO, Udec256::ZERO),
+                    (Udec256::ZERO, Udec256::MAX, Udec256::MAX),
+                    (dec("10"), dec("20"), dec("30")),
+                    (dec("0.1"), dec("20"), dec("20.1")),
+                    (dec("0.01"), dec("20"), dec("20.01")),
+                    (dec("0.001"), dec("20"), dec("20.001")),
+                    (dec("0.0001"), dec("20"), dec("20.0001")),
+                ],
+                failing: [
+                    (Udec256::MAX, Udec256::ONE),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec128::ZERO, Dec128::ZERO, Dec128::ZERO),
+                    (Dec128::ZERO, Dec128::MAX, Dec128::MAX),
+                    (dec("10"), dec("20"), dec("30")),
+                    (dec("0.1"), dec("20"), dec("20.1")),
+                    (dec("0.01"), dec("20"), dec("20.01")),
+                    (dec("0.001"), dec("20"), dec("20.001")),
+                    (dec("0.0001"), dec("20"), dec("20.0001")),
+
+                    (dec("-10"), dec("20"), dec("10")),
+                    (dec("10"), dec("-20"), dec("-10")),
+                    (dec("-10"), dec("-20"), dec("-30")),
+                    (dec("-0.1"), dec("20"), dec("19.9")),
+                    (dec("-0.01"), dec("20"), dec("19.99")),
+                    (dec("0.1"), dec("-20"), dec("-19.9")),
+                    (dec("0.01"), dec("-20"), dec("-19.99")),
+                    (dec("-0.1"), dec("-20"), dec("-20.1")),
+                    (dec("-0.01"), dec("-20"), dec("-20.01")),
+                ],
+                failing: [
+                    (Dec128::MAX, Dec128::ONE),
+                    (Dec128::MIN, -Dec128::ONE),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec256::ZERO, Dec256::ZERO, Dec256::ZERO),
+                    (Dec256::ZERO, Dec256::MAX, Dec256::MAX),
+                    (dec("10"), dec("20"), dec("30")),
+                    (dec("0.1"), dec("20"), dec("20.1")),
+                    (dec("0.01"), dec("20"), dec("20.01")),
+                    (dec("0.001"), dec("20"), dec("20.001")),
+                    (dec("0.0001"), dec("20"), dec("20.0001")),
+
+                    (dec("-10"), dec("20"), dec("10")),
+                    (dec("10"), dec("-20"), dec("-10")),
+                    (dec("-10"), dec("-20"), dec("-30")),
+                    (dec("-0.1"), dec("20"), dec("19.9")),
+                    (dec("-0.01"), dec("20"), dec("19.99")),
+                    (dec("0.1"), dec("-20"), dec("-19.9")),
+                    (dec("0.01"), dec("-20"), dec("-19.99")),
+                    (dec("-0.1"), dec("-20"), dec("-20.1")),
+                    (dec("-0.01"), dec("-20"), dec("-20.01")),
+                ],
+                failing: [
+                    (Dec256::MAX, Dec256::ONE),
+                    (Dec256::MIN, -Dec256::ONE),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.checked_add(right).unwrap(), expected);
+            }
+
+            for (left, right) in failing {
+                dts!(_0d, left, right);
+                assert!(matches!(left.checked_add(right), Err(MathError::OverflowAdd { .. })));
+            }
+        }
+    );
+
+    dec_test!( add_panic
+        attrs = #[should_panic(expected = "addition overflow")]
+        method = |_0d| {
+            let max = bt(_0d, Dec::MAX);
+            let one = bt(_0d,Dec::ONE);
+            let _ = max + one;
+        }
+    );
+
+    dec_test!( add_assign
+        attrs = #[allow(clippy::op_ref)]
+        method = |_0d| {
+            let mut a = bt(_0d, dec("14"));
+            a += bt(_0d, dec("2.5"));
+            assert_eq!(a, bt(_0d, dec("16.5")));
         }
     );
 }

@@ -1,4 +1,6 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
+
+use crate::Dec;
 
 /// `derive_type`
 ///
@@ -352,6 +354,14 @@ macro_rules! dec_test {
     };
 }
 
+pub fn dec<U>(val: &str) -> Dec<U>
+where
+    Dec<U>: FromStr,
+    <Dec<U> as FromStr>::Err: Debug,
+{
+    Dec::from_str(val).unwrap()
+}
+
 // dec_test!( test
 //     inputs = {
 //         udec128 = {
@@ -379,5 +389,6 @@ macro_rules! dec_test {
 //             ]
 //         }
 //     }
-// method = |_0d: Dec<_>, passing, failing| {
-// }
+//     method = |_0d: Dec<_>, passing, failing| {
+//     }
+// );
