@@ -1,6 +1,14 @@
 name: Rust
 
-on: push
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "*"
+    paths:
+      - "dango/**"
+      - "sdk/**"
+      - "**.toml"
 
 jobs:
   test:
