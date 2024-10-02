@@ -125,11 +125,15 @@ where
     }
 
     fn checked_mul(self, other: Self) -> MathResult<Self> {
-        self.0
-            .checked_full_mul(*other.numerator())?
-            .checked_div(Self::DECIMAL_FRACTION.into_next())?
-            .checked_into_prev()
-            .map(Self)
+        let clos = || {
+            self.0
+                .checked_full_mul(*other.numerator())?
+                .checked_div(Self::DECIMAL_FRACTION.into_next())?
+                .checked_into_prev()
+                .map(Self)
+        };
+
+        clos().map_err(|_| MathError::overflow_mul(self, other))
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {
@@ -1030,7 +1034,7 @@ mod dec_tests {
     use crate::{
         dec_test, dts,
         test_utils::{bt, dec},
-        Dec, MathError, Number, NumberConst,
+        Dec, Int, MathError, Number, NumberConst,
     };
 
     dec_test!( checked_add
@@ -1256,6 +1260,114 @@ mod dec_tests {
             let mut a = bt(_0d, dec("14"));
             a -= bt(_0d, dec("2.5"));
             assert_eq!(a, bt(_0d, dec("11.5")));
+        }
+    );
+
+    dec_test!( checked_mul
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, Dec::ZERO, Dec::ZERO),
+                    (dec("20"), dec("10"), dec("200")),
+                    (dec("20"), dec("1.5"), dec("30")),
+                    (dec("20"), dec("0.1"), dec("2")),
+                    (dec("20"), dec("0.01"), dec("0.2")),
+                    (dec("20"), dec("0.001"), dec("0.02")),
+                    (dec("20"), dec("0.0001"), dec("0.002")),
+                ],
+                failing: [
+                    (Dec::MAX, dec("2")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, Dec::ZERO, Dec::ZERO),
+                    (dec("20"), dec("10"), dec("200")),
+                    (dec("20"), dec("1.5"), dec("30")),
+                    (dec("20"), dec("0.1"), dec("2")),
+                    (dec("20"), dec("0.01"), dec("0.2")),
+                    (dec("20"), dec("0.001"), dec("0.02")),
+                    (dec("20"), dec("0.0001"), dec("0.002")),
+                ],
+                failing: [
+                    (Dec::MAX, dec("2")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, Dec::ZERO, Dec::ZERO),
+                    (Dec::MIN + Dec::raw(Int::new(1)), -Dec::ONE, Dec::MAX),
+                    (dec("20"), dec("10"), dec("200")),
+                    (dec("20"), dec("1.5"), dec("30")),
+                    (dec("20"), dec("0.1"), dec("2")),
+                    (dec("20"), dec("0.01"), dec("0.2")),
+                    (dec("20"), dec("0.001"), dec("0.02")),
+                    (dec("20"), dec("0.0001"), dec("0.002")),
+
+                    (dec("-20"), dec("1.5"), dec("-30")),
+                    (dec("20"), dec("-1.5"), dec("-30")),
+                    (dec("-20"), dec("-1.5"), dec("30")),
+                ],
+                failing: [
+                    (Dec::MAX, dec("2")),
+                    (Dec::MIN, dec("2")),
+                    (Dec::MIN, -Dec::ONE),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, Dec::ZERO, Dec::ZERO),
+                    (Dec::MIN + Dec::raw(Int::new(1.into())), -Dec::ONE, Dec::MAX),
+                    (dec("20"), dec("10"), dec("200")),
+                    (dec("20"), dec("1.5"), dec("30")),
+                    (dec("20"), dec("0.1"), dec("2")),
+                    (dec("20"), dec("0.01"), dec("0.2")),
+                    (dec("20"), dec("0.001"), dec("0.02")),
+                    (dec("20"), dec("0.0001"), dec("0.002")),
+
+                    (dec("-20"), dec("1.5"), dec("-30")),
+                    (dec("20"), dec("-1.5"), dec("-30")),
+                    (dec("-20"), dec("-1.5"), dec("30")),
+                ],
+                failing: [
+                    (Dec::MAX, dec("2")),
+                    (Dec::MIN, dec("2")),
+                    (Dec::MIN, -Dec::ONE),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.checked_mul(right).unwrap(), expected);
+            }
+
+            for (left, right) in failing {
+                dts!(_0d, left, right);
+                assert!(matches!(left.checked_mul(right), Err(MathError::OverflowMul { .. })));
+            }
+        }
+    );
+
+    dec_test!( mul_panic
+        attrs = #[should_panic(expected = "multiplication overflow")]
+        method = |_0d| {
+            let max = bt(_0d, Dec::MAX);
+            let one = bt(_0d, dec("2"));
+            let _ = max * one;
+        }
+    );
+
+    dec_test!( mul_assign
+        attrs = #[allow(clippy::op_ref)]
+        method = |_0d| {
+            let mut a = bt(_0d, dec("14"));
+            a *= bt(_0d, dec("2.5"));
+            assert_eq!(a, bt(_0d, dec("35")));
         }
     );
 }
