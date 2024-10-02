@@ -5,9 +5,20 @@ use crate::{Int, IsZero, MathResult, NextNumber, Number, NumberConst, PrevNumber
 /// This is different from applying a multiplication and a division sequentially,
 /// because the multiplication part can overflow.
 pub trait MultiplyRatio: Sized {
+    /// The result is floored:
+    /// - positive result: `5 * 3 / 2 = 7.5 => 7`
+    /// - negative result: `-5 * 3 / 2 = -7.5 => -8`
     fn checked_multiply_ratio_floor(self, numerator: Self, denominator: Self) -> MathResult<Self>;
 
+    /// The result is ceiled:
+    /// - positive result: `5 * 3 / 2 = 7.5 => 8`
+    /// - negative result: `-5 * 3 / 2 = -7.5 => -7`
     fn checked_multiply_ratio_ceil(self, numerator: Self, denominator: Self) -> MathResult<Self>;
+
+    /// The result is truncated (native integer division):
+    /// - positive result: `5 * 3 / 2 = 7.5 => 7`
+    /// - negative result: `-5 * 3 / 2 = -7.5 => -7`
+    fn checked_multiply_ratio(self, numerator: Self, denominator: Self) -> MathResult<Self>;
 }
 
 impl<U> MultiplyRatio for Int<U>
@@ -44,6 +55,12 @@ where
             Ok(floor_result)
         }
     }
+
+    fn checked_multiply_ratio(self, numerator: Self, denominator: Self) -> MathResult<Self> {
+        self.checked_full_mul(numerator)?
+            .checked_div(denominator.into_next())?
+            .checked_into_prev()
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -65,7 +82,8 @@ mod tests {
                     (500_u128, 2_u128, 3_u128, 333_u128),
                     (500_u128, 222222_u128, 333333_u128, 333_u128),
                     (500_u128, 5_u128, 6_u128, 416_u128),
-                    (500_u128, 100_u128, 120_u128, 416_u128)
+                    (500_u128, 100_u128, 120_u128, 416_u128),
+                    (u128::MAX, u128::MAX, u128::MAX, u128::MAX)
                 ]
             }
             u256 = {
@@ -77,6 +95,8 @@ mod tests {
                     (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(333_u128)),
                     (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(416_u128)),
                     (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(416_u128)),
+                    (U256::MAX, U256::MAX, U256::MAX, U256::MAX)
+
                 ]
             }
             i128 = {
@@ -88,13 +108,15 @@ mod tests {
                     (500_i128, 222222_i128, 333333_i128, 333_i128),
                     (500_i128, 5_i128, 6_i128, 416_i128),
                     (500_i128, 100_i128, 120_i128, 416_i128),
+                    (i128::MAX, i128::MAX, i128::MAX, i128::MAX),
 
                     (500_i128, -2_i128, 3_i128, -334_i128),
                     (500_i128, 2_i128, -3_i128, -334_i128),
                     (500_i128, -2_i128, -3_i128, 333_i128),
                     (-500_i128, -2_i128, 3_i128, 333_i128),
                     (-500_i128, 2_i128, -3_i128, 333_i128),
-                    (-500_i128, -2_i128, -3_i128, -334_i128)
+                    (-500_i128, -2_i128, -3_i128, -334_i128),
+                    (i128::MIN, 2, 2, i128::MIN)
                 ]
             }
             i256 = {
@@ -106,6 +128,7 @@ mod tests {
                     (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(333_i128)),
                     (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(416_i128)),
                     (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(416_i128)),
+                    (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-334_i128)),
                     (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-334_i128)),
@@ -113,6 +136,7 @@ mod tests {
                     (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(333_i128)),
                     (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(333_i128)),
                     (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-334_i128)),
+                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN)
                 ]
             }
         }
@@ -153,7 +177,9 @@ mod tests {
                     (500_u128, 2_u128, 3_u128, 334_u128),
                     (500_u128, 222222_u128, 333333_u128, 334_u128),
                     (500_u128, 5_u128, 6_u128, 417_u128),
-                    (500_u128, 100_u128, 120_u128, 417_u128)
+                    (500_u128, 100_u128, 120_u128, 417_u128),
+                    (u128::MAX, u128::MAX, u128::MAX, u128::MAX)
+
                 ]
             }
             u256 = {
@@ -165,6 +191,8 @@ mod tests {
                     (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(334_u128)),
                     (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(417_u128)),
                     (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(417_u128)),
+                    (U256::MAX, U256::MAX, U256::MAX, U256::MAX)
+
                 ]
             }
             i128 = {
@@ -176,13 +204,17 @@ mod tests {
                     (500_i128, 222222_i128, 333333_i128, 334_i128),
                     (500_i128, 5_i128, 6_i128, 417_i128),
                     (500_i128, 100_i128, 120_i128, 417_i128),
+                    (i128::MAX, i128::MAX, i128::MAX, i128::MAX),
+
 
                     (500_i128, -2_i128, 3_i128, -333_i128),
                     (500_i128, 2_i128, -3_i128, -333_i128),
                     (500_i128, -2_i128, -3_i128, 334_i128),
                     (-500_i128, -2_i128, 3_i128, 334_i128),
                     (-500_i128, 2_i128, -3_i128, 334_i128),
-                    (-500_i128, -2_i128, -3_i128, -333_i128)
+                    (-500_i128, -2_i128, -3_i128, -333_i128),
+                    (i128::MIN, 2, 2, i128::MIN)
+
                 ]
             }
             i256 = {
@@ -194,6 +226,8 @@ mod tests {
                     (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(334_i128)),
                     (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(417_i128)),
                     (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(417_i128)),
+                    (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
+
 
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-333_i128)),
                     (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-333_i128)),
@@ -201,6 +235,8 @@ mod tests {
                     (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(334_i128)),
                     (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(334_i128)),
                     (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-333_i128)),
+                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN)
+
                 ]
             }
         }
@@ -226,6 +262,99 @@ mod tests {
 
             // Divison by zero
             assert!(matches!(max.checked_multiply_ratio_ceil(_10, _0), Err(MathError::DivisionByZero { .. })));
+        }
+    );
+
+    int_test!( multiply_ratio
+        inputs = {
+            u128 = {
+                passing: [
+                    (500_u128, 3_u128, 3_u128, 500_u128),
+                    (500_u128, 3_u128, 2_u128, 750_u128),
+                    (500_u128, 333333_u128, 222222_u128, 750_u128),
+                    (500_u128, 2_u128, 3_u128, 333_u128),
+                    (500_u128, 222222_u128, 333333_u128, 333_u128),
+                    (500_u128, 5_u128, 6_u128, 416_u128),
+                    (500_u128, 100_u128, 120_u128, 416_u128),
+                    (u128::MAX, u128::MAX, u128::MAX, u128::MAX)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
+                    (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
+                    (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
+                    (U256::from(500_u128), U256::from(2_u128), U256::from(3_u128), U256::from(333_u128)),
+                    (U256::from(500_u128), U256::from(222222_u128), U256::from(333333_u128), U256::from(333_u128)),
+                    (U256::from(500_u128), U256::from(5_u128), U256::from(6_u128), U256::from(416_u128)),
+                    (U256::from(500_u128), U256::from(100_u128), U256::from(120_u128), U256::from(416_u128)),
+                    (U256::MAX, U256::MAX, U256::MAX, U256::MAX)
+
+                ]
+            }
+            i128 = {
+                passing: [
+                    (500_i128, 3_i128, 3_i128, 500_i128),
+                    (500_i128, 3_i128, 2_i128, 750_i128),
+                    (500_i128, 333333_i128, 222222_i128, 750_i128),
+                    (500_i128, 2_i128, 3_i128, 333_i128),
+                    (500_i128, 222222_i128, 333333_i128, 333_i128),
+                    (500_i128, 5_i128, 6_i128, 416_i128),
+                    (500_i128, 100_i128, 120_i128, 416_i128),
+                    (i128::MAX, i128::MAX, i128::MAX, i128::MAX),
+
+                    (500_i128, -2_i128, 3_i128, -333_i128),
+                    (500_i128, 2_i128, -3_i128, -333_i128),
+                    (500_i128, -2_i128, -3_i128, 333_i128),
+                    (-500_i128, -2_i128, 3_i128, 333_i128),
+                    (-500_i128, 2_i128, -3_i128, 333_i128),
+                    (-500_i128, -2_i128, -3_i128, -333_i128),
+                    (i128::MIN, 2, 2, i128::MIN)
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
+                    (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
+                    (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
+                    (I256::from(500_i128), I256::from(2_i128), I256::from(3_i128), I256::from(333_i128)),
+                    (I256::from(500_i128), I256::from(222222_i128), I256::from(333333_i128), I256::from(333_i128)),
+                    (I256::from(500_i128), I256::from(5_i128), I256::from(6_i128), I256::from(416_i128)),
+                    (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(416_i128)),
+                    (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
+
+                    (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-333_i128)),
+                    (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-333_i128)),
+                    (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(333_i128)),
+                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(333_i128)),
+                    (I256::from(-500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(333_i128)),
+                    (I256::from(-500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(-333_i128)),
+                    (I256::MIN, I256::from(2_i128), I256::from(2_i128), I256::MIN)
+                ]
+            }
+        }
+        method = |_0, passing| {
+            for (base, numerator, denominator, expected) in passing {
+                let base = Int::new(base);
+                let numerator = Int::new(numerator);
+                let denominator = Int::new(denominator);
+                let expected = Int::new(expected);
+                dts!(_0, base, numerator, denominator, expected);
+                assert_eq!(base.checked_multiply_ratio(numerator, denominator).unwrap(), expected);
+            }
+
+            // 0 / x = 0
+            let _1 = Int::ONE;
+            let _10 = Int::TEN;
+            dts!(_0, _1, _10);
+            assert_eq!(_0.checked_multiply_ratio(_1, _10).unwrap(), _0);
+
+            // Not overflow
+            let max = Int::MAX;
+            assert_eq!(max.checked_multiply_ratio(_10, _10).unwrap(), max);
+
+            // Divison by zero
+            assert!(matches!(max.checked_multiply_ratio(_10, _0), Err(MathError::DivisionByZero { .. })));
         }
     );
 }
