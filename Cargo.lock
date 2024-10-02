@@ -290,6 +290,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bob"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "borsh"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
