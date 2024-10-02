@@ -89,7 +89,7 @@ impl_checked_into_unsigned_dec! {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{int_test, test_utils::bt, Int, MathError, NumberConst, Signed, Uint128, Uint256},
         bnum::{cast::As, types::I256},
@@ -129,6 +129,56 @@ mod tests {
             for unsigned in failing_samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert!(matches!(uint.checked_into_unsigned(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{
+            dec_test, test_utils::dt, Dec, MathError, NumberConst, Signed, Udec128, Udec256,
+            Uint128, Uint256,
+        },
+        bnum::{cast::As, types::I256},
+    };
+
+    dec_test!( singed_to_unsigned
+        inputs = {
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, Udec128::ZERO),
+                    (Dec::TEN, Udec128::TEN),
+                    (Dec::MAX, Udec128::raw(Uint128::new(i128::MAX as u128)))
+                ],
+                failing: [
+                    -Dec::ONE,
+                    Dec::MIN
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, Udec256::ZERO),
+                    (Dec::TEN, Udec256::TEN),
+                    (Dec::MAX, Udec256::raw(Uint256::new(I256::MAX.as_())))
+                ],
+                failing: [
+                    -Dec::ONE,
+                    Dec::MIN
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+
+            for (unsigned, expected) in passing {
+                dt(_0d, unsigned);
+                assert_eq!(unsigned.checked_into_unsigned().unwrap(), expected);
+            }
+
+            for unsigned in failing {
+                dt(_0d, unsigned);
+                assert!(matches!(unsigned.checked_into_unsigned(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );

@@ -164,7 +164,7 @@ mod dec_tests {
         Dec, MathError, NumberConst, Sign,
     };
 
-    dec_test!( test
+    dec_test!( sign
         inputs = {
             udec128 = {
                 passing: [
