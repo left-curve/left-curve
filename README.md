@@ -1,6 +1,6 @@
 # Left Curve
 
-This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) consisting a number of products by [Left Curve Software](https://x.com/leftCurveSoft):
+This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number of [Left Curve Software](https://x.com/leftCurveSoft) products:
 
 | Name              | Language   | Description                                               |
 | ----------------- | ---------- | --------------------------------------------------------- |
