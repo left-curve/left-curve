@@ -51,9 +51,9 @@
     }
   },
   "dependencies": {
-    "@leftcurve/react":"link:../../../grug/sdk/packages/react",
-    "@leftcurve/sdk":"link:../../../grug/sdk/packages/sdk",
-    "@leftcurve/utils":"link:../../../grug/sdk/packages/utils",
+    "@leftcurve/react": "workspace:^",
+    "@leftcurve/sdk": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@react-aria/button": "^3.9.8",
@@ -75,8 +75,8 @@
     "tailwind-variants": "^0.2.1"
   },
   "devDependencies": {
-    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
-    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
     "@react-types/select": "^3.9.6",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",

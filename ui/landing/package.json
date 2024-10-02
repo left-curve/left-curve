@@ -9,9 +9,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "link:../../../grug/sdk/packages/connect-kit",
+    "@leftcurve/connect-kit": "workspace:^",
     "@dango/shared": "workspace:^",
-    "@leftcurve/react": "link:../../../grug/sdk/packages/react",
+    "@leftcurve/react": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
     "next": "14.2.5",
@@ -19,8 +19,8 @@
     "react-dom": "^18"
   },
   "devDependencies": {
-    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
-    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

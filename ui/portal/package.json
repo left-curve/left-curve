@@ -7,8 +7,8 @@
     "build": "NODE_ENV=production tsx .rspack/rspack.prod.ts"
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "link:../../../grug/sdk/packages/connect-kit",
-    "@leftcurve/react": "link:../../../grug/sdk/packages/react",
+    "@leftcurve/connect-kit": "workspace:^",
+    "@leftcurve/react": "workspace:^",
     "@dango/shared": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
@@ -17,8 +17,8 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
-    "@leftcurve/config": "link:../../../grug/sdk/packages/config",
-    "@leftcurve/types": "link:../../../grug/sdk/packages/types",
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
     "@rsbuild/core": "^1.0.9",
     "@rspack/cli": "^1.0.8",
     "@rspack/core": "^1.0.8",
