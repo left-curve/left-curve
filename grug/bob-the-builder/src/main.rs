@@ -8,7 +8,7 @@ use {
     },
 };
 
-const TARGET_DIR: &str = "target";
+const TARGET_DIR: &str = "/target";
 const ARTIFACTS_DIR: &str = "artifacts";
 
 #[derive(Deserialize, Debug)]
@@ -52,6 +52,15 @@ fn main() {
         fs::create_dir(path).unwrap();
     }
 
+    // Delete previously built artifacts that have been cached.
+    for path in glob(&format!("{TARGET_DIR}/wasm32-unknown-unknown/release/*.wasm"))
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap()
+    {
+        fs::remove_file(path).unwrap();
+    }
+
     // Read the workspace root `Cargo.toml` file.
     let file = fs::read_to_string("Cargo.toml").unwrap();
     let cargo_toml = toml::from_str::<CargoToml>(&file).unwrap();
@@ -64,6 +73,7 @@ fn main() {
         .expect("workspace does not contain any member")
         .into_iter()
         .filter_map(|path| {
+            // Read the member's `Cargo.toml` file.
             let file = fs::read_to_string(format!("{path}/Cargo.toml")).unwrap();
             let cargo_toml = toml::from_str::<CargoToml>(&file).unwrap();
 
