@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json",
+  "version": "0.1.0",
+  "npmClient": "pnpm",
+  "registry": "https://registry.npmjs.org",
+  "command": {
+    "version": {
+      "message": "chore(release): %s"
+    }
+  }
+}
