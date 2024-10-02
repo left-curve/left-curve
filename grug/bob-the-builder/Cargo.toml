@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+glob  = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 toml  = { workspace = true }
 

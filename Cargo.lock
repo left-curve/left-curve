@@ -293,6 +293,7 @@ dependencies = [
 name = "bob"
 version = "0.0.0"
 dependencies = [
+ "glob",
  "serde",
  "toml",
 ]

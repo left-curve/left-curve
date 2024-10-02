@@ -1,6 +1,11 @@
 use {
+    glob::glob,
     serde::Deserialize,
-    std::{fs, process::Command},
+    std::{
+        fs::{self, File},
+        path::Path,
+        process::Command,
+    },
 };
 
 const TARGET_DIR: &str = "target";
@@ -32,13 +37,27 @@ struct Lib {
 #[rustfmt::skip]
 fn main() {
     // Assume we are currently at the root of a Cargo workspace.
+    // Create the artifacts directory if it doesn't exist.
+    // Otherwise, empty its content.
+    let path = Path::new(ARTIFACTS_DIR);
+    if path.exists() {
+        if path.is_dir() {
+            for entry in fs::read_dir(path).unwrap() {
+                fs::remove_file(entry.unwrap().path()).unwrap();
+            }
+        } else {
+            panic!("output directory `{ARTIFACTS_DIR}` exists but is not a directory");
+        }
+    } else {
+        fs::create_dir(path).unwrap();
+    }
+
     // Read the workspace root `Cargo.toml` file.
     let file = fs::read_to_string("Cargo.toml").unwrap();
-    let cargo_toml = toml::from_str::<CargoToml>(&file);
+    let cargo_toml = toml::from_str::<CargoToml>(&file).unwrap();
 
     // Find all workspace members that we're going to build.
     let mut members = cargo_toml
-        .unwrap()
         .workspace
         .expect("not a cargo workspace")
         .members
@@ -66,6 +85,8 @@ fn main() {
         .collect::<Vec<_>>();
 
     // Build the crates in alphabetical order.
+    // This is for reproducibility - we're unsure if the build output is
+    // dependent on the order.
     members.sort();
 
     println!("contracts to build:");
@@ -74,6 +95,11 @@ fn main() {
     }
 
     // Build the crates.
+    // To be safe, we do this synchrously, i.e. wait for one crate to finish
+    // building before moving on to the next one. This mean using `.status()`
+    // instead of `.spawn()`.
+    // Again, this is for reproducibility. We're unsure if building in parallel
+    // will affect the build output.
     for member in &members {
         let build = Command::new("cargo")
             .env("RUSTFLAGS", "-C link-arg=-s")
@@ -84,31 +110,37 @@ fn main() {
             .arg("--release")
             .arg("--target=wasm32-unknown-unknown")
             .arg(format!("--target-dir={TARGET_DIR}"))
-            .current_dir(fs::canonicalize(".").unwrap())
-            .spawn()
-            .unwrap()
-            .wait()
+            .status()
             .unwrap();
         assert!(build.success());
     }
 
-    // Optimize the crates.
+    // Optimize the wasm artifacts.
     for member in members {
         println!("optimizing {member}...");
 
         // Convert package name to snake_case.
         let member = member.replace('-', "_");
 
-        let optimize = Command::new("wasm-opt")
+        let output = Command::new("wasm-opt")
             .arg("-Os") // execute default optimization passes, focusing on code size
             .arg(format!("{TARGET_DIR}/wasm32-unknown-unknown/release/{member}.wasm"))
             .arg("-o")
             .arg(format!("{ARTIFACTS_DIR}/{member}.wasm"))
-            .current_dir(fs::canonicalize(".").unwrap())
-            .spawn()
-            .unwrap()
-            .wait()
+            .status()
             .unwrap();
-        assert!(optimize.success());
+        assert!(output.success());
     }
+
+    // Do checksum.
+    let artifacts = glob(&format!("{ARTIFACTS_DIR}/*.wasm"))
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    let checksums = Command::new("sha256sum")
+        .args(artifacts)
+        .stdout(File::create(format!("{ARTIFACTS_DIR}/checksum.txt")).unwrap())
+        .status()
+        .unwrap();
+    assert!(checksums.success());
 }
