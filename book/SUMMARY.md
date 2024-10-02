@@ -9,12 +9,12 @@
 
 ---
 
-# Reference
+# Notes
 
-- [Bounded values](reference/bounded-values.md)
-- [Exports](reference/exports.md)
-- [Extension traits](reference/extension-traits.md)
-- [Gas](reference/gas.md)
-- [Generating dependency graph](reference/generate-dependency-graph.md)
-- [Liquidity provision](reference/liquidity-provision.md)
-- [Transaction lifecycle](reference/transaction-lifecycle.md)
+- [Bounded values](notes/bounded-values.md)
+- [Exports](notes/exports.md)
+- [Extension traits](notes/extension-traits.md)
+- [Gas](notes/gas.md)
+- [Generating dependency graph](notes/generate-dependency-graph.md)
+- [Liquidity provision](notes/liquidity-provision.md)
+- [Transaction lifecycle](notes/transaction-lifecycle.md)
