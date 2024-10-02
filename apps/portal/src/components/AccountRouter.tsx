@@ -1,5 +1,3 @@
-"use client";
-
 import { useAccount } from "@leftcurve/react";
 import { useEffect } from "react";
 

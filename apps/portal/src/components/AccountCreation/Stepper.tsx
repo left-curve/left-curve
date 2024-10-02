@@ -1,6 +1,4 @@
-"use client";
-
-import { GradientContainer, twMerge, useWizard } from "../../../../packages/ui/build/index.mjs";
+import { GradientContainer, twMerge, useWizard } from "@leftcurve/ui";
 import { AnimatePresence } from "framer-motion";
 import type { PropsWithChildren } from "react";
 

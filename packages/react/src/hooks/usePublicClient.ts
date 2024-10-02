@@ -5,7 +5,7 @@ import {
   watchPublicClient,
 } from "@leftcurve/connect-kit";
 
-import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector";
+import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
 import { useConfig } from "./useConfig";
 
 import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";

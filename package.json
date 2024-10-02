@@ -17,7 +17,7 @@
     "test:pkg": "turbo test --filter=\"{./packages/**}...\"",
     "test:app": "turbo test --filter=\"{./apps/portal}...\"",
     "build": "turbo build",
-    "build:app": "pnpm build:pkg && pnpm -F portal build:cf",
+    "build:landing": "pnpm build:pkg && pnpm -F landing build:cf",
     "build:pkg": "turbo build --filter=\"{./packages/**}...\"",
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
@@ -31,6 +31,7 @@
     "sdk": "pnpm -F sdk",
     "types": "pnpm -F types",
     "utils": "pnpm -F utils",
+    "landing": "pnpm -F landing",
     "portal": "pnpm -F portal"
   },
   "engines": {

@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 
-import { Header } from "~/components/Header";
-
 import "@leftcurve/ui/fonts/ABCDiatypeRounded/index.css";
 import "~/public/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Dango Portal App",
+  title: "Dango App",
   description: "",
 };
 
@@ -25,7 +23,6 @@ export default function RootLayout({
           className="object-cover h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl "
         />
         <Providers>
-          <Header />
           <main className="flex flex-1 w-full">{children}</main>
         </Providers>
       </body>

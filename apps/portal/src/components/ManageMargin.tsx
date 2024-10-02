@@ -1,10 +1,4 @@
-"use client";
-
-import {
-  MarginAccountInfo,
-  MarginAssetsTable,
-  MarginDebtsTable,
-} from "../../../packages/ui/build/index.mjs";
+import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@leftcurve/ui";
 
 export const ManageMargin: React.FC = () => {
   return (

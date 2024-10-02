@@ -1,4 +1,4 @@
-import { AccountInfo, SpotPortfolioTable } from "../../../packages/ui/build/index.mjs";
+import { AccountInfo, SpotPortfolioTable } from "@leftcurve/ui";
 
 export const ManageSpot: React.FC = () => {
   return (

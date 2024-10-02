@@ -1,9 +1,8 @@
-"use client";
-
-import { AccountType, type AccountTypes } from "@leftcurve/types";
-import { AccountDescriptionCard, useWizard } from "../../../../packages/ui/build/index.mjs";
+import { AccountDescriptionCard, useWizard } from "@leftcurve/ui";
 import { motion } from "framer-motion";
 import type React from "react";
+
+import { AccountType, type AccountTypes } from "@leftcurve/types";
 
 export const SelectStep: React.FC = () => {
   const { setData, goToStep } = useWizard();

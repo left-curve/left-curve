@@ -1,10 +1,8 @@
-"use client";
-
 import { useConfig } from "@leftcurve/react";
-import type { NativeCoin } from "@leftcurve/types";
-import { Button, Input, Select, SelectItem } from "../../../../packages/ui/build/index.mjs";
+import { Button, Input, Select, SelectItem } from "@leftcurve/ui";
 import { motion } from "framer-motion";
-import type React from "react";
+
+import type { NativeCoin } from "@leftcurve/types";
 
 export const TransferStep: React.FC = () => {
   const { chains, coins } = useConfig();
