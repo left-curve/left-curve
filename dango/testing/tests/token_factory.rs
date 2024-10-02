@@ -1,5 +1,5 @@
 use {
-    dango_e2e::setup_test,
+    dango_testing::setup_test,
     dango_types::token_factory::{ExecuteMsg, NAMESPACE},
     grug::{Addressable, Coins, Denom, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},

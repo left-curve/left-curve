@@ -1,5 +1,5 @@
 use {
-    dango_e2e::{setup_test, Factory, Safe, TestAccount},
+    dango_testing::{setup_test, Factory, Safe, TestAccount},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},

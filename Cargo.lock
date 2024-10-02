@@ -877,26 +877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-e2e"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-account-factory",
- "dango-account-safe",
- "dango-account-spot",
- "dango-amm",
- "dango-bank",
- "dango-genesis",
- "dango-ibc-transfer",
- "dango-taxman",
- "dango-token-factory",
- "dango-types",
- "grug",
- "k256",
- "test-case",
-]
-
-[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
@@ -924,6 +904,26 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
+]
+
+[[package]]
+name = "dango-testing"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-account-factory",
+ "dango-account-safe",
+ "dango-account-spot",
+ "dango-amm",
+ "dango-bank",
+ "dango-genesis",
+ "dango-ibc-transfer",
+ "dango-taxman",
+ "dango-token-factory",
+ "dango-types",
+ "grug",
+ "k256",
+ "test-case",
 ]
 
 [[package]]

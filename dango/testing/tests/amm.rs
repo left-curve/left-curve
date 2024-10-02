@@ -1,5 +1,5 @@
 use {
-    dango_e2e::setup_test,
+    dango_testing::setup_test,
     dango_types::amm::{
         self, ExecuteMsg, FeeRate, Pool, PoolParams, QueryPoolRequest, QueryPoolsRequest,
         XykParams, XykPool, MINIMUM_LIQUIDITY,

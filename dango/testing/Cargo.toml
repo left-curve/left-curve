@@ -1,5 +1,5 @@
 [package]
-name          = "dango-e2e"
+name          = "dango-testing"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

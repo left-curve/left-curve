@@ -1,38 +1,38 @@
 [workspace]
 resolver = "2"
 members  = [
-  "dango/contracts/account/factory",
-  "dango/contracts/account/safe",
-  "dango/contracts/account/spot",
-  "dango/contracts/amm",
-  "dango/contracts/bank",
-  "dango/contracts/ibc-transfer",
-  "dango/contracts/taxman",
-  "dango/contracts/token-factory",
-  "dango/crates/auth",
-  "dango/crates/dango",
-  "dango/crates/genesis",
-  "dango/crates/e2e",
-  "grug/bin",
-  "grug/contracts/mocks/account",
-  "grug/contracts/mocks/bank",
-  "grug/contracts/mocks/taxman",
-  "grug/contracts/tester",
-  "grug/crates/app",
-  "grug/crates/client",
-  "grug/crates/crypto",
-  "grug/crates/db/disk",
-  "grug/crates/db/memory",
-  "grug/crates/ffi",
-  "grug/crates/jellyfish-merkle",
-  "grug/crates/macros",
-  "grug/crates/math",
-  "grug/crates/std",
-  "grug/crates/storage",
-  "grug/crates/testing",
-  "grug/crates/types",
-  "grug/crates/vm/rust",
-  "grug/crates/vm/wasm",
+  "dango/account-factory",
+  "dango/account-safe",
+  "dango/account-spot",
+  "dango/amm",
+  "dango/auth",
+  "dango/bank",
+  "dango/genesis",
+  "dango/ibc-transfer",
+  "dango/taxman",
+  "dango/testing",
+  "dango/token-factory",
+  "dango/types",
+  "grug/app",
+  "grug/cli",
+  "grug/client",
+  "grug/crypto",
+  "grug/db-disk",
+  "grug/db-memory",
+  "grug/ffi",
+  "grug/jellyfish-merkle",
+  "grug/macros",
+  "grug/math",
+  "grug/mock-account",
+  "grug/mock-bank",
+  "grug/mock-taxman",
+  "grug/std",
+  "grug/storage",
+  "grug/tester",
+  "grug/testing",
+  "grug/types",
+  "grug/vm-rust",
+  "grug/vm-wasm",
 ]
 
 [workspace.package]
@@ -105,39 +105,40 @@ wasmer             = "4"
 wasmer-middlewares = "4"
 
 # Grug packages
-grug              = { path = "grug/crates/std" }
-grug-app          = { path = "grug/crates/app" }
-grug-auth         = { path = "grug/crates/auth" }
-grug-client       = { path = "grug/crates/client" }
-grug-crypto       = { path = "grug/crates/crypto" }
-grug-db-disk      = { path = "grug/crates/db/disk" }
-grug-db-memory    = { path = "grug/crates/db/memory" }
-grug-ffi          = { path = "grug/crates/ffi" }
-grug-jmt          = { path = "grug/crates/jellyfish-merkle" }
-grug-macros       = { path = "grug/crates/macros" }
-grug-math         = { path = "grug/crates/math" }
-grug-mock-account = { path = "grug/contracts/mocks/account" }
-grug-mock-bank    = { path = "grug/contracts/mocks/bank" }
-grug-mock-taxman  = { path = "grug/contracts/mocks/taxman" }
-grug-storage      = { path = "grug/crates/storage" }
-grug-tester       = { path = "grug/contracts/tester" }
-grug-testing      = { path = "grug/crates/testing" }
-grug-types        = { path = "grug/crates/types" }
-grug-vm-rust      = { path = "grug/crates/vm/rust" }
-grug-vm-wasm      = { path = "grug/crates/vm/wasm" }
+grug              = { path = "grug/std" }
+grug-app          = { path = "grug/app" }
+grug-auth         = { path = "grug/auth" }
+grug-client       = { path = "grug/client" }
+grug-crypto       = { path = "grug/crypto" }
+grug-db-disk      = { path = "grug/db-disk" }
+grug-db-memory    = { path = "grug/db-memory" }
+grug-ffi          = { path = "grug/ffi" }
+grug-jmt          = { path = "grug/jellyfish-merkle" }
+grug-macros       = { path = "grug/macros" }
+grug-math         = { path = "grug/math" }
+grug-mock-account = { path = "grug/mock-account" }
+grug-mock-bank    = { path = "grug/mock-bank" }
+grug-mock-taxman  = { path = "grug/mock-taxman" }
+grug-storage      = { path = "grug/storage" }
+grug-tester       = { path = "grug/tester" }
+grug-testing      = { path = "grug/testing" }
+grug-types        = { path = "grug/types" }
+grug-vm-rust      = { path = "grug/vm-rust" }
+grug-vm-wasm      = { path = "grug/vm-wasm" }
 
 # Dango packages
-dango-account-factory = { path = "dango/contracts/account/factory" }
-dango-account-safe    = { path = "dango/contracts/account/safe" }
-dango-account-spot    = { path = "dango/contracts/account/spot" }
-dango-amm             = { path = "dango/contracts/amm" }
-dango-auth            = { path = "dango/crates/auth" }
-dango-bank            = { path = "dango/contracts/bank" }
-dango-genesis         = { path = "dango/crates/genesis" }
-dango-ibc-transfer    = { path = "dango/contracts/ibc-transfer" }
-dango-taxman          = { path = "dango/contracts/taxman" }
-dango-token-factory   = { path = "dango/contracts/token-factory" }
-dango-types           = { path = "dango/crates/dango" }
+dango-account-factory = { path = "dango/account-factory" }
+dango-account-safe    = { path = "dango/account-safe" }
+dango-account-spot    = { path = "dango/account-spot" }
+dango-amm             = { path = "dango/amm" }
+dango-auth            = { path = "dango/auth" }
+dango-bank            = { path = "dango/bank" }
+dango-genesis         = { path = "dango/genesis" }
+dango-ibc-transfer    = { path = "dango/ibc-transfer" }
+dango-taxman          = { path = "dango/taxman" }
+dango-testing         = { path = "dango/testing" }
+dango-token-factory   = { path = "dango/token-factory" }
+dango-types           = { path = "dango/types" }
 
 [profile.release]
 codegen-units    = 1
