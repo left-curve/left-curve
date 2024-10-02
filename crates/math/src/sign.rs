@@ -96,7 +96,7 @@ impl_sign_signed!(i8, i16, i32, i64, i128, I256, I512);
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{int_test, test_utils::bt, Int, MathError, NumberConst, Sign},
         bnum::types::{I256, U256},
@@ -151,6 +151,70 @@ mod tests {
             for failing in failing {
                 let base = bt(_0, Int::new(failing));
                 assert!(matches!(base.checked_abs(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use crate::{
+        dec_test,
+        test_utils::{dt, Leftover},
+        Dec, MathError, NumberConst, Sign,
+    };
+
+    dec_test!( test
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, false, Dec::ZERO),
+                    (Dec::MAX, false, Dec::MAX)
+                ],
+                failing: [
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, false, Dec::ZERO),
+                    (Dec::MAX, false, Dec::MAX)
+                ],
+                failing: [
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, false, Dec::ZERO),
+                    (Dec::MAX, false, Dec::MAX),
+                    (-Dec::ONE, true, Dec::ONE),
+                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX)
+                ],
+                failing: [
+                    Dec::MIN
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, false, Dec::ZERO),
+                    (Dec::MAX, false, Dec::MAX),
+                    (-Dec::ONE, true, Dec::ONE),
+                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX)
+                ],
+                failing: [
+                    Dec::MIN
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (base, sign, abs) in passing {
+                dt(_0d, base);
+                assert_eq!(base.is_negative(), sign);
+                assert_eq!(base.checked_abs().unwrap(), abs);
+            }
+
+            for failing in failing {
+                dt(_0d, failing);
+                assert!(matches!(failing.checked_abs(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );
