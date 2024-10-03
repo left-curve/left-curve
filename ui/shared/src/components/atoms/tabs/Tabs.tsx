@@ -6,7 +6,7 @@ import { twMerge } from "~/utils";
 import { Tab } from "./Tab";
 import TabPanel from "./TabPanel";
 
-type Props = TabListStateOptions<{
+export type TabsProps = TabListStateOptions<{
   id: string;
   title: string;
   content: ReactElement | string;
@@ -18,7 +18,7 @@ type Props = TabListStateOptions<{
   };
 };
 
-export const Tabs: React.FC<Props> = ({ classNames, className, ...props }) => {
+export const Tabs: React.FC<TabsProps> = ({ classNames, className, ...props }) => {
   const state = useTabListState(props);
   const ref = useRef<HTMLDivElement>(null);
   const { tabListProps } = useTabList(props, state, ref);
