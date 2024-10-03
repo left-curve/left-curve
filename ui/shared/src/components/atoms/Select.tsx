@@ -13,8 +13,8 @@ import { ListBox } from "./Listbox";
 
 export { Item } from "@react-stately/collections";
 
-export interface SelectProps
-  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size" | "color">,
+export interface SelectProps<T extends object>
+  extends AriaSelectProps<T>,
     VariantProps<typeof selectVariants> {
   selectorIcon?: React.ReactNode;
   endContent?: React.ReactNode;
@@ -22,7 +22,7 @@ export interface SelectProps
   error?: string;
 }
 
-export function Select<T extends object>(props: AriaSelectProps<T> & SelectProps) {
+export function Select<T extends object>(props: SelectProps<T>) {
   const { selectorIcon: Icon = <ArrowSelectorIcon />, placeholder, color = "default" } = props;
   const state = useSelectState(props);
 

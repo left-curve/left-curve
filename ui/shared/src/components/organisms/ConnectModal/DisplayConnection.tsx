@@ -6,9 +6,9 @@ import { sleep } from "@leftcurve/utils";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { BackArrowIcon, Button, WalletIcon } from "~/components";
-import { Spinner } from "~/components/atoms/Spinner";
 import { useWizard } from "~/providers";
 import { twMerge } from "~/utils";
+import { LoadingIndicator } from "./LoadingIndicator";
 
 export const DisplayConnection: React.FC = () => {
   const chainId = useChainId();
@@ -75,7 +75,7 @@ export const DisplayConnection: React.FC = () => {
             />
           )}
           <motion.div className="transition-all relative z-10 scale-100">
-            <Spinner size="lg" isLoading={isLoading} isError={!!error} />
+            <LoadingIndicator size="lg" isLoading={isLoading} isError={!!error} />
           </motion.div>
         </div>
 

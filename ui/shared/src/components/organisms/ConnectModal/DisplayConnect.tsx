@@ -3,8 +3,8 @@
 import { type FormEvent, useState } from "react";
 import { useWizard } from "~/providers";
 
-import { Spinner } from "~/components";
 import { BackArrowIcon, Button, Input, WalletIcon } from "~/components";
+import { LoadingIndicator } from "./LoadingIndicator";
 
 import { motion } from "framer-motion";
 import { twMerge } from "~/utils";
@@ -74,7 +74,7 @@ export const DisplayConnect: React.FC = () => {
               isLoading ? "scale-100" : "scale-0",
             )}
           >
-            <Spinner size="lg" isLoading={isLoading} />
+            <LoadingIndicator size="lg" isLoading={isLoading} />
           </motion.div>
         </div>
 

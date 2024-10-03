@@ -2,7 +2,7 @@ import { usePublicClient } from "@leftcurve/react";
 import { safeAccountGetProposals } from "@leftcurve/sdk/actions";
 import { useQuery } from "@tanstack/react-query";
 
-import { ProposalCard } from "../atoms/ProposalCard";
+import { ProposalCard } from "./ProposalCard";
 
 import type { Account } from "@leftcurve/types";
 
