@@ -354,6 +354,14 @@ macro_rules! dec_test {
     };
 }
 
+pub fn int<U>(val: &str) -> Int<U>
+where
+    Int<U>: FromStr,
+    <Int<U> as FromStr>::Err: Debug,
+{
+    Int::from_str(val).unwrap()
+}
+
 /// Shortcut for create a `Dec` from a string.
 pub fn dec<U>(val: &str) -> Dec<U>
 where

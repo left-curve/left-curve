@@ -343,7 +343,11 @@ impl_number! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{dts, int_test, test_utils::bt, Int, MathError, Number, NumberConst},
+        crate::{
+            dts, int_test,
+            test_utils::{bt, int},
+            Int, MathError, Number, NumberConst,
+        },
         bnum::types::{I256, U256},
     };
 
@@ -1084,6 +1088,167 @@ mod int_tests {
                 let expected = Int::new(expected);
                 dts!(_0, base, expected);
                 assert_eq!(base.wrapping_pow(exp), expected);
+            }
+        }
+    );
+
+    int_test!( saturating_add
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
+                    (Int::MAX, Int::ONE, Int::MAX)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
+                    (Int::MAX, Int::ONE, Int::MAX)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
+                    (Int::MAX, Int::ONE, Int::MAX),
+                    (Int::MIN, -Int::ONE, Int::MIN),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
+                    (Int::MAX, Int::ONE, Int::MAX),
+                    (Int::MIN, -Int::ONE, Int::MIN),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.saturating_add(right), expected);
+            }
+        }
+    );
+
+    int_test!( saturating_sub
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
+                    (Int::MIN, Int::ONE, Int::MIN)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
+                    (Int::MIN, Int::ONE, Int::MIN)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
+                    (Int::MIN, Int::ONE, Int::MIN),
+                    (Int::MAX, -Int::ONE, Int::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
+                    (Int::MIN, Int::ONE, Int::MIN),
+                    (Int::MAX, -Int::ONE, Int::MAX),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.saturating_sub(right), expected);
+            }
+        }
+    );
+
+    int_test!( saturating_mul
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::MAX, int("2"), Int::MAX),
+                    (Int::MAX / int("2") + Int::ONE, int("2"), Int::MAX),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::MAX, int("2"), Int::MAX),
+                    (Int::MAX / int("2") + Int::ONE, int("2"), Int::MAX),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MAX, int("2"), Int::MAX),
+                    (Int::MAX / int("2") + Int::ONE, int("2"), Int::MAX),
+                    (Int::MIN , int("2"), Int::MIN),
+                    (Int::MIN / int("2") - Int::ONE, int("2"), Int::MIN),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MAX, int("2"), Int::MAX),
+                    (Int::MAX / int("2") + Int::ONE, int("2"), Int::MAX),
+                    (Int::MIN , int("2"), Int::MIN),
+                    (Int::MIN / int("2") - Int::ONE, int("2"), Int::MIN),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.saturating_mul(right), expected);
+            }
+        }
+    );
+
+    int_test!( saturating_pow
+        inputs = {
+            u128 = {
+                passing: [
+                    (int("2"), 2, int("4")),
+                    (Int::MAX, 2, Int::MAX),
+                    (Int::MAX, 3, Int::MAX),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (int("2"), 2, int("4")),
+                    (Int::MAX, 2, Int::MAX),
+                    (Int::MAX, 3, Int::MAX),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (int("2"), 2, int("4")),
+                    (int("-2"), 2, int("4")),
+                    (int("-2"), 3, int("-8")),
+                    (Int::MAX, 2, Int::MAX),
+                    (Int::MAX, 3, Int::MAX),
+                    (Int::MIN, 2, Int::MAX),
+                    (Int::MIN, 3, Int::MIN),
+
+                ]
+            }
+            i256 = {
+                passing: [
+                    (int("2"), 2, int("4")),
+                    (int("-2"), 2, int("4")),
+                    (int("-2"), 3, int("-8")),
+                    (Int::MAX, 2, Int::MAX),
+                    (Int::MAX, 3, Int::MAX),
+                    (Int::MIN, 2, Int::MAX),
+                    (Int::MIN, 3, Int::MIN),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (base, exp, expected) in passing {
+                dts!(_0d, base, expected);
+                assert_eq!(base.saturating_pow(exp), expected);
             }
         }
     );
