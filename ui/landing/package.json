@@ -9,14 +9,19 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "workspace:^",
     "@dango/shared": "workspace:^",
+    "@leftcurve/connect-kit": "workspace:^",
+    "@leftcurve/crypto": "workspace:^",
+    "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
+    "@leftcurve/sdk": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
     "next": "14.2.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-hook-form": "^7.53.0"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",

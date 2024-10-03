@@ -23,6 +23,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       disabled,
       fullWidth,
       startText,
+      error,
       ...props
     },
     ref,
@@ -41,6 +42,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <input type={type} className={input({ startText })} ref={ref} {...props} />
           {endContent ? endContent : null}
         </div>
+        {error ? <span className="text-danger-500">{error}</span> : null}
         {bottomComponent ? <span className={description()}>{bottomComponent}</span> : null}
       </div>
     );
