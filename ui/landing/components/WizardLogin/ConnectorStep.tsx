@@ -20,7 +20,7 @@ export const ConnectorStep: React.FC = () => {
         chainId: chains.at(0)!.id,
         challenge: "Please sign this message to confirm your identity.",
       });
-      window.location.replace(`https://portal.${window.location.hostname}`);
+      window.location.replace(process.env.NEXT_PUBLIC_PORTAL_URL!);
     } catch (err) {
       console.error(err);
       setData({ retry: true });
