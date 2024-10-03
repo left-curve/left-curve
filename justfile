@@ -48,4 +48,18 @@ optimize:
 
 # ----------------------------------- Devnet -----------------------------------
 
-# TODO...
+DEVNET_NAME := "leftcurve/devnet"
+DEVNET_VERSION := "0.1.0"
+
+# Build devnet Docker image
+devnet-build:
+  docker build -t {{DEVNET_NAME}}:{{DEVNET_VERSION}} --target devnet --load docker/devnet
+
+# Publish devnet Docker image
+devnet-publish:
+  docker push {{DEVNET_NAME}}:{{DEVNET_VERSION}}
+
+# Run devnet
+devnet:
+  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
+# TODO: mount local .cometbft and .grug directories?
