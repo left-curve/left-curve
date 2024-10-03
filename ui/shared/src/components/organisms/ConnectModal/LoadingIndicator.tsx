@@ -56,11 +56,12 @@ export interface SpinnerProps
   extends React.SVGAttributes<SVGSVGElement>,
     VariantProps<typeof spinner> {}
 
-export const Spinner = forwardRef<SVGSVGElement, SpinnerProps>(
+export const LoadingIndicator = forwardRef<SVGSVGElement, SpinnerProps>(
   ({ className, isError, isLoading, size, ...props }, ref) => {
     const { base, circle1, circle2 } = spinner({ isError, isLoading, size });
     return (
       <svg ref={ref} {...props} viewBox="25 25 50 50" className={twMerge(base(), className)}>
+        <title>Loading Indicator</title>
         <circle r="20" cy="50" cx="50" className={circle1()} />
         <circle r="20" cy="50" cx="50" className={circle2()} />
       </svg>
@@ -68,4 +69,4 @@ export const Spinner = forwardRef<SVGSVGElement, SpinnerProps>(
   },
 );
 
-Spinner.displayName = "Spinner";
+LoadingIndicator.displayName = "Loading Indicator";
