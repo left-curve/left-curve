@@ -4,11 +4,8 @@
 
 export { Button, type ButtonProps } from "./atoms/Button";
 export { Input, type InputProps } from "./atoms/Input";
-export { Label } from "./atoms/Label";
-export { Spinner } from "./atoms/Spinner";
 export { Tabs } from "./atoms/tabs/Tabs";
 export { TabItem as Tab } from "./atoms/tabs/TabItem";
-export { ProposalCard } from "./atoms/ProposalCard";
 export { Select, Item as SelectItem } from "./atoms/Select";
 export { GradientContainer } from "./atoms/GradientContainer";
 export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
@@ -18,6 +15,7 @@ export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
 /* -------------------------------------------------------------------------- */
 
 export { Modal, type ModalProps, type ModalRef } from "./molecules/Modal";
+export { ProposalCard } from "./molecules/ProposalCard";
 export { MenuAccounts } from "./molecules/MenuAccounts";
 export { MenuConnections } from "./molecules/MenuConnections";
 export { MenuNotifications } from "./molecules/MenuNotifications";
