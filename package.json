@@ -14,6 +14,7 @@
     "build:pkg": "turbo build -F=./sdk/packages/**",
     "dev:portal": "turbo dev -F=./sdk/packages/** -F @dango/shared -F @dango/portal",
     "build:portal": "turbo build -F=./sdk/packages/** -F @dango/portal",
+    "build:landing": "turbo build -F=./sdk/packages/** -F @dango/landing",
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
     "example:node": "pnpm -F example-nodejs",
