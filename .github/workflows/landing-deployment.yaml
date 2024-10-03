@@ -40,7 +40,6 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        working-directory: "grug/sdk"
         run: pnpm i --frozen-lockfile
 
       - name: Build SDK
