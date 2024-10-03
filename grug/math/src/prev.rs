@@ -98,7 +98,7 @@ impl_prev_dec! {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{int_test, test_utils::bt, Int, MathError, PrevNumber},
         bnum::types::{I256, U256},
@@ -152,6 +152,48 @@ mod tests {
             for failing in failing {
                 let current = bt(_0, Int::new(failing));
                 assert!(matches!(current.checked_into_prev(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{dec_test, test_utils::bt, Dec, Int, MathError, PrevNumber},
+        bnum::types::{I256, U256},
+    };
+
+    dec_test!( prev
+        inputs = {
+            udec256 = {
+                passing: [
+                    (U256::from(u128::MAX), u128::MAX),
+                ],
+                failing: [
+                    U256::from(u128::MAX) + U256::ONE,
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (I256::from(i128::MAX), i128::MAX),
+                    (I256::from(i128::MIN), i128::MIN),
+                ],
+                failing: [
+                    I256::from(i128::MAX) + I256::ONE,
+                    I256::from(i128::MIN) - I256::ONE,
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (current, prev) in passing {
+                let current = bt(_0d, Dec::raw(bt(_0d.0, Int::new(current))));
+                assert_eq!(current.checked_into_prev().unwrap(), Dec::raw(Int::new(prev)));
+            }
+
+            for failing in failing {
+                let failing = bt(_0d, Dec::raw(bt(_0d.0, Int::new(failing))));
+                assert!(matches!(failing.checked_into_prev(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );

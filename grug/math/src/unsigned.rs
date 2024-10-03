@@ -85,7 +85,7 @@ impl_chekced_into_signed_dec! {
 // ------------------------------------ tests ------------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{int_test, test_utils::bt, Int, Int128, Int256, MathError, Unsigned},
         bnum::{cast::As, types::U256},
@@ -121,6 +121,53 @@ mod tests {
             for unsigned in failing_samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert!(matches!(uint.checked_into_signed(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{
+            dec_test,
+            test_utils::{dec, dt},
+            Dec, Dec128, Dec256, FixedPoint, Int128, Int256, MathError, NumberConst, Udec256,
+            Unsigned,
+        },
+        bnum::{cast::As, types::U256},
+    };
+
+    dec_test!( unsigned_to_signed
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::TEN, Dec128::TEN),
+                    (Dec::MAX / dec("2"), Dec128::raw(Int128::new((u128::MAX / 2) as i128))),
+                ],
+                failing: [
+                    Dec::MAX / dec("2") + Dec::TICK,
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::TEN, Dec256::TEN),
+                    (Udec256::MAX / dec("2"), Dec256::raw(Int256::new((U256::MAX / 2).as_()))),
+                ],
+                failing: [
+                    Dec::MAX / dec("2") + Dec::TICK,
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (unsigned, expected) in passing {
+                dt(_0d, unsigned);
+                assert_eq!(unsigned.checked_into_signed().unwrap(), expected);
+            }
+
+            for unsigned in failing {
+                dt(_0d, unsigned);
+                assert!(matches!(unsigned.checked_into_signed(), Err(MathError::OverflowConversion { .. })));
             }
         }
     );

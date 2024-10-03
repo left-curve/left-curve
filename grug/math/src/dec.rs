@@ -98,7 +98,7 @@ where
         let denominator = denominator.into();
 
         numerator
-            .checked_multiply_ratio_floor(Self::DECIMAL_FRACTION, denominator)
+            .checked_multiply_ratio_floor(Self::PRECISION, denominator)
             .map(Self)
     }
 }
@@ -121,7 +121,7 @@ where
     Int<U>: Copy + Sign + NumberConst + PartialEq,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let decimals = Self::DECIMAL_FRACTION;
+        let decimals = Self::PRECISION;
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
@@ -152,7 +152,7 @@ where
 impl<U> FromStr for Dec<U>
 where
     Self: FixedPoint<U>,
-    Int<U>: NumberConst + Number + Display + FromStr,
+    Int<U>: NumberConst + Number + Sign + Display + FromStr,
 {
     type Err = MathError;
 
@@ -170,20 +170,28 @@ where
             .unwrap() // split always returns at least one element
             .parse::<Int<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
-            .checked_mul(Self::DECIMAL_FRACTION)
+            .checked_mul(Self::PRECISION)
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "value too big"))?;
 
         if let Some(fractional_part) = parts_iter.next() {
             let fractional = fractional_part.parse::<Int<U>>().map_err(|_| {
                 MathError::parse_number::<Self, _, _>(input, "error parsing fractional")
             })?;
+
+            if fractional.is_negative() {
+                return Err(MathError::parse_number::<Self, _, _>(
+                    input,
+                    "fractional part cannot be negative",
+                ));
+            }
+
             let exp = (Self::DECIMAL_PLACES.checked_sub(fractional_part.len() as u32)).ok_or_else(
                 || {
                     MathError::parse_number::<Self, _, _>(
                         input,
                         format!(
                             "cannot parse more than {} fractional digits",
-                            Self::DECIMAL_FRACTION
+                            Self::PRECISION
                         ),
                     )
                 },
@@ -488,67 +496,562 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Dec128, Number, NumberConst, Udec128},
-        std::str::FromStr,
+        crate::{
+            dec_test, dts,
+            test_utils::{bt, dec},
+            Dec, Dec128, Dec256, FixedPoint, NumberConst, Udec128, Udec256,
+        },
+        std::{cmp::Ordering, str::FromStr},
     };
 
-    #[test]
-    fn t1() {
-        assert_eq!(Udec128::ONE + Udec128::ONE, Udec128::new(2));
+    dec_test!( size_of
+        inputs = {
+            udec128 = [16]
+            udec256 = [32]
+            dec128 = [16]
+            dec256 = [32]
+        }
+        method = |_0, size| {
+            assert_eq!(core::mem::size_of_val(&_0), size);
+        }
+    );
 
-        assert_eq!(
-            Udec128::new(10).checked_add(Udec128::new(20)).unwrap(),
-            Udec128::new(30)
-        );
+    dec_test!( from_str
+        inputs = {
+            udec128 = {
+                passing: [
+                    ("0", Udec128::new(0)),
+                    ("0.1", Udec128::new_percent(10)),
+                    ("0.01", Udec128::new_percent(1)),
+                    ("0.001", Udec128::new_permille(1)),
+                    ("10", Udec128::new(10)),
+                    ("10.1", Udec128::new_percent(1010)),
+                    ("10.01", Udec128::new_percent(1001)),
+                    ("10.0", Udec128::new(10)),
+                    ("10.00", Udec128::new(10)),
+                    ("010.00", Udec128::new(10)),
+                    ("0010.00", Udec128::new(10)),
+                    ("10.123456789012345678", dec("10.123456789012345678")),
+                    ("+10.123456789012345678", dec("10.123456789012345678"))
+                ],
+                failing: [
+                    ".10",
+                    "10.10.10",
+                    "10.1234567890123456789",
 
-        assert_eq!(
-            Udec128::new(3).checked_rem(Udec128::new(2)).unwrap(),
-            Udec128::from_str("1").unwrap()
-        );
+                ]
+            }
+            udec256 = {
+                passing: [
+                    ("0", Udec256::new(0)),
+                    ("0.1", Udec256::new_percent(10)),
+                    ("0.01", Udec256::new_percent(1)),
+                    ("0.001", Udec256::new_permille(1)),
+                    ("10", Udec256::new(10)),
+                    ("10.1", Udec256::new_percent(1010)),
+                    ("10.01", Udec256::new_percent(1001)),
+                    ("10.0", Udec256::new(10)),
+                    ("10.00", Udec256::new(10)),
+                    ("010.00", Udec256::new(10)),
+                    ("0010.00", Udec256::new(10)),
+                    ("10.123456789012345678", dec("10.123456789012345678")),
+                    ("+10.123456789012345678", dec("10.123456789012345678"))
+                ],
+                failing: [
+                    ".10",
+                    "10.10.10",
+                    "10.1234567890123456789",
+                ]
+            }
+            dec128 = {
+                passing: [
+                    ("0", Dec128::new(0)),
+                    ("0.1", Dec128::new_percent(10)),
+                    ("0.01", Dec128::new_percent(1)),
+                    ("0.001", Dec128::new_permille(1)),
+                    ("10", Dec128::new(10)),
+                    ("10.1", Dec128::new_percent(1010)),
+                    ("10.01", Dec128::new_percent(1001)),
+                    ("10.0", Dec128::new(10)),
+                    ("10.00", Dec128::new(10)),
+                    ("010.00", Dec128::new(10)),
+                    ("0010.00", Dec128::new(10)),
+                    ("10.123456789012345678", dec("10.123456789012345678")),
+                    ("+10.123456789012345678", dec("10.123456789012345678")),
 
-        assert_eq!(
-            Udec128::from_str("3.5")
-                .unwrap()
-                .checked_rem(Udec128::new(2))
-                .unwrap(),
-            Udec128::from_str("1.5").unwrap()
-        );
+                    ("-0", -Dec128::new(0)),
+                    ("-0.1", -Dec128::new_percent(10)),
+                    ("-0.01", -Dec128::new_percent(1)),
+                    ("-0.001", -Dec128::new_permille(1)),
+                    ("-10", -Dec128::new(10)),
+                    ("-10.1", -Dec128::new_percent(1010)),
+                    ("-10.01", -Dec128::new_percent(1001)),
+                    ("-10.0", -Dec128::new(10)),
+                    ("-10.00", -Dec128::new(10)),
+                    ("-010.00", -Dec128::new(10)),
+                    ("-0010.00", -Dec128::new(10)),
+                ],
+                failing: [
+                    ".10",
+                    "10.10.10",
+                    "10.1234567890123456789",
 
-        assert_eq!(
-            Udec128::from_str("3.5")
-                .unwrap()
-                .checked_rem(Udec128::from_str("2.7").unwrap())
-                .unwrap(),
-            Udec128::from_str("0.8").unwrap()
-        );
-    }
+                    "-.10",
+                    "-10.-10",
+                    "10.1234-5678901234567",
+                ]
+            }
+            dec256 = {
+                passing: [
+                    ("0", Dec256::new(0)),
+                    ("0.1", Dec256::new_percent(10)),
+                    ("0.01", Dec256::new_percent(1)),
+                    ("0.001", Dec256::new_permille(1)),
+                    ("10", Dec256::new(10)),
+                    ("10.1", Dec256::new_percent(1010)),
+                    ("10.01", Dec256::new_percent(1001)),
+                    ("10.0", Dec256::new(10)),
+                    ("10.00", Dec256::new(10)),
+                    ("010.00", Dec256::new(10)),
+                    ("0010.00", Dec256::new(10)),
+                    ("10.123456789012345678", dec("10.123456789012345678")),
+                    ("+10.123456789012345678", dec("10.123456789012345678")),
 
-    #[test]
-    fn neg_to_string_works() {
-        assert_eq!(Dec128::new(-1).to_string(), "-1");
-        assert_eq!(Dec128::new_percent(-10).to_string(), "-0.1");
-        assert_eq!(Dec128::new_percent(-110).to_string(), "-1.1");
-        assert_eq!(Dec128::new(1).to_string(), "1");
-        assert_eq!(Dec128::new_percent(10).to_string(), "0.1");
-        assert_eq!(Dec128::new_percent(110).to_string(), "1.1");
-    }
+                    ("-0", -Dec256::new(0)),
+                    ("-0.1", -Dec256::new_percent(10)),
+                    ("-0.01", -Dec256::new_percent(1)),
+                    ("-0.001", -Dec256::new_permille(1)),
+                    ("-10", -Dec256::new(10)),
+                    ("-10.1", -Dec256::new_percent(1010)),
+                    ("-10.01", -Dec256::new_percent(1001)),
+                    ("-10.0", -Dec256::new(10)),
+                    ("-10.00", -Dec256::new(10)),
+                    ("-010.00", -Dec256::new(10)),
+                    ("-0010.00", -Dec256::new(10)),
+                ],
+                failing: [
+                    ".10",
+                    "10.10.10",
+                    "10.1234567890123456789",
 
-    #[test]
-    fn new_from_str_works() {
-        assert_eq!(Dec128::from_str("0.5").unwrap(), Dec128::new_percent(50));
-        assert_eq!(Dec128::from_str("1").unwrap(), Dec128::new(1));
-        assert_eq!(Dec128::from_str("1.05").unwrap(), Dec128::new_percent(105));
-        assert_eq!(Dec128::from_str("-0.5").unwrap(), Dec128::new_percent(-50));
-        assert_eq!(Dec128::from_str("-1").unwrap(), Dec128::new(-1));
-        assert_eq!(
-            Dec128::from_str("-1.05").unwrap(),
-            Dec128::new_percent(-105)
-        );
-    }
+                    "-.10",
+                    "-10.-10",
+                    "10.1234-5678901234567",
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (input, expected) in passing {
+                assert_eq!(bt(_0d, Dec::from_str(input).unwrap()), expected);
+            }
 
-    #[test]
-    fn neg_works() {
-        assert_eq!(-Dec128::new_percent(-105), Dec128::new_percent(105));
-        assert_eq!(-Dec128::new_percent(50), Dec128::new_percent(-50));
-    }
+            for input in failing {
+                assert!(bt(Ok(_0d), Dec::from_str(input)).is_err());
+            }
+        }
+    );
+
+    dec_test!( display
+        inputs = {
+            udec128 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0"
+                ]
+            }
+            udec256 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0"
+                ]
+            }
+            dec128 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0",
+
+                    "-10",
+                    "-10.1",
+                    "-10.01",
+                    "-10.001",
+                    "-0.1",
+                    "-0.01",
+                    "-0.001",
+                ]
+            }
+            dec256 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0",
+
+                    "-10",
+                    "-10.1",
+                    "-10.01",
+                    "-10.001",
+                    "-0.1",
+                    "-0.01",
+                    "-0.001",
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for base in passing {
+                let dec = bt(_0d, dec(base));
+                assert_eq!(dec.to_string(), base);
+            }
+        }
+    );
+
+    dec_test!( json
+        inputs = {
+            udec128 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0"
+                ]
+            }
+            udec256 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0"
+                ]
+            }
+            dec128 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0",
+
+                    "-10",
+                    "-10.1",
+                    "-10.01",
+                    "-10.001",
+                    "-0.1",
+                    "-0.01",
+                    "-0.001",
+                ]
+            }
+            dec256 = {
+                passing: [
+                    "10",
+                    "10.1",
+                    "10.01",
+                    "10.001",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0",
+
+                    "-10",
+                    "-10.1",
+                    "-10.01",
+                    "-10.001",
+                    "-0.1",
+                    "-0.01",
+                    "-0.001",
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for base in passing {
+                let dec = bt(_0d, dec(base));
+
+                let serialized_str = serde_json::to_string(&dec).unwrap();
+                assert_eq!(serialized_str, format!("\"{}\"", base));
+
+                let serialized_vec = serde_json::to_vec(&dec).unwrap();
+                assert_eq!(serialized_vec, format!("\"{}\"", base).as_bytes());
+
+                let parsed: Dec::<_> = serde_json::from_str(&serialized_str).unwrap();
+                assert_eq!(parsed, dec);
+
+                let parsed: Dec::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+                assert_eq!(parsed, dec);
+            }
+        }
+    );
+
+    dec_test!( compare
+        inputs = {
+            udec128 = {
+                passing: [
+                    (dec("0"), Ordering::Equal, dec("0")),
+                    (dec("0.01"), Ordering::Greater, dec("0.001")),
+                    (dec("0.01"), Ordering::Less, dec("0.1")),
+                    (dec("10"), Ordering::Equal, dec("10")),
+                    (dec("10"), Ordering::Greater, dec("9.9")),
+                    (dec("10"), Ordering::Less, dec("10.1"))
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (dec("0"), Ordering::Equal, dec("0")),
+                    (dec("0.01"), Ordering::Greater, dec("0.001")),
+                    (dec("0.01"), Ordering::Less, dec("0.1")),
+                    (dec("10"), Ordering::Equal, dec("10")),
+                    (dec("10"), Ordering::Greater, dec("9.9")),
+                    (dec("10"), Ordering::Less, dec("10.1"))
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (dec("0"), Ordering::Equal, dec("0")),
+                    (dec("0.01"), Ordering::Greater, dec("0.001")),
+                    (dec("0.01"), Ordering::Less, dec("0.1")),
+                    (dec("10"), Ordering::Equal, dec("10")),
+                    (dec("10"), Ordering::Greater, dec("9.9")),
+                    (dec("10"), Ordering::Less, dec("10.1")),
+
+                    (dec("-0.01"), Ordering::Greater, dec("-0.1")),
+                    (dec("-0.01"), Ordering::Less, dec("-0.001")),
+                    (dec("-10"), Ordering::Equal, dec("-10")),
+                    (dec("-10"), Ordering::Less, dec("-9.9")),
+                    (dec("-10"), Ordering::Greater, dec("-10.1")),
+
+                    (dec("0.01"), Ordering::Greater, dec("-0.1")),
+                    (dec("0.01"), Ordering::Greater, dec("-0.001")),
+                    (dec("10"), Ordering::Greater, dec("-10")),
+                    (dec("10"), Ordering::Greater, dec("-9.9")),
+                    (dec("10"), Ordering::Greater, dec("-10.1")),
+
+                    (dec("-0.01"), Ordering::Less, dec("0.1")),
+                    (dec("-0.01"), Ordering::Less, dec("0.001")),
+                    (dec("-10"), Ordering::Less, dec("10")),
+                    (dec("-10"), Ordering::Less, dec("9.9")),
+                    (dec("-10"), Ordering::Less, dec("10.1"))
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec("0"), Ordering::Equal, dec("0")),
+                    (dec("0.01"), Ordering::Greater, dec("0.001")),
+                    (dec("0.01"), Ordering::Less, dec("0.1")),
+                    (dec("10"), Ordering::Equal, dec("10")),
+                    (dec("10"), Ordering::Greater, dec("9.9")),
+                    (dec("10"), Ordering::Less, dec("10.1")),
+
+                    (dec("-0.01"), Ordering::Greater, dec("-0.1")),
+                    (dec("-0.01"), Ordering::Less, dec("-0.001")),
+                    (dec("-10"), Ordering::Equal, dec("-10")),
+                    (dec("-10"), Ordering::Less, dec("-9.9")),
+                    (dec("-10"), Ordering::Greater, dec("-10.1")),
+
+                    (dec("0.01"), Ordering::Greater, dec("-0.1")),
+                    (dec("0.01"), Ordering::Greater, dec("-0.001")),
+                    (dec("10"), Ordering::Greater, dec("-10")),
+                    (dec("10"), Ordering::Greater, dec("-9.9")),
+                    (dec("10"), Ordering::Greater, dec("-10.1")),
+
+                    (dec("-0.01"), Ordering::Less, dec("0.1")),
+                    (dec("-0.01"), Ordering::Less, dec("0.001")),
+                    (dec("-10"), Ordering::Less, dec("10")),
+                    (dec("-10"), Ordering::Less, dec("9.9")),
+                    (dec("-10"), Ordering::Less, dec("10.1"))
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (left, cmp, right) in passing {
+               dts!(_0d, left, right);
+                assert_eq!(left.cmp(&right), cmp);
+            }
+        }
+    );
+
+    dec_test!( partial_eq
+        inputs = {
+            udec128 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("0.01"), dec("0.01")),
+                    (dec("10"), dec("10")),
+                    (dec("10.1"), dec("10.1")),
+                    (dec("10.01"), dec("10.01")),
+                    (dec("10.001"), dec("10.001")),
+                ],
+                failing: [
+                    (dec("0"), dec("0.1")),
+                    (dec("0.01"), dec("0.1")),
+                    (dec("10"), dec("9.9")),
+                    (dec("10.1"), dec("10.2")),
+                    (dec("10.01"), dec("10.02")),
+                    (dec("10.001"), dec("10.002")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("0.01"), dec("0.01")),
+                    (dec("10"), dec("10")),
+                    (dec("10.1"), dec("10.1")),
+                    (dec("10.01"), dec("10.01")),
+                    (dec("10.001"), dec("10.001")),
+                ],
+                failing: [
+                    (dec("0"), dec("0.1")),
+                    (dec("0.01"), dec("0.1")),
+                    (dec("10"), dec("9.9")),
+                    (dec("10.1"), dec("10.2")),
+                    (dec("10.01"), dec("10.02")),
+                    (dec("10.001"), dec("10.002")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("0.01"), dec("0.01")),
+                    (dec("10"), dec("10")),
+                    (dec("10.1"), dec("10.1")),
+                    (dec("10.01"), dec("10.01")),
+                    (dec("10.001"), dec("10.001")),
+
+                    (dec("-0"), dec("0")),
+
+                    (dec("-0"), dec("-0")),
+                    (dec("-0.01"), dec("-0.01")),
+                    (dec("-10"), dec("-10")),
+                    (dec("-10.1"), dec("-10.1")),
+                    (dec("-10.01"), dec("-10.01")),
+                    (dec("-10.001"), dec("-10.001")),
+                ],
+                failing: [
+                    (dec("0"), dec("0.1")),
+                    (dec("0.01"), dec("0.1")),
+                    (dec("10"), dec("9.9")),
+                    (dec("10.1"), dec("10.2")),
+                    (dec("10.01"), dec("10.02")),
+                    (dec("10.001"), dec("10.002")),
+
+                    (dec("-0.01"), dec("0.01")),
+                    (dec("-10"), dec("10")),
+                    (dec("-10.1"), dec("10.1")),
+                    (dec("-10.01"), dec("10.01")),
+                    (dec("-10.001"), dec("10.001")),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("0.01"), dec("0.01")),
+                    (dec("10"), dec("10")),
+                    (dec("10.1"), dec("10.1")),
+                    (dec("10.01"), dec("10.01")),
+                    (dec("10.001"), dec("10.001")),
+
+                    (dec("-0"), dec("0")),
+
+                    (dec("-0"), dec("-0")),
+                    (dec("-0.01"), dec("-0.01")),
+                    (dec("-10"), dec("-10")),
+                    (dec("-10.1"), dec("-10.1")),
+                    (dec("-10.01"), dec("-10.01")),
+                    (dec("-10.001"), dec("-10.001")),
+
+                ],
+                failing: [
+                    (dec("0"), dec("0.1")),
+                    (dec("0.01"), dec("0.1")),
+                    (dec("10"), dec("9.9")),
+                    (dec("10.1"), dec("10.2")),
+                    (dec("10.01"), dec("10.02")),
+                    (dec("10.001"), dec("10.002")),
+
+                    (dec("-0.01"), dec("0.01")),
+                    (dec("-10"), dec("10")),
+                    (dec("-10.1"), dec("10.1")),
+                    (dec("-10.01"), dec("10.01")),
+                    (dec("-10.001"), dec("10.001")),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing, failing| {
+            for (lhs, rhs) in passing {
+                dts!(_0d, lhs, rhs);
+                assert!(lhs == rhs);
+            }
+
+            for (lhs, rhs) in failing {
+                dts!(_0d, lhs, rhs);
+                assert!(lhs != rhs);
+            }
+        }
+    );
+
+    dec_test!( neg
+        inputs = {
+            dec128 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("1"), dec("-1")),
+                    (dec("-1"), dec("1")),
+                    (dec("0.1"), dec("-0.1")),
+                    (dec("0.01"), dec("-0.01")),
+                    (dec("10.1"), dec("-10.1")),
+                    (dec("10.01"), dec("-10.01")),
+                    (Dec::MAX, Dec::MIN + Dec::TICK),
+                    (Dec::MIN + Dec::TICK, Dec::MAX)
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec("0"), dec("0")),
+                    (dec("1"), dec("-1")),
+                    (dec("-1"), dec("1")),
+                    (dec("0.1"), dec("-0.1")),
+                    (dec("0.01"), dec("-0.01")),
+                    (dec("10.1"), dec("-10.1")),
+                    (dec("10.01"), dec("-10.01")),
+                    (Dec::MAX, Dec::MIN + Dec::TICK),
+                    (Dec::MIN + Dec::TICK, Dec::MAX)
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (input, expected) in passing {
+                dts!(_0d, input);
+                assert_eq!(-input, expected);
+            }
+        }
+    );
 }

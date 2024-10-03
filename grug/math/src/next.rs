@@ -93,7 +93,7 @@ impl_next_udec! {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{int_test, test_utils::bt, Int, NextNumber},
         bnum::{
@@ -131,6 +131,40 @@ mod tests {
             for (current, next) in samples {
                 let current = bt(_0, Int::new(current));
                 assert_eq!(current.into_next(), Int::new(next));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{
+            dec_test, test_utils::dt, Dec, Dec128, Dec256, Int256, NextNumber, NumberConst,
+            Udec128, Udec256, Uint256,
+        },
+        bnum::cast::As,
+    };
+
+    dec_test!( next
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Udec128::MAX, Udec256::raw(Uint256::new(u128::MAX.as_())))
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec128::MAX, Dec256::raw(Int256::new(i128::MAX.as_()))),
+                    (Dec128::MIN, Dec256::raw(Int256::new(i128::MIN.as_())))
+                ]
+            }
+        }
+        method = |_0d:  Dec<_>, samples| {
+            for (current, next) in samples {
+                // let current = bt(_0, Dec::new(current));
+                dt(_0d, current);
+                assert_eq!(current.into_next(), next);
             }
         }
     );

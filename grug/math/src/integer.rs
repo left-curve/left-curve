@@ -13,6 +13,14 @@ pub trait Integer: Sized {
     fn checked_shl(self, other: u32) -> MathResult<Self>;
 
     fn checked_shr(self, other: u32) -> MathResult<Self>;
+
+    fn wrapping_add(self, other: Self) -> Self;
+
+    fn wrapping_sub(self, other: Self) -> Self;
+
+    fn wrapping_mul(self, other: Self) -> Self;
+
+    fn wrapping_pow(self, exp: u32) -> Self;
 }
 
 // ------------------------------------ int ------------------------------------
@@ -35,6 +43,22 @@ where
 
     fn checked_shr(self, other: u32) -> MathResult<Self> {
         self.0.checked_shr(other).map(Self)
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
+    fn wrapping_sub(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
+    }
+
+    fn wrapping_mul(self, other: Self) -> Self {
+        Self(self.0.wrapping_mul(other.0))
+    }
+
+    fn wrapping_pow(self, exp: u32) -> Self {
+        Self(self.0.wrapping_pow(exp))
     }
 }
 
@@ -60,6 +84,22 @@ macro_rules! impl_integer {
             fn checked_ilog10(self) -> MathResult<u32> {
                 self.checked_ilog10().ok_or_else(|| MathError::zero_log())
             }
+
+            fn wrapping_add(self, other: Self) -> Self {
+                self.wrapping_add(other)
+            }
+
+            fn wrapping_sub(self, other: Self) -> Self {
+                self.wrapping_sub(other)
+            }
+
+            fn wrapping_mul(self, other: Self) -> Self {
+                self.wrapping_mul(other)
+            }
+
+            fn wrapping_pow(self, exp: u32) -> Self {
+                self.wrapping_pow(exp)
+            }
         }
     };
     ($($t:ty),+ $(,)?) => {
@@ -80,7 +120,7 @@ impl_integer! {
 mod tests {
     use {
         crate::{
-            int_test, test_utils::bt, Bytable, Int, Integer, MathError, Number, NumberConst,
+            dts, int_test, test_utils::bt, Bytable, Int, Integer, MathError, Number, NumberConst,
             Uint128, Uint256,
         },
         bnum::types::{I256, U256},
@@ -378,6 +418,173 @@ mod tests {
             }
             // 0 log
             assert!(matches!(_0.checked_ilog10(), Err(MathError::ZeroLog)))
+        }
+    );
+
+    int_test!( wrapping_add
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::ZERO)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::ZERO)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::MIN),
+                    (Int::MIN, -Int::ONE, Int::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MAX, Int::ONE, Int::MIN),
+                    (Int::MIN, -Int::ONE, Int::MAX),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_add(right), expected);
+            }
+        }
+    );
+
+    int_test!( wrapping_sub
+        inputs = {
+            u128 = {
+                passing: [
+                    (Int::ZERO, Int::ONE, Int::MAX)
+                ]
+            }
+            u256 = {
+                passing: [
+                    (Int::ZERO, Int::ONE, Int::MAX)
+                ]
+            }
+            i128 = {
+                passing: [
+                    (Int::MIN, Int::ONE, Int::MAX),
+                    (Int::MAX, -Int::ONE, Int::MIN),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (Int::MIN, Int::ONE, Int::MAX),
+                    (Int::MAX, -Int::ONE, Int::MIN),
+                ]
+            }
+        }
+        method = |_0d: Int<_>, passing| {
+            for (left, right, expected) in passing {
+                dts!(_0d, left, right, expected);
+                assert_eq!(left.wrapping_sub(right), expected);
+            }
+        }
+    );
+
+    int_test!( wrapping_mul
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::MAX, 2_u128, u128::MAX - 1),
+                    (u128::MAX, 3_u128, u128::MAX - 2),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::MAX, U256::from(2_u32), U256::MAX - U256::ONE),
+                    (U256::MAX, U256::from(3_u32), U256::MAX - U256::from(2_u32)),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i128::MAX, 2_i128, -2_i128),
+                    (i128::MAX, 3_i128, i128::MAX - 2),
+                    (i128::MAX, 4_i128, -4_i128),
+                    (i128::MAX, 5_i128, i128::MAX - 4),
+                    (i128::MIN, 2_i128, 0),
+                    (i128::MIN, 3_i128, i128::MIN),
+                    (i128::MIN, 4_i128, 0),
+                    (i128::MIN, 5_i128, i128::MIN),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::MAX, I256::from(2), I256::from(-2)),
+                    (I256::MAX, I256::from(3), I256::MAX - I256::from(2)),
+                    (I256::MAX, I256::from(4), I256::from(-4)),
+                    (I256::MAX, I256::from(5), I256::MAX - I256::from(4)),
+                    (I256::MIN, I256::from(2), I256::ZERO),
+                    (I256::MIN, I256::from(3), I256::MIN),
+                    (I256::MIN, I256::from(4), I256::ZERO),
+                    (I256::MIN, I256::from(5), I256::MIN),
+                ]
+            }
+        }
+        method = |_0, samples| {
+            for (left, right, expected) in samples {
+                let left = Int::new(left);
+                let right = Int::new(right);
+                let expected = Int::new(expected);
+                dts!(_0, left, right, expected);
+                assert_eq!(left.wrapping_mul(right), expected);
+            }
+       }
+    );
+
+    int_test!( wrapping_pow
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::MAX, 2, 1),
+                    (u128::MAX, 3, u128::MAX),
+                    (u128::MAX, 4, 1),
+                    (u128::MAX, 5, u128::MAX),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::MAX, 2, U256::ONE),
+                    (U256::MAX, 3, U256::MAX),
+                    (U256::MAX, 4, U256::ONE),
+                    (U256::MAX, 5, U256::MAX),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i128::MAX, 2, 1),
+                    (i128::MAX, 3, i128::MAX),
+                    (i128::MAX, 4, 1),
+                    (i128::MAX, 5, i128::MAX),
+                    (i128::MIN, 2, 0),
+                    (i128::MIN, 3, 0),
+                    (i128::MIN, 4, 0),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::MAX, 2, I256::ONE),
+                    (I256::MAX, 3, I256::MAX),
+                    (I256::MAX, 4, I256::ONE),
+                    (I256::MAX, 5, I256::MAX),
+                    (I256::MIN, 2, I256::ZERO),
+                    (I256::MIN, 3, I256::ZERO),
+                    (I256::MIN, 4, I256::ZERO),
+                ]
+            }
+        }
+        method = |_0, samples| {
+            for (base, exp, expected) in samples {
+                let base = Int::new(base);
+                let expected = Int::new(expected);
+                dts!(_0, base, expected);
+                assert_eq!(base.wrapping_pow(exp), expected);
+            }
         }
     );
 }

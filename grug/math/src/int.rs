@@ -636,4 +636,34 @@ pub mod tests {
             }
         }
     );
+
+    int_test!( neg
+        inputs = {
+            i128 = {
+                passing: [
+                    (0_i128, 0_i128),
+                    (42_i128, -42_i128),
+                    (-42_i128, 42_i128),
+                    (i128::MAX, i128::MIN + 1),
+                    (i128::MIN + 1, i128::MAX),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::from(0_i128), I256::from(0_i128)),
+                    (I256::from(42_i128), I256::from(-42_i128)),
+                    (I256::from(-42_i128), I256::from(42_i128)),
+                    (I256::MAX, I256::MIN + I256::from(1)),
+                    (I256::MIN + I256::from(1), I256::MAX),
+                ]
+            }
+        }
+        method = |_0, passing| {
+            for (input, expected) in passing {
+                let input = Int::new(input);
+                let expected = Int::new(expected);
+                assert_eq!(-input, expected);
+            }
+        }
+    );
 }
