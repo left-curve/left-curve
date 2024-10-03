@@ -1,5 +1,5 @@
 use {
-    crate::{Dec128, Dec256, Int, Int128, Int256, Udec128, Udec256, Uint128, Uint256},
+    crate::{Dec128, Dec256, Int, Int128, Int256, NumberConst, Udec128, Udec256, Uint128, Uint256},
     bnum::types::{I256, U256},
 };
 
@@ -12,26 +12,35 @@ pub trait FixedPoint<U> {
 
     /// Number of decimal digits to be interpreted as decimal places.
     const DECIMAL_PLACES: u32;
+
+    /// The smallest incremental value that can be represented.
+    ///
+    /// For `Dec<U>`, this is typically `Dec::raw(Int::<U>::ONE)`.
+    const TICK: Self;
 }
 
 impl FixedPoint<u128> for Udec128 {
     const DECIMAL_FRACTION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
+    const TICK: Self = Self::raw(Uint128::ONE);
 }
 
 impl FixedPoint<U256> for Udec256 {
     const DECIMAL_FRACTION: Uint256 = Uint256::new_from_u128(10_u128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
+    const TICK: Self = Self::raw(Uint256::ONE);
 }
 
 impl FixedPoint<i128> for Dec128 {
     const DECIMAL_FRACTION: Int128 = Int128::new(10_i128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
+    const TICK: Self = Self::raw(Int128::ONE);
 }
 
 impl FixedPoint<I256> for Dec256 {
     const DECIMAL_FRACTION: Int256 = Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES));
     const DECIMAL_PLACES: u32 = 18;
+    const TICK: Self = Self::raw(Int256::ONE);
 }
 
 // ----------------------------------- tests -----------------------------------

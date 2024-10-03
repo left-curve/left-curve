@@ -1,5 +1,5 @@
 use {
-    crate::{Dec, Int, NumberConst},
+    crate::{Dec, Int},
     std::{fmt::Debug, str::FromStr},
 };
 
@@ -370,18 +370,4 @@ where
     <Dec<U> as FromStr>::Err: Debug,
 {
     Dec::from_str(val).unwrap()
-}
-
-pub trait Leftover {
-    /// The minimum value that can be represented by the decimal.
-    ///
-    /// For `Dec<U>`, this is typically `Dec::raw(Int::<U>::ONE)`.
-    const LEFTOVER: Self;
-}
-
-impl<U> Leftover for Dec<U>
-where
-    Int<U>: NumberConst,
-{
-    const LEFTOVER: Dec<U> = Dec::raw(Int::<U>::ONE);
 }

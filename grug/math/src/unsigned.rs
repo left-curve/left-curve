@@ -131,8 +131,9 @@ mod dec_tests {
     use {
         crate::{
             dec_test,
-            test_utils::{dec, dt, Leftover},
-            Dec, Dec128, Dec256, Int128, Int256, MathError, NumberConst, Udec256, Unsigned,
+            test_utils::{dec, dt},
+            Dec, Dec128, Dec256, FixedPoint, Int128, Int256, MathError, NumberConst, Udec256,
+            Unsigned,
         },
         bnum::{cast::As, types::U256},
     };
@@ -145,7 +146,7 @@ mod dec_tests {
                     (Dec::MAX / dec("2"), Dec128::raw(Int128::new((u128::MAX / 2) as i128))),
                 ],
                 failing: [
-                    Dec::MAX / dec("2") + Dec::LEFTOVER,
+                    Dec::MAX / dec("2") + Dec::TICK,
                 ]
             }
             udec256 = {
@@ -154,7 +155,7 @@ mod dec_tests {
                     (Udec256::MAX / dec("2"), Dec256::raw(Int256::new((U256::MAX / 2).as_()))),
                 ],
                 failing: [
-                    Dec::MAX / dec("2") + Dec::LEFTOVER,
+                    Dec::MAX / dec("2") + Dec::TICK,
                 ]
             }
         }

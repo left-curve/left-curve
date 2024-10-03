@@ -496,11 +496,10 @@ generate_decimal! {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Dec, Dec256, Udec256},
         crate::{
             dec_test, dts,
-            test_utils::{bt, dec, Leftover},
-            Dec128, NumberConst, Udec128,
+            test_utils::{bt, dec},
+            Dec, Dec128, Dec256, FixedPoint, NumberConst, Udec128, Udec256,
         },
         std::{cmp::Ordering, str::FromStr},
     };
@@ -1030,8 +1029,8 @@ mod tests {
                     (dec("0.01"), dec("-0.01")),
                     (dec("10.1"), dec("-10.1")),
                     (dec("10.01"), dec("-10.01")),
-                    (Dec::MAX, Dec::MIN + Dec::LEFTOVER),
-                    (Dec::MIN + Dec::LEFTOVER, Dec::MAX)
+                    (Dec::MAX, Dec::MIN + Dec::TICK),
+                    (Dec::MIN + Dec::TICK, Dec::MAX)
                 ]
             }
             dec256 = {
@@ -1043,8 +1042,8 @@ mod tests {
                     (dec("0.01"), dec("-0.01")),
                     (dec("10.1"), dec("-10.1")),
                     (dec("10.01"), dec("-10.01")),
-                    (Dec::MAX, Dec::MIN + Dec::LEFTOVER),
-                    (Dec::MIN + Dec::LEFTOVER, Dec::MAX)
+                    (Dec::MAX, Dec::MIN + Dec::TICK),
+                    (Dec::MIN + Dec::TICK, Dec::MAX)
                 ]
             }
         }

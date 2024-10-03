@@ -158,11 +158,7 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-    use crate::{
-        dec_test,
-        test_utils::{dt, Leftover},
-        Dec, MathError, NumberConst, Sign,
-    };
+    use crate::{dec_test, test_utils::dt, Dec, FixedPoint, MathError, NumberConst, Sign};
 
     dec_test!( sign
         inputs = {
@@ -185,7 +181,7 @@ mod dec_tests {
                     (Dec::ZERO, false, Dec::ZERO),
                     (Dec::MAX, false, Dec::MAX),
                     (-Dec::ONE, true, Dec::ONE),
-                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX),
+                    (Dec::MIN + Dec::TICK, true, Dec::MAX),
                 ],
                 failing: [
                     Dec::MIN,
@@ -196,7 +192,7 @@ mod dec_tests {
                     (Dec::ZERO, false, Dec::ZERO),
                     (Dec::MAX, false, Dec::MAX),
                     (-Dec::ONE, true, Dec::ONE),
-                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX),
+                    (Dec::MIN + Dec::TICK, true, Dec::MAX),
                 ],
                 failing: [
                     Dec::MIN,

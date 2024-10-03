@@ -1045,8 +1045,8 @@ mod int_tests {
 mod dec_tests {
     use crate::{
         dec_test, dts,
-        test_utils::{bt, dec, Leftover},
-        Dec, MathError, Number, NumberConst,
+        test_utils::{bt, dec},
+        Dec, FixedPoint, MathError, Number, NumberConst,
     };
 
     dec_test!( checked_add
@@ -1311,7 +1311,7 @@ mod dec_tests {
                 passing: [
                     (Dec::ZERO, Dec::ZERO, Dec::ZERO),
                     (Dec::MAX, Dec::ZERO, Dec::ZERO),
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
+                    (Dec::MIN + Dec::TICK, -Dec::ONE, Dec::MAX),
                     (dec("20"), dec("10"), dec("200")),
                     (dec("20"), dec("1.5"), dec("30")),
                     (dec("20"), dec("0.1"), dec("2")),
@@ -1333,7 +1333,7 @@ mod dec_tests {
                 passing: [
                     (Dec::ZERO, Dec::ZERO, Dec::ZERO),
                     (Dec::MAX, Dec::ZERO, Dec::ZERO),
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
+                    (Dec::MIN + Dec::TICK, -Dec::ONE, Dec::MAX),
                     (dec("20"), dec("10"), dec("200")),
                     (dec("20"), dec("1.5"), dec("30")),
                     (dec("20"), dec("0.1"), dec("2")),
@@ -1423,8 +1423,8 @@ mod dec_tests {
                     (dec("2"), dec("8"), dec("0.25")),
 
                     (Dec::MIN, Dec::ONE, Dec::MIN),
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
-                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::LEFTOVER),
+                    (Dec::MIN + Dec::TICK, -Dec::ONE, Dec::MAX),
+                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::TICK),
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
@@ -1449,8 +1449,8 @@ mod dec_tests {
                     (dec("2"), dec("8"), dec("0.25")),
 
                     (Dec::MIN, Dec::ONE, Dec::MIN),
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::ONE, Dec::MAX),
-                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::LEFTOVER),
+                    (Dec::MIN + Dec::TICK, -Dec::ONE, Dec::MAX),
+                    (Dec::MAX , -Dec::ONE, Dec::MIN + Dec::TICK),
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
@@ -1700,39 +1700,39 @@ mod dec_tests {
             udec128 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("11.5")),
-                    (Dec::MAX - Dec::LEFTOVER, Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, Dec::TICK, Dec::MAX),
+                    (Dec::MAX, Dec::TICK, Dec::MAX),
                     (Dec::MAX, Dec::ONE, Dec::MAX),
                 ]
             }
             udec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("11.5")),
-                    (Dec::MAX - Dec::LEFTOVER, Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, Dec::TICK, Dec::MAX),
+                    (Dec::MAX, Dec::TICK, Dec::MAX),
                     (Dec::MAX, Dec::ONE, Dec::MAX),
                 ]
             }
             dec128 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("11.5")),
-                    (Dec::MAX - Dec::LEFTOVER, Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, Dec::TICK, Dec::MAX),
+                    (Dec::MAX, Dec::TICK, Dec::MAX),
                     (Dec::MAX, Dec::ONE, Dec::MAX),
 
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::LEFTOVER, Dec::MIN),
-                    (Dec::MIN, -Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN + Dec::TICK, -Dec::TICK, Dec::MIN),
+                    (Dec::MIN, -Dec::TICK, Dec::MIN),
                 ]
             }
             dec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("11.5")),
-                    (Dec::MAX - Dec::LEFTOVER, Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, Dec::TICK, Dec::MAX),
+                    (Dec::MAX, Dec::TICK, Dec::MAX),
                     (Dec::MAX, Dec::ONE, Dec::MAX),
 
-                    (Dec::MIN + Dec::LEFTOVER, -Dec::LEFTOVER, Dec::MIN),
-                    (Dec::MIN, -Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN + Dec::TICK, -Dec::TICK, Dec::MIN),
+                    (Dec::MIN, -Dec::TICK, Dec::MIN),
                 ]
             }
         }
@@ -1749,40 +1749,40 @@ mod dec_tests {
             udec128 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("8.5")),
-                    (Dec::ZERO + Dec::LEFTOVER, Dec::LEFTOVER, Dec::ZERO),
-                    (Dec::ZERO, Dec::LEFTOVER, Dec::ZERO),
+                    (Dec::ZERO + Dec::TICK, Dec::TICK, Dec::ZERO),
+                    (Dec::ZERO, Dec::TICK, Dec::ZERO),
                     (Dec::ZERO, Dec::ONE, Dec::ZERO),
                 ]
             }
             udec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("8.5")),
-                    (Dec::ZERO + Dec::LEFTOVER, Dec::LEFTOVER, Dec::ZERO),
-                    (Dec::ZERO, Dec::LEFTOVER, Dec::ZERO),
+                    (Dec::ZERO + Dec::TICK, Dec::TICK, Dec::ZERO),
+                    (Dec::ZERO, Dec::TICK, Dec::ZERO),
                     (Dec::ZERO, Dec::ONE, Dec::ZERO),
                 ]
             }
             dec128 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("8.5")),
-                    (Dec::MIN + Dec::LEFTOVER, Dec::LEFTOVER, Dec::MIN),
-                    (Dec::MIN, Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN + Dec::TICK, Dec::TICK, Dec::MIN),
+                    (Dec::MIN, Dec::TICK, Dec::MIN),
                     (Dec::MIN, Dec::ONE, Dec::MIN),
 
-                    (Dec::MAX - Dec::LEFTOVER, -Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, -Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, -Dec::TICK, Dec::MAX),
+                    (Dec::MAX, -Dec::TICK, Dec::MAX),
                     (Dec::MAX, -Dec::ONE, Dec::MAX),
                 ]
             }
             dec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("8.5")),
-                    (Dec::MIN + Dec::LEFTOVER, Dec::LEFTOVER, Dec::MIN),
-                    (Dec::MIN, Dec::LEFTOVER, Dec::MIN),
+                    (Dec::MIN + Dec::TICK, Dec::TICK, Dec::MIN),
+                    (Dec::MIN, Dec::TICK, Dec::MIN),
                     (Dec::MIN, Dec::ONE, Dec::MIN),
 
-                    (Dec::MAX - Dec::LEFTOVER, -Dec::LEFTOVER, Dec::MAX),
-                    (Dec::MAX, -Dec::LEFTOVER, Dec::MAX),
+                    (Dec::MAX - Dec::TICK, -Dec::TICK, Dec::MAX),
+                    (Dec::MAX, -Dec::TICK, Dec::MAX),
                     (Dec::MAX, -Dec::ONE, Dec::MAX),
                 ]
             }
@@ -1800,16 +1800,16 @@ mod dec_tests {
             udec128 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("15")),
-                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::LEFTOVER),
-                    (Dec::MAX / dec("2") + Dec::LEFTOVER, dec("2"), Dec::MAX),
+                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::TICK),
+                    (Dec::MAX / dec("2") + Dec::TICK, dec("2"), Dec::MAX),
                     (Dec::MAX / dec("2") + Dec::ONE, dec("2"), Dec::MAX),
                 ]
             }
             udec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("15")),
-                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::LEFTOVER),
-                    (Dec::MAX / dec("2") + Dec::LEFTOVER, dec("2"), Dec::MAX),
+                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::TICK),
+                    (Dec::MAX / dec("2") + Dec::TICK, dec("2"), Dec::MAX),
                     (Dec::MAX / dec("2") + Dec::ONE, dec("2"), Dec::MAX),
                 ]
             }
@@ -1817,30 +1817,30 @@ mod dec_tests {
                 passing: [
                     (dec("10"), dec("1.5"), dec("15")),
                     (dec("10"), dec("-1.5"), dec("-15")),
-                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::LEFTOVER),
-                    (Dec::MAX / dec("2") + Dec::LEFTOVER, dec("2"), Dec::MAX),
+                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::TICK),
+                    (Dec::MAX / dec("2") + Dec::TICK, dec("2"), Dec::MAX),
                     (Dec::MAX / dec("2") + Dec::ONE, dec("2"), Dec::MAX),
 
                     (Dec::MIN / dec("2"), dec("2"), Dec::MIN),
-                    (Dec::MIN / dec("2") - Dec::LEFTOVER, dec("2"), Dec::MIN),
+                    (Dec::MIN / dec("2") - Dec::TICK, dec("2"), Dec::MIN),
 
                     (Dec::MIN / dec("2"), - dec("2"), Dec::MAX),
-                    (Dec::MAX / dec("2"), - dec("2"), Dec::MIN + Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX / dec("2"), - dec("2"), Dec::MIN + Dec::TICK * dec("2")),
                 ]
             }
             dec256 = {
                 passing: [
                     (dec("10"), dec("1.5"), dec("15")),
                     (dec("10"), dec("-1.5"), dec("-15")),
-                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::LEFTOVER),
-                    (Dec::MAX / dec("2") + Dec::LEFTOVER, dec("2"), Dec::MAX),
+                    (Dec::MAX / dec("2"), dec("2"), Dec::MAX - Dec::TICK),
+                    (Dec::MAX / dec("2") + Dec::TICK, dec("2"), Dec::MAX),
                     (Dec::MAX / dec("2") + Dec::ONE, dec("2"), Dec::MAX),
 
                     (Dec::MIN / dec("2"), dec("2"), Dec::MIN),
-                    (Dec::MIN / dec("2") - Dec::LEFTOVER, dec("2"), Dec::MIN),
+                    (Dec::MIN / dec("2") - Dec::TICK, dec("2"), Dec::MIN),
 
                     (Dec::MIN / dec("2"), - dec("2"), Dec::MAX),
-                    (Dec::MAX / dec("2"), - dec("2"), Dec::MIN + Dec::LEFTOVER * dec("2")),
+                    (Dec::MAX / dec("2"), - dec("2"), Dec::MIN + Dec::TICK * dec("2")),
                 ]
             }
         }
