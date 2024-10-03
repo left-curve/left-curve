@@ -7,6 +7,7 @@ import { useConnectors, usePublicClient } from "@leftcurve/react";
 import { createKeyHash } from "@leftcurve/sdk";
 import { getNavigatorOS } from "@leftcurve/utils";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
 
@@ -17,6 +18,7 @@ export const ConnectStep: React.FC = () => {
   const [connectorId, setConnectorId] = useState<string>("Passkey");
   const connectors = useConnectors();
   const client = usePublicClient();
+  const { push } = useRouter();
   const { username } = data;
 
   const onSubmit = async () => {
@@ -70,13 +72,13 @@ export const ConnectStep: React.FC = () => {
     })();
     // TODO: Fund the account in IBC-Transfer before registering the user
     await client.registerUser({ key, keyHash, username });
-    window.location.replace(`https://portal.${window.location.hostname}`);
+    push("/login");
   };
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
       <DangoButton fullWidth onClick={onSubmit}>
-        Connect with {connectorId}
+        Signup with {connectorId}
       </DangoButton>
       <Select
         label="login-methods"
@@ -87,7 +89,7 @@ export const ConnectStep: React.FC = () => {
         <SelectItem key="Passkey">Passkey</SelectItem>
         <SelectItem key="Metamask">Metamask</SelectItem>
       </Select>
-      <DangoButton as={Link} href="/signup" variant="ghost" color="sand" className="text-lg">
+      <DangoButton as={Link} href="/login" variant="ghost" color="sand" className="text-lg">
         Already have an account?
       </DangoButton>
     </div>

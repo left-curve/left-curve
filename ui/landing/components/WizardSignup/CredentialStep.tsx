@@ -18,12 +18,12 @@ export const CredentialStep: React.FC = () => {
 
   const onSubmit = async () => {
     if (!username) return;
-    setData({ username });
     const { accounts } = await client.getUser({ username });
     const numberOfAccounts = Object.keys(accounts).length;
     if (numberOfAccounts > 0) {
       setError("username", { message: "Username is already taken" });
     } else {
+      setData({ username });
       nextStep();
     }
   };
@@ -46,7 +46,7 @@ export const CredentialStep: React.FC = () => {
         <DangoButton fullWidth onClick={onSubmit}>
           Choose credentials
         </DangoButton>
-        <DangoButton as={Link} href="/signup" variant="ghost" color="sand" className="text-lg">
+        <DangoButton as={Link} href="/login" variant="ghost" color="sand" className="text-lg">
           Already have an account?
         </DangoButton>
       </div>
