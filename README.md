@@ -100,7 +100,8 @@ Generate documentation:
 pnpm doc
 ```
 
-Storybook
+Storybook:
+
 ```shell
 pnpm storybook
 ```
