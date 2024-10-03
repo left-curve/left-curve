@@ -1,6 +1,6 @@
 use {
     crate::{ExecuteMsg, QueryForceWriteRequest},
-    grug::{Coins, Message, MutableCtx, Number, NumberConst, Response, StdResult, Uint128},
+    grug::{Coins, Integer, Message, MutableCtx, NumberConst, Response, StdResult, Uint128},
 };
 
 pub fn infinite_loop() -> StdResult<Response> {
