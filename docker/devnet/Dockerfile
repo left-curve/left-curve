@@ -30,10 +30,6 @@ ARG LEFT_CURVE_GIT_COMMIT="879e7d1"
 # and avoid OOM in the build.
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# Necessary for building bindgen:
-# https://rust-lang.github.io/rust-bindgen/requirements.html
-ENV LIBCLANG_PATH=/usr/lib/llvm17/lib/libclang.so
-
 # Install build dependencies
 # musl-dev provides crti.o
 # llvm-dev provides libclang.so
