@@ -1262,9 +1262,9 @@ mod dec_tests {
     dec_test!( sub_panic
         attrs = #[should_panic(expected = "subtraction overflow")]
         method = |_0d| {
-            let max = bt(_0d, Dec::MIN);
+            let min = bt(_0d, Dec::MIN);
             let one = bt(_0d, Dec::ONE);
-            let _ = max - one;
+            let _ = min - one;
         }
     );
 
