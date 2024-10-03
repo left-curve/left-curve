@@ -145,7 +145,7 @@ mod dec_tests {
                     (Dec::MAX / dec("2"), Dec128::raw(Int128::new((u128::MAX / 2) as i128))),
                 ],
                 failing: [
-                    Dec::MAX / dec("2") + Dec::LEFTOVER
+                    Dec::MAX / dec("2") + Dec::LEFTOVER,
                 ]
             }
             udec256 = {
@@ -154,12 +154,11 @@ mod dec_tests {
                     (Udec256::MAX / dec("2"), Dec256::raw(Int256::new((U256::MAX / 2).as_()))),
                 ],
                 failing: [
-                    Dec::MAX / dec("2") + Dec::LEFTOVER
+                    Dec::MAX / dec("2") + Dec::LEFTOVER,
                 ]
             }
         }
         method = |_0d: Dec<_>, passing, failing| {
-
             for (unsigned, expected) in passing {
                 dt(_0d, unsigned);
                 assert_eq!(unsigned.checked_into_signed().unwrap(), expected);

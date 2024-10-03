@@ -1,6 +1,7 @@
-use std::{fmt::Debug, str::FromStr};
-
-use crate::{Dec, Int, NumberConst};
+use {
+    crate::{Dec, Int, NumberConst},
+    std::{fmt::Debug, str::FromStr},
+};
 
 /// `derive_type`
 ///
@@ -372,9 +373,9 @@ where
 }
 
 pub trait Leftover {
-    /// Rappresent the minimum value that can be represented by the decimal.
+    /// The minimum value that can be represented by the decimal.
     ///
-    /// `Dec::raw(Int::<U>::ONE)`
+    /// For `Dec<U>`, this is typically `Dec::raw(Int::<U>::ONE)`.
     const LEFTOVER: Self;
 }
 
@@ -384,34 +385,3 @@ where
 {
     const LEFTOVER: Dec<U> = Dec::raw(Int::<U>::ONE);
 }
-
-// dec_test!( test
-//     inputs = {
-//         udec128 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         udec256 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         dec128 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//         dec256 = {
-//             passing: [
-//             ],
-//             failing: [
-//             ]
-//         }
-//     }
-//     method = |_0d: Dec<_>, passing, failing| {
-//     }
-// );

@@ -152,7 +152,7 @@ where
 impl<U> FromStr for Dec<U>
 where
     Self: FixedPoint<U>,
-    Int<U>: NumberConst + Number + Display + FromStr + Sign,
+    Int<U>: NumberConst + Number + Sign + Display + FromStr,
 {
     type Err = MathError;
 

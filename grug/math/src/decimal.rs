@@ -1,4 +1,4 @@
-use crate::{Dec, FixedPoint, Int, MathResult, Number, NumberConst, Sign};
+use crate::{Dec, FixedPoint, IsZero, MathResult, Number, NumberConst, Sign};
 
 /// Describes operations that decimal types must implement, which may not be
 /// relevant for non-decimal types.
@@ -11,12 +11,12 @@ pub trait Decimal: Sized {
 impl<U> Decimal for Dec<U>
 where
     Self: FixedPoint<U>,
-    U: Number + Copy + PartialEq + Sign + NumberConst,
+    U: Number + NumberConst + Sign + IsZero + Copy + PartialEq,
 {
     fn checked_floor(self) -> MathResult<Self> {
         let rem = self.0.checked_rem(Self::DECIMAL_FRACTION)?;
 
-        match (rem == Int::ZERO, rem.is_negative()) {
+        match (rem.is_zero(), rem.is_negative()) {
             (false, true) => self.0.checked_sub(Self::DECIMAL_FRACTION + rem).map(Self),
             (false, false) => self.0.checked_sub(rem).map(Self),
             (true, _) => Ok(self),
@@ -26,7 +26,7 @@ where
     fn checked_ceil(self) -> MathResult<Self> {
         let rem = self.0.checked_rem(Self::DECIMAL_FRACTION)?;
 
-        match (rem == Int::ZERO, rem.is_negative()) {
+        match (rem.is_zero(), rem.is_negative()) {
             (false, true) => self.0.checked_sub(rem).map(Self),
             (false, false) => self.0.checked_add(Self::DECIMAL_FRACTION - rem).map(Self),
             (true, _) => Ok(self),
@@ -55,8 +55,7 @@ mod tests {
                     (Udec128::new_percent(199), Udec128::ONE),
                     (Udec128::new_percent(200), Udec128::from_str("2").unwrap()),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             udec256 = {
                 passing: [
@@ -65,8 +64,7 @@ mod tests {
                     (Udec256::new_percent(199), Udec256::ONE),
                     (Udec256::new_percent(200), Udec256::from_str("2").unwrap()),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             dec128 = {
                 passing: [
@@ -172,7 +170,6 @@ mod tests {
 
             let max = bt(_0d, Dec::MAX);
             assert!(matches!(max.checked_ceil(), Err(MathError::OverflowAdd { .. })));
-
         }
     );
 }

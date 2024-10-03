@@ -169,28 +169,26 @@ mod dec_tests {
             udec128 = {
                 passing: [
                     (Dec::ZERO, false, Dec::ZERO),
-                    (Dec::MAX, false, Dec::MAX)
+                    (Dec::MAX, false, Dec::MAX),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             udec256 = {
                 passing: [
                     (Dec::ZERO, false, Dec::ZERO),
-                    (Dec::MAX, false, Dec::MAX)
+                    (Dec::MAX, false, Dec::MAX),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             dec128 = {
                 passing: [
                     (Dec::ZERO, false, Dec::ZERO),
                     (Dec::MAX, false, Dec::MAX),
                     (-Dec::ONE, true, Dec::ONE),
-                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX)
+                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX),
                 ],
                 failing: [
-                    Dec::MIN
+                    Dec::MIN,
                 ]
             }
             dec256 = {
@@ -198,10 +196,10 @@ mod dec_tests {
                     (Dec::ZERO, false, Dec::ZERO),
                     (Dec::MAX, false, Dec::MAX),
                     (-Dec::ONE, true, Dec::ONE),
-                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX)
+                    (Dec::MIN + Dec::LEFTOVER, true, Dec::MAX),
                 ],
                 failing: [
-                    Dec::MIN
+                    Dec::MIN,
                 ]
             }
         }

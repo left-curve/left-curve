@@ -150,27 +150,26 @@ mod dec_tests {
                 passing: [
                     (Dec::ZERO, Udec128::ZERO),
                     (Dec::TEN, Udec128::TEN),
-                    (Dec::MAX, Udec128::raw(Uint128::new(i128::MAX as u128)))
+                    (Dec::MAX, Udec128::raw(Uint128::new(i128::MAX as u128))),
                 ],
                 failing: [
                     -Dec::ONE,
-                    Dec::MIN
+                    Dec::MIN,
                 ]
             }
             dec256 = {
                 passing: [
                     (Dec::ZERO, Udec256::ZERO),
                     (Dec::TEN, Udec256::TEN),
-                    (Dec::MAX, Udec256::raw(Uint256::new(I256::MAX.as_())))
+                    (Dec::MAX, Udec256::raw(Uint256::new(I256::MAX.as_()))),
                 ],
                 failing: [
                     -Dec::ONE,
-                    Dec::MIN
+                    Dec::MIN,
                 ]
             }
         }
         method = |_0d: Dec<_>, passing, failing| {
-
             for (unsigned, expected) in passing {
                 dt(_0d, unsigned);
                 assert_eq!(unsigned.checked_into_unsigned().unwrap(), expected);

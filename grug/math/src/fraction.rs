@@ -167,7 +167,6 @@ mod tests {
             for (base, inv) in passing {
                 dt(_0d, base);
                 assert_eq!(base.checked_inv().unwrap(), inv);
-
             }
 
             assert!(matches!(_0d.checked_inv(), Err(MathError::DivisionByZero { .. })));

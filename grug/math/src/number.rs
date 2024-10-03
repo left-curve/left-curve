@@ -101,15 +101,12 @@ where
     }
 
     fn checked_mul(self, other: Self) -> MathResult<Self> {
-        let clos = || {
-            self.0
-                .checked_full_mul(*other.numerator())?
-                .checked_div(Self::DECIMAL_FRACTION.into_next())?
-                .checked_into_prev()
-                .map(Self)
-        };
-
-        clos().map_err(|_| MathError::overflow_mul(self, other))
+        self.0
+            .checked_full_mul(*other.numerator())?
+            .checked_div(Self::DECIMAL_FRACTION.into_next())?
+            .checked_into_prev()
+            .map(Self)
+            .map_err(|_| MathError::overflow_mul(self, other))
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {
@@ -121,7 +118,7 @@ where
     }
 
     fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        let mut clos = || {
+        {
             if exp == 0 {
                 return Ok(Self::ONE);
             }
@@ -140,9 +137,8 @@ where
             }
 
             self.checked_mul(y)
-        };
-
-        clos().map_err(|_| MathError::overflow_pow(self, exp))
+        }
+        .map_err(|_| MathError::overflow_pow(self, exp))
     }
 
     // TODO: Check if this is the best way to implement this
@@ -886,13 +882,13 @@ mod int_tests {
             u128 = {
                 passing: [
                     (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
-                    (Int::MAX, Int::ONE, Int::MAX)
+                    (Int::MAX, Int::ONE, Int::MAX),
                 ]
             }
             u256 = {
                 passing: [
                     (Int::MAX - Int::ONE, Int::ONE, Int::MAX),
-                    (Int::MAX, Int::ONE, Int::MAX)
+                    (Int::MAX, Int::ONE, Int::MAX),
                 ]
             }
             i128 = {
@@ -923,13 +919,13 @@ mod int_tests {
             u128 = {
                 passing: [
                     (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
-                    (Int::MIN, Int::ONE, Int::MIN)
+                    (Int::MIN, Int::ONE, Int::MIN),
                 ]
             }
             u256 = {
                 passing: [
                     (Int::MIN + Int::ONE, Int::ONE, Int::MIN),
-                    (Int::MIN, Int::ONE, Int::MIN)
+                    (Int::MIN, Int::ONE, Int::MIN),
                 ]
             }
             i128 = {
@@ -1398,8 +1394,7 @@ mod dec_tests {
                     (dec("20"), dec("100"), dec("0.2")),
                     (dec("2"), dec("8"), dec("0.25")),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             udec256 = {
                 passing: [
@@ -1412,8 +1407,7 @@ mod dec_tests {
                     (dec("20"), dec("100"), dec("0.2")),
                     (dec("2"), dec("8"), dec("0.25")),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             dec128 = {
                 passing: [
@@ -1577,8 +1571,7 @@ mod dec_tests {
                     (dec("2"), dec("1.414213562373095048")),
                     (dec("4.84"), dec("2.2")),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             udec256 = {
                 passing: [
@@ -1587,8 +1580,7 @@ mod dec_tests {
                     (dec("2"), dec("1.414213562373095048")),
                     (dec("4.84"), dec("2.2")),
                 ],
-                failing: [
-                ]
+                failing: []
             }
             dec128 = {
                 passing: [
