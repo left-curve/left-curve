@@ -118,6 +118,16 @@ const inputVariants = tv(
           description: "text-typography-600",
         },
       },
+      {
+        size: "lg",
+        color: "default",
+        class: {
+          inputWrapper:
+            "bg-surface-rose-300 text-typography-rose-600 group-hover:bg-surface-rose-400",
+          input: "placeholder:text-typography-rose-600 focus:text-typography-black-100",
+          description: "text-typography-600",
+        },
+      },
     ],
   },
   {
