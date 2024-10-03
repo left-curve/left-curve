@@ -5,7 +5,7 @@ FROM rust:1.81.0-alpine AS bob
 ARG GRUG_GIT_COMMIT="879e7d1"
 
 # Download the crates.io index using the new sparse protocol to improve performance
-# and avoid OOM in the bob build.
+# and avoid OOM in the build.
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
@@ -53,9 +53,6 @@ RUN rm -rf binaryen
 # --------------------------------- optimizer ----------------------------------
 
 FROM rust:1.81.0-alpine AS optimizer
-
-# Download the crates.io index using the new sparse protocol to improve performance
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
 RUN apk update && apk add --no-cache musl-dev
