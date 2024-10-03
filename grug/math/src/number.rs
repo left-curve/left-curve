@@ -101,12 +101,14 @@ where
     }
 
     fn checked_mul(self, other: Self) -> MathResult<Self> {
-        self.0
-            .checked_full_mul(*other.numerator())?
-            .checked_div(Self::DECIMAL_FRACTION.into_next())?
-            .checked_into_prev()
-            .map(Self)
-            .map_err(|_| MathError::overflow_mul(self, other))
+        (|| {
+            self.0
+                .checked_full_mul(*other.numerator())?
+                .checked_div(Self::DECIMAL_FRACTION.into_next())?
+                .checked_into_prev()
+                .map(Self)
+        })()
+        .map_err(|_| MathError::overflow_mul(self, other))
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {
@@ -118,7 +120,7 @@ where
     }
 
     fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        {
+        (|| {
             if exp == 0 {
                 return Ok(Self::ONE);
             }
@@ -137,7 +139,7 @@ where
             }
 
             self.checked_mul(y)
-        }
+        })()
         .map_err(|_| MathError::overflow_pow(self, exp))
     }
 
