@@ -11,7 +11,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 # Install build dependencies
 RUN apk update && apk add --no-cache git musl-dev
 
-# Down source code
+# Download source code
 RUN git clone https://github.com/left-curve/grug.git \
   && cd grug \
   && git checkout $GRUG_GIT_COMMIT
