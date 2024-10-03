@@ -8,7 +8,7 @@ where
     Dec<U>: FixedPoint<U>,
 {
     pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
-        self.checked_mul(Dec::<U>::DECIMAL_FRACTION)
+        self.checked_mul(Dec::<U>::PRECISION)
             .map(Dec::raw)
             .map_err(|_| MathError::overflow_conversion::<_, Dec<U>>(self))
     }
@@ -23,7 +23,7 @@ where
 {
     pub fn into_int(self) -> Int<U> {
         // We know the decimal fraction is non-zero, so safe to unwrap.
-        self.0.checked_div(Self::DECIMAL_FRACTION).unwrap()
+        self.0.checked_div(Self::PRECISION).unwrap()
     }
 }
 
@@ -122,7 +122,7 @@ mod dec_tests {
                     (Udec128::new_percent(101), 1),
                     (Udec128::new_percent(199), 1),
                     (Udec128::new(2), 2),
-                    (Udec128::MAX, u128::MAX / Udec128::DECIMAL_FRACTION.0),
+                    (Udec128::MAX, u128::MAX / Udec128::PRECISION.0),
                 ]
             }
             udec256 = {
@@ -132,33 +132,33 @@ mod dec_tests {
                     (Udec256::new_percent(101), U256::ONE),
                     (Udec256::new_percent(199), U256::ONE),
                     (Udec256::new(2), U256::from(2_u128)),
-                    (Udec256::MAX, U256::MAX / Udec256::DECIMAL_FRACTION.0),
+                    (Udec256::MAX, U256::MAX / Udec256::PRECISION.0),
                 ]
             }
             dec128 = {
                 passing: [
                     (Dec128::ZERO, i128::ZERO),
-                    (Dec128::MIN, i128::MIN / Dec128::DECIMAL_FRACTION.0),
+                    (Dec128::MIN, i128::MIN / Dec128::PRECISION.0),
                     (Dec128::new_percent(101), 1),
                     (Dec128::new_percent(199), 1),
                     (Dec128::new(2), 2),
                     (Dec128::new_percent(-101), -1),
                     (Dec128::new_percent(-199), -1),
                     (Dec128::new(-2), -2),
-                    (Dec128::MAX, i128::MAX / Dec128::DECIMAL_FRACTION.0),
+                    (Dec128::MAX, i128::MAX / Dec128::PRECISION.0),
                 ]
             }
             dec256 = {
                 passing: [
                     (Dec256::ZERO, I256::ZERO),
-                    (Dec256::MIN, I256::MIN / Dec256::DECIMAL_FRACTION.0),
+                    (Dec256::MIN, I256::MIN / Dec256::PRECISION.0),
                     (Dec256::new_percent(101), I256::ONE),
                     (Dec256::new_percent(199), I256::ONE),
                     (Dec256::new(2), I256::from(2)),
                     (Dec256::new_percent(-101), -I256::ONE),
                     (Dec256::new_percent(-199), -I256::ONE),
                     (Dec256::new(-2), I256::from(-2)),
-                    (Dec256::MAX, I256::MAX / Dec256::DECIMAL_FRACTION.0),
+                    (Dec256::MAX, I256::MAX / Dec256::PRECISION.0),
                 ]
             }
         }

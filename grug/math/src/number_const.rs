@@ -30,7 +30,7 @@ where
 impl NumberConst for Udec128 {
     const MAX: Self = Self::raw(Uint128::MAX);
     const MIN: Self = Self::raw(Uint128::MIN);
-    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Uint128::new(10_u128.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Uint128::ZERO);
 }
@@ -38,7 +38,7 @@ impl NumberConst for Udec128 {
 impl NumberConst for Udec256 {
     const MAX: Self = Self::raw(Uint256::MAX);
     const MIN: Self = Self::raw(Uint256::MIN);
-    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Uint256::new_from_u128(
         10_u128.pow(Self::DECIMAL_PLACES + 1),
     ));
@@ -48,7 +48,7 @@ impl NumberConst for Udec256 {
 impl NumberConst for Dec128 {
     const MAX: Self = Self::raw(Int128::MAX);
     const MIN: Self = Self::raw(Int128::MIN);
-    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Int128::new(10_i128.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Int128::ZERO);
 }
@@ -56,7 +56,7 @@ impl NumberConst for Dec128 {
 impl NumberConst for Dec256 {
     const MAX: Self = Self::raw(Int256::MAX);
     const MIN: Self = Self::raw(Int256::MIN);
-    const ONE: Self = Self::raw(Self::DECIMAL_FRACTION);
+    const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Int256::ZERO);
 }

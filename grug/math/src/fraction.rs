@@ -20,11 +20,11 @@ where
     }
 
     fn denominator() -> Int<U> {
-        Self::DECIMAL_FRACTION
+        Self::PRECISION
     }
 
     fn checked_inv(&self) -> MathResult<Self> {
-        Self::checked_from_ratio(Self::DECIMAL_FRACTION, self.0)
+        Self::checked_from_ratio(Self::PRECISION, self.0)
     }
 }
 
@@ -46,32 +46,32 @@ mod tests {
             udec128 = {
                 passing: [
                     (Udec128::ZERO, Uint128::ZERO),
-                    (Udec128::TEN, Uint128::TEN * Udec128::DECIMAL_FRACTION),
+                    (Udec128::TEN, Uint128::TEN * Udec128::PRECISION),
                     (Udec128::MAX, Uint128::MAX)
                 ]
             }
             udec256 = {
                 passing: [
                     (Udec256::ZERO, Uint256::ZERO),
-                    (Udec256::TEN, Uint256::TEN * Udec256::DECIMAL_FRACTION),
+                    (Udec256::TEN, Uint256::TEN * Udec256::PRECISION),
                     (Udec256::MAX, Uint256::MAX)
                 ]
             }
             dec128 = {
                 passing: [
                     (Dec128::ZERO, Int128::ZERO),
-                    (Dec128::TEN, Int128::TEN * Dec128::DECIMAL_FRACTION),
+                    (Dec128::TEN, Int128::TEN * Dec128::PRECISION),
                     (Dec128::MAX, Int128::MAX),
-                    (-Dec128::TEN, -Int128::TEN * Dec128::DECIMAL_FRACTION),
+                    (-Dec128::TEN, -Int128::TEN * Dec128::PRECISION),
                     (Dec128::MIN, Int128::MIN)
                 ]
             }
             dec256 = {
                 passing: [
                     (Dec256::ZERO, Int256::ZERO),
-                    (Dec256::TEN, Int256::TEN * Dec256::DECIMAL_FRACTION),
+                    (Dec256::TEN, Int256::TEN * Dec256::PRECISION),
                     (Dec256::MAX, Int256::MAX),
-                    (-Dec256::TEN, -Int256::TEN * Dec256::DECIMAL_FRACTION),
+                    (-Dec256::TEN, -Int256::TEN * Dec256::PRECISION),
                     (Dec256::MIN, Int256::MIN)
                 ]
             }

@@ -104,7 +104,7 @@ where
         (|| {
             self.0
                 .checked_full_mul(*other.numerator())?
-                .checked_div(Self::DECIMAL_FRACTION.into_next())?
+                .checked_div(Self::PRECISION.into_next())?
                 .checked_into_prev()
                 .map(Self)
         })()

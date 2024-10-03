@@ -98,7 +98,7 @@ where
         let denominator = denominator.into();
 
         numerator
-            .checked_multiply_ratio_floor(Self::DECIMAL_FRACTION, denominator)
+            .checked_multiply_ratio_floor(Self::PRECISION, denominator)
             .map(Self)
     }
 }
@@ -121,7 +121,7 @@ where
     Int<U>: Copy + Sign + NumberConst + PartialEq,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let decimals = Self::DECIMAL_FRACTION;
+        let decimals = Self::PRECISION;
         let whole = (self.0) / decimals;
         let fractional = (self.0).checked_rem(decimals).unwrap();
 
@@ -170,7 +170,7 @@ where
             .unwrap() // split always returns at least one element
             .parse::<Int<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
-            .checked_mul(Self::DECIMAL_FRACTION)
+            .checked_mul(Self::PRECISION)
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "value too big"))?;
 
         if let Some(fractional_part) = parts_iter.next() {
@@ -191,7 +191,7 @@ where
                         input,
                         format!(
                             "cannot parse more than {} fractional digits",
-                            Self::DECIMAL_FRACTION
+                            Self::PRECISION
                         ),
                     )
                 },

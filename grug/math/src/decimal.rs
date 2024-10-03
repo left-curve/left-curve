@@ -14,21 +14,21 @@ where
     U: Number + NumberConst + Sign + IsZero + Copy + PartialEq,
 {
     fn checked_floor(self) -> MathResult<Self> {
-        let rem = self.0.checked_rem(Self::DECIMAL_FRACTION)?;
+        let rem = self.0.checked_rem(Self::PRECISION)?;
 
         match (rem.is_zero(), rem.is_negative()) {
-            (false, true) => self.0.checked_sub(Self::DECIMAL_FRACTION + rem).map(Self),
+            (false, true) => self.0.checked_sub(Self::PRECISION + rem).map(Self),
             (false, false) => self.0.checked_sub(rem).map(Self),
             (true, _) => Ok(self),
         }
     }
 
     fn checked_ceil(self) -> MathResult<Self> {
-        let rem = self.0.checked_rem(Self::DECIMAL_FRACTION)?;
+        let rem = self.0.checked_rem(Self::PRECISION)?;
 
         match (rem.is_zero(), rem.is_negative()) {
             (false, true) => self.0.checked_sub(rem).map(Self),
-            (false, false) => self.0.checked_add(Self::DECIMAL_FRACTION - rem).map(Self),
+            (false, false) => self.0.checked_add(Self::PRECISION - rem).map(Self),
             (true, _) => Ok(self),
         }
     }
@@ -143,7 +143,7 @@ mod tests {
                     (Dec128::new_percent(-101), Dec128::new(-1)),
                     (Dec128::new_percent(-199), Dec128::new(-1)),
                     (Dec128::new_percent(-200), Dec128::from_str("-2").unwrap()),
-                    (Dec128::MIN, Dec(Dec128::MIN.0 / Dec128::DECIMAL_FRACTION * Dec128::DECIMAL_FRACTION)),
+                    (Dec128::MIN, Dec(Dec128::MIN.0 / Dec128::PRECISION * Dec128::PRECISION)),
                 ]
             }
             dec256 = {
@@ -158,7 +158,7 @@ mod tests {
                     (Dec256::new_percent(-101), Dec256::new(-1)),
                     (Dec256::new_percent(-199), Dec256::new(-1)),
                     (Dec256::new_percent(-200), Dec256::from_str("-2").unwrap()),
-                    (Dec256::MIN, Dec(Dec256::MIN.0 / Dec256::DECIMAL_FRACTION * Dec256::DECIMAL_FRACTION)),
+                    (Dec256::MIN, Dec(Dec256::MIN.0 / Dec256::PRECISION * Dec256::PRECISION)),
                 ]
             }
         }
