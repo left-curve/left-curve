@@ -101,6 +101,32 @@ where
             .checked_multiply_ratio(Self::PRECISION, denominator)
             .map(Self)
     }
+
+    pub fn checked_from_ratio_ceil<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Int<U>>,
+        D: Into<Int<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
+
+        numerator
+            .checked_multiply_ratio_ceil(Self::PRECISION, denominator)
+            .map(Self)
+    }
+
+    pub fn checked_from_ratio_floor<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Int<U>>,
+        D: Into<Int<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
+
+        numerator
+            .checked_multiply_ratio_floor(Self::PRECISION, denominator)
+            .map(Self)
+    }
 }
 
 impl<U> Neg for Dec<U>
