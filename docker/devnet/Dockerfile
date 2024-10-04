@@ -32,7 +32,11 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
 # musl-dev provides crti.o
-# llvm-dev provides libclang.so
+# clang-dev and llvm-dev both provide libclang.so, located respectively at:
+# - /usr/lib/libclang.so
+# - /usr/lib/llvm17/lib/libclang.so
+# Can use a specific one by setting the LIBCLANG_PATH environment variable.
+# But this isn't necessary here.
 RUN apk update && apk add --no-cache clang clang-dev g++ git llvm-dev musl-dev
 
 # Download source code
