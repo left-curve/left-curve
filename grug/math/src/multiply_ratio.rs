@@ -42,6 +42,8 @@ where
             .checked_div(denominator.into_next())?
             .checked_into_prev()?;
 
+        // If the result is a negative non-integer, we floor it by subtracting 1.
+        // Otherwise, simply return the result.
         if res.is_negative() {
             let remained = dividend.checked_rem(denominator.into_next())?;
             if !remained.is_zero() {
@@ -60,6 +62,8 @@ where
             .checked_div(denominator.into_next())?
             .checked_into_prev()?;
 
+        // If the result is a positive non-integer, we ceil it by adding 1.
+        // Otherwise, simply return the result.
         if res.is_positive() {
             let remained = dividend.checked_rem(denominator.into_next())?;
             if !remained.is_zero() {
