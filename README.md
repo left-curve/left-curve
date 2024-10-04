@@ -58,6 +58,12 @@ just optimize
 
 ### TypeScript
 
+Before running any command is necessary to run:
+
+```shell
+pnpm install
+```
+
 Start the development mode for all packages in the `sdk/packages`:
 
 ```shell
@@ -85,13 +91,13 @@ pnpm build:portal
 Run tests:
 
 ```shell
-pnpm test:pkg
+pnpm test
 ```
 
 Run linter:
 
 ```shell
-pnpm lint:pkg
+pnpm lint
 ```
 
 Generate documentation:
