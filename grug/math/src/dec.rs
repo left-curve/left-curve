@@ -98,7 +98,7 @@ where
         let denominator = denominator.into();
 
         numerator
-            .checked_multiply_ratio_floor(Self::PRECISION, denominator)
+            .checked_multiply_ratio(Self::PRECISION, denominator)
             .map(Self)
     }
 }
