@@ -2,16 +2,30 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "tasks": {
-    "lint": {},
-    "test": {},
     "ci": {},
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "build/**"]
+    "lint": {},
+    "lint:fix": {},
+    "clean": {
+      "cache": false
+    },
+    "clean:build": {
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "pre-dev": {
+      "dependsOn": ["^pre-dev"],
+      "outputs": [".next/**", "!.next/cache/**", "build/**"]
     },
     "dev": {
+      "dependsOn": ["pre-dev"],
       "cache": false,
       "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "build/**"]
     }
   }
 }
