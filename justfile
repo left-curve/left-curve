@@ -1,8 +1,12 @@
-# ------------------------------------ Rust ------------------------------------
-
 # List available recipes
 default:
   @just --list
+
+# Delete all git branches except for main
+git-clean:
+  git branch | grep -v "main" | xargs git branch -D
+
+# ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Grug node software
 install:
