@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst,
-        PrevNumber, Sign,
+        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio, NextNumber,
+        NumberConst, PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::fmt::Display,
@@ -89,8 +89,8 @@ impl<U> Number for Dec<U>
 where
     Self: FixedPoint<U> + NumberConst + Sign,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Int<U>: NextNumber + Sign,
-    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + ToString + PrevNumber<Prev = Int<U>>,
+    Int<U>: NextNumber + Sign + MultiplyRatio,
+    <Int<U> as NextNumber>::Next: Number + PrevNumber<Prev = Int<U>>,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)

@@ -1,4 +1,4 @@
-use crate::{Int, IsZero, MathResult, NextNumber, Number, NumberConst, PrevNumber, Sign};
+use crate::{Int, MathResult, NextNumber, Number, NumberConst, PrevNumber, Sign};
 
 /// Describes operations where a number is multiplied by a numerator then
 /// immediately divided by a denominator.
@@ -27,8 +27,9 @@ pub trait MultiplyRatio: Sized {
 
 impl<U> MultiplyRatio for Int<U>
 where
-    Int<U>: NextNumber + NumberConst + Number + Copy + Sign,
-    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + PrevNumber<Prev = Int<U>>,
+    Int<U>: NextNumber + Number + Copy,
+    <Int<U> as NextNumber>::Next:
+        Number + NumberConst + Sign + Copy + PartialEq + PrevNumber<Prev = Int<U>>,
 {
     fn checked_multiply_ratio(self, numerator: Self, denominator: Self) -> MathResult<Self> {
         self.checked_full_mul(numerator)?
@@ -38,42 +39,30 @@ where
 
     fn checked_multiply_ratio_floor(self, numerator: Self, denominator: Self) -> MathResult<Self> {
         let dividend = self.checked_full_mul(numerator)?;
-        let res = dividend
-            .checked_div(denominator.into_next())?
-            .checked_into_prev()?;
+        let denominator = denominator.into_next();
+        let mut res = dividend.checked_div(denominator)?;
 
         // If the result is a negative non-integer, we floor it by subtracting 1.
         // Otherwise, simply return the result.
-        if res.is_negative() {
-            let remained = dividend.checked_rem(denominator.into_next())?;
-            if !remained.is_zero() {
-                res.checked_sub(Self::ONE)
-            } else {
-                Ok(res)
-            }
-        } else {
-            Ok(res)
+        if res.is_negative() && res.checked_mul(denominator)? != dividend {
+            res = res.checked_sub(<Self as NextNumber>::Next::ONE)?;
         }
+
+        res.checked_into_prev()
     }
 
     fn checked_multiply_ratio_ceil(self, numerator: Self, denominator: Self) -> MathResult<Self> {
         let dividend = self.checked_full_mul(numerator)?;
-        let res = dividend
-            .checked_div(denominator.into_next())?
-            .checked_into_prev()?;
+        let denominator = denominator.into_next();
+        let mut res = dividend.checked_div(denominator)?;
 
         // If the result is a positive non-integer, we ceil it by adding 1.
         // Otherwise, simply return the result.
-        if res.is_positive() {
-            let remained = dividend.checked_rem(denominator.into_next())?;
-            if !remained.is_zero() {
-                res.checked_add(Self::ONE)
-            } else {
-                Ok(res)
-            }
-        } else {
-            Ok(res)
+        if res.is_positive() && res.checked_mul(denominator)? != dividend {
+            res = res.checked_add(<Self as NextNumber>::Next::ONE)?;
         }
+
+        res.checked_into_prev()
     }
 }
 
