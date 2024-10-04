@@ -5,9 +5,13 @@ pub trait MultiplyFraction<F, U>: Sized
 where
     F: Fraction<U>,
 {
+    fn checked_mul_dec(self, rhs: F) -> MathResult<Self>;
+
     fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self>;
 
     fn checked_mul_dec_ceil(self, rhs: F) -> MathResult<Self>;
+
+    fn checked_div_dec(self, rhs: F) -> MathResult<Self>;
 
     fn checked_div_dec_floor(self, rhs: F) -> MathResult<Self>;
 
@@ -19,8 +23,16 @@ where
     Int<U>: IsZero + NumberConst + MultiplyRatio + ToString + Copy,
     Dec<U>: IsZero + Fraction<U>,
 {
-    fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_mul_dec(self, rhs: Dec<U>) -> MathResult<Self> {
         // If either left or right hand side is zero, then simply return zero.
+        if self.is_zero() || rhs.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
+        self.checked_multiply_ratio(*rhs.numerator(), Dec::<U>::denominator())
+    }
+
+    fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
@@ -36,7 +48,7 @@ where
         self.checked_multiply_ratio_ceil(*rhs.numerator(), Dec::<U>::denominator())
     }
 
-    fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_div_dec(self, rhs: Dec<U>) -> MathResult<Self> {
         // If right hand side is zero, throw error, because you can't divide any
         // number by zero.
         if rhs.is_zero() {
@@ -45,6 +57,18 @@ where
 
         // If left hand side is zero, and we know right hand size is positive,
         // then simply return zero.
+        if self.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
+        self.checked_multiply_ratio(Dec::<U>::denominator(), *rhs.numerator())
+    }
+
+    fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+        if rhs.is_zero() {
+            return Err(MathError::division_by_zero(self));
+        }
+
         if self.is_zero() {
             return Ok(Self::ZERO);
         }
@@ -85,7 +109,7 @@ mod tests {
                     (10_u128, Udec128::new_percent(150), 15_u128),
                     (10_u128, Udec128::new_percent(50), 5_u128),
                     (11_u128, Udec128::new_percent(50), 5_u128),
-                    (9_u128, Udec128::new_percent(50), 4_u128)
+                    (9_u128, Udec128::new_percent(50), 4_u128),
                 ]
             }
             u256 = {
@@ -94,7 +118,7 @@ mod tests {
                     (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
                     (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
                     (U256::from(11_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128))
+                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128)),
                 ]
             }
             i128 = {
@@ -157,7 +181,7 @@ mod tests {
                     (10_u128, Udec128::new_percent(150), 15_u128),
                     (10_u128, Udec128::new_percent(50), 5_u128),
                     (11_u128, Udec128::new_percent(50), 6_u128),
-                    (9_u128, Udec128::new_percent(50), 5_u128)
+                    (9_u128, Udec128::new_percent(50), 5_u128),
                 ]
             }
             u256 = {
@@ -166,7 +190,7 @@ mod tests {
                     (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
                     (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
                     (U256::from(11_u128), Udec256::new_percent(50), U256::from(6_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(5_u128))
+                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(5_u128)),
                 ]
             }
             i128 = {
@@ -208,7 +232,7 @@ mod tests {
 
                     (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
                     (I256::from(11_i128), Dec256::new_percent(50), I256::from(6_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128))
+                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128)),
                 ]
             }
         }

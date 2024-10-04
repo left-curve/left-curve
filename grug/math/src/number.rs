@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, NextNumber, NumberConst,
-        PrevNumber, Sign,
+        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio, NextNumber,
+        NumberConst, PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::fmt::Display,
@@ -89,8 +89,8 @@ impl<U> Number for Dec<U>
 where
     Self: FixedPoint<U> + NumberConst + Sign,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Int<U>: NextNumber + Sign,
-    <Int<U> as NextNumber>::Next: Number + IsZero + Copy + ToString + PrevNumber<Prev = Int<U>>,
+    Int<U>: NextNumber + Sign + MultiplyRatio,
+    <Int<U> as NextNumber>::Next: Number + PrevNumber<Prev = Int<U>>,
 {
     fn checked_add(self, other: Self) -> MathResult<Self> {
         self.0.checked_add(other.0).map(Self)
@@ -1428,7 +1428,7 @@ mod dec_tests {
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
-                    (dec("20"), dec("-1.5"), dec("-13.333333333333333334")),
+                    (dec("20"), dec("-1.5"), dec("-13.333333333333333333")),
                     (dec("20"), dec("-0.1"), dec("-200")),
                     (dec("-20"), dec("0.01"), dec("-2000")),
                     (dec("-2"), dec("-8"), dec("0.25")),
@@ -1454,7 +1454,7 @@ mod dec_tests {
                     (dec("20"), dec("-10"), dec("-2")),
                     (dec("-20"), dec("10"), dec("-2")),
                     (dec("-20"), dec("-10"), dec("2")),
-                    (dec("20"), dec("-1.5"), dec("-13.333333333333333334")),
+                    (dec("20"), dec("-1.5"), dec("-13.333333333333333333")),
                     (dec("20"), dec("-0.1"), dec("-200")),
                     (dec("-20"), dec("0.01"), dec("-2000")),
                     (dec("-2"), dec("-8"), dec("0.25")),
