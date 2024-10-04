@@ -109,7 +109,7 @@ mod tests {
                     (10_u128, Udec128::new_percent(150), 15_u128),
                     (10_u128, Udec128::new_percent(50), 5_u128),
                     (11_u128, Udec128::new_percent(50), 5_u128),
-                    (9_u128, Udec128::new_percent(50), 4_u128)
+                    (9_u128, Udec128::new_percent(50), 4_u128),
                 ]
             }
             u256 = {
@@ -118,7 +118,7 @@ mod tests {
                     (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
                     (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
                     (U256::from(11_u128), Udec256::new_percent(50), U256::from(5_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128))
+                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(4_u128)),
                 ]
             }
             i128 = {
@@ -181,7 +181,7 @@ mod tests {
                     (10_u128, Udec128::new_percent(150), 15_u128),
                     (10_u128, Udec128::new_percent(50), 5_u128),
                     (11_u128, Udec128::new_percent(50), 6_u128),
-                    (9_u128, Udec128::new_percent(50), 5_u128)
+                    (9_u128, Udec128::new_percent(50), 5_u128),
                 ]
             }
             u256 = {
@@ -190,7 +190,7 @@ mod tests {
                     (U256::from(10_u128), Udec256::new_percent(150), U256::from(15_u128)),
                     (U256::from(10_u128), Udec256::new_percent(50), U256::from(5_u128)),
                     (U256::from(11_u128), Udec256::new_percent(50), U256::from(6_u128)),
-                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(5_u128))
+                    (U256::from(9_u128), Udec256::new_percent(50), U256::from(5_u128)),
                 ]
             }
             i128 = {
@@ -232,7 +232,7 @@ mod tests {
 
                     (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
                     (I256::from(11_i128), Dec256::new_percent(50), I256::from(6_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128))
+                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(5_i128)),
                 ]
             }
         }

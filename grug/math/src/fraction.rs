@@ -47,14 +47,14 @@ mod tests {
                 passing: [
                     (Udec128::ZERO, Uint128::ZERO),
                     (Udec128::TEN, Uint128::TEN * Udec128::PRECISION),
-                    (Udec128::MAX, Uint128::MAX)
+                    (Udec128::MAX, Uint128::MAX),
                 ]
             }
             udec256 = {
                 passing: [
                     (Udec256::ZERO, Uint256::ZERO),
                     (Udec256::TEN, Uint256::TEN * Udec256::PRECISION),
-                    (Udec256::MAX, Uint256::MAX)
+                    (Udec256::MAX, Uint256::MAX),
                 ]
             }
             dec128 = {
@@ -63,7 +63,7 @@ mod tests {
                     (Dec128::TEN, Int128::TEN * Dec128::PRECISION),
                     (Dec128::MAX, Int128::MAX),
                     (-Dec128::TEN, -Int128::TEN * Dec128::PRECISION),
-                    (Dec128::MIN, Int128::MIN)
+                    (Dec128::MIN, Int128::MIN),
                 ]
             }
             dec256 = {
@@ -72,7 +72,7 @@ mod tests {
                     (Dec256::TEN, Int256::TEN * Dec256::PRECISION),
                     (Dec256::MAX, Int256::MAX),
                     (-Dec256::TEN, -Int256::TEN * Dec256::PRECISION),
-                    (Dec256::MIN, Int256::MIN)
+                    (Dec256::MIN, Int256::MIN),
                 ]
             }
         }
@@ -88,22 +88,22 @@ mod tests {
         inputs = {
             udec128 = {
                 passing: [
-                    1_000_000_000_000_000_000_u128
+                    1_000_000_000_000_000_000_u128,
                 ]
             }
             udec256 = {
                 passing: [
-                    U256::from(1_000_000_000_000_000_000_u128)
+                    U256::from(1_000_000_000_000_000_000_u128),
                 ]
             }
             dec128 = {
                 passing: [
-                    1_000_000_000_000_000_000_i128
+                    1_000_000_000_000_000_000_i128,
                 ]
             }
             dec256 = {
                 passing: [
-                    I256::from(1_000_000_000_000_000_000_i128)
+                    I256::from(1_000_000_000_000_000_000_i128),
                 ]
             }
         }
