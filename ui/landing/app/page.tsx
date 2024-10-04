@@ -14,7 +14,7 @@ function HomePage() {
   const isMd = useMediaQuery("md");
   const scale = useTransform(scrollYProgress, [0.7, 1], [0, 1]);
   const translateYMobile = useTransform(scrollYProgress, [0.5, 1], ["85%", "-60%"]);
-  const translateYDesktop = useTransform(scrollYProgress, [0.5, 1], ["70%", "-60%"]);
+  const translateYDesktop = useTransform(scrollYProgress, [0.5, 1], ["70%", "-30%"]);
 
   return (
     <div
@@ -27,7 +27,7 @@ function HomePage() {
         className="fixed mx-0 top-6 z-50 h-6 md:h-12 object-contain"
       />
       <motion.div className="header-landing pb-20 pt-[72px] md:pt-32 w-full flex flex-col gap-12 items-center h-[80vh] lg:h-[95vh] px-4">
-        <picture className="object-contain md:max-w-[80%] xl:max-w-[70%] w-full">
+        <picture className="object-contain md:max-w-[80%] xl:max-w-[70%] 2xl:max-w-[60%] w-full">
           <source srcSet="/images/background.webp" media="(min-width: 768px)" />
           <img src="/images/background-mobile.webp" alt="background-mobile" className="w-full" />
         </picture>
