@@ -26,10 +26,13 @@
     }
   },
   "scripts": {
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
-    "lint": "pnpm biome check --write ./src",
-    "lint:fix": "pnpm biome ci ./src",
     "ci": "pnpm lint",
+    "clean": "rm -rf ./build && rm -rf node_modules",
+    "clean:build": "rm -rf ./build",
+    "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "pre-dev": "pnpm build",
+    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {
