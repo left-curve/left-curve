@@ -1,5 +1,8 @@
 "use client";
+
+import { useMediaQuery } from "@dango/shared";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { useRouter } from "next/navigation";
 import React, { useRef } from "react";
 
 function HomePage() {
@@ -7,14 +10,15 @@ function HomePage() {
   const { scrollYProgress } = useScroll({
     target: targetRef,
   });
-
+  const { push } = useRouter();
+  const isMd = useMediaQuery("md");
   const scale = useTransform(scrollYProgress, [0.7, 1], [0, 1]);
-  const translateYMobile = useTransform(scrollYProgress, [0.5, 1], ["85%", "-30%"]);
-  const translateY = useTransform(scrollYProgress, [0.5, 1], ["70%", "-30%"]);
+  const translateYMobile = useTransform(scrollYProgress, [0.5, 1], ["85%", "-60%"]);
+  const translateYDesktop = useTransform(scrollYProgress, [0.5, 1], ["70%", "-60%"]);
 
   return (
     <div
-      className="flex flex-1 flex-col w-full  relative items-center scrollbar-none min-h-[130vh] md:min-h-[150vh]"
+      className="flex flex-1 flex-col w-full  relative items-center justify-between scrollbar-none min-h-[130vh] md:min-h-[150vh] pb-4"
       ref={targetRef}
     >
       <img
@@ -29,7 +33,7 @@ function HomePage() {
         </picture>
       </motion.div>
       <motion.div
-        style={{ translateY }}
+        style={{ translateY: isMd ? translateYDesktop : translateYMobile }}
         className="flex flex-col gap-8 md:gap-24 items-center px-[18px]"
       >
         <motion.h1 className="text-4xl md:text-7xl font-extrabold max-w-[1030px] italic text-center">
@@ -37,11 +41,25 @@ function HomePage() {
         </motion.h1>
         <motion.button
           style={{ scale }}
+          onClick={() => push("/auth/login")}
           className="text-lg md:text-8xl bg-surface-pink-200 px-8 py-3 md:px-[72px] md:py-4 rounded-[20px] md:rounded-[48px] font-extrabold text-surface-rose-200 italic w-fit"
         >
           Enter Portal
         </motion.button>
       </motion.div>
+      <footer className="flex flex-col gap-10 items-center justify-center w-full">
+        <div className="flex gap-12 uppercase font-extrabold">
+          <a href="https://x.com/leftCurveSoft" target="_blank" rel="noreferrer">
+            X
+          </a>
+          <a href="/">DISCORD</a>
+        </div>
+        <div className="flex items-center justify-between md:justify-center text-xs font-light md:gap-12 px-4 w-full">
+          <a href="/">TERMS OF USE</a>
+          <a href="/">COOKIE POLICY</a>
+          <a href="/">PRIVACY POLICY</a>
+        </div>
+      </footer>
     </div>
   );
 }

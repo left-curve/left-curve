@@ -62,7 +62,13 @@ export const LoginStep: React.FC = () => {
             Back
           </DangoButton>
         ) : (
-          <DangoButton as={Link} href="/signup" variant="ghost" color="sand" className="text-lg">
+          <DangoButton
+            as={Link}
+            href="/auth/signup"
+            variant="ghost"
+            color="sand"
+            className="text-lg"
+          >
             Don't have an account?
           </DangoButton>
         )}

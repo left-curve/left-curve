@@ -46,7 +46,7 @@ export const CredentialStep: React.FC = () => {
         <DangoButton fullWidth onClick={onSubmit}>
           Choose credentials
         </DangoButton>
-        <DangoButton as={Link} href="/login" variant="ghost" color="sand" className="text-lg">
+        <DangoButton as={Link} href="/auth/login" variant="ghost" color="sand" className="text-lg">
           Already have an account?
         </DangoButton>
       </div>

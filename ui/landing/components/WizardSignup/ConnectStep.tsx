@@ -89,7 +89,7 @@ export const ConnectStep: React.FC = () => {
         <SelectItem key="Passkey">Passkey</SelectItem>
         <SelectItem key="Metamask">Metamask</SelectItem>
       </Select>
-      <DangoButton as={Link} href="/login" variant="ghost" color="sand" className="text-lg">
+      <DangoButton as={Link} href="/auth/login" variant="ghost" color="sand" className="text-lg">
         Already have an account?
       </DangoButton>
     </div>
