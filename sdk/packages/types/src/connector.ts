@@ -95,7 +95,7 @@ export type CreateConnectorFn<
   }): Promise<void>;
   disconnect(): Promise<void>;
   getAccounts(): Promise<readonly Account[]>;
-  getClient(): Promise<Client<transport, chain, signer>>;
+  getClient(): Promise<Client<transport, chain, signer, any>>;
   getKeyHash(): Promise<KeyHash>;
   isAuthorized(): Promise<boolean>;
   requestSignature(signDoc: signDoc): Promise<SignedDoc>;
