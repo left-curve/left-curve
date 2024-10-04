@@ -5,3 +5,21 @@
 body {
   font-family: 'ABCDiatypeRounded'
 }
+
+.header-landing {
+  background: linear-gradient(76deg, #C4B7BA, #FFF2E2);
+  --mask:
+    linear-gradient(to top, #0000 50px, #000 0),
+    radial-gradient(50px, #000 98%, #0000) bottom/92.5px 100px;
+  -webkit-mask: var(--mask);
+  mask: var(--mask);
+}
+
+.header {
+  background: linear-gradient(90deg, #D88E96, #C4B7BA);
+  --mask:
+    linear-gradient(to top, #0000 99px, #000 0),
+    radial-gradient(85px, #000 98%, #0000) bottom / 125px 220px;
+  -webkit-mask: var(--mask);
+  mask: var(--mask);
+}

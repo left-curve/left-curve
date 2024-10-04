@@ -8,7 +8,7 @@ where
     Dec<U>: FixedPoint<U>,
 {
     pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
-        self.checked_mul(Dec::<U>::DECIMAL_FRACTION)
+        self.checked_mul(Dec::<U>::PRECISION)
             .map(Dec::raw)
             .map_err(|_| MathError::overflow_conversion::<_, Dec<U>>(self))
     }
@@ -23,12 +23,14 @@ where
 {
     pub fn into_int(self) -> Int<U> {
         // We know the decimal fraction is non-zero, so safe to unwrap.
-        self.0.checked_div(Self::DECIMAL_FRACTION).unwrap()
+        self.0.checked_div(Self::PRECISION).unwrap()
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{
             int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError,
@@ -95,6 +97,76 @@ mod tests {
             for unsigned in failing_samples {
                 let uint = bt(_0, Int::new(unsigned));
                 assert!(matches!(uint.checked_into_dec(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{
+            dec_test,
+            test_utils::{bt, dt},
+            Dec, Dec128, Dec256, FixedPoint, Int, NumberConst, Udec128, Udec256,
+        },
+        bnum::types::{I256, U256},
+    };
+
+    dec_test!( dec_to_int
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Udec128::ZERO, u128::ZERO),
+                    (Udec128::MIN, u128::ZERO),
+                    (Udec128::new_percent(101), 1),
+                    (Udec128::new_percent(199), 1),
+                    (Udec128::new(2), 2),
+                    (Udec128::MAX, u128::MAX / Udec128::PRECISION.0),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Udec256::ZERO, U256::ZERO),
+                    (Udec256::MIN, U256::ZERO),
+                    (Udec256::new_percent(101), U256::ONE),
+                    (Udec256::new_percent(199), U256::ONE),
+                    (Udec256::new(2), U256::from(2_u128)),
+                    (Udec256::MAX, U256::MAX / Udec256::PRECISION.0),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (Dec128::ZERO, i128::ZERO),
+                    (Dec128::MIN, i128::MIN / Dec128::PRECISION.0),
+                    (Dec128::new_percent(101), 1),
+                    (Dec128::new_percent(199), 1),
+                    (Dec128::new(2), 2),
+                    (Dec128::new_percent(-101), -1),
+                    (Dec128::new_percent(-199), -1),
+                    (Dec128::new(-2), -2),
+                    (Dec128::MAX, i128::MAX / Dec128::PRECISION.0),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec256::ZERO, I256::ZERO),
+                    (Dec256::MIN, I256::MIN / Dec256::PRECISION.0),
+                    (Dec256::new_percent(101), I256::ONE),
+                    (Dec256::new_percent(199), I256::ONE),
+                    (Dec256::new(2), I256::from(2)),
+                    (Dec256::new_percent(-101), -I256::ONE),
+                    (Dec256::new_percent(-199), -I256::ONE),
+                    (Dec256::new(-2), I256::from(-2)),
+                    (Dec256::MAX, I256::MAX / Dec256::PRECISION.0),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, samples| {
+            for (dec, expected) in samples {
+                let expected = bt(_0d.0, Int::new(expected));
+                dt(_0d, dec);
+                assert_eq!(dec.into_int(), expected);
             }
         }
     );

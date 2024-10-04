@@ -18,6 +18,6 @@ export const localhost = /*#__PURE__*/ defineChain({
     },
   },
   rpcUrls: {
-    default: { http: ["http://127.0.0.1:26657"] },
+    default: { http: ["http://localhost:26657"] },
   },
 });

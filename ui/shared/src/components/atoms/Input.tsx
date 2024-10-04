@@ -23,6 +23,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       disabled,
       fullWidth,
       startText,
+      error,
       ...props
     },
     ref,
@@ -41,6 +42,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <input type={type} className={input({ startText })} ref={ref} {...props} />
           {endContent ? endContent : null}
         </div>
+        {error ? <span className="text-danger-500">{error}</span> : null}
         {bottomComponent ? <span className={description()}>{bottomComponent}</span> : null}
       </div>
     );
@@ -110,6 +112,16 @@ const inputVariants = tv(
     compoundVariants: [
       {
         size: "md",
+        color: "default",
+        class: {
+          inputWrapper:
+            "bg-surface-rose-300 text-typography-rose-600 group-hover:bg-surface-rose-400",
+          input: "placeholder:text-typography-rose-600 focus:text-typography-black-100",
+          description: "text-typography-600",
+        },
+      },
+      {
+        size: "lg",
         color: "default",
         class: {
           inputWrapper:

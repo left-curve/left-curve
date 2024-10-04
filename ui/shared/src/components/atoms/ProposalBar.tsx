@@ -1,6 +1,6 @@
 import type React from "react";
 
-interface Props {
+export interface ProposalBarProps {
   votes: {
     positive: number;
     negative: number;
@@ -9,7 +9,7 @@ interface Props {
   threshold: number;
 }
 
-export const ProposalBar: React.FC<Props> = ({ threshold, votes, totalWeight }) => {
+export const ProposalBar: React.FC<ProposalBarProps> = ({ threshold, votes, totalWeight }) => {
   const { positive, negative } = votes;
   return (
     <div className="relative w-full rounded-sm h-2 bg-surface-yellow-300">

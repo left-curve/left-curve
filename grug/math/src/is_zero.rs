@@ -54,14 +54,26 @@ impl_is_zero! {
 // ------------------------------------ tests ------------------------------------
 
 #[cfg(test)]
-mod tests {
-    use crate::{int_test, test_utils::dt, Int, IsZero, NumberConst};
+mod int_tests {
+    use crate::{int_test, test_utils::bt, Int, IsZero, NumberConst};
 
     int_test!( is_zero
         method = |zero: Int<_>| {
             assert!(zero.is_zero());
-            let non_zero = Int::ONE;
-            dt(non_zero, zero);
+            let non_zero = bt(zero, Int::ONE);
+            assert!(!non_zero.is_zero());
+        }
+    );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use crate::{dec_test, test_utils::bt, Dec, IsZero, NumberConst};
+
+    dec_test!( is_zero
+        method = |zero: Dec<_>| {
+            assert!(zero.is_zero());
+            let non_zero = bt(zero, Dec::ONE);
             assert!(!non_zero.is_zero());
         }
     );

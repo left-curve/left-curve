@@ -24,3 +24,6 @@ sdk/docs
 # UI
 *storybook.log
 **/storybook-static
+
+# Envs
+**/.env

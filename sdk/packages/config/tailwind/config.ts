@@ -1,5 +1,6 @@
 import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export const tailwindConfig: Partial<Config> = {
   theme: {
@@ -42,6 +43,10 @@ export const tailwindConfig: Partial<Config> = {
         "typography-purple": {
           300: "#B9A2AA",
           400: "#926D7B",
+        },
+        "surface-pink": {
+          200: "#D88F97",
+          300: "#D07781",
         },
         "typography-pink": {
           200: "#D88F97",
@@ -132,6 +137,11 @@ export const tailwindConfig: Partial<Config> = {
           900: "#001731",
         },
       },
+      borderRadius: {
+        small: "8px",
+        medium: "12px",
+        large: "14px",
+      },
       fontFamily: {
         "diatype-rounded": "ABCDiatypeRounded",
       },
@@ -154,5 +164,14 @@ export const tailwindConfig: Partial<Config> = {
       },
     },
   },
-  plugins: [tailwindScrollbar({ nocompatible: true })],
+  plugins: [
+    tailwindScrollbar({ nocompatible: true }),
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        ".tap-highlight-transparent": {
+          "-webkit-tap-highlight-color": "transparent",
+        },
+      });
+    }),
+  ],
 };
