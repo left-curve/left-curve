@@ -2,20 +2,24 @@ use crate::{Int, IsZero, MathResult, NextNumber, Number, NumberConst, PrevNumber
 
 /// Describes operations where a number is multiplied by a numerator then
 /// immediately divided by a denominator.
+///
 /// This is different from applying a multiplication and a division sequentially,
 /// because the multiplication part can overflow.
 pub trait MultiplyRatio: Sized {
-    /// The result is truncated (native integer division):
+    /// In case the result is non-integer, it is _truncated_; in other words,
+    /// _rounded towards zero_:
     /// - positive result: `5 * 3 / 2 = 7.5 => 7`
     /// - negative result: `-5 * 3 / 2 = -7.5 => -7`
     fn checked_multiply_ratio(self, numerator: Self, denominator: Self) -> MathResult<Self>;
 
-    /// The result is floored:
+    /// In case the result is non-integer, it is _floored_; in other words,
+    /// _rounded towards negative infinity_:
     /// - positive result: `5 * 3 / 2 = 7.5 => 7`
     /// - negative result: `-5 * 3 / 2 = -7.5 => -8`
     fn checked_multiply_ratio_floor(self, numerator: Self, denominator: Self) -> MathResult<Self>;
 
-    /// The result is ceiled:
+    /// In case the result is non-integer, it is _ceiled_; in other words,
+    /// _rounded towards positive infinity_:
     /// - positive result: `5 * 3 / 2 = 7.5 => 8`
     /// - negative result: `-5 * 3 / 2 = -7.5 => -7`
     fn checked_multiply_ratio_ceil(self, numerator: Self, denominator: Self) -> MathResult<Self>;
