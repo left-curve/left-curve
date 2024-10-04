@@ -5,9 +5,13 @@ pub trait MultiplyFraction<F, U>: Sized
 where
     F: Fraction<U>,
 {
+    fn checked_mul_dec(self, rhs: F) -> MathResult<Self>;
+
     fn checked_mul_dec_floor(self, rhs: F) -> MathResult<Self>;
 
     fn checked_mul_dec_ceil(self, rhs: F) -> MathResult<Self>;
+
+    fn checked_div_dec(self, rhs: F) -> MathResult<Self>;
 
     fn checked_div_dec_floor(self, rhs: F) -> MathResult<Self>;
 
@@ -19,8 +23,16 @@ where
     Int<U>: IsZero + NumberConst + MultiplyRatio + ToString + Copy,
     Dec<U>: IsZero + Fraction<U>,
 {
-    fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_mul_dec(self, rhs: Dec<U>) -> MathResult<Self> {
         // If either left or right hand side is zero, then simply return zero.
+        if self.is_zero() || rhs.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
+        self.checked_multiply_ratio(*rhs.numerator(), Dec::<U>::denominator())
+    }
+
+    fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
@@ -36,7 +48,7 @@ where
         self.checked_multiply_ratio_ceil(*rhs.numerator(), Dec::<U>::denominator())
     }
 
-    fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_div_dec(self, rhs: Dec<U>) -> MathResult<Self> {
         // If right hand side is zero, throw error, because you can't divide any
         // number by zero.
         if rhs.is_zero() {
@@ -45,6 +57,18 @@ where
 
         // If left hand side is zero, and we know right hand size is positive,
         // then simply return zero.
+        if self.is_zero() {
+            return Ok(Self::ZERO);
+        }
+
+        self.checked_multiply_ratio(Dec::<U>::denominator(), *rhs.numerator())
+    }
+
+    fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+        if rhs.is_zero() {
+            return Err(MathError::division_by_zero(self));
+        }
+
         if self.is_zero() {
             return Ok(Self::ZERO);
         }
