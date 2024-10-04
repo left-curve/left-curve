@@ -56,13 +56,19 @@ where
 
     fn checked_multiply_ratio_ceil(self, numerator: Self, denominator: Self) -> MathResult<Self> {
         let dividend = self.checked_full_mul(numerator)?;
-        let floor_result = self.checked_multiply_ratio_floor(numerator, denominator)?;
-        let remained = dividend.checked_rem(denominator.into_next())?;
+        let res = dividend
+            .checked_div(denominator.into_next())?
+            .checked_into_prev()?;
 
-        if !remained.is_zero() {
-            floor_result.checked_add(Self::ONE)
+        if res.is_positive() {
+            let remained = dividend.checked_rem(denominator.into_next())?;
+            if !remained.is_zero() {
+                res.checked_add(Self::ONE)
+            } else {
+                Ok(res)
+            }
         } else {
-            Ok(floor_result)
+            Ok(res)
         }
     }
 }

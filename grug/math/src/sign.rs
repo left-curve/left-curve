@@ -9,6 +9,8 @@ pub trait Sign: Sized {
     fn checked_abs(self) -> MathResult<Self>;
 
     fn is_negative(&self) -> bool;
+
+    fn is_positive(&self) -> bool;
 }
 
 // ------------------------------------ int ------------------------------------
@@ -23,6 +25,10 @@ where
 
     fn is_negative(&self) -> bool {
         self.0.is_negative()
+    }
+
+    fn is_positive(&self) -> bool {
+        self.0.is_positive()
     }
 }
 
@@ -39,6 +45,10 @@ where
     fn is_negative(&self) -> bool {
         self.0.is_negative()
     }
+
+    fn is_positive(&self) -> bool {
+        self.0.is_positive()
+    }
 }
 
 // ----------------------------------- unsigned ------------------------------------
@@ -52,6 +62,10 @@ macro_rules! impl_sign_unsigned {
 
             fn is_negative(&self) -> bool {
                 false
+            }
+
+            fn is_positive(&self) -> bool {
+                *self > Self::ZERO
             }
         }
     };
@@ -75,12 +89,14 @@ macro_rules! impl_sign_signed {
                 } else {
                     Ok(self.abs())
                 }
-
-
             }
 
             fn is_negative(&self) -> bool {
                 *self < Self::ZERO
+            }
+
+            fn is_positive(&self) -> bool {
+                *self > Self::ZERO
             }
         }
     };
