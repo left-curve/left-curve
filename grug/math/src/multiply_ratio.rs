@@ -44,7 +44,7 @@ where
 
         // If the result is a negative non-integer, we floor it by subtracting 1.
         // Otherwise, simply return the result.
-        if !((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+        if (self.is_positive() == numerator.is_positive()) != denominator.is_positive()
             && res.checked_mul(denominator)? != dividend
         {
             res = res.checked_sub(<Self as NextNumber>::Next::ONE)?;
