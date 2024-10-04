@@ -27,7 +27,7 @@ pub trait MultiplyRatio: Sized {
 
 impl<U> MultiplyRatio for Int<U>
 where
-    Int<U>: NextNumber + Number + Copy,
+    Int<U>: NextNumber + Number + Copy + Sign,
     <Int<U> as NextNumber>::Next:
         Number + NumberConst + Sign + Copy + PartialEq + PrevNumber<Prev = Int<U>>,
 {
@@ -44,7 +44,9 @@ where
 
         // If the result is a negative non-integer, we floor it by subtracting 1.
         // Otherwise, simply return the result.
-        if res.is_negative() && res.checked_mul(denominator)? != dividend {
+        if res.checked_mul(denominator)? != dividend
+            && !((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+        {
             res = res.checked_sub(<Self as NextNumber>::Next::ONE)?;
         }
 
@@ -58,7 +60,9 @@ where
 
         // If the result is a positive non-integer, we ceil it by adding 1.
         // Otherwise, simply return the result.
-        if res.is_positive() && res.checked_mul(denominator)? != dividend {
+        if res.checked_mul(denominator)? != dividend
+            && ((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+        {
             res = res.checked_add(<Self as NextNumber>::Next::ONE)?;
         }
 
@@ -172,6 +176,7 @@ mod tests {
         inputs = {
             u128 = {
                 passing: [
+                    (1_u128, 1_u128, 10_u128, 0_u128),
                     (500_u128, 3_u128, 3_u128, 500_u128),
                     (500_u128, 3_u128, 2_u128, 750_u128),
                     (500_u128, 333333_u128, 222222_u128, 750_u128),
@@ -184,6 +189,7 @@ mod tests {
             }
             u256 = {
                 passing: [
+                    (U256::ONE, U256::ONE, U256::TEN, U256::ZERO),
                     (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
                     (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
                     (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
@@ -196,6 +202,7 @@ mod tests {
             }
             i128 = {
                 passing: [
+                    (1_i128, 1_i128, 10_i128, 0_i128),
                     (500_i128, 3_i128, 3_i128, 500_i128),
                     (500_i128, 3_i128, 2_i128, 750_i128),
                     (500_i128, 333333_i128, 222222_i128, 750_i128),
@@ -205,6 +212,7 @@ mod tests {
                     (500_i128, 100_i128, 120_i128, 416_i128),
                     (i128::MAX, i128::MAX, i128::MAX, i128::MAX),
 
+                    (-1_i128, 1_i128, 10_i128, -1_i128),
                     (500_i128, -2_i128, 3_i128, -334_i128),
                     (500_i128, 2_i128, -3_i128, -334_i128),
                     (500_i128, -2_i128, -3_i128, 333_i128),
@@ -216,6 +224,7 @@ mod tests {
             }
             i256 = {
                 passing: [
+                    (I256::ONE, I256::ONE, I256::TEN, I256::ZERO),
                     (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
                     (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
                     (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
@@ -225,6 +234,7 @@ mod tests {
                     (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(416_i128)),
                     (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
+                    (-I256::ONE, I256::ONE, I256::TEN, -I256::ONE),
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-334_i128)),
                     (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-334_i128)),
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(333_i128)),
@@ -266,6 +276,7 @@ mod tests {
         inputs = {
             u128 = {
                 passing: [
+                    (1_u128, 1_u128, 10_u128, 1_u128),
                     (500_u128, 3_u128, 3_u128, 500_u128),
                     (500_u128, 3_u128, 2_u128, 750_u128),
                     (500_u128, 333333_u128, 222222_u128, 750_u128),
@@ -278,6 +289,7 @@ mod tests {
             }
             u256 = {
                 passing: [
+                    (U256::ONE, U256::ONE, U256::TEN, U256::ONE),
                     (U256::from(500_u128), U256::ONE, U256::ONE, U256::from(500_u128)),
                     (U256::from(500_u128), U256::from(3_u128), U256::from(2_u128), U256::from(750_u128)),
                     (U256::from(500_u128), U256::from(333333_u128), U256::from(222222_u128), U256::from(750_u128)),
@@ -290,6 +302,7 @@ mod tests {
             }
             i128 = {
                 passing: [
+                    (1_i128, 1_i128, 10_i128, 1_i128),
                     (500_i128, 3_i128, 3_i128, 500_i128),
                     (500_i128, 3_i128, 2_i128, 750_i128),
                     (500_i128, 333333_i128, 222222_i128, 750_i128),
@@ -299,6 +312,7 @@ mod tests {
                     (500_i128, 100_i128, 120_i128, 417_i128),
                     (i128::MAX, i128::MAX, i128::MAX, i128::MAX),
 
+                    (-1_i128, 1_i128, 10_i128, 0_i128),
                     (500_i128, -2_i128, 3_i128, -333_i128),
                     (500_i128, 2_i128, -3_i128, -333_i128),
                     (500_i128, -2_i128, -3_i128, 334_i128),
@@ -310,6 +324,7 @@ mod tests {
             }
             i256 = {
                 passing: [
+                    (I256::ONE, I256::ONE, I256::TEN, I256::ONE),
                     (I256::from(500_i128), I256::ONE, I256::ONE, I256::from(500_i128)),
                     (I256::from(500_i128), I256::from(3_i128), I256::from(2_i128), I256::from(750_i128)),
                     (I256::from(500_i128), I256::from(333333_i128), I256::from(222222_i128), I256::from(750_i128)),
@@ -319,6 +334,7 @@ mod tests {
                     (I256::from(500_i128), I256::from(100_i128), I256::from(120_i128), I256::from(417_i128)),
                     (I256::MAX, I256::MAX, I256::MAX, I256::MAX),
 
+                    (-I256::ONE, I256::ONE, I256::TEN, -I256::ZERO),
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(3_i128), I256::from(-333_i128)),
                     (I256::from(500_i128), I256::from(2_i128), I256::from(-3_i128), I256::from(-333_i128)),
                     (I256::from(500_i128), I256::from(-2_i128), I256::from(-3_i128), I256::from(334_i128)),
