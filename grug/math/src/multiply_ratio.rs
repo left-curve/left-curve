@@ -44,8 +44,8 @@ where
 
         // If the result is a negative non-integer, we floor it by subtracting 1.
         // Otherwise, simply return the result.
-        if res.checked_mul(denominator)? != dividend
-            && !((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+        if !((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+            && res.checked_mul(denominator)? != dividend
         {
             res = res.checked_sub(<Self as NextNumber>::Next::ONE)?;
         }
@@ -60,8 +60,8 @@ where
 
         // If the result is a positive non-integer, we ceil it by adding 1.
         // Otherwise, simply return the result.
-        if res.checked_mul(denominator)? != dividend
-            && ((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+        if ((self.is_positive() == numerator.is_positive()) == denominator.is_positive())
+            && res.checked_mul(denominator)? != dividend
         {
             res = res.checked_add(<Self as NextNumber>::Next::ONE)?;
         }
