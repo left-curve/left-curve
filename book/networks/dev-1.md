@@ -1,7 +1,7 @@
 # dev-1
 
 - Genesis time: 6 October 2024
-- Based on commit: `bc693e0`
+- Based on commit: `e450584d`
 
 Contracts:
 
