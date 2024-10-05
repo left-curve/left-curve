@@ -51,7 +51,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // Since `withhold_fee` is called during `CheckTx`, this prevents an
     // attacker from spamming txs into the mempool when he doesn't have enough
     // coins.
-    let withhold_msg = if !withhold_amount.is_zero() {
+    let withhold_msg = if withhold_amount.is_non_zero() {
         Some(Message::execute(
             cfg.bank,
             &grug_mock_bank::ExecuteMsg::ForceTransfer {
@@ -99,7 +99,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     //
     // This is just a demo. In practice, it probably makes more sense to have a
     // fee distributor contract that distribute to stakers so something like that.
-    let charge_msg = if !charge_amount.is_zero() {
+    let charge_msg = if charge_amount.is_non_zero() {
         Some(Message::Transfer {
             to: cfg.owner,
             coins: Coins::one(fee_cfg.fee_denom.clone(), charge_amount)?,
@@ -108,7 +108,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
         None
     };
 
-    let refund_msg = if !refund_amount.is_zero() {
+    let refund_msg = if refund_amount.is_non_zero() {
         Some(Message::Transfer {
             to: tx.sender,
             coins: Coins::one(fee_cfg.fee_denom, refund_amount)?,

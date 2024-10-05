@@ -38,7 +38,7 @@ mod taxman {
 
         let withhold_amount = Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(FEE_RATE)?;
 
-        let withhold_msg = if !withhold_amount.is_zero() {
+        let withhold_msg = if withhold_amount.is_non_zero() {
             Some(Message::execute(
                 cfg.bank,
                 &grug_mock_bank::ExecuteMsg::ForceTransfer {
@@ -70,7 +70,7 @@ mod taxman {
         let charge_amount = Uint128::new(mock_gas_used as u128).checked_mul_dec_ceil(FEE_RATE)?;
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
-        let charge_msg = if !charge_amount.is_zero() {
+        let charge_msg = if charge_amount.is_non_zero() {
             Some(Message::transfer(
                 cfg.owner,
                 Coins::one(FEE_DENOM.clone(), charge_amount)?,
@@ -79,7 +79,7 @@ mod taxman {
             None
         };
 
-        let refund_msg = if !refund_amount.is_zero() {
+        let refund_msg = if refund_amount.is_non_zero() {
             Some(Message::transfer(
                 tx.sender,
                 Coins::one(FEE_DENOM.clone(), refund_amount)?,

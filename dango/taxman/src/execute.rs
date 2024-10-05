@@ -65,7 +65,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // If the sender doesn't have enough fund to cover the maximum amount of fee
     // the tx may incur, this submessage fails, causing the tx to be rejected
     // from entering the mempool.
-    let withhold_msg = if !withhold_amount.is_zero() {
+    let withhold_msg = if withhold_amount.is_non_zero() {
         // TODO: for production, we can hardcode the bank contract address
         // instead of having to make the query.
         let cfg = ctx.querier.query_config()?;
@@ -114,7 +114,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     // refund the difference.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
-    let refund_msg = if !refund_amount.is_zero() {
+    let refund_msg = if refund_amount.is_non_zero() {
         let cfg = ctx.querier.query_config()?;
 
         Some(Message::execute(
