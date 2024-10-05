@@ -7,7 +7,7 @@ const HD_PATH: &str = "m/44'/60'/0'/0/0";
 
 fn main() {
     // Generate a random seed phrase
-    let mnemonic = Mnemonic::random(&mut OsRng, Language::English);
+    let mnemonic = Mnemonic::random(OsRng, Language::English);
     let seed = mnemonic.to_seed(""); // empty password
     let path = HD_PATH.parse().unwrap();
 
