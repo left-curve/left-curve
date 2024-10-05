@@ -160,7 +160,7 @@ mod tests {
 
                     (I256::from(10_i128), Dec256::new_percent(50), I256::from(5_i128)),
                     (I256::from(11_i128), Dec256::new_percent(50), I256::from(5_i128)),
-                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128))
+                    (I256::from(9_i128), Dec256::new_percent(50), I256::from(4_i128)),
                 ]
             }
         }

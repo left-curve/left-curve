@@ -51,8 +51,11 @@ where
     Self: FixedPoint<U>,
     Int<U>: NumberConst + Number,
 {
-    pub fn checked_from_atomics(atomics: Int<U>, decimal_places: u32) -> MathResult<Self>
-where {
+    pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
+    where
+        T: Into<Int<U>>,
+    {
+        let atomics = atomics.into();
         let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
@@ -85,19 +88,37 @@ where
     Self: FixedPoint<U>,
     Int<U>: MultiplyRatio,
 {
-    pub fn checked_from_ratio(numerator: Int<U>, denominator: Int<U>) -> MathResult<Self> {
+    pub fn checked_from_ratio<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Int<U>>,
+        D: Into<Int<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
         numerator
             .checked_multiply_ratio(Self::PRECISION, denominator)
             .map(Self)
     }
 
-    pub fn checked_from_ratio_ceil(numerator: Int<U>, denominator: Int<U>) -> MathResult<Self> {
+    pub fn checked_from_ratio_ceil<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Int<U>>,
+        D: Into<Int<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
         numerator
             .checked_multiply_ratio_ceil(Self::PRECISION, denominator)
             .map(Self)
     }
 
-    pub fn checked_from_ratio_floor(numerator: Int<U>, denominator: Int<U>) -> MathResult<Self> {
+    pub fn checked_from_ratio_floor<N, D>(numerator: N, denominator: D) -> MathResult<Self>
+    where
+        N: Into<Int<U>>,
+        D: Into<Int<U>>,
+    {
+        let numerator = numerator.into();
+        let denominator = denominator.into();
         numerator
             .checked_multiply_ratio_floor(Self::PRECISION, denominator)
             .map(Self)
