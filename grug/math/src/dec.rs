@@ -56,6 +56,7 @@ where
         T: Into<Int<U>>,
     {
         let atomics = atomics.into();
+        
         let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
@@ -95,6 +96,7 @@ where
     {
         let numerator = numerator.into();
         let denominator = denominator.into();
+
         numerator
             .checked_multiply_ratio(Self::PRECISION, denominator)
             .map(Self)
@@ -107,6 +109,7 @@ where
     {
         let numerator = numerator.into();
         let denominator = denominator.into();
+
         numerator
             .checked_multiply_ratio_ceil(Self::PRECISION, denominator)
             .map(Self)
@@ -119,6 +122,7 @@ where
     {
         let numerator = numerator.into();
         let denominator = denominator.into();
+
         numerator
             .checked_multiply_ratio_floor(Self::PRECISION, denominator)
             .map(Self)
