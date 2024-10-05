@@ -50,6 +50,7 @@ categories    = ["cryptography::cryptocurrencies"]
 [workspace.dependencies]
 anyhow             = "1"
 base64             = "0.22" # TODO: used in dango-auth; replace with data-encoding
+bip32              = "0.5"
 blake2             = "0.10"
 blake3             = "1"
 bnum               = "0.12"

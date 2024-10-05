@@ -16,5 +16,8 @@ grug        = { workspace = true }
 serde       = { workspace = true }
 
 [dev-dependencies]
-home = { workspace = true }
-k256 = { workspace = true }
+bip32 = { workspace = true }
+hex   = { workspace = true }
+home  = { workspace = true }
+k256  = { workspace = true }
+
