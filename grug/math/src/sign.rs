@@ -4,13 +4,34 @@ use {
 };
 
 /// Describes a number that can take on negative values.
-/// Zero is considered non-negative, for which this should return `false`.
 pub trait Sign: Sized {
+    /// Return the number's absolute value.
+    ///
+    /// ## Note
+    ///
+    /// This method is fallible, because taking the absolute value of a
+    /// [two's complement](https://en.wikipedia.org/wiki/Two%27s_complement)
+    /// number's minimum value (i.e. the maximally negative value) leads to
+    /// overflow.
     fn checked_abs(self) -> MathResult<Self>;
 
+    /// Return true if the number is negative; false if it's zero or positive.
     fn is_negative(&self) -> bool;
 
+    /// Return true if the number is positive; false if it's zero or negative.
     fn is_positive(&self) -> bool;
+
+    /// Return true if the number is zero or positive; false if it's negative.
+    #[inline]
+    fn is_non_negative(&self) -> bool {
+        !self.is_negative()
+    }
+
+    /// Return true if the number is zero or negative; false if it's positive.
+    #[inline]
+    fn is_non_positive(&self) -> bool {
+        !self.is_positive()
+    }
 }
 
 // ------------------------------------ int ------------------------------------

@@ -3,8 +3,16 @@ use {
     bnum::types::{I256, I512, U256, U512},
 };
 
+/// Describes a number that can be compared to zero.
 pub trait IsZero {
+    /// Return true if the number is zero; false otherwise.
     fn is_zero(&self) -> bool;
+
+    /// Return true if the number is not zero; false otherwise.
+    #[inline]
+    fn is_non_zero(&self) -> bool {
+        !self.is_zero()
+    }
 }
 
 // ------------------------------------ int ------------------------------------
@@ -60,8 +68,11 @@ mod int_tests {
     int_test!( is_zero
         method = |zero: Int<_>| {
             assert!(zero.is_zero());
+            assert!(!zero.is_non_zero());
+
             let non_zero = bt(zero, Int::ONE);
             assert!(!non_zero.is_zero());
+            assert!(non_zero.is_non_zero());
         }
     );
 }
@@ -73,8 +84,11 @@ mod dec_tests {
     dec_test!( is_zero
         method = |zero: Dec<_>| {
             assert!(zero.is_zero());
+            assert!(!zero.is_non_zero());
+
             let non_zero = bt(zero, Dec::ONE);
             assert!(!non_zero.is_zero());
+            assert!(non_zero.is_non_zero());
         }
     );
 }
