@@ -921,8 +921,9 @@ dependencies = [
  "dango-types",
  "grug",
  "hex",
+ "hex-literal",
  "home",
- "k256",
+ "rand",
  "serde",
 ]
 

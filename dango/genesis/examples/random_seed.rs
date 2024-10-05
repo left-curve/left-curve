@@ -1,6 +1,6 @@
 use {
     bip32::{Language, Mnemonic, XPrv},
-    k256::elliptic_curve::rand_core::OsRng,
+    rand::rngs::OsRng,
 };
 
 const HD_PATH: &str = "m/44'/60'/0'/0/0";

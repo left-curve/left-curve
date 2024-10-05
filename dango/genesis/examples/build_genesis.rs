@@ -2,47 +2,35 @@ use {
     anyhow::anyhow,
     dango_genesis::{build_genesis, Codes, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
-    grug::{Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
-    k256::{
-        ecdsa::{SigningKey, VerifyingKey},
-        elliptic_curve::rand_core::OsRng,
-    },
+    grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
+    hex_literal::hex,
     std::{fs, path::PathBuf, str::FromStr},
 };
 
 const COMETBFT_GENESIS_PATH: &str = "/Users/larry/.cometbft/config/genesis.json";
 
-// For demo purpose, we simply generate random genesis users. For production,
-// these are typically read from a file.
-fn random_genesis_user(username: &str, balances: Coins) -> anyhow::Result<(Username, GenesisUser)> {
-    let username = Username::from_str(username)?;
+// See docs for the seed phrases of these keys.
+const PK_OWNER: [u8; 33] =
+    hex!("0278f7b7d93da9b5a62e28434184d1c337c2c28d4ced291793215ab6ee89d7fff8");
+const PK_USER1: [u8; 33] =
+    hex!("03bcf89d5d4f18048f0662d359d17a2dbbb08a80b1705bc10c0b953f21fb9e1911");
+const PK_USER2: [u8; 33] =
+    hex!("02d309ba716f271b1083e24a0b9d438ef7ae0505f63451bc1183992511b3b1d52d");
+const PK_USER3: [u8; 33] =
+    hex!("024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0");
 
-    let sk = SigningKey::random(&mut OsRng);
-    let pk = VerifyingKey::from(&sk).to_sec1_bytes().to_vec();
-    let key_hash = pk.hash160();
-    let key = Key::Secp256k1(pk.try_into()?);
-
-    let user = GenesisUser {
-        key,
-        key_hash,
-        balances,
-    };
-
-    Ok((username, user))
-}
-
-fn main() -> anyhow::Result<()> {
+fn main() {
     let codes = {
         let artifacts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
 
-        let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
-        let account_spot = fs::read(artifacts_dir.join("app_account_spot.wasm"))?;
-        let account_safe = fs::read(artifacts_dir.join("app_account_safe.wasm"))?;
-        let amm = fs::read(artifacts_dir.join("app_amm.wasm"))?;
-        let bank = fs::read(artifacts_dir.join("app_bank.wasm"))?;
-        let ibc_transfer = fs::read(artifacts_dir.join("app_mock_ibc_transfer.wasm"))?;
-        let taxman = fs::read(artifacts_dir.join("app_taxman.wasm"))?;
-        let token_factory = fs::read(artifacts_dir.join("app_token_factory.wasm"))?;
+        let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm")).unwrap();
+        let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm")).unwrap();
+        let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm")).unwrap();
+        let amm = fs::read(artifacts_dir.join("dango_amm.wasm")).unwrap();
+        let bank = fs::read(artifacts_dir.join("dango_bank.wasm")).unwrap();
+        let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm")).unwrap();
+        let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
+        let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm")).unwrap();
 
         Codes {
             account_factory,
@@ -56,39 +44,78 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let users = [
-        random_genesis_user("fee_recipient", Coins::new())?,
-        random_genesis_user("owner", Coins::new())?,
-        random_genesis_user("relayer", Coins::one("uusdc", 100_000_000_000_000)?)?,
-    ]
-    .into();
+    // Owner gets DG token and USDC; all others get USDC.
+    let users = btree_map! {
+        Username::from_str("owner").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_OWNER.into()),
+            key_hash: PK_OWNER.hash160(),
+            balances: [
+                Coin::new("udg", 30_000_000_000).unwrap(),
+                Coin::new("uusdc", 100_000_000_000_000).unwrap(),
+            ]
+            .try_into()
+            .unwrap(),
+        },
+        Username::from_str("user1").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER1.into()),
+            key_hash: PK_USER1.hash160(),
+            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+        },
+        Username::from_str("user2").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER2.into()),
+            key_hash: PK_USER2.hash160(),
+            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+        },
+        Username::from_str("user3").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER3.into()),
+            key_hash: PK_USER3.hash160(),
+            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+        },
+    };
 
     let (genesis_state, contracts, addresses) = build_genesis(
         codes,
         users,
-        &Username::from_str("owner")?,
-        &Username::from_str("fee_recipient")?,
+        &Username::from_str("owner").unwrap(),
+        // TODO: Use owner as fee recipient for now. This should be replaced
+        // with a contract.
+        &Username::from_str("owner").unwrap(),
         "uusdc",
-        Udec128::new_percent(25),
-        Uint128::new(10_000_000),
-    )?;
+        Udec128::new_percent(25), // 0.25 uusdc per gas unit
+        Uint128::new(10_000_000), // 10 USDC
+    )
+    .unwrap();
 
-    println!("genesis_state = {}", genesis_state.to_json_string_pretty()?);
-    println!("\ncontracts = {}", contracts.to_json_string_pretty()?);
-    println!("\naddresses = {}\n", addresses.to_json_string_pretty()?);
+    println!(
+        "genesis_state = {}",
+        genesis_state.to_json_string_pretty().unwrap()
+    );
+    println!(
+        "\ncontracts = {}",
+        contracts.to_json_string_pretty().unwrap()
+    );
+    println!(
+        "\naddresses = {}\n",
+        addresses.to_json_string_pretty().unwrap()
+    );
 
-    let cometbft_genesis_raw = fs::read(COMETBFT_GENESIS_PATH)?;
-    let mut cometbft_genesis: Json = cometbft_genesis_raw.deserialize_json()?;
+    let mut cometbft_genesis = fs::read(COMETBFT_GENESIS_PATH)
+        .unwrap()
+        .deserialize_json::<Json>()
+        .unwrap();
 
     cometbft_genesis
         .as_object_mut()
-        .ok_or(anyhow!("cometbft genesis file isn't an object"))?
-        .insert("app_state".to_string(), genesis_state.to_json_value()?);
+        .ok_or(anyhow!("cometbft genesis file isn't an object"))
+        .unwrap()
+        .insert(
+            "app_state".to_string(),
+            genesis_state.to_json_value().unwrap(),
+        );
 
     fs::write(
         COMETBFT_GENESIS_PATH,
-        cometbft_genesis.to_json_string_pretty()?,
-    )?;
-
-    Ok(())
+        cometbft_genesis.to_json_string_pretty().unwrap(),
+    )
+    .unwrap();
 }
