@@ -69,23 +69,19 @@ optimize:
 DEVNET_NAME := "leftcurve/devnet"
 DEVNET_VERSION := "0.1.0"
 
-# Build devnet Docker image for x86_64
-docker-build-devnet-x86:
-  docker build --pull --load --platform linux/amd64 \
+# Build devnet Docker image
+#
+# Note: For this to work, it may be necessary to create a custom builder with
+# the docker-container driver:
+# $ docker buildx create --name leftcurve --use
+# $ docker buildx inspect leftcurve --bootstrap
+docker-build-devnet:
+  docker buildx build --platform linux/amd64,linux/arm64 \
     -t {{DEVNET_NAME}}:{{DEVNET_VERSION}} --target devnet docker/devnet
 
-# Build devnet Docker image for arm64
-docker-build-devnet-arm64:
-  docker build --pull --load --platform linux/arm64/v8 \
-    -t {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}} --target devnet docker/devnet
-
-# Publish devnet Docker image for x86_64
-docker-publish-devnet-x86:
+# Publish devnet Docker image
+docker-publish-devnet:
   docker push {{DEVNET_NAME}}:{{DEVNET_VERSION}}
-
-# Publish devnet Docker image for arm64
-docker-publish-devnet-arm64:
-  docker push {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}}
 
 # Run devnet
 devnet:
