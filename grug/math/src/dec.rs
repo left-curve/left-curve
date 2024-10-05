@@ -524,8 +524,8 @@ mod tests {
     use {
         crate::{
             dec_test, dts,
-            test_utils::{bt, dec},
-            Dec, Dec128, Dec256, FixedPoint, NumberConst, Udec128, Udec256,
+            test_utils::{bt, dec, dt, int},
+            Dec, Dec128, Dec256, FixedPoint, MathError, NumberConst, Udec128, Udec256,
         },
         std::{cmp::Ordering, str::FromStr},
     };
@@ -1077,6 +1077,227 @@ mod tests {
             for (input, expected) in passing {
                 dts!(_0d, input);
                 assert_eq!(-input, expected);
+            }
+        }
+    );
+
+    dec_test!( checked_from_atomics
+        inputs = {
+            udec128 = {
+                passing: [
+                    (int("1230"), 1, dec("123")),
+                    (int("1230"), 2, dec("12.3")),
+                    (int("1230"), 3, dec("1.23")),
+                    (int("1230"), 4, dec("0.123")),
+                    (int("1230"), 5, dec("0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (int("1230"), 1, dec("123")),
+                    (int("1230"), 2, dec("12.3")),
+                    (int("1230"), 3, dec("1.23")),
+                    (int("1230"), 4, dec("0.123")),
+                    (int("1230"), 5, dec("0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (int("1230"), 1, dec("123")),
+                    (int("1230"), 2, dec("12.3")),
+                    (int("1230"), 3, dec("1.23")),
+                    (int("1230"), 4, dec("0.123")),
+                    (int("1230"), 5, dec("0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+
+                    (int("-1230"), 1, dec("-123")),
+                    (int("-1230"), 2, dec("-12.3")),
+                    (int("-1230"), 3, dec("-1.23")),
+                    (int("-1230"), 4, dec("-0.123")),
+                    (int("-1230"), 5, dec("-0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (int("1230"), 1, dec("123")),
+                    (int("1230"), 2, dec("12.3")),
+                    (int("1230"), 3, dec("1.23")),
+                    (int("1230"), 4, dec("0.123")),
+                    (int("1230"), 5, dec("0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+
+                    (int("-1230"), 1, dec("-123")),
+                    (int("-1230"), 2, dec("-12.3")),
+                    (int("-1230"), 3, dec("-1.23")),
+                    (int("-1230"), 4, dec("-0.123")),
+                    (int("-1230"), 5, dec("-0.0123")),
+                    (int("1230"), 20, Dec::raw(int("12"))),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (atomics, decimal_places, expect) in passing {
+                dt(_0d.0, atomics);
+                dt(_0d, expect);
+                assert_eq!(Dec::checked_from_atomics(atomics, decimal_places).unwrap(), expect);
+            }
+        }
+    );
+
+    dec_test!( checked_from_ratio
+        inputs = {
+            udec128 = {
+                passing: [
+                    (int("0"), int("10"), dec("0")),
+                    (int("1"), int("10"), dec("0.1")),
+                    (int("9"), int("10"), dec("0.9")),
+                    (int("15"), int("1000"), dec("0.015")),
+                    (int("12345"), int("1000"), dec("12.345")),
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (int("0"), int("10"), dec("0")),
+                    (int("1"), int("10"), dec("0.1")),
+                    (int("9"), int("10"), dec("0.9")),
+                    (int("15"), int("1000"), dec("0.015")),
+                    (int("12345"), int("1000"), dec("12.345")),
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (int("0"), int("10"), dec("0")),
+                    (int("1"), int("10"), dec("0.1")),
+                    (int("9"), int("10"), dec("0.9")),
+                    (int("15"), int("1000"), dec("0.015")),
+                    (int("12345"), int("1000"), dec("12.345")),
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+
+                    (int("-1"), int("10"), dec("-0.1")),
+                    (int("-9"), int("10"), dec("-0.9")),
+                    (int("-15"), int("1000"), dec("-0.015")),
+                    (int("-12345"), int("1000"), dec("-12.345")),
+                    (int("-1"), int("3"), dec("-0.333333333333333333")),
+
+                    (int("-1"), int("-10"), dec("0.1")),
+                    (int("-9"), int("-10"), dec("0.9")),
+                    (int("-15"), int("-1000"), dec("0.015")),
+                    (int("-12345"), int("-1000"), dec("12.345")),
+                    (int("-1"), int("-3"), dec("0.333333333333333333")),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (int("0"), int("10"), dec("0")),
+                    (int("1"), int("10"), dec("0.1")),
+                    (int("9"), int("10"), dec("0.9")),
+                    (int("15"), int("1000"), dec("0.015")),
+                    (int("12345"), int("1000"), dec("12.345")),
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+
+                    (int("-1"), int("10"), dec("-0.1")),
+                    (int("-9"), int("10"), dec("-0.9")),
+                    (int("-15"), int("1000"), dec("-0.015")),
+                    (int("-12345"), int("1000"), dec("-12.345")),
+                    (int("-1"), int("3"), dec("-0.333333333333333333")),
+
+                    (int("-1"), int("-10"), dec("0.1")),
+                    (int("-9"), int("-10"), dec("0.9")),
+                    (int("-15"), int("-1000"), dec("0.015")),
+                    (int("-12345"), int("-1000"), dec("12.345")),
+                    (int("-1"), int("-3"), dec("0.333333333333333333")),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (num, div, expect) in passing {
+                dts!(_0d.0, num, div);
+                dt(_0d, expect);
+                assert_eq!(Dec::checked_from_ratio(num, div).unwrap(), expect);
+            }
+
+            let one = int("1");
+            let zero = int("0");
+            dts!(_0d.0, one, zero);
+            assert!(matches!(Dec::checked_from_ratio(one, zero), Err(MathError::DivisionByZero { .. })))
+        }
+    );
+
+    dec_test!( checked_from_ratio_floor
+        inputs = {
+            udec128 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                    (int("-1"), int("3"), dec("-0.333333333333333334")),
+                    (int("-1"), int("-3"), dec("0.333333333333333333")),
+                ]
+            }
+            dec256 = {
+                passing: [
+
+                    (int("1"), int("3"), dec("0.333333333333333333")),
+                    (int("-1"), int("3"), dec("-0.333333333333333334")),
+                    (int("-1"), int("-3"), dec("0.333333333333333333")),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (num, div, expect) in passing {
+                dts!(_0d.0, num, div);
+                dt(_0d, expect);
+                assert_eq!(Dec::checked_from_ratio_floor(num, div).unwrap(), expect);
+            }
+        }
+    );
+
+    dec_test!( checked_from_ratio_ceil
+        inputs = {
+            udec128 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333334")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333334")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (int("1"), int("3"), dec("0.333333333333333334")),
+                    (int("-1"), int("3"), dec("-0.333333333333333333")),
+                    (int("-1"), int("-3"), dec("0.333333333333333334")),
+                ]
+            }
+            dec256 = {
+                passing: [
+
+                    (int("1"), int("3"), dec("0.333333333333333334")),
+                    (int("-1"), int("3"), dec("-0.333333333333333333")),
+                    (int("-1"), int("-3"), dec("0.333333333333333334")),
+                ]
+            }
+        }
+        method = |_0d: Dec<_>, passing| {
+            for (num, div, expect) in passing {
+                dts!(_0d.0, num, div);
+                dt(_0d, expect);
+                assert_eq!(Dec::checked_from_ratio_ceil(num, div).unwrap(), expect);
             }
         }
     );
