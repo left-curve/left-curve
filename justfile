@@ -90,5 +90,5 @@ docker-publish-devnet-arm64:
 # Run devnet
 devnet:
   if [[ $(uname -m) =~ "arm64" ]]; then \
-  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}}; else \
-  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}; fi
+  docker run -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}}; else \
+  docker run -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}; fi
