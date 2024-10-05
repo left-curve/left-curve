@@ -18,10 +18,10 @@ Contracts:
 }
 ```
 
-Addresses:
+Accounts:
 
 ```json
-addresses = {
+{
   "owner": "0x9c50d822a4effeff79e463b091a9780b0a18e42a",
   "user1": "0xf8b6d9a3158bd7cd9e6ed3dc663eeb5ea56947b9",
   "user2": "0x63877744e512953acdf4b6202a725c596f9326f6",
