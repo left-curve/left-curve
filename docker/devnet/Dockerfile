@@ -24,7 +24,7 @@ RUN rm -rf cometbft
 
 FROM rust:1.81.0-alpine AS grug
 
-ARG LEFT_CURVE_GIT_COMMIT="3844117"
+ARG LEFT_CURVE_GIT_COMMIT="bc693e0"
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.
