@@ -706,7 +706,7 @@ pub mod tests {
                 let left = bt(_0, Int::new(left));
                 let right = bt(_0, Int::new(right));
                 assert_eq!(left.checked_full_mul(right).unwrap(), expect);
-            }            
+            }
         }
     );
 }
