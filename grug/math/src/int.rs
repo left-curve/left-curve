@@ -370,6 +370,7 @@ pub mod tests {
             test_utils::{bt, dt},
             NumberConst,
         },
+        bnum::cast::As,
     };
 
     int_test!( size_of
@@ -664,6 +665,48 @@ pub mod tests {
                 let expected = Int::new(expected);
                 assert_eq!(-input, expected);
             }
+        }
+    );
+
+    int_test!( checked_full_mul
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::MAX, 2_u128, Uint256::new(U256::from(u128::MAX) * U256::from(2_u128))),
+                    (u128::TEN, 10_u128, Uint256::new(U256::from(100_u128))),
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::MAX, U256::from(2_u128), Uint512::new((U256::MAX).as_::<U512>() * U512::from(2_u128))),
+                    (U256::TEN, U256::from(10_u128), Uint512::new(U512::from(100_u128))),
+                ]
+            }
+            i128 = {
+                passing: [
+                    (i128::MAX, 2_i128, Int256::new(I256::from(i128::MAX) * I256::from(2))),
+                    (i128::TEN, 10_i128, Int256::new(I256::from(100))),
+                    (i128::MIN, 10_i128, Int256::new(I256::from(i128::MIN) * I256::from(10))),
+                    (i128::MIN, -10_i128, Int256::new(I256::from(i128::MIN) * I256::from(-10))),
+                    (i128::MAX, -10_i128, Int256::new(I256::from(i128::MAX) * I256::from(-10))),
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::MAX, I256::from(2_i128), Int512::new((I256::MAX).as_::<I512>() * I512::from(2))),
+                    (I256::TEN, I256::from(10_i128), Int512::new(I512::from(100))),
+                    (I256::MIN, I256::from(10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::from(10))),
+                    (I256::MIN, I256::from(-10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::from(-10))),
+                    (I256::MAX, I256::from(-10_i128), Int512::new((I256::MAX).as_::<I512>() * I512::from(-10))),
+                ]
+            }
+        }
+        method = |_0, passing| {
+            for (left, right, expect) in passing {
+                let left = bt(_0, Int::new(left));
+                let right = bt(_0, Int::new(right));
+                assert_eq!(left.checked_full_mul(right).unwrap(), expect);
+            }            
         }
     );
 }
