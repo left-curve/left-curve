@@ -56,7 +56,7 @@ where
         T: Into<Int<U>>,
     {
         let atomics = atomics.into();
-        
+
         let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
