@@ -1,36 +1,37 @@
-# ---------------------------------- cometbft ----------------------------------
+FROM leftcurve/optimizer:0.1.0 AS optimizer
 
-FROM golang:1.23.2-alpine AS cometbft
+FROM rust:1.81.0-alpine
 
-ARG COMETBFT_GIT_TAG="v0.38.12"
+# Target platform the image is being built for.
+# Must be either `linux/amd64` or `linux/arm64`.
+ARG TARGETPLATFORM
 
-# Install build dependencies
-RUN apk update && apk add --no-cache git make
+# Chain ID of the devnet.
+ARG CHAIN_ID="dev-1"
 
-# Download source code
-RUN git clone https://github.com/cometbft/cometbft.git \
-  && cd cometbft \
-  && git checkout $COMETBFT_GIT_TAG
+# Genesis time of the devnet.
+ARG GENESIS_TIME="2024-10-06T00:00:00.000000000Z"
 
-# Compile and install cometbft
-RUN cd cometbft \
-  && make build \
-  && mv build/cometbft /usr/local/bin
+# Version of CometBFT.
+ARG COMETBFT_VERSION="0.38.12"
 
-# Clean up
-RUN rm -rf cometbft
+# Version of left-curve monorepo with which we will build grug CLI.
+ARG LEFT_CURVE_GIT_COMMIT="e450584d"
 
-# ------------------------------------ grug ------------------------------------
-
-FROM rust:1.81.0-alpine AS grug
-
-ARG LEFT_CURVE_GIT_COMMIT="bc693e0"
-
-# Download the crates.io index using the new sparse protocol to improve performance
-# and avoid OOM in the build.
+# Download the crates.io index using the new sparse protocol to improve
+# performance and avoid OOM in the build. See:
+# https://doc.rust-lang.org/cargo/reference/config.html#registriescrates-ioprotocol
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# Install build dependencies
+# Copy bob and wasm-opt from optimizer.
+COPY --from=optimizer /usr/local/bin/bob /usr/local/bin
+COPY --from=optimizer /usr/local/bin/wasm-opt /usr/local/bin
+
+# Setup Rust's wasm target.
+RUN rustup target add wasm32-unknown-unknown
+
+# Install build dependencies.
+#
 # musl-dev provides crti.o
 # clang-dev and llvm-dev both provide libclang.so, located respectively at:
 # - /usr/lib/libclang.so
@@ -39,41 +40,57 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 # But this isn't necessary here.
 RUN apk update && apk add --no-cache clang clang-dev g++ git llvm-dev musl-dev
 
-# Download source code
+# Download pre-built cometbft binary.
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+  wget -O cometbft.tar.gz https://github.com/cometbft/cometbft/releases/download/v${COMETBFT_VERSION}/cometbft_${COMETBFT_VERSION}_linux_amd64.tar.gz; \
+  elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+  wget -O cometbft.tar.gz https://github.com/cometbft/cometbft/releases/download/v${COMETBFT_VERSION}/cometbft_${COMETBFT_VERSION}_linux_arm64.tar.gz; \
+  else \
+  echo "unsupported architecture: $TARGETPLATFORM" && exit 1; \
+  fi \
+  && tar -xvf cometbft.tar.gz -C /usr/local/bin cometbft \
+  && rm cometbft.tar.gz \
+  && cometbft version
+
+# Download grug source code.
 RUN git clone https://github.com/left-curve/left-curve.git \
   && cd left-curve \
   && git checkout $LEFT_CURVE_GIT_COMMIT
 
-# Compile and install grug
-# crt-static must be disabled. See:
-# https://github.com/apache/skywalking/issues/10439
-# https://skywalking.apache.org/docs/skywalking-php/next/en/setup/service-agent/php-agent/readme/#install
+# Compile grug.
+#
+# Must disable `crt-static`, to dynamically link with C runtime (musl-libc). See:
+# - https://github.com/apache/skywalking/issues/10439
+# - https://skywalking.apache.org/docs/skywalking-php/next/en/setup/service-agent/php-agent/readme/#install
+# Explanation on why this is necessary (in chinese): https://zhuanlan.zhihu.com/p/138109387
 RUN cd left-curve \
   && RUSTFLAGS='-C link-arg=-s -C target-feature=-crt-static' cargo build -p grug-cli --release \
-  && mv target/release/grug /usr/local/bin
+  && mv target/release/grug /usr/local/bin \
+  && grug --version
 
-# Clean up
+# Build and optimize contracts.
+RUN cd left-curve \
+  && bob \
+  && cat artifacts/checksum.txt
+
+# Create genesis file.
+# Edit cometbft config such that Tendermint RPC accepts queries from all hosts.
+RUN cd left-curve \
+  && cometbft init \
+  && sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|g' ~/.cometbft/config/config.toml \
+  && cargo run -p dango-genesis --example build_genesis -- ${CHAIN_ID} ${GENESIS_TIME} \
+  && cat ~/.cometbft/config/genesis.json
+
+# Delete the left-curve repo.
 RUN rm -rf left-curve
-
-# ----------------------------------- devnet -----------------------------------
-
-FROM grug AS devnet
-
-# Add cometbft and grug
-COPY --from=cometbft /usr/local/bin/cometbft /usr/local/bin
-COPY --from=grug /usr/local/bin/grug /usr/local/bin
-
-# Run setup script
-# Delete the file after running it to reduce image size.
-ADD setup.sh /tmp
-RUN cd /tmp && /bin/ash setup.sh && rm setup.sh
 
 # Add run script
 ADD run.sh /root
-RUN chmod +x /root/run.sh
 
-# Expose the ports. 26656 - Tendermint p2p; 26657 - Tendermint RPC.
+# Expose the ports.
+# 26656 - Tendermint p2p
+# 26657 - Tendermint RPC
 EXPOSE 26656 26657
 
 # Run grug and cometbft
-ENTRYPOINT ["/root/run.sh"]
+ENTRYPOINT ["/bin/ash", "/root/run.sh"]

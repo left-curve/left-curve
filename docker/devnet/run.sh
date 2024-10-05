@@ -1,8 +1,8 @@
 #!/bin/ash
 
-# Start grug first. Redirect the stdout/stderr to the container's stdout/stderr.
+# Start grug first.
 echo "starting grug..."
-grug start > >(tee -a /proc/self/fd/1) 2> >(tee -a /proc/self/fd/2 >&2) &
+grug start &
 echo "done! PID: $!"
 
 # Start cometbft next. Hide its stdout/stderr.

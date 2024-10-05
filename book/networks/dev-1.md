@@ -1,6 +1,6 @@
 # dev-1
 
-- Genesis time: 7 October 2024
+- Genesis time: 6 October 2024
 - Based on commit: `bc693e0`
 
 Contracts:
