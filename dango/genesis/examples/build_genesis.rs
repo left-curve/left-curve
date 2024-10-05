@@ -1,10 +1,9 @@
 use {
-    anyhow::anyhow,
     dango_genesis::{build_genesis, Codes, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
     grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
     hex_literal::hex,
-    std::{fs, path::PathBuf, str::FromStr},
+    std::{env, fs, path::PathBuf, str::FromStr},
 };
 
 const COMETBFT_GENESIS_PATH: &str = "/Users/larry/.cometbft/config/genesis.json";
@@ -20,6 +19,12 @@ const PK_USER3: [u8; 33] =
     hex!("024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0");
 
 fn main() {
+    // Read CLI arguments.
+    // There should be exactly two arguments: the chain ID and genesis time.
+    let mut args = env::args().collect::<Vec<_>>();
+    assert_eq!(args.len(), 3, "expected exactly two arguments");
+
+    // Read wasm files.
     let codes = {
         let artifacts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
 
@@ -104,14 +109,10 @@ fn main() {
         .deserialize_json::<Json>()
         .unwrap();
 
-    cometbft_genesis
-        .as_object_mut()
-        .ok_or(anyhow!("cometbft genesis file isn't an object"))
-        .unwrap()
-        .insert(
-            "app_state".to_string(),
-            genesis_state.to_json_value().unwrap(),
-        );
+    let map = cometbft_genesis.as_object_mut().unwrap();
+    map.insert("genesis_time".into(), args.pop().unwrap().into());
+    map.insert("chain_id".into(), args.pop().unwrap().into());
+    map.insert("app_state".into(), genesis_state.to_json_value().unwrap());
 
     fs::write(
         COMETBFT_GENESIS_PATH,
