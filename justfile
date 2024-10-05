@@ -3,7 +3,7 @@ default:
   @just --list
 
 # Delete all git branches except for main
-git-clean:
+clean-branches:
   git branch | grep -v "main" | xargs git branch -D
 
 # ------------------------------------ Rust ------------------------------------
@@ -33,37 +33,62 @@ testdata:
 OPTIMIZER_NAME := "leftcurve/optimizer"
 OPTIMIZER_VERSION := "0.1.0"
 
-# TODO: add platform variants (x86_64 or arm64)
+# Build optimizer Docker image for x86_64
+docker-build-optimizer-x86:
+  docker build --pull --load --platform linux/amd64 \
+    -t {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} --target optimizer docker/optimizer
 
-# Build optimizer Docker image
-optimizer-build:
-  docker build -t {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} --target optimizer --load docker/optimizer
+# Build optimizer Docker image for arm64
+docker-build-optimizer-arm64:
+  docker build --pull --load --platform linux/arm64/v8 \
+    -t {{OPTIMIZER_NAME}}-arm64:{{OPTIMIZER_VERSION}} --target optimizer docker/optimizer
 
-# Publish optimizer Docker image
-optimizer-publish:
+# Publish optimizer Docker image for x86_64
+docker-publish-optimizer-x86:
   docker push {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+
+# Publish optimizer Docker image for arm64
+docker-publish-optimizer-arm64:
+  docker push {{OPTIMIZER_NAME}}-arm64:{{OPTIMIZER_VERSION}}
 
 # Compile and optimize contracts
 optimize:
+  if [[ $(uname -m) =~ "arm64" ]]; then \
   docker run --rm -v "$(pwd)":/code \
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-    {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+    {{OPTIMIZER_NAME}}-arm64:{{OPTIMIZER_VERSION}}; else \
+  docker run --rm -v "$(pwd)":/code \
+    --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+    --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+    --platform linux/amd64 \
+    {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}; fi
 
 # ----------------------------------- Devnet -----------------------------------
 
 DEVNET_NAME := "leftcurve/devnet"
 DEVNET_VERSION := "0.1.0"
 
-# Build devnet Docker image
-devnet-build:
-  docker build -t {{DEVNET_NAME}}:{{DEVNET_VERSION}} --target devnet --load docker/devnet
+# Build devnet Docker image for x86_64
+docker-build-devnet-x86:
+  docker build --pull --load --platform linux/amd64 \
+    -t {{DEVNET_NAME}}:{{DEVNET_VERSION}} --target devnet docker/devnet
 
-# Publish devnet Docker image
-devnet-publish:
+# Build devnet Docker image for arm64
+docker-build-devnet-arm64:
+  docker build --pull --load --platform linux/arm64/v8 \
+    -t {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}} --target devnet docker/devnet
+
+# Publish devnet Docker image for x86_64
+docker-publish-devnet-x86:
   docker push {{DEVNET_NAME}}:{{DEVNET_VERSION}}
+
+# Publish devnet Docker image for arm64
+docker-publish-devnet-arm64:
+  docker push {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}}
 
 # Run devnet
 devnet:
-  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
-# TODO: mount local .cometbft and .grug directories?
+  if [[ $(uname -m) =~ "arm64" ]]; then \
+  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}-arm64:{{DEVNET_VERSION}}; else \
+  docker run --rm -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}; fi

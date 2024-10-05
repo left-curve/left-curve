@@ -24,7 +24,7 @@ RUN rm -rf cometbft
 
 FROM rust:1.81.0-alpine AS grug
 
-ARG LEFT_CURVE_GIT_COMMIT="879e7d1"
+ARG LEFT_CURVE_GIT_COMMIT="3844117"
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.
@@ -57,6 +57,23 @@ RUN rm -rf left-curve
 
 # ----------------------------------- devnet -----------------------------------
 
-FROM alpine:3.20 AS devnet
+FROM grug AS devnet
 
-# TODO
+# Add cometbft and grug
+COPY --from=cometbft /usr/local/bin/cometbft /usr/local/bin
+COPY --from=grug /usr/local/bin/grug /usr/local/bin
+
+# Run setup script
+# Delete the file after running it to reduce image size.
+ADD setup.sh /tmp
+RUN cd /tmp && /bin/ash setup.sh && rm setup.sh
+
+# Add run script
+ADD run.sh /root
+RUN chmod +x /root/run.sh
+
+# Expose the ports. 26656 - Tendermint p2p; 26657 - Tendermint RPC.
+EXPOSE 26656 26657
+
+# Run grug and cometbft
+ENTRYPOINT ["/root/run.sh"]
