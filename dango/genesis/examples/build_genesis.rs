@@ -3,10 +3,9 @@ use {
     dango_types::{account_factory::Username, auth::Key},
     grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
     hex_literal::hex,
+    home::home_dir,
     std::{env, fs, path::PathBuf, str::FromStr},
 };
-
-const COMETBFT_GENESIS_PATH: &str = "/Users/larry/.cometbft/config/genesis.json";
 
 // See docs for the seed phrases of these keys.
 const PK_OWNER: [u8; 33] =
@@ -104,7 +103,9 @@ fn main() {
         addresses.to_json_string_pretty().unwrap()
     );
 
-    let mut cometbft_genesis = fs::read(COMETBFT_GENESIS_PATH)
+    let cometbft_genesis_path = home_dir().unwrap().join(".cometbft/config/genesis.json");
+
+    let mut cometbft_genesis = fs::read(&cometbft_genesis_path)
         .unwrap()
         .deserialize_json::<Json>()
         .unwrap();
@@ -115,7 +116,7 @@ fn main() {
     map.insert("app_state".into(), genesis_state.to_json_value().unwrap());
 
     fs::write(
-        COMETBFT_GENESIS_PATH,
+        cometbft_genesis_path,
         cometbft_genesis.to_json_string_pretty().unwrap(),
     )
     .unwrap();
