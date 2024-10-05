@@ -158,7 +158,7 @@ fn increase_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(!amount.is_zero(), "increasing supply by zero");
+    debug_assert!(amount.is_non_zero(), "increasing supply by zero");
 
     SUPPLIES.update(storage, denom, |maybe_supply| {
         let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_add(amount)?;
@@ -172,7 +172,7 @@ fn decrease_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(!amount.is_zero(), "decreasing supply by zero");
+    debug_assert!(amount.is_non_zero(), "decreasing supply by zero");
 
     SUPPLIES.update(storage, denom, |maybe_supply| {
         let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
@@ -191,7 +191,7 @@ fn increase_balance(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(!amount.is_zero(), "increasing balance by zero");
+    debug_assert!(amount.is_non_zero(), "increasing balance by zero");
 
     BALANCES.update(storage, (address, denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_add(amount)?;
@@ -206,7 +206,7 @@ fn decrease_balance(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(!amount.is_zero(), "decreasing balance by zero");
+    debug_assert!(amount.is_non_zero(), "decreasing balance by zero");
 
     BALANCES.update(storage, (address, denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_sub(amount)?;

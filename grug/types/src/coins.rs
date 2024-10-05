@@ -169,7 +169,7 @@ impl Coins {
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             // If the denom doesn't exist, and we are increasing by a non-zero
             // amount: just create a new record, and we are done.
-            if !coin.amount.is_zero() {
+            if coin.amount.is_non_zero() {
                 self.0.insert(coin.denom, coin.amount);
             }
 

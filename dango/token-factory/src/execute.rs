@@ -14,7 +14,7 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     ensure!(
-        !msg.denom_creation_fee.amount.is_zero(),
+        msg.denom_creation_fee.amount.is_non_zero(),
         "denom creation fee can't be zero"
     );
 
