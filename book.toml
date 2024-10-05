@@ -4,7 +4,7 @@ description  = "Everything you need for building apps on a Grug-powered chain"
 authors      = ["Left Curve Software Ltd. (https://leftcurve.software/)"]
 language     = "en"
 multilingual = false
-src          = "docs/"
+src          = "book/"
 
 [output.html]
 git-repository-url = "https://github.com/left-curve/grug"
