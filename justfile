@@ -1,10 +1,21 @@
+set positional-arguments
+
 # List available recipes
 default:
   @just --list
 
 # Delete all git branches except for main
-git-clean:
+clean-branches:
   git branch | grep -v "main" | xargs git branch -D
+
+# Create a multi-arch Docker builder
+docker-create-builder name:
+  docker buildx create \
+    --name $1 \
+    --platform linux/amd64,linux/arm64 \
+    --driver docker-container \
+    --bootstrap \
+    --use
 
 # ------------------------------------ Rust ------------------------------------
 
@@ -33,15 +44,14 @@ testdata:
 OPTIMIZER_NAME := "leftcurve/optimizer"
 OPTIMIZER_VERSION := "0.1.0"
 
-# TODO: add platform variants (x86_64 or arm64)
-
-# Build optimizer Docker image
-optimizer-build:
-  docker build -t {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} --target optimizer --load docker/optimizer
-
-# Publish optimizer Docker image
-optimizer-publish:
-  docker push {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+# Build and publish optimizer Docker image
+docker-build-optimizer:
+  docker buildx build \
+    --push \
+    --platform linux/amd64,linux/arm64 \
+    --tag {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} \
+    --target optimizer \
+    docker/optimizer
 
 # Compile and optimize contracts
 optimize:
@@ -52,4 +62,25 @@ optimize:
 
 # ----------------------------------- Devnet -----------------------------------
 
-# TODO...
+DEVNET_NAME := "leftcurve/devnet"
+DEVNET_VERSION := "0.1.0"
+DEVNET_CHAIN_ID := "dev-1"
+DEVNET_GENESIS_TIME := "2024-10-06T00:00:00.000000000Z"
+
+# Build and publish devnet Docker image
+docker-build-devnet:
+  docker buildx build \
+    --push \
+    --platform linux/amd64,linux/arm64 \
+    --tag {{DEVNET_NAME}}:{{DEVNET_VERSION}} \
+    --build-arg CHAIN_ID={{DEVNET_CHAIN_ID}} \
+    --build-arg GENESIS_TIME={{DEVNET_GENESIS_TIME}} \
+    docker/devnet
+
+# Start a devnet from genesis
+start-devnet:
+  docker run -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
+
+# Restart a devnet that have been previous stopped
+restart-devnet container_id:
+  docker start -i $1

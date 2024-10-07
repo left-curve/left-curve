@@ -2,27 +2,27 @@
 
 FROM rust:1.81.0-alpine AS bob
 
-ARG GRUG_GIT_COMMIT="4cd95bd"
+ARG LEFT_CURVE_GIT_COMMIT="879e7d1"
 
 # Download the crates.io index using the new sparse protocol to improve performance
-# and avoid OOM in the bob build.
+# and avoid OOM in the build.
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
 RUN apk update && apk add --no-cache git musl-dev
 
-# Down source code
-RUN git clone https://github.com/left-curve/grug.git \
-  && cd grug \
-  && git checkout $GRUG_GIT_COMMIT
+# Download source code
+RUN git clone https://github.com/left-curve/left-curve.git \
+  && cd left-curve \
+  && git checkout $LEFT_CURVE_GIT_COMMIT
 
 # Compile and install bob
-RUN cd grug \
+RUN cd left-curve \
   && RUSTFLAGS='-C link-arg=-s' cargo build -p bob --release \
   && mv target/release/bob /usr/local/bin
 
 # Clean up
-RUN rm -rf grug
+RUN rm -rf left-curve
 
 # ---------------------------------- wasm-opt ----------------------------------
 
@@ -53,9 +53,6 @@ RUN rm -rf binaryen
 # --------------------------------- optimizer ----------------------------------
 
 FROM rust:1.81.0-alpine AS optimizer
-
-# Download the crates.io index using the new sparse protocol to improve performance
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
 RUN apk update && apk add --no-cache musl-dev
