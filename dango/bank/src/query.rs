@@ -1,13 +1,46 @@
 use {
-    crate::{BALANCES, SUPPLIES},
+    crate::{BALANCES, NAMESPACE_OWNERS, SUPPLIES},
+    dango_types::bank::QueryMsg,
     grug::{
-        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, NumberConst,
-        Order, StdResult, Uint128,
+        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
+        JsonSerExt, NumberConst, Order, Part, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+    match msg {
+        QueryMsg::Namespace { namespace } => {
+            let res = query_namespace(ctx, namespace)?;
+            res.to_json_value()
+        },
+        QueryMsg::Namespaces { start_after, limit } => {
+            let res = query_namespaces(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+    }
+}
+
+fn query_namespace(ctx: ImmutableCtx, namespace: Part) -> StdResult<Addr> {
+    NAMESPACE_OWNERS.load(ctx.storage, &namespace)
+}
+
+fn query_namespaces(
+    ctx: ImmutableCtx,
+    start_after: Option<Part>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Part, Addr>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    NAMESPACE_OWNERS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect()
+}
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {

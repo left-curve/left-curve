@@ -52,3 +52,16 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
 }
+
+#[grug::derive(Serde, QueryRequest)]
+pub enum QueryMsg {
+    /// Return owner of a namespace.
+    #[returns(Addr)]
+    Namespace { namespace: Part },
+    /// Enumerate owners of all namespaces.
+    #[returns(BTreeMap<Part, Addr>)]
+    Namespaces {
+        start_after: Option<Part>,
+        limit: Option<u32>,
+    },
+}
