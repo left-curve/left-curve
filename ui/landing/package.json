@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "sleep 3 && next dev",
     "build:cf": "pnpx @cloudflare/next-on-pages",
     "build": "next build",
     "start": "next start"

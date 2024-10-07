@@ -1,15 +1,14 @@
-import { lazy } from "react";
+import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
-import { Layout } from "./components/Layout";
 
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
 
 export const AppRouter: React.FC = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
         <Route path="accounts/:index" element={<AccountView />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 };
