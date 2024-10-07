@@ -3,28 +3,16 @@
 - Genesis time: 6 October 2024
 - Based on commit: `e450584d`
 
-Contracts:
-
-```json
-{
-  "account_factory": "0x385922ad45afe94c8f96d2465fb7bd7de789cd8a",
-  "amm": "0xd5c4550a3b5b6480f2afd9401ccf69c6be3df55c",
-  "bank": "0xcf4e69ca300602f5f838dc33da692814cd4a98f5",
-  "fee_recipient": "0x9c50d822a4effeff79e463b091a9780b0a18e42a",
-  "ibc_transfer": "0x69b280331b65fdde37e7b8e88235d148899460c4",
-  "owner": "0x9c50d822a4effeff79e463b091a9780b0a18e42a",
-  "taxman": "0x69d2f5070b75ea33b610fbde292b2aa0ba4c7bec",
-  "token_factory": "0x8cc0433d90e3d7d99389aeb9a0b9b9e4d70ab128"
-}
-```
-
-Accounts:
-
-```json
-{
-  "owner": "0x9c50d822a4effeff79e463b091a9780b0a18e42a",
-  "user1": "0xf8b6d9a3158bd7cd9e6ed3dc663eeb5ea56947b9",
-  "user2": "0x63877744e512953acdf4b6202a725c596f9326f6",
-  "user3": "0x21e0dcf3c3c86cf5febfddc2581de64db6ecfcbc"
-}
-```
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| `account_factory` | `0xc4a812037bb86a576cc7a672e23f972b17d02cfe` |
+| `amm`             | `0x1d4789f7ad482ac101a787678321460662e7c4da` |
+| `bank`            | `0x420acd39b946b5a7ff2c2d0153a545abed26014a` |
+| `fee_recipient`   | `0x1e94e30f113f0f39593f5a509898835720882674` |
+| `ibc_transfer`    | `0xf5ade15343d5cd59b3db4d82a3af328d78f68fb5` |
+| `owner`           | `0x1e94e30f113f0f39593f5a509898835720882674` |
+| `taxman`          | `0x3b999093832cbd133c19fa16fe6d9bbc7fdc3dd3` |
+| `token_factory`   | `0x01006b941f3a2fdc6c695d6a32418db19892730d` |
+| `user1`           | `0x64b06061df3518a384b83b56e025cbce1d522ea9` |
+| `user2`           | `0xf675f9827a44764facb06e64c212ad669368c971` |
+| `user3`           | `0x712c90c5eac193cd9ff32d521c26f46e690cde59` |
