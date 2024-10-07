@@ -5,7 +5,7 @@ use crate::{Int, MathResult, NextNumber, Number, NumberConst, PrevNumber, Sign};
 ///
 /// This is different from applying a multiplication and a division sequentially,
 /// because the multiplication part can overflow.
-pub trait MultiplyRatio: Sized {
+pub trait MultiplyRatio: Sized + Copy {
     /// In case the result is non-integer, it is _truncated_; in other words,
     /// _rounded towards zero_:
     /// - positive result: `5 * 3 / 2 = 7.5 => 7`
@@ -23,6 +23,36 @@ pub trait MultiplyRatio: Sized {
     /// - positive result: `5 * 3 / 2 = 7.5 => 8`
     /// - negative result: `-5 * 3 / 2 = -7.5 => -7`
     fn checked_multiply_ratio_ceil(self, numerator: Self, denominator: Self) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_multiply_ratio_assign(
+        &mut self,
+        numerator: Self,
+        denominator: Self,
+    ) -> MathResult<()> {
+        *self = self.checked_multiply_ratio(numerator, denominator)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_multiply_ratio_floor_assign(
+        &mut self,
+        numerator: Self,
+        denominator: Self,
+    ) -> MathResult<()> {
+        *self = self.checked_multiply_ratio_floor(numerator, denominator)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_multiply_ratio_ceil_assign(
+        &mut self,
+        numerator: Self,
+        denominator: Self,
+    ) -> MathResult<()> {
+        *self = self.checked_multiply_ratio_ceil(numerator, denominator)?;
+        Ok(())
+    }
 }
 
 impl<U> MultiplyRatio for Int<U>

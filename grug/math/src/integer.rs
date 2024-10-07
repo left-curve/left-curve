@@ -5,7 +5,7 @@ use {
 
 /// Describes operations that integer types must implement, which may not be
 /// relevant for non-integer types.
-pub trait Integer: Sized {
+pub trait Integer: Sized + Copy {
     fn checked_ilog2(self) -> MathResult<u32>;
 
     fn checked_ilog10(self) -> MathResult<u32>;
@@ -13,6 +13,18 @@ pub trait Integer: Sized {
     fn checked_shl(self, other: u32) -> MathResult<Self>;
 
     fn checked_shr(self, other: u32) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_shl_assign(&mut self, other: u32) -> MathResult<()> {
+        *self = self.checked_shl(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_shr_assign(&mut self, other: u32) -> MathResult<()> {
+        *self = self.checked_shr(other)?;
+        Ok(())
+    }
 
     fn wrapping_add(self, other: Self) -> Self;
 

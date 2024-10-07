@@ -4,7 +4,7 @@ use {
 };
 
 /// Describes a number that can take on negative values.
-pub trait Sign: Sized {
+pub trait Sign: Sized + Copy {
     /// Return the number's absolute value.
     ///
     /// ## Note
@@ -14,6 +14,12 @@ pub trait Sign: Sized {
     /// number's minimum value (i.e. the maximally negative value) leads to
     /// overflow.
     fn checked_abs(self) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_abs_assign(&mut self) -> MathResult<()> {
+        *self = self.checked_abs()?;
+        Ok(())
+    }
 
     /// Return true if the number is negative; false if it's zero or positive.
     fn is_negative(&self) -> bool;

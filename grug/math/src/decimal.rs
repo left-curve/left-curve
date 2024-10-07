@@ -2,10 +2,22 @@ use crate::{Dec, FixedPoint, IsZero, MathResult, Number, NumberConst, Sign};
 
 /// Describes operations that decimal types must implement, which may not be
 /// relevant for non-decimal types.
-pub trait Decimal: Sized {
+pub trait Decimal: Sized + Copy {
     fn checked_floor(self) -> MathResult<Self>;
 
     fn checked_ceil(self) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_floor_assign(&mut self) -> MathResult<()> {
+        *self = self.checked_floor()?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_ceil_assign(&mut self) -> MathResult<()> {
+        *self = self.checked_ceil()?;
+        Ok(())
+    }
 }
 
 impl<U> Decimal for Dec<U>

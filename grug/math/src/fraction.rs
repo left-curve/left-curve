@@ -7,6 +7,12 @@ pub trait Fraction<U>: Sized {
     fn denominator() -> Int<U>;
 
     fn checked_inv(&self) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_inv_assign(&mut self) -> MathResult<()> {
+        *self = self.checked_inv()?;
+        Ok(())
+    }
 }
 
 impl<U> Fraction<U> for Dec<U>
