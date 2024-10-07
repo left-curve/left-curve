@@ -1,5 +1,8 @@
 import { defineConfig } from "@rsbuild/core";
+import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+
+const { publicVars } = loadEnv();
 
 export default defineConfig({
   source: {
@@ -9,6 +12,7 @@ export default defineConfig({
     alias: {
       "~": "./src",
     },
+    define: publicVars,
   },
   server: { port: 5080 },
   output: { distPath: { root: "build" } },
