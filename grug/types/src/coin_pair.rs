@@ -178,10 +178,10 @@ impl From<CoinPair> for Coins {
         let [coin1, coin2] = pair.0;
 
         let mut map = BTreeMap::new();
-        if !coin1.amount.is_zero() {
+        if coin1.amount.is_non_zero() {
             map.insert(coin1.denom, coin1.amount);
         }
-        if !coin2.amount.is_zero() {
+        if coin2.amount.is_non_zero() {
             map.insert(coin2.denom, coin2.amount);
         }
 
