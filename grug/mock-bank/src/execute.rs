@@ -42,7 +42,7 @@ fn accumulate_supply(
         return Ok(());
     };
 
-    *supply = supply.checked_add(by)?;
+    supply.checked_add_assign(by)?;
 
     Ok(())
 }

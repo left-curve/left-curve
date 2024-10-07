@@ -57,11 +57,11 @@ impl PoolExt for XykPool {
         let liquidity_fee = output.checked_mul_dec_ceil(*self.params.liquidity_fee_rate.inner())?;
 
         // Deduct liquidity fee from the output.
-        output = output.checked_sub(liquidity_fee)?;
+        output.checked_sub_assign(liquidity_fee)?;
 
         // Update pool state.
-        *offer.amount = offer.amount.checked_add(input.amount)?;
-        *ask.amount = ask.amount.checked_sub(output)?;
+        offer.amount.checked_add_assign(input.amount)?;
+        ask.amount.checked_sub_assign(output)?;
 
         Ok((
             Coin {

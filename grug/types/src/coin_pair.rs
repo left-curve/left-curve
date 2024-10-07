@@ -123,8 +123,8 @@ impl CoinPair {
             )));
         }
 
-        self.0[0].amount = self.0[0].amount.checked_add(other.0[0].amount)?;
-        self.0[1].amount = self.0[1].amount.checked_add(other.0[1].amount)?;
+        self.0[0].amount.checked_add_assign(other.0[0].amount)?;
+        self.0[1].amount.checked_add_assign(other.0[1].amount)?;
 
         Ok(())
     }
@@ -141,8 +141,8 @@ impl CoinPair {
             .amount
             .checked_multiply_ratio_floor(numerator, denominator)?;
 
-        self.0[0].amount = self.0[0].amount.checked_sub(amount1)?;
-        self.0[1].amount = self.0[1].amount.checked_sub(amount2)?;
+        self.0[0].amount.checked_sub_assign(amount1)?;
+        self.0[1].amount.checked_sub_assign(amount2)?;
 
         Ok(Self([
             Coin {
