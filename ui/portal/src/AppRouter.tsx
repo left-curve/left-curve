@@ -8,7 +8,7 @@ export const AppRouter: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route path="account/:index" element={<AccountView />} />
+        <Route path="accounts/:index" element={<AccountView />} />
       </Route>
     </Routes>
   );
