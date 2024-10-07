@@ -12,7 +12,6 @@ export default defineConfig({
   },
   server: { port: 5080 },
   output: { distPath: { root: "build" } },
-  performance: { profile: true },
   html: { template: "public/index.html" },
   plugins: [pluginReact()],
 });

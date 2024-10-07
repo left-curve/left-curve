@@ -1,3 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "@unocss/reset/tailwind.css";
+
+@unocss preflights;
+@unocss default;
+
+@unocss;
