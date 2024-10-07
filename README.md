@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="book/left-curve.svg" width="150" styles="">
+</div>
+
 # Left Curve
 
 This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number of [Left Curve Software](https://x.com/leftCurveSoft) products:

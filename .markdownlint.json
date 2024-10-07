@@ -2,5 +2,6 @@
   "first-line-heading": false,
   "heading-increment": false,
   "line-length": false,
+  "no-alt-text": false,
   "no-inline-html": false
 }
