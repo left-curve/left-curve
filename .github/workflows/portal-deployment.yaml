@@ -1,4 +1,4 @@
-name: Landing Deployment
+name: Portal Deployment
 
 on:
   workflow_dispatch:
@@ -9,14 +9,14 @@ on:
     paths:
       - "sdk/packages/react/**"
       - "ui/shared/**"
-      - "ui/landing/**"
+      - "ui/portal/**"
   pull_request:
     branches:
       - "*"
     paths:
       - "sdk/packages/react/**"
       - "ui/shared/**"
-      - "ui/landing/**"
+      - "ui/portal/**"
 
 jobs:
   deploy:
@@ -45,8 +45,8 @@ jobs:
       - name: Build SDK
         run: pnpm build:pkg
 
-      - name: Build Landing
-        run: pnpm build:landing
+      - name: Build Portal
+        run: pnpm build:portal
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -54,7 +54,7 @@ jobs:
           wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
-          projectName: dango-landing
-          directory: ./ui/landing/.vercel/output/static
+          projectName: dango-portal
+          directory: ./ui/portal/build
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
