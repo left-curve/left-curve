@@ -9,9 +9,27 @@ interface Env {
   USERNAME: string;
 }
 
+const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "GET") return new Response("Ok", { status: 200 });
+    if (request.method === "GET") return new Response("Ok", { headers, status: 200 });
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers":
+            request.headers.get("Access-Control-Request-Headers") || "*",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
 
     const client = createUserClient({
       chain: devnet,
@@ -24,13 +42,13 @@ export default {
     const address = Object.keys(accounts)[0];
 
     if (!address) {
-      return new Response("error: something went wrong internally", { status: 500 });
+      return new Response("error: something went wrong internally", { headers, status: 500 });
     }
 
     const { address: userAddr } = await request.json<{ address: Address }>();
 
     if (!isValidAddress(userAddr)) {
-      return new Response("error: invalid address", { status: 400 });
+      return new Response("error: invalid address", { headers, status: 400 });
     }
 
     const ibcTransferAddr = await client.getAppConfig<Address>({ key: "ibc_transfer" });
@@ -46,20 +64,9 @@ export default {
       funds: { uusdc: "100" },
     });
 
-    if (response.code !== 0) return new Response("error: the tx went wrong", { status: 500 });
+    if (response.code !== 0)
+      return new Response("error: the tx went wrong", { headers, status: 500 });
 
-    return new Response("success", { status: 200 });
+    return new Response("success", { headers, status: 200 });
   },
-};
-
-export const onRequestOptions = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
 };
