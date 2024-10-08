@@ -52,7 +52,7 @@ fn safe() {
                     contracts.account_factory,
                     &account_factory::ExecuteMsg::RegisterUser {
                         username: user.username.clone(),
-                        key: user.key,
+                        key: user.key.clone(),
                         key_hash: user.key_hash,
                     },
                     Coins::new(),

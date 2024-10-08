@@ -244,7 +244,7 @@ mod tests {
         //   point to the same key.
         for (username, hash, key) in [
             // comment inserted to prevent undesirable rustfmt formatting
-            (&u1, h1, k1),
+            (&u1, h1, k1.clone()),
             (&u1, h2, k2),
             (&u2, h1, k1),
             (&u2, h3, k3),

@@ -5,7 +5,6 @@ use {
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
 pub enum Key {
     /// An Secp256r1 public key in compressed form.
     Secp256r1(ByteArray<33>),

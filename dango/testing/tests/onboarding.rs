@@ -7,8 +7,7 @@ use {
         mock_ibc_transfer,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, ResultExt, Tx,
-        Uint128,
+        btree_map, Addressable, Coins, Hash160, HashExt, Json, Message, ResultExt, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -46,7 +45,7 @@ fn user_onboarding() -> anyhow::Result<()> {
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
                 username: user.username.clone(),
-                key: user.key,
+                key: user.key.clone(),
                 key_hash: user.key_hash,
             },
             Coins::new(),
@@ -61,7 +60,7 @@ fn user_onboarding() -> anyhow::Result<()> {
                 username: user.username.clone(),
             },
         )
-        .should_succeed_and_equal(btree_map! { user.key_hash => user.key });
+        .should_succeed_and_equal(btree_map! { user.key_hash => user.key.clone() });
 
     // The user's account info should have been recorded in account factory.
     // Note: a user's first ever account is always a spot account.
@@ -192,7 +191,7 @@ fn onboarding_without_deposit() -> anyhow::Result<()> {
 )]
 #[test_case(
     None,
-    Some(Key::Secp256k1(ByteArray::from([0; 33]))),
+    Some(Key::Secp256k1([0; 33].into())),
     None;
     "false key"
 )]

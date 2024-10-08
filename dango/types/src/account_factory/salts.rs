@@ -18,7 +18,7 @@ use {
 /// encode the user's username, key, and key hash, such that these cannot be
 /// tempered with via frontrunning by a malicious block builder. Check the docs
 /// on the user onboarding flow for more details.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct NewUserSalt<'a> {
     pub username: &'a Username,
     pub key: Key,

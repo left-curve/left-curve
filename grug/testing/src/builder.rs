@@ -533,7 +533,7 @@ where
         for (name, account) in self.accounts.inner() {
             msgs.push(Message::instantiate(
                 self.account_opt.code.hash256(),
-                &(self.account_opt.msg_builder)(account.pk),
+                &(self.account_opt.msg_builder)(account.pk.clone()),
                 name.to_string(),
                 Coins::new(),
                 Some(account.address),

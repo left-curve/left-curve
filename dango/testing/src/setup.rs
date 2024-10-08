@@ -73,17 +73,17 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
         codes,
         btree_map! {
             owner.username.clone() => GenesisUser {
-                key: owner.key,
+                key: owner.key.clone(),
                 key_hash: owner.key_hash,
                 balances: Coins::one("uusdc", 100_000_000_000)?,
             },
             fee_recipient.username.clone() => GenesisUser {
-                key: fee_recipient.key,
+                key: fee_recipient.key.clone(),
                 key_hash: fee_recipient.key_hash,
                 balances: Coins::new(),
             },
             relayer.username.clone() => GenesisUser {
-                key: relayer.key,
+                key: relayer.key.clone(),
                 key_hash: relayer.key_hash,
                 balances: btree_map! {
                     "uusdc" => 100_000_000_000_000,

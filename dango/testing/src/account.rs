@@ -5,7 +5,7 @@ use {
     },
     grug::{
         Addr, Addressable, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt, MaybeDefined,
-        Message, Signer, StdResult, Tx, Undefined,
+        Message, Signer, StdResult, TryIntoLenghted, Tx, Undefined,
     },
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
@@ -36,15 +36,15 @@ impl TestAccount<Undefined<Addr>> {
     pub fn new_random(username: &str) -> StdResult<Self> {
         // Generate a random Secp256k1 key pair.
         let sk = SigningKey::random(&mut OsRng);
-        let pk = sk
+        let pk: grug::LengthBounded<grug::Binary, 33, 33> = sk
             .verifying_key()
             .to_encoded_point(true)
             .to_bytes()
             .to_vec()
-            .try_into()?;
+            .try_into_lenghted()?;
 
         let username = Username::from_str(username)?;
-        let key = Key::Secp256k1(pk);
+        let key = Key::Secp256k1(pk.clone());
         let key_hash = pk.hash160();
 
         Ok(Self {
@@ -66,7 +66,7 @@ impl TestAccount<Undefined<Addr>> {
         let salt = if new_user_salt {
             NewUserSalt {
                 username: &self.username,
-                key: self.key,
+                key: self.key.clone(),
                 key_hash: self.key_hash,
             }
             .into_bytes()
@@ -127,7 +127,7 @@ where
             sequence,
         };
 
-        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into()?);
+        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into_lenghted()?);
 
         Ok((data, credential))
     }

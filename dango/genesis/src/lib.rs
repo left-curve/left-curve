@@ -82,7 +82,7 @@ where
     // Instantiate account factory.
     let keys = genesis_users
         .values()
-        .map(|user| (user.key_hash, user.key))
+        .map(|user| (user.key_hash, user.key.clone()))
         .collect();
     let users = genesis_users
         .iter()
@@ -108,7 +108,7 @@ where
         .map(|(username, user)| {
             let salt = NewUserSalt {
                 username,
-                key: user.key,
+                key: user.key.clone(),
                 key_hash: user.key_hash,
             }
             .into_bytes();

@@ -83,6 +83,14 @@ pub enum StdError {
         bound: String,
     },
 
+    #[error("lenght of {value} out of bound: {length} {comparator} {bound}")]
+    LenghtOutOfBound {
+        value: String,
+        length: usize,
+        comparator: &'static str,
+        bound: usize,
+    },
+
     #[error("out of gas! limit: {limit}, used: {used}, comment: {comment}")]
     OutOfGas {
         limit: u64,
@@ -166,6 +174,23 @@ impl StdError {
             value: value.to_string(),
             comparator,
             bound: bound.to_string(),
+        }
+    }
+
+    pub fn lenght_out_of_bound<T>(
+        value: T,
+        length: usize,
+        comparator: &'static str,
+        bound: usize,
+    ) -> Self
+    where
+        T: ToString,
+    {
+        Self::LenghtOutOfBound {
+            value: value.to_string(),
+            length,
+            comparator,
+            bound,
         }
     }
 
