@@ -1,0 +1,24 @@
+{
+  "name": "mock-ibc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev ",
+    "start": "wrangler dev",
+    "build": "pnpm tsup",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@leftcurve/sdk": "workspace:^"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "@cloudflare/workers-types": "^4.20241004.0",
+    "typescript": "^5.5.2",
+    "wrangler": "^3.60.3"
+  }
+}

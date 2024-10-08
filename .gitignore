@@ -27,3 +27,6 @@ sdk/docs
 
 # Envs
 **/.env
+
+# Workers
+**/.wrangler
