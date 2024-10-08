@@ -4,14 +4,14 @@ import { DangoButton, Select, SelectItem, useWizard } from "@dango/shared";
 import { createWebAuthnCredential, ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
 import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
 import { useConnectors, usePublicClient } from "@leftcurve/react";
-import { createKeyHash } from "@leftcurve/sdk";
+import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
 import { getNavigatorOS } from "@leftcurve/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
 
-import type { EIP1193Provider, Key } from "@leftcurve/types";
+import { AccountType, type Address, type EIP1193Provider, type Key } from "@leftcurve/types";
 
 export const ConnectStep: React.FC = () => {
   const { data } = useWizard<{ username: string }>();
@@ -70,9 +70,23 @@ export const ConnectStep: React.FC = () => {
 
       throw new Error("error: invalid connector");
     })();
-    // TODO: Fund the account in IBC-Transfer before registering the user
+
+    const factoryAddr = await client.getAppConfig<Address>({ key: "account_factory" });
+    const accountCodeHash = await client.getAccountTypeCodeHash({
+      accountType: AccountType.Spot,
+    });
+
+    const salt = createAccountSalt(username, 1, key);
+    const address = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
+
+    const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
+      method: "POST",
+      body: JSON.stringify({ address }),
+    });
+    if (!response.ok) throw new Error("error: failed to send funds");
+
     await client.registerUser({ key, keyHash, username });
-    push("/login");
+    push("/auth/login");
   };
 
   return (
