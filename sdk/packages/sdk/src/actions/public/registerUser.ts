@@ -57,14 +57,14 @@ export async function registerUser<
     },
   };
 
-  const { gasLimit } = await simulate(client, {
+  const { gasUsed } = await simulate(client, {
     simulate: { sender: factoryAddr, msgs: [executeMsg], data: null },
   });
 
   const tx = {
     sender: factoryAddr,
     msgs: [executeMsg],
-    gasLimit,
+    gasLimit: gasUsed,
     data: null,
     credential: null,
   };
