@@ -10,6 +10,8 @@ use {
     },
 };
 
+// something = something.checked_add
+
 /// A sorted list of coins or tokens.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Clone, PartialEq, Eq,
@@ -176,7 +178,7 @@ impl Coins {
             return Ok(());
         };
 
-        *amount = amount.checked_add(coin.amount)?;
+        amount.checked_add_assign(coin.amount)?;
 
         Ok(())
     }
@@ -187,7 +189,7 @@ impl Coins {
             return Err(StdError::DenomNotFound { denom: coin.denom });
         };
 
-        *amount = amount.checked_sub(coin.amount)?;
+        amount.checked_sub_assign(coin.amount)?;
 
         if amount.is_zero() {
             self.0.remove(&coin.denom);

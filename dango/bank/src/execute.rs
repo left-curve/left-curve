@@ -19,7 +19,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
             match supplies.get_mut(&coin.denom) {
                 Some(supply) => {
-                    *supply = supply.checked_add(coin.amount)?;
+                    supply.checked_add_assign(coin.amount)?;
                 },
                 None => {
                     supplies.insert(coin.denom, coin.amount);

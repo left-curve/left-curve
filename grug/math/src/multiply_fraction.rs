@@ -1,7 +1,7 @@
 use crate::{Dec, Fraction, Int, IsZero, MathError, MathResult, MultiplyRatio, NumberConst};
 
 /// Describes operations between a number and a decimal type.
-pub trait MultiplyFraction<F, U>: Sized
+pub trait MultiplyFraction<F, U>: Sized + Copy
 where
     F: Fraction<U>,
 {
@@ -16,6 +16,42 @@ where
     fn checked_div_dec_floor(self, rhs: F) -> MathResult<Self>;
 
     fn checked_div_dec_ceil(self, rhs: F) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_mul_dec_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_mul_dec(rhs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_mul_dec_floor_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_mul_dec_floor(rhs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_mul_dec_ceil_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_mul_dec_ceil(rhs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_div_dec_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_div_dec(rhs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_div_dec_floor_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_div_dec_floor(rhs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_div_dec_ceil_assign(&mut self, rhs: F) -> MathResult<()> {
+        *self = self.checked_div_dec_ceil(rhs)?;
+        Ok(())
+    }
 }
 
 impl<U> MultiplyFraction<Dec<U>, U> for Int<U>

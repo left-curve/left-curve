@@ -8,7 +8,7 @@ use {
 };
 
 /// Describes basic operations that all math types must implement.
-pub trait Number: Sized {
+pub trait Number: Sized + Copy {
     fn checked_add(self, other: Self) -> MathResult<Self>;
 
     fn checked_sub(self, other: Self) -> MathResult<Self>;
@@ -19,9 +19,51 @@ pub trait Number: Sized {
 
     fn checked_rem(self, other: Self) -> MathResult<Self>;
 
-    fn checked_pow(self, other: u32) -> MathResult<Self>;
+    fn checked_pow(self, exponent: u32) -> MathResult<Self>;
 
     fn checked_sqrt(self) -> MathResult<Self>;
+
+    #[inline]
+    fn checked_add_assign(&mut self, other: Self) -> MathResult<()> {
+        *self = self.checked_add(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_sub_assign(&mut self, other: Self) -> MathResult<()> {
+        *self = self.checked_sub(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_mul_assign(&mut self, other: Self) -> MathResult<()> {
+        *self = self.checked_mul(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_div_assign(&mut self, other: Self) -> MathResult<()> {
+        *self = self.checked_div(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_rem_assign(&mut self, other: Self) -> MathResult<()> {
+        *self = self.checked_rem(other)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_pow_assign(&mut self, exp: u32) -> MathResult<()> {
+        *self = self.checked_pow(exp)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn checked_sqrt_assign(&mut self) -> MathResult<()> {
+        *self = self.checked_sqrt()?;
+        Ok(())
+    }
 
     fn saturating_add(self, other: Self) -> Self;
 
@@ -58,8 +100,8 @@ where
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(self, other: u32) -> MathResult<Self> {
-        self.0.checked_pow(other).map(Self)
+    fn checked_pow(self, exp: u32) -> MathResult<Self> {
+        self.0.checked_pow(exp).map(Self)
     }
 
     fn checked_sqrt(self) -> MathResult<Self> {
@@ -231,9 +273,9 @@ macro_rules! impl_number {
                     .ok_or_else(|| MathError::division_by_zero(self))
             }
 
-            fn checked_pow(self, other: u32) -> MathResult<Self> {
-                self.checked_pow(other)
-                    .ok_or_else(|| MathError::overflow_pow(self, other))
+            fn checked_pow(self, exp: u32) -> MathResult<Self> {
+                self.checked_pow(exp)
+                    .ok_or_else(|| MathError::overflow_pow(self, exp))
             }
 
             /// Compute a _positive_ integer's _floored_ square root using the
