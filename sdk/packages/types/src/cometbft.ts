@@ -34,7 +34,7 @@ export type CometBftRpcSchema = [
   {
     Method: "block";
     Parameters: {
-      readonly height?: number;
+      readonly height?: string;
     };
     ReturnType: {
       readonly blockId: BlockId;

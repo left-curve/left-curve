@@ -1,6 +1,6 @@
 import type { Address } from "./address";
 import type { Coins, Funds } from "./coin";
-import type { Duration } from "./common";
+import type { Duration, Permission } from "./common";
 import type { Credential, Metadata } from "./credential";
 import type { Base64, Hex, Json } from "./encoding";
 
@@ -62,31 +62,12 @@ export type MsgMigrate = {
 };
 
 export type ConfigUpdate = {
-  owner?: Hex;
-  bank?: Hex;
-  taxman?: Hex;
+  owner?: Address;
+  bank?: Address;
+  taxman?: Address;
   cronjobs?: Record<Address, Duration>;
   permissions?: {
     upload: Permission;
     instantiate: Permission;
   };
 };
-
-/**
- * Only the owner can perform the action. Note, the owner is always able to
- * upload code or instantiate contracts.
- */
-export type NobodyPermission = "nobody";
-/**
- * Any account is allowed to perform the action
- */
-export type EverybodyPermission = "everybody";
-/**
- * Some whitelisted accounts or the owner can perform the action.
- */
-export type SomebodiesPermission = { somebodies: Address[] };
-
-/**
- * Permissions for uploading code or instantiating contracts.
- */
-export type Permission = NobodyPermission | EverybodyPermission | SomebodiesPermission;

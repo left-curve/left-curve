@@ -1,5 +1,6 @@
 import type { Address } from "./address";
 import type { Coin, Coins } from "./coin";
+import type { Duration, Permission } from "./common";
 import type { Metadata } from "./credential";
 import type { Hex, Json } from "./encoding";
 import type { Message } from "./tx";
@@ -15,9 +16,15 @@ export type ContractInfo = {
   admin?: Address;
 };
 
-export type ChainConfig = {
-  owner?: string;
-  bank: string;
+export type ChainConfigResponse = {
+  owner: string;
+  bank: Address;
+  taxman: Address;
+  cronjobs: Record<Address, Duration>;
+  permissions: {
+    upload: Permission;
+    instantiate: Permission;
+  };
 };
 
 export type SimulateRequest = {
@@ -32,7 +39,7 @@ export type SimulateResponse = {
 };
 
 export type QueryRequest =
-  | { info: QueryInfoRequest }
+  | { config: QueryConfigRequest }
   | { appConfig: QueryAppConfigRequest }
   | { appConfigs: QueryAppConfigsRequest }
   | { balance: QueryBalanceRequest }
@@ -46,9 +53,7 @@ export type QueryRequest =
   | { wasmRaw: QueryWasmRawRequest }
   | { wasmSmart: QueryWasmSmartRequest };
 
-// The info request is just an empty object (`{}`), but we can't define it that
-// way, because of: https://typescript-eslint.io/rules/ban-types/#:~:text=Avoid%20the%20Object%20and%20%7B%7D%20types
-export type QueryInfoRequest = Record<string, never>;
+export type QueryConfigRequest = Record<string, never>;
 
 export type QueryAppConfigRequest = {
   key: string;
@@ -108,7 +113,7 @@ export type QueryContractRequest = {
 };
 
 export type QueryResponse =
-  | { info: InfoResponse }
+  | { config: ChainConfigResponse }
   | { balance: Coin }
   | { appConfig: AppConfigResponse }
   | { appConfigs: AppConfigsResponse }
@@ -122,9 +127,9 @@ export type QueryResponse =
   | { wasmRaw: WasmRawResponse }
   | { wasmSmart: WasmSmartResponse };
 
-export type InfoResponse = {
+export type ChainInfoResponse = {
   chainId: string;
-  config: ChainConfig;
+  config: ChainConfigResponse;
   lastFinalizedBlock: BlockInfo;
 };
 
