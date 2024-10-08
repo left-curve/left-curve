@@ -23,7 +23,7 @@
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
     "example:node": "pnpm -F example-nodejs",
-    "config": "pnpm -F config",
+    "base": "pnpm -F config",
     "kit": "pnpm -F connect-kit",
     "crypto": "pnpm -F crypto",
     "encoding": "pnpm -F encoding",
