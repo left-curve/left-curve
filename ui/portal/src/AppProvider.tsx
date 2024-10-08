@@ -1,18 +1,20 @@
 import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
-import { localhost } from "@leftcurve/connect-kit/chains";
+import { devnet } from "@leftcurve/connect-kit/chains";
 import { GrunnectProvider } from "@leftcurve/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import "@leftcurve/types/window";
 
+const dango = devnet;
+
 export const config = createConfig({
-  chains: [localhost],
+  chains: [dango],
   transports: {
-    [localhost.id]: http("http://localhost:26657"),
+    [dango.id]: http(dango.rpcUrls.default.http.at(0)),
   },
   coins: {
-    [localhost.id]: {
+    [dango.id]: {
       uusdc: {
         type: "native",
         name: "USD Circle",
