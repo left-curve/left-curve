@@ -5,7 +5,7 @@ use {
     },
     grug::{
         Addr, Addressable, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt, MaybeDefined,
-        Message, Signer, StdResult, TryIntoLenghted, Tx, Undefined,
+        Message, Signer, StdResult, TryIntoLengthed, Tx, Undefined,
     },
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
@@ -41,7 +41,7 @@ impl TestAccount<Undefined<Addr>> {
             .to_encoded_point(true)
             .to_bytes()
             .to_vec()
-            .try_into_lenghted()?;
+            .try_into_lengthed()?;
 
         let username = Username::from_str(username)?;
         let key = Key::Secp256k1(pk.clone());
@@ -127,7 +127,7 @@ where
             sequence,
         };
 
-        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into_lenghted()?);
+        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into_lengthed()?);
 
         Ok((data, credential))
     }

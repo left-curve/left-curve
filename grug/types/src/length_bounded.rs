@@ -37,11 +37,11 @@ where
         // }
 
         if length < MIN {
-            return Err(StdError::lenght_out_of_bound(value, length, "<", MIN));
+            return Err(StdError::length_out_of_bound(value, length, "<", MIN));
         }
 
         if length > MAX {
-            return Err(StdError::lenght_out_of_bound(value, length, ">", MAX));
+            return Err(StdError::length_out_of_bound(value, length, ">", MAX));
         }
 
         Ok(Self(value))
@@ -188,19 +188,19 @@ impl<K> LengthBounds for BTreeSet<K> {
 /// Conversion trait for types that can be converted into a `LengthBounded` type.
 /// Is not possible to implement `From/Into` trait for generics because of
 /// core conflicting implementations.
-pub trait TryIntoLenghted<T, const MIN: usize, const MAX: usize>
+pub trait TryIntoLengthed<T, const MIN: usize, const MAX: usize>
 where
     T: LengthBounds,
 {
-    fn try_into_lenghted(self) -> StdResult<LengthBounded<T, MIN, MAX>>;
+    fn try_into_lengthed(self) -> StdResult<LengthBounded<T, MIN, MAX>>;
 }
 
-impl<T, U, const MIN: usize, const MAX: usize> TryIntoLenghted<T, MIN, MAX> for U
+impl<T, U, const MIN: usize, const MAX: usize> TryIntoLengthed<T, MIN, MAX> for U
 where
     T: LengthBounds + ToString,
     U: Into<T>,
 {
-    fn try_into_lenghted(self) -> StdResult<LengthBounded<T, MIN, MAX>> {
+    fn try_into_lengthed(self) -> StdResult<LengthBounded<T, MIN, MAX>> {
         LengthBounded::new(self.into())
     }
 }

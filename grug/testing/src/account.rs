@@ -2,7 +2,7 @@ use {
     grug_crypto::{sha2_256, Identity256},
     grug_mock_account::{Credential, PublicKey},
     grug_types::{
-        Addr, Addressable, Hash256, Json, JsonSerExt, Message, Signer, StdResult, TryIntoLenghted,
+        Addr, Addressable, Hash256, Json, JsonSerExt, Message, Signer, StdResult, TryIntoLengthed,
         Tx, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
@@ -32,7 +32,7 @@ impl TestAccount {
             .to_encoded_point(true)
             .to_bytes()
             .to_vec()
-            .try_into_lenghted()
+            .try_into_lengthed()
             .expect("pk is of wrong length");
 
         Self {
@@ -63,7 +63,7 @@ impl TestAccount {
         let signature: Signature = self.sk.sign_digest(sign_bytes);
 
         let credential = Credential {
-            signature: signature.to_vec().try_into_lenghted()?,
+            signature: signature.to_vec().try_into_lengthed()?,
             sequence,
         }
         .to_json_value()?;
