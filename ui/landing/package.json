@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "sleep 3 && next dev",
+    "dev": "wait-on . -d 3000 && next dev",
     "build:cf": "pnpx @cloudflare/next-on-pages",
     "build": "next build",
     "start": "next start"
@@ -13,9 +13,9 @@
     "@leftcurve/connect-kit": "workspace:^",
     "@leftcurve/crypto": "workspace:^",
     "@leftcurve/encoding": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
     "@leftcurve/react": "workspace:^",
+    "@leftcurve/sdk": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
     "@tanstack/react-query": "^5.56.2",
     "framer-motion": "^11.3.21",
     "next": "14.2.5",
@@ -31,6 +31,7 @@
     "@types/react-dom": "^18",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.1"
   }
 }
