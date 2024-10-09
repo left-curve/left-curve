@@ -36,12 +36,7 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: btree_map! {
-                    "uusdc" => 100_000_000_000_000,
-                    "uatom" => 100_000_000_000_000,
-                    "uosmo" => 100_000_000_000_000,
-                }
-                .try_into()?,
+                balances: Coins::one("uusdc", 100_000_000_000)?,
             },
             fee_recipient.username.clone() => GenesisUser {
                 key: fee_recipient.key,

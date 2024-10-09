@@ -38,14 +38,14 @@ fn sends(c: &mut Criterion) {
 
                 // Deploy 200 accounts.
                 // The first 100 will be senders; the second 100 will be receivers.
-                // For convenience, all accounts are owned by the owner.
+                // For convenience, all accounts are owned by the relayer.
                 let msgs = (0..200)
                     .map(|i| {
                         Message::execute(
                             contracts.account_factory,
                             &account_factory::ExecuteMsg::RegisterAccount {
                                 params: AccountParams::Spot(single::Params {
-                                    owner: accounts.owner.username.clone(),
+                                    owner: accounts.relayer.username.clone(),
                                 }),
                             },
                             if i < 100 {
@@ -60,7 +60,7 @@ fn sends(c: &mut Criterion) {
 
                 // In experience, this costs ~34M gas.
                 suite
-                    .send_messages_with_gas(&mut accounts.owner, 50_000_000, msgs)
+                    .send_messages_with_gas(&mut accounts.relayer, 50_000_000, msgs)
                     .unwrap()
                     .result
                     .should_succeed();
@@ -137,7 +137,7 @@ fn swaps(c: &mut Criterion) {
                 // Create an ATOM-USDC pool.
                 suite
                     .execute_with_gas(
-                        &mut accounts.owner,
+                        &mut accounts.relayer,
                         5_000_000,
                         contracts.amm,
                         &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
@@ -155,7 +155,7 @@ fn swaps(c: &mut Criterion) {
                 let txs = (0..100)
                     .map(|_| {
                         accounts
-                            .owner
+                            .relayer
                             .sign_transaction(
                                 vec![Message::execute(
                                     contracts.amm,
