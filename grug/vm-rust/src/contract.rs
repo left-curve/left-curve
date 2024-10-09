@@ -7,9 +7,9 @@ use {
     elsa::sync::FrozenVec,
     grug_types::{
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, Api, AuthCtx,
-        AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, Context, Empty, GenericResult,
-        ImmutableCtx, Json, JsonDeExt, MutableCtx, Querier, QuerierWrapper, Response, StdError,
-        Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, BorshDeExt, Context, Empty,
+        GenericResult, ImmutableCtx, Json, JsonDeExt, MutableCtx, Querier, QuerierWrapper,
+        Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -484,7 +484,7 @@ where
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = msg.deserialize_json()?;
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = (self.instantiate_fn)(mutable_ctx, msg);
 
         Ok(res.into())
@@ -503,7 +503,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = msg.deserialize_json()?;
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = execute_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -522,7 +522,7 @@ where
         };
 
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
-        let msg = msg.deserialize_json()?;
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = migrate_fn(mutable_ctx, msg);
 
         Ok(res.into())
@@ -559,7 +559,7 @@ where
         };
 
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
-        let msg = msg.deserialize_json()?;
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = reply_fn(sudo_ctx, msg, result);
 
         Ok(res.into())
@@ -578,7 +578,7 @@ where
         };
 
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
-        let msg = msg.deserialize_json()?;
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = query_fn(immutable_ctx, msg);
 
         Ok(res.into())

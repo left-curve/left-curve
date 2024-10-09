@@ -1,5 +1,5 @@
 use {
-    grug_storage::{Item, Map, Serde, Set},
+    grug_storage::{Item, Map, Set},
     grug_types::{Addr, Binary, BlockInfo, Config, ContractInfo, Hash256, Json, Timestamp},
 };
 
@@ -10,10 +10,7 @@ pub const CHAIN_ID: Item<String> = Item::new("chain_id");
 pub const CONFIG: Item<Config> = Item::new("config");
 
 /// Application-specific configurations.
-///
-/// Note: This uses the JSON encoding, because `serde_json::Value` doesn't have
-/// borsh traits derived.
-pub const APP_CONFIGS: Map<&str, Json, Serde> = Map::new("app_config");
+pub const APP_CONFIGS: Map<&str, Json> = Map::new("app_config");
 
 /// The most recently finalized block
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");

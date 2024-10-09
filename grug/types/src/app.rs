@@ -69,7 +69,9 @@ pub struct Config {
 /// A field being `Some` means it is to be updated to be the given value;
 /// it being `None` means it is not to be updated.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigUpdates {
     pub owner: Option<Addr>,
@@ -121,7 +123,7 @@ pub struct ContractInfo {
 /// Outcome of processing a message or a cronjob.
 ///
 /// Includes the events emitted, and gas consumption.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Outcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
@@ -144,7 +146,7 @@ pub struct Outcome {
 /// the sender account) and authentication (e.g. incrementing the sender account's
 /// sequence number) will be committed, and relevant events emitted to reflect
 /// this. However, state changes and events from the messages are discarded.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct TxOutcome {
     pub gas_limit: u64,

@@ -4,7 +4,8 @@ use {
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
-        Addr, BlockInfo, Context, Empty, GenericResult, Hash, JsonSerExt, MockStorage, Timestamp,
+        Addr, BlockInfo, BorshSerExt, Context, GenericResult, Hash, JsonSerExt, MockStorage,
+        Timestamp,
     },
     grug_vm_wasm::WasmVm,
     std::time::Duration,
@@ -78,10 +79,14 @@ fn looping(c: &mut Criterion) {
                         let msg = QueryMsg::Loop {
                             iterations: *iterations,
                         }
-                        .to_json_vec()
+                        .to_json_value()
+                        .unwrap()
+                        .to_borsh_vec()
                         .unwrap();
 
-                        let ok = GenericResult::Ok(Empty {}).to_json_vec().unwrap();
+                        let ok = GenericResult::Ok(().to_json_value().unwrap())
+                            .to_borsh_vec()
+                            .unwrap();
 
                         (instance, ctx, msg, ok, gas_tracker)
                     },
@@ -111,10 +116,10 @@ fn looping(c: &mut Criterion) {
     }
 }
 
-criterion_group!(
+criterion_group! {
     name = wasmer_metering;
     config = Criterion::default().measurement_time(Duration::from_secs(40)).sample_size(200);
     targets = looping
-);
+}
 
 criterion_main!(wasmer_metering);

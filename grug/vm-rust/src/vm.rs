@@ -1,7 +1,7 @@
 use {
     crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{Context, Hash256, JsonDeExt, JsonSerExt, MockApi},
+    grug_types::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi},
 };
 
 /// Names of export functions supported by Grug.
@@ -76,7 +76,7 @@ impl Instance for RustInstance {
             "receive" => {
                 let res =
                     contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "cron_execute" => {
                 let res = contract.cron_execute(
@@ -85,7 +85,7 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 0));
@@ -116,7 +116,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "execute" => {
                 let res = contract.execute(
@@ -126,7 +126,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "migrate" => {
                 let res = contract.migrate(
@@ -136,7 +136,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "query" => {
                 let res = contract.query(
@@ -146,10 +146,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     param.as_ref(),
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "authenticate" => {
-                let tx = param.deserialize_json()?;
+                let tx = param.deserialize_borsh()?;
                 let res = contract.authenticate(
                     ctx.clone(),
                     &mut self.storage,
@@ -157,10 +157,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "backrun" => {
-                let tx = param.deserialize_json()?;
+                let tx = param.deserialize_borsh()?;
                 let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
@@ -168,10 +168,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "bank_execute" => {
-                let msg = param.deserialize_json()?;
+                let msg = param.deserialize_borsh()?;
                 let res = contract.bank_execute(
                     ctx.clone(),
                     &mut self.storage,
@@ -179,10 +179,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "bank_query" => {
-                let msg = param.deserialize_json()?;
+                let msg = param.deserialize_borsh()?;
                 let res = contract.bank_query(
                     ctx.clone(),
                     &self.storage,
@@ -190,10 +190,10 @@ impl Instance for RustInstance {
                     &self.querier,
                     msg,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "withhold_fee" => {
-                let tx = param.deserialize_json()?;
+                let tx = param.deserialize_borsh()?;
                 let res = contract.withhold_fee(
                     ctx.clone(),
                     &mut self.storage,
@@ -201,7 +201,7 @@ impl Instance for RustInstance {
                     &self.querier,
                     tx,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 1));
@@ -227,7 +227,7 @@ impl Instance for RustInstance {
         let contract = get_contract_impl(self.wrapper)?;
         match name {
             "reply" => {
-                let result = param2.deserialize_json()?;
+                let result = param2.deserialize_borsh()?;
                 let res = contract.reply(
                     ctx.clone(),
                     &mut self.storage,
@@ -236,11 +236,11 @@ impl Instance for RustInstance {
                     param1.as_ref(),
                     result,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             "finalize_fee" => {
-                let tx = param1.deserialize_json()?;
-                let outcome = param2.deserialize_json()?;
+                let tx = param1.deserialize_borsh()?;
+                let outcome = param2.deserialize_borsh()?;
                 let res = contract.finalize_fee(
                     ctx.clone(),
                     &mut self.storage,
@@ -249,7 +249,7 @@ impl Instance for RustInstance {
                     tx,
                     outcome,
                 )?;
-                res.to_json_vec()
+                res.to_borsh_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 2));
@@ -270,8 +270,8 @@ mod tests {
         crate::{ContractBuilder, RustVm},
         grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
-            Addr, Binary, BlockInfo, Coins, Context, Hash, JsonSerExt, MockStorage, Storage,
-            Timestamp,
+            Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
+            Storage, Timestamp,
         },
         test_case::test_case,
     };
@@ -358,7 +358,11 @@ mod tests {
             v: "engineer".to_string(),
         };
 
-        let result = instance.call_in_1_out_1(name, &ctx, &msg.to_json_vec().unwrap());
+        let result = instance.call_in_1_out_1(
+            name,
+            &ctx,
+            &msg.to_json_value().unwrap().to_borsh_vec().unwrap(),
+        );
 
         match maybe_error {
             // We expect the call to succeed. Check that the data is correctly

@@ -1,5 +1,6 @@
 use {
     crate::{Addr, Coin, Coins, Denom},
+    borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -7,7 +8,7 @@ use {
 
 /// The execute message that the host provides the bank contract during the
 /// `bank_execute` function call.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BankMsg {
     pub from: Addr,
     pub to: Addr,
@@ -17,7 +18,7 @@ pub struct BankMsg {
 /// The query message that the host provides the bank contract during the
 /// `bank_query` function call.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BankQuery {
     Balance {
@@ -48,7 +49,7 @@ pub enum BankQuery {
 ///
 /// This said, we don't consider this a security vulnerability, because bank is
 /// a _privileged contract_ that must be approved by governance.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BankQueryResponse {
     Balance(Coin),

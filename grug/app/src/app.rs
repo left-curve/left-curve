@@ -1,5 +1,5 @@
 #[cfg(feature = "abci")]
-use grug_types::JsonDeExt;
+use grug_types::{JsonDeExt, JsonSerExt};
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -11,9 +11,9 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash256, Json,
-        JsonSerExt, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult, Storage,
-        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenesisState,
+        Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult,
+        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -382,7 +382,7 @@ where
         };
 
         let proof = if prove {
-            Some(self.db.prove(key, version)?.to_json_vec()?)
+            Some(self.db.prove(key, version)?.to_borsh_vec()?)
         } else {
             None
         };
@@ -435,6 +435,9 @@ where
     }
 }
 
+// These methods use JSON encoding, unlike everywhere else in the app which uses
+// Borsh encoding. This is because these are the methods that clients interact
+// with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
 impl<DB, VM> App<DB, VM>
 where

@@ -53,8 +53,13 @@ base64             = "0.22" # TODO: used in dango-auth; replace with data-encodi
 bip32              = "0.5"
 blake2             = "0.10"
 blake3             = "1"
-bnum               = "0.12"
-borsh              = "1"
+# Our fork of bnum uses our fork of borsh.
+bnum               = { git = "https://github.com/left-curve/bnum", rev = "2d3a7c4" }
+# Our fork of bnum adds support for `serde_json::Value`.
+# Make sure to enable the `json` feature.
+# TODO: switch to official release once our PR is merged and released.
+# https://github.com/near/borsh-rs/pull/312
+borsh              = { git = "https://github.com/left-curve/borsh-rs", rev = "21df6d0", features = ["json"] }
 chrono             = "0.4"
 clap               = "4"
 clru               = "0.6"
@@ -84,7 +89,6 @@ ripemd             = "0.1"
 # Use the latest `master` branch of rust-rocksdb, which includes support for
 # the user-defined timestamp feature:
 # https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-#
 # TODO: Update to v0.23.0 once released.
 rocksdb            = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "1710120" }
 serde              = "1"
