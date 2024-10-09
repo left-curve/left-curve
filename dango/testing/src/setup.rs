@@ -1,12 +1,90 @@
 use {
     crate::{Accounts, TestAccount},
-    dango_genesis::{build_genesis, Codes, Contracts, GenesisUser},
+    dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration, NumberConst,
-        TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
+        NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT,
     },
+    grug_app::{AppError, Db, Vm},
+    grug_db_disk::{DiskDb, TempDataDir},
+    grug_db_memory::MemDb,
+    grug_vm_rust::RustVm,
+    grug_vm_wasm::WasmVm,
+    std::{env, path::PathBuf},
 };
 
+/// Set up a test with the given DB, VM, and codes.
+fn setup_suite_with_db_and_vm<DB, VM, T>(
+    db: DB,
+    vm: VM,
+    codes: Codes<T>,
+) -> anyhow::Result<(TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)>
+where
+    T: Clone + Into<Binary>,
+    DB: Db,
+    VM: Vm + Clone,
+    AppError: From<DB::Error> + From<VM::Error>,
+{
+    let owner = TestAccount::new_random("owner")?;
+    let fee_recipient = TestAccount::new_random("fee_recipient")?;
+    let relayer = TestAccount::new_random("relayer")?;
+
+    let (genesis_state, contracts, addresses) = build_genesis(
+        codes.clone(),
+        btree_map! {
+            owner.username.clone() => GenesisUser {
+                key: owner.key,
+                key_hash: owner.key_hash,
+                balances: Coins::one("uusdc", 100_000_000_000)?,
+            },
+            fee_recipient.username.clone() => GenesisUser {
+                key: fee_recipient.key,
+                key_hash: fee_recipient.key_hash,
+                balances: Coins::new(),
+            },
+            relayer.username.clone() => GenesisUser {
+                key: relayer.key,
+                key_hash: relayer.key_hash,
+                balances: btree_map! {
+                    "uusdc" => 100_000_000_000_000,
+                    "uatom" => 100_000_000_000_000,
+                    "uosmo" => 100_000_000_000_000,
+                }
+                .try_into()?,
+            },
+        },
+        &owner.username,
+        &fee_recipient.username,
+        "uusdc",
+        Udec128::ZERO,
+        Uint128::new(10_000_000),
+    )?;
+
+    let suite = TestSuite::new_with_db_and_vm(
+        db,
+        vm,
+        "dev-1".to_string(),
+        Duration::from_millis(250),
+        1_000_000,
+        BlockInfo {
+            hash: GENESIS_BLOCK_HASH,
+            height: GENESIS_BLOCK_HEIGHT,
+            timestamp: Timestamp::from_seconds(0),
+        },
+        genesis_state,
+    )?;
+
+    let accounts = Accounts {
+        owner: owner.set_address(&addresses),
+        fee_recipient: fee_recipient.set_address(&addresses),
+        relayer: relayer.set_address(&addresses),
+    };
+
+    Ok((suite, accounts, codes, contracts))
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, and `ContractWrapper` codes.
 pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrapper>, Contracts)> {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
@@ -65,58 +143,26 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
         token_factory,
     };
 
-    let owner = TestAccount::new_random("owner")?;
-    let fee_recipient = TestAccount::new_random("fee_recipient")?;
-    let relayer = TestAccount::new_random("relayer")?;
+    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes)
+}
 
-    let (genesis_state, contracts, addresses) = build_genesis(
-        codes,
-        btree_map! {
-            owner.username.clone() => GenesisUser {
-                key: owner.key,
-                key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000)?,
-            },
-            fee_recipient.username.clone() => GenesisUser {
-                key: fee_recipient.key,
-                key_hash: fee_recipient.key_hash,
-                balances: Coins::new(),
-            },
-            relayer.username.clone() => GenesisUser {
-                key: relayer.key,
-                key_hash: relayer.key_hash,
-                balances: btree_map! {
-                    "uusdc" => 100_000_000_000_000,
-                    "uatom" => 100_000_000_000_000,
-                    "uosmo" => 100_000_000_000_000,
-                }
-                .try_into()?,
-            },
-        },
-        &owner.username,
-        &fee_recipient.username,
-        "uusdc",
-        Udec128::ZERO,
-        Uint128::new(10_000_000),
-    )?;
+/// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
+/// Used for benchmarks.
+pub fn setup_benchmark(
+    dir: &TempDataDir,
+    wasm_cache_size: usize,
+) -> anyhow::Result<(
+    TestSuite<DiskDb, WasmVm>,
+    Accounts,
+    Codes<Vec<u8>>,
+    Contracts,
+)> {
+    // TODO: create a `testdata` directory for the wasm files
+    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
+        .unwrap();
 
-    let suite = TestSuite::new(
-        "dev-1".to_string(),
-        Duration::from_millis(250),
-        1_000_000,
-        BlockInfo {
-            hash: GENESIS_BLOCK_HASH,
-            height: GENESIS_BLOCK_HEIGHT,
-            timestamp: Timestamp::from_seconds(0),
-        },
-        genesis_state,
-    )?;
+    let db = DiskDb::open(dir)?;
+    let vm = WasmVm::new(wasm_cache_size);
 
-    let accounts = Accounts {
-        owner: owner.set_address(&addresses),
-        fee_recipient: fee_recipient.set_address(&addresses),
-        relayer: relayer.set_address(&addresses),
-    };
-
-    Ok((suite, accounts, codes, contracts))
+    setup_suite_with_db_and_vm(db, vm, codes)
 }

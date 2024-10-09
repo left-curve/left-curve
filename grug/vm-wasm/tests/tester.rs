@@ -1,6 +1,7 @@
 use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
+    grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_tester::{
         QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
@@ -29,7 +30,7 @@ fn read_wasm_file(filename: &str) -> Binary {
     fs::read(path).unwrap().into()
 }
 
-fn setup_test() -> (TestSuite<WasmVm>, TestAccounts, Addr) {
+fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
         .unwrap()

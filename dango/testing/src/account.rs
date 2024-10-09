@@ -104,7 +104,7 @@ impl<T> TestAccount<T>
 where
     T: MaybeDefined<Inner = Addr>,
 {
-    fn sign_transaction_with_sequence(
+    pub fn sign_transaction_with_sequence(
         &self,
         msgs: Vec<Message>,
         chain_id: &str,

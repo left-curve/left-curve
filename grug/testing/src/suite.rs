@@ -1,6 +1,6 @@
 use {
     anyhow::ensure,
-    grug_app::{App, AppError, Vm},
+    grug_app::{App, AppError, Db, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -14,11 +14,12 @@ use {
     std::{collections::BTreeMap, error::Error, fmt::Debug},
 };
 
-pub struct TestSuite<VM = RustVm>
+pub struct TestSuite<DB = MemDb, VM = RustVm>
 where
+    DB: Db,
     VM: Vm,
 {
-    pub app: App<MemDb, VM>,
+    pub app: App<DB, VM>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -31,7 +32,7 @@ where
     default_gas_limit: u64,
 }
 
-impl TestSuite<RustVm> {
+impl TestSuite {
     /// Create a new test suite.
     ///
     /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
@@ -54,15 +55,12 @@ impl TestSuite<RustVm> {
     }
 }
 
-impl<VM> TestSuite<VM>
+impl<VM> TestSuite<MemDb, VM>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    /// Create a new test suite with a given VM.
-    ///
-    /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
-    /// instead.
+    /// Create a new test suite with `MemDb` and the given VM.
     pub fn new_with_vm(
         vm: VM,
         chain_id: String,
@@ -71,8 +69,36 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> anyhow::Result<Self> {
+        Self::new_with_db_and_vm(
+            MemDb::new(),
+            vm,
+            chain_id,
+            block_time,
+            default_gas_limit,
+            genesis_block,
+            genesis_state,
+        )
+    }
+}
+
+impl<DB, VM> TestSuite<DB, VM>
+where
+    DB: Db,
+    VM: Vm + Clone,
+    AppError: From<DB::Error> + From<VM::Error>,
+{
+    /// Create a new test suite with the given DB and VM.
+    pub fn new_with_db_and_vm(
+        db: DB,
+        vm: VM,
+        chain_id: String,
+        block_time: Duration,
+        default_gas_limit: u64,
+        genesis_block: BlockInfo,
+        genesis_state: GenesisState,
+    ) -> anyhow::Result<Self> {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(MemDb::new(), vm, u64::MAX);
+        let app = App::new(db, vm, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)?;
 

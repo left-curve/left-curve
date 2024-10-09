@@ -35,9 +35,10 @@ lint:
 fmt:
   cargo +nightly fmt --all
 
-# Update data used for wasmvm tests
+# Update wasm artifacts used in tests
 testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/ && \
+  cp -v artifacts/dango_*.wasm dango/testing/testdata
 
 # --------------------------------- Optimizer ----------------------------------
 
