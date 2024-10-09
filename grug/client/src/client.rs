@@ -3,9 +3,9 @@ use {
     anyhow::{bail, ensure},
     grug_jmt::Proof,
     grug_types::{
-        Addr, AsyncSigner, Binary, BorshDeExt, BorshSerExt, Coin, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Query, QueryResponse, StdError, Tx, TxOutcome, UnsignedTx,
+        Addr, AsyncSigner, Binary, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom,
+        GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query,
+        QueryResponse, StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -144,7 +144,7 @@ impl Client {
             ensure!(proof.ops.len() == 1);
             ensure!(proof.ops[0].field_type == type_name::<Proof>());
             ensure!(proof.ops[0].key == key);
-            Some(proof.ops[0].data.deserialize_borsh()?)
+            Some(proof.ops[0].data.deserialize_json()?)
         } else {
             ensure!(res.proof.is_none());
             None
@@ -162,10 +162,10 @@ impl Client {
         req: &Query,
         height: Option<u64>,
     ) -> anyhow::Result<QueryResponse> {
-        self.query("/app", req.to_borsh_vec()?.to_vec(), height, false)
+        self.query("/app", req.to_json_vec()?.to_vec(), height, false)
             .await?
             .value
-            .deserialize_borsh()
+            .deserialize_json()
             .map_err(Into::into)
     }
 
@@ -316,10 +316,10 @@ impl Client {
 
     /// Simulate the gas usage of a transaction.
     pub async fn simulate(&self, unsigned_tx: &UnsignedTx) -> anyhow::Result<TxOutcome> {
-        self.query("/simulate", unsigned_tx.to_borsh_vec()?, None, false)
+        self.query("/simulate", unsigned_tx.to_json_vec()?, None, false)
             .await?
             .value
-            .deserialize_borsh()
+            .deserialize_json()
             .map_err(Into::into)
     }
 
@@ -341,7 +341,7 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>> {
         if confirm_fn(&tx)? {
-            let tx_bytes = tx.to_borsh_vec()?;
+            let tx_bytes = tx.to_json_vec()?;
             Ok(Some(self.inner.broadcast_tx_sync(tx_bytes).await?))
         } else {
             Ok(None)

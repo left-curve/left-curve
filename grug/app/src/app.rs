@@ -1,5 +1,5 @@
 #[cfg(feature = "abci")]
-use grug_types::{BorshDeExt, JsonDeExt};
+use grug_types::{JsonDeExt, JsonSerExt};
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -435,6 +435,9 @@ where
     }
 }
 
+// These methods use JSON encoding, unlike everywhere else in the app which uses
+// Borsh encoding. This is because these are the methods that clients interact
+// with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
 impl<DB, VM> App<DB, VM>
 where
@@ -448,9 +451,6 @@ where
         block: BlockInfo,
         raw_genesis_state: &[u8],
     ) -> AppResult<Hash256> {
-        // Note: genesis state is the only input data that's serialized as JSON.
-        // Messages, transactions, unsigned transaction, events, queries, and
-        // query responses use Borsh.
         let genesis_state = raw_genesis_state.deserialize_json()?;
 
         self.do_init_chain(chain_id, block, genesis_state)
@@ -466,14 +466,14 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(|raw_tx| raw_tx.deserialize_borsh())
+            .map(|raw_tx| raw_tx.deserialize_json())
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
-        let tx = raw_tx.deserialize_borsh()?;
+        let tx = raw_tx.deserialize_json()?;
 
         self.do_check_tx(tx)
     }
@@ -484,17 +484,17 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
-        let tx = raw_unsigned_tx.deserialize_borsh()?;
+        let tx = raw_unsigned_tx.deserialize_json()?;
         let res = self.do_simulate(tx, height, prove)?;
 
-        Ok(res.to_borsh_vec()?)
+        Ok(res.to_json_vec()?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = raw_req.deserialize_borsh()?;
+        let req = raw_req.deserialize_json()?;
         let res = self.do_query_app(req, height, prove)?;
 
-        Ok(res.to_borsh_vec()?)
+        Ok(res.to_json_vec()?)
     }
 }
 
