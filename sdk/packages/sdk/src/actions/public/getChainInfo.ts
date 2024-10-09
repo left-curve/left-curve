@@ -1,11 +1,11 @@
-import type { Chain, Client, InfoResponse, Signer, Transport } from "@leftcurve/types";
+import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetChainInfoParameters = {
   height?: number;
 };
 
-export type GetChainInfoReturnType = Promise<InfoResponse>;
+export type GetChainInfoReturnType = Promise<ChainInfoResponse>;
 
 /**
  * Get the chain information.
@@ -21,12 +21,26 @@ export async function getChainInfo<
   parameters: GetChainInfoParameters = {},
 ): GetChainInfoReturnType {
   const { height = 0 } = parameters;
-  const query = {
-    info: {},
+
+  const [{ block }, response] = await Promise.all([
+    client.request({
+      method: "block",
+      params: {},
+    }),
+    queryApp(client, { query: { config: {} }, height }),
+  ]);
+
+  if (!("config" in response)) {
+    throw new Error(`expecting config response, got ${JSON.stringify(response)}`);
+  }
+
+  return {
+    chainId: block.header.chain_id,
+    config: response.config,
+    lastFinalizedBlock: {
+      hash: block.header.last_block_id.hash,
+      height: block.header.height,
+      timestamp: block.header.time,
+    },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
-
-  if ("info" in res) return res.info;
-
-  throw new Error(`expecting info response, got ${JSON.stringify(res)}`);
 }

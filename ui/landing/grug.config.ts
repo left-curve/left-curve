@@ -1,8 +1,8 @@
 import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
-import { localhost } from "@leftcurve/connect-kit/chains";
+import { devnet } from "@leftcurve/connect-kit/chains";
 import "@leftcurve/types/window";
 
-const dango = localhost;
+export const dango = devnet;
 
 export const config = createConfig({
   ssr: true,

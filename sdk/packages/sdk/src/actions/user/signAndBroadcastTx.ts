@@ -54,8 +54,8 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
 
   const data: Metadata = { keyHash, username, sequence };
 
-  const { gasLimit } = gas
-    ? { gasLimit: gas }
+  const { gasUsed } = gas
+    ? { gasUsed: gas }
     : await simulate(client, { simulate: { sender, msgs: messages, data } });
 
   const tx: Tx = {
@@ -63,7 +63,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     credential,
     data,
     msgs: messages,
-    gasLimit,
+    gasLimit: gasUsed,
   };
 
   return await broadcastTxSync(client, { tx });
