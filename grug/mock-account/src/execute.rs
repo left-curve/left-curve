@@ -115,7 +115,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // It may be a good idea to manually add these to your simulation result.
     if let AuthMode::Check | AuthMode::Finalize = ctx.mode {
         ctx.api
-            .secp256k1_verify(&hash, &credential.signature, &public_key)?;
+            .secp256k1_verify(&hash, credential.signature.as_ref(), public_key.as_ref())?;
     }
 
     Ok(AuthResponse::new()

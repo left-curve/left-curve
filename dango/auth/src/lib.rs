@@ -155,13 +155,16 @@ pub fn authenticate_tx(
                     ctx.api.sha2_256(&signed_data)
                 };
 
-                ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
+                ctx.api
+                    .secp256r1_verify(&signed_hash, cred.sig.as_ref(), pk.as_ref())?;
             },
             (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
-                ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
+                ctx.api
+                    .secp256k1_verify(&sign_bytes, sig.as_ref(), pk.as_ref())?;
             },
             (Key::Ed25519(pk), Credential::Ed25519(sig)) => {
-                ctx.api.ed25519_verify(&sign_bytes, &sig, &pk)?;
+                ctx.api
+                    .ed25519_verify(&sign_bytes, sig.as_ref(), pk.as_ref())?;
             },
             _ => bail!("key and credential types don't match!"),
         },

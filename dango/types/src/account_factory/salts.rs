@@ -57,15 +57,15 @@ impl<'a> NewUserSalt<'a> {
         match self.key {
             Key::Secp256r1(pk) => {
                 bytes.push(0);
-                bytes.extend_from_slice(&pk);
+                bytes.extend_from_slice(pk.as_ref());
             },
             Key::Secp256k1(pk) => {
                 bytes.push(1);
-                bytes.extend_from_slice(&pk);
+                bytes.extend_from_slice(pk.as_ref());
             },
             Key::Ed25519(pk) => {
                 bytes.push(2);
-                bytes.extend_from_slice(&pk);
+                bytes.extend_from_slice(pk.as_ref());
             },
         }
         bytes

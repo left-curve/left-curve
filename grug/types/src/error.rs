@@ -58,6 +58,12 @@ pub enum StdError {
     #[error("invalid payment: expecting {expect} coins, found {actual}")]
     InvalidPayment { expect: usize, actual: usize },
 
+    #[error("invalid conversion: cannot convert from {from} to {to}")]
+    InvalidConversion {
+        from: &'static str,
+        to: &'static str,
+    },
+
     #[error("cannot find denom `{denom}` in coins")]
     DenomNotFound { denom: Denom },
 
@@ -131,6 +137,13 @@ impl StdError {
 
     pub fn invalid_payment(expect: usize, actual: usize) -> Self {
         Self::InvalidPayment { expect, actual }
+    }
+
+    pub fn invalid_conversion<F, T>() -> Self {
+        Self::InvalidConversion {
+            from: type_name::<F>(),
+            to: type_name::<T>(),
+        }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {
