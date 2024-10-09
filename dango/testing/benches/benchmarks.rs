@@ -15,6 +15,14 @@ use {
     std::time::Duration,
 };
 
+fn random_string(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
+
 /// Measure how many token transfers can be processed in a second.
 ///
 /// We do this by making a single block that contains 100 transactions, each tx
@@ -24,12 +32,7 @@ fn sends(c: &mut Criterion) {
         b.iter_batched(
             || {
                 // Create a random folder for this iteration.
-                let random_string = rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(7)
-                    .map(char::from)
-                    .collect::<String>();
-                let dir = TempDataDir::new(&format!("__dango_benchmark_sends_{random_string}"));
+                let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
                 let (mut suite, mut accounts, codes, contracts) =
                     setup_benchmark(&dir, 100).unwrap();
 
@@ -119,17 +122,16 @@ fn sends(c: &mut Criterion) {
     });
 }
 
+/// Measure how many AMM swaps can be processed in a second.
+///
+/// We do this by making a single block that contains 100 transactions, each tx
+/// containing one swap in the XYK AMM pool.
 fn swaps(c: &mut Criterion) {
     c.bench_function("swap", |b| {
         b.iter_batched(
             || {
                 // Create a random folder for this iteration.
-                let random_string = rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(7)
-                    .map(char::from)
-                    .collect::<String>();
-                let dir = TempDataDir::new(&format!("__dango_benchmark_swaps_{random_string}"));
+                let dir = TempDataDir::new(&format!("__dango_bench_swaps_{}", random_string(8)));
                 let (mut suite, mut accounts, _, contracts) = setup_benchmark(&dir, 100).unwrap();
 
                 // Create an ATOM-USDC pool.
