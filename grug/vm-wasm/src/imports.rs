@@ -1,7 +1,7 @@
 use {
     crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
     grug_app::GAS_COSTS,
-    grug_types::{decode_sections, Addr, JsonDeExt, JsonSerExt, Query, Record, Storage},
+    grug_types::{decode_sections, Addr, BorshDeExt, BorshSerExt, Query, Record, Storage},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -227,13 +227,13 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let (env, mut store) = fe.data_and_store_mut();
 
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
-    let req: Query = req_bytes.deserialize_json()?;
+    let req: Query = req_bytes.deserialize_borsh()?;
 
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
     let res = env.querier.do_query_chain(req, env.query_depth + 1); // important: increase query depth
-    let res_bytes = res.to_json_vec()?;
+    let res_bytes = res.to_borsh_vec()?;
 
     write_to_memory(env, &mut store, &res_bytes)
 }
@@ -417,8 +417,8 @@ mod tests {
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS},
         grug_crypto::{Identity256, Identity512},
         grug_types::{
-            encode_sections, json, Addr, BlockInfo, GenericResult, Hash256, JsonDeExt, JsonSerExt,
-            MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
+            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
+            Hash256, MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
@@ -899,12 +899,12 @@ mod tests {
             )
             .unwrap();
 
-        let ptr_key = suite.write(&request.to_json_vec().unwrap()).unwrap();
+        let ptr_key = suite.write(&request.to_borsh_vec().unwrap()).unwrap();
 
         let ptr_result = crate::query_chain(suite.fe_mut(), ptr_key).unwrap();
 
         let result: GenericResult<QueryResponse> =
-            suite.read(ptr_result).unwrap().deserialize_json().unwrap();
+            suite.read(ptr_result).unwrap().deserialize_borsh().unwrap();
 
         assert_eq!(result, value);
     }

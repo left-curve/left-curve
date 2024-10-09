@@ -2,12 +2,13 @@ use {
     crate::{
         Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, StdError, StdResult,
     },
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
@@ -19,7 +20,7 @@ pub struct Tx {
 /// A transaction but without a gas limit or credential.
 ///
 /// This is for using in gas simulation.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: Vec<Message>,
@@ -27,7 +28,7 @@ pub struct UnsignedTx {
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
     /// Update the chain- and app-level configurations.

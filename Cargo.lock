@@ -301,8 +301,7 @@ dependencies = [
 [[package]]
 name = "bnum"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50202def95bf36cb7d1d7a7962cea1c36a3f8ad42425e5d2b71d7acb8041b5b8"
+source = "git+https://github.com/left-curve/bnum?rev=2d3a7c4#2d3a7c422dd92a9f7cc993b1d2c9855e0ecd497b"
 dependencies = [
  "borsh",
 ]
@@ -319,18 +318,17 @@ dependencies = [
 [[package]]
 name = "borsh"
 version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6362ed55def622cddc70a4746a68554d7b687713770de539e59a739b249f8ed"
+source = "git+https://github.com/left-curve/borsh-rs?rev=21df6d0#21df6d0b417e88687d519d67be97a2ce4dc123ce"
 dependencies = [
  "borsh-derive",
  "cfg_aliases",
+ "serde_json",
 ]
 
 [[package]]
 name = "borsh-derive"
 version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3ef8005764f53cd4dca619f5bf64cafd4664dada50ece25e4d81de54c80cc0b"
+source = "git+https://github.com/left-curve/borsh-rs?rev=21df6d0#21df6d0b417e88687d519d67be97a2ce4dc123ce"
 dependencies = [
  "once_cell",
  "proc-macro-crate",
@@ -1526,6 +1524,7 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "chrono",
  "grug-storage",
  "grug-types",

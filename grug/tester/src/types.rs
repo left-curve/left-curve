@@ -2,7 +2,7 @@ use grug::{Binary, Empty};
 
 pub type InstantiateMsg = Empty;
 
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
 pub enum ExecuteMsg {
     /// Perform an infinite loop. Test if the VM can properly halt execution
     /// when gas is exhausted.
@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
     StackOverflow {},
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug::derive(Serde, Borsh, QueryRequest)]
 pub enum QueryMsg {
     /// Run a loop of the given number of iterations. Within each iteration, a
     /// set of math operations (addition, subtraction, multiplication, division)

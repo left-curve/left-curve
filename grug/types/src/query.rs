@@ -3,6 +3,7 @@ use {
         Addr, Binary, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonSerExt,
         StdResult,
     },
+    borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -26,7 +27,7 @@ pub trait QueryRequest: Sized {
 // ---------------------------------- request ----------------------------------
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {
     /// The chain's global configuration.
@@ -121,7 +122,7 @@ impl Query {
 
 // --------------------------------- response ----------------------------------
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
     Config(Config),

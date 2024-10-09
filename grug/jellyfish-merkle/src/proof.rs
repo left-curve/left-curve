@@ -27,6 +27,7 @@ pub enum ProofError {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum Proof {
     Membership(MembershipProof),
     NonMembership(NonMembershipProof),

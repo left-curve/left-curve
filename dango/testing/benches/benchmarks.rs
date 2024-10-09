@@ -189,8 +189,8 @@ fn swaps(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name    = tps_measurement;
-    config  = Criterion::default().measurement_time(Duration::from_secs(90)).sample_size(100);
+    name = tps_measurement;
+    config = Criterion::default().measurement_time(Duration::from_secs(90)).sample_size(100);
     targets = sends, swaps
 }
 

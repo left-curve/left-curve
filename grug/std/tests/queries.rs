@@ -5,7 +5,7 @@ mod query_maker {
         Addr, Empty, Hash256, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult,
     };
 
-    #[grug::derive(Serde, QueryRequest)]
+    #[grug::derive(Serde, Borsh, QueryRequest)]
     pub enum QueryMsg {
         #[returns(String)]
         Foo { bar: u64 },

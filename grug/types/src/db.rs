@@ -1,5 +1,6 @@
 use {
     crate::{StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
@@ -12,7 +13,7 @@ pub type Record = (Vec<u8>, Vec<u8>);
 pub type Batch<K = Vec<u8>, V = Vec<u8>> = BTreeMap<K, Op<V>>;
 
 /// Represents a database operation, either inserting a value or deleting one.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Op<V = Vec<u8>> {
     Insert(V),

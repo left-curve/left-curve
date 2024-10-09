@@ -21,7 +21,7 @@ docker-create-builder name:
 
 # Compile and install the Grug node software
 install:
-  cargo install --path bin
+  cargo install --path grug/cli
 
 # Run tests
 test:

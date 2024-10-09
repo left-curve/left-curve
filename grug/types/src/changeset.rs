@@ -1,17 +1,21 @@
 use {
     crate::{StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     serde::{
         de::{self, Error},
         Deserialize, Serialize,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        io,
+    },
 };
 
 /// A set of changes applicable to a map-like data structure.
 ///
 /// This struct implements a custom deserialization method that ensures there's
 /// no intersection between the keys to be added and those to be removed.
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, BorshSerialize, Debug, Clone, PartialEq, Eq)]
 pub struct ChangeSet<K, V> {
     /// For adding new key-value pairs, or updating the values associated with
     /// existing keys.
@@ -60,6 +64,16 @@ where
     }
 }
 
+#[derive(Deserialize, BorshDeserialize)]
+struct UncheckedChangeSet<K, V>
+where
+    K: Ord,
+    V: Ord,
+{
+    add: BTreeMap<K, V>,
+    remove: BTreeSet<K>,
+}
+
 impl<'de, K, V> de::Deserialize<'de> for ChangeSet<K, V>
 where
     K: Ord + Deserialize<'de>,
@@ -69,19 +83,25 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        #[derive(Deserialize)]
-        struct UncheckedChangeSet<T, U>
-        where
-            T: Ord,
-            U: Ord,
-        {
-            add: BTreeMap<T, U>,
-            remove: BTreeSet<T>,
-        }
-
-        let unchecked = UncheckedChangeSet::deserialize(deserializer)?;
+        let unchecked: UncheckedChangeSet<K, V> = Deserialize::deserialize(deserializer)?;
 
         ChangeSet::new(unchecked.add, unchecked.remove).map_err(D::Error::custom)
+    }
+}
+
+impl<K, V> BorshDeserialize for ChangeSet<K, V>
+where
+    K: Ord + BorshDeserialize,
+    V: Ord + BorshDeserialize,
+{
+    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
+    where
+        R: io::Read,
+    {
+        let unchecked: UncheckedChangeSet<K, V> = BorshDeserialize::deserialize_reader(reader)?;
+
+        ChangeSet::new(unchecked.add, unchecked.remove)
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
 }
 

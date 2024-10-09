@@ -1,5 +1,5 @@
 #[cfg(feature = "abci")]
-use grug_types::JsonDeExt;
+use grug_types::{BorshDeExt, JsonDeExt};
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -11,9 +11,9 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, Duration, Event, GenesisState, Hash256, Json,
-        JsonSerExt, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult, Storage,
-        Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenesisState,
+        Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult,
+        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -382,7 +382,7 @@ where
         };
 
         let proof = if prove {
-            Some(self.db.prove(key, version)?.to_json_vec()?)
+            Some(self.db.prove(key, version)?.to_borsh_vec()?)
         } else {
             None
         };
@@ -448,6 +448,9 @@ where
         block: BlockInfo,
         raw_genesis_state: &[u8],
     ) -> AppResult<Hash256> {
+        // Note: genesis state is the only input data that's serialized as JSON.
+        // Messages, transactions, unsigned transaction, events, queries, and
+        // query responses use Borsh.
         let genesis_state = raw_genesis_state.deserialize_json()?;
 
         self.do_init_chain(chain_id, block, genesis_state)
@@ -463,14 +466,14 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(|raw_tx| raw_tx.deserialize_json())
+            .map(|raw_tx| raw_tx.deserialize_borsh())
             .collect::<StdResult<Vec<_>>>()?;
 
         self.do_finalize_block(block, txs)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<Outcome> {
-        let tx = raw_tx.deserialize_json()?;
+        let tx = raw_tx.deserialize_borsh()?;
 
         self.do_check_tx(tx)
     }
@@ -481,17 +484,17 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
-        let tx = raw_unsigned_tx.deserialize_json()?;
+        let tx = raw_unsigned_tx.deserialize_borsh()?;
         let res = self.do_simulate(tx, height, prove)?;
 
-        Ok(res.to_json_vec()?)
+        Ok(res.to_borsh_vec()?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let req = raw_req.deserialize_json()?;
+        let req = raw_req.deserialize_borsh()?;
         let res = self.do_query_app(req, height, prove)?;
 
-        Ok(res.to_json_vec()?)
+        Ok(res.to_borsh_vec()?)
     }
 }
 
