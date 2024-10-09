@@ -4,8 +4,12 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
+        amm::{self, FeeRate, PoolParams, XykParams},
     },
-    grug::{Addr, Coins, HashExt, JsonSerExt, Message, ResultExt, Tx},
+    grug::{
+        btree_map, Addr, Coins, HashExt, JsonSerExt, Message, ResultExt, Signer, Tx, Udec128,
+        UniqueVec,
+    },
     grug_db_disk::TempDataDir,
     rand::{distributions::Alphanumeric, Rng},
     std::time::Duration,
@@ -16,7 +20,7 @@ use {
 /// We do this by making a single block that contains 100 transactions, each tx
 /// containing one `Message::Transfer`.
 fn sends(c: &mut Criterion) {
-    c.bench_function("sends", |b| {
+    c.bench_function("send", |b| {
         b.iter_batched(
             || {
                 // Create a random folder for this iteration.
@@ -26,9 +30,10 @@ fn sends(c: &mut Criterion) {
                     .map(char::from)
                     .collect::<String>();
                 let dir = TempDataDir::new(&format!("__dango_benchmark_sends_{random_string}"));
-                let (mut suite, mut accounts, codes, contracts) = setup_benchmark(&dir).unwrap();
+                let (mut suite, mut accounts, codes, contracts) =
+                    setup_benchmark(&dir, 100).unwrap();
 
-                // Deploy 200 accounts as senders.
+                // Deploy 200 accounts.
                 // The first 100 will be senders; the second 100 will be receivers.
                 // For convenience, all accounts are owned by the owner.
                 let msgs = (0..200)
@@ -109,7 +114,74 @@ fn sends(c: &mut Criterion) {
                     .into_iter()
                     .all(|outcome| outcome.result.is_ok());
             },
-            BatchSize::PerIteration,
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn swaps(c: &mut Criterion) {
+    c.bench_function("swap", |b| {
+        b.iter_batched(
+            || {
+                // Create a random folder for this iteration.
+                let random_string = rand::thread_rng()
+                    .sample_iter(&Alphanumeric)
+                    .take(7)
+                    .map(char::from)
+                    .collect::<String>();
+                let dir = TempDataDir::new(&format!("__dango_benchmark_swaps_{random_string}"));
+                let (mut suite, mut accounts, _, contracts) = setup_benchmark(&dir, 100).unwrap();
+
+                // Create an ATOM-USDC pool.
+                suite
+                    .execute_with_gas(
+                        &mut accounts.owner,
+                        5_000_000,
+                        contracts.amm,
+                        &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                            liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(30)),
+                        })),
+                        Coins::try_from(btree_map! {
+                            "uatom" => 100_000_000,
+                            "uusdc" => 400_000_000,
+                        })
+                        .unwrap(),
+                    )
+                    .unwrap();
+
+                // Create and sign 100 transactions, each containing a swap.
+                let txs = (0..100)
+                    .map(|_| {
+                        accounts
+                            .owner
+                            .sign_transaction(
+                                vec![Message::execute(
+                                    contracts.amm,
+                                    &amm::ExecuteMsg::Swap {
+                                        route: UniqueVec::new_unchecked(vec![1]),
+                                        minimum_output: None,
+                                    },
+                                    Coins::one("uusdc", 100).unwrap(),
+                                )
+                                .unwrap()],
+                                &suite.chain_id,
+                                50_000_000,
+                            )
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
+                (dir, suite, txs)
+            },
+            |(_dir, mut suite, txs)| {
+                suite
+                    .make_block(txs)
+                    .unwrap()
+                    .tx_outcomes
+                    .into_iter()
+                    .all(|outcome| outcome.result.is_ok());
+            },
+            BatchSize::SmallInput,
         );
     });
 }
@@ -117,7 +189,7 @@ fn sends(c: &mut Criterion) {
 criterion_group! {
     name    = tps_measurement;
     config  = Criterion::default().measurement_time(Duration::from_secs(90)).sample_size(100);
-    targets = sends,
+    targets = sends, swaps
 }
 
 criterion_main!(tps_measurement);

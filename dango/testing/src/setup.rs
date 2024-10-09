@@ -36,7 +36,12 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000)?,
+                balances: btree_map! {
+                    "uusdc" => 100_000_000_000_000,
+                    "uatom" => 100_000_000_000_000,
+                    "uosmo" => 100_000_000_000_000,
+                }
+                .try_into()?,
             },
             fee_recipient.username.clone() => GenesisUser {
                 key: fee_recipient.key,
@@ -150,6 +155,7 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
 /// Used for benchmarks.
 pub fn setup_benchmark(
     dir: &TempDataDir,
+    wasm_cache_size: usize,
 ) -> anyhow::Result<(
     TestSuite<DiskDb, WasmVm>,
     Accounts,
@@ -161,7 +167,7 @@ pub fn setup_benchmark(
         .unwrap();
 
     let db = DiskDb::open(dir)?;
-    let vm = WasmVm::new(1000);
+    let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(db, vm, codes)
 }
