@@ -1,5 +1,5 @@
 use {
-    dango_genesis::{build_genesis, Codes, GenesisUser},
+    dango_genesis::{build_genesis, read_wasm_files, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
     grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
     hex_literal::hex,
@@ -24,29 +24,8 @@ fn main() {
     assert_eq!(args.len(), 3, "expected exactly two arguments");
 
     // Read wasm files.
-    let codes = {
-        let artifacts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
-
-        let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm")).unwrap();
-        let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm")).unwrap();
-        let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm")).unwrap();
-        let amm = fs::read(artifacts_dir.join("dango_amm.wasm")).unwrap();
-        let bank = fs::read(artifacts_dir.join("dango_bank.wasm")).unwrap();
-        let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm")).unwrap();
-        let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
-        let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm")).unwrap();
-
-        Codes {
-            account_factory,
-            account_spot,
-            account_safe,
-            amm,
-            bank,
-            ibc_transfer,
-            taxman,
-            token_factory,
-        }
-    };
+    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
+        .unwrap();
 
     // Owner gets DG token and USDC; all others get USDC.
     let users = btree_map! {

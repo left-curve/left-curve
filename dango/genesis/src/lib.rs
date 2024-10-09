@@ -14,7 +14,7 @@ use {
         Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, str::FromStr},
+    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
 
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
@@ -49,6 +49,28 @@ pub struct GenesisUser {
     pub key: Key,
     pub key_hash: Hash160,
     pub balances: Coins,
+}
+
+pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
+    let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
+    let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
+    let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
+    let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
+    let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
+    let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
+    let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
+    let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
+
+    Ok(Codes {
+        account_factory,
+        account_spot,
+        account_safe,
+        amm,
+        bank,
+        ibc_transfer,
+        taxman,
+        token_factory,
+    })
 }
 
 pub fn build_genesis<T, D>(

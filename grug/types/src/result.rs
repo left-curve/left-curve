@@ -41,6 +41,21 @@ impl<T> GenericResult<T> {
             GenericResult::Err(_) => None,
         }
     }
+
+    pub fn err(self) -> Option<String> {
+        match self {
+            GenericResult::Ok(_) => None,
+            GenericResult::Err(err) => Some(err),
+        }
+    }
+
+    pub fn is_ok(&self) -> bool {
+        matches!(self, GenericResult::Ok(_))
+    }
+
+    pub fn is_err(&self) -> bool {
+        matches!(self, GenericResult::Err(_))
+    }
 }
 
 impl<T, E> From<Result<T, E>> for GenericResult<T>

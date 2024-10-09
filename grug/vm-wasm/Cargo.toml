@@ -32,6 +32,7 @@ criterion      = { workspace = true }
 ed25519-dalek  = { workspace = true, features = ["batch", "digest"] }
 grug-app       = { workspace = true, features = ["tracing"] }
 grug-crypto    = { workspace = true }
+grug-db-memory = { workspace = true }
 grug-math      = { workspace = true }
 grug-mock-bank = { workspace = true, features = ["library"] }
 grug-tester    = { workspace = true, features = ["library"] }

@@ -2,6 +2,7 @@ use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
     anyhow::{anyhow, ensure},
     grug_app::AppError,
+    grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
@@ -474,7 +475,7 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn build(self) -> anyhow::Result<(TestSuite<VM>, TestAccounts)> {
+    pub fn build(self) -> anyhow::Result<(TestSuite<MemDb, VM>, TestAccounts)> {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }

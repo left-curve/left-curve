@@ -10,19 +10,30 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow                  = { workspace = true }
-dango-account-factory   = { workspace = true, features = ["library"] }
-dango-account-safe      = { workspace = true, features = ["library"] }
-dango-account-spot      = { workspace = true, features = ["library"] }
-dango-amm               = { workspace = true, features = ["library"] }
-dango-bank              = { workspace = true, features = ["library"] }
-dango-genesis           = { workspace = true }
-dango-ibc-transfer      = { workspace = true, features = ["library"] }
-dango-taxman            = { workspace = true, features = ["library"] }
-dango-token-factory     = { workspace = true, features = ["library"] }
-dango-types             = { workspace = true }
-grug                    = { workspace = true }
-k256                    = { workspace = true }
+anyhow                = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-safe    = { workspace = true, features = ["library"] }
+dango-account-spot    = { workspace = true, features = ["library"] }
+dango-amm             = { workspace = true, features = ["library"] }
+dango-bank            = { workspace = true, features = ["library"] }
+dango-genesis         = { workspace = true }
+dango-ibc-transfer    = { workspace = true, features = ["library"] }
+dango-taxman          = { workspace = true, features = ["library"] }
+dango-token-factory   = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+grug                  = { workspace = true }
+grug-app              = { workspace = true }
+grug-db-disk          = { workspace = true }
+grug-db-memory        = { workspace = true }
+grug-vm-rust          = { workspace = true }
+grug-vm-wasm          = { workspace = true }
+k256                  = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
+rand      = { workspace = true }
 test-case = { workspace = true }
+
+[[bench]]
+name = "benchmarks"
+harness = false

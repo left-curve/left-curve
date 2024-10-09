@@ -950,6 +950,7 @@ name = "dango-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "criterion",
  "dango-account-factory",
  "dango-account-safe",
  "dango-account-spot",
@@ -961,7 +962,13 @@ dependencies = [
  "dango-token-factory",
  "dango-types",
  "grug",
+ "grug-app",
+ "grug-db-disk",
+ "grug-db-memory",
+ "grug-vm-rust",
+ "grug-vm-wasm",
  "k256",
+ "rand",
  "test-case",
 ]
 
@@ -1793,6 +1800,7 @@ dependencies = [
  "ed25519-dalek",
  "grug-app",
  "grug-crypto",
+ "grug-db-memory",
  "grug-math",
  "grug-mock-bank",
  "grug-tester",

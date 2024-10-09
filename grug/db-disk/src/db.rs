@@ -701,61 +701,17 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
+        crate::{DiskDb, TempDataDir},
         core::str,
-        grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, ProofNode},
+        grug_app::{Db, PrunableDb},
+        grug_jmt::{
+            verify_proof, MembershipProof, NonMembershipProof, Proof, ProofNode, ICS23_PROOF_SPEC,
+        },
+        grug_types::{Batch, Hash256, HashExt, Op, Order, Storage},
         hex_literal::hex,
         ics23::HostFunctionsManager,
         proptest::prelude::*,
-        rocksdb::{Options, DB},
-        std::{
-            panic,
-            path::{Path, PathBuf},
-        },
-        tempfile::TempDir,
     };
-
-    /// Temporary database path which calls DB::destroy when DBPath is dropped.
-    /// Copyed from rust-rocksdb:
-    /// <https://github.com/rust-rocksdb/rust-rocksdb/blob/v0.21.0/tests/util/mod.rs#L8>
-    struct TempDataDir {
-        // Keep the value alive so that the directory isn't deleted prematurely.
-        _dir: TempDir,
-        path: PathBuf,
-    }
-
-    impl TempDataDir {
-        /// Produces a fresh (non-existent) temporary path which will be
-        /// `DB::destroy`'ed automatically when dropped.
-        pub fn new(prefix: &str) -> Self {
-            let dir = tempfile::Builder::new()
-                .prefix(prefix)
-                .tempdir()
-                .unwrap_or_else(|err| {
-                    panic!("failed to create temporary directory for DB: {err}");
-                });
-            let path = dir.path().join("db");
-            Self { _dir: dir, path }
-        }
-    }
-
-    // Destrory the RocksDB instance when the value is dropped.
-    impl Drop for TempDataDir {
-        fn drop(&mut self) {
-            DB::destroy(&Options::default(), &self.path).unwrap_or_else(|err| {
-                panic!("failed to destroy DB: {err}");
-            });
-        }
-    }
-
-    // Implement for `&DBPath` (reference) instead of for `DBPath` (owned value)
-    // because we want to make sure the owned value lives until the end of its
-    // scope, so that the DB isn't destroyed prematurely.
-    impl AsRef<Path> for &TempDataDir {
-        fn as_ref(&self) -> &Path {
-            &self.path
-        }
-    }
 
     // Using the same test case as in our rust-rocksdb fork:
     // https://github.com/left-curve/rust-rocksdb/blob/v0.21.0-cw/tests/test_timestamp.rs#L150
