@@ -1,4 +1,4 @@
-name: Documentation Generation
+name: Sdk Documentation Generation
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
           wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
-          projectName: ui-doc
+          projectName: grug-sdk
           directory: ./sdk/docs
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
