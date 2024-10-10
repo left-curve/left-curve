@@ -90,6 +90,7 @@ export const ConnectStep: React.FC = () => {
 
       navigate("/auth/login");
     } catch (err) {
+      console.log(err);
       setIsLoading(false);
       setError("something went wrong");
     }
