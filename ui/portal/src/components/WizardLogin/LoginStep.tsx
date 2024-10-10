@@ -13,7 +13,7 @@ export const LoginStep: React.FC = () => {
   const username = watch("username");
 
   const { retry } = data;
-  const { errors } = formState;
+  const { errors, isSubmitting } = formState;
 
   const onSubmit = async () => {
     if (!username) return;
@@ -48,7 +48,7 @@ export const LoginStep: React.FC = () => {
         error={errors.username?.message}
       />
       <div className="flex flex-col w-full gap-3 md:gap-6">
-        <DangoButton fullWidth onClick={onSubmit}>
+        <DangoButton fullWidth onClick={onSubmit} isLoading={isSubmitting}>
           {retry ? "Choose credentials" : "Login"}
         </DangoButton>
         {retry ? (
@@ -61,7 +61,14 @@ export const LoginStep: React.FC = () => {
             Back
           </DangoButton>
         ) : (
-          <DangoButton as={Link} to="/auth/signup" variant="ghost" color="sand" className="text-lg">
+          <DangoButton
+            as={Link}
+            to="/auth/signup"
+            variant="ghost"
+            color="sand"
+            className="text-lg"
+            isDisabled={isSubmitting}
+          >
             Don't have an account?
           </DangoButton>
         )}

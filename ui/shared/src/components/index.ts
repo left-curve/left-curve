@@ -3,6 +3,7 @@
 /* -------------------------------------------------------------------------- */
 
 export { Button, type ButtonProps } from "./atoms/Button";
+export { Spinner } from "./atoms/Spinner";
 export { DangoButton } from "./atoms/DangoButton";
 export { Input, type InputProps } from "./atoms/Input";
 export { Tabs } from "./atoms/tabs/Tabs";

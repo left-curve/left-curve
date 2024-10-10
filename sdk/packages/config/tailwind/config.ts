@@ -149,8 +149,18 @@ export const tailwindConfig: Partial<Config> = {
         "rotate-2": "rotate 4s linear infinite",
         "rotate-4": "rotate 4s linear infinite",
         "dash-4": "dash 2s ease-in-out infinite",
+        "spinner-ease-spin": "spinner-spin 0.8s ease infinite",
+        "spinner-linear-spin": "spinner-spin 0.8s linear infinite",
       },
       keyframes: {
+        "spinner-spin": {
+          "0%": {
+            transform: "rotate(0deg)",
+          },
+          "100%": {
+            transform: "rotate(360deg)",
+          },
+        },
         rotate: {
           "100%": {
             transform: "rotate(360deg)",

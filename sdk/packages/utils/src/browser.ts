@@ -12,3 +12,12 @@ export function getNavigatorOS(): string {
   if (userAgent.indexOf("Tizen") !== -1) return "Tizen";
   return "Unknown";
 }
+
+/**
+ * Get the root domain from a hostname
+ * @param hostname
+ * @returns The root domain
+ */
+export function getRootDomain(hostname: string): string {
+  return hostname.split(".").slice(-2).join(".");
+}

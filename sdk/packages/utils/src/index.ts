@@ -1,4 +1,7 @@
-export { getNavigatorOS } from "./browser";
+export {
+  getNavigatorOS,
+  getRootDomain,
+} from "./browser";
 
 export {
   camelToSnake,
