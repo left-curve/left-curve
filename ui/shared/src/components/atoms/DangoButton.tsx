@@ -2,6 +2,7 @@ import { type VariantProps, tv } from "tailwind-variants";
 import type { As } from "~/types";
 import { twMerge } from "~/utils";
 import { forwardRef } from "~/utils/dom";
+import { Spinner } from "./Spinner";
 
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color">,
@@ -11,6 +12,7 @@ export interface ButtonProps
    * When true, the button will be disabled.
    * @default false
    */
+  isLoading?: boolean;
   isDisabled?: boolean;
 }
 
@@ -25,8 +27,10 @@ export const DangoButton = forwardRef<"button", ButtonProps>(
       radius,
       isInGroup,
       isDisabled,
+      isLoading,
       isIconOnly,
       className,
+      children,
       ...props
     },
     ref,
@@ -42,13 +46,13 @@ export const DangoButton = forwardRef<"button", ButtonProps>(
       isInGroup,
       isIconOnly,
     });
+
+    const disabled = isDisabled || isLoading;
+
     return (
-      <Component
-        className={twMerge(styles, className)}
-        ref={ref}
-        {...props}
-        disabled={isDisabled}
-      />
+      <Component className={twMerge(styles, className)} ref={ref} {...props} disabled={disabled}>
+        {isLoading ? <Spinner size={size} /> : children}
+      </Component>
     );
   },
 );
