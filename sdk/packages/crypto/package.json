@@ -7,7 +7,13 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
   "scripts": {
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
@@ -27,7 +33,7 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@noble/curves": "^1.5.0",
+    "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.4.0",
     "@scure/bip32": "^1.4.0",
     "@scure/bip39": "^1.3.0",

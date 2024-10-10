@@ -23,14 +23,14 @@ export const ConnectStep: React.FC = () => {
     const challenge = "Please sign this message to confirm your identity.";
     const { key, keyHash } = await (async () => {
       if (connectorId === "Passkey") {
-        const { publicKey, id } = await createWebAuthnCredential({
+        const { id, getPublicKey } = await createWebAuthnCredential({
           challenge: encodeUtf8(challenge),
           user: {
             name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
           },
           rp: {
             name: window.document.title,
-            id: window.location.hostname,
+            id: window.location.hostname.split(".").slice(-2).join("."),
           },
           authenticatorSelection: {
             residentKey: "preferred",
@@ -39,6 +39,7 @@ export const ConnectStep: React.FC = () => {
           },
         });
 
+        const publicKey = await getPublicKey();
         const key: Key = { secp256r1: encodeBase64(publicKey) };
         const keyHash = createKeyHash({ credentialId: id });
 
@@ -72,7 +73,7 @@ export const ConnectStep: React.FC = () => {
       accountType: AccountType.Spot,
     });
 
-    const salt = createAccountSalt(username, 1, key);
+    const salt = createAccountSalt({ key, keyHash, username });
     const address = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
 
     const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
