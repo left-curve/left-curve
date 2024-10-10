@@ -33,6 +33,11 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
     setShowMenu(false);
   });
 
+  const handleAction = (account: Account) => {
+    manageAction?.(account);
+    setShowMenu(false);
+  };
+
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
       if (selectedAccount?.index === a.index) return -1;
@@ -97,7 +102,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
                 key={account.index}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}
-                manageAction={manageAction}
+                manageAction={handleAction}
                 expanded={expanded}
               />
             );
