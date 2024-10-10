@@ -2,7 +2,7 @@ use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
     grug_db_memory::MemDb,
-    grug_math::Udec128,
+    grug_math::{InnerMut, Udec128},
     grug_tester::{
         QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
@@ -215,7 +215,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256r1_verify_request,
     |mut req| {
-        req.pk.pop();
+        req.pk.inner_mut().pop();
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -224,7 +224,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256r1_verify_request,
     |mut req| {
-        req.sig.pop();
+        req.sig.inner_mut().pop();
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -233,7 +233,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256r1_verify_request,
     |mut req| {
-        req.msg_hash.pop();
+        req.msg_hash.inner_mut().pop();
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -269,7 +269,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256k1_verify_request,
     |mut req| {
-        req.pk.push(0);
+        req.pk.inner_mut().push(0);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -278,7 +278,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256k1_verify_request,
     |mut req| {
-        req.sig.push(0);
+        req.sig.inner_mut().push(0);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -287,7 +287,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_secp256k1_verify_request,
     |mut req| {
-        req.msg_hash.push(0);
+        req.msg_hash.inner_mut().push(0);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -323,7 +323,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_ed25519_verify_request,
     |mut req| {
-        req.pk.push(123);
+        req.pk.inner_mut().push(123);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -332,7 +332,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_ed25519_verify_request,
     |mut req| {
-        req.sig.push(123);
+        req.sig.inner_mut().push(123);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -341,7 +341,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
 #[test_case(
     generate_ed25519_verify_request,
     |mut req| {
-        req.msg_hash.push(123);
+        req.msg_hash.inner_mut().push(123);
         req
     },
     GenericResult::Err(VerificationError::IncorrectLength.to_string());
@@ -412,7 +412,7 @@ fn recovering_secp256k1_pubkey() {
     {
         suite
             .query_wasm_smart(tester, req.clone())
-            .should_succeed_and_equal(vk.to_sec1_bytes().to_vec().into());
+            .should_succeed_and_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
     // Attempt to recover with a different msg. Should succeed but pk is different.
@@ -422,7 +422,7 @@ fn recovering_secp256k1_pubkey() {
 
         suite
             .query_wasm_smart(tester, false_req)
-            .should_succeed_but_not_equal(vk.to_sec1_bytes().to_vec().into());
+            .should_succeed_but_not_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
     // Attempt to recover with an invalid recovery ID. Should error.

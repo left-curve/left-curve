@@ -1,19 +1,14 @@
+use {
+    crate::{EncodedBytes, Encoder, Hash256, HashExt},
+    core::str,
+    data_encoding::{Encoding, HEXLOWER},
+    grug_math::Inner,
+};
 #[cfg(feature = "erc55")]
 use {
-    crate::StdResult,
+    crate::{StdError, StdResult},
     sha3::{Digest, Keccak256},
-};
-use {
-    crate::{forward_ref_partial_eq, Hash, Hash160, Hash256, HashExt, StdError},
-    borsh::{BorshDeserialize, BorshSerialize},
-    core::str,
-    grug_math::Inner,
-    serde::{de, ser},
-    std::{
-        fmt,
-        ops::{Deref, DerefMut},
-        str::FromStr,
-    },
+    std::str::FromStr,
 };
 
 /// An account address.
@@ -34,18 +29,24 @@ use {
 /// In Grug, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Addr(pub(crate) Hash160);
+pub type Addr = EncodedBytes<[u8; 20], AddrEncoder>;
 
-forward_ref_partial_eq!(Addr, Addr);
+/// Bytes encoder for addresses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AddrEncoder;
+
+impl Encoder for AddrEncoder {
+    const ENCODING: Encoding = HEXLOWER;
+    const NAME: &str = "Addr";
+    const PREFIX: &str = "0x";
+}
 
 impl Addr {
-    /// Addresses have the 0x prefix.
-    pub const PREFIX: &'static str = "0x";
+    pub const LENGTH: usize = 20;
 
     /// Create a new address from a 32-byte byte slice.
-    pub const fn from_array(slice: [u8; Hash160::LENGTH]) -> Self {
-        Self(Hash160::from_array(slice))
+    pub const fn from_array(array: [u8; Self::LENGTH]) -> Self {
+        Self::from_inner(array)
     }
 
     /// Compute a contract address as:
@@ -59,18 +60,18 @@ impl Addr {
     /// The double hash the same as used by Bitcoin, for [preventing length
     /// extension attacks](https://bitcoin.stackexchange.com/questions/8443/where-is-double-hashing-performed-in-bitcoin).
     pub fn compute(deployer: Addr, code_hash: Hash256, salt: &[u8]) -> Self {
-        let mut preimage = Vec::with_capacity(Hash160::LENGTH + Hash256::LENGTH + salt.len());
+        let mut preimage = Vec::with_capacity(Self::LENGTH + Hash256::LENGTH + salt.len());
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());
         preimage.extend_from_slice(salt);
-        Self(preimage.hash256().hash160())
+        Self::from_inner(preimage.hash256().hash160().into_inner())
     }
 
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {
-        let mut bytes = [0u8; Hash160::LENGTH];
-        bytes[Hash160::LENGTH - 1] = index;
-        Self(Hash160::from_array(bytes))
+        let mut bytes = [0; Self::LENGTH];
+        bytes[Self::LENGTH - 1] = index;
+        Self::from_inner(bytes)
     }
 }
 
@@ -87,7 +88,7 @@ impl Addr {
         buf[1] = b'x';
 
         // This encodes hex in lowercase.
-        hex::encode_to_slice(self.0, &mut buf[2..]).unwrap();
+        HEXLOWER.encode_mut(self.inner(), &mut buf[2..]);
 
         let mut hasher = Keccak256::new();
         // Note we're hashing the UTF-8 hex string, not the raw bytes.
@@ -95,7 +96,7 @@ impl Addr {
         let hash = hasher.finalize();
 
         let mut hash_hex = [0; 64];
-        hex::encode_to_slice(hash, &mut hash_hex).unwrap();
+        HEXLOWER.encode_mut(&hash, &mut hash_hex);
 
         for i in 0..40 {
             buf[2 + i] ^=
@@ -120,151 +121,6 @@ impl Addr {
     }
 }
 
-impl Inner for Addr {
-    type U = Hash160;
-
-    fn inner(&self) -> &Self::U {
-        &self.0
-    }
-
-    fn into_inner(self) -> Self::U {
-        self.0
-    }
-}
-
-impl AsRef<[u8]> for Addr {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for Addr {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl Deref for Addr {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Addr {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl TryFrom<Vec<u8>> for Addr {
-    type Error = StdError;
-
-    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
-        let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self, _>(
-                "hex",
-                "address is not of the correct length",
-            ));
-        };
-
-        Ok(Self(Hash(bytes)))
-    }
-}
-
-impl TryFrom<&[u8]> for Addr {
-    type Error = StdError;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let Ok(bytes) = bytes.try_into() else {
-            return Err(StdError::deserialize::<Self, _>(
-                "hex",
-                "address is not of the correct length",
-            ));
-        };
-
-        Ok(Self(Hash(bytes)))
-    }
-}
-
-impl FromStr for Addr {
-    type Err = StdError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // The address must have the `0x` prefix.
-        let hex_str = s
-            .strip_prefix(Self::PREFIX)
-            .ok_or_else(|| StdError::deserialize::<Self, _>("hex", "incorrect address prefix"))?;
-
-        // Decode the hex string
-        let bytes = hex::decode(hex_str)?;
-
-        // Make sure the byte slice of the correct length.
-        let hash = Hash160::from_array(bytes.as_slice().try_into()?);
-
-        Ok(Self(hash))
-    }
-}
-
-impl From<Addr> for String {
-    fn from(addr: Addr) -> Self {
-        addr.to_string()
-    }
-}
-
-// Convert the raw bytes to checksumed hex string according to ERC-55:
-// https://eips.ethereum.org/EIPS/eip-55#implementation
-//
-// Adapted from alloy-rs:
-// https://github.com/alloy-rs/core/blob/v0.7.7/crates/primitives/src/bits/address.rs#L294-L320
-impl fmt::Display for Addr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", Self::PREFIX, hex::encode(self.0))
-    }
-}
-
-impl fmt::Debug for Addr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Addr({})", self)
-    }
-}
-
-impl ser::Serialize for Addr {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Addr {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(AddrVisitor)
-    }
-}
-
-struct AddrVisitor;
-
-impl<'de> de::Visitor<'de> for AddrVisitor {
-    type Value = Addr;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a string representing an address conforming to ERC-55")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Addr::from_str(v).map_err(E::custom)
-    }
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -280,7 +136,7 @@ mod tests {
     // the same as the mock hash from the Hash unit tests, except cropped to 20
     // bytes and with the `0x` prefix.
     const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba";
-    const MOCK_ADDR: Addr = Addr::from_array(hex!("299663875422cc5a4574816e6165824d0c5bfdba"));
+    const MOCK_ADDR: Addr = Addr::from_inner(hex!("299663875422cc5a4574816e6165824d0c5bfdba"));
 
     #[test]
     fn serializing() {
