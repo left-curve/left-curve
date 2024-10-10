@@ -15,11 +15,11 @@
     "dev": "turbo dev",
     "dev:pkg": "turbo dev -F=./sdk/packages/**",
     "dev:portal": "turbo dev -F=./sdk/packages/** -F @dango/shared -F @dango/portal",
-    "dev:landing": "turbo dev -F=./sdk/packages/** -F @dango/shared -F @dango/landing",
+    "dev:website": "turbo dev -F=./sdk/packages/** -F @dango/shared -F @dango/website",
     "build:pkg": "turbo build -F=./sdk/packages/**",
     "build:graph": "turbo build --graph=build-graph.png",
     "build:portal": "turbo build -F=./sdk/packages/** -F @dango/shared -F @dango/portal",
-    "build:landing": "turbo build -F=./sdk/packages/** -F @dango/shared && pnpm landing build:cf",
+    "build:website": "turbo build -F=./sdk/packages/** -F @dango/shared -F @dango/website",
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
     "example:node": "pnpm -F example-nodejs",
@@ -33,7 +33,7 @@
     "utils": "pnpm -F utils",
     "storybook": "pnpm shared sb:dev",
     "shared": "pnpm -F shared",
-    "landing": "pnpm -F landing",
+    "website": "pnpm -F website",
     "portal": "pnpm -F portal"
   },
   "engines": {

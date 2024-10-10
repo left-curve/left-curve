@@ -1,6 +1,6 @@
 ## Grug SDK
 
-You can find more info in our [documentation](https://ui-doc.pages.dev/).
+You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
 ## Packages
 
