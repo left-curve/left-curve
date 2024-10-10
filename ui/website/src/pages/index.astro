@@ -1,0 +1,41 @@
+---
+import Footer from '~/components/Footer.astro';
+import Layout from '~/components/Layout.astro';
+import MotoSection from '~/components/MotoSection';
+---
+
+<Layout title="Dango">
+	  <div
+      class="flex flex-1 flex-col w-full relative items-center justify-between pb-4 scrollbar-none min-h-[130svh]"
+    >
+      <div class="fixed mx-0 top-6 p-4 z-50 rounded-2xl">
+        <img src="/images/logo.webp" alt="logo" class=" h-6 md:h-12 object-contain" />
+      </div>
+      <div
+        class="header pb-20 pt-[72px] md:pt-32 w-full flex flex-col gap-12 items-center justify-center px-4 h-[85svh] md:h-[95vh] mb-[15.5rem]"
+      >
+        <picture class="object-contain w-full max-h-full">
+          <source srcset="/images/background.svg" media="(min-width: 1280px)" />
+          <img
+            src="/images/background-mobile.svg"
+            alt="background-mobile"
+            class="w-full max-h-full"
+          />
+        </picture>
+      </div>
+      <MotoSection client:visible />
+      <Footer className="w-full" />
+    </div>
+</Layout>
+
+
+<style>
+.header {
+  background: linear-gradient(76deg, #C4B7BA, #FFF2E2);
+  --mask:
+    linear-gradient(to top, #0000 50px, #000 0),
+    radial-gradient(50px, #000 98%, #0000) bottom/92.5px 100px;
+  -webkit-mask: var(--mask);
+  mask: var(--mask);
+}
+</style>

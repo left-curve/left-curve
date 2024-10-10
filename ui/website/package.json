@@ -1,0 +1,30 @@
+{
+  "name": "@dango/website",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@dango/shared": "workspace:^",
+    "framer-motion": "^11.11.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.13"
+  },
+  "devDependencies": {
+    "@astrojs/react": "^3.6.2",
+    "@astrojs/tailwind": "^5.1.1",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@astrojs/check": "^0.9.4",
+    "@leftcurve/config": "workspace:^",
+    "@leftcurve/types": "workspace:^",
+    "astro": "^4.15.12",
+    "typescript": "^5.6.3"
+  }
+}
