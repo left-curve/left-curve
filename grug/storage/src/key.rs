@@ -206,7 +206,8 @@ impl PrimaryKey for Addr {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        bytes.try_into()
+        let array = bytes.try_into()?;
+        Ok(Addr::from_array(array))
     }
 }
 
@@ -222,7 +223,8 @@ impl<const N: usize> PrimaryKey for Hash<N> {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        bytes.try_into()
+        let array = bytes.try_into()?;
+        Ok(Hash::from_array(array))
     }
 }
 

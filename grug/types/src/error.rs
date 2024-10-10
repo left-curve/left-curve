@@ -1,8 +1,7 @@
 use {
     crate::Denom,
-    data_encoding::BASE64,
+    data_encoding::{DecodeError, BASE64},
     grug_math::MathError,
-    hex::FromHexError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
     thiserror::Error,
 };
@@ -41,7 +40,7 @@ pub enum StdError {
     TryFromSlice(#[from] TryFromSliceError),
 
     #[error(transparent)]
-    FromHex(#[from] FromHexError),
+    Decode(#[from] DecodeError),
 
     #[error(transparent)]
     Math(#[from] MathError),

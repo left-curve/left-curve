@@ -21,7 +21,6 @@ data-encoding = { workspace = true }
 digest        = { workspace = true }
 dyn-clone     = { workspace = true }
 grug-math     = { workspace = true }
-hex           = { workspace = true }
 hex-literal   = { workspace = true }
 paste         = { workspace = true }
 prost         = { workspace = true }

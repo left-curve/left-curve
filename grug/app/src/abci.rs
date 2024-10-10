@@ -235,7 +235,7 @@ fn from_tm_timestamp(time: TmTimestamp) -> Timestamp {
 
 fn from_tm_hash(bytes: Bytes) -> Hash256 {
     bytes
-        .to_vec()
+        .as_ref()
         .try_into()
         .expect("incorrect block hash length")
 }

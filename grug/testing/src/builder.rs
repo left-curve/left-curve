@@ -535,7 +535,7 @@ where
             msgs.push(Message::instantiate(
                 self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
-                name.to_string(),
+                *name,
                 Coins::new(),
                 Some(account.address),
             )?);
