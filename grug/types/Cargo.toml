@@ -9,11 +9,6 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
-[features]
-# Include method to cast an `Addr` to ERC-55 checksum string, or verify such a
-# checksum.
-erc55 = ["dep:sha3"]
-
 [dependencies]
 bnum          = { workspace = true, features = ["borsh"] }
 borsh         = { workspace = true, features = ["derive", "de_strict_order"] }
@@ -29,7 +24,6 @@ serde         = { workspace = true, features = ["derive"] }
 serde_json    = { workspace = true }
 serde_with    = { workspace = true }
 sha2          = { workspace = true }
-sha3          = { workspace = true, optional = true }
 thiserror     = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
