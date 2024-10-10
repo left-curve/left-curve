@@ -20,6 +20,7 @@ Prerequisites:
 - [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target
 - [Just](https://just.systems/man/en/)
 - [Docker](https://docs.docker.com/engine/install/)
+- [Node.js](https://nodejs.org/en/download/) v20.18.0 LTS
 - [pnpm](https://pnpm.io/)
 
 We use [VS Code](https://code.visualstudio.com/) as text editor with the following plugins:
