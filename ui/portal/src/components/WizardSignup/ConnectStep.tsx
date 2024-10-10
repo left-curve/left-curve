@@ -23,6 +23,7 @@ export const ConnectStep: React.FC = () => {
     const challenge = "Please sign this message to confirm your identity.";
     const { key, keyHash } = await (async () => {
       if (connectorId === "Passkey") {
+        const hostname = window.location.hostname.split(".");
         const { id, getPublicKey } = await createWebAuthnCredential({
           challenge: encodeUtf8(challenge),
           user: {
@@ -30,7 +31,7 @@ export const ConnectStep: React.FC = () => {
           },
           rp: {
             name: window.document.title,
-            id: window.location.hostname,
+            id: hostname.slice(hostname.length > 1 ? hostname.length - 2 : 0).join("."),
           },
           authenticatorSelection: {
             residentKey: "preferred",
