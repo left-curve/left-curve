@@ -20,6 +20,7 @@ import { createBaseClient } from "@leftcurve/sdk";
 import { uid } from "@leftcurve/utils";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
+import { version } from "../package.json";
 
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]],
@@ -103,6 +104,16 @@ export function createConfig<
     }
   }
 
+  function validatePersistedChainId(persistedState: unknown, defaultChainId: string) {
+    return persistedState &&
+      typeof persistedState === "object" &&
+      "chainId" in persistedState &&
+      typeof persistedState.chainId === "string" &&
+      chains.getState().some((x) => x.id === persistedState.chainId)
+      ? persistedState.chainId
+      : defaultChainId;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Create store
   //////////////////////////////////////////////////////////////////////////////
@@ -116,11 +127,20 @@ export function createConfig<
     };
   }
 
+  const currentVersion = Number.parseInt(version);
   const stateCreator = storage
     ? persist(getInitialState, {
-        version: 0,
         name: "store",
+        version: 0,
         storage,
+        migrate(state, version) {
+          const persistedState = state as State;
+          if (version === currentVersion) return persistedState;
+
+          const initialState = getInitialState();
+          const chainId = validatePersistedChainId(persistedState, initialState.chainId);
+          return { ...initialState, chainId };
+        },
         partialize(state) {
           const { chainId, connections, connectors, status } = state;
           return {
@@ -143,9 +163,12 @@ export function createConfig<
             delete persistedState.status;
           }
 
+          const chainId = validatePersistedChainId(persistedState, currentState.chainId);
+
           return {
             ...currentState,
             ...persistedState,
+            chainId,
           };
         },
       })
