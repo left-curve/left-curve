@@ -33,7 +33,7 @@
   },
   "overrides": [
     {
-      "include": ["examples/**", "packages/ui/**", "packages/apps/**"],
+      "include": ["sdk/examples/**", "ui/**"],
       "linter": {
         "rules": {
           "a11y": {
