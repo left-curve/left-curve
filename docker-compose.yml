@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+  devnet:
+    build:
+      context: ./docker/devnet
+    ports:
+      - "26656:26656"
+      - "26657:26657"
