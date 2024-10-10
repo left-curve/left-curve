@@ -379,7 +379,7 @@ importers:
         specifier: ^3.60.3
         version: 3.80.1(@cloudflare/workers-types@4.20241004.0)
 
-  ui/landing_old:
+  ui/portal:
     dependencies:
       '@dango/shared':
         specifier: workspace:^
@@ -406,11 +406,8 @@ importers:
         specifier: ^5.56.2
         version: 5.59.0(react@18.3.1)
       framer-motion:
-        specifier: ^11.11.7
-        version: 11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      next:
-        specifier: 14.2.5
-        version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^11.3.21
+        version: 11.9.0(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -420,58 +417,6 @@ importers:
       react-hook-form:
         specifier: ^7.53.0
         version: 7.53.0(react@18.3.1)
-    devDependencies:
-      '@leftcurve/config':
-        specifier: workspace:^
-        version: link:../../sdk/packages/config
-      '@leftcurve/types':
-        specifier: workspace:^
-        version: link:../../sdk/packages/types
-      '@types/node':
-        specifier: ^20
-        version: 20.16.10
-      '@types/react':
-        specifier: ^18
-        version: 18.3.10
-      '@types/react-dom':
-        specifier: ^18
-        version: 18.3.0
-      postcss:
-        specifier: ^8
-        version: 8.4.47
-      tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
-      typescript:
-        specifier: ^5
-        version: 5.6.3
-      wait-on:
-        specifier: ^8.0.1
-        version: 8.0.1
-
-  ui/portal:
-    dependencies:
-      '@dango/shared':
-        specifier: workspace:^
-        version: link:../shared
-      '@leftcurve/connect-kit':
-        specifier: workspace:^
-        version: link:../../sdk/packages/connect-kit
-      '@leftcurve/react':
-        specifier: workspace:^
-        version: link:../../sdk/packages/react
-      '@tanstack/react-query':
-        specifier: ^5.56.2
-        version: 5.59.0(react@18.3.1)
-      framer-motion:
-        specifier: ^11.3.21
-        version: 11.9.0(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: ^18
-        version: 18.3.1
-      react-dom:
-        specifier: ^18
-        version: 18.3.1(react@18.3.1)
       react-router-dom:
         specifier: ^6.26.2
         version: 6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
