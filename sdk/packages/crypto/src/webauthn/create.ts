@@ -4,8 +4,8 @@ import { ripemd160 } from "../ripemd";
 
 export type CredentialAttestion = {
   id: string;
-  publicKey: Uint8Array;
   raw: PublicKeyCredential;
+  getPublicKey: (compressed?: boolean) => Promise<Uint8Array>;
 };
 
 export type CreateCredentialParameters = CredentialOptionParameters & {
@@ -109,12 +109,17 @@ export async function createWebAuthnCredential(
     const response = (credential as PublicKeyCredential)
       .response as AuthenticatorAttestationResponse;
 
-    const publicKey = decodePublicKey(response.attestationObject);
+    async function getPublicKey(compressed = true): Promise<Uint8Array> {
+      const publicKey = decodePublicKey(response.attestationObject);
+      if (!compressed) return publicKey;
+      const { p256 } = await import("@noble/curves/p256");
+      return p256.ProjectivePoint.fromHex(publicKey).toRawBytes(true);
+    }
 
     return {
       id: credential.id,
-      publicKey,
       raw: credential,
+      getPublicKey,
     };
   } catch (error) {
     throw new Error("credential creation failed.");
@@ -201,6 +206,5 @@ function decodePublicKey(attestation: ArrayBuffer): Uint8Array {
   const xPoint = publicKeyObject["-2"];
   // -3: The -3 field describes the y-coordinate of this
   const yPoint = publicKeyObject["-3"];
-
   return new Uint8Array(["04", ...xPoint, ...yPoint]);
 }

@@ -33,9 +33,10 @@ async function registerUser() {
 
   const username = "random";
   const userKey = { secp256k1: encodeBase64(userKeyPair.getPublicKey()) };
+  const userKeyHash = await userSigner.getKeyHash();
 
   // create address and compute new account address
-  const salt = createAccountSalt(username, 1, userKey);
+  const salt = createAccountSalt({ key: userKey, keyHash: userKeyHash, username });
   const userAddress = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
 
   // Send funds to ibc-transfer contract
@@ -52,7 +53,7 @@ async function registerUser() {
 
   // Register user
   await userClient.registerUser({
-    keyHash: await userSigner.getKeyHash(),
+    keyHash: userKeyHash,
     key: userKey,
     username: username,
   });
