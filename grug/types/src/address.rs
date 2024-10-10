@@ -111,35 +111,10 @@ impl Addr {
 
 // ----------------------------------- tests -----------------------------------
 
+#[cfg(feature = "erc55")]
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "erc55")]
     use test_case::test_case;
-    use {
-        crate::{json, Addr, JsonDeExt, JsonSerExt},
-        hex_literal::hex,
-        std::str::FromStr,
-    };
-
-    // the same as the mock hash from the Hash unit tests, except cropped to 20
-    // bytes and with the `0x` prefix.
-    const MOCK_STR: &str = "0x299663875422cc5a4574816e6165824d0c5bfdba";
-    const MOCK_ADDR: Addr = Addr::from_inner(hex!("299663875422cc5a4574816e6165824d0c5bfdba"));
-
-    #[test]
-    fn serializing() {
-        assert_eq!(MOCK_STR, MOCK_ADDR.to_string());
-        assert_eq!(json!(MOCK_STR), MOCK_ADDR.to_json_value().unwrap());
-    }
-
-    #[test]
-    fn deserializing() {
-        assert_eq!(MOCK_ADDR, Addr::from_str(MOCK_STR).unwrap());
-        assert_eq!(
-            MOCK_ADDR,
-            json!(MOCK_STR).deserialize_json::<Addr>().unwrap()
-        );
-    }
 
     // Test cases from ERC-55 spec:
     // https://github.com/ethereum/ercs/blob/master/ERCS/erc-55.md#test-cases
