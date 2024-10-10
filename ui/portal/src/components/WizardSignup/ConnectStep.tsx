@@ -3,7 +3,7 @@ import { createWebAuthnCredential, ethHashMessage, recoverPublicKey } from "@lef
 import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
 import { useConnectors, usePublicClient } from "@leftcurve/react";
 import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
-import { getNavigatorOS } from "@leftcurve/utils";
+import { getNavigatorOS, getRootDomain } from "@leftcurve/utils";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -30,7 +30,7 @@ export const ConnectStep: React.FC = () => {
           },
           rp: {
             name: window.document.title,
-            id: window.location.hostname.split(".").slice(-2).join("."),
+            id: getRootDomain(window.location.hostname),
           },
           authenticatorSelection: {
             residentKey: "preferred",
