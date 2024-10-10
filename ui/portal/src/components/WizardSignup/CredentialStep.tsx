@@ -11,7 +11,7 @@ export const CredentialStep: React.FC = () => {
   const client = usePublicClient();
   const username = watch("username");
 
-  const { errors } = formState;
+  const { errors, isSubmitting } = formState;
 
   const onSubmit = async () => {
     if (!username) return;
@@ -40,10 +40,17 @@ export const CredentialStep: React.FC = () => {
         error={errors.username?.message}
       />
       <div className="flex flex-col w-full gap-3 md:gap-6">
-        <DangoButton fullWidth onClick={onSubmit}>
+        <DangoButton fullWidth onClick={onSubmit} isLoading={isSubmitting}>
           Choose credentials
         </DangoButton>
-        <DangoButton as={Link} to="/auth/login" variant="ghost" color="sand" className="text-lg">
+        <DangoButton
+          as={Link}
+          to="/auth/login"
+          variant="ghost"
+          color="sand"
+          className="text-lg"
+          isDisabled={isSubmitting}
+        >
           Already have an account?
         </DangoButton>
       </div>
