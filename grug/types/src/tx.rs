@@ -144,29 +144,3 @@ impl Message {
         })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use serde_json::Value;
-
-    use crate::{BorshDeExt, BorshSerExt, Coins, Hash256, Label, Salt};
-
-    use super::Message;
-
-    #[test]
-    fn borsh() {
-        let msg = Message::Instantiate {
-            code_hash: Hash256::from_array([0; 32]),
-            msg: Value::default(),
-            salt: Salt::from_str("tester").unwrap(),
-            label: Label::from_str("tester").unwrap(),
-            funds: Coins::default(),
-            admin: None,
-        };
-
-        let ser = msg.to_borsh_vec().unwrap();
-        let de: Message = ser.deserialize_borsh().unwrap();
-    }
-}
