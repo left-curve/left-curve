@@ -1,7 +1,4 @@
-use {
-    crate::{EncodedBytes, HashEncoder},
-    grug_math::Inner,
-};
+use crate::{EncodedBytes, HashEncoder};
 
 /// A hash of a fixed length, in uppercase hex encoding.
 pub type Hash<const N: usize> = EncodedBytes<[u8; N], HashEncoder>;
@@ -25,20 +22,5 @@ impl<const N: usize> Hash<N> {
     /// ASCII length should be 64.
     pub const LENGTH: usize = N;
     /// A zeroed-out hash. Useful as mockups or placeholders.
-    pub const ZERO: Self = Self::from_array([0; N]);
-
-    /// Create a new hash from a byte array of the correct length.
-    pub const fn from_array(array: [u8; N]) -> Self {
-        Self::from_inner(array)
-    }
-
-    /// Cast the hash into a byte array.
-    pub fn into_array(self) -> [u8; N] {
-        self.into_inner()
-    }
-
-    /// Cast the hash into a byte vector.
-    pub fn into_vec(self) -> Vec<u8> {
-        self.inner().to_vec()
-    }
+    pub const ZERO: Self = Self::from_inner([0; N]);
 }

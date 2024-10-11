@@ -206,8 +206,8 @@ impl PrimaryKey for Addr {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let array = bytes.try_into()?;
-        Ok(Addr::from_array(array))
+        let inner = bytes.try_into()?;
+        Ok(Addr::from_inner(inner))
     }
 }
 
@@ -223,8 +223,8 @@ impl<const N: usize> PrimaryKey for Hash<N> {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let array = bytes.try_into()?;
-        Ok(Hash::from_array(array))
+        let inner = bytes.try_into()?;
+        Ok(Hash::from_inner(inner))
     }
 }
 
@@ -805,22 +805,22 @@ mod tests {
         "string"
     )]
     #[test_case(
-        Addr::from_array(*b"ThisIsAValidAddress-"),
+        Addr::from_inner(*b"ThisIsAValidAddress-"),
         b"ThisIsAValidAddress-";
         "addr"
     )]
     #[test_case(
-        &Addr::from_array(*b"ThisIsAValidAddress-"),
+        &Addr::from_inner(*b"ThisIsAValidAddress-"),
         b"ThisIsAValidAddress-";
         "borrow_addr"
     )]
     #[test_case(
-        Hash::<32>::from_array([1;32]),
+        Hash::<32>::from_inner([1;32]),
         &[1; 32];
         "hash"
     )]
     #[test_case(
-        &Hash::<20>::from_array([2;20]),
+        &Hash::<20>::from_inner([2;20]),
         &[2; 20];
         "borrow_hash"
     )]

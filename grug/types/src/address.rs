@@ -26,11 +26,6 @@ pub type Addr = EncodedBytes<[u8; 20], AddrEncoder>;
 impl Addr {
     pub const LENGTH: usize = 20;
 
-    /// Create a new address from a 32-byte byte slice.
-    pub const fn from_array(array: [u8; Self::LENGTH]) -> Self {
-        Self::from_inner(array)
-    }
-
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {
         let mut bytes = [0; Self::LENGTH];
@@ -38,7 +33,7 @@ impl Addr {
         Self::from_inner(bytes)
     }
 
-    /// Compute a contract address as:
+    /// Derive a contract address as:
     ///
     /// ```plain
     /// address := ripemd160(sha256(deployer_addr | code_hash | salt))
@@ -48,7 +43,7 @@ impl Addr {
     ///
     /// The double hash the same as used by Bitcoin, for [preventing length
     /// extension attacks](https://bitcoin.stackexchange.com/questions/8443/where-is-double-hashing-performed-in-bitcoin).
-    pub fn compute(deployer: Addr, code_hash: Hash256, salt: &[u8]) -> Self {
+    pub fn derive(deployer: Addr, code_hash: Hash256, salt: &[u8]) -> Self {
         let mut preimage = Vec::with_capacity(Self::LENGTH + Hash256::LENGTH + salt.len());
         preimage.extend_from_slice(deployer.as_ref());
         preimage.extend_from_slice(code_hash.as_ref());

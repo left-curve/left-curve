@@ -134,7 +134,7 @@ where
                 key_hash: user.key_hash,
             }
             .into_bytes();
-            let address = Addr::compute(account_factory, account_spot_code_hash, &salt);
+            let address = Addr::derive(account_factory, account_spot_code_hash, &salt);
             Ok((username.clone(), address))
         })
         .collect::<StdResult<BTreeMap<_, _>>>()?;
@@ -292,7 +292,7 @@ where
     S: Into<Binary>,
 {
     let salt = salt.into();
-    let address = Addr::compute(GENESIS_SENDER, code_hash, &salt);
+    let address = Addr::derive(GENESIS_SENDER, code_hash, &salt);
 
     msgs.push(Message::instantiate(
         code_hash,

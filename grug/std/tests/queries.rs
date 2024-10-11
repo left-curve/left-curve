@@ -30,7 +30,7 @@ mod query_maker {
                 fuzz.to_json_value()
             },
             QueryMsg::Buzz => {
-                let buzz = Hash256::from_array([1; 32]);
+                let buzz = Hash256::from_inner([1; 32]);
                 buzz.to_json_value()
             },
         }
@@ -76,5 +76,5 @@ fn query_super_smart() {
     // Similarly, for unit variant `Buzz`.
     suite
         .query_wasm_smart(contract, query_maker::QueryBuzzRequest)
-        .should_succeed_and_equal(Hash256::from_array([1; 32]));
+        .should_succeed_and_equal(Hash256::from_inner([1; 32]));
 }

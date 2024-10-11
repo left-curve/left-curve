@@ -17,6 +17,7 @@ tracing = ["chrono", "dep:tracing"]
 [dependencies]
 borsh            = { workspace = true }
 chrono           = { workspace = true, optional = true }
+grug-math        = { workspace = true }
 grug-storage     = { workspace = true }
 grug-types       = { workspace = true }
 ics23            = { workspace = true }

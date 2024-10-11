@@ -1,5 +1,6 @@
 use {
     crate::{App, AppError, Db, Vm},
+    grug_math::Inner,
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, Timestamp,
         TxOutcome, GENESIS_BLOCK_HASH,
@@ -44,7 +45,7 @@ where
                 data: env!("CARGO_PKG_NAME").into(),
                 version: env!("CARGO_PKG_VERSION").into(),
                 app_version: 1,
-                last_block_app_hash: last_block_version.into_vec().into(),
+                last_block_app_hash: last_block_version.into_inner().to_vec().into(),
                 last_block_height: last_block_height as i64,
             },
             Err(err) => panic!("failed to get info: {err}"),
@@ -67,7 +68,7 @@ where
             Ok(app_hash) => ResponseInitChain {
                 consensus_params: req.consensus_params,
                 validators: req.validators,
-                app_hash: app_hash.into_vec().into(),
+                app_hash: app_hash.into_inner().to_vec().into(),
             },
             Err(err) => panic!("failed to init chain: {err}"),
         }
@@ -95,7 +96,7 @@ where
                     .collect();
 
                 ResponseFinalizeBlock {
-                    app_hash: outcome.app_hash.into_vec().into(),
+                    app_hash: outcome.app_hash.into_inner().to_vec().into(),
                     events,
                     tx_results,
                     // We haven't implemented any mechanism to alter the

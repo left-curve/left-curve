@@ -199,7 +199,7 @@ fn onboarding_without_deposit() -> anyhow::Result<()> {
 #[test_case(
     None,
     None,
-    Some(Hash160::from_array([0; 20]));
+    Some(Hash160::from_inner([0; 20]));
     "false key hash"
 )]
 fn false_factory_tx(

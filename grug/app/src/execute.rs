@@ -133,12 +133,14 @@ fn _do_upload(
 ) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
+
     if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
     }
 
     // Make sure that the same code isn't already uploaded
     let code_hash = code.hash256();
+
     if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
@@ -230,6 +232,7 @@ where
         funds: None,
         mode: None,
     };
+
     let msg = BankMsg { from, to, coins };
 
     let mut events = call_in_1_out_1_handle_response(
@@ -273,6 +276,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
+
     let ctx = Context {
         chain_id,
         block,
@@ -363,23 +367,27 @@ where
 
     // Make sure the user has the permission to instantiate contracts
     let cfg = CONFIG.load(&storage)?;
+
     if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
         return Err(AppError::Unauthorized);
     }
 
     // Compute the contract address, and make sure there isn't already a
     // contract of the same address.
-    let address = Addr::compute(sender, code_hash, &salt);
+    let address = Addr::derive(sender, code_hash, &salt);
+
     if CONTRACTS.has(&storage, address) {
         return Err(AppError::AccountExists { address });
     }
 
     // Save the contract info
     let contract = ContractInfo { code_hash, admin };
+
     CONTRACTS.save(&mut storage, address, &contract)?;
 
     // Make the fund transfer
     let mut events = vec![];
+
     if !funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
@@ -483,6 +491,7 @@ where
 
     // Make the fund transfer
     let mut events = vec![];
+
     if !funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
@@ -588,6 +597,7 @@ where
     let Some(admin) = &contract_info.admin else {
         return Err(AppError::AdminNotSet);
     };
+
     if sender != admin {
         return Err(AppError::NotAdmin {
             sender,
@@ -597,6 +607,7 @@ where
 
     // Update account info and save
     contract_info.code_hash = new_code_hash;
+
     CONTRACTS.save(&mut storage, contract, &contract_info)?;
 
     let ctx = Context {
@@ -679,6 +690,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
+
     let ctx = Context {
         chain_id,
         block,
@@ -719,6 +731,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
+
     let ctx = Context {
         chain_id,
         block,
@@ -787,6 +800,7 @@ where
 {
     let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
+
     let ctx = Context {
         chain_id,
         block,

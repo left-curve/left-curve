@@ -71,14 +71,14 @@ fn sends(c: &mut Criterion) {
                     .map(|i| {
                         // Predict the sender address.
                         // During genesis we created 3 accounts, so offset i by 3.
-                        let sender = Addr::compute(
+                        let sender = Addr::derive(
                             contracts.account_factory,
                             codes.account_spot.hash256(),
                             Salt { index: i + 3 }.into_bytes().as_slice(),
                         );
 
                         // Predict the receiver address.
-                        let receiver = Addr::compute(
+                        let receiver = Addr::derive(
                             contracts.account_factory,
                             codes.account_spot.hash256(),
                             Salt { index: i + 103 }.into_bytes().as_slice(),

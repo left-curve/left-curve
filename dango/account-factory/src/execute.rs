@@ -213,7 +213,7 @@ fn onboard_new_user(
     }
     .into_bytes();
 
-    let address = Addr::compute(factory, code_hash, &salt);
+    let address = Addr::derive(factory, code_hash, &salt);
 
     let funds = if must_have_deposit {
         DEPOSITS.take(storage, &address)?
@@ -271,7 +271,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     let code_hash = CODE_HASHES.load(ctx.storage, params.ty())?;
 
     // Derive the account address.
-    let address = Addr::compute(ctx.contract, code_hash, &salt);
+    let address = Addr::derive(ctx.contract, code_hash, &salt);
 
     // Save the account info.
     let account = Account { index, params };

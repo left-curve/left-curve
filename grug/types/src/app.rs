@@ -13,7 +13,7 @@ use {
 /// We use this as a mock up.
 ///
 /// This is the RIPEMD-160 hash of the UTF-8 string `"sender"`.
-pub const GENESIS_SENDER: Addr = Addr::from_array(hex!("114af6e7a822df07328fba90e1546b5c2b00703f"));
+pub const GENESIS_SENDER: Addr = Addr::from_inner(hex!("114af6e7a822df07328fba90e1546b5c2b00703f"));
 
 /// The mock up block hash used for executing genesis messages.
 ///
@@ -21,7 +21,7 @@ pub const GENESIS_SENDER: Addr = Addr::from_array(hex!("114af6e7a822df07328fba90
 /// this as a mock up.
 ///
 /// This is the SHA-256 hash of the UTF-8 string `"hash"`.
-pub const GENESIS_BLOCK_HASH: Hash256 = Hash256::from_array(hex!(
+pub const GENESIS_BLOCK_HASH: Hash256 = Hash256::from_inner(hex!(
     "d04b98f48e8f8bcc15c6ae5ac050801cd6dcfd428fb5f9e65c4e16e7807340fa"
 ));
 
