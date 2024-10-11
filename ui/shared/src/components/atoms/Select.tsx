@@ -13,7 +13,7 @@ import { ListBox } from "./Listbox";
 
 export { Item } from "@react-stately/collections";
 
-export interface SelectProps<T extends object>
+export interface SelectProps<T extends object = object>
   extends AriaSelectProps<T>,
     VariantProps<typeof selectVariants> {
   selectorIcon?: React.ReactNode;

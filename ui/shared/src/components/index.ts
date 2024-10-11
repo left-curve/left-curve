@@ -33,6 +33,7 @@ export { MarginAccountInfo } from "./molecules/MarginAccountInfo";
 export { MarginDebtsTable } from "./molecules/MarginDebtsTable";
 export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
 export { BorrowingBar } from "./molecules/BorrowingBar";
+export { CoinSelector } from "./molecules/CoinSelector";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */
