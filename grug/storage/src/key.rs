@@ -206,8 +206,8 @@ impl PrimaryKey for Addr {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let array = bytes.try_into()?;
-        Ok(Addr::from_array(array))
+        let inner = bytes.try_into()?;
+        Ok(Addr::from_inner(inner))
     }
 }
 
@@ -805,12 +805,12 @@ mod tests {
         "string"
     )]
     #[test_case(
-        Addr::from_array(*b"ThisIsAValidAddress-"),
+        Addr::from_inner(*b"ThisIsAValidAddress-"),
         b"ThisIsAValidAddress-";
         "addr"
     )]
     #[test_case(
-        &Addr::from_array(*b"ThisIsAValidAddress-"),
+        &Addr::from_inner(*b"ThisIsAValidAddress-"),
         b"ThisIsAValidAddress-";
         "borrow_addr"
     )]

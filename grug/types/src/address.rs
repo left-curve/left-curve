@@ -26,11 +26,6 @@ pub type Addr = EncodedBytes<[u8; 20], AddrEncoder>;
 impl Addr {
     pub const LENGTH: usize = 20;
 
-    /// Create a new address from a 32-byte byte slice.
-    pub const fn from_array(array: [u8; Self::LENGTH]) -> Self {
-        Self::from_inner(array)
-    }
-
     /// Generate a mock address from use in testing.
     pub const fn mock(index: u8) -> Self {
         let mut bytes = [0; Self::LENGTH];
