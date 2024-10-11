@@ -96,9 +96,3 @@ impl FactorySalt {
         Salt::new_unchecked(self.index.to_be_bytes().into())
     }
 }
-
-// impl From<FactorySalt> for Binary {
-//     fn from(salt: FactorySalt) -> Self {
-//         salt.into_bytes().into()
-//     }
-// }
