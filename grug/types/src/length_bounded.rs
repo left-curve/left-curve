@@ -1,12 +1,9 @@
 use {
-    crate::{Binary, StdError, StdResult},
+    crate::{Lengthy, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
     serde::{Deserialize, Deserializer, Serialize, Serializer},
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        ops::Deref,
-    },
+    std::ops::Deref,
 };
 
 pub type MaxLength<T, const MAX: usize> = LengthBounded<T, 0, MAX>;
@@ -20,10 +17,6 @@ pub type FixedLength<T, const LEN: usize> = LengthBounded<T, LEN, LEN>;
 pub struct LengthBounded<T, const MIN: usize, const MAX: usize>(T)
 where
     T: Lengthy;
-
-pub trait Lengthy {
-    fn length(&self) -> usize;
-}
 
 impl<T, const MIN: usize, const MAX: usize> LengthBounded<T, MIN, MAX>
 where
@@ -132,44 +125,6 @@ where
         let value = BorshDeserialize::deserialize_reader(reader)?;
 
         Self::new(value).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
-    }
-}
-
-// ---------------------------- LengthBounds impls -----------------------------
-
-impl Lengthy for Binary {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl Lengthy for String {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl Lengthy for Vec<u8> {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl<const LEN: usize> Lengthy for [u8; LEN] {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl<K, V> Lengthy for BTreeMap<K, V> {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl<K> Lengthy for BTreeSet<K> {
-    fn length(&self) -> usize {
-        self.len()
     }
 }
 
