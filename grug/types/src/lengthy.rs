@@ -23,25 +23,25 @@ impl Lengthy for String {
     }
 }
 
-impl Lengthy for Vec<u8> {
+impl<T, const LEN: usize> Lengthy for [T; LEN] {
+    fn length(&self) -> usize {
+        LEN
+    }
+}
+
+impl<T> Lengthy for Vec<T> {
     fn length(&self) -> usize {
         self.len()
     }
 }
 
-impl<const LEN: usize> Lengthy for [u8; LEN] {
+impl<T> Lengthy for BTreeSet<T> {
     fn length(&self) -> usize {
         self.len()
     }
 }
 
 impl<K, V> Lengthy for BTreeMap<K, V> {
-    fn length(&self) -> usize {
-        self.len()
-    }
-}
-
-impl<K> Lengthy for BTreeSet<K> {
     fn length(&self) -> usize {
         self.len()
     }
