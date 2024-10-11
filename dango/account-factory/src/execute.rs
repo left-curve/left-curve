@@ -7,15 +7,15 @@ use {
     dango_types::{
         account::{self, multi, single},
         account_factory::{
-            Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
-            Username,
+            Account, AccountParams, AccountType, ExecuteMsg, FactorySalt, InstantiateMsg,
+            NewUserSalt, Username,
         },
         auth::Key,
         config::IBC_TRANSFER_KEY,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
-        MutableCtx, Order, Response, StdResult, Storage, Tx,
+        MutableCtx, Order, Response, Salt, StdResult, Storage, Tx,
     },
 };
 
@@ -235,7 +235,7 @@ fn onboard_new_user(
     Message::instantiate(
         code_hash,
         &account::InstantiateMsg {},
-        salt,
+        Salt::new(salt.into())?,
         funds,
         Some(factory),
     )
@@ -265,7 +265,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Increment the global account index. This is used in the salt for deriving
     // the account address.
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(ctx.storage)?;
-    let salt = Salt { index }.into_bytes();
+    let salt = FactorySalt { index }.into_bytes();
 
     // Find the code hash based on the account type.
     let code_hash = CODE_HASHES.load(ctx.storage, params.ty())?;

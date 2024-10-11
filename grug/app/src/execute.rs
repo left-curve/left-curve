@@ -7,8 +7,8 @@ use {
     },
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
-        TxOutcome,
+        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Op, Salt, Storage,
+        SubMsgResult, Tx, TxOutcome,
     },
     std::collections::BTreeMap,
 };
@@ -306,7 +306,7 @@ pub fn do_instantiate<VM>(
     sender: Addr,
     code_hash: Hash256,
     msg: &Json,
-    salt: Binary,
+    salt: Salt,
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<Vec<Event>>
@@ -351,7 +351,7 @@ pub fn _do_instantiate<VM>(
     sender: Addr,
     code_hash: Hash256,
     msg: &Json,
-    salt: Binary,
+    salt: Salt,
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>

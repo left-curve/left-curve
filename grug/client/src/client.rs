@@ -5,7 +5,7 @@ use {
     grug_types::{
         Addr, AsyncSigner, Binary, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom,
         GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query,
-        QueryResponse, StdError, Tx, TxOutcome, UnsignedTx,
+        QueryResponse, Salt, StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -511,7 +511,7 @@ impl Client {
     ) -> anyhow::Result<(Addr, tx_sync::Response)>
     where
         M: Serialize,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         T: AsyncSigner,
         StdError: From<C::Error>,
@@ -543,7 +543,7 @@ impl Client {
     where
         M: Serialize,
         B: Into<Binary>,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         T: AsyncSigner,
         StdError: From<C::Error>,

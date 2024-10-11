@@ -3,7 +3,7 @@ use {
     dango_testing::setup_benchmark,
     dango_types::{
         account::single,
-        account_factory::{self, AccountParams, Salt},
+        account_factory::{self, AccountParams, FactorySalt},
         amm::{self, FeeRate, PoolParams, XykParams},
     },
     grug::{
@@ -74,14 +74,14 @@ fn sends(c: &mut Criterion) {
                         let sender = Addr::compute(
                             contracts.account_factory,
                             codes.account_spot.hash256(),
-                            Salt { index: i + 3 }.into_bytes().as_slice(),
+                            FactorySalt { index: i + 3 }.into_bytes().as_ref(),
                         );
 
                         // Predict the receiver address.
                         let receiver = Addr::compute(
                             contracts.account_factory,
                             codes.account_spot.hash256(),
-                            Salt { index: i + 103 }.into_bytes().as_slice(),
+                            FactorySalt { index: i + 103 }.into_bytes().as_ref(),
                         );
 
                         // Sign the transaction.

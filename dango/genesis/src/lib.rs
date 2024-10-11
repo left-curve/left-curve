@@ -10,8 +10,8 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, GenesisState, Hash160,
-        Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, StdResult,
-        Udec128, Uint128, GENESIS_SENDER,
+        Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, Salt,
+        StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
@@ -121,7 +121,7 @@ where
             keys,
             users,
         },
-        "account_factory",
+        Salt::from_str("account_factory")?,
     )?;
 
     // Derive the addresses of the genesis accounts that were just created.
@@ -154,7 +154,7 @@ where
         &mut msgs,
         ibc_transfer_code_hash,
         &mock_ibc_transfer::InstantiateMsg {},
-        "ibc_transfer",
+        Salt::from_str("ibc_transfer")?,
     )?;
 
     // Instantiate the token factory contract.
@@ -164,7 +164,7 @@ where
         &token_factory::InstantiateMsg {
             denom_creation_fee: Coin::new(fee_denom.clone(), denom_creation_fee)?,
         },
-        "token_factory",
+        Salt::from_str("token_factory")?,
     )?;
 
     // Instantiate the AMM contract.
@@ -181,7 +181,7 @@ where
                 )?), // 10 USDC
             },
         },
-        "amm",
+        Salt::from_str("amm")?,
     )?;
 
     // Create the `balances` map needed for instantiating bank.
@@ -214,7 +214,7 @@ where
             balances,
             namespaces,
         },
-        "bank",
+        Salt::from_str("bank")?,
     )?;
 
     // Instantiate the taxman contract.
@@ -228,7 +228,7 @@ where
                 fee_rate,
             },
         },
-        "taxman",
+        Salt::from_str("taxman")?,
     )?;
 
     let contracts = Contracts {
@@ -289,7 +289,7 @@ fn instantiate<M, S>(
 ) -> anyhow::Result<Addr>
 where
     M: Serialize,
-    S: Into<Binary>,
+    S: Into<Salt>,
 {
     let salt = salt.into();
     let address = Addr::compute(GENESIS_SENDER, code_hash, &salt);

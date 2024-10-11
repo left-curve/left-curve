@@ -1,7 +1,8 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty},
+    grug_types::{Coins, Empty, Salt},
     grug_vm_rust::ContractBuilder,
+    std::str::FromStr,
 };
 
 mod query_maker {
@@ -51,7 +52,7 @@ fn handling_multi_query() {
         .upload_and_instantiate(
             accounts.get_mut("larry").unwrap(),
             query_maker_code,
-            "query_maker",
+            Salt::from_str("query_maker").unwrap(),
             &Empty {},
             Coins::new(),
         )

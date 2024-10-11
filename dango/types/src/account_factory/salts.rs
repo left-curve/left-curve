@@ -3,7 +3,7 @@ use {
         account_factory::{AccountIndex, Username},
         auth::Key,
     },
-    grug::{Binary, Hash160},
+    grug::{Binary, Hash160, Salt},
 };
 
 // ------------------------------- new user salt -------------------------------
@@ -84,18 +84,21 @@ impl<'a> From<NewUserSalt<'a>> for Binary {
 
 /// The salt account factory uses to create a user's subsequent accounts.
 #[derive(Debug, Clone, Copy)]
-pub struct Salt {
+pub struct FactorySalt {
     pub index: AccountIndex,
 }
 
-impl Salt {
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.index.to_be_bytes().to_vec()
+impl FactorySalt {
+    /// Account index is a u32, so it's 4 bytes.
+    ///
+    /// Salt limit is [MAX_SALT_LENGTH](grug::MAX_SALT_LENGTH) that is higher
+    pub fn into_bytes(self) -> Salt {
+        Salt::new_unchecked(self.index.to_be_bytes().into())
     }
 }
 
-impl From<Salt> for Binary {
-    fn from(salt: Salt) -> Self {
-        salt.into_bytes().into()
-    }
-}
+// impl From<FactorySalt> for Binary {
+//     fn from(salt: FactorySalt) -> Self {
+//         salt.into_bytes().into()
+//     }
+// }

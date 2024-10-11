@@ -1,6 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, StdError, StdResult,
+        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, Salt, StdError,
+        StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -46,7 +47,7 @@ pub enum Message {
     Instantiate {
         code_hash: Hash256,
         msg: Json,
-        salt: Binary,
+        salt: Salt,
         funds: Coins,
         admin: Option<Addr>,
     },
@@ -102,7 +103,7 @@ impl Message {
     ) -> StdResult<Self>
     where
         M: Serialize,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {

@@ -1,8 +1,8 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Timestamp},
+    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Salt, Timestamp},
     grug_vm_rust::ContractBuilder,
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, str::FromStr},
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -80,7 +80,7 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron1",
+            Salt::from_str("cron1").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("uatom", 1).unwrap(),
@@ -94,7 +94,7 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron2",
+            Salt::from_str("cron2").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("uosmo", 1).unwrap(),
@@ -108,7 +108,7 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron3",
+            Salt::from_str("cron3").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("umars", 1).unwrap(),

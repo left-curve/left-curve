@@ -27,6 +27,7 @@ mod non_zero;
 mod query;
 mod response;
 mod result;
+mod salt;
 mod serializers;
 mod signer;
 mod time;
@@ -38,8 +39,8 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, coin::*,
     coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*, encoders::*,
     error::*, event::*, hash::*, hashers::*, imports::*, length_bounded::*, lengthy::*,
-    non_zero::*, query::*, response::*, result::*, serializers::*, signer::*, time::*, tx::*,
-    unique_vec::*, utils::*,
+    non_zero::*, query::*, response::*, result::*, salt::*, serializers::*, signer::*, time::*,
+    tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

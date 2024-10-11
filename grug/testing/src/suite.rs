@@ -7,7 +7,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome, UnsignedTx,
+        Op, Outcome, Query, QueryRequest, ResultExt, Salt, Signer, StdError, Tx, TxOutcome,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -302,7 +303,7 @@ where
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -322,7 +323,7 @@ where
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -353,7 +354,7 @@ where
     where
         M: Serialize,
         B: Into<Binary>,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -374,7 +375,7 @@ where
     where
         M: Serialize,
         B: Into<Binary>,
-        S: Into<Binary>,
+        S: Into<Salt>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {

@@ -6,7 +6,8 @@ use {
             single,
         },
         account_factory::{
-            self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
+            self, Account, AccountParams, FactorySalt, QueryAccountRequest,
+            QueryAccountsByUserRequest,
         },
         mock_ibc_transfer, ChangeSet,
     },
@@ -99,7 +100,7 @@ fn safe() {
     let safe_address = Addr::compute(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 6 }.into_bytes().as_slice(),
+        FactorySalt { index: 6 }.into_bytes().as_ref(),
     );
     let mut safe = Safe::new(safe_address);
 

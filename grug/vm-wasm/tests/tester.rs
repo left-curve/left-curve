@@ -10,7 +10,7 @@ use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
         Addr, Binary, Coins, Denom, GenericResult, JsonSerExt, Message, QueryRequest, ResultExt,
-        VerificationError,
+        Salt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
@@ -47,7 +47,7 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             accounts.get_mut("sender").unwrap(),
             320_000_000,
             read_wasm_file("grug_tester.wasm"),
-            "tester",
+            Salt::from_str("tester").unwrap(),
             &grug_tester::InstantiateMsg {},
             Coins::new(),
         )

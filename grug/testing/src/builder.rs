@@ -6,8 +6,8 @@ use {
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
-        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Undefined,
-        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Salt, Timestamp,
+        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -517,14 +517,14 @@ where
             Message::instantiate(
                 self.bank_opt.code.hash256(),
                 &(self.bank_opt.msg_builder)(self.balances),
-                DEFAULT_BANK_SALT,
+                Salt::new(DEFAULT_BANK_SALT.into())?,
                 Coins::new(),
                 None,
             )?,
             Message::instantiate(
                 self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
-                DEFAULT_TAXMAN_SALT,
+                Salt::new(DEFAULT_TAXMAN_SALT.into())?,
                 Coins::new(),
                 None,
             )?,
@@ -535,7 +535,7 @@ where
             msgs.push(Message::instantiate(
                 self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
-                *name,
+                Salt::new(name.as_bytes().into())?,
                 Coins::new(),
                 Some(account.address),
             )?);

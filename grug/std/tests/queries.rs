@@ -1,4 +1,6 @@
-use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, TestBuilder};
+use std::str::FromStr;
+
+use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, Salt, TestBuilder};
 
 mod query_maker {
     use grug::{
@@ -56,7 +58,7 @@ fn query_super_smart() {
         .upload_and_instantiate(
             accounts.get_mut("larry").unwrap(),
             code,
-            "contract",
+            Salt::from_str("contract").unwrap(),
             &Empty {},
             Coins::new(),
         )
