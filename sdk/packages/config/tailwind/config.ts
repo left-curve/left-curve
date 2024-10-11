@@ -69,11 +69,16 @@ export const tailwindConfig: Partial<Config> = {
         },
         "surface-green": {
           100: "#EEF2F0",
+          300: "#DCE4E0",
+          400: "#C2D0C9",
         },
         "surface-yellow": {
           100: "#F9F7EB",
           200: "#F4EFD7",
           300: "#ECE4BA",
+        },
+        "surface-off-white": {
+          200: "#FFFBF0",
         },
         sand: {
           DEFAULT: "#F5DDB8",
@@ -180,6 +185,13 @@ export const tailwindConfig: Partial<Config> = {
       addUtilities({
         ".tap-highlight-transparent": {
           "-webkit-tap-highlight-color": "transparent",
+        },
+        ".drag-none": {
+          "-webkit-user-drag": "none",
+          "-khtml-user-drag": "none",
+          "-moz-user-drag": "none",
+          "-o-user-drag": "none",
+          "user-drag": "none",
         },
       });
     }),

@@ -2,18 +2,24 @@ import * as React from "react";
 import { type VariantProps, tv } from "tailwind-variants";
 
 export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "color">,
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "color" | "className">,
     VariantProps<typeof inputVariants> {
   startContent?: React.ReactNode;
   endContent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
   error?: string;
+  classNames?: {
+    base?: string;
+    inputWrapper?: string;
+    input?: string;
+    description?: string;
+  };
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
-      className,
+      classNames,
       startContent,
       endContent,
       bottomComponent,
@@ -29,21 +35,29 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ref,
   ) => {
     const { base, input, inputWrapper, description } = inputVariants({
-      className,
       color,
       size,
       fullWidth,
       isDisabled: disabled,
     });
     return (
-      <div className={base()}>
-        <div className={inputWrapper()}>
+      <div className={base({ className: classNames?.base })}>
+        <div className={inputWrapper({ className: classNames?.inputWrapper })}>
           {startContent ? startContent : null}
-          <input type={type} className={input({ startText })} ref={ref} {...props} />
+          <input
+            type={type}
+            className={input({ startText, className: classNames?.input })}
+            ref={ref}
+            {...props}
+          />
           {endContent ? endContent : null}
         </div>
         {error ? <span className="text-danger-500">{error}</span> : null}
-        {bottomComponent ? <span className={description()}>{bottomComponent}</span> : null}
+        {bottomComponent ? (
+          <span className={description({ className: classNames?.description })}>
+            {bottomComponent}
+          </span>
+        ) : null}
       </div>
     );
   },
@@ -75,11 +89,11 @@ const inputVariants = tv(
       size: {
         sm: {},
         md: {
-          inputWrapper: "h-12 min-h-12 rounded-xl",
+          inputWrapper: "min-h-12 rounded-xl",
           input: "text-base",
         },
         lg: {
-          inputWrapper: "h-14 min-h-14 rounded-2xl",
+          inputWrapper: "min-h-14 rounded-2xl",
           input: "text-base",
         },
       },
