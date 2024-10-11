@@ -3,6 +3,10 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
+/// Describes a value that can be measured in length.
+///
+/// We have to create this trait because Rust standard library doesn't have a
+/// built-in trait for the `.len()` method.
 pub trait Lengthy {
     fn length(&self) -> usize;
 }
