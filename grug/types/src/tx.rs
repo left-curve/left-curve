@@ -1,6 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, StdError, StdResult,
+        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, MaxLength, Op, StdError,
+        StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -8,6 +9,11 @@ use {
     std::collections::BTreeMap,
 };
 
+/// An arbitrary binary data used for deriving address when instantiating a
+/// contract. Must be at most 70 bytes.
+pub type Salt = MaxLength<Binary, 70>;
+
+/// A transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tx {
     pub sender: Addr,
@@ -27,6 +33,7 @@ pub struct UnsignedTx {
     pub data: Json,
 }
 
+/// A message.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -46,7 +53,7 @@ pub enum Message {
     Instantiate {
         code_hash: Hash256,
         msg: Json,
-        salt: Binary,
+        salt: Salt,
         funds: Coins,
         admin: Option<Addr>,
     },
@@ -109,7 +116,7 @@ impl Message {
         Ok(Self::Instantiate {
             code_hash,
             msg: msg.to_json_value()?,
-            salt: salt.into(),
+            salt: Salt::new(salt.into())?,
             funds: funds.try_into()?,
             admin,
         })

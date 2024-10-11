@@ -763,7 +763,7 @@ where
             sender,
             code_hash,
             &msg,
-            salt,
+            &salt,
             funds,
             admin,
         ),
