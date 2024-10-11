@@ -6,7 +6,7 @@ use {
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
-        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Salt, Timestamp,
+        Json, JsonSerExt, Label, MaybeDefined, Message, Permission, Permissions, Salt, Timestamp,
         Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
@@ -27,6 +27,8 @@ const DEFAULT_BANK_SALT: &[u8] = b"bank";
 const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
 const DEFAULT_FEE_RATE: &str = "0";
+const DEFAULT_BANK_LABEL: &str = "bank";
+const DEFAULT_TAXMAN_LABEL: &str = "taxman";
 
 // If the user wishes to use a custom code for account, bank, or taxman, they
 // must provide both the binary code, as well as a function for creating the
@@ -518,6 +520,7 @@ where
                 self.bank_opt.code.hash256(),
                 &(self.bank_opt.msg_builder)(self.balances),
                 Salt::new(DEFAULT_BANK_SALT.into())?,
+                Label::from_str(DEFAULT_BANK_LABEL)?,
                 Coins::new(),
                 None,
             )?,
@@ -525,6 +528,7 @@ where
                 self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
                 Salt::new(DEFAULT_TAXMAN_SALT.into())?,
+                Label::from_str(DEFAULT_TAXMAN_LABEL)?,
                 Coins::new(),
                 None,
             )?,
@@ -536,6 +540,7 @@ where
                 self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
                 Salt::from_str(name)?,
+                Label::from_str(name)?,
                 Coins::new(),
                 Some(account.address),
             )?);

@@ -1,6 +1,6 @@
 use {
     crate::{
-        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Op, Salt, StdError,
+        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, Label, Op, Salt, StdError,
         StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -48,6 +48,7 @@ pub enum Message {
         code_hash: Hash256,
         msg: Json,
         salt: Salt,
+        label: Label,
         funds: Coins,
         admin: Option<Addr>,
     },
@@ -94,10 +95,11 @@ impl Message {
         Self::Upload { code: code.into() }
     }
 
-    pub fn instantiate<M, S, C>(
+    pub fn instantiate<M, S, C, L>(
         code_hash: Hash256,
         msg: &M,
         salt: S,
+        label: L,
         funds: C,
         admin: Option<Addr>,
     ) -> StdResult<Self>
@@ -105,6 +107,7 @@ impl Message {
         M: Serialize,
         S: Into<Salt>,
         C: TryInto<Coins>,
+        L: Into<Label>,
         StdError: From<C::Error>,
     {
         Ok(Self::Instantiate {
@@ -112,6 +115,7 @@ impl Message {
             msg: msg.to_json_value()?,
             salt: salt.into(),
             funds: funds.try_into()?,
+            label: label.into(),
             admin,
         })
     }
@@ -138,5 +142,31 @@ impl Message {
             new_code_hash,
             msg: msg.to_json_value()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use serde_json::Value;
+
+    use crate::{BorshDeExt, BorshSerExt, Coins, Hash256, Label, Salt};
+
+    use super::Message;
+
+    #[test]
+    fn borsh() {
+        let msg = Message::Instantiate {
+            code_hash: Hash256::from_array([0; 32]),
+            msg: Value::default(),
+            salt: Salt::from_str("tester").unwrap(),
+            label: Label::from_str("tester").unwrap(),
+            funds: Coins::default(),
+            admin: None,
+        };
+
+        let ser = msg.to_borsh_vec().unwrap();
+        let de: Message = ser.deserialize_borsh().unwrap();
     }
 }

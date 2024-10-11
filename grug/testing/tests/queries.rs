@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Salt},
+    grug_types::{Coins, Empty, Label, Salt},
     grug_vm_rust::ContractBuilder,
     std::str::FromStr,
 };
@@ -53,6 +53,7 @@ fn handling_multi_query() {
             accounts.get_mut("larry").unwrap(),
             query_maker_code,
             Salt::from_str("query_maker").unwrap(),
+            Label::from_str("query_maker").unwrap(),
             &Empty {},
             Coins::new(),
         )

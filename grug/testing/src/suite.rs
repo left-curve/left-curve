@@ -6,9 +6,9 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, ResultExt, Salt, Signer, StdError, Tx, TxOutcome,
-        UnsignedTx,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Label,
+        Message, Op, Outcome, Query, QueryRequest, ResultExt, Salt, Signer, StdError, Tx,
+        TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -293,37 +293,49 @@ where
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M, S, C>(
+    pub fn instantiate<M, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         code_hash: Hash256,
         salt: S,
+        label: L,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Salt>,
+        L: Into<Label>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.instantiate_with_gas(signer, self.default_gas_limit, code_hash, salt, msg, funds)
+        self.instantiate_with_gas(
+            signer,
+            self.default_gas_limit,
+            code_hash,
+            salt,
+            label,
+            msg,
+            funds,
+        )
     }
 
     /// Instantiate a contract under the given gas limit. Return the contract's
     /// address.
-    pub fn instantiate_with_gas<M, S, C>(
+    pub fn instantiate_with_gas<M, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         code_hash: Hash256,
         salt: S,
+        label: L,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Salt>,
+        L: Into<Label>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -333,7 +345,7 @@ where
         self.send_message_with_gas(
             signer,
             gas_limit,
-            Message::instantiate(code_hash, msg, salt, funds, None)?,
+            Message::instantiate(code_hash, msg, salt, label, funds, None)?,
         )?
         .result
         .should_succeed();
@@ -343,11 +355,12 @@ where
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn upload_and_instantiate<M, B, S, C>(
+    pub fn upload_and_instantiate<M, B, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         code: B,
         salt: S,
+        label: L,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
@@ -355,20 +368,30 @@ where
         M: Serialize,
         B: Into<Binary>,
         S: Into<Salt>,
+        L: Into<Label>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.upload_and_instantiate_with_gas(signer, self.default_gas_limit, code, salt, msg, funds)
+        self.upload_and_instantiate_with_gas(
+            signer,
+            self.default_gas_limit,
+            code,
+            salt,
+            label,
+            msg,
+            funds,
+        )
     }
 
     /// Upload a code and instantiate a contract with it in one go under the
     /// given gas limit. Return the code hash as well as the contract's address.
-    pub fn upload_and_instantiate_with_gas<M, B, S, C>(
+    pub fn upload_and_instantiate_with_gas<M, B, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         code: B,
         salt: S,
+        label: L,
         msg: &M,
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
@@ -376,6 +399,7 @@ where
         M: Serialize,
         B: Into<Binary>,
         S: Into<Salt>,
+        L: Into<Label>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -386,7 +410,7 @@ where
 
         self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, funds, None)?,
+            Message::instantiate(code_hash, msg, salt, label, funds, None)?,
         ])?
         .result
         .should_succeed();

@@ -10,7 +10,7 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, GenesisState, Hash160,
-        Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, Salt,
+        Hash256, HashExt, JsonSerExt, Label, Message, NonZero, Part, Permission, Permissions, Salt,
         StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
@@ -122,6 +122,7 @@ where
             users,
         },
         Salt::from_str("account_factory")?,
+        Label::from_str("account_factory")?,
     )?;
 
     // Derive the addresses of the genesis accounts that were just created.
@@ -155,6 +156,7 @@ where
         ibc_transfer_code_hash,
         &mock_ibc_transfer::InstantiateMsg {},
         Salt::from_str("ibc_transfer")?,
+        Label::from_str("ibc_transfer")?,
     )?;
 
     // Instantiate the token factory contract.
@@ -165,6 +167,7 @@ where
             denom_creation_fee: Coin::new(fee_denom.clone(), denom_creation_fee)?,
         },
         Salt::from_str("token_factory")?,
+        Label::from_str("token_factory")?,
     )?;
 
     // Instantiate the AMM contract.
@@ -182,6 +185,7 @@ where
             },
         },
         Salt::from_str("amm")?,
+        Label::from_str("amm")?,
     )?;
 
     // Create the `balances` map needed for instantiating bank.
@@ -215,6 +219,7 @@ where
             namespaces,
         },
         Salt::from_str("bank")?,
+        Label::from_str("bank")?,
     )?;
 
     // Instantiate the taxman contract.
@@ -229,6 +234,7 @@ where
             },
         },
         Salt::from_str("taxman")?,
+        Label::from_str("taxman")?,
     )?;
 
     let contracts = Contracts {
@@ -281,15 +287,17 @@ where
     code_hash
 }
 
-fn instantiate<M, S>(
+fn instantiate<M, S, L>(
     msgs: &mut Vec<Message>,
     code_hash: Hash256,
     msg: &M,
     salt: S,
+    label: L,
 ) -> anyhow::Result<Addr>
 where
     M: Serialize,
     S: Into<Salt>,
+    L: Into<Label>,
 {
     let salt = salt.into();
     let address = Addr::compute(GENESIS_SENDER, code_hash, &salt);
@@ -298,6 +306,7 @@ where
         code_hash,
         msg,
         salt,
+        label,
         Coins::new(),
         None,
     )?);

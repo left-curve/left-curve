@@ -4,6 +4,7 @@ use {
 };
 
 pub const MAX_SALT_LENGTH: usize = 70;
+
 pub type Salt = MaxLength<Binary, MAX_SALT_LENGTH>;
 
 impl FromStr for Salt {

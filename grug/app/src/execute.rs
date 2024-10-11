@@ -7,7 +7,7 @@ use {
     },
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Op, Salt, Storage,
+        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Label, Op, Salt, Storage,
         SubMsgResult, Tx, TxOutcome,
     },
     std::collections::BTreeMap,
@@ -307,6 +307,7 @@ pub fn do_instantiate<VM>(
     code_hash: Hash256,
     msg: &Json,
     salt: Salt,
+    label: Label,
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<Vec<Event>>
@@ -324,6 +325,7 @@ where
         code_hash,
         msg,
         salt,
+        label,
         funds,
         admin,
     ) {
@@ -352,6 +354,7 @@ pub fn _do_instantiate<VM>(
     code_hash: Hash256,
     msg: &Json,
     salt: Salt,
+    label: Label,
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
@@ -375,7 +378,11 @@ where
     }
 
     // Save the contract info
-    let contract = ContractInfo { code_hash, admin };
+    let contract = ContractInfo {
+        code_hash,
+        admin,
+        label,
+    };
     CONTRACTS.save(&mut storage, address, &contract)?;
 
     // Make the fund transfer

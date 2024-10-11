@@ -1,6 +1,6 @@
 use {
     crate::account::{multi, single},
-    grug::{PrimaryKey, StdError, StdResult},
+    grug::{Label, PrimaryKey, StdError, StdResult},
     paste::paste,
     std::borrow::Cow,
 };
@@ -63,6 +63,22 @@ impl AccountParams {
             AccountParams::Margin { .. } => AccountType::Margin,
             AccountParams::Safe(_) => AccountType::Safe,
         }
+    }
+
+    pub fn generate_label(&self, index: AccountIndex) -> StdResult<Label> {
+        let label = match self {
+            AccountParams::Safe(..) => {
+                format!("safe/{}", index)
+            },
+            AccountParams::Spot(params) => {
+                format!("spot/{}/{}", params.owner, index)
+            },
+            AccountParams::Margin(params) => {
+                format!("margin/{}/{}", params.owner, index)
+            },
+        };
+
+        Label::new(label)
     }
 }
 

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, Salt, TestBuilder};
+use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, Label, ResultExt, Salt, TestBuilder};
 
 mod query_maker {
     use grug::{
@@ -59,6 +59,7 @@ fn query_super_smart() {
             accounts.get_mut("larry").unwrap(),
             code,
             Salt::from_str("contract").unwrap(),
+            Label::from_str("contract").unwrap(),
             &Empty {},
             Coins::new(),
         )

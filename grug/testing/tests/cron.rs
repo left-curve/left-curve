@@ -1,6 +1,8 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Salt, Timestamp},
+    grug_types::{
+        btree_map, Coin, Coins, ConfigUpdates, Duration, Label, ResultExt, Salt, Timestamp,
+    },
     grug_vm_rust::ContractBuilder,
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -81,6 +83,7 @@ fn cronjob_works() {
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
             Salt::from_str("cron1").unwrap(),
+            Label::from_str("cron1").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("uatom", 1).unwrap(),
@@ -95,6 +98,7 @@ fn cronjob_works() {
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
             Salt::from_str("cron2").unwrap(),
+            Label::from_str("cron2").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("uosmo", 1).unwrap(),
@@ -109,6 +113,7 @@ fn cronjob_works() {
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
             Salt::from_str("cron3").unwrap(),
+            Label::from_str("cron3").unwrap(),
             &tester::Job {
                 receiver,
                 coin: Coin::new("umars", 1).unwrap(),

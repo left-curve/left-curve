@@ -753,6 +753,7 @@ where
             msg,
             salt,
             funds,
+            label,
             admin,
         } => do_instantiate(
             vm,
@@ -764,6 +765,7 @@ where
             code_hash,
             &msg,
             salt,
+            label,
             funds,
             admin,
         ),

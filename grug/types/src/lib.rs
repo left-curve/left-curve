@@ -20,6 +20,7 @@ mod event;
 mod hash;
 mod hashers;
 mod imports;
+mod label;
 mod length_bounded;
 mod lengthy;
 mod macros;
@@ -38,7 +39,7 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, coin::*,
     coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*, encoders::*,
-    error::*, event::*, hash::*, hashers::*, imports::*, length_bounded::*, lengthy::*,
+    error::*, event::*, hash::*, hashers::*, imports::*, label::*, length_bounded::*, lengthy::*,
     non_zero::*, query::*, response::*, result::*, salt::*, serializers::*, signer::*, time::*,
     tx::*, unique_vec::*, utils::*,
 };

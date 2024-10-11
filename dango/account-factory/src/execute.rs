@@ -221,12 +221,13 @@ fn onboard_new_user(
         Coins::new()
     };
 
-    let account = Account {
-        index,
-        params: AccountParams::Spot(single::Params {
-            owner: username.clone(),
-        }),
-    };
+    let params = AccountParams::Spot(single::Params {
+        owner: username.clone(),
+    });
+
+    let label = params.generate_label(index)?;
+
+    let account = Account { index, params };
 
     ACCOUNTS.save(storage, address, &account)?;
     ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
@@ -236,6 +237,7 @@ fn onboard_new_user(
         code_hash,
         &account::InstantiateMsg {},
         Salt::new(salt.into())?,
+        label,
         funds,
         Some(factory),
     )
@@ -273,6 +275,8 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Derive the account address.
     let address = Addr::compute(ctx.contract, code_hash, &salt);
 
+    let label = params.generate_label(index)?;
+
     // Save the account info.
     let account = Account { index, params };
     ACCOUNTS.save(ctx.storage, address, &account)?;
@@ -293,6 +297,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         code_hash,
         &account::InstantiateMsg {},
         salt,
+        label,
         ctx.funds,
         Some(ctx.contract),
     )?))
