@@ -19,6 +19,7 @@ ics23 = ["dep:ics23"]
 
 [dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+grug-math    = { workspace = true }
 grug-storage = { workspace = true }
 grug-types   = { workspace = true }
 ics23        = { workspace = true, optional = true }

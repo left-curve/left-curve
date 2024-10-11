@@ -1567,6 +1567,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug-jmt",
+ "grug-math",
  "grug-types",
  "serde",
  "tendermint",
@@ -1635,6 +1636,7 @@ name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-math",
  "grug-storage",
  "grug-types",
  "hex-literal",

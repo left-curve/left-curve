@@ -1,4 +1,5 @@
 use {
+    grug_math::Inner,
     grug_storage::PrimaryKey,
     grug_types::{split_one_key, Hash256, Order, StdResult},
     std::{borrow::Cow, fmt},
@@ -153,7 +154,7 @@ impl From<Hash256> for BitArray {
     fn from(hash: Hash256) -> Self {
         Self {
             num_bits: Self::MAX_BIT_LENGTH,
-            bytes: hash.into_array(),
+            bytes: hash.into_inner(),
         }
     }
 }

@@ -27,11 +27,6 @@ impl<const N: usize> Hash<N> {
     /// A zeroed-out hash. Useful as mockups or placeholders.
     pub const ZERO: Self = Self::from_inner([0; N]);
 
-    /// Cast the hash into a byte array.
-    pub fn into_array(self) -> [u8; N] {
-        self.into_inner()
-    }
-
     /// Cast the hash into a byte vector.
     pub fn into_vec(self) -> Vec<u8> {
         self.inner().to_vec()

@@ -2,6 +2,7 @@ use {
     crate::{AdminOption, GasOption, SigningOption},
     anyhow::{bail, ensure},
     grug_jmt::Proof,
+    grug_math::Inner,
     grug_types::{
         Addr, AsyncSigner, Binary, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom,
         GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query,
@@ -42,7 +43,7 @@ impl Client {
     pub async fn query_tx(&self, hash: Hash256) -> anyhow::Result<tx::Response> {
         Ok(self
             .inner
-            .tx(TmHash::Sha256(hash.into_array()), false)
+            .tx(TmHash::Sha256(hash.into_inner()), false)
             .await?)
     }
 
