@@ -25,7 +25,7 @@ impl TestAccount {
     /// The address is predicted with the given code hash and salt, assuming the
     /// account is to be instantiated during genesis.
     pub fn new_random(code_hash: Hash256, salt: &[u8]) -> Self {
-        let address = Addr::compute(GENESIS_SENDER, code_hash, salt);
+        let address = Addr::derive(GENESIS_SENDER, code_hash, salt);
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
             .verifying_key()

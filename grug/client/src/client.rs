@@ -518,7 +518,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let address = Addr::derive(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
@@ -552,7 +552,7 @@ impl Client {
         let code = code.into();
         let code_hash = code.hash256();
         let salt = salt.into();
-        let address = Addr::compute(sign_opt.sender, code_hash, &salt);
+        let address = Addr::derive(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msgs = vec![

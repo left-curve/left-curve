@@ -369,7 +369,7 @@ where
 
     // Compute the contract address, and make sure there isn't already a
     // contract of the same address.
-    let address = Addr::compute(sender, code_hash, &salt);
+    let address = Addr::derive(sender, code_hash, &salt);
     if CONTRACTS.has(&storage, address) {
         return Err(AppError::AccountExists { address });
     }

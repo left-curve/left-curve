@@ -542,14 +542,14 @@ where
         }
 
         // Predict bank contract address
-        let bank = Addr::compute(
+        let bank = Addr::derive(
             GENESIS_SENDER,
             self.bank_opt.code.hash256(),
             DEFAULT_BANK_SALT,
         );
 
         // Prefict taxman contract address
-        let taxman = Addr::compute(
+        let taxman = Addr::derive(
             GENESIS_SENDER,
             self.taxman_opt.code.hash256(),
             DEFAULT_TAXMAN_SALT,

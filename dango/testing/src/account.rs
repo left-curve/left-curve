@@ -74,7 +74,7 @@ impl TestAccount<Undefined<Addr>> {
             todo!("implement address prediction for not new users");
         };
 
-        let address = Addr::compute(factory, spot_code_hash, &salt);
+        let address = Addr::derive(factory, spot_code_hash, &salt);
 
         Ok(TestAccount {
             username: self.username,

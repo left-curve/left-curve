@@ -14,7 +14,7 @@ export type ComputeAddressReturnType = Address;
  * Given parameters used while instantiating a new contract, compute what the
  * contract address would be.
  *
- * Mirrors that Rust function: `grug::Addr::compute`.
+ * Mirrors that Rust function: `grug::Addr::derive`.
  * @param parameters
  * @param parameters.deployer Address of the deployer, that it,
  * the account that sends the `Message::Instantiate`.

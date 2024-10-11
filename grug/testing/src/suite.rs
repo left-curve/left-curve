@@ -327,7 +327,7 @@ where
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::compute(signer.address(), code_hash, &salt);
+        let address = Addr::derive(signer.address(), code_hash, &salt);
 
         self.send_message_with_gas(
             signer,
@@ -381,7 +381,7 @@ where
         let code = code.into();
         let code_hash = Hash256::from_inner(sha2_256(&code));
         let salt = salt.into();
-        let address = Addr::compute(signer.address(), code_hash, &salt);
+        let address = Addr::derive(signer.address(), code_hash, &salt);
 
         self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),

@@ -96,7 +96,7 @@ fn safe() {
 
     // Derive the Safe's address.
     // We have 3 genesis users + 3 members, so the Safe's index should be 6.
-    let safe_address = Addr::compute(
+    let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
         Salt { index: 6 }.into_bytes().as_slice(),
