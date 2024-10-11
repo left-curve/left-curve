@@ -282,7 +282,7 @@ where
         B: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_array(sha2_256(&code));
+        let code_hash = Hash256::from_inner(sha2_256(&code));
 
         self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
             .result
@@ -379,7 +379,7 @@ where
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_array(sha2_256(&code));
+        let code_hash = Hash256::from_inner(sha2_256(&code));
         let salt = salt.into();
         let address = Addr::compute(signer.address(), code_hash, &salt);
 

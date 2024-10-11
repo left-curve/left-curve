@@ -23,12 +23,12 @@ where
     fn hash160(&self) -> Hash160 {
         let mut hasher = Ripemd160::new();
         hasher.update(self.as_ref());
-        Hash160::from_array(hasher.finalize().into())
+        Hash160::from_inner(hasher.finalize().into())
     }
 
     fn hash256(&self) -> Hash256 {
         let mut hasher = Sha256::new();
         hasher.update(self.as_ref());
-        Hash256::from_array(hasher.finalize().into())
+        Hash256::from_inner(hasher.finalize().into())
     }
 }

@@ -25,12 +25,7 @@ impl<const N: usize> Hash<N> {
     /// ASCII length should be 64.
     pub const LENGTH: usize = N;
     /// A zeroed-out hash. Useful as mockups or placeholders.
-    pub const ZERO: Self = Self::from_array([0; N]);
-
-    /// Create a new hash from a byte array of the correct length.
-    pub const fn from_array(array: [u8; N]) -> Self {
-        Self::from_inner(array)
-    }
+    pub const ZERO: Self = Self::from_inner([0; N]);
 
     /// Cast the hash into a byte array.
     pub fn into_array(self) -> [u8; N] {

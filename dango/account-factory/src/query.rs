@@ -225,10 +225,10 @@ mod tests {
         let k2 = Key::Secp256k1([2; 33].into());
         let k3 = Key::Secp256k1([3; 33].into());
 
-        let h1 = Hash160::from_array([1; 20]);
-        let h2 = Hash160::from_array([2; 20]);
-        let h3 = Hash160::from_array([3; 20]);
-        let h4 = Hash160::from_array([4; 20]);
+        let h1 = Hash160::from_inner([1; 20]);
+        let h2 = Hash160::from_inner([2; 20]);
+        let h3 = Hash160::from_inner([3; 20]);
+        let h4 = Hash160::from_inner([4; 20]);
 
         // Save the following records:
         //
