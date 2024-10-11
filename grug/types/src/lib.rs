@@ -17,8 +17,9 @@ mod event;
 mod hash;
 mod hashers;
 mod imports;
+mod length_bounded;
+mod lengthy;
 mod macros;
-mod non_empty;
 mod non_zero;
 mod query;
 mod response;
@@ -33,8 +34,8 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, bound::*, builder::*, bytes::*, changeset::*, coin::*,
     coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, error::*, event::*, hash::*,
-    hashers::*, imports::*, non_empty::*, non_zero::*, query::*, response::*, result::*,
-    serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
+    hashers::*, imports::*, length_bounded::*, lengthy::*, non_zero::*, query::*, response::*,
+    result::*, serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
