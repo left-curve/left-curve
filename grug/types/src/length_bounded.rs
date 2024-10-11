@@ -33,11 +33,11 @@ where
         let length = value.length();
 
         if length < MIN {
-            return Err(StdError::length_out_of_bound::<T>(length, "<", MIN));
+            return Err(StdError::length_out_of_range::<T>(length, "<", MIN));
         }
 
         if length > MAX {
-            return Err(StdError::length_out_of_bound::<T>(length, ">", MAX));
+            return Err(StdError::length_out_of_range::<T>(length, ">", MAX));
         }
 
         Ok(Self(value))

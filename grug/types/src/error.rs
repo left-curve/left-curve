@@ -82,9 +82,9 @@ pub enum StdError {
         bound: String,
     },
 
-    #[error("length of {value} out of bound: {length} {comparator} {bound}")]
-    LengthOutOfBound {
-        value: &'static str,
+    #[error("length of {ty} out of range: {length} {comparator} {bound}")]
+    LengthOutOfRange {
+        ty: &'static str,
         length: usize,
         comparator: &'static str,
         bound: usize,
@@ -176,9 +176,9 @@ impl StdError {
         }
     }
 
-    pub fn length_out_of_bound<T>(length: usize, comparator: &'static str, bound: usize) -> Self {
-        Self::LengthOutOfBound {
-            value: type_name::<T>(),
+    pub fn length_out_of_range<T>(length: usize, comparator: &'static str, bound: usize) -> Self {
+        Self::LengthOutOfRange {
+            ty: type_name::<T>(),
             length,
             comparator,
             bound,
