@@ -274,7 +274,7 @@ mod tests {
         value = Binary::from([1, 2, 3]),
         min   = 4,
         max   = 5,
-        error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of range: 3 < 4",
+        error = "length of grug_types::encoded_bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::encoders::Base64Encoder> out of range: 3 < 4",
         name  = "binary_to_short",
     }
 
@@ -282,7 +282,7 @@ mod tests {
         value = Binary::from([1, 2, 3, 4, 5, 6]),
         min   = 4,
         max   = 5,
-        error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of range: 6 > 5",
+        error = "length of grug_types::encoded_bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::encoders::Base64Encoder> out of range: 6 > 5",
         name  = "binary_to_long",
     }
 

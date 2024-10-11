@@ -1,6 +1,5 @@
 use {
-    crate::{EncodedBytes, Encoder},
-    data_encoding::{Encoding, HEXUPPER},
+    crate::{EncodedBytes, HashEncoder},
     grug_math::Inner,
 };
 
@@ -15,16 +14,6 @@ pub type Hash256 = Hash<32>;
 
 /// A 64-byte hash, in uppercase hex encoding.
 pub type Hash512 = Hash<64>;
-
-/// Bytes encoder for hashes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct HashEncoder;
-
-impl Encoder for HashEncoder {
-    const ENCODING: Encoding = HEXUPPER;
-    const NAME: &str = "Hash";
-    const PREFIX: &str = "";
-}
 
 impl<const N: usize> Hash<N> {
     /// The length (number of bytes) of hashes.
@@ -51,46 +40,5 @@ impl<const N: usize> Hash<N> {
     /// Cast the hash into a byte vector.
     pub fn into_vec(self) -> Vec<u8> {
         self.inner().to_vec()
-    }
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use {
-        crate::{json, Hash256, JsonDeExt, JsonSerExt},
-        hex_literal::hex,
-        std::str::FromStr,
-    };
-
-    // just a random block hash I grabbed from MintScan
-    const MOCK_JSON: &str = "299663875422CC5A4574816E6165824D0C5BFDBA3D58D94D37E8D832A572555B";
-    const MOCK_HASH: Hash256 = Hash256::from_inner(hex!(
-        "299663875422cc5a4574816e6165824d0c5bfdba3d58d94d37e8d832a572555b"
-    ));
-
-    #[test]
-    fn serializing() {
-        assert_eq!(MOCK_JSON, MOCK_HASH.to_string());
-        assert_eq!(json!(MOCK_JSON), MOCK_HASH.to_json_value().unwrap());
-    }
-
-    #[test]
-    fn deserializing() {
-        assert_eq!(MOCK_HASH, Hash256::from_str(MOCK_JSON).unwrap());
-        assert_eq!(
-            MOCK_HASH,
-            json!(MOCK_JSON).deserialize_json::<Hash256>().unwrap()
-        );
-
-        // Lowercase hex strings are not accepted
-        let illegal_json = json!(MOCK_JSON.to_lowercase());
-        assert!(illegal_json.deserialize_json::<Hash256>().is_err());
-
-        // Incorrect length
-        // Trim the last two characters, so the string only represents 31 bytes
-        let illegal_json = json!(MOCK_JSON[..MOCK_JSON.len() - 2]);
-        assert!(illegal_json.deserialize_json::<Hash256>().is_err());
     }
 }
