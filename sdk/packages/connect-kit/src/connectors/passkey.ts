@@ -6,6 +6,8 @@ import { createConnector } from "./createConnector";
 
 import type { UserClient } from "@leftcurve/sdk/clients";
 import { ConnectorSigner } from "@leftcurve/sdk/signers";
+import { getRootDomain } from "@leftcurve/utils";
+
 import type { AccountTypes, Address, Transport } from "@leftcurve/types";
 
 type PasskeyConnectorParameters = {
@@ -35,7 +37,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         if (challenge) {
           const { credentialId } = await requestWebAuthnSignature({
             challenge: encodeUtf8(challenge),
-            rpId: window.location.hostname,
+            rpId: getRootDomain(window.location.hostname),
             userVerification: "preferred",
           });
 
@@ -66,7 +68,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async getKeyHash() {
         const { credentialId } = await requestWebAuthnSignature({
           challenge: crypto.getRandomValues(new Uint8Array(32)),
-          rpId: window.location.hostname,
+          rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
         return createKeyHash({ credentialId });
@@ -95,7 +97,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const { signature, webauthn, credentialId } = await requestWebAuthnSignature({
           challenge: bytes,
-          rpId: window.location.hostname,
+          rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
 

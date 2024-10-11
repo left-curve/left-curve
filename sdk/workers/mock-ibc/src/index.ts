@@ -67,6 +67,9 @@ export default {
     if (response.code !== 0)
       return new Response("error: the tx went wrong", { headers, status: 500 });
 
+    // Wait for the transaction to be processed
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
     return new Response("success", { headers, status: 200 });
   },
 };

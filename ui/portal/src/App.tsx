@@ -12,9 +12,7 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AppProvider>
-        <Suspense fallback={<div>Loading...</div>}>
-          <AppRouter />
-        </Suspense>
+        <AppRouter />
       </AppProvider>
     </BrowserRouter>
   );

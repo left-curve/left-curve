@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export const ConnectorStep: React.FC = () => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [connectorId, setConnectorId] = useState<string>("Passkey");
   const connectors = useConnectors();
   const { chains } = useConfig();
@@ -12,6 +13,7 @@ export const ConnectorStep: React.FC = () => {
   const { username } = data;
 
   const onSubmit = async () => {
+    setIsLoading(true);
     const connector = connectors.find((connector) => connector.id === connectorId.toLowerCase());
     if (!connector) throw new Error("error: missing connector");
     try {
@@ -30,7 +32,7 @@ export const ConnectorStep: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton fullWidth onClick={onSubmit}>
+      <DangoButton fullWidth onClick={onSubmit} isLoading={isLoading}>
         Connect with {connectorId}
       </DangoButton>
       <Select
@@ -42,7 +44,13 @@ export const ConnectorStep: React.FC = () => {
         <SelectItem key="Passkey">Passkey</SelectItem>
         <SelectItem key="Metamask">Metamask</SelectItem>
       </Select>
-      <DangoButton onClick={previousStep} variant="ghost" color="sand" className="text-lg">
+      <DangoButton
+        onClick={previousStep}
+        variant="ghost"
+        color="sand"
+        className="text-lg"
+        isDisabled={isLoading}
+      >
         Back
       </DangoButton>
     </div>

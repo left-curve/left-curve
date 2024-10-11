@@ -1,3 +1,4 @@
+import { Spinner } from "@dango/shared";
 import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
@@ -12,7 +13,13 @@ const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Accou
 
 export const AppRouter: React.FC = () => {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="w-full flex flex-1 justify-center items-center">
+          <Spinner size="lg" color="pink" />
+        </div>
+      }
+    >
       <Routes>
         <Route path="/auth" element={<AuthLayout />}>
           <Route path="login" element={<LoginView />} />
