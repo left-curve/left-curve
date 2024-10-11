@@ -111,12 +111,11 @@ pub struct BlockInfo {
 }
 
 #[skip_serializing_none]
-#[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
-)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ContractInfo {
     pub code_hash: Hash256,
+    pub label: Option<String>,
     pub admin: Option<Addr>,
 }
 

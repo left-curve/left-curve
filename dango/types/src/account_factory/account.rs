@@ -2,7 +2,10 @@ use {
     crate::account::{multi, single},
     grug::{PrimaryKey, StdError, StdResult},
     paste::paste,
-    std::borrow::Cow,
+    std::{
+        borrow::Cow,
+        fmt::{self, Display},
+    },
 };
 
 // ----------------------------------- index -----------------------------------
@@ -110,6 +113,16 @@ impl PrimaryKey for AccountType {
                 "index",
                 format!("unknown account type index: {index}"),
             )),
+        }
+    }
+}
+
+impl Display for AccountType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AccountType::Spot => write!(f, "spot"),
+            AccountType::Margin => write!(f, "margin"),
+            AccountType::Safe => write!(f, "safe"),
         }
     }
 }

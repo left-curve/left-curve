@@ -500,11 +500,12 @@ impl Client {
     /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
     ///
     /// Return the deployed contract's address.
-    pub async fn instantiate<M, S, C, T>(
+    pub async fn instantiate<M, S, L, C, T>(
         &self,
         code_hash: Hash256,
         msg: &M,
         salt: S,
+        label: Option<L>,
         funds: C,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_, T>,
@@ -513,6 +514,7 @@ impl Client {
     where
         M: Serialize,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         T: AsyncSigner,
         StdError: From<C::Error>,
@@ -521,7 +523,7 @@ impl Client {
         let address = Addr::derive(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);
 
-        let msg = Message::instantiate(code_hash, msg, salt, funds, admin)?;
+        let msg = Message::instantiate(code_hash, msg, salt, label, admin, funds)?;
         let res = self.send_message(msg, gas_opt, sign_opt).await?;
 
         Ok((address, res))
@@ -531,11 +533,12 @@ impl Client {
     /// with the code in one go.
     ///
     /// Return the code hash, and the deployed contract's address.
-    pub async fn upload_and_instantiate<M, B, S, C, T>(
+    pub async fn upload_and_instantiate<M, B, S, L, C, T>(
         &self,
         code: B,
         msg: &M,
         salt: S,
+        label: Option<L>,
         funds: C,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_, T>,
@@ -545,6 +548,7 @@ impl Client {
         M: Serialize,
         B: Into<Binary>,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         T: AsyncSigner,
         StdError: From<C::Error>,
@@ -557,7 +561,7 @@ impl Client {
 
         let msgs = vec![
             Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, funds, admin)?,
+            Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         ];
         let res = self.send_messages(msgs, gas_opt, sign_opt).await?;
 

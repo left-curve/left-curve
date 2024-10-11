@@ -47,8 +47,10 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             accounts.get_mut("sender").unwrap(),
             320_000_000,
             read_wasm_file("grug_tester.wasm"),
-            "tester",
             &grug_tester::InstantiateMsg {},
+            "tester",
+            Some("tester"),
+            None,
             Coins::new(),
         )
         .unwrap();

@@ -292,37 +292,52 @@ where
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M, S, C>(
+    pub fn instantiate<M, S, C, L>(
         &mut self,
         signer: &mut dyn Signer,
         code_hash: Hash256,
-        salt: S,
         msg: &M,
+        salt: S,
+        label: Option<L>,
+        admin: Option<Addr>,
         funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.instantiate_with_gas(signer, self.default_gas_limit, code_hash, salt, msg, funds)
+        self.instantiate_with_gas(
+            signer,
+            self.default_gas_limit,
+            code_hash,
+            msg,
+            salt,
+            label,
+            admin,
+            funds,
+        )
     }
 
     /// Instantiate a contract under the given gas limit. Return the contract's
     /// address.
-    pub fn instantiate_with_gas<M, S, C>(
+    pub fn instantiate_with_gas<M, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         code_hash: Hash256,
-        salt: S,
         msg: &M,
+        salt: S,
+        label: Option<L>,
+        admin: Option<Addr>,
         funds: C,
     ) -> anyhow::Result<Addr>
     where
         M: Serialize,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -332,7 +347,7 @@ where
         self.send_message_with_gas(
             signer,
             gas_limit,
-            Message::instantiate(code_hash, msg, salt, funds, None)?,
+            Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         )?
         .result
         .should_succeed();
@@ -342,39 +357,54 @@ where
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn upload_and_instantiate<M, B, S, C>(
+    pub fn upload_and_instantiate<M, B, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         code: B,
-        salt: S,
         msg: &M,
+        salt: S,
+        label: Option<L>,
+        admin: Option<Addr>,
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
     where
         M: Serialize,
         B: Into<Binary>,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.upload_and_instantiate_with_gas(signer, self.default_gas_limit, code, salt, msg, funds)
+        self.upload_and_instantiate_with_gas(
+            signer,
+            self.default_gas_limit,
+            code,
+            msg,
+            salt,
+            label,
+            admin,
+            funds,
+        )
     }
 
     /// Upload a code and instantiate a contract with it in one go under the
     /// given gas limit. Return the code hash as well as the contract's address.
-    pub fn upload_and_instantiate_with_gas<M, B, S, C>(
+    pub fn upload_and_instantiate_with_gas<M, B, S, L, C>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         code: B,
-        salt: S,
         msg: &M,
+        salt: S,
+        label: Option<L>,
+        admin: Option<Addr>,
         funds: C,
     ) -> anyhow::Result<(Hash256, Addr)>
     where
         M: Serialize,
         B: Into<Binary>,
         S: Into<Binary>,
+        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -385,7 +415,7 @@ where
 
         self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, funds, None)?,
+            Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         ])?
         .result
         .should_succeed();

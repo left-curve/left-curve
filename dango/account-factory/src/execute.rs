@@ -236,8 +236,9 @@ fn onboard_new_user(
         code_hash,
         &account::InstantiateMsg {},
         salt,
-        funds,
+        Some(format!("account/{}/{}/", AccountType::Spot, index)),
         Some(factory),
+        funds,
     )
 }
 
@@ -293,8 +294,9 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         code_hash,
         &account::InstantiateMsg {},
         salt,
-        ctx.funds,
+        Some(format!("account/{}/{}", account.params.ty(), account.index)),
         Some(ctx.contract),
+        ctx.funds,
     )?))
 }
 

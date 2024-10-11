@@ -80,11 +80,13 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron1",
             &tester::Job {
                 receiver,
                 coin: Coin::new("uatom", 1).unwrap(),
             },
+            "cron1",
+            Some("cron1"),
+            None,
             Coins::one("uatom", 3).unwrap(),
         )
         .unwrap();
@@ -94,11 +96,13 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron2",
             &tester::Job {
                 receiver,
                 coin: Coin::new("uosmo", 1).unwrap(),
             },
+            "cron2",
+            Some("cron2"),
+            None,
             Coins::one("uosmo", 3).unwrap(),
         )
         .unwrap();
@@ -108,11 +112,13 @@ fn cronjob_works() {
         .instantiate(
             accounts.get_mut("larry").unwrap(),
             tester_code_hash,
-            "cron3",
             &tester::Job {
                 receiver,
                 coin: Coin::new("umars", 1).unwrap(),
             },
+            "cron3",
+            Some("cron3"),
+            None,
             Coins::one("umars", 3).unwrap(),
         )
         .unwrap();

@@ -121,7 +121,8 @@ where
             keys,
             users,
         },
-        "account_factory",
+        "dango/account_factory",
+        "dango/account_factory",
     )?;
 
     // Derive the addresses of the genesis accounts that were just created.
@@ -154,7 +155,8 @@ where
         &mut msgs,
         ibc_transfer_code_hash,
         &mock_ibc_transfer::InstantiateMsg {},
-        "ibc_transfer",
+        "dango/ibc_transfer",
+        "dango/ibc_transfer",
     )?;
 
     // Instantiate the token factory contract.
@@ -164,7 +166,8 @@ where
         &token_factory::InstantiateMsg {
             denom_creation_fee: Coin::new(fee_denom.clone(), denom_creation_fee)?,
         },
-        "token_factory",
+        "dango/token_factory",
+        "dango/token_factory",
     )?;
 
     // Instantiate the AMM contract.
@@ -181,7 +184,8 @@ where
                 )?), // 10 USDC
             },
         },
-        "amm",
+        "dango/amm",
+        "dango/amm",
     )?;
 
     // Create the `balances` map needed for instantiating bank.
@@ -214,7 +218,8 @@ where
             balances,
             namespaces,
         },
-        "bank",
+        "dango/bank",
+        "dango/bank",
     )?;
 
     // Instantiate the taxman contract.
@@ -228,7 +233,8 @@ where
                 fee_rate,
             },
         },
-        "taxman",
+        "dango/taxman",
+        "dango/taxman",
     )?;
 
     let contracts = Contracts {
@@ -281,15 +287,17 @@ where
     code_hash
 }
 
-fn instantiate<M, S>(
+fn instantiate<M, S, L>(
     msgs: &mut Vec<Message>,
     code_hash: Hash256,
     msg: &M,
     salt: S,
+    label: L,
 ) -> anyhow::Result<Addr>
 where
     M: Serialize,
     S: Into<Binary>,
+    L: Into<String>,
 {
     let salt = salt.into();
     let address = Addr::derive(GENESIS_SENDER, code_hash, &salt);
@@ -298,8 +306,9 @@ where
         code_hash,
         msg,
         salt,
-        Coins::new(),
+        Some(label),
         None,
+        Coins::new(),
     )?);
 
     Ok(address)
