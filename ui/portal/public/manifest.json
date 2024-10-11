@@ -1,0 +1,17 @@
+{
+  "name": "Dango",
+  "short_name": "Dango",
+  "start_url": "/",
+  "display": "standalone",
+  "description": "Dango PortalApp",
+  "theme_color": "#FFF8F0",
+  "background_color": "#FFF8F0",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "images/pwa.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
