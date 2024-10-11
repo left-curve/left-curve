@@ -310,7 +310,7 @@ pub fn do_instantiate<VM>(
     sender: Addr,
     code_hash: Hash256,
     msg: &Json,
-    salt: Binary,
+    salt: &[u8],
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<Vec<Event>>
@@ -355,7 +355,7 @@ pub fn _do_instantiate<VM>(
     sender: Addr,
     code_hash: Hash256,
     msg: &Json,
-    salt: Binary,
+    salt: &[u8],
     funds: Coins,
     admin: Option<Addr>,
 ) -> AppResult<(Vec<Event>, Addr)>
