@@ -3,16 +3,28 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
     serde::{Deserialize, Deserializer, Serialize, Serializer},
-    std::ops::Deref,
+    std::{io, ops::Deref},
 };
 
+/// A wrapper that enforces the value to be no longer than a maximum length.
+///
+/// The maximum length is _inclusive_.
 pub type MaxLength<T, const MAX: usize> = LengthBounded<T, 0, MAX>;
+
+/// A Wrapper that enforces the value to be no shorter than a minimum length.
+///
+/// The minimum length is _inclusive_.
 pub type MinLength<T, const MIN: usize> = LengthBounded<T, MIN, { usize::MAX }>;
+
+/// A wrapper that enforces the value to not be empty.
 pub type NonEmpty<T> = MinLength<T, 1>;
+
+/// A wrapper that enforces the value to be of an exact length.
 pub type FixedLength<T, const LEN: usize> = LengthBounded<T, LEN, LEN>;
 
-/// A wrapper that enforces the value to be within the specified length.
-/// The value must implement the `LengthBounds` trait.
+/// A wrapper that enforces the value to be within a bound of length.
+///
+/// The minumum and maximum lengths are both _inclusive_.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LengthBounded<T, const MIN: usize, const MAX: usize>(T)
 where
@@ -106,9 +118,9 @@ impl<T, const MIN: usize, const MAX: usize> BorshSerialize for LengthBounded<T, 
 where
     T: Lengthy + BorshSerialize,
 {
-    fn serialize<W>(&self, writer: &mut W) -> std::io::Result<()>
+    fn serialize<W>(&self, writer: &mut W) -> io::Result<()>
     where
-        W: std::io::Write,
+        W: io::Write,
     {
         self.0.serialize(writer)
     }
@@ -118,20 +130,19 @@ impl<T, const MIN: usize, const MAX: usize> BorshDeserialize for LengthBounded<T
 where
     T: Lengthy + BorshDeserialize,
 {
-    fn deserialize_reader<R>(reader: &mut R) -> std::io::Result<Self>
+    fn deserialize_reader<R>(reader: &mut R) -> io::Result<Self>
     where
-        R: std::io::Read,
+        R: io::Read,
     {
         let value = BorshDeserialize::deserialize_reader(reader)?;
 
-        Self::new(value).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
+        Self::new(value).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
 }
 
 impl<T, U, const LEN: usize> From<[U; LEN]> for FixedLength<T, LEN>
 where
-    T: Lengthy,
-    [U; LEN]: Into<T>,
+    T: Lengthy + From<[U; LEN]>,
 {
     fn from(value: [U; LEN]) -> Self {
         FixedLength::new_unchecked(value.into())
@@ -143,155 +154,151 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        super::LengthBounded,
-        crate::{btree_map, Binary, ResultExt},
+        crate::{btree_map, Binary, LengthBounded, ResultExt},
         paste::paste,
     };
 
-    macro_rules! valid {
+    macro_rules! valid_case {
         (
-            $(
-                {
-                    value = $value:expr,
-                    min   = $min:expr,
-                    max   = $max:expr,
-                    name  = $name:literal $(,)?
-                }
-            ),* $(,)?
+            value = $value:expr,
+            min   = $min:expr,
+            max   = $max:expr,
+            name  = $name:literal $(,)?
         ) => {
             paste! {
-                $(
-                    #[test]
-                    fn [<length_bounded_ok_ $name>]() {
-                        LengthBounded::<_, $min, $max>::new($value).unwrap();
-                    }
-                )*
+                #[test]
+                fn [<length_bounded_ok_ $name>]() {
+                    LengthBounded::<_, $min, $max>::new($value).unwrap();
+                }
             }
         };
     }
 
-    macro_rules! invalid {
+    macro_rules! invalid_case {
         (
-            $(
-                {
-                    value = $value:expr,
-                    min   = $min:expr,
-                    max   = $max:expr,
-                    error = $error:expr,
-                    name  = $name:literal $(,)?
-                }
-            ),* $(,)?
+            value = $value:expr,
+            min   = $min:expr,
+            max   = $max:expr,
+            error = $error:expr,
+            name  = $name:literal $(,)?
         ) => {
             paste! {
-                $(
-                    #[test]
-                    fn [<length_bounded_err_ $name>]() {
-                        LengthBounded::<_, $min, $max>::new($value).should_fail_with_error($error);
-                    }
-                )*
+                #[test]
+                fn [<length_bounded_err_ $name>]() {
+                    LengthBounded::<_, $min, $max>::new($value).should_fail_with_error($error);
+                }
             }
         };
     }
 
-    valid!(
-        {
-            value = "hello".to_string(),
-            min = 5,
-            max = 6,
-            name = "string_min",
-        },
-        {
-            value = "hello".to_string(),
-            min = 4,
-            max = 5,
-            name = "string_max",
-        },
-        {
-            value = "hello".to_string(),
-            min = 5,
-            max = 5,
-            name = "string_exact",
-        },
-        {
-            value = Binary::from([1,2,3]),
-            min = 3,
-            max = 5,
-            name = "binary_min",
-        },
-        {
-            value = Binary::from([1,2,3,4,5]),
-            min = 3,
-            max = 5,
-            name = "binary_max",
-        },
-        {
-            value = Binary::from([1,2,3,4]),
-            min = 4,
-            max = 4,
-            name = "binary_exact",
-        },
-        {
-            value = btree_map!("a" => 1, "b" => 2, "c" => 3),
-            min = 3,
-            max = 5,
-            name = "btree_map_min",
-        },
-        {
-            value = btree_map!("a" => 1, "b" => 2, "c" => 3),
-            min = 1,
-            max = 3,
-            name = "btree_map_max",
-        },
-        {
-            value = btree_map!("a" => 1, "b" => 2, "c" => 3, "d" => 4),
-            min = 4,
-            max = 4,
-            name = "btree_map_exact",
-        }
-    );
+    valid_case! {
+        value = "hello".to_string(),
+        min   = 5,
+        max   = 6,
+        name  = "string_min",
+    }
 
-    invalid!(
-        {
-            value = "hello".to_string(),
-            min = 6,
-            max = 8,
-            error = "length of alloc::string::String out of bound: 5 < 6",
-            name = "str_to_short",
-        },
-        {
-            value = "hello".to_string(),
-            min = 3,
-            max = 4,
-            error = "length of alloc::string::String out of bound: 5 > 4",
-            name = "str_to_long",
-        },
-        {
-            value = Binary::from([1,2,3]),
-            min = 4,
-            max = 5,
-            error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of bound: 3 < 4",
-            name = "binary_to_short",
-        },
-        {
-            value = Binary::from([1,2,3,4,5,6]),
-            min = 4,
-            max = 5,
-            error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of bound: 6 > 5",
-            name = "binary_to_long",
-        },
-        {
-            value = btree_map!("a" => 1, "b" => 2, "c" => 3),
-            min = 4,
-            max = 5,
-            error = "length of alloc::collections::btree::map::BTreeMap<&str, i32> out of bound: 3 < 4",
-            name = "btree_map_to_short",
-        },
-        {
-            value = btree_map!("a" => 1, "b" => 2, "c" => 3, "d" => 4, "e" => 5, "f" => 6),
-            min = 4,
-            max = 5,
-            error = "length of alloc::collections::btree::map::BTreeMap<&str, i32> out of bound: 6 > 5",
-            name = "btree_map_to_long",
-        },
-    );
+    valid_case! {
+        value = "hello".to_string(),
+        min   = 4,
+        max   = 5,
+        name  = "string_max",
+    }
+
+    valid_case! {
+        value = "hello".to_string(),
+        min   = 5,
+        max   = 5,
+        name  = "string_exact",
+    }
+
+    valid_case! {
+        value = Binary::from([1, 2, 3]),
+        min   = 3,
+        max   = 5,
+        name  = "binary_min",
+    }
+
+    valid_case! {
+        value = Binary::from([1, 2, 3, 4, 5]),
+        min   = 3,
+        max   = 5,
+        name  = "binary_max",
+    }
+
+    valid_case! {
+        value = Binary::from([1, 2, 3, 4]),
+        min   = 4,
+        max   = 4,
+        name  = "binary_exact",
+    }
+
+    valid_case! {
+        value = btree_map! { "a" => 1, "b" => 2, "c" => 3 },
+        min   = 3,
+        max   = 5,
+        name  = "btree_map_min",
+    }
+
+    valid_case! {
+        value = btree_map! { "a" => 1, "b" => 2, "c" => 3 },
+        min   = 1,
+        max   = 3,
+        name  = "btree_map_max",
+    }
+
+    valid_case! {
+        value = btree_map! { "a" => 1, "b" => 2, "c" => 3, "d" => 4 },
+        min   = 4,
+        max   = 4,
+        name  = "btree_map_exact",
+    }
+
+    invalid_case! {
+        value = "hello".to_string(),
+        min   = 6,
+        max   = 8,
+        error = "length of alloc::string::String out of range: 5 < 6",
+        name  = "str_to_short",
+    }
+
+    invalid_case! {
+        value = "hello".to_string(),
+        min   = 3,
+        max   = 4,
+        error = "length of alloc::string::String out of range: 5 > 4",
+        name  = "str_to_long",
+    }
+
+    invalid_case! {
+        value = Binary::from([1, 2, 3]),
+        min   = 4,
+        max   = 5,
+        error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of range: 3 < 4",
+        name  = "binary_to_short",
+    }
+
+    invalid_case! {
+        value = Binary::from([1, 2, 3, 4, 5, 6]),
+        min   = 4,
+        max   = 5,
+        error = "length of grug_types::bytes::EncodedBytes<alloc::vec::Vec<u8>, grug_types::bytes::Base64Encoder> out of range: 6 > 5",
+        name  = "binary_to_long",
+    }
+
+    invalid_case! {
+        value = btree_map! { "a" => 1, "b" => 2, "c" => 3 },
+        min   = 4,
+        max   = 5,
+        error = "length of alloc::collections::btree::map::BTreeMap<&str, i32> out of range: 3 < 4",
+        name  = "btree_map_to_short",
+    }
+
+    invalid_case! {
+        value = btree_map! { "a" => 1, "b" => 2, "c" => 3, "d" => 4, "e" => 5, "f" => 6 },
+        min   = 4,
+        max   = 5,
+        error = "length of alloc::collections::btree::map::BTreeMap<&str, i32> out of range: 6 > 5",
+        name  = "btree_map_to_long",
+    }
 }
