@@ -64,9 +64,9 @@ optimize:
 # ----------------------------------- Devnet -----------------------------------
 
 DEVNET_NAME := "leftcurve/devnet"
-DEVNET_VERSION := "0.1.0"
-DEVNET_CHAIN_ID := "dev-1"
-DEVNET_GENESIS_TIME := "2024-10-06T00:00:00.000000000Z"
+DEVNET_VERSION := "0.2.0"
+DEVNET_CHAIN_ID := "dev-2"
+DEVNET_GENESIS_TIME := "2024-10-12T00:00:00.000000000Z"
 
 # Build and publish devnet Docker image
 docker-build-devnet:

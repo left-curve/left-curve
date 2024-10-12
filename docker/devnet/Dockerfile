@@ -16,7 +16,7 @@ ARG GENESIS_TIME="2024-10-06T00:00:00.000000000Z"
 ARG COMETBFT_VERSION="0.38.12"
 
 # Version of left-curve monorepo with which we will build grug CLI.
-ARG LEFT_CURVE_GIT_COMMIT="e450584d"
+ARG LEFT_CURVE_GIT_COMMIT="1f62285"
 
 # Download the crates.io index using the new sparse protocol to improve
 # performance and avoid OOM in the build. See:
