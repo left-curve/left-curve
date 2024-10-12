@@ -51,8 +51,10 @@ fn handling_multi_query() {
         .upload_and_instantiate(
             accounts.get_mut("larry").unwrap(),
             query_maker_code,
-            "query_maker",
             &Empty {},
+            "query_maker",
+            Some("query_maker"),
+            None,
             Coins::new(),
         )
         .unwrap();

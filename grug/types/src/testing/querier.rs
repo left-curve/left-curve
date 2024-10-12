@@ -244,7 +244,7 @@ impl Querier for MockQuerier {
                         }
                     })
                     .take(limit.unwrap_or(u32::MAX) as usize)
-                    .map(|(k, v)| (*k, *v))
+                    .map(|(k, v)| (*k, v.clone()))
                     .collect();
                 Ok(QueryResponse::Contracts(contracts))
             },

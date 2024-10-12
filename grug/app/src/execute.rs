@@ -5,10 +5,11 @@ use {
         AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES,
         CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
+    grug_math::Inner,
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Op, Storage, SubMsgResult, Tx,
-        TxOutcome,
+        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Label, Op, Storage,
+        SubMsgResult, Tx, TxOutcome,
     },
     std::collections::BTreeMap,
 };
@@ -311,8 +312,9 @@ pub fn do_instantiate<VM>(
     code_hash: Hash256,
     msg: &Json,
     salt: &[u8],
-    funds: Coins,
+    label: Option<Label>,
     admin: Option<Addr>,
+    funds: Coins,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -328,8 +330,9 @@ where
         code_hash,
         msg,
         salt,
-        funds,
+        label,
         admin,
+        funds,
     ) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
@@ -356,8 +359,9 @@ pub fn _do_instantiate<VM>(
     code_hash: Hash256,
     msg: &Json,
     salt: &[u8],
-    funds: Coins,
+    label: Option<Label>,
     admin: Option<Addr>,
+    funds: Coins,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
     VM: Vm + Clone,
@@ -381,7 +385,11 @@ where
     }
 
     // Save the contract info
-    let contract = ContractInfo { code_hash, admin };
+    let contract = ContractInfo {
+        code_hash,
+        label: label.map(Inner::into_inner),
+        admin,
+    };
 
     CONTRACTS.save(&mut storage, address, &contract)?;
 

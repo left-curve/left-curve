@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, MaxLength, Op, StdError,
-        StdResult,
+        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, LengthBounded, MaxLength,
+        Op, StdError, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -10,8 +10,16 @@ use {
 };
 
 /// An arbitrary binary data used for deriving address when instantiating a
-/// contract. Must be at most 70 bytes.
+/// contract.
+///
+/// Must be no more than 70 bytes.
 pub type Salt = MaxLength<Binary, 70>;
+
+/// A human-readable string describing a contract. Can be optionally provided
+/// during instantiation.
+///
+/// Must be non-empty and no more than 128 bytes.
+pub type Label = LengthBounded<String, 1, 128>;
 
 /// A transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -54,8 +62,9 @@ pub enum Message {
         code_hash: Hash256,
         msg: Json,
         salt: Salt,
-        funds: Coins,
+        label: Option<Label>,
         admin: Option<Addr>,
+        funds: Coins,
     },
     /// Execute a contract.
     Execute {
@@ -100,25 +109,28 @@ impl Message {
         Self::Upload { code: code.into() }
     }
 
-    pub fn instantiate<M, S, C>(
+    pub fn instantiate<M, S, C, L>(
         code_hash: Hash256,
         msg: &M,
         salt: S,
-        funds: C,
+        label: Option<L>,
         admin: Option<Addr>,
+        funds: C,
     ) -> StdResult<Self>
     where
         M: Serialize,
         S: Into<Binary>,
         C: TryInto<Coins>,
+        L: Into<String>,
         StdError: From<C::Error>,
     {
         Ok(Self::Instantiate {
             code_hash,
             msg: msg.to_json_value()?,
             salt: Salt::new(salt.into())?,
-            funds: funds.try_into()?,
+            label: label.map(|l| Label::new(l.into())).transpose()?,
             admin,
+            funds: funds.try_into()?,
         })
     }
 

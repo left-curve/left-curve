@@ -752,8 +752,9 @@ where
             code_hash,
             msg,
             salt,
-            funds,
+            label,
             admin,
+            funds,
         } => do_instantiate(
             vm,
             storage,
@@ -764,8 +765,9 @@ where
             code_hash,
             &msg,
             &salt,
-            funds,
+            label,
             admin,
+            funds,
         ),
         Message::Execute {
             contract,

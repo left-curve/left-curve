@@ -23,8 +23,8 @@ const DEFAULT_TRACING_LEVEL: Level = Level::INFO;
 const DEFAULT_CHAIN_ID: &str = "dev-1";
 const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;
-const DEFAULT_BANK_SALT: &[u8] = b"bank";
-const DEFAULT_TAXMAN_SALT: &[u8] = b"taxman";
+const DEFAULT_BANK_SALT: &str = "bank";
+const DEFAULT_TAXMAN_SALT: &str = "taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
 const DEFAULT_FEE_RATE: &str = "0";
 
@@ -518,15 +518,17 @@ where
                 self.bank_opt.code.hash256(),
                 &(self.bank_opt.msg_builder)(self.balances),
                 DEFAULT_BANK_SALT,
-                Coins::new(),
+                Some(DEFAULT_BANK_SALT),
                 None,
+                Coins::new(),
             )?,
             Message::instantiate(
                 self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
                 DEFAULT_TAXMAN_SALT,
-                Coins::new(),
+                Some(DEFAULT_TAXMAN_SALT),
                 None,
+                Coins::new(),
             )?,
         ];
 
@@ -536,8 +538,9 @@ where
                 self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),
                 *name,
-                Coins::new(),
+                Some(format!("account/{name}")),
                 Some(account.address),
+                Coins::new(),
             )?);
         }
 
@@ -545,14 +548,14 @@ where
         let bank = Addr::derive(
             GENESIS_SENDER,
             self.bank_opt.code.hash256(),
-            DEFAULT_BANK_SALT,
+            DEFAULT_BANK_SALT.as_bytes(),
         );
 
         // Prefict taxman contract address
         let taxman = Addr::derive(
             GENESIS_SENDER,
             self.taxman_opt.code.hash256(),
-            DEFAULT_TAXMAN_SALT,
+            DEFAULT_TAXMAN_SALT.as_bytes(),
         );
 
         // Create the app config

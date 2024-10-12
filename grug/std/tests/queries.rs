@@ -56,8 +56,10 @@ fn query_super_smart() {
         .upload_and_instantiate(
             accounts.get_mut("larry").unwrap(),
             code,
-            "contract",
             &Empty {},
+            "contract",
+            Some("contract"),
+            None,
             Coins::new(),
         )
         .unwrap();
