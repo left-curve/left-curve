@@ -1,7 +1,8 @@
 # dev-1
 
 - Genesis time: 6 October 2024
-- Based on commit: `e450584d`
+- Commit: [`e450584`](https://github.com/left-curve/left-curve/tree/e450584)
+- Docker image: [leftcurve/devnet:0.1.0](https://hub.docker.com/layers/leftcurve/devnet/0.1.0/images/sha256-2e1ef7fa6b60339cd9000e18c0806e3af1b1c9c52bb80465da0aee61f8896316)
 
 | Contract          | Address                                      |
 | ----------------- | -------------------------------------------- |
