@@ -1,4 +1,4 @@
-# dev-1
+# dev-2
 
 - Genesis time: 12 October 2024
 - Commit: [`1f62285`](https://github.com/left-curve/left-curve/tree/1f62285)
