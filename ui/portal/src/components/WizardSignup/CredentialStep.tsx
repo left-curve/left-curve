@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 export const CredentialStep: React.FC = () => {
   const { nextStep, setData } = useWizard();
-  const { setError, register, watch, formState } = useForm<{ username: string }>({
+  const { setError, register, watch, setValue, formState } = useForm<{ username: string }>({
     mode: "onChange",
   });
   const client = usePublicClient();
@@ -29,6 +29,7 @@ export const CredentialStep: React.FC = () => {
     <>
       <Input
         {...register("username", {
+          onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
             if (!value) return "Username is required";
             if (value.length > 15) return "Username must be at most 15 characters long";

@@ -6,7 +6,10 @@ import { Link } from "react-router-dom";
 
 export const LoginStep: React.FC = () => {
   const { nextStep, setData, previousStep, data } = useWizard();
-  const { setError, register, watch, formState } = useForm<{ username: string; retry: boolean }>({
+  const { setError, register, watch, setValue, formState } = useForm<{
+    username: string;
+    retry: boolean;
+  }>({
     mode: "onChange",
   });
   const client = usePublicClient();
@@ -37,6 +40,7 @@ export const LoginStep: React.FC = () => {
       ) : null}
       <Input
         {...register("username", {
+          onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
             if (!value) return "Username is required";
             if (value.length > 15) return "Username must be at most 15 characters long";
