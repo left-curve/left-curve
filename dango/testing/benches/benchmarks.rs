@@ -62,7 +62,6 @@ fn sends(c: &mut Criterion) {
                 suite
                     .send_messages_with_gas(&mut accounts.relayer, 50_000_000, msgs)
                     .unwrap()
-                    .result
                     .should_succeed();
 
                 // Make a block that contains 100 transactions.

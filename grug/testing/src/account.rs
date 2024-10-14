@@ -7,7 +7,10 @@ use {
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
-    std::collections::HashMap,
+    std::{
+        collections::HashMap,
+        ops::{Deref, DerefMut, Index, IndexMut},
+    },
 };
 
 /// A signer that tracks a sequence number and signs transactions in a way
@@ -97,4 +100,47 @@ impl Signer for TestAccount {
     }
 }
 
-pub type TestAccounts = HashMap<&'static str, TestAccount>;
+#[derive(Default)]
+pub struct TestAccounts(InnerTestAccounts);
+
+type InnerTestAccounts = HashMap<&'static str, TestAccount>;
+
+impl Deref for TestAccounts {
+    type Target = InnerTestAccounts;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TestAccounts {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<S> Index<S> for TestAccounts
+where
+    S: AsRef<str>,
+{
+    type Output = TestAccount;
+
+    fn index(&self, index: S) -> &Self::Output {
+        self.get(index.as_ref()).expect("account not found")
+    }
+}
+
+impl<S> IndexMut<S> for TestAccounts
+where
+    S: AsRef<str>,
+{
+    fn index_mut(&mut self, index: S) -> &mut Self::Output {
+        self.get_mut(index.as_ref()).expect("account not found")
+    }
+}
+
+impl From<InnerTestAccounts> for TestAccounts {
+    fn from(accounts: InnerTestAccounts) -> Self {
+        Self(accounts)
+    }
+}

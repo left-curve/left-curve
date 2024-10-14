@@ -27,7 +27,7 @@ fn check_tx_and_finalize() {
 
     // Create a tx to set sequence to 1.
     suite
-        .send_message(accounts.get_mut("rhaki").unwrap(), transfer_msg.clone())
+        .send_message(&mut accounts["rhaki"], transfer_msg.clone())
         .unwrap();
 
     // Create a tx with sequence 0, 1, 2, 4.
@@ -98,9 +98,9 @@ fn check_tx_and_finalize() {
     // The tx with sequence 4 should fail.
     let result = suite.make_block(txs).unwrap();
 
-    result.tx_outcomes[0].result.clone().should_succeed();
-    result.tx_outcomes[1].result.clone().should_succeed();
-    result.tx_outcomes[2].result.clone().should_fail();
+    result.tx_outcomes[0].clone().should_succeed();
+    result.tx_outcomes[1].clone().should_succeed();
+    result.tx_outcomes[2].clone().should_fail();
 
     suite
         .query_balance(&accounts["rhaki"], "uatom")
@@ -115,7 +115,6 @@ fn check_tx_and_finalize() {
         .unwrap();
 
     suite.make_block(vec![tx]).unwrap().tx_outcomes[0]
-        .result
         .clone()
         .should_succeed();
 
@@ -196,7 +195,7 @@ fn backrunning_works() {
     // Attempt to send a transaction
     suite
         .transfer(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             receiver,
             Coins::one("ugrug", 123).unwrap(),
         )
@@ -241,11 +240,10 @@ fn backrunning_with_error() {
     // Attempt to make a transfer; should fail.
     suite
         .send_message(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             Message::transfer(receiver, Coins::one("ugrug", 123).unwrap()).unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("division by zero: 1 / 0");
 
     // Transfer should have been reverted, and sender doesn't get bad kids.

@@ -49,7 +49,7 @@ fn handling_multi_query() {
     // If the contract successfully deploys, the multi query must have worked.
     suite
         .upload_and_instantiate(
-            accounts.get_mut("larry").unwrap(),
+            &mut accounts["larry"],
             query_maker_code,
             &Empty {},
             "query_maker",

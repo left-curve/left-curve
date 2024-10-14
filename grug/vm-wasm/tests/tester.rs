@@ -42,9 +42,9 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
         .build()
         .unwrap();
 
-    let (_, tester) = suite
+    let tester = suite
         .upload_and_instantiate_with_gas(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             320_000_000,
             read_wasm_file("grug_tester.wasm"),
             &grug_tester::InstantiateMsg {},
@@ -53,7 +53,8 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             None,
             Coins::new(),
         )
-        .unwrap();
+        .unwrap()
+        .address;
 
     (suite, accounts, tester)
 }
@@ -63,19 +64,14 @@ fn infinite_loop() {
     let (mut suite, mut accounts, tester) = setup_test();
 
     suite
-        .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
-            1_000_000,
-            Message::Execute {
-                contract: tester,
-                msg: grug_tester::ExecuteMsg::InfiniteLoop {}
-                    .to_json_value()
-                    .unwrap(),
-                funds: Coins::new(),
-            },
-        )
+        .send_message_with_gas(&mut accounts["sender"], 1_000_000, Message::Execute {
+            contract: tester,
+            msg: grug_tester::ExecuteMsg::InfiniteLoop {}
+                .to_json_value()
+                .unwrap(),
+            funds: Coins::new(),
+        })
         .unwrap()
-        .result
         .should_fail_with_error("out of gas");
 }
 
@@ -105,22 +101,17 @@ fn immutable_state() {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
-            1_000_000,
-            Message::Execute {
-                contract: tester,
-                msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
-                    key: "larry".to_string(),
-                    value: "engineer".to_string(),
-                }
-                .to_json_value()
-                .unwrap(),
-                funds: Coins::new(),
-            },
-        )
+        .send_message_with_gas(&mut accounts["sender"], 1_000_000, Message::Execute {
+            contract: tester,
+            msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
+                key: "larry".to_string(),
+                value: "engineer".to_string(),
+            }
+            .to_json_value()
+            .unwrap(),
+            funds: Coins::new(),
+        })
         .unwrap()
-        .result
         .should_fail_with_error(VmError::ImmutableState);
 }
 
@@ -143,7 +134,7 @@ fn message_stack_overflow() {
     // to itself in a loop. Should raise the "exceeded max message depth" error.
     suite
         .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             10_000_000,
             Message::execute(
                 tester,
@@ -153,7 +144,6 @@ fn message_stack_overflow() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error(AppError::ExceedMaxMessageDepth);
 }
 

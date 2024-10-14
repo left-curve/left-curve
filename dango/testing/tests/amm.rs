@@ -54,7 +54,6 @@ fn amm() {
             .unwrap(),
         ])
         .unwrap()
-        .result
         .should_succeed();
 
     // Check the pools.
@@ -212,7 +211,6 @@ fn amm() {
             .unwrap(),
         ])
         .unwrap()
-        .result
         .should_succeed();
 
     // Check pool states should have been updated.

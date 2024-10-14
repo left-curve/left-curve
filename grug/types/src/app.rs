@@ -154,6 +154,46 @@ pub struct TxOutcome {
     pub result: GenericResult<()>,
 }
 
+impl TxOutcome {
+    pub fn as_success(self) -> TxSuccess {
+        match self.result {
+            GenericResult::Ok(_) => TxSuccess {
+                gas_limit: self.gas_limit,
+                gas_used: self.gas_used,
+                events: self.events,
+            },
+            GenericResult::Err(err) => panic!("expected success, got error: {err}"),
+        }
+    }
+
+    pub fn as_error(self) -> TxError {
+        match self.result {
+            GenericResult::Ok(_) => panic!("expected error, got success"),
+            GenericResult::Err(error) => TxError {
+                gas_limit: self.gas_limit,
+                gas_used: self.gas_used,
+                error,
+                events: self.events,
+            },
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: Vec<Event>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: String,
+    pub events: Vec<Event>,
+}
+
 #[derive(Debug)]
 /// Outcome of executing a block.
 pub struct BlockOutcome {

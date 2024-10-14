@@ -1,7 +1,7 @@
 use {
     grug_math::{NumberConst, Uint128},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, ResultExt, TxOutcome},
+    grug_types::{Coins, Empty, Message, ResultExt},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };
@@ -186,7 +186,7 @@ fn withholding_and_finalizing_fee_works(
 
     let outcome = suite
         .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             gas_limit,
             Message::transfer(
                 to,
@@ -198,10 +198,10 @@ fn withholding_and_finalizing_fee_works(
 
     match maybe_err {
         Some(err) => {
-            outcome.result.should_fail_with_error(err);
+            outcome.should_fail_with_error(err);
         },
         None => {
-            outcome.result.should_succeed();
+            outcome.should_succeed();
         },
     }
 
@@ -250,19 +250,19 @@ fn finalizing_fee_erroring() {
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
     // zero gas limit.
-    let TxOutcome { events, result, .. } = suite
+    let outcome = suite
         .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
+            &mut accounts["sender"],
             0,
             Message::transfer(to, Coins::new()).unwrap(),
         )
         .unwrap();
 
     // Result should be an error.
-    result.should_fail_with_error("division by zero: 1 / 0");
+    let failing = outcome.should_fail_with_error("division by zero: 1 / 0");
 
     // All events should have been discarded.
-    assert!(events.is_empty());
+    assert!(failing.events.is_empty());
 
     // Owner and sender's balances shouldn't have changed, since state changes
     // are discarded.

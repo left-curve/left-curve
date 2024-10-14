@@ -13,6 +13,7 @@ use {
     serde::Serialize,
     std::{
         collections::BTreeMap,
+        ops::Deref,
         str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
     },
@@ -533,7 +534,7 @@ where
         ];
 
         // Instantiate accounts
-        for (name, account) in self.accounts.inner() {
+        for (name, account) in self.accounts.inner().deref() {
             msgs.push(Message::instantiate(
                 self.account_opt.code.hash256(),
                 &(self.account_opt.msg_builder)(account.pk),

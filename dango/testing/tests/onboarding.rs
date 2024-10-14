@@ -237,7 +237,6 @@ fn false_factory_tx(
                 Coins::new(),
             )?,
         )?
-        .result
         .should_fail_with_error("data not found!");
 
     Ok(())

@@ -52,9 +52,9 @@ fn query_super_smart() {
         .with_query(Box::new(query_maker::query))
         .build();
 
-    let (_, contract) = suite
+    let contract = suite
         .upload_and_instantiate(
-            accounts.get_mut("larry").unwrap(),
+            &mut accounts["larry"],
             code,
             &Empty {},
             "contract",
@@ -62,7 +62,8 @@ fn query_super_smart() {
             None,
             Coins::new(),
         )
-        .unwrap();
+        .unwrap()
+        .address;
 
     // Here, the compiler should be able to infer the type of the response as
     // `String` based on the request type `QueryFooRequest`.

@@ -31,7 +31,7 @@ fn transfers() {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .send_messages(accounts.get_mut("sender").unwrap(), vec![
+        .send_messages(&mut accounts["sender"], vec![
             Message::Transfer {
                 to,
                 coins: Coins::one(DENOM.clone(), 10).unwrap(),
@@ -50,7 +50,6 @@ fn transfers() {
             },
         ])
         .unwrap()
-        .result
         .should_succeed();
 
     // Check balances again
