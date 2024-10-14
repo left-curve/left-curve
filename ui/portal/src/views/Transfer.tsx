@@ -2,12 +2,18 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Tab, Tabs } from "@dango/shared";
+import { ReceiveContainer } from "~/components/ReceiveContainer";
 import { SendContainer } from "~/components/SendContainer";
-import { TransferContainer } from "~/components/TransferContainer";
+
+const actions = ["send", "receive"];
 
 const Transfer: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const [activeAction, setActiveAction] = useState<string>(searchParams.get("action") || "send");
+  const [searchParams, setSearchParam] = useSearchParams();
+  const action = searchParams.get("action") as string;
+
+  const [activeAction, setActiveAction] = useState<string>(
+    actions.includes(action) ? action : "send",
+  );
 
   return (
     <div className="min-h-full w-full flex-1 flex items-center justify-center z-10 relative p-4">
@@ -17,12 +23,16 @@ const Transfer: React.FC = () => {
             <Tabs
               key="transfer-actions"
               defaultSelectedKey={activeAction}
-              onSelectionChange={(key) => setActiveAction(key.toString())}
+              onSelectionChange={(key) => {
+                const actionKey = key.toString();
+                setSearchParam({ action: actionKey });
+                setActiveAction(actionKey);
+              }}
               classNames={{
                 tabsWrapper: "p-1 bg-surface-green-300 text-typography-green-300 rounded-2xl gap-0",
               }}
             >
-              {["send", "transfer"].map((action) => (
+              {actions.map((action) => (
                 <Tab
                   key={action}
                   title={action}
@@ -36,7 +46,7 @@ const Transfer: React.FC = () => {
           </div>
         </div>
         {activeAction === "send" ? <SendContainer /> : null}
-        {activeAction === "transfer" ? <TransferContainer /> : null}
+        {activeAction === "receive" ? <ReceiveContainer /> : null}
       </div>
     </div>
   );

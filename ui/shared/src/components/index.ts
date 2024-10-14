@@ -11,6 +11,7 @@ export { TabItem as Tab } from "./atoms/tabs/TabItem";
 export { Select, Item as SelectItem } from "./atoms/Select";
 export { GradientContainer } from "./atoms/GradientContainer";
 export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
+export { QRCode } from "./atoms/QRCode";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Molecules                                 */
@@ -34,6 +35,7 @@ export { MarginDebtsTable } from "./molecules/MarginDebtsTable";
 export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
 export { BorrowingBar } from "./molecules/BorrowingBar";
 export { CoinSelector } from "./molecules/CoinSelector";
+export { AccountSearchInput } from "./molecules/AccountSearchInput";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */
