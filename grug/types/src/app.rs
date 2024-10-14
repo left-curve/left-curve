@@ -131,6 +131,20 @@ pub struct Outcome {
     pub result: GenericResult<Vec<Event>>,
 }
 
+impl Outcome {
+    pub fn as_success(self) {
+        if let GenericResult::Err(err) = self.result {
+            panic!("expected success, got error: {err}");
+        }
+    }
+
+    pub fn as_error(self) -> String {
+        match self.result {
+            GenericResult::Ok(_) => panic!("expected error, got success"),
+            GenericResult::Err(error) => error,
+        }
+    }
+}
 /// Outcome of processing a transaction.
 ///
 /// Different from `Outcome`, which can either succeed or fail, a transaction
