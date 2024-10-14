@@ -173,7 +173,6 @@ where
         // `query_depth` here.
         // Cast the error to `StdError::Ffi`, pretending it came over the FFI
         // boundary (although in `RustVm` there isn't one).
-        self.do_query_chain(req, 0)
-            .map_err(|msg| StdError::Ffi { msg })
+        self.do_query_chain(req, 0).map_err(StdError::host)
     }
 }

@@ -48,8 +48,8 @@ pub enum StdError {
     #[error(transparent)]
     Verification(#[from] VerificationError),
 
-    #[error("host returned error: {msg}")]
-    Ffi { msg: String },
+    #[error("host returned error: {0}")]
+    Host(String),
 
     #[error("invalid denom `{denom}`: {reason}")]
     InvalidDenom { denom: String, reason: &'static str },
@@ -116,6 +116,10 @@ pub enum StdError {
 }
 
 impl StdError {
+    pub fn host(msg: String) -> Self {
+        Self::Host(msg)
+    }
+
     pub fn invalid_denom<D>(denom: D, reason: &'static str) -> Self
     where
         D: ToString,
