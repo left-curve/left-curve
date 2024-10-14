@@ -11,30 +11,28 @@ export type TabsProps = TabListStateOptions<{
   title: string;
   content: ReactElement | string;
 }> & {
-  className?: string;
   classNames?: {
-    tabsContainer?: string;
-    contentContainer?: string;
+    container?: string;
+    tabsWrapper?: string;
   };
 };
 
-export const Tabs: React.FC<TabsProps> = ({ classNames, className, ...props }) => {
+export const Tabs: React.FC<TabsProps> = ({ classNames, ...props }) => {
   const state = useTabListState(props);
   const ref = useRef<HTMLDivElement>(null);
   const { tabListProps } = useTabList(props, state, ref);
+
+  const { container, tabsWrapper } = classNames || {};
 
   const tabs = [...state.collection].map((item) => (
     <Tab key={item.key} item={item} state={state} {...item.props} />
   ));
 
   return (
-    <div className={twMerge("flex flex-col gap-4 w-full", className)}>
+    <div className={twMerge("flex flex-col gap-4 w-full", container)}>
       <div
         ref={ref}
-        className={twMerge(
-          "flex gap-4 items-center justify-around w-full",
-          classNames?.tabsContainer,
-        )}
+        className={twMerge("flex gap-4 items-center justify-around w-full", tabsWrapper)}
         {...tabListProps}
       >
         {tabs}

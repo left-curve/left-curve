@@ -3,7 +3,6 @@ import { twMerge } from "~/utils";
 import { useTab } from "@react-aria/tabs";
 import type { TabListState } from "@react-stately/tabs";
 import type { ItemProps, Node } from "@react-types/shared";
-import { AnimatePresence, motion } from "framer-motion";
 
 import type { ReactNode } from "react";
 import { forwardRef, useDOMRef } from "~/utils/dom";
@@ -27,11 +26,17 @@ interface Props<T extends object = object> extends Omit<ItemProps<T>, "children"
 
   item: Node<T>;
   state: TabListState<T>;
+  classNames?: {
+    container?: string;
+    selected?: string;
+  };
 }
 
-export const Tab = forwardRef<"button", Props>(({ item, state }, ref) => {
+export const Tab = forwardRef<"button", Props>(({ item, state, classNames }, ref) => {
   const { key, rendered } = item;
   const domRef = useDOMRef(ref);
+
+  const { container, selected } = classNames || {};
 
   const { tabProps } = useTab(item, state, domRef);
 
@@ -41,22 +46,14 @@ export const Tab = forwardRef<"button", Props>(({ item, state }, ref) => {
     <div
       ref={domRef}
       className={twMerge(
-        "italic cursor-pointer relative p-1 px-2 focus:outline-none",
-        isSelected ? "text-typography-green-400" : "text-typography-green-300",
+        "italic cursor-pointer relative p-1 px-2 focus:outline-none text-typography-green-300",
+        "after:content-[''] after:block after:absolute after:inset-0 after:z-0 after:rounded-3xl after:bg-surface-green-100 after:scale-0 after:transition-all",
+        { [`after:scale-1 text-typography-green-400 ${selected}`]: isSelected },
+        container,
       )}
       {...tabProps}
     >
-      <AnimatePresence>
-        {isSelected && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            className="absolute top-0 left-0 rounded-3xl bg-surface-green-100 h-full w-full"
-          />
-        )}
-      </AnimatePresence>
-      <p className="relative z-10 px-2 py-1">{rendered}</p>
+      <p className={twMerge("relative z-10 px-2 py-1")}>{rendered}</p>
     </div>
   );
 });
