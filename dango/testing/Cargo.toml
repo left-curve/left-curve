@@ -10,7 +10,6 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }

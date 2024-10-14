@@ -49,15 +49,11 @@ struct Balances {
 fn cronjob_works() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", [("uatom", 100), ("uosmo", 100), ("umars", 100)])
-        .unwrap()
         .add_account("jake", Coins::new())
-        .unwrap()
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
         .set_owner("larry")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let tester_code = ContractBuilder::new(Box::new(tester::instantiate))
         .with_cron_execute(Box::new(tester::cron_execute))
@@ -68,10 +64,7 @@ fn cronjob_works() {
     // Block time: 1
     //
     // Upload the tester contract code.
-    let tester_code_hash = suite
-        .upload(&mut accounts["larry"], tester_code)
-        .unwrap()
-        .code_hash;
+    let tester_code_hash = suite.upload(&mut accounts["larry"], tester_code).code_hash;
 
     // Block time: 2
     //
@@ -90,7 +83,6 @@ fn cronjob_works() {
             None,
             Coins::one("uatom", 3).unwrap(),
         )
-        .unwrap()
         .address;
 
     // Block time: 3
@@ -107,7 +99,6 @@ fn cronjob_works() {
             None,
             Coins::one("uosmo", 3).unwrap(),
         )
-        .unwrap()
         .address;
 
     // Block time: 4
@@ -124,7 +115,6 @@ fn cronjob_works() {
             None,
             Coins::one("umars", 3).unwrap(),
         )
-        .unwrap()
         .address;
 
     // Block time: 5
@@ -143,9 +133,7 @@ fn cronjob_works() {
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite
-        .configure(&mut accounts["larry"], updates, BTreeMap::new())
-        .unwrap();
+    suite.configure(&mut accounts["larry"], updates, BTreeMap::new());
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.
@@ -241,10 +229,11 @@ fn cronjob_works() {
             .unwrap();
 
         // Advance block
-        suite.make_empty_block().unwrap();
+        suite.make_empty_block();
 
         // Check the balances are correct
-        let actual = suite.query_balances(&accounts["jake"]).should_succeed();
-        assert_eq!(actual, expect);
+        suite
+            .query_balances(&accounts["jake"])
+            .should_succeed_and_equal(expect);
     }
 }

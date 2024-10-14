@@ -10,25 +10,18 @@ use {
 fn check_tx_and_finalize() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("rhaki", Coins::one("uatom", 100).unwrap())
-        .unwrap()
         .add_account("larry", Coins::new())
-        .unwrap()
         .add_account("owner", Coins::new())
-        .unwrap()
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
         .set_owner("owner")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let transfer_msg =
         Message::transfer(accounts["larry"].address, Coins::one("uatom", 10).unwrap()).unwrap();
 
     // Create a tx to set sequence to 1.
-    suite
-        .send_message(&mut accounts["rhaki"], transfer_msg.clone())
-        .unwrap();
+    suite.send_message(&mut accounts["rhaki"], transfer_msg.clone());
 
     // Create a tx with sequence 0, 1, 2, 4.
     let txs: Vec<Tx> = [0, 1, 2, 4]
@@ -50,11 +43,7 @@ fn check_tx_and_finalize() {
                 //   run into any error, so we `unwrap`.
                 // - The `Outcome::result` returned by `checked_tx` may fail,
                 //   so we gracefully handle it with `?`.
-                suite
-                    .check_tx(tx.clone())
-                    .unwrap()
-                    .result
-                    .into_std_result()?;
+                suite.check_tx(tx.clone()).result.into_std_result()?;
 
                 Ok(tx)
             })()
@@ -96,7 +85,7 @@ fn check_tx_and_finalize() {
     // The tx with sequence 1 should succeed.
     // The tx with sequence 2 should succeed.
     // The tx with sequence 4 should fail.
-    let result = suite.make_block(txs).unwrap();
+    let result = suite.make_block(txs);
 
     result.tx_outcomes[0].clone().should_succeed();
     result.tx_outcomes[1].clone().should_succeed();
@@ -114,7 +103,7 @@ fn check_tx_and_finalize() {
         .sign_transaction_with_sequence(vec![transfer_msg], &suite.chain_id, 3, 0)
         .unwrap();
 
-    suite.make_block(vec![tx]).unwrap().tx_outcomes[0]
+    suite.make_block(vec![tx]).tx_outcomes[0]
         .clone()
         .should_succeed();
 
@@ -145,18 +134,15 @@ mod backrunner {
     pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
         let cfg = ctx.querier.query_config().unwrap();
 
-        Ok(Response::new().add_message(
-            Message::execute(
-                cfg.bank,
-                &grug_mock_bank::ExecuteMsg::Mint {
-                    to: ctx.contract,
-                    denom: Denom::from_str("nft/badkids/1").unwrap(),
-                    amount: Uint128::ONE,
-                },
-                Coins::new(),
-            )
-            .unwrap(),
-        ))
+        Ok(Response::new().add_message(Message::execute(
+            cfg.bank,
+            &grug_mock_bank::ExecuteMsg::Mint {
+                to: ctx.contract,
+                denom: Denom::from_str("nft/badkids/1").unwrap(),
+                amount: Uint128::ONE,
+            },
+            Coins::new(),
+        )?))
     }
 
     // The account can also reject and revert state changes from the messages
@@ -180,26 +166,19 @@ fn backrunning_works() {
         .set_account_code(account, |public_key| grug_mock_account::InstantiateMsg {
             public_key,
         })
-        .unwrap()
         .add_account("sender", Coins::one("ugrug", 50_000).unwrap())
-        .unwrap()
         .add_account("receiver", Coins::new())
-        .unwrap()
         .set_owner("sender")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let receiver = accounts["receiver"].address;
 
     // Attempt to send a transaction
-    suite
-        .transfer(
-            &mut accounts["sender"],
-            receiver,
-            Coins::one("ugrug", 123).unwrap(),
-        )
-        .unwrap();
+    suite.transfer(
+        &mut accounts["sender"],
+        receiver,
+        Coins::one("ugrug", 123).unwrap(),
+    );
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite
@@ -225,15 +204,10 @@ fn backrunning_with_error() {
         .set_account_code(bugged_account, |public_key| {
             grug_mock_account::InstantiateMsg { public_key }
         })
-        .unwrap()
         .add_account("sender", Coins::one("ugrug", 50_000).unwrap())
-        .unwrap()
         .add_account("receiver", Coins::new())
-        .unwrap()
         .set_owner("sender")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let receiver = accounts["receiver"].address;
 
@@ -243,7 +217,6 @@ fn backrunning_with_error() {
             &mut accounts["sender"],
             Message::transfer(receiver, Coins::one("ugrug", 123).unwrap()).unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("division by zero: 1 / 0");
 
     // Transfer should have been reverted, and sender doesn't get bad kids.

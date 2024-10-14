@@ -33,14 +33,10 @@ fn read_wasm_file(filename: &str) -> Binary {
 fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
-        .unwrap()
         .add_account("sender", Coins::one(DENOM.clone(), 32_100_000).unwrap())
-        .unwrap()
         .set_owner("owner")
-        .unwrap()
         .set_fee_rate(FEE_RATE)
-        .build()
-        .unwrap();
+        .build();
 
     let tester = suite
         .upload_and_instantiate_with_gas(
@@ -53,7 +49,6 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             None,
             Coins::new(),
         )
-        .unwrap()
         .address;
 
     (suite, accounts, tester)
@@ -71,7 +66,6 @@ fn infinite_loop() {
                 .unwrap(),
             funds: Coins::new(),
         })
-        .unwrap()
         .should_fail_with_error("out of gas");
 }
 
@@ -111,7 +105,6 @@ fn immutable_state() {
             .unwrap(),
             funds: Coins::new(),
         })
-        .unwrap()
         .should_fail_with_error(VmError::ImmutableState);
 }
 
@@ -143,7 +136,6 @@ fn message_stack_overflow() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error(AppError::ExceedMaxMessageDepth);
 }
 

@@ -33,7 +33,7 @@ pub struct TestAccount<T: MaybeDefined<Inner = Addr> = Defined<Addr>> {
 }
 
 impl TestAccount<Undefined<Addr>> {
-    pub fn new_random(username: &str) -> StdResult<Self> {
+    pub fn new_random(username: &str) -> Self {
         // Generate a random Secp256k1 key pair.
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
@@ -41,20 +41,21 @@ impl TestAccount<Undefined<Addr>> {
             .to_encoded_point(true)
             .to_bytes()
             .to_vec()
-            .try_into()?;
+            .try_into()
+            .unwrap();
 
-        let username = Username::from_str(username)?;
+        let username = Username::from_str(username).unwrap();
         let key = Key::Secp256k1(pk);
         let key_hash = pk.hash160();
 
-        Ok(Self {
+        Self {
             username,
             key,
             key_hash,
             sequence: 0,
             sk,
             address: Undefined::default(),
-        })
+        }
     }
 
     pub fn predict_address(
@@ -62,7 +63,7 @@ impl TestAccount<Undefined<Addr>> {
         factory: Addr,
         spot_code_hash: Hash256,
         new_user_salt: bool,
-    ) -> StdResult<TestAccount> {
+    ) -> TestAccount {
         let salt = if new_user_salt {
             NewUserSalt {
                 username: &self.username,
@@ -76,14 +77,14 @@ impl TestAccount<Undefined<Addr>> {
 
         let address = Addr::derive(factory, spot_code_hash, &salt);
 
-        Ok(TestAccount {
+        TestAccount {
             username: self.username,
             key: self.key,
             key_hash: self.key_hash,
             sequence: self.sequence,
             sk: self.sk,
             address: Defined::new(address),
-        })
+        }
     }
 
     pub fn set_address(self, addresses: &BTreeMap<Username, Addr>) -> TestAccount {

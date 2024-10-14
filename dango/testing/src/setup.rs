@@ -19,16 +19,16 @@ fn setup_suite_with_db_and_vm<DB, VM, T>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
-) -> anyhow::Result<(TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)>
+) -> (TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
     AppError: From<DB::Error> + From<VM::Error>,
 {
-    let owner = TestAccount::new_random("owner")?;
-    let fee_recipient = TestAccount::new_random("fee_recipient")?;
-    let relayer = TestAccount::new_random("relayer")?;
+    let owner = TestAccount::new_random("owner");
+    let fee_recipient = TestAccount::new_random("fee_recipient");
+    let relayer = TestAccount::new_random("relayer");
 
     let (genesis_state, contracts, addresses) = build_genesis(
         codes.clone(),
@@ -36,7 +36,7 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000)?,
+                balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
             },
             fee_recipient.username.clone() => GenesisUser {
                 key: fee_recipient.key,
@@ -51,7 +51,8 @@ where
                     "uatom" => 100_000_000_000_000,
                     "uosmo" => 100_000_000_000_000,
                 }
-                .try_into()?,
+                .try_into()
+                .unwrap(),
             },
         },
         &owner.username,
@@ -59,7 +60,8 @@ where
         "uusdc",
         Udec128::ZERO,
         Uint128::new(10_000_000),
-    )?;
+    )
+    .unwrap();
 
     let suite = TestSuite::new_with_db_and_vm(
         db,
@@ -73,7 +75,7 @@ where
             timestamp: Timestamp::from_seconds(0),
         },
         genesis_state,
-    )?;
+    );
 
     let accounts = Accounts {
         owner: owner.set_address(&addresses),
@@ -81,11 +83,11 @@ where
         relayer: relayer.set_address(&addresses),
     };
 
-    Ok((suite, accounts, codes, contracts))
+    (suite, accounts, codes, contracts)
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, and `ContractWrapper` codes.
-pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrapper>, Contracts)> {
+pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
         .with_query(Box::new(dango_account_factory::query))
@@ -151,17 +153,17 @@ pub fn setup_test() -> anyhow::Result<(TestSuite, Accounts, Codes<ContractWrappe
 pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
-) -> anyhow::Result<(
+) -> (
     TestSuite<DiskDb, WasmVm>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,
-)> {
+) {
     // TODO: create a `testdata` directory for the wasm files
     let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
         .unwrap();
 
-    let db = DiskDb::open(dir)?;
+    let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(db, vm, codes)

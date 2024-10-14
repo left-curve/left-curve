@@ -169,32 +169,25 @@ fn withholding_and_finalizing_fee_works(
     let (mut suite, mut accounts) = TestBuilder::new()
         .set_taxman_code(taxman_code, |_fee_denom, _fee_rate| Empty {})
         .add_account("owner", Coins::new())
-        .unwrap()
         .add_account(
             "sender",
             Coins::one(taxman::FEE_DENOM.clone(), sender_balance_before).unwrap(),
         )
-        .unwrap()
         .add_account("receiver", Coins::new())
-        .unwrap()
         .set_owner("owner")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let to = accounts["receiver"].address;
 
-    let outcome = suite
-        .send_message_with_gas(
-            &mut accounts["sender"],
-            gas_limit,
-            Message::transfer(
-                to,
-                Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
-            )
-            .unwrap(),
+    let outcome = suite.send_message_with_gas(
+        &mut accounts["sender"],
+        gas_limit,
+        Message::transfer(
+            to,
+            Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
         )
-        .unwrap();
+        .unwrap(),
+    );
 
     match maybe_err {
         Some(err) => {
@@ -234,29 +227,23 @@ fn finalizing_fee_erroring() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .set_taxman_code(bugged_taxman_code, |_fee_denom, _fee_rate| Empty {})
         .add_account("owner", Coins::new())
-        .unwrap()
         .add_account(
             "sender",
             Coins::one(taxman::FEE_DENOM.clone(), 30_000).unwrap(),
         )
-        .unwrap()
         .set_owner("owner")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let to = accounts["sender"].address;
 
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
     // zero gas limit.
-    let outcome = suite
-        .send_message_with_gas(
-            &mut accounts["sender"],
-            0,
-            Message::transfer(to, Coins::new()).unwrap(),
-        )
-        .unwrap();
+    let outcome = suite.send_message_with_gas(
+        &mut accounts["sender"],
+        0,
+        Message::transfer(to, Coins::new()).unwrap(),
+    );
 
     // Result should be an error.
     let failing = outcome.should_fail_with_error("division by zero: 1 / 0");
