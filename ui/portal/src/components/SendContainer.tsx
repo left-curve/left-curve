@@ -42,6 +42,7 @@ export const SendContainer: React.FC = () => {
               }
               endContent={
                 <CoinSelector
+                  label="coins"
                   coins={arrayOfCoins}
                   defaultSelectedKey={denom}
                   onSelectionChange={(k) => setValue("denom", k.toString())}
