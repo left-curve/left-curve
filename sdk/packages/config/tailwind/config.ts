@@ -180,6 +180,7 @@ export const tailwindConfig: Partial<Config> = {
     },
   },
   plugins: [
+    require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
     plugin(({ addUtilities }) => {
       addUtilities({

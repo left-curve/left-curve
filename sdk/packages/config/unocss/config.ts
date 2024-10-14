@@ -1,5 +1,4 @@
 import { type Preset, definePreset } from "unocss";
-import { presetScrollbar } from "unocss-preset-scrollbar";
 
 export const leftCurvePreset = definePreset((): Preset => {
   return {
@@ -163,7 +162,6 @@ export const leftCurvePreset = definePreset((): Preset => {
         },
       },
     },
-    presets: [presetScrollbar({ noCompatible: true })],
     shortcuts: [[".tap-highlight-transparent", [{ "-webkit-tap-highlight-color": "transparent" }]]],
     rules: [],
     variants: [],
