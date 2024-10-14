@@ -41,6 +41,13 @@ pub enum AppError {
     #[error("account with address `{address}` already exists")]
     AccountExists { address: Addr },
 
+    #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
+    Ffi {
+        address: Addr,
+        name: &'static str,
+        msg: String,
+    },
+
     #[error("max message depth exceeded")]
     ExceedMaxMessageDepth,
 }

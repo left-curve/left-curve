@@ -48,6 +48,9 @@ pub enum StdError {
     #[error(transparent)]
     Verification(#[from] VerificationError),
 
+    #[error("host returned error: {msg}")]
+    Ffi { msg: String },
+
     #[error("invalid denom `{denom}`: {reason}")]
     InvalidDenom { denom: String, reason: &'static str },
 
@@ -110,10 +113,6 @@ pub enum StdError {
         ty: &'static str,
         reason: String,
     },
-
-    // TODO: rename this to `FFI`
-    #[error("generic error: {0}")]
-    Generic(String),
 }
 
 impl StdError {
@@ -205,13 +204,6 @@ impl StdError {
             ty: type_name::<T>(),
             reason: reason.to_string(),
         }
-    }
-
-    pub fn generic_err<R>(reason: R) -> Self
-    where
-        R: ToString,
-    {
-        Self::Generic(reason.to_string())
     }
 }
 

@@ -1,0 +1,19 @@
+use crate::Event;
+
+/// Result of which the error is a string.
+///
+/// If a result is passed through the FFI boundary, it is received on the other
+/// side as a generic result.
+///
+/// This is used in two cases:
+///
+/// - the host calls an export function on the Wasm module (result is passed
+///   from the module to the host);
+/// - the Wasm module calls an import function provided by the host (result is
+///   passed from the host to the module).
+pub type GenericResult<T> = Result<T, String>;
+
+/// The result for executing a submessage.
+///
+/// This is provided to the contract in the `reply` entry point.
+pub type SubMsgResult = GenericResult<Vec<Event>>;

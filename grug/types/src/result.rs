@@ -1,77 +1,7 @@
 use {
-    crate::{Event, Outcome, StdError, StdResult, TxError, TxOutcome, TxSuccess},
-    borsh::{BorshDeserialize, BorshSerialize},
-    serde::{Deserialize, Serialize},
+    crate::{Event, Outcome, TxError, TxOutcome, TxSuccess},
     std::fmt::{Debug, Display},
 };
-
-/// The result for executing a submessage, provided to the contract in the `reply`
-/// entry point.
-pub type SubMsgResult = GenericResult<Vec<Event>>;
-
-// ------------------------------ generic result -------------------------------
-
-/// A result type that can be serialized into a string and thus passed over the
-/// FFI boundary.
-///
-/// This is used in two cases:
-/// - the host calls an export function on the Wasm module
-/// - the Wasm module calls an import function provided by the host
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum GenericResult<T> {
-    Ok(T),
-    Err(String),
-}
-
-impl<T> GenericResult<T> {
-    /// Convert the `GenericResult<T>` to an `StdResult<T>`, so that it can be
-    /// unwrapped with the `?` operator.
-    pub fn into_std_result(self) -> StdResult<T> {
-        match self {
-            GenericResult::Ok(data) => Ok(data),
-            GenericResult::Err(err) => Err(StdError::Generic(err)),
-        }
-    }
-
-    /// Convert the `GenericResult<T>` to an `Option<T>`, discarding the error
-    /// message.
-    pub fn ok(self) -> Option<T> {
-        match self {
-            GenericResult::Ok(data) => Some(data),
-            GenericResult::Err(_) => None,
-        }
-    }
-
-    pub fn err(self) -> Option<String> {
-        match self {
-            GenericResult::Ok(_) => None,
-            GenericResult::Err(err) => Some(err),
-        }
-    }
-
-    pub fn is_ok(&self) -> bool {
-        matches!(self, GenericResult::Ok(_))
-    }
-
-    pub fn is_err(&self) -> bool {
-        matches!(self, GenericResult::Err(_))
-    }
-}
-
-impl<T, E> From<Result<T, E>> for GenericResult<T>
-where
-    E: ToString,
-{
-    fn from(result: Result<T, E>) -> Self {
-        match result {
-            Ok(value) => GenericResult::Ok(value),
-            Err(err) => GenericResult::Err(err.to_string()),
-        }
-    }
-}
-
-// ------------------------------ extension trait ------------------------------
 
 /// Addition methods for result types.
 /// Useful for testing, improving code readability.
@@ -165,17 +95,18 @@ pub trait ResultExt: Sized {
     }
 
     /// Ensure the result matches the given result.
-    fn should_match<U>(self, expect: GenericResult<U>)
+    fn should_match<T, E>(self, expect: Result<T, E>)
     where
-        Self::Success: Debug + PartialEq<U>,
+        Self::Success: Debug + PartialEq<T>,
         Self::Error: ToString,
-        U: Debug,
+        T: Debug,
+        E: ToString,
     {
         match expect {
-            GenericResult::Ok(expect) => {
+            Ok(expect) => {
                 self.should_succeed_and_equal(expect);
             },
-            GenericResult::Err(expect) => {
+            Err(expect) => {
                 self.should_fail_with_error(expect);
             },
         }
@@ -211,15 +142,15 @@ impl ResultExt for Outcome {
 
     fn should_succeed(self) -> Self::Success {
         match self.result {
-            GenericResult::Ok(events) => events,
-            GenericResult::Err(error) => panic!("expected success, got error: {error}"),
+            Ok(events) => events,
+            Err(error) => panic!("expected success, got error: {error}"),
         }
     }
 
     fn should_fail(self) -> Self::Error {
         match self.result {
-            GenericResult::Err(error) => error,
-            GenericResult::Ok(_) => panic!("expected error, got success"),
+            Err(error) => error,
+            Ok(_) => panic!("expected error, got success"),
         }
     }
 }
@@ -230,24 +161,24 @@ impl ResultExt for TxOutcome {
 
     fn should_succeed(self) -> TxSuccess {
         match self.result {
-            GenericResult::Ok(_) => TxSuccess {
+            Ok(_) => TxSuccess {
                 gas_limit: self.gas_limit,
                 gas_used: self.gas_used,
                 events: self.events,
             },
-            GenericResult::Err(err) => panic!("expected success, got error: {err}"),
+            Err(err) => panic!("expected success, got error: {err}"),
         }
     }
 
     fn should_fail(self) -> TxError {
         match self.result {
-            GenericResult::Err(error) => TxError {
+            Err(error) => TxError {
                 gas_limit: self.gas_limit,
                 gas_used: self.gas_used,
                 error,
                 events: self.events,
             },
-            GenericResult::Ok(_) => panic!("expected error, got success"),
+            Ok(_) => panic!("expected error, got success"),
         }
     }
 }

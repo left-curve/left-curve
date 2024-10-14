@@ -2,7 +2,7 @@ use {
     crate::Region,
     grug_types::{
         encode_sections, Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, StdResult, Storage, VerificationError,
+        QueryResponse, Record, StdError, StdResult, Storage, VerificationError,
     },
 };
 
@@ -453,7 +453,7 @@ impl Querier for ExternalQuerier {
         let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
         let res: GenericResult<QueryResponse> = res_bytes.deserialize_borsh()?;
 
-        res.into_std_result()
+        res.map_err(|msg| StdError::Ffi { msg })
     }
 }
 

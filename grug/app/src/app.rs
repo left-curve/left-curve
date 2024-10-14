@@ -948,7 +948,7 @@ fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcom
     Outcome {
         gas_limit: gas_tracker.limit(),
         gas_used: gas_tracker.used(),
-        result: result.into(),
+        result: result.map_err(|err| err.to_string()),
     }
 }
 
@@ -957,7 +957,7 @@ fn new_tx_outcome(gas_tracker: GasTracker, events: Vec<Event>, result: AppResult
         gas_limit: gas_tracker.limit().unwrap(),
         gas_used: gas_tracker.used(),
         events,
-        result: result.into(),
+        result: result.map_err(|err| err.to_string()),
     }
 }
 

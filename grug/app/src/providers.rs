@@ -2,7 +2,7 @@ use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
         concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, StdResult, Storage,
+        QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -158,7 +158,7 @@ where
             self.block,
             req,
         )
-        .into()
+        .map_err(|err| err.to_string())
     }
 }
 
@@ -169,7 +169,11 @@ where
     AppError: From<VM::Error>,
 {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        // We don't check for max query depth in Rust VM, do simply use zero here.
-        self.do_query_chain(req, 0).into_std_result()
+        // We don't check for max query depth in Rust VM, do simply use zero as
+        // `query_depth` here.
+        // Cast the error to `StdError::Ffi`, pretending it came over the FFI
+        // boundary (although in `RustVm` there isn't one).
+        self.do_query_chain(req, 0)
+            .map_err(|msg| StdError::Ffi { msg })
     }
 }

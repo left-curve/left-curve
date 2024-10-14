@@ -2,7 +2,7 @@ use {
     grug_math::{NumberConst, Uint128},
     grug_mock_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, StdResult, Timestamp, Tx},
+    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -27,27 +27,26 @@ fn check_tx_and_finalize() {
     let txs: Vec<Tx> = [0, 1, 2, 4]
         .into_iter()
         .filter_map(|sequence| {
-            (|| -> StdResult<_> {
-                // Sign the tx
-                let tx = accounts["rhaki"].sign_transaction_with_sequence(
+            // Sign the tx
+            let tx = accounts["rhaki"]
+                .sign_transaction_with_sequence(
                     vec![transfer_msg.clone()],
                     &suite.chain_id,
                     sequence,
                     0,
-                )?;
+                )
+                .ok()?;
 
-                // Check the tx and if the result is ok, return the tx.
-                //
-                // Note: there are two layers of results here:
-                // - `check_tx` must succeed, meaning the chain itself doesn't
-                //   run into any error, so we `unwrap`.
-                // - The `Outcome::result` returned by `checked_tx` may fail,
-                //   so we gracefully handle it with `?`.
-                suite.check_tx(tx.clone()).result.into_std_result()?;
+            // Check the tx and if the result is ok, return the tx.
+            //
+            // Note: there are two layers of results here:
+            // - `check_tx` must succeed, meaning the chain itself doesn't
+            //   run into any error, so we `unwrap`.
+            // - The `Outcome::result` returned by `checked_tx` may fail,
+            //   so we gracefully handle it with `?`.
+            suite.check_tx(tx.clone()).result.ok()?;
 
-                Ok(tx)
-            })()
-            .ok()
+            Some(tx)
         })
         .collect();
 

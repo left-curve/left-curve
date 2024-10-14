@@ -487,7 +487,7 @@ where
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = (self.instantiate_fn)(mutable_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn execute(
@@ -506,7 +506,7 @@ where
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = execute_fn(mutable_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn migrate(
@@ -525,7 +525,7 @@ where
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = migrate_fn(mutable_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn receive(
@@ -542,7 +542,7 @@ where
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
         let res = receive_fn(mutable_ctx);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn reply(
@@ -562,7 +562,7 @@ where
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = reply_fn(sudo_ctx, msg, result);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn query(
@@ -581,7 +581,7 @@ where
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
         let res = query_fn(immutable_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn authenticate(
@@ -599,7 +599,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
         let res = authenticate_fn(auth_ctx, tx);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn backrun(
@@ -617,7 +617,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
         let res = backrun_fn(auth_ctx, tx);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn bank_execute(
@@ -635,7 +635,7 @@ where
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         let res = bank_execute_fn(sudo_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn bank_query(
@@ -653,7 +653,7 @@ where
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
         let res = bank_query_fn(immutable_ctx, msg);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn withhold_fee(
@@ -671,7 +671,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
         let res = withhold_fee_fn(auth_ctx, tx);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn finalize_fee(
@@ -690,7 +690,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
         let res = finalize_fee_fn(auth_ctx, tx, outcome);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 
     fn cron_execute(
@@ -707,6 +707,6 @@ where
         let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         let res = cron_execute_fn(sudo_ctx);
 
-        Ok(res.into())
+        Ok(res.map_err(|err| err.to_string()))
     }
 }

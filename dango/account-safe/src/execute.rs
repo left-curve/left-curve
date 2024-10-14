@@ -426,7 +426,7 @@ mod tests {
                             params: AccountParams::Safe(params_clone.clone()),
                         }
                         .to_json_value()
-                        .into()
+                        .map_err(|err| err.to_string())
                     },
                     _ => unreachable!(),
                 }
@@ -466,7 +466,7 @@ mod tests {
                             params: AccountParams::Safe(params.clone()),
                         }
                         .to_json_value()
-                        .into()
+                        .map_err(|err| err.to_string())
                     },
                     _ => unreachable!(),
                 }

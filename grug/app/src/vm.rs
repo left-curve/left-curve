@@ -159,7 +159,11 @@ where
         code_hash,
         ctx,
     )?
-    .into_std_result()?;
+    .map_err(|msg| AppError::Ffi {
+        address: ctx.contract,
+        name,
+        msg,
+    })?;
 
     handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
@@ -195,7 +199,11 @@ where
         ctx,
         param,
     )?
-    .into_std_result()?;
+    .map_err(|msg| AppError::Ffi {
+        address: ctx.contract,
+        name,
+        msg,
+    })?;
 
     handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
@@ -234,7 +242,11 @@ where
         param1,
         param2,
     )?
-    .into_std_result()?;
+    .map_err(|msg| AppError::Ffi {
+        address: ctx.contract,
+        name,
+        msg,
+    })?;
 
     handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
 }
