@@ -41,12 +41,9 @@ mod query_maker {
 fn query_super_smart() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123).unwrap())
-        .unwrap()
         .set_chain_id("kebab")
         .set_owner("larry")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let code = ContractBuilder::new(Box::new(query_maker::instantiate))
         .with_query(Box::new(query_maker::query))
@@ -62,7 +59,6 @@ fn query_super_smart() {
             None,
             Coins::new(),
         )
-        .unwrap()
         .address;
 
     // Here, the compiler should be able to infer the type of the response as

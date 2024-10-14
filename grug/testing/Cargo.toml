@@ -10,7 +10,6 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow             = { workspace = true }
 grug-app           = { workspace = true, features = ["tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }

@@ -18,7 +18,7 @@ static LP_2: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("amm/pool/2").un
 
 #[test]
 fn amm() {
-    let (mut suite, mut accounts, _, contracts) = setup_test().unwrap();
+    let (mut suite, mut accounts, _, contracts) = setup_test();
 
     // ----------------------------- Pool creation -----------------------------
 
@@ -53,7 +53,6 @@ fn amm() {
             )
             .unwrap(),
         ])
-        .unwrap()
         .should_succeed();
 
     // Check the pools.
@@ -210,7 +209,6 @@ fn amm() {
             )
             .unwrap(),
         ])
-        .unwrap()
         .should_succeed();
 
     // Check pool states should have been updated.
@@ -274,17 +272,15 @@ fn amm() {
     // --------------------------------- Swap ----------------------------------
 
     // Swap USDC for OSMO.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.amm,
-            &ExecuteMsg::Swap {
-                route: UniqueVec::new_unchecked(vec![2, 1]),
-                minimum_output: None,
-            },
-            Coin::new(USDC.clone(), Uint128::new(100_000_000)).unwrap(),
-        )
-        .unwrap();
+    suite.execute(
+        &mut accounts.owner,
+        contracts.amm,
+        &ExecuteMsg::Swap {
+            route: UniqueVec::new_unchecked(vec![2, 1]),
+            minimum_output: None,
+        },
+        Coin::new(USDC.clone(), Uint128::new(100_000_000)).unwrap(),
+    );
 
     // Check the trader has received the correct amount of OSMO.
     //
@@ -370,14 +366,12 @@ fn amm() {
     // ------------------------- Liquidity withdrawal --------------------------
 
     // The liquidity provider withdraws around 1/3 of their ATOM-OSMO liquidity.
-    suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.amm,
-            &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
-            Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
-        )
-        .unwrap();
+    suite.execute(
+        &mut accounts.relayer,
+        contracts.amm,
+        &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
+        Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
+    );
 
     // Check LPer has received the correct amount of ATOM and OSMO.
     //

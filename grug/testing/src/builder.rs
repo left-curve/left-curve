@@ -1,6 +1,5 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
-    anyhow::{anyhow, ensure},
     grug_app::AppError,
     grug_db_memory::MemDb,
     grug_math::Udec128,
@@ -13,6 +12,7 @@ use {
     serde::Serialize,
     std::{
         collections::BTreeMap,
+        fmt::Debug,
         ops::Deref,
         str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
@@ -158,8 +158,12 @@ where
         self
     }
 
-    pub fn set_fee_denom(mut self, fee_denom: Denom) -> Self {
-        self.fee_denom = Some(fee_denom);
+    pub fn set_fee_denom<D>(mut self, fee_denom: D) -> Self
+    where
+        D: TryInto<Denom>,
+        D::Error: Debug,
+    {
+        self.fee_denom = Some(fee_denom.try_into().unwrap());
         self
     }
 
@@ -168,22 +172,22 @@ where
         self
     }
 
-    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> anyhow::Result<Self>
+    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> Self
     where
         K: Into<String>,
         V: Serialize,
     {
         let key = key.into();
-        let value = value.to_json_value()?;
+        let value = value.to_json_value().unwrap();
 
-        ensure!(
+        assert!(
             !self.app_configs.contains_key(&key),
             "app config key `{key}` is already set"
         );
 
         self.app_configs.insert(key, value);
 
-        Ok(self)
+        self
     }
 
     /// Use a custom code for the bank instead the default implementation
@@ -208,15 +212,12 @@ where
     ///
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
-    ///     .unwrap()
     ///     .set_owner("owner")
-    ///     .unwrap()
     ///     .set_bank_code(
     ///         code,
     ///         |initial_balances| grug_mock_bank::InstantiateMsg { initial_balances },
     ///     )
-    ///     .build()
-    ///     .unwrap();
+    ///     .build();
     /// ```
     pub fn set_bank_code<T, F, M2A>(
         self,
@@ -271,17 +272,14 @@ where
     ///
     /// let (suite, accounts) = TestBuilder::new()
     ///     .add_account("owner", Coins::new())
-    ///     .unwrap()
     ///     .set_owner("owner")
-    ///     .unwrap()
     ///     .set_taxman_code(
     ///         code,
     ///         |fee_denom, fee_rate| grug_mock_taxman::InstantiateMsg {
     ///             config: grug_mock_taxman::Config { fee_denom, fee_rate },
     ///         },
     ///     )
-    ///     .build()
-    ///     .unwrap();
+    ///     .build();
     /// ```
     pub fn set_taxman_code<T, F, M3A>(
         self,
@@ -318,13 +316,13 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, OW, Defined<TestAccounts>>>
+    ) -> TestBuilder<VM, M1, M2, M3, OW, Defined<TestAccounts>>
     where
         C: TryInto<Coins>,
-        anyhow::Error: From<C::Error>,
+        C::Error: Debug,
     {
         let mut accounts = self.accounts.maybe_inner().unwrap_or_default();
-        ensure!(
+        assert!(
             !accounts.contains_key(name),
             "account with name {name} already exists"
         );
@@ -333,13 +331,13 @@ where
         let account = TestAccount::new_random(self.account_opt.code.hash256(), name.as_bytes());
 
         // Save account and balances
-        let balances = balances.try_into()?;
+        let balances = balances.try_into().unwrap();
         if !balances.is_empty() {
             self.balances.insert(account.address, balances);
         }
         accounts.insert(name, account);
 
-        Ok(TestBuilder {
+        TestBuilder {
             vm: self.vm,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -355,7 +353,7 @@ where
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
-        })
+        }
     }
 }
 
@@ -395,24 +393,20 @@ where
     ///         code,
     ///         |public_key| grug_mock_account::InstantiateMsg { public_key },
     ///     )
-    ///     .unwrap()
     ///     .add_account("owner", Coins::new())
-    ///     .unwrap()
     ///     .set_owner("owner")
-    ///     .unwrap()
-    ///     .build()
-    ///     .unwrap();
+    ///     .build();
     /// ```
     pub fn set_account_code<T, F, M1A>(
         self,
         code: T,
         msg_builder: F,
-    ) -> anyhow::Result<TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>>
+    ) -> TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>
     where
         T: Into<Binary>,
         F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
     {
-        Ok(TestBuilder {
+        TestBuilder {
             vm: self.vm,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -431,7 +425,7 @@ where
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
-        })
+        }
     }
 }
 
@@ -441,13 +435,12 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
     pub fn set_owner(
         self,
         name: &'static str,
-    ) -> anyhow::Result<TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>> {
-        let owner =
-            self.accounts.inner().get(name).ok_or_else(|| {
-                anyhow!("failed to set owner: can't find account with name `{name}`")
-            })?;
+    ) -> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
+        let owner = self.accounts.inner().get(name).unwrap_or_else(|| {
+            panic!("failed to set owner: can't find account with name `{name}`")
+        });
 
-        Ok(TestBuilder {
+        TestBuilder {
             vm: self.vm,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -463,7 +456,7 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
-        })
+        }
     }
 }
 
@@ -476,7 +469,7 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn build(self) -> anyhow::Result<(TestSuite<MemDb, VM>, TestAccounts)> {
+    pub fn build(self) -> (TestSuite<MemDb, VM>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }
@@ -498,10 +491,13 @@ where
             .unwrap_or_else(|| Udec128::from_str(DEFAULT_FEE_RATE).unwrap());
 
         // Use the current system time as genesis time, if unspecified.
-        let genesis_time = match self.genesis_time {
-            Some(time) => time,
-            None => Timestamp::from_nanos(SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()),
-        };
+        let genesis_time = self.genesis_time.unwrap_or_else(|| {
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            Timestamp::from_nanos(nanos)
+        });
 
         let genesis_block = BlockInfo {
             hash: GENESIS_BLOCK_HASH,
@@ -522,7 +518,8 @@ where
                 Some(DEFAULT_BANK_SALT),
                 None,
                 Coins::new(),
-            )?,
+            )
+            .unwrap(),
             Message::instantiate(
                 self.taxman_opt.code.hash256(),
                 &(self.taxman_opt.msg_builder)(fee_denom, fee_rate),
@@ -530,19 +527,23 @@ where
                 Some(DEFAULT_TAXMAN_SALT),
                 None,
                 Coins::new(),
-            )?,
+            )
+            .unwrap(),
         ];
 
         // Instantiate accounts
         for (name, account) in self.accounts.inner().deref() {
-            msgs.push(Message::instantiate(
-                self.account_opt.code.hash256(),
-                &(self.account_opt.msg_builder)(account.pk),
-                *name,
-                Some(format!("account/{name}")),
-                Some(account.address),
-                Coins::new(),
-            )?);
+            msgs.push(
+                Message::instantiate(
+                    self.account_opt.code.hash256(),
+                    &(self.account_opt.msg_builder)(account.pk),
+                    *name,
+                    Some(format!("account/{name}")),
+                    Some(account.address),
+                    Coins::new(),
+                )
+                .unwrap(),
+            );
         }
 
         // Predict bank contract address
@@ -584,8 +585,8 @@ where
             default_gas_limit,
             genesis_block,
             genesis_state,
-        )?;
+        );
 
-        Ok((suite, self.accounts.into_inner()))
+        (suite, self.accounts.into_inner())
     }
 }

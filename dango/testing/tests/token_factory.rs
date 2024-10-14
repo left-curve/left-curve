@@ -9,7 +9,7 @@ static SUBDENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("umars").unw
 
 #[test]
 fn token_factory() {
-    let (mut suite, mut accounts, _, contracts) = setup_test().unwrap();
+    let (mut suite, mut accounts, _, contracts) = setup_test();
 
     let owner_username = accounts.owner.username.clone();
 
@@ -31,7 +31,6 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("invalid payment: expecting 1 coins, found 0");
 
     // Attempt to create a denom with more fee than needed. Should fail.
@@ -49,7 +48,6 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("incorrect denom creation fee!");
 
     // Attempt to create a denom for another username. Should fail.
@@ -67,22 +65,19 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("isn't associated with username");
 
     // Finally, correctly create a denom.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.token_factory,
-            &ExecuteMsg::Create {
-                subdenom: SUBDENOM.clone(),
-                username: Some(owner_username.clone()),
-                admin: None,
-            },
-            Coins::one("uusdc", 10_000_000).unwrap(),
-        )
-        .unwrap();
+    suite.execute(
+        &mut accounts.owner,
+        contracts.token_factory,
+        &ExecuteMsg::Create {
+            subdenom: SUBDENOM.clone(),
+            username: Some(owner_username.clone()),
+            admin: None,
+        },
+        Coins::one("uusdc", 10_000_000).unwrap(),
+    );
 
     // Attempt to create the same denom again. Should fail.
     suite
@@ -99,7 +94,6 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("already exists");
 
     // ----------------------------- Token minting -----------------------------
@@ -127,7 +121,6 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("sender isn't the admin of denom");
 
     // Attempt to mint a non-existent token. Should fail.
@@ -150,22 +143,19 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("data not found");
 
     // Correctly mint a token.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.token_factory,
-            &ExecuteMsg::Mint {
-                denom: denom.clone(),
-                to: accounts.fee_recipient.address(),
-                amount: Uint128::new(12_345),
-            },
-            Coins::new(),
-        )
-        .unwrap();
+    suite.execute(
+        &mut accounts.owner,
+        contracts.token_factory,
+        &ExecuteMsg::Mint {
+            denom: denom.clone(),
+            to: accounts.fee_recipient.address(),
+            amount: Uint128::new(12_345),
+        },
+        Coins::new(),
+    );
 
     // The recipient's balance should have been updated.
     suite
@@ -189,22 +179,19 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .unwrap()
         .should_fail_with_error("subtraction overflow");
 
     // Properly burn the token.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.token_factory,
-            &ExecuteMsg::Burn {
-                denom: denom.clone(),
-                from: accounts.fee_recipient.address(),
-                amount: Uint128::new(2_345),
-            },
-            Coins::new(),
-        )
-        .unwrap();
+    suite.execute(
+        &mut accounts.owner,
+        contracts.token_factory,
+        &ExecuteMsg::Burn {
+            denom: denom.clone(),
+            from: accounts.fee_recipient.address(),
+            amount: Uint128::new(2_345),
+        },
+        Coins::new(),
+    );
 
     // The recipient's balance should have been updated.
     suite

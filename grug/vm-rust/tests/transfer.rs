@@ -11,13 +11,9 @@ static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap
 fn transfers() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("sender", Coins::one(DENOM.clone(), 100).unwrap())
-        .unwrap()
         .add_account("receiver", Coins::new())
-        .unwrap()
         .set_owner("sender")
-        .unwrap()
-        .build()
-        .unwrap();
+        .build();
 
     let to = accounts["receiver"].address;
 
@@ -49,7 +45,6 @@ fn transfers() {
                 coins: Coins::one(DENOM.clone(), 25).unwrap(),
             },
         ])
-        .unwrap()
         .should_succeed();
 
     // Check balances again

@@ -33,8 +33,7 @@ fn sends(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, mut accounts, codes, contracts) =
-                    setup_benchmark(&dir, 100).unwrap();
+                let (mut suite, mut accounts, codes, contracts) = setup_benchmark(&dir, 100);
 
                 // Deploy 200 accounts.
                 // The first 100 will be senders; the second 100 will be receivers.
@@ -61,7 +60,6 @@ fn sends(c: &mut Criterion) {
                 // In experience, this costs ~34M gas.
                 suite
                     .send_messages_with_gas(&mut accounts.relayer, 50_000_000, msgs)
-                    .unwrap()
                     .should_succeed();
 
                 // Make a block that contains 100 transactions.
@@ -111,7 +109,6 @@ fn sends(c: &mut Criterion) {
             |(_dir, mut suite, txs)| {
                 suite
                     .make_block(txs)
-                    .unwrap()
                     .tx_outcomes
                     .into_iter()
                     .all(|outcome| outcome.result.is_ok());
@@ -131,24 +128,22 @@ fn swaps(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_swaps_{}", random_string(8)));
-                let (mut suite, mut accounts, _, contracts) = setup_benchmark(&dir, 100).unwrap();
+                let (mut suite, mut accounts, _, contracts) = setup_benchmark(&dir, 100);
 
                 // Create an ATOM-USDC pool.
-                suite
-                    .execute_with_gas(
-                        &mut accounts.relayer,
-                        5_000_000,
-                        contracts.amm,
-                        &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                            liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(30)),
-                        })),
-                        Coins::try_from(btree_map! {
-                            "uatom" => 100_000_000,
-                            "uusdc" => 400_000_000,
-                        })
-                        .unwrap(),
-                    )
-                    .unwrap();
+                suite.execute_with_gas(
+                    &mut accounts.relayer,
+                    5_000_000,
+                    contracts.amm,
+                    &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                        liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(30)),
+                    })),
+                    Coins::try_from(btree_map! {
+                        "uatom" => 100_000_000,
+                        "uusdc" => 400_000_000,
+                    })
+                    .unwrap(),
+                );
 
                 // Create and sign 100 transactions, each containing a swap.
                 let txs = (0..100)
@@ -177,7 +172,6 @@ fn swaps(c: &mut Criterion) {
             |(_dir, mut suite, txs)| {
                 suite
                     .make_block(txs)
-                    .unwrap()
                     .tx_outcomes
                     .into_iter()
                     .all(|outcome| outcome.result.is_ok());
