@@ -761,7 +761,7 @@ where
             &ctx,
             tx,
         )?
-        .map_err(|msg| AppError::Ffi {
+        .map_err(|msg| AppError::Guest {
             address: ctx.contract,
             name: "authenticate",
             msg,

@@ -175,7 +175,7 @@ where
         &ctx,
         msg,
     )?
-    .map_err(|msg| AppError::Ffi {
+    .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name: "bank_query",
         msg,
@@ -275,7 +275,7 @@ where
         &ctx,
         &msg,
     )?
-    .map_err(|msg| AppError::Ffi {
+    .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name: "query",
         msg,

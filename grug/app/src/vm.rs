@@ -159,7 +159,7 @@ where
         code_hash,
         ctx,
     )?
-    .map_err(|msg| AppError::Ffi {
+    .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name,
         msg,
@@ -199,7 +199,7 @@ where
         ctx,
         param,
     )?
-    .map_err(|msg| AppError::Ffi {
+    .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name,
         msg,
@@ -242,7 +242,7 @@ where
         param1,
         param2,
     )?
-    .map_err(|msg| AppError::Ffi {
+    .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name,
         msg,
