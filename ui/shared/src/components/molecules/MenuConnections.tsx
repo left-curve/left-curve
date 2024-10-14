@@ -8,7 +8,7 @@ import { useClickAway } from "react-use";
 import { formatAddress } from "@leftcurve/utils";
 import { twMerge } from "~/utils";
 
-import { Button, CopyIcon, ProfileIcon, WalletIcon } from "~/components";
+import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "~/components";
 
 export const MenuConnections: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -66,13 +66,9 @@ export const MenuConnections: React.FC = () => {
           <Button color="sand" variant="flat">
             Manage Access
           </Button>
-          <Button
-            color="danger"
-            variant="solid"
-            onClick={() => disconnect({ connectorUId: connector.uid })}
-          >
+          <DangoButton size="md" onClick={() => disconnect({ connectorUId: connector.uid })}>
             Log out
-          </Button>
+          </DangoButton>
         </div>
       </div>
     </>

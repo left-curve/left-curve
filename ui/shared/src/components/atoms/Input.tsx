@@ -74,7 +74,7 @@ const inputVariants = tv(
       inputWrapper:
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-sm px-6 py-3 gap-3",
       input: [
-        "flex-1 font-normal bg-transparent !outline-none placeholder:text-foreground-500 focus-visible:outline-none",
+        "flex-1 font-normal bg-transparent !outline-none placeholder:text-foreground-500 focus:outline-none min-w-0",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
