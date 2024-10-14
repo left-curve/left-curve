@@ -253,8 +253,8 @@ mod tests {
             config::ACCOUNT_FACTORY_KEY,
         },
         grug::{
-            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, Hash, Json, JsonSerExt,
-            MockContext, MockQuerier, NonZero, ResultExt, Timestamp, MOCK_BLOCK,
+            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
+            Json, JsonSerExt, MockContext, MockQuerier, NonZero, ResultExt, Timestamp, MOCK_BLOCK,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -426,7 +426,7 @@ mod tests {
                             params: AccountParams::Safe(params_clone.clone()),
                         }
                         .to_json_value()
-                        .map_err(|err| err.to_string())
+                        .into_generic_result()
                     },
                     _ => unreachable!(),
                 }
@@ -466,7 +466,7 @@ mod tests {
                             params: AccountParams::Safe(params.clone()),
                         }
                         .to_json_value()
-                        .map_err(|err| err.to_string())
+                        .into_generic_result()
                     },
                     _ => unreachable!(),
                 }

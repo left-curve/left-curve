@@ -17,3 +17,18 @@ pub type GenericResult<T> = Result<T, String>;
 ///
 /// This is provided to the contract in the `reply` entry point.
 pub type SubMsgResult = GenericResult<Vec<Event>>;
+
+/// Describes an error of which the error can be stringified, and thus, can be
+/// passed across the FFI boundary.
+pub trait GenericResultExt<T> {
+    fn into_generic_result(self) -> GenericResult<T>;
+}
+
+impl<T, E> GenericResultExt<T> for Result<T, E>
+where
+    E: ToString,
+{
+    fn into_generic_result(self) -> GenericResult<T> {
+        self.map_err(|e| e.to_string())
+    }
+}

@@ -1,8 +1,8 @@
 use {
     crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, trim, BlockInfo, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, StdError, StdResult, Storage,
+        concat, increment_last_byte, trim, BlockInfo, GenericResult, GenericResultExt, Order,
+        Querier, Query, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -158,7 +158,7 @@ where
             self.block,
             req,
         )
-        .map_err(|err| err.to_string())
+        .into_generic_result()
     }
 }
 
