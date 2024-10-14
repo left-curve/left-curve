@@ -69,8 +69,9 @@ fn cronjob_works() {
     //
     // Upload the tester contract code.
     let tester_code_hash = suite
-        .upload(accounts.get_mut("larry").unwrap(), tester_code)
-        .unwrap();
+        .upload(&mut accounts["larry"], tester_code)
+        .unwrap()
+        .code_hash;
 
     // Block time: 2
     //
@@ -78,7 +79,7 @@ fn cronjob_works() {
     // Each contract is given an initial coin balance.
     let cron1 = suite
         .instantiate(
-            accounts.get_mut("larry").unwrap(),
+            &mut accounts["larry"],
             tester_code_hash,
             &tester::Job {
                 receiver,
@@ -89,12 +90,13 @@ fn cronjob_works() {
             None,
             Coins::one("uatom", 3).unwrap(),
         )
-        .unwrap();
+        .unwrap()
+        .address;
 
     // Block time: 3
     let cron2 = suite
         .instantiate(
-            accounts.get_mut("larry").unwrap(),
+            &mut accounts["larry"],
             tester_code_hash,
             &tester::Job {
                 receiver,
@@ -105,12 +107,13 @@ fn cronjob_works() {
             None,
             Coins::one("uosmo", 3).unwrap(),
         )
-        .unwrap();
+        .unwrap()
+        .address;
 
     // Block time: 4
     let cron3 = suite
         .instantiate(
-            accounts.get_mut("larry").unwrap(),
+            &mut accounts["larry"],
             tester_code_hash,
             &tester::Job {
                 receiver,
@@ -121,7 +124,8 @@ fn cronjob_works() {
             None,
             Coins::one("umars", 3).unwrap(),
         )
-        .unwrap();
+        .unwrap()
+        .address;
 
     // Block time: 5
     //
@@ -140,7 +144,7 @@ fn cronjob_works() {
     // cron2 scheduled at 7
     // cron3 scheduled at 8
     suite
-        .configure(accounts.get_mut("larry").unwrap(), updates, BTreeMap::new())
+        .configure(&mut accounts["larry"], updates, BTreeMap::new())
         .unwrap();
 
     // Make some blocks.

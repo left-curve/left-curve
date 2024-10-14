@@ -353,6 +353,5 @@ fn safe() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("proposal isn't passed or timelock hasn't elapsed");
 }

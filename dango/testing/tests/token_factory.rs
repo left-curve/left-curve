@@ -32,7 +32,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("invalid payment: expecting 1 coins, found 0");
 
     // Attempt to create a denom with more fee than needed. Should fail.
@@ -51,7 +50,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("incorrect denom creation fee!");
 
     // Attempt to create a denom for another username. Should fail.
@@ -70,7 +68,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("isn't associated with username");
 
     // Finally, correctly create a denom.
@@ -103,7 +100,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("already exists");
 
     // ----------------------------- Token minting -----------------------------
@@ -132,7 +128,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("sender isn't the admin of denom");
 
     // Attempt to mint a non-existent token. Should fail.
@@ -156,7 +151,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("data not found");
 
     // Correctly mint a token.
@@ -196,7 +190,6 @@ fn token_factory() {
             .unwrap(),
         )
         .unwrap()
-        .result
         .should_fail_with_error("subtraction overflow");
 
     // Properly burn the token.

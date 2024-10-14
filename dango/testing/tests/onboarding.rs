@@ -139,7 +139,6 @@ fn onboarding_existing_user() -> anyhow::Result<()> {
     // Attempt to register the same username again, should fail.
     suite
         .check_tx(tx)?
-        .result
         .should_fail_with_error("username `user` already exists");
 
     Ok(())
@@ -175,7 +174,6 @@ fn onboarding_without_deposit() -> anyhow::Result<()> {
             data: Json::Null,
             credential: Json::Null,
         })?
-        .result
         .should_fail_with_error("data not found!");
 
     Ok(())
@@ -237,7 +235,6 @@ fn false_factory_tx(
                 Coins::new(),
             )?,
         )?
-        .result
         .should_fail_with_error("data not found!");
 
     Ok(())

@@ -4,7 +4,10 @@ use {
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
-    std::collections::{BTreeMap, BTreeSet},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        fmt::{self, Display},
+    },
 };
 
 /// The mock up sender address used for executing genesis messages.
@@ -119,7 +122,11 @@ pub struct ContractInfo {
     pub admin: Option<Addr>,
 }
 
-/// Outcome of processing a message or a cronjob.
+/// Outcome of performing an operation that is not a full tx. These include:
+///
+/// - processing a message;
+/// - executing a cronjob;
+/// - performing a `CheckTx` call.
 ///
 /// Includes the events emitted, and gas consumption.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -152,6 +159,29 @@ pub struct TxOutcome {
     pub gas_used: u64,
     pub events: Vec<Event>,
     pub result: GenericResult<()>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: Vec<Event>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: String,
+    pub events: Vec<Event>,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for TxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
 }
 
 #[derive(Debug)]

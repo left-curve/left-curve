@@ -41,7 +41,7 @@ fn transfers() {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     let outcome = suite
-        .send_messages_with_gas(accounts.get_mut("sender").unwrap(), 2_500_000, vec![
+        .send_messages_with_gas(&mut accounts["sender"], 2_500_000, vec![
             Message::Transfer {
                 to,
                 coins: Coins::one(DENOM.clone(), 10).unwrap(),
@@ -61,7 +61,7 @@ fn transfers() {
         ])
         .unwrap();
 
-    outcome.result.should_succeed();
+    outcome.clone().should_succeed();
 
     // Sender remaining balance should be 300k - 70 - withhold + (withhold - charge).
     // = 300k - 70 - charge
@@ -120,17 +120,13 @@ fn transfers_with_insufficient_gas_limit() {
     // say that the error has to be one of the two. Therefore, we simply ensure
     // the error message contains the word "gas".
     let outcome = suite
-        .send_message_with_gas(
-            accounts.get_mut("sender").unwrap(),
-            100_000,
-            Message::Transfer {
-                to,
-                coins: Coins::one(DENOM.clone(), 10).unwrap(),
-            },
-        )
+        .send_message_with_gas(&mut accounts["sender"], 100_000, Message::Transfer {
+            to,
+            coins: Coins::one(DENOM.clone(), 10).unwrap(),
+        })
         .unwrap();
 
-    outcome.result.should_fail();
+    outcome.clone().should_fail();
 
     // The transfer should have failed, but gas fee already spent is still charged.
     let fee = Uint128::new(outcome.gas_used as u128)

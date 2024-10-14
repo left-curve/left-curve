@@ -7,8 +7,13 @@ use {
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
-    std::collections::HashMap,
+    std::{
+        collections::HashMap,
+        ops::{Deref, DerefMut, Index, IndexMut},
+    },
 };
+
+// ---------------------------------- account ----------------------------------
 
 /// A signer that tracks a sequence number and signs transactions in a way
 /// corresponding to the mock account used in Grug test suite.
@@ -97,4 +102,52 @@ impl Signer for TestAccount {
     }
 }
 
-pub type TestAccounts = HashMap<&'static str, TestAccount>;
+// --------------------------------- accounts ----------------------------------
+
+/// A set of test accounts, indexed by names.
+///
+/// ## Note
+///
+/// Why not just use a `HashMap`?
+///
+/// The Rust `HashMap` doesn't implement `IndexMut`, so we can't index into it
+/// like `&mut accounts["name"]`. We have to do `accounts.get_mut("name").unwrap()`
+/// instead which is quite verbose.
+///
+/// To fix this, we make a wrapper over `HashMap` and implement `IndexMut` ourselves.
+#[derive(Default)]
+pub struct TestAccounts(HashMap<&'static str, TestAccount>);
+
+impl Deref for TestAccounts {
+    type Target = HashMap<&'static str, TestAccount>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TestAccounts {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<S> Index<S> for TestAccounts
+where
+    S: AsRef<str>,
+{
+    type Output = TestAccount;
+
+    fn index(&self, index: S) -> &Self::Output {
+        self.get(index.as_ref()).expect("account not found")
+    }
+}
+
+impl<S> IndexMut<S> for TestAccounts
+where
+    S: AsRef<str>,
+{
+    fn index_mut(&mut self, index: S) -> &mut Self::Output {
+        self.get_mut(index.as_ref()).expect("account not found")
+    }
+}

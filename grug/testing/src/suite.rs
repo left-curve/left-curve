@@ -7,12 +7,28 @@ use {
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxOutcome, UnsignedTx,
+        Op, Outcome, Query, QueryRequest, Signer, StdError, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, error::Error, fmt::Debug},
 };
+
+pub struct UploadOutcome {
+    pub code_hash: Hash256,
+    pub outcome: TxOutcome,
+}
+
+pub struct InstantiateOutcome {
+    pub address: Addr,
+    pub outcome: TxOutcome,
+}
+
+pub struct UploadAndInstantiateOutcome {
+    pub code_hash: Hash256,
+    pub address: Addr,
+    pub outcome: TxOutcome,
+}
 
 pub struct TestSuite<DB = MemDb, VM = RustVm>
 where
@@ -216,7 +232,7 @@ where
         signer: &mut dyn Signer,
         updates: ConfigUpdates,
         app_updates: BTreeMap<String, Op<Json>>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<TxOutcome> {
         self.configure_with_gas(signer, self.default_gas_limit, updates, app_updates)
     }
 
@@ -227,16 +243,17 @@ where
         gas_limit: u64,
         updates: ConfigUpdates,
         app_updates: BTreeMap<String, Op<Json>>,
-    ) -> anyhow::Result<()> {
-        self.send_message_with_gas(signer, gas_limit, Message::configure(updates, app_updates))?
-            .result
-            .should_succeed();
-
-        Ok(())
+    ) -> anyhow::Result<TxOutcome> {
+        self.send_message_with_gas(signer, gas_limit, Message::configure(updates, app_updates))
     }
 
     /// Make a transfer of tokens.
-    pub fn transfer<C>(&mut self, signer: &mut dyn Signer, to: Addr, coins: C) -> anyhow::Result<()>
+    pub fn transfer<C>(
+        &mut self,
+        signer: &mut dyn Signer,
+        to: Addr,
+        coins: C,
+    ) -> anyhow::Result<TxOutcome>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
@@ -251,20 +268,16 @@ where
         gas_limit: u64,
         to: Addr,
         coins: C,
-    ) -> anyhow::Result<()>
+    ) -> anyhow::Result<TxOutcome>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins)?)?
-            .result
-            .should_succeed();
-
-        Ok(())
+        self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins)?)
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload<B>(&mut self, signer: &mut dyn Signer, code: B) -> anyhow::Result<Hash256>
+    pub fn upload<B>(&mut self, signer: &mut dyn Signer, code: B) -> anyhow::Result<UploadOutcome>
     where
         B: Into<Binary>,
     {
@@ -277,18 +290,16 @@ where
         signer: &mut dyn Signer,
         gas_limit: u64,
         code: B,
-    ) -> anyhow::Result<Hash256>
+    ) -> anyhow::Result<UploadOutcome>
     where
         B: Into<Binary>,
     {
         let code = code.into();
         let code_hash = Hash256::from_inner(sha2_256(&code));
 
-        self.send_message_with_gas(signer, gas_limit, Message::upload(code))?
-            .result
-            .should_succeed();
+        let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code))?;
 
-        Ok(code_hash)
+        Ok(UploadOutcome { code_hash, outcome })
     }
 
     /// Instantiate a contract. Return the contract's address.
@@ -301,7 +312,7 @@ where
         label: Option<L>,
         admin: Option<Addr>,
         funds: C,
-    ) -> anyhow::Result<Addr>
+    ) -> anyhow::Result<InstantiateOutcome>
     where
         M: Serialize,
         S: Into<Binary>,
@@ -333,7 +344,7 @@ where
         label: Option<L>,
         admin: Option<Addr>,
         funds: C,
-    ) -> anyhow::Result<Addr>
+    ) -> anyhow::Result<InstantiateOutcome>
     where
         M: Serialize,
         S: Into<Binary>,
@@ -344,15 +355,13 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        self.send_message_with_gas(
+        let outcome = self.send_message_with_gas(
             signer,
             gas_limit,
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
-        )?
-        .result
-        .should_succeed();
+        )?;
 
-        Ok(address)
+        Ok(InstantiateOutcome { address, outcome })
     }
 
     /// Upload a code and instantiate a contract with it in one go. Return the
@@ -366,7 +375,7 @@ where
         label: Option<L>,
         admin: Option<Addr>,
         funds: C,
-    ) -> anyhow::Result<(Hash256, Addr)>
+    ) -> anyhow::Result<UploadAndInstantiateOutcome>
     where
         M: Serialize,
         B: Into<Binary>,
@@ -399,7 +408,7 @@ where
         label: Option<L>,
         admin: Option<Addr>,
         funds: C,
-    ) -> anyhow::Result<(Hash256, Addr)>
+    ) -> anyhow::Result<UploadAndInstantiateOutcome>
     where
         M: Serialize,
         B: Into<Binary>,
@@ -413,14 +422,16 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        self.send_messages_with_gas(signer, gas_limit, vec![
+        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
-        ])?
-        .result
-        .should_succeed();
+        ])?;
 
-        Ok((code_hash, address))
+        Ok(UploadAndInstantiateOutcome {
+            address,
+            code_hash,
+            outcome,
+        })
     }
 
     /// Execute a contrat.
@@ -430,7 +441,7 @@ where
         contract: Addr,
         msg: &M,
         funds: C,
-    ) -> anyhow::Result<()>
+    ) -> anyhow::Result<TxOutcome>
     where
         M: Serialize,
         C: TryInto<Coins>,
@@ -447,17 +458,13 @@ where
         contract: Addr,
         msg: &M,
         funds: C,
-    ) -> anyhow::Result<()>
+    ) -> anyhow::Result<TxOutcome>
     where
         M: Serialize,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)?
-            .result
-            .should_succeed();
-
-        Ok(())
+        self.send_message_with_gas(signer, gas_limit, Message::execute(contract, msg, funds)?)
     }
 
     /// Migrate a contract to a new code hash.
@@ -467,7 +474,7 @@ where
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
-    ) -> anyhow::Result<()>
+    ) -> anyhow::Result<TxOutcome>
     where
         M: Serialize,
     {
@@ -482,7 +489,7 @@ where
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
-    ) -> anyhow::Result<()>
+    ) -> anyhow::Result<TxOutcome>
     where
         M: Serialize,
     {
@@ -490,11 +497,7 @@ where
             signer,
             gas_limit,
             Message::migrate(contract, new_code_hash, msg)?,
-        )?
-        .result
-        .should_succeed();
-
-        Ok(())
+        )
     }
 
     pub fn query_config(&self) -> anyhow::Result<Config> {
