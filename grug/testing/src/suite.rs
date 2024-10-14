@@ -14,20 +14,20 @@ use {
     std::{collections::BTreeMap, error::Error, fmt::Debug},
 };
 
-pub struct InstantiateOutcome {
-    pub address: Addr,
-    pub tx_outcome: TxOutcome,
-}
-
 pub struct UploadOutcome {
     pub code_hash: Hash256,
-    pub tx_outcome: TxOutcome,
+    pub outcome: TxOutcome,
+}
+
+pub struct InstantiateOutcome {
+    pub address: Addr,
+    pub outcome: TxOutcome,
 }
 
 pub struct UploadAndInstantiateOutcome {
-    pub address: Addr,
     pub code_hash: Hash256,
-    pub tx_outcome: TxOutcome,
+    pub address: Addr,
+    pub outcome: TxOutcome,
 }
 
 pub struct TestSuite<DB = MemDb, VM = RustVm>
@@ -297,12 +297,9 @@ where
         let code = code.into();
         let code_hash = Hash256::from_inner(sha2_256(&code));
 
-        let tx_outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code))?;
+        let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code))?;
 
-        Ok(UploadOutcome {
-            code_hash,
-            tx_outcome,
-        })
+        Ok(UploadOutcome { code_hash, outcome })
     }
 
     /// Instantiate a contract. Return the contract's address.
@@ -358,16 +355,13 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let tx_outcome = self.send_message_with_gas(
+        let outcome = self.send_message_with_gas(
             signer,
             gas_limit,
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         )?;
 
-        Ok(InstantiateOutcome {
-            address,
-            tx_outcome,
-        })
+        Ok(InstantiateOutcome { address, outcome })
     }
 
     /// Upload a code and instantiate a contract with it in one go. Return the
@@ -428,7 +422,7 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let tx_outcome = self.send_messages_with_gas(signer, gas_limit, vec![
+        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
             Message::upload(code),
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         ])?;
@@ -436,7 +430,7 @@ where
         Ok(UploadAndInstantiateOutcome {
             address,
             code_hash,
-            tx_outcome,
+            outcome,
         })
     }
 

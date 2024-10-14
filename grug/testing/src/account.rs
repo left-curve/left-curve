@@ -13,6 +13,8 @@ use {
     },
 };
 
+// ---------------------------------- account ----------------------------------
+
 /// A signer that tracks a sequence number and signs transactions in a way
 /// corresponding to the mock account used in Grug test suite.
 pub struct TestAccount {
@@ -100,13 +102,24 @@ impl Signer for TestAccount {
     }
 }
 
-#[derive(Default)]
-pub struct TestAccounts(InnerTestAccounts);
+// --------------------------------- accounts ----------------------------------
 
-type InnerTestAccounts = HashMap<&'static str, TestAccount>;
+/// A set of test accounts, indexed by names.
+///
+/// ## Note
+///
+/// Why not just use a `HashMap`?
+///
+/// The Rust `HashMap` doesn't implement `IndexMut`, so we can't index into it
+/// like `&mut accounts["name"]`. We have to do `accounts.get_mut("name").unwrap()`
+/// instead which is quite verbose.
+///
+/// To fix this, we make a wrapper over `HashMap` and implement `IndexMut` ourselves.
+#[derive(Default)]
+pub struct TestAccounts(HashMap<&'static str, TestAccount>);
 
 impl Deref for TestAccounts {
-    type Target = InnerTestAccounts;
+    type Target = HashMap<&'static str, TestAccount>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -136,11 +149,5 @@ where
 {
     fn index_mut(&mut self, index: S) -> &mut Self::Output {
         self.get_mut(index.as_ref()).expect("account not found")
-    }
-}
-
-impl From<InnerTestAccounts> for TestAccounts {
-    fn from(accounts: InnerTestAccounts) -> Self {
-        Self(accounts)
     }
 }

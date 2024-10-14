@@ -4,7 +4,10 @@ use {
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
-    std::collections::{BTreeMap, BTreeSet},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        fmt::{self, Display},
+    },
 };
 
 /// The mock up sender address used for executing genesis messages.
@@ -119,7 +122,11 @@ pub struct ContractInfo {
     pub admin: Option<Addr>,
 }
 
-/// Outcome of processing a message or a cronjob.
+/// Outcome of performing an operation that is not a full tx. These include:
+///
+/// - processing a message;
+/// - executing a cronjob;
+/// - performing a `CheckTx` call.
 ///
 /// Includes the events emitted, and gas consumption.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -131,20 +138,6 @@ pub struct Outcome {
     pub result: GenericResult<Vec<Event>>,
 }
 
-impl Outcome {
-    pub fn as_success(self) {
-        if let GenericResult::Err(err) = self.result {
-            panic!("expected success, got error: {err}");
-        }
-    }
-
-    pub fn as_error(self) -> String {
-        match self.result {
-            GenericResult::Ok(_) => panic!("expected error, got success"),
-            GenericResult::Err(error) => error,
-        }
-    }
-}
 /// Outcome of processing a transaction.
 ///
 /// Different from `Outcome`, which can either succeed or fail, a transaction
@@ -168,31 +161,6 @@ pub struct TxOutcome {
     pub result: GenericResult<()>,
 }
 
-impl TxOutcome {
-    pub fn as_success(self) -> TxSuccess {
-        match self.result {
-            GenericResult::Ok(_) => TxSuccess {
-                gas_limit: self.gas_limit,
-                gas_used: self.gas_used,
-                events: self.events,
-            },
-            GenericResult::Err(err) => panic!("expected success, got error: {err}"),
-        }
-    }
-
-    pub fn as_error(self) -> TxError {
-        match self.result {
-            GenericResult::Ok(_) => panic!("expected error, got success"),
-            GenericResult::Err(error) => TxError {
-                gas_limit: self.gas_limit,
-                gas_used: self.gas_used,
-                error,
-                events: self.events,
-            },
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct TxSuccess {
     pub gas_limit: u64,
@@ -206,6 +174,14 @@ pub struct TxError {
     pub gas_used: u64,
     pub error: String,
     pub events: Vec<Event>,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for TxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
 }
 
 #[derive(Debug)]
