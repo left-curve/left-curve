@@ -1,8 +1,9 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{btree_map, Addr, Coins, Empty, ReplyOn, ResultExt},
+    grug_types::{btree_map, Addr, Coins, Empty, ReplyOn},
     grug_vm_rust::ContractBuilder,
-    replier::{ExecuteMsg, MapData, ReplyMsg},
+    replier::{BorrowedMapData, ExecuteMsg, MapData, QueryDataRequest, ReplyMsg},
+    test_case::test_case,
 };
 
 mod replier {
@@ -11,14 +12,20 @@ mod replier {
         grug_storage::Map,
         grug_types::{
             Coins, Empty, GenericResult, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx,
-            Order, ReplyOn, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult,
-            SudoCtx,
+            Order, QueryRequest, ReplyOn, Response, StdError, StdResult, Storage, SubMessage,
+            SubMsgResult, SudoCtx,
         },
         serde::{Deserialize, Serialize},
         std::collections::BTreeMap,
     };
 
     pub type MapData = BTreeMap<u64, String>;
+
+    pub type BorrowedMapData<'a> = BTreeMap<u64, &'a str>;
+
+    pub fn convert_map_data(data: BorrowedMapData) -> MapData {
+        data.into_iter().map(|(k, v)| (k, v.to_string())).collect()
+    }
 
     pub const SAVE_DATA: Map<u64, String> = Map::new("s");
 
@@ -31,21 +38,42 @@ mod replier {
     #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub enum ExecuteMsg {
         Ok {
-            data: Option<MapData>,
+            data: MapData,
         },
         Fail {
             err: String,
         },
         Perform {
-            data: Option<MapData>,
+            data: MapData,
             next: Box<ExecuteMsg>,
             reply_on: ReplyOn,
         },
     }
 
+    #[derive(Serialize, Deserialize)]
+    pub enum QueryMsg {
+        Data(QueryDataRequest),
+    }
+
+    impl From<QueryDataRequest> for QueryMsg {
+        fn from(msg: QueryDataRequest) -> Self {
+            Self::Data(msg)
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct QueryDataRequest {}
+
+    impl QueryRequest for QueryDataRequest {
+        type Message = QueryMsg;
+        type Response = MapData;
+    }
+
     impl ExecuteMsg {
-        pub fn ok(data: Option<MapData>) -> Self {
-            Self::Ok { data }
+        pub fn ok(data: BorrowedMapData) -> Self {
+            Self::Ok {
+                data: convert_map_data(data),
+            }
         }
 
         pub fn fail<E>(err: E) -> Self
@@ -55,9 +83,9 @@ mod replier {
             Self::Fail { err: err.into() }
         }
 
-        pub fn perform(data: Option<MapData>, next: ExecuteMsg, reply_on: ReplyOn) -> Self {
+        pub fn perform(data: BorrowedMapData, next: ExecuteMsg, reply_on: ReplyOn) -> Self {
             Self::Perform {
-                data,
+                data: convert_map_data(data),
                 next: Box::new(next),
                 reply_on,
             }
@@ -118,11 +146,9 @@ mod replier {
         )
     }
 
-    fn save_data(storage: &mut dyn Storage, save_data: Option<MapData>) -> StdResult<()> {
-        if let Some(save_data) = save_data {
-            for (k, v) in save_data {
-                SAVE_DATA.save(storage, k, &v)?;
-            }
+    fn save_data(storage: &mut dyn Storage, save_data: MapData) -> StdResult<()> {
+        for (k, v) in save_data {
+            SAVE_DATA.save(storage, k, &v)?;
         }
 
         Ok(())
@@ -157,76 +183,47 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
     (suite, accounts, replier_addr)
 }
 
-#[test]
-fn reply_always_ok_ok() {
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "one"),
+        ExecuteMsg::ok(btree_map!(2 => "two")),
+        ReplyOn::always(&ReplyMsg::Ok(ExecuteMsg::ok(btree_map!()))).unwrap()
+    ),
+    btree_map!(1 => "one", 2 => "two");
+    "reply_always_ok_ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "one"),
+        ExecuteMsg::fail("reply_always_ok_fail_on_execute"),
+        ReplyOn::always(&ReplyMsg::Fail(ExecuteMsg::ok(
+            btree_map!(3 => "three",
+        )))).unwrap()
+    ),
+    btree_map!(1 => "one", 3 => "three");
+    "reply_always_ok_fail_on_execute"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "one"),
+        ExecuteMsg::fail("reply_always_ok_fail_on_execute"),
+        ReplyOn::always(&ReplyMsg::Fail(ExecuteMsg::ok(
+            btree_map!(3 => "three",
+        )))).unwrap()
+    ),
+    btree_map!(1 => "one", 3 => "three");
+    "reply_always_ok_fail_on_reply"
+)]
+fn reply(msg: ExecuteMsg, data: BorrowedMapData) {
     let (mut suite, mut accounts, replier_addr) = setup();
 
-    accounts.get_mut("owner").unwrap();
-    suite
-        .execute(
-            &mut accounts["owner"],
-            replier_addr,
-            &ExecuteMsg::perform(
-                Some(btree_map!(1 => "one".to_string())),
-                ExecuteMsg::ok(Some(btree_map!(2 => "two".to_string()))),
-                ReplyOn::always(&ReplyMsg::Ok(ExecuteMsg::ok(None))).unwrap(),
-            ),
-            Coins::default(),
-        )
+    suite.execute(&mut accounts["owner"], replier_addr, &msg, Coins::default());
 
-    let res: MapData = suite.query_wasm(replier_addr, &Empty {}).unwrap();
-
-    assert_eq!(
-        res,
-        btree_map!(1 => "one".to_string(), 2 => "two".to_string())
-    );
-}
-
-#[test]
-fn reply_always_ok_fail_on_execute() {
-    let (mut suite, mut accounts, replier_addr) = setup();
-
-    suite
-        .execute(
-            &mut accounts["owner"],
-            replier_addr,
-            &ExecuteMsg::perform(
-                Some(btree_map!(1 => "one".to_string())),
-                ExecuteMsg::fail("reply_always_ok_fail_on_execute"),
-                ReplyOn::always(&ReplyMsg::Fail(ExecuteMsg::ok(Some(
-                    btree_map!(3 => "three".to_string()),
-                ))))
-                .unwrap(),
-            ),
-            Coins::default(),
-        )
+    let res: MapData = suite
+        .query_wasm_smart(replier_addr, QueryDataRequest {})
         .unwrap();
 
-    let res: MapData = suite.query_wasm(replier_addr, &Empty {}).unwrap();
+    let borrowed: BorrowedMapData = res.iter().map(|(k, v)| (*k, v.as_str())).collect();
 
-    assert_eq!(
-        res,
-        btree_map!(1 => "one".to_string(), 3 => "three".to_string())
-    );
-}
-
-#[test]
-fn reply_always_ok_fail_on_reply() {
-    let (mut suite, mut accounts, replier_addr) = setup();
-
-    let res = suite.execute(
-        &mut accounts["owner"],
-        replier_addr,
-        &ExecuteMsg::perform(
-            Some(btree_map!(1 => "one".to_string())),
-            ExecuteMsg::ok(Some(btree_map!(2 => "two".to_string()))),
-            ReplyOn::always(&ReplyMsg::Ok(ExecuteMsg::fail(
-                "reply_always_ok_fail_on_execute",
-            )))
-            .unwrap(),
-        ),
-        Coins::default(),
-    );
-
-    println!("{:?}", res)
+    assert_eq!(borrowed, data);
 }
