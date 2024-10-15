@@ -187,32 +187,62 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
     ExecuteMsg::perform(
         btree_map!(1 => "one"),
         ExecuteMsg::ok(btree_map!(2 => "two")),
-        ReplyOn::always(&ReplyMsg::Ok(ExecuteMsg::ok(btree_map!()))).unwrap()
+        ReplyOn::always(
+            &ReplyMsg::Ok(
+                ExecuteMsg::ok(btree_map!())
+            )
+        ).unwrap()
     ),
     btree_map!(1 => "one", 2 => "two");
-    "reply_always_ok_ok"
+    "reply_always_ok_ok_reply_ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
         btree_map!(1 => "one"),
-        ExecuteMsg::fail("reply_always_ok_fail_on_execute"),
-        ReplyOn::always(&ReplyMsg::Fail(ExecuteMsg::ok(
-            btree_map!(3 => "three",
-        )))).unwrap()
+        ExecuteMsg::fail("execute deep 2 fail"),
+        ReplyOn::always(
+            &ReplyMsg::Fail(
+                ExecuteMsg::ok(btree_map!(3 => "three"))
+            )
+        ).unwrap()
     ),
     btree_map!(1 => "one", 3 => "three");
-    "reply_always_ok_fail_on_execute"
+    "reply_always_ok_fail_reply_ok"
+
 )]
 #[test_case(
     ExecuteMsg::perform(
         btree_map!(1 => "one"),
-        ExecuteMsg::fail("reply_always_ok_fail_on_execute"),
-        ReplyOn::always(&ReplyMsg::Fail(ExecuteMsg::ok(
-            btree_map!(3 => "three",
-        )))).unwrap()
+        ExecuteMsg::ok(btree_map!(2 => "two")),
+        ReplyOn::always(
+            &ReplyMsg::Ok(
+                ExecuteMsg::fail("reply deep 1 fail")
+            )
+        ).unwrap()
     ),
-    btree_map!(1 => "one", 3 => "three");
-    "reply_always_ok_fail_on_reply"
+    btree_map!();
+    "reply_always_ok_ok_reply_fail"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "one"),
+        ExecuteMsg::perform(
+            btree_map!(2 => "two"),
+            ExecuteMsg::perform(
+                btree_map!(3 => "three"),
+                ExecuteMsg::fail("execute deep 4 fail"),
+                ReplyOn::Never,
+            ),
+            ReplyOn::Never,
+        ),
+        ReplyOn::always(
+            &ReplyMsg::Fail(
+                ExecuteMsg::ok(btree_map!())
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "one");
+    "reply_always_ok_ok_ok_fail_reply_ok"
 )]
 fn reply(msg: ExecuteMsg, data: BorrowedMapData) {
     let (mut suite, mut accounts, replier_addr) = setup();
