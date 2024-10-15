@@ -372,7 +372,7 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         btree_map!(1 => "1"),
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
-            &ReplyMsg::Ok(
+            &ReplyMsg::Fail(
                 ExecuteMsg::ok(btree_map!(11 => "1.1"))
             )
         ).unwrap()
@@ -385,7 +385,7 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         btree_map!(1 => "1"),
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
-            &ReplyMsg::Ok(
+            &ReplyMsg::Fail(
                 ExecuteMsg::fail("reply deep 1 fail")
             )
         ).unwrap()
