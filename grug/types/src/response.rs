@@ -157,25 +157,25 @@ pub enum ReplyOn {
 }
 
 impl ReplyOn {
-    pub fn success<T>(callback: T) -> StdResult<Self>
+    pub fn success<T>(callback: &T) -> StdResult<Self>
     where
         T: Serialize,
     {
-        Ok(Self::Success(callback.to_json_value()?))
+        callback.to_json_value().map(Self::Success)
     }
 
-    pub fn error<T>(callback: T) -> StdResult<Self>
+    pub fn error<T>(callback: &T) -> StdResult<Self>
     where
         T: Serialize,
     {
-        Ok(Self::Error(callback.to_json_value()?))
+        callback.to_json_value().map(Self::Error)
     }
 
-    pub fn always<T>(callback: T) -> StdResult<Self>
+    pub fn always<T>(callback: &T) -> StdResult<Self>
     where
         T: Serialize,
     {
-        Ok(Self::Always(callback.to_json_value()?))
+        callback.to_json_value().map(Self::Always)
     }
 }
 
