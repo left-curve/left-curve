@@ -156,6 +156,29 @@ pub enum ReplyOn {
     Never,
 }
 
+impl ReplyOn {
+    pub fn success<T>(callback: &T) -> StdResult<Self>
+    where
+        T: Serialize,
+    {
+        callback.to_json_value().map(Self::Success)
+    }
+
+    pub fn error<T>(callback: &T) -> StdResult<Self>
+    where
+        T: Serialize,
+    {
+        callback.to_json_value().map(Self::Error)
+    }
+
+    pub fn always<T>(callback: &T) -> StdResult<Self>
+    where
+        T: Serialize,
+    {
+        callback.to_json_value().map(Self::Always)
+    }
+}
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SubMessage {
     pub msg: Message,
