@@ -5,7 +5,7 @@ import {
   GradientContainer,
   Input,
 } from "@dango/shared";
-import { useAccount, useBalances, useConfig } from "@leftcurve/react";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,10 @@ import { useForm } from "react-hook-form";
 export const SendContainer: React.FC = () => {
   const { coins: chainCoins } = useConfig();
   const { chainId, account } = useAccount();
+  const { data: signingClient } = useSigningClient();
+
+  const coins = chainCoins[chainId as string];
+  const arrayOfCoins = Object.values(coins);
 
   const { register, watch, setValue, setError, handleSubmit, formState } = useForm<{
     amount: string;
@@ -20,21 +24,33 @@ export const SendContainer: React.FC = () => {
     address: string;
   }>({
     mode: "onChange",
+    defaultValues: {
+      denom: arrayOfCoins[0].denom,
+    },
   });
 
   const { data: balances } = useBalances({ address: account?.address });
 
-  const coins = chainCoins[chainId as string];
-  const arrayOfCoins = Object.values(coins);
-  const denom = watch("denom", arrayOfCoins.at(0)?.denom);
+  const denom = watch("denom");
   const balance = Number(balances?.[denom] || 0);
 
-  const { errors } = formState;
+  const { errors, isSubmitting } = formState;
 
-  const onSubmit = handleSubmit((formData) => {
-    if (!isValidAddress(formData.address as Address))
+  const onSubmit = handleSubmit(async (formData) => {
+    if (!signingClient) throw new Error("error: no signing client");
+    if (!isValidAddress(formData.address as Address)) {
       return setError("address", { message: "Invalid address" });
-    // TODO: Pending signing client;
+    }
+    const coin = coins[formData.denom];
+    const amount = Number(formData.amount);
+
+    await signingClient.transfer({
+      to: formData.address as Address,
+      sender: account!.address as Address,
+      coins: {
+        [formData.denom]: amount.toString(),
+      },
+    });
   });
 
   return (
@@ -58,6 +74,7 @@ export const SendContainer: React.FC = () => {
                     return true;
                   },
                 })}
+                isDisabled={isSubmitting}
                 placeholder="0"
                 classNames={{ input: "text-3xl", inputWrapper: "py-4 pl-6 pr-4" }}
                 error={errors.amount?.message}
@@ -72,8 +89,9 @@ export const SendContainer: React.FC = () => {
                 endContent={
                   <CoinSelector
                     label="coins"
+                    isDisabled={isSubmitting}
                     coins={arrayOfCoins}
-                    defaultSelectedKey={denom}
+                    selectedKey={denom}
                     onSelectionChange={(k) => setValue("denom", k.toString())}
                   />
                 }
@@ -85,13 +103,14 @@ export const SendContainer: React.FC = () => {
               </p>
               <AccountSearchInput
                 name="address"
+                disabled={isSubmitting}
                 error={errors.address?.message}
                 value={watch("address", "")}
                 onChange={(v) => setValue("address", v)}
               />
             </div>
           </div>
-          <DangoButton>Send</DangoButton>
+          <DangoButton isLoading={isSubmitting}>Send</DangoButton>
         </div>
       </GradientContainer>
     </form>
