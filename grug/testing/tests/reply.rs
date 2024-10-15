@@ -21,6 +21,8 @@ mod replier {
 
     pub type MapData = BTreeMap<u64, String>;
 
+    /// A borrowed version of `MapData`. Used on tests for less verbosity
+    /// (`.to_string()` is not needed).
     pub type BorrowedMapData<'a> = BTreeMap<u64, &'a str>;
 
     pub fn convert_map_data(data: BorrowedMapData) -> MapData {
@@ -183,6 +185,7 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
     (suite, accounts, replier_addr)
 }
 
+// ------------------------------ ReplyOn::Always ------------------------------
 #[test_case(
     ExecuteMsg::perform(
         btree_map!(1 => "1"),
@@ -262,8 +265,146 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 21 => "2.1", 31 => "3.1");
+    btree_map!(1 => "1", 11 => "1.1", 21 => "2.1");
     "reply_always_1pe_2pe_3f_1reply_1.1pe_2.1ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::perform(
+            btree_map!(2 => "2"),
+            ExecuteMsg::perform(
+                btree_map!(3 => "3"),
+                ExecuteMsg::fail("execute deep 4 fail"),
+                ReplyOn::Never,
+            ),
+            ReplyOn::always(
+                &ReplyMsg::Fail(
+                    ExecuteMsg::ok(btree_map!(32 => "3.2"))
+                )
+            ).unwrap()
+        ),
+        ReplyOn::always(
+            &ReplyMsg::Ok(
+                ExecuteMsg::perform(
+                    btree_map!(11 => "1.1"),
+                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    ReplyOn::Never,
+                ),
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 2 => "2", 32 => "3.2", 11 => "1.1", 21 => "2.1");
+    "reply_always_1pe_2pe_3_pe_4f_2reply_3.2ok_1reply_1.1pe_2.1ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::perform(
+            btree_map!(2 => "2"),
+            ExecuteMsg::perform(
+                btree_map!(3 => "3"),
+                ExecuteMsg::fail("execute deep 4 fail"),
+                ReplyOn::Never,
+            ),
+            ReplyOn::always(
+                &ReplyMsg::Fail(
+                    ExecuteMsg::fail("reply deep 2 fail")
+                )
+            ).unwrap()
+        ),
+        ReplyOn::always(
+            &ReplyMsg::Fail(
+                ExecuteMsg::perform(
+                    btree_map!(11 => "1.1"),
+                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    ReplyOn::Never,
+                ),
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 11 => "1.1", 21 => "2.1");
+    "reply_always_1pe_2pe_3pe_4fail_2reply_3.2fail_1reply_1.1pe_2.1ok"
+)]
+// ----------------------------- ReplyOn::Success ------------------------------
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::ok(btree_map!(2 => "2")),
+        ReplyOn::success(
+            &ReplyMsg::Ok(
+                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 2 => "2", 11 => "1.1");
+    "reply_success_1pe_2ok_reply_1.1ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::ok(btree_map!(2 => "2")),
+        ReplyOn::success(
+            &ReplyMsg::Ok(
+                ExecuteMsg::fail("reply deep 1 fail")
+            )
+        ).unwrap()
+    ),
+    btree_map!();
+    "reply_success_1pe_2ok_reply_1.1fail"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::fail("execute deep 2 fail"),
+        ReplyOn::success(
+            &ReplyMsg::Ok(
+                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+            )
+        ).unwrap()
+    ),
+    btree_map!();
+    "reply_success_1pe_2fail_reply_1.1ok"
+)]
+// ------------------------------ ReplyOn::Error -------------------------------
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::fail("execute deep 2 fail"),
+        ReplyOn::error(
+            &ReplyMsg::Ok(
+                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 11 => "1.1");
+    "reply_error_1pe_2fail_reply_1.1ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::fail("execute deep 2 fail"),
+        ReplyOn::error(
+            &ReplyMsg::Ok(
+                ExecuteMsg::fail("reply deep 1 fail")
+            )
+        ).unwrap()
+    ),
+    btree_map!();
+    "reply_error_1pe_2fail_reply_1.1fail"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::ok(btree_map!(2 => "2")),
+        ReplyOn::error(
+            &ReplyMsg::Ok(
+                ExecuteMsg::fail("reply deep 1 fail")
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 2 => "2");
+    "reply_error_1pe_2ok_reply_1.1fail"
 )]
 fn reply(msg: ExecuteMsg, data: BorrowedMapData) {
     let (mut suite, mut accounts, replier_addr) = setup();
