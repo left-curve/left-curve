@@ -30,10 +30,10 @@ export async function transfer<chain extends Chain | undefined, signer extends S
     type: [{ name: "transfer", type: "Transfer" }],
     extraTypes: {
       Transfer: [
-        { name: "from", type: "address" },
         { name: "to", type: "address" },
-        ...getCoinsTypedData(coins),
+        { name: "coins", type: "Coins" },
       ],
+      Coins: [...getCoinsTypedData(coins)],
     },
   };
 
