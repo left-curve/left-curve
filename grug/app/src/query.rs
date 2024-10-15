@@ -175,8 +175,11 @@ where
         &ctx,
         msg,
     )?
-    .into_std_result()
-    .map_err(AppError::Std)
+    .map_err(|msg| AppError::Guest {
+        address: ctx.contract,
+        name: "bank_query",
+        msg,
+    })
 }
 
 pub fn query_code(
@@ -272,6 +275,9 @@ where
         &ctx,
         &msg,
     )?
-    .into_std_result()
-    .map_err(AppError::Std)
+    .map_err(|msg| AppError::Guest {
+        address: ctx.contract,
+        name: "query",
+        msg,
+    })
 }

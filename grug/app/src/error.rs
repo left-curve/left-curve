@@ -14,6 +14,13 @@ pub enum AppError {
     #[error("DB error: {0}")]
     Db(String),
 
+    #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
+    Guest {
+        address: Addr,
+        name: &'static str,
+        msg: String,
+    },
+
     #[error("Merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
 

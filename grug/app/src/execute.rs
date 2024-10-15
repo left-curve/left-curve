@@ -761,7 +761,11 @@ where
             &ctx,
             tx,
         )?
-        .into_std_result()?;
+        .map_err(|msg| AppError::Guest {
+            address: ctx.contract,
+            name: "authenticate",
+            msg,
+        })?;
 
         let events = handle_response(
             vm,

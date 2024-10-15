@@ -260,7 +260,7 @@ impl Querier for MockQuerier {
                     .smart_query_handler
                     .as_ref()
                     .expect("[MockQuerier]: smart query handler not set");
-                let response = handler(contract, msg).into_std_result()?;
+                let response = handler(contract, msg).map_err(StdError::host)?;
                 Ok(QueryResponse::WasmSmart(response))
             },
             Query::Multi(requests) => {

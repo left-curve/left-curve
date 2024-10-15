@@ -11,9 +11,9 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenesisState,
-        Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse, StdResult,
-        Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenericResultExt,
+        GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse,
+        StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -948,7 +948,7 @@ fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcom
     Outcome {
         gas_limit: gas_tracker.limit(),
         gas_used: gas_tracker.used(),
-        result: result.into(),
+        result: result.into_generic_result(),
     }
 }
 
@@ -957,7 +957,7 @@ fn new_tx_outcome(gas_tracker: GasTracker, events: Vec<Event>, result: AppResult
         gas_limit: gas_tracker.limit().unwrap(),
         gas_used: gas_tracker.used(),
         events,
-        result: result.into(),
+        result: result.into_generic_result(),
     }
 }
 

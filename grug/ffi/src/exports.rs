@@ -3,8 +3,8 @@ use {
     grug_types::{
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse,
-        BorshDeExt, BorshSerExt, Context, GenericResult, ImmutableCtx, Json, JsonDeExt, MutableCtx,
-        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        BorshDeExt, BorshSerExt, Context, GenericResult, GenericResultExt, ImmutableCtx, Json,
+        JsonDeExt, MutableCtx, QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome,
     },
     serde::de::DeserializeOwned,
     std::fmt::Display,
@@ -47,7 +47,7 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh::<Json>());
         let msg = unwrap_into_generic_result!(msg.deserialize_json());
 
-        instantiate_fn(ctx, msg).into()
+        instantiate_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -74,7 +74,7 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh::<Json>());
         let msg = unwrap_into_generic_result!(msg.deserialize_json());
 
-        execute_fn(ctx, msg).into()
+        execute_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -102,7 +102,7 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh::<Json>());
         let msg = unwrap_into_generic_result!(msg.deserialize_json());
 
-        query_fn(immutable_ctx, msg).into()
+        query_fn(immutable_ctx, msg).into_generic_result()
     })();
     let res_bytes = res.to_borsh_vec().unwrap();
 
@@ -128,7 +128,7 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh::<Json>());
         let msg = unwrap_into_generic_result!(msg.deserialize_json());
 
-        migrate_fn(ctx, msg).into()
+        migrate_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -159,7 +159,7 @@ where
 
         let events = unwrap_into_generic_result!(events_bytes.deserialize_borsh());
 
-        reply_fn(ctx, msg, events).into()
+        reply_fn(ctx, msg, events).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -180,7 +180,7 @@ where
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
-        receive_fn(ctx).into()
+        receive_fn(ctx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -201,7 +201,7 @@ where
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
-        cron_execute_fn(ctx).into()
+        cron_execute_fn(ctx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -225,7 +225,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
 
-        authenticate_fn(ctx, tx).into()
+        authenticate_fn(ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -249,7 +249,7 @@ where
         let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
 
-        backrun_fn(ctx, tx).into()
+        backrun_fn(ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -273,7 +273,7 @@ where
         let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh());
 
-        transfer_fn(ctx, msg).into()
+        transfer_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -297,7 +297,7 @@ where
         let ctx = make_immutable_ctx!(ctx, &ExternalStorage, &ExternalApi, &ExternalQuerier);
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh());
 
-        query_fn(ctx, msg).into()
+        query_fn(ctx, msg).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -321,7 +321,7 @@ where
         let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
 
-        withhold_fee_fn(auth_ctx, tx).into()
+        withhold_fee_fn(auth_ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();
@@ -348,7 +348,7 @@ where
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
         let outcome = unwrap_into_generic_result!(outcome_bytes.deserialize_borsh());
 
-        finalize_fee_fn(auth_ctx, tx, outcome).into()
+        finalize_fee_fn(auth_ctx, tx, outcome).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();

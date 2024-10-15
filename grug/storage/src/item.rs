@@ -39,6 +39,7 @@ mod test {
     use {
         super::Item,
         borsh::{BorshDeserialize, BorshSerialize},
+        grug_math::{MathError, Number, NumberConst, Uint128},
         grug_types::{MockStorage, StdError, StdResult},
     };
 
@@ -224,9 +225,14 @@ mod test {
 
         CONFIG.save(&mut storage, &cfg).unwrap();
 
-        let res = CONFIG.update(&mut storage, |_| Err(StdError::generic_err("test")));
+        let res = CONFIG.update(&mut storage, |_| {
+            // Intentionally cause an error.
+            Uint128::ONE.checked_div(Uint128::ZERO)?;
 
-        assert!(matches!(res, Err(StdError::Generic(err)) if err == "test"));
+            Ok(None)
+        });
+
+        assert!(matches!(res, Err(StdError::Math(MathError::DivisionByZero { a })) if a == "1"));
         assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
     }
 
