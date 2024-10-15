@@ -21,7 +21,7 @@ export async function getKey<chain extends Chain | undefined, signer extends Sig
   parameters: GetKeyParameters,
 ): GetKeyReturnType {
   const { keyHash, height = 0 } = parameters;
-  const msg = { key: { keyHash } };
+  const msg = { key: { hash: keyHash } };
 
   const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
 
