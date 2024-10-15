@@ -7,7 +7,7 @@ const dango = devnet;
 export const config = createConfig({
   chains: [dango],
   transports: {
-    [dango.id]: http(dango.rpcUrls.default.http.at(0), { batch: true }),
+    [dango.id]: http(dango.rpcUrls.default.http.at(0)),
   },
   coins: {
     [dango.id]: {
