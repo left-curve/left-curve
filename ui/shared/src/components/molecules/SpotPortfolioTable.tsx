@@ -1,18 +1,24 @@
 import type React from "react";
-import { Button } from "../atoms/Button";
+import { DangoButton } from "../atoms/DangoButton";
 import { PortfolioTable } from "./PortfolioTable";
 
-export const SpotPortfolioTable: React.FC = () => {
+interface Props {
+  navigate: (path: string) => void;
+  sendUrl: string;
+  receiveUrl: string;
+}
+
+export const SpotPortfolioTable: React.FC<Props> = ({ navigate, sendUrl, receiveUrl }) => {
   return (
     <PortfolioTable
       topComponent={
         <div className="flex flex-col gap-3 sm:flex-row w-full">
-          <Button color="danger" className="flex-1 min-h-11 italic rounded-3xl">
+          <DangoButton className="flex-1" onClick={() => navigate(sendUrl)}>
             Send
-          </Button>
-          <Button color="danger" className="flex-1 min-h-11 italic rounded-3xl">
+          </DangoButton>
+          <DangoButton className="flex-1" onClick={() => navigate(receiveUrl)}>
             Receive
-          </Button>
+          </DangoButton>
         </div>
       }
     />

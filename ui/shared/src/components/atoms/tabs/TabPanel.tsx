@@ -4,7 +4,6 @@ import { useTabPanel } from "@react-aria/tabs";
 import { mergeProps } from "@react-aria/utils";
 import type { TabListState } from "@react-stately/tabs";
 import type { Key } from "@react-types/shared";
-import clsx from "clsx";
 import { forwardRef, useDOMRef } from "~/utils/dom";
 
 import type { As } from "~/types/react";
@@ -19,10 +18,6 @@ interface Props {
    * The tab list state.
    */
   state: TabListState<object>;
-  /**
-   * The class to apply to the tab panel.
-   */
-  className?: string;
 }
 
 export type TabPanelProps = Props & AriaTabPanelProps;
@@ -48,12 +43,12 @@ const TabPanel = forwardRef<"div", TabPanelProps>((props, ref) => {
 
   return (
     <Component
+      {...selectedItem.props}
       ref={domRef}
       data-inert={!isSelected ? "true" : undefined}
       inert={!isSelected ? "true" : undefined}
-      {...(isSelected && mergeProps(tabPanelProps, otherProps))}
       data-slot="panel"
-      className={clsx(className, selectedItem?.props?.className)}
+      {...(isSelected && mergeProps(tabPanelProps, otherProps))}
     >
       {content}
     </Component>

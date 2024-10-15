@@ -27,6 +27,7 @@ const optionVariants = tv({
   variants: {
     color: {
       default: "text-typography-rose-600 bg-surface-rose-300 hover:bg-surface-rose-400",
+      white: "text-typography-black-200 bg-surface-off-white-200 hover:bg-surface-yellow-200",
     },
   },
   defaultVariants: {

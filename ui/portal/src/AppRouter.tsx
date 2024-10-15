@@ -10,6 +10,7 @@ const SignupView = lazy(() => import(/* webpackPrefetch: true */ "./views/Signup
 
 // Portal routes
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
+const TransferView = lazy(() => import(/* webpackPrefetch: true */ "./views/Transfer"));
 
 export const AppRouter: React.FC = () => {
   return (
@@ -26,7 +27,8 @@ export const AppRouter: React.FC = () => {
           <Route path="signup" element={<SignupView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
-          <Route path="accounts/:index" element={<AccountView />} />
+          <Route path="accounts/:index" element={<AccountView />} />ç
+          <Route path="/transfer" element={<TransferView />} />
         </Route>
       </Routes>
     </Suspense>

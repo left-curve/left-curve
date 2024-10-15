@@ -61,7 +61,7 @@ export default {
           recipient: userAddr,
         },
       },
-      funds: { uusdc: "100" },
+      funds: { uusdc: "100000000" },
     });
 
     if (response.code !== 0)
