@@ -661,23 +661,6 @@ where
             .map(|res| res.as_wasm_raw())
     }
 
-    pub fn query_wasm<M, R>(&self, contract: Addr, req: M) -> AppResult<R>
-    where
-        M: Serialize,
-        R: DeserializeOwned,
-    {
-        self.app
-            .do_query_app(
-                Query::WasmSmart {
-                    contract,
-                    msg: req.to_json_value()?,
-                },
-                0, // zero means to use the latest height
-                false,
-            )
-            .map(|res| res.as_wasm_smart().deserialize_json().unwrap())
-    }
-
     pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> AppResult<R::Response>
     where
         R: QueryRequest,
