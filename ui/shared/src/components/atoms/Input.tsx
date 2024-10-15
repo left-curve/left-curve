@@ -26,7 +26,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       type,
       size,
       color,
-      disabled,
+      isDisabled,
       fullWidth,
       startText,
       error,
@@ -38,7 +38,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       color,
       size,
       fullWidth,
-      isDisabled: disabled,
+      isDisabled,
     });
     return (
       <div className={base({ className: classNames?.base })}>
@@ -46,6 +46,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {startContent ? startContent : null}
           <input
             type={type}
+            disabled={isDisabled}
             className={input({ startText, className: classNames?.input })}
             ref={ref}
             {...props}

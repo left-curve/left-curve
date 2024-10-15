@@ -17,6 +17,13 @@ export type Credential =
   /** An Ed25519 signature. */
   | { ed25519: Base64 }
   /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
-  | { passkey: Base64 }
+  | { passkey: PasskeyCredential }
   /** An EVM signature signed by a wallet, along with its typedata. */
   | { ethWallet: Base64 };
+
+export type PasskeyCredential = {
+  origin: string;
+  cross_origin: boolean;
+  sig: Base64;
+  authenticator_data: Base64;
+};
