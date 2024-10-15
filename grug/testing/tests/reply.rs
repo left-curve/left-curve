@@ -185,35 +185,35 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
 
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "one"),
-        ExecuteMsg::ok(btree_map!(2 => "two")),
+        btree_map!(1 => "1"),
+        ExecuteMsg::ok(btree_map!(2 => "2")),
         ReplyOn::always(
             &ReplyMsg::Ok(
                 ExecuteMsg::ok(btree_map!())
             )
         ).unwrap()
     ),
-    btree_map!(1 => "one", 2 => "two");
-    "reply_always_ok_ok_reply_ok"
+    btree_map!(1 => "1", 2 => "2");
+    "reply_always_1pe_2pe_reply_1.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "one"),
+        btree_map!(1 => "1"),
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::always(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok(btree_map!(3 => "three"))
+                ExecuteMsg::ok(btree_map!(3 => "3"))
             )
         ).unwrap()
     ),
-    btree_map!(1 => "one", 3 => "three");
-    "reply_always_ok_fail_reply_ok"
+    btree_map!(1 => "1", 3 => "3");
+    "reply_always_1pe_2fail_reply_1.1ok"
 
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "one"),
-        ExecuteMsg::ok(btree_map!(2 => "two")),
+        btree_map!(1 => "1"),
+        ExecuteMsg::ok(btree_map!(2 => "2")),
         ReplyOn::always(
             &ReplyMsg::Ok(
                 ExecuteMsg::fail("reply deep 1 fail")
@@ -221,15 +221,15 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ).unwrap()
     ),
     btree_map!();
-    "reply_always_ok_ok_reply_fail"
+    "reply_always_1pe_2ok_reply_1.1fail"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "one"),
+        btree_map!(1 => "1"),
         ExecuteMsg::perform(
-            btree_map!(2 => "two"),
+            btree_map!(2 => "2"),
             ExecuteMsg::perform(
-                btree_map!(3 => "three"),
+                btree_map!(3 => "3"),
                 ExecuteMsg::fail("execute deep 4 fail"),
                 ReplyOn::Never,
             ),
@@ -241,8 +241,29 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             )
         ).unwrap()
     ),
-    btree_map!(1 => "one");
-    "reply_always_ok_ok_ok_fail_reply_ok"
+    btree_map!(1 => "1");
+    "reply_always_1pe_2pe_3pe_4fail_1reply_1.1ok"
+)]
+#[test_case(
+    ExecuteMsg::perform(
+        btree_map!(1 => "1"),
+        ExecuteMsg::perform(
+            btree_map!(2 => "2"),
+            ExecuteMsg::fail("execute deep 3 fail"),
+            ReplyOn::Never,
+        ),
+        ReplyOn::always(
+            &ReplyMsg::Fail(
+                ExecuteMsg::perform(
+                    btree_map!(11 => "1.1"),
+                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    ReplyOn::Never,
+                ),
+            )
+        ).unwrap()
+    ),
+    btree_map!(1 => "1", 21 => "2.1", 31 => "3.1");
+    "reply_always_1pe_2pe_3f_1reply_1.1pe_2.1ok"
 )]
 fn reply(msg: ExecuteMsg, data: BorrowedMapData) {
     let (mut suite, mut accounts, replier_addr) = setup();
