@@ -1,0 +1,44 @@
+import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
+import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query";
+import { useConfig } from "./useConfig";
+
+import {
+  type GetConnectorClientData,
+  type GetConnectorClientErrorType,
+  type GetConnectorClientFnData,
+  type GetConnectorClientOptions,
+  type GetConnectorClientQueryKey,
+  getConnectorClientQueryOptions,
+} from "@leftcurve/connect-kit/handlers";
+
+export type UseSigningClientParameters<
+  config extends Config = Config,
+  selectData = GetConnectorClientData,
+> = Prettify<
+  GetConnectorClientOptions &
+    ConfigParameter<config> &
+    QueryParameter<
+      GetConnectorClientFnData,
+      GetConnectorClientErrorType,
+      selectData,
+      GetConnectorClientQueryKey
+    >
+>;
+
+export type UseSigningClientReturnType<selectData = GetConnectorClientData> = UseQueryReturnType<
+  selectData,
+  GetConnectorClientErrorType
+>;
+
+export function useSigningClient(
+  parameters: UseSigningClientParameters = {},
+): UseSigningClientReturnType {
+  const { query = {} } = parameters;
+
+  const config = useConfig(parameters);
+  const options = getConnectorClientQueryOptions(config, {
+    ...parameters,
+  });
+
+  return useQuery({ ...query, ...options });
+}
