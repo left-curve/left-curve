@@ -383,20 +383,19 @@ where
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M, S, C, L>(
+    pub fn instantiate<M, S, C>(
         &mut self,
         signer: &mut dyn Signer,
         code_hash: Hash256,
         msg: &M,
         salt: S,
-        label: Option<L>,
+        label: Option<&str>,
         admin: Option<Addr>,
         funds: C,
     ) -> InstantiateOutcome
     where
         M: Serialize,
         S: Into<Binary>,
-        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -414,21 +413,20 @@ where
 
     /// Instantiate a contract under the given gas limit. Return the contract's
     /// address.
-    pub fn instantiate_with_gas<M, S, L, C>(
+    pub fn instantiate_with_gas<M, S, C>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         code_hash: Hash256,
         msg: &M,
         salt: S,
-        label: Option<L>,
+        label: Option<&str>,
         admin: Option<Addr>,
         funds: C,
     ) -> InstantiateOutcome
     where
         M: Serialize,
         S: Into<Binary>,
-        L: Into<String>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
