@@ -23,13 +23,13 @@ type LeafNode = {
 }
 
 type Node = 
-    | Inner(InternalNode)
+    | Internal(InternalNode)
     | Leaf(LeafNode)
 
-val InternalIdentifier = [0]
-val LeafNodeIdentifier = [1]
-val InternalNodeHashPrefix = raw(InternalIdentifier)
-val LeafNodeHashPrefix = raw(LeafNodeIdentifier)
+val InternalIdentifier: Bytes_t = [0]
+val LeafNodeIdentifier: Bytes_t = [1]
+val InternalNodeHashPrefix: Term_t = raw(InternalIdentifier)
+val LeafNodeHashPrefix: Term_t = raw(LeafNodeIdentifier)
 
 val l = {
     key_hash: termHash(raw([2])),
