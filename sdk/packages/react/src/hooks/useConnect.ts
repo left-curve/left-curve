@@ -11,7 +11,12 @@ import {
   connectMutationOptions,
 } from "@leftcurve/connect-kit/handlers";
 
-import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
+import {
+  type Config,
+  type ConfigParameter,
+  ConnectionStatus,
+  type Prettify,
+} from "@leftcurve/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query";
 
 import { useConfig } from "./useConfig";
@@ -48,7 +53,11 @@ export function useConnect<config extends Config = Config, context = unknown>(
     return config.subscribe(
       ({ status }) => status,
       (status, previousStatus) => {
-        if (previousStatus === "connected" && status === "disconnected") result.reset();
+        if (
+          previousStatus === ConnectionStatus.Connected &&
+          status === ConnectionStatus.Disconnected
+        )
+          result.reset();
       },
     );
   }, [config, result.reset]);

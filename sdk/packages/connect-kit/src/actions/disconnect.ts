@@ -1,4 +1,11 @@
-import type { ChainId, Config, Connector, ConnectorUId, OneRequired } from "@leftcurve/types";
+import {
+  type ChainId,
+  type Config,
+  ConnectionStatus,
+  type Connector,
+  type ConnectorUId,
+  type OneRequired,
+} from "@leftcurve/types";
 
 export type DisconnectParameters = OneRequired<
   {
@@ -44,7 +51,7 @@ export async function disconnect(
         ...x,
         connections: new Map(),
         connectors: new Map(),
-        status: "disconnected",
+        status: ConnectionStatus.Disconnected,
       };
     }
     return {

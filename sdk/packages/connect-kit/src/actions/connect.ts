@@ -1,4 +1,4 @@
-import type { Config, Connector } from "@leftcurve/types";
+import { type Config, ConnectionStatus, type Connector } from "@leftcurve/types";
 
 export type ConnectParameters = {
   chainId: string;
@@ -24,7 +24,7 @@ export async function connect<config extends Config>(
   } catch (error) {
     config.setState((x) => ({
       ...x,
-      status: x.connections.size > 0 ? "connected" : "disconnected",
+      status: x.connections.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
     }));
     throw error;
   }

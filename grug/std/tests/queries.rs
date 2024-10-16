@@ -59,6 +59,7 @@ fn query_super_smart() {
             None,
             Coins::new(),
         )
+        .should_succeed()
         .address;
 
     // Here, the compiler should be able to infer the type of the response as

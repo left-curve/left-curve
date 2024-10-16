@@ -62,15 +62,6 @@ export type ConnectorEventMap = {
   };
 };
 
-export const ConnectorStatus = {
-  Connected: "connected",
-  Connecting: "connecting",
-  Reconnecting: "reconnecting",
-  Disconnected: "disconnected",
-} as const;
-
-export type ConnectorStatusType = (typeof ConnectorStatus)[keyof typeof ConnectorStatus];
-
 export type CreateConnectorFn<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
   chain extends Chain = Chain,

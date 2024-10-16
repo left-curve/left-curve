@@ -1,6 +1,14 @@
-import { Outlet } from "react-router-dom";
+import { useAccount } from "@leftcurve/react";
+import { ConnectionStatus } from "@leftcurve/types";
+import { Navigate, Outlet } from "react-router-dom";
 
 export const AuthLayout: React.FC = () => {
+  const { status } = useAccount();
+
+  if (status === ConnectionStatus.Connected) {
+    return <Navigate to="/" />;
+  }
+
   return (
     <main className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center">
       <div className="min-h-full w-full flex-1 flex flex-col justify-center z-10 relative p-4">

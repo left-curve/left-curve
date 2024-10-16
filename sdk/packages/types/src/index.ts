@@ -119,7 +119,6 @@ export type {
   ConnectorParameter,
   ConnectorEventMap,
   CreateConnectorFn,
-  ConnectorStatusType,
 } from "./connector";
 
 export type {
@@ -134,6 +133,7 @@ export type {
   StoreApi,
   CreateConfigParameters,
   ConfigParameter,
+  ConnectionStatusType,
 } from "./config";
 
 export type { Address } from "./address";
@@ -254,4 +254,5 @@ export { AccountType } from "./account";
 export { KeyTag } from "./key";
 export { Vote } from "./safe";
 
-export { ConnectorTypes, ConnectorStatus, ConnectorIdType } from "./connector";
+export { ConnectorTypes, ConnectorIdType } from "./connector";
+export { ConnectionStatus } from "./config";

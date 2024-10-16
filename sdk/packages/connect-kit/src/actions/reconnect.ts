@@ -1,4 +1,4 @@
-import type { Config } from "@leftcurve/types";
+import { type Config, ConnectionStatus } from "@leftcurve/types";
 
 export type ReconnectReturnType = void;
 
@@ -14,7 +14,7 @@ export async function reconnect<config extends Config>(
 
   config.setState((x) => ({
     ...x,
-    status: x.connections.size > 0 ? "reconnecting" : "disconnected",
+    status: x.connections.size > 0 ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
   }));
 
   const connections = new Map();
@@ -44,7 +44,7 @@ export async function reconnect<config extends Config>(
       ...x,
       connections,
       connectors,
-      status: connections.size > 0 ? "connected" : "disconnected",
+      status: connections.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
     }));
   }
 

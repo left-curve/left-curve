@@ -1,107 +1,135 @@
-import { DangoButton, Select, SelectItem, useWizard } from "@dango/shared";
-import { createWebAuthnCredential, ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
-import { useConnectors, usePublicClient } from "@leftcurve/react";
-import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
-import { getNavigatorOS, getRootDomain } from "@leftcurve/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { AccountType, type Address, type EIP1193Provider, type Key } from "@leftcurve/types";
+import { useWizard } from "@dango/shared";
+import { useAccount, useConfig, useConnectors, usePublicClient } from "@leftcurve/react";
+import { useMutation } from "@tanstack/react-query";
+
+import { createWebAuthnCredential, ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
+import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
+import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
+import { getNavigatorOS, getRootDomain, sleep } from "@leftcurve/utils";
+
+import { DangoButton, Select, SelectItem } from "@dango/shared";
+
+import {
+  AccountType,
+  type Address,
+  ConnectionStatus,
+  type EIP1193Provider,
+  type Key,
+} from "@leftcurve/types";
 
 export const ConnectStep: React.FC = () => {
-  const { data } = useWizard<{ username: string }>();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [connectorId, setConnectorId] = useState<string>("Passkey");
-  const connectors = useConnectors();
-  const client = usePublicClient();
   const navigate = useNavigate();
+
+  const config = useConfig();
+  const client = usePublicClient();
+
+  const { status } = useAccount();
+  const connectors = useConnectors();
+
+  const [connectorId, setConnectorId] = useState<string>("Passkey");
+
+  const { data } = useWizard<{ username: string }>();
   const { username } = data;
 
-  const onSubmit = async () => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      const connector = connectors.find((c) => c.id === connectorId.toLowerCase());
-      if (!connector) throw new Error("error: missing connector");
-      const challenge = "Please sign this message to confirm your identity.";
-      const { key, keyHash } = await (async () => {
-        if (connectorId === "Passkey") {
-          const { id, getPublicKey } = await createWebAuthnCredential({
-            challenge: encodeUtf8(challenge),
-            user: {
-              name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
-            },
-            rp: {
-              name: window.document.title,
-              id: getRootDomain(window.location.hostname),
-            },
-            authenticatorSelection: {
-              residentKey: "preferred",
-              requireResidentKey: false,
-              userVerification: "preferred",
-            },
-          });
+  const {
+    mutateAsync: createAccount,
+    isPending,
+    isError,
+  } = useMutation({
+    mutationFn: async () => {
+      try {
+        const connector = connectors.find((c) => c.id === connectorId.toLowerCase());
+        if (!connector) throw new Error("error: missing connector");
+        const challenge = "Please sign this message to confirm your identity.";
+        const { key, keyHash } = await (async () => {
+          if (connectorId === "Passkey") {
+            const { id, getPublicKey } = await createWebAuthnCredential({
+              challenge: encodeUtf8(challenge),
+              user: {
+                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+              },
+              rp: {
+                name: window.document.title,
+                id: getRootDomain(window.location.hostname),
+              },
+              authenticatorSelection: {
+                residentKey: "preferred",
+                requireResidentKey: false,
+                userVerification: "preferred",
+              },
+            });
 
-          const publicKey = await getPublicKey();
-          const key: Key = { secp256r1: encodeBase64(publicKey) };
-          const keyHash = createKeyHash({ credentialId: id });
+            const publicKey = await getPublicKey();
+            const key: Key = { secp256r1: encodeBase64(publicKey) };
+            const keyHash = createKeyHash({ credentialId: id });
 
-          return { key, keyHash };
-        }
+            return { key, keyHash };
+          }
 
-        if (connectorId === "Metamask") {
-          const provider = await (
-            connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-          ).getProvider();
+          if (connectorId === "Metamask") {
+            const provider = await (
+              connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
+            ).getProvider();
 
-          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-          const signature = await provider.request({
-            method: "personal_sign",
-            params: [challenge, controllerAddress],
-          });
+            const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+            const signature = await provider.request({
+              method: "personal_sign",
+              params: [challenge, controllerAddress],
+            });
 
-          const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
+            const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
 
-          const key: Key = { secp256k1: encodeBase64(pubKey) };
-          const keyHash = createKeyHash({ pubKey });
+            const key: Key = { secp256k1: encodeBase64(pubKey) };
+            const keyHash = createKeyHash({ pubKey });
 
-          return { key, keyHash };
-        }
-        throw new Error("error: invalid connector");
-      })();
+            return { key, keyHash };
+          }
+          throw new Error("error: invalid connector");
+        })();
 
-      const factoryAddr = await client.getAppConfig<Address>({ key: "account_factory" });
-      const accountCodeHash = await client.getAccountTypeCodeHash({
-        accountType: AccountType.Spot,
-      });
+        const factoryAddr = await client.getAppConfig<Address>({ key: "account_factory" });
+        const accountCodeHash = await client.getAccountTypeCodeHash({
+          accountType: AccountType.Spot,
+        });
 
-      const salt = createAccountSalt({ key, keyHash, username });
-      const address = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
+        const salt = createAccountSalt({ key, keyHash, username });
+        const address = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
 
-      const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
-        method: "POST",
-        body: JSON.stringify({ address }),
-      });
-      if (!response.ok) throw new Error("error: failed to send funds");
+        const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
+          method: "POST",
+          body: JSON.stringify({ address }),
+        });
+        if (!response.ok) throw new Error("error: failed to send funds");
 
-      await client.registerUser({ key, keyHash, username });
+        await client.registerUser({ key, keyHash, username });
+        // TODO: Do pooling instead of sleep to check account creation
+        await sleep(1000);
+        await connector.connect({ username, chainId: config.chains[0].id });
+      } catch (err) {
+        console.log(err);
+        throw err;
+      }
+    },
+  });
 
-      navigate("/auth/login");
-    } catch (err) {
-      console.log(err);
-      setIsLoading(false);
-      setError("something went wrong");
-    }
-  };
+  useEffect(() => {
+    if (status !== ConnectionStatus.Connected) return;
+    navigate("/");
+  }, [navigate, status]);
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton fullWidth onClick={onSubmit} isLoading={isLoading}>
+      <DangoButton fullWidth onClick={() => createAccount()} isLoading={isPending}>
         Signup with {connectorId}
       </DangoButton>
-      {error ? <p className="text-typography-rose-600 text-center text-xl">{error}</p> : null}
+      {isError ? (
+        <p className="text-typography-rose-600 text-center text-xl">
+          We couldn't complete the request
+        </p>
+      ) : null}
       <Select
         label="login-methods"
         placeholder="Alternative sign up methods"
@@ -117,7 +145,7 @@ export const ConnectStep: React.FC = () => {
         variant="ghost"
         color="sand"
         className="text-lg"
-        isDisabled={isLoading}
+        isDisabled={isPending}
       >
         Already have an account?
       </DangoButton>

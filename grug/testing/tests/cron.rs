@@ -64,7 +64,10 @@ fn cronjob_works() {
     // Block time: 1
     //
     // Upload the tester contract code.
-    let tester_code_hash = suite.upload(&mut accounts["larry"], tester_code).code_hash;
+    let tester_code_hash = suite
+        .upload(&mut accounts["larry"], tester_code)
+        .should_succeed()
+        .code_hash;
 
     // Block time: 2
     //
@@ -83,6 +86,7 @@ fn cronjob_works() {
             None,
             Coins::one("uatom", 3).unwrap(),
         )
+        .should_succeed()
         .address;
 
     // Block time: 3
@@ -99,6 +103,7 @@ fn cronjob_works() {
             None,
             Coins::one("uosmo", 3).unwrap(),
         )
+        .should_succeed()
         .address;
 
     // Block time: 4
@@ -115,6 +120,7 @@ fn cronjob_works() {
             None,
             Coins::one("umars", 3).unwrap(),
         )
+        .should_succeed()
         .address;
 
     // Block time: 5

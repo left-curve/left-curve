@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "@leftcurve/react";
-import { AccountType, ConnectorStatus } from "@leftcurve/types";
+import { AccountType, ConnectionStatus } from "@leftcurve/types";
 import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "~/components";
 
 export const ExampleHeader: React.FC = () => {
@@ -26,7 +26,7 @@ export const ExampleHeader: React.FC = () => {
         <span className="text-lg font-semibold">Example App</span>
       </div>
       <div className="flex gap-2 items-center justify-between">
-        {ConnectorStatus.Connected === status ? (
+        {ConnectionStatus.Connected === status ? (
           <>
             <MenuNotifications />
             <MenuAccounts
