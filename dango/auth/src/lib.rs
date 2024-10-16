@@ -133,14 +133,17 @@ pub fn authenticate_tx(
                 // Generate the raw bytes that the Passkey should have signed.
                 // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
                 let signed_hash = {
-                    let client_data = ClientData {
-                        ty: "webauthn.get".to_string(),
-                        challenge: URL_SAFE_NO_PAD.encode(sign_bytes),
-                        origin: cred.origin,
-                        cross_origin: cred.cross_origin,
-                    };
-                    let client_data_raw = client_data.to_json_vec()?;
-                    let client_data_hash = ctx.api.sha2_256(&client_data_raw);
+                    let client_data: ClientData = cred.client_data.deserialize_json()?;
+                    let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
+
+                    ensure!(
+                        client_data.challenge == sign_bytes_base64,
+                        "incorrect challenge: expecting {}, got {}",
+                        sign_bytes_base64,
+                        client_data.challenge
+                    );
+
+                    let client_data_hash = ctx.api.sha2_256(&cred.client_data);
 
                     let signed_data = [
                         cred.authenticator_data.as_ref(),
@@ -170,4 +173,78 @@ pub fn authenticate_tx(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::account_factory::Username,
+        grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        std::str::FromStr,
+    };
+
+    /// Address of the account factory for use in the following tests.
+    const ACCOUNT_FACTORY: Addr = Addr::mock(254);
+
+    #[test]
+    fn passkey_authentication() {
+        let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
+        let user_username = Username::from_str("test4").unwrap();
+        let user_keyhash = Hash160::from_str("4466B77A86FB18EBA97080D56398B61470148059").unwrap();
+        let user_key = Key::Secp256r1(
+            [
+                3, 32, 23, 59, 89, 52, 51, 126, 80, 201, 159, 243, 253, 222, 209, 56, 72, 217, 193,
+                1, 195, 12, 83, 16, 188, 138, 208, 246, 53, 238, 156, 133, 163,
+            ]
+            .into(),
+        );
+
+        let tx = r#"{
+            "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+            "credential": {
+                "passkey": {
+                    "sig": "BqtWfd8nTuTIiVipr/OcbeiBjsWmAp8e3VitWD+AekOmAPs/4dJkgjt7p+dB3ZJpqg6LHP+RX9bvALfgMoYh2Q==",
+                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQmN3X1JrUDdDc3EtZWVFemw0ZWxFSWxTZXN0b055VVA1b21tUFJkU3VJQSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+                }
+            },
+            "data": {
+                "key_hash": "4466B77A86FB18EBA97080D56398B61470148059",
+                "username": "test4",
+                "sequence": 0
+            },
+            "msgs": [
+                {
+                    "transfer": {
+                        "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                        "coins": {
+                            "uusdc": "5"
+                        }
+                    }
+                }
+            ],
+            "gas_limit": 1116375
+        }"#;
+
+        let querier = MockQuerier::new()
+            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS_BY_USER
+                    .insert(storage, (&user_username, user_keyhash))
+                    .unwrap();
+                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_chain_id("dev-2")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+    }
 }
