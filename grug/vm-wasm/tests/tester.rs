@@ -49,6 +49,7 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             None,
             Coins::new(),
         )
+        .should_succeed()
         .address;
 
     (suite, accounts, tester)

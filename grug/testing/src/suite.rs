@@ -6,28 +6,102 @@ use {
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, Signer, StdError, Tx, TxOutcome, UnsignedTx,
+        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
 
+// ------------------------------- UploadOutcome -------------------------------
+
 pub struct UploadOutcome {
-    pub code_hash: Hash256,
-    pub outcome: TxOutcome,
+    code_hash: Hash256,
+    outcome: TxOutcome,
 }
+
+pub struct UploadOutcomeSuccess {
+    pub code_hash: Hash256,
+    pub outcome: TxSuccess,
+}
+
+impl ResultExt for UploadOutcome {
+    type Error = TxError;
+    type Success = UploadOutcomeSuccess;
+
+    fn should_succeed(self) -> Self::Success {
+        UploadOutcomeSuccess {
+            code_hash: self.code_hash,
+            outcome: self.outcome.should_succeed(),
+        }
+    }
+
+    fn should_fail(self) -> Self::Error {
+        self.outcome.should_fail()
+    }
+}
+
+// ---------------------------- InstantiateOutcome -----------------------------
 
 pub struct InstantiateOutcome {
-    pub address: Addr,
-    pub outcome: TxOutcome,
+    address: Addr,
+    outcome: TxOutcome,
 }
 
-pub struct UploadAndInstantiateOutcome {
-    pub code_hash: Hash256,
+pub struct InstantiateOutcomeSuccess {
     pub address: Addr,
-    pub outcome: TxOutcome,
+    pub outcome: TxSuccess,
 }
+
+impl ResultExt for InstantiateOutcome {
+    type Error = TxError;
+    type Success = InstantiateOutcomeSuccess;
+
+    fn should_succeed(self) -> Self::Success {
+        InstantiateOutcomeSuccess {
+            address: self.address,
+            outcome: self.outcome.should_succeed(),
+        }
+    }
+
+    fn should_fail(self) -> Self::Error {
+        self.outcome.should_fail()
+    }
+}
+
+// ------------------------ UploadAndInstantiateOutcome ------------------------
+
+pub struct UploadAndInstantiateOutcome {
+    code_hash: Hash256,
+    address: Addr,
+    outcome: TxOutcome,
+}
+
+pub struct UploadAndInstantiateOutcomeSuccess {
+    pub address: Addr,
+    pub code_hash: Hash256,
+    pub outcome: TxSuccess,
+}
+
+impl ResultExt for UploadAndInstantiateOutcome {
+    type Error = TxError;
+    type Success = UploadAndInstantiateOutcomeSuccess;
+
+    fn should_succeed(self) -> Self::Success {
+        UploadAndInstantiateOutcomeSuccess {
+            address: self.address,
+            code_hash: self.code_hash,
+            outcome: self.outcome.should_succeed(),
+        }
+    }
+
+    fn should_fail(self) -> Self::Error {
+        self.outcome.should_fail()
+    }
+}
+
+// --------------------------------- TestSuite ---------------------------------
 
 pub struct TestSuite<DB = MemDb, VM = RustVm>
 where
