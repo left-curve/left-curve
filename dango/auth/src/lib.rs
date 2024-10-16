@@ -205,30 +205,30 @@ mod tests {
         );
 
         let tx = r#"{
-            "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
-            "credential": {
-              "passkey": {
-                "sig": "BqtWfd8nTuTIiVipr/OcbeiBjsWmAp8e3VitWD+AekOmAPs/4dJkgjt7p+dB3ZJpqg6LHP+RX9bvALfgMoYh2Q==",
-                "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQmN3X1JrUDdDc3EtZWVFemw0ZWxFSWxTZXN0b055VVA1b21tUFJkU3VJQSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-                "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
-              }
-            },
-            "data": {
-              "key_hash": "4466B77A86FB18EBA97080D56398B61470148059",
-              "username": "test4",
-              "sequence": 0
-            },
-            "msgs": [
-              {
-                "transfer": {
-                  "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
-                  "coins": {
-                    "uusdc": "5"
-                  }
+          "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+          "credential": {
+            "passkey": {
+              "sig": "BqtWfd8nTuTIiVipr/OcbeiBjsWmAp8e3VitWD+AekOmAPs/4dJkgjt7p+dB3ZJpqg6LHP+RX9bvALfgMoYh2Q==",
+              "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQmN3X1JrUDdDc3EtZWVFemw0ZWxFSWxTZXN0b055VVA1b21tUFJkU3VJQSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+              "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+            }
+          },
+          "data": {
+            "key_hash": "4466B77A86FB18EBA97080D56398B61470148059",
+            "username": "test4",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                "coins": {
+                  "uusdc": "5"
                 }
               }
-            ],
-            "gas_limit": 1116375
+            }
+          ],
+          "gas_limit": 1116375
         }"#;
 
         let querier = MockQuerier::new()
