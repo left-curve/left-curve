@@ -2,10 +2,7 @@
 
 module node {
     import hashes.* from "./hashes"
-type Option[a] = 
-    | None
-    | Some(a)
-
+    import basicSpells.* from "./spells/basicSpells"
 type Child = {
     version: int, //u64 //TODO: Version not hashed
     hash: Term_t,
@@ -233,9 +230,11 @@ run InternalHashTest = {
                                 [0, 2, 2] -> Hash,        
                                     [0, 2, 2, 0] -> Raw([right_child_value])
                             )
-
-    assert(left_leaf_hash == expected_left_hash).then(assert(right_leaf_hash == expected_right_hash)).then(assert(expected_internal_node_hash == hashed_internal_node))
-
+    all {
+        assert(left_leaf_hash == expected_left_hash),
+        assert(right_leaf_hash == expected_right_hash),
+        assert(expected_internal_node_hash == hashed_internal_node)
+    }
 }
 run LeafCheckIsLeafTest = {
     nondet key = 0.to(16).oneOf()
