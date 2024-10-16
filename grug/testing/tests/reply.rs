@@ -1,35 +1,22 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{btree_map, Addr, Coins, Empty, ReplyOn},
+    grug_types::{Addr, Coins, Empty, ReplyOn},
     grug_vm_rust::ContractBuilder,
-    replier::{BorrowedMapData, ExecuteMsg, MapData, QueryDataRequest, ReplyMsg},
+    replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };
 
 mod replier {
     use {
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_storage::Map,
+        grug_storage::Set,
         grug_types::{
             Coins, Empty, GenericResult, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx,
-            Order, QueryRequest, ReplyOn, Response, StdError, StdResult, Storage, SubMessage,
-            SubMsgResult, SudoCtx,
+            Order, QueryRequest, ReplyOn, Response, StdError, StdResult, SubMessage, SubMsgResult,
+            SudoCtx,
         },
         serde::{Deserialize, Serialize},
-        std::collections::BTreeMap,
     };
-
-    pub type MapData = BTreeMap<u64, String>;
-
-    /// A borrowed version of `MapData`. Used on tests for less verbosity
-    /// (`.to_string()` is not needed).
-    pub type BorrowedMapData<'a> = BTreeMap<u64, &'a str>;
-
-    pub fn convert_map_data(data: BorrowedMapData) -> MapData {
-        data.into_iter().map(|(k, v)| (k, v.to_string())).collect()
-    }
-
-    pub const SAVE_DATA: Map<u64, String> = Map::new("s");
 
     #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub enum ReplyMsg {
@@ -40,13 +27,13 @@ mod replier {
     #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     pub enum ExecuteMsg {
         Ok {
-            data: MapData,
+            deep: String,
         },
         Fail {
             err: String,
         },
         Perform {
-            data: MapData,
+            deep: String,
             next: Box<ExecuteMsg>,
             reply_on: ReplyOn,
         },
@@ -68,14 +55,15 @@ mod replier {
 
     impl QueryRequest for QueryDataRequest {
         type Message = QueryMsg;
-        type Response = MapData;
+        type Response = Vec<String>;
     }
 
     impl ExecuteMsg {
-        pub fn ok(data: BorrowedMapData) -> Self {
-            Self::Ok {
-                data: convert_map_data(data),
-            }
+        pub fn ok<T>(deep: T) -> Self
+        where
+            T: Into<String>,
+        {
+            Self::Ok { deep: deep.into() }
         }
 
         pub fn fail<E>(err: E) -> Self
@@ -85,14 +73,19 @@ mod replier {
             Self::Fail { err: err.into() }
         }
 
-        pub fn perform(data: BorrowedMapData, next: ExecuteMsg, reply_on: ReplyOn) -> Self {
+        pub fn perform<T>(deep: T, next: ExecuteMsg, reply_on: ReplyOn) -> Self
+        where
+            T: Into<String>,
+        {
             Self::Perform {
-                data: convert_map_data(data),
+                deep: deep.into(),
                 next: Box::new(next),
                 reply_on,
             }
         }
     }
+
+    pub const DEEPTHS: Set<String> = Set::new("s");
 
     pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
         Ok(Response::new())
@@ -101,16 +94,16 @@ mod replier {
     pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
         match msg {
             ExecuteMsg::Fail { err } => Err(StdError::host(err)),
-            ExecuteMsg::Ok { data } => {
-                save_data(ctx.storage, data)?;
+            ExecuteMsg::Ok { deep } => {
+                DEEPTHS.insert(ctx.storage, deep)?;
                 Ok(Response::new())
             },
             ExecuteMsg::Perform {
-                data,
+                deep,
                 next,
                 reply_on,
             } => {
-                save_data(ctx.storage, data)?;
+                DEEPTHS.insert(ctx.storage, deep)?;
                 Ok(Response::new().add_submessage(SubMessage {
                     msg: Message::execute(ctx.contract, &*next, Coins::default())?,
                     reply_on,
@@ -120,9 +113,9 @@ mod replier {
     }
 
     pub fn query(ctx: ImmutableCtx, _msg: Empty) -> StdResult<Json> {
-        SAVE_DATA
+        DEEPTHS
             .range(ctx.storage, None, None, Order::Ascending)
-            .collect::<StdResult<MapData>>()?
+            .collect::<StdResult<Vec<String>>>()?
             .to_json_value()
     }
 
@@ -146,14 +139,6 @@ mod replier {
             },
             msg,
         )
-    }
-
-    fn save_data(storage: &mut dyn Storage, save_data: MapData) -> StdResult<()> {
-        for (k, v) in save_data {
-            SAVE_DATA.save(storage, k, &v)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -188,51 +173,50 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
 // ------------------------------ ReplyOn::Always ------------------------------
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
-        ExecuteMsg::ok(btree_map!(2 => "2")),
+       "1",
+        ExecuteMsg::ok("2"),
         ReplyOn::always(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok(btree_map!())
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 2 => "2");
+    ["1", "2", "1.1"];
     "reply_always_1pe_2pe_reply_1.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::always(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok(btree_map!(3 => "3"))
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 3 => "3");
+    ["1", "1.1"];
     "reply_always_1pe_2fail_reply_1.1ok"
-
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
-        ExecuteMsg::ok(btree_map!(2 => "2")),
+        "1",
+        ExecuteMsg::ok("2"),
         ReplyOn::always(
             &ReplyMsg::Ok(
                 ExecuteMsg::fail("reply deep 1 fail")
             )
         ).unwrap()
     ),
-    btree_map!();
+    [];
     "reply_always_1pe_2ok_reply_1.1fail"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::perform(
-            btree_map!(2 => "2"),
+            "2",
             ExecuteMsg::perform(
-                btree_map!(3 => "3"),
+                "3",
                 ExecuteMsg::fail("execute deep 4 fail"),
                 ReplyOn::Never,
             ),
@@ -240,70 +224,70 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ),
         ReplyOn::always(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok(btree_map!())
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1");
+    ["1", "1.1"];
     "reply_always_1pe_2pe_3pe_4fail_1reply_1.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::perform(
-            btree_map!(2 => "2"),
+            "2",
             ExecuteMsg::fail("execute deep 3 fail"),
             ReplyOn::Never,
         ),
         ReplyOn::always(
             &ReplyMsg::Fail(
                 ExecuteMsg::perform(
-                    btree_map!(11 => "1.1"),
-                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    "1.1",
+                    ExecuteMsg::ok("2.1"),
                     ReplyOn::Never,
                 ),
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 11 => "1.1", 21 => "2.1");
+    ["1", "1.1", "2.1"];
     "reply_always_1pe_2pe_3f_1reply_1.1pe_2.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::perform(
-            btree_map!(2 => "2"),
+            "2",
             ExecuteMsg::perform(
-                btree_map!(3 => "3"),
+                "3",
                 ExecuteMsg::fail("execute deep 4 fail"),
                 ReplyOn::Never,
             ),
             ReplyOn::always(
                 &ReplyMsg::Fail(
-                    ExecuteMsg::ok(btree_map!(32 => "3.2"))
+                    ExecuteMsg::ok("3.2")
                 )
             ).unwrap()
         ),
         ReplyOn::always(
             &ReplyMsg::Ok(
                 ExecuteMsg::perform(
-                    btree_map!(11 => "1.1"),
-                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    "1.1",
+                    ExecuteMsg::ok("2.1"),
                     ReplyOn::Never,
                 ),
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 2 => "2", 32 => "3.2", 11 => "1.1", 21 => "2.1");
+    ["1", "2", "3.2", "1.1", "2.1"];
     "reply_always_1pe_2pe_3_pe_4f_2reply_3.2ok_1reply_1.1pe_2.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::perform(
-            btree_map!(2 => "2"),
+            "2",
             ExecuteMsg::perform(
-                btree_map!(3 => "3"),
+                "3",
                 ExecuteMsg::fail("execute deep 4 fail"),
                 ReplyOn::Never,
             ),
@@ -316,73 +300,73 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ReplyOn::always(
             &ReplyMsg::Fail(
                 ExecuteMsg::perform(
-                    btree_map!(11 => "1.1"),
-                    ExecuteMsg::ok(btree_map!(21 => "2.1")),
+                    "1.1",
+                    ExecuteMsg::ok("2.1"),
                     ReplyOn::Never,
                 ),
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 11 => "1.1", 21 => "2.1");
+    ["1", "1.1", "2.1"];
     "reply_always_1pe_2pe_3pe_4fail_2reply_3.2fail_1reply_1.1pe_2.1ok"
 )]
 // ----------------------------- ReplyOn::Success ------------------------------
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
-        ExecuteMsg::ok(btree_map!(2 => "2")),
+        "1",
+        ExecuteMsg::ok("2"),
         ReplyOn::success(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 2 => "2", 11 => "1.1");
+    ["1", "2", "1.1"];
     "reply_success_1pe_2ok_reply_1.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
-        ExecuteMsg::ok(btree_map!(2 => "2")),
+        "1",
+        ExecuteMsg::ok("2"),
         ReplyOn::success(
             &ReplyMsg::Ok(
                 ExecuteMsg::fail("reply deep 1 fail")
             )
         ).unwrap()
     ),
-    btree_map!();
+    [];
     "reply_success_1pe_2ok_reply_1.1fail"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::success(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!();
+    [];
     "reply_success_1pe_2fail_reply_1.1ok"
 )]
 // ------------------------------ ReplyOn::Error -------------------------------
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok(btree_map!(11 => "1.1"))
+                ExecuteMsg::ok("1.1")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 11 => "1.1");
+    ["1", "1.1"];
     "reply_error_1pe_2fail_reply_1.1ok"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
+        "1",
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
             &ReplyMsg::Fail(
@@ -390,32 +374,32 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             )
         ).unwrap()
     ),
-    btree_map!();
+    [];
     "reply_error_1pe_2fail_reply_1.1fail"
 )]
 #[test_case(
     ExecuteMsg::perform(
-        btree_map!(1 => "1"),
-        ExecuteMsg::ok(btree_map!(2 => "2")),
+        "1",
+        ExecuteMsg::ok("2"),
         ReplyOn::error(
             &ReplyMsg::Ok(
                 ExecuteMsg::fail("reply deep 1 fail")
             )
         ).unwrap()
     ),
-    btree_map!(1 => "1", 2 => "2");
+    ["1", "2"];
     "reply_error_1pe_2ok_reply_1.1fail"
 )]
-fn reply(msg: ExecuteMsg, data: BorrowedMapData) {
+fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S]) {
     let (mut suite, mut accounts, replier_addr) = setup();
 
     suite.execute(&mut accounts["owner"], replier_addr, &msg, Coins::default());
 
-    let res: MapData = suite
+    data.sort();
+
+    let deepths: Vec<String> = suite
         .query_wasm_smart(replier_addr, QueryDataRequest {})
         .unwrap();
 
-    let borrowed: BorrowedMapData = res.iter().map(|(k, v)| (*k, v.as_str())).collect();
-
-    assert_eq!(borrowed, data);
+    assert_eq!(deepths, data);
 }
