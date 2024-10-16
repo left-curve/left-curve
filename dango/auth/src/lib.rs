@@ -130,7 +130,9 @@ pub fn authenticate_tx(
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => match (key, tx.credential.deserialize_json()?) {
             (Key::Secp256r1(pk), Credential::Passkey(cred)) => {
-                // Generate the raw bytes that the Passkey should have signed.
+                // Verify that Passkey has signed the correct data.
+                // The data should be the SHA-256 hash of a `ClientData`, where
+                // the challenge is the sign bytes.
                 // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
                 let signed_hash = {
                     let client_data: ClientData = cred.client_data.deserialize_json()?;

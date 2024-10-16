@@ -59,8 +59,7 @@ pub struct PasskeySignature {
     pub sig: ByteArray<64>,
 }
 
-/// Passkey client data
-/// We use serde instead of grug because it does not support unknown fields.
+/// Passkey client data.
 #[grug::derive(Serde)]
 pub struct ClientData {
     // Should be "webauthn.get".
