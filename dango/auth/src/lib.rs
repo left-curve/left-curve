@@ -6,9 +6,7 @@ use {
         auth::{ClientData, Credential, Key, Metadata, SignDoc},
         config::ACCOUNT_FACTORY_KEY,
     },
-    grug::{
-        Addr, AuthCtx, AuthMode, BorshDeExt, Counter, HashExt, JsonDeExt, JsonSerExt, Query, Tx,
-    },
+    grug::{Addr, AuthCtx, AuthMode, BorshDeExt, Counter, JsonDeExt, JsonSerExt, Query, Tx},
 };
 
 /// Expected sequence number of the next transaction this account sends.
@@ -91,13 +89,14 @@ pub fn authenticate_tx(
     };
 
     // Compute the sign bytes.
-    let sign_bytes = SignDoc {
-        messages: tx.msgs,
-        chain_id: ctx.chain_id,
-        sequence: metadata.sequence,
-    }
-    .to_json_vec()?
-    .hash256();
+    let sign_bytes = ctx.api.sha2_256(
+        &SignDoc {
+            messages: tx.msgs,
+            chain_id: ctx.chain_id,
+            sequence: metadata.sequence,
+        }
+        .to_json_vec()?,
+    );
 
     // Verify sequence.
     match ctx.mode {
