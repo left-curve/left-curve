@@ -1,7 +1,6 @@
 use {
     crate::account_factory::Username,
     grug::{Binary, ByteArray, Hash160, Message},
-    serde::{Deserialize, Serialize},
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -62,8 +61,7 @@ pub struct PasskeySignature {
 
 /// Passkey client data
 /// We use serde instead of grug because it does not support unknown fields.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[grug::derive(Serde)]
 pub struct ClientData {
     // Should be "webauthn.get".
     #[serde(rename = "type")]
@@ -71,5 +69,6 @@ pub struct ClientData {
     // Should be the `SignDoc` in base64 `URL_SAFE_NO_PAD` encoding.
     pub challenge: String,
     pub origin: String,
+    #[serde(rename = "crossOrigin")]
     pub cross_origin: bool,
 }
