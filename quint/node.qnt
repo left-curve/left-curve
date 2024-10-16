@@ -30,10 +30,9 @@ pure def is_leaf(n: Node) : bool =
         | Leaf(n) => true
         | Internal(n) => false
 }
-
-val InternalIdentifier : Bytes_t = [0]
+val InternalNodeIdentifier : Bytes_t = [0]
 val LeafNodeIdentifier : Bytes_t = [1]
-val InternalNodeHashPrefix : Term_t = raw(InternalIdentifier)
+val InternalNodeHashPrefix : Term_t = raw(InternalNodeIdentifier)
 val LeafNodeHashPrefix : Term_t = raw(LeafNodeIdentifier)
 
 val l = {
@@ -56,7 +55,89 @@ pure def hashInternalNode(l: InternalNode): Term_t =
                 .termConcat(l.left_child.hashOfChild())
                 .termConcat(l.right_child.hashOfChild()))
 
+pure def hash(n: Node) : Term_t = {
+    match n {
+        | Leaf(n) => hashLeafNode(n)
+        | Internal(n) => hashInternalNode(n)
+    }
+}
+
 // runs
+run hash_InternalTest = {
+    nondet left_child_key = 0.to(16).oneOf()
+    nondet left_child_value = 0.to(16).oneOf()
+    val left_leaf = {
+        key_hash: termHash(raw([left_child_key])),
+        value_hash:  termHash(raw([left_child_value]))
+    }
+
+    nondet right_child_key = 0.to(16).oneOf()
+    nondet right_child_value = 0.to(16).oneOf()
+    val right_leaf = {
+        key_hash: termHash(raw([right_child_key])),
+        value_hash:  termHash(raw([right_child_value]))
+    }
+
+    val left_leaf_hash = hashLeafNode(left_leaf)
+    val right_leaf_hash = hashLeafNode(right_leaf)
+    
+    val expected_left_hash =  Map([0] -> Hash,
+                            [0, 0] -> Raw(LeafNodeIdentifier),
+                            [0, 1] -> Hash, 
+                                [0, 1, 0] -> Raw([left_child_key]), 
+                            [0, 2] -> Hash,        
+                                [0, 2, 0] -> Raw([left_child_value])
+                )
+    val expected_right_hash =  Map([0] -> Hash,
+                            [0, 0] -> Raw(LeafNodeIdentifier),
+                            [0, 1] -> Hash, 
+                                [0, 1, 0] -> Raw([right_child_key]), 
+                            [0, 2] -> Hash,        
+                                [0, 2, 0] -> Raw([right_child_value])
+    )
+    
+    val internal_node = {
+        left_child: Some({version: 0, hash: left_leaf_hash}),
+        right_child: Some({version: 0, hash: right_leaf_hash})
+    }    
+    val hashed_internal_node = hash(Internal(internal_node))
+
+    val expected_internal_node_hash =  Map([0] -> Hash,
+                            [0,0] -> Raw(InternalNodeIdentifier),
+                            [0, 1] -> Hash,
+                                [0, 1, 0] -> Raw(LeafNodeIdentifier),
+                                [0, 1, 1] -> Hash, 
+                                    [0, 1, 1, 0] -> Raw([left_child_key]), 
+                                [0, 1, 2] -> Hash,        
+                                    [0, 1, 2, 0] -> Raw([left_child_value]),
+                            [0, 2] -> Hash,
+                                [0, 2, 0] -> Raw(LeafNodeIdentifier),
+                                [0, 2, 1] -> Hash, 
+                                    [0, 2, 1, 0] -> Raw([right_child_key]), 
+                                [0, 2, 2] -> Hash,        
+                                    [0, 2, 2, 0] -> Raw([right_child_value])
+                            )
+
+    assert(hashed_internal_node == expected_internal_node_hash)
+}
+run hash_LeafTest = {
+    nondet key = 0.to(16).oneOf()
+    nondet value = 0.to(16).oneOf()
+    val l = {
+        key_hash: termHash(raw([key])),
+        value_hash:  termHash(raw([value]))
+    }
+    val result = hash(Leaf(l))
+
+    val expected =  Map([0] -> Hash,
+                            [0, 0] -> Raw(LeafNodeIdentifier),
+                            [0, 1] -> Hash, 
+                                [0, 1, 0] -> Raw([key]), 
+                            [0, 2] -> Hash,        
+                                [0, 2, 0] -> Raw([value]) 
+                )
+    assert(result == expected)
+}
 run LeafHashTest = {  
     nondet key = 0.to(16).oneOf()
     nondet value = 0.to(16).oneOf()
@@ -99,22 +180,37 @@ run InternalHashTest = {
                                 [0, 1, 0] -> Raw([left_child_key]), 
                             [0, 2] -> Hash,        
                                 [0, 2, 0] -> Raw([left_child_value])
-                )
+                            )
     val expected_right_hash =  Map([0] -> Hash,
                             [0, 0] -> Raw(LeafNodeIdentifier),
                             [0, 1] -> Hash, 
                                 [0, 1, 0] -> Raw([right_child_key]), 
                             [0, 2] -> Hash,        
                                 [0, 2, 0] -> Raw([right_child_value])
-    )
+                            )
     
     val internal_node = {
         left_child: Some({version: 0, hash: left_leaf_hash}),
         right_child: Some({version: 0, hash: right_leaf_hash})
     }    
     val hashed_internal_node = hashInternalNode(internal_node)
-    //TODO: assert hashed internal node with some value; @josef-widder help needed :)
-    assert(left_leaf_hash == expected_left_hash).then(assert(right_leaf_hash == expected_right_hash))
+    val expected_internal_node_hash =  Map([0] -> Hash,
+                            [0,0] -> Raw(InternalNodeIdentifier),
+                            [0, 1] -> Hash,
+                                [0, 1, 0] -> Raw(LeafNodeIdentifier),
+                                [0, 1, 1] -> Hash, 
+                                    [0, 1, 1, 0] -> Raw([left_child_key]), 
+                                [0, 1, 2] -> Hash,        
+                                    [0, 1, 2, 0] -> Raw([left_child_value]),
+                            [0, 2] -> Hash,
+                                [0, 2, 0] -> Raw(LeafNodeIdentifier),
+                                [0, 2, 1] -> Hash, 
+                                    [0, 2, 1, 0] -> Raw([right_child_key]), 
+                                [0, 2, 2] -> Hash,        
+                                    [0, 2, 2, 0] -> Raw([right_child_value])
+                            )
+
+    assert(left_leaf_hash == expected_left_hash).then(assert(right_leaf_hash == expected_right_hash)).then(assert(expected_internal_node_hash == hashed_internal_node))
 
 }
 run LeafCheckIsLeafTest = {
@@ -128,7 +224,6 @@ run LeafCheckIsLeafTest = {
 }
 
 run InternalNodeCheckIsLeafTest = {
-    //dummy values, no sense
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
@@ -154,7 +249,6 @@ run InternalNodeCheckIsLeafTest = {
     assert(is_leaf(Internal(internal_node)) == false)
 }
 run IncompleteInternalNodeCheckIsLeafTest = {
-    //dummy values, no sense
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
