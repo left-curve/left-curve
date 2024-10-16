@@ -165,6 +165,9 @@ pub fn authenticate_tx(
                 ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
             },
             (Key::Ed25519(pk), Credential::Ed25519(sig)) => {
+                println!("sign_bytes: {:?}", sign_bytes);
+                println!("sig: {:?}", sig);
+                println!("pk: {:?}", pk);
                 ctx.api.ed25519_verify(&sign_bytes, &sig, &pk)?;
             },
             _ => bail!("key and credential types don't match!"),
@@ -183,7 +186,7 @@ mod tests {
     use {
         super::*,
         dango_types::account_factory::Username,
-        grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        grug::{Addr, Api, AuthMode, Hash160, MockApi, MockContext, MockQuerier},
         std::str::FromStr,
     };
 
@@ -344,6 +347,28 @@ mod tests {
     }
 
     #[test]
+    fn verify_ed25519() {
+        let pk = [
+            101, 173, 32, 8, 37, 155, 184, 155, 233, 125, 175, 208, 76, 197, 40, 101, 86, 187, 126,
+            56, 48, 172, 98, 126, 149, 224, 77, 58, 157, 102, 70, 196,
+        ];
+
+        let hash = [
+            5, 204, 63, 70, 67, 251, 10, 202, 190, 121, 225, 51, 151, 135, 165, 16, 137, 82, 122,
+            203, 104, 55, 37, 15, 230, 137, 166, 61, 23, 82, 184, 128,
+        ];
+
+        let sig = [
+            111, 29, 170, 86, 90, 35, 175, 89, 16, 34, 14, 28, 73, 226, 243, 193, 40, 193, 95, 157,
+            122, 103, 166, 206, 119, 246, 8, 59, 190, 179, 164, 114, 215, 248, 35, 172, 28, 19,
+            239, 144, 6, 54, 66, 243, 179, 90, 213, 143, 123, 230, 66, 230, 37, 43, 255, 173, 157,
+            204, 244, 32, 121, 94, 158, 5,
+        ];
+
+        MockApi.ed25519_verify(&hash, &sig, &pk).unwrap()
+    }
+
+    #[test]
     fn secp256k1_authentication() {
         let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
         let user_username = Username::from_str("owner").unwrap();
@@ -480,5 +505,64 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap_err();
+    }
+
+    #[test]
+    fn ed25519_authentication() {
+        let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
+        let user_username = Username::from_str("owner").unwrap();
+        let user_keyhash = Hash160::from_str("B64232CC731745487C744A60479B38109E1631D1").unwrap();
+        let user_key = Key::Ed25519(
+            [
+                101, 173, 32, 8, 37, 155, 184, 155, 233, 125, 175, 208, 76, 197, 40, 101, 86, 187,
+                126, 56, 48, 172, 98, 126, 149, 224, 77, 58, 157, 102, 70, 196,
+            ]
+            .into(),
+        );
+
+        // it should pass if key and signature are correct
+
+        let tx = r#"{
+          "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+          "credential": {
+            "ed25519": "bx2qVlojr1kQIg4cSeLzwSjBX516Z6bOd/YIO76zpHLX+COsHBPvkAY2QvOzWtWPe+ZC5iUr/62dzPQgeV6eBQ=="
+          },
+          "data": {
+            "key_hash": "B64232CC731745487C744A60479B38109E1631D1",
+            "username": "owner",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                "coins": {
+                  "uusdc": "5"
+                }
+              }
+            }
+          ],
+          "gas_limit": 1046678
+        }"#;
+
+        let querier = MockQuerier::new()
+            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS_BY_USER
+                    .insert(storage, (&user_username, user_keyhash))
+                    .unwrap();
+                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_chain_id("dev-2")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
     }
 }
